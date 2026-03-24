@@ -17,6 +17,8 @@ Ant Design Pro 大型 SaaS 系统脚手架仓库。
 - [权限模型与多租户 RBAC 设计规范](docs/05-permission-rbac.md)
 - [前端架构与响应式布局规范](docs/06-frontend-architecture.md)
 - [后端架构与基础设施规范](docs/07-backend-architecture.md)
+- [开发实施路线与第一阶段落地清单](docs/08-development-roadmap.md)
+- [第一阶段详细任务拆解与 Codex 执行提示词总文档](docs/09-first-phase-codex-execution.md)
 
 ## 第一阶段目标
 
@@ -27,7 +29,7 @@ Ant Design Pro 大型 SaaS 系统脚手架仓库。
 
 ## 接下来要做的事
 
-1. 按这 7 份规范开始初始化前端和后端工程骨架。
+1. 按这 9 份规范开始初始化前端和后端工程骨架。
 2. 先落登录、租户切换、权限与审计链路。
 3. 再补齐通用页面模板、数据库基础表和接口约束。
 4. 逐步进入业务模块开发。
