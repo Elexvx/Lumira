@@ -8,6 +8,7 @@ public final class CacheKeyConstants {
     public static final String PREFIX = "saas";
     public static final String SESSION = "session";
     public static final String TENANT_CONTEXT = "tenant_context";
+    public static final String SESSION_USER = "session_user";
 
     public static String tenantKey(String tenantId, String suffix) {
         return String.join(":", PREFIX, "tenant", tenantId, suffix);
@@ -15,5 +16,13 @@ public final class CacheKeyConstants {
 
     public static String userKey(String tenantId, String userId, String suffix) {
         return String.join(":", PREFIX, "tenant", tenantId, "user", userId, suffix);
+    }
+
+    public static String sessionKey(String sessionId) {
+        return String.join(":", PREFIX, SESSION, sessionId);
+    }
+
+    public static String userSessionKey(Long userId, String sessionId) {
+        return String.join(":", PREFIX, SESSION_USER, String.valueOf(userId), sessionId);
     }
 }

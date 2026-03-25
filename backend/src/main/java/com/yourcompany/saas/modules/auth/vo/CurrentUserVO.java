@@ -1,0 +1,88 @@
+package com.yourcompany.saas.modules.auth.vo;
+
+import com.yourcompany.saas.modules.tenant.vo.TenantSummaryVO;
+
+public class CurrentUserVO {
+
+    private Long userId;
+    private String username;
+    private String nickname;
+    private String realName;
+    private String avatarUrl;
+    private TenantSummaryVO currentTenant;
+    private String sessionId;
+    private String permissionsVersion;
+    private Integer sessionVersion;
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public String getRealName() {
+        return realName;
+    }
+
+    public void setRealName(String realName) {
+        this.realName = realName;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public TenantSummaryVO getCurrentTenant() {
+        return currentTenant;
+    }
+
+    public void setCurrentTenant(TenantSummaryVO currentTenant) {
+        this.currentTenant = currentTenant;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public String getPermissionsVersion() {
+        return permissionsVersion;
+    }
+
+    public void setPermissionsVersion(String permissionsVersion) {
+        this.permissionsVersion = permissionsVersion;
+    }
+
+    public Integer getSessionVersion() {
+        return sessionVersion;
+    }
+
+    public void setSessionVersion(Integer sessionVersion) {
+        this.sessionVersion = sessionVersion;
+    }
+}

@@ -1,0 +1,114 @@
+package com.yourcompany.saas.modules.tenant.domain;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.yourcompany.saas.modules.tenant.entity.SysUserTenantEntity;
+import com.yourcompany.saas.modules.tenant.entity.TenantInfoEntity;
+import com.yourcompany.saas.modules.tenant.mapper.SysUserTenantMapper;
+import com.yourcompany.saas.modules.tenant.mapper.TenantInfoMapper;
+import com.yourcompany.saas.modules.tenant.vo.MyTenantVO;
+import com.yourcompany.saas.modules.tenant.vo.TenantSummaryVO;
+import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+public class TenantDomainService {
+
+    private final SysUserTenantMapper sysUserTenantMapper;
+    private final TenantInfoMapper tenantInfoMapper;
+
+    public TenantDomainService(SysUserTenantMapper sysUserTenantMapper, TenantInfoMapper tenantInfoMapper) {
+        this.sysUserTenantMapper = sysUserTenantMapper;
+        this.tenantInfoMapper = tenantInfoMapper;
+    }
+
+    public List<UserTenantAccess> listUserTenantAccess(Long userId) {
+        List<SysUserTenantEntity> relations = sysUserTenantMapper.selectList(
+                new LambdaQueryWrapper<SysUserTenantEntity>()
+                        .eq(SysUserTenantEntity::getUserId, userId)
+                        .eq(SysUserTenantEntity::getDeleted, 0)
+                        .eq(SysUserTenantEntity::getStatus, "ENABLED")
+        );
+        if (relations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> tenantIds = relations.stream().map(SysUserTenantEntity::getTenantId).distinct().toList();
+        Map<Long, TenantInfoEntity> tenantMap = tenantInfoMapper.selectList(new LambdaQueryWrapper<TenantInfoEntity>()
+                        .in(TenantInfoEntity::getId, tenantIds)
+                        .eq(TenantInfoEntity::getDeleted, 0)
+                )
+                .stream()
+                .collect(Collectors.toMap(TenantInfoEntity::getId, Function.identity()));
+
+        return relations.stream()
+                .map(rel -> {
+                    TenantInfoEntity tenant = tenantMap.get(rel.getTenantId());
+                    if (tenant == null) {
+                        return null;
+                    }
+                    UserTenantAccess access = new UserTenantAccess();
+                    access.setTenantId(rel.getTenantId());
+                    access.setDefault(rel.getIsDefault() != null && rel.getIsDefault() == 1);
+                    access.setTenant(tenant);
+                    return access;
+                })
+                .filter(item -> item != null)
+                .toList();
+    }
+
+    public Optional<TenantInfoEntity> findTenantById(Long tenantId) {
+        if (tenantId == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(tenantInfoMapper.selectOne(
+                new LambdaQueryWrapper<TenantInfoEntity>()
+                        .eq(TenantInfoEntity::getId, tenantId)
+                        .eq(TenantInfoEntity::getDeleted, 0)
+                        .last("limit 1")
+        ));
+    }
+
+    public boolean isUserInTenant(Long userId, Long tenantId) {
+        Long count = sysUserTenantMapper.selectCount(new LambdaQueryWrapper<SysUserTenantEntity>()
+                .eq(SysUserTenantEntity::getUserId, userId)
+                .eq(SysUserTenantEntity::getTenantId, tenantId)
+                .eq(SysUserTenantEntity::getStatus, "ENABLED")
+                .eq(SysUserTenantEntity::getDeleted, 0)
+                .last("limit 1"));
+        return count != null && count > 0;
+    }
+
+    public List<MyTenantVO> toMyTenantVO(List<UserTenantAccess> accessList) {
+        return accessList.stream()
+                .map(access -> {
+                    MyTenantVO vo = new MyTenantVO();
+                    fillTenantSummary(vo, access.getTenant());
+                    vo.setIsDefault(access.isDefault());
+                    return vo;
+                })
+                .toList();
+    }
+
+    public TenantSummaryVO toTenantSummary(TenantInfoEntity tenantInfo) {
+        if (tenantInfo == null) {
+            return null;
+        }
+        TenantSummaryVO vo = new TenantSummaryVO();
+        fillTenantSummary(vo, tenantInfo);
+        return vo;
+    }
+
+    private void fillTenantSummary(TenantSummaryVO vo, TenantInfoEntity tenantInfo) {
+        vo.setTenantId(tenantInfo.getId());
+        vo.setTenantCode(tenantInfo.getTenantCode());
+        vo.setTenantName(tenantInfo.getTenantName());
+        vo.setTenantShortName(tenantInfo.getTenantShortName());
+        vo.setStatus(tenantInfo.getStatus());
+    }
+}

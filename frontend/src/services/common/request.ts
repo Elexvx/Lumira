@@ -6,19 +6,39 @@ import { tenantContext } from '@/tenant/context';
 import { ErrorCode } from '@/enums/errorCode';
 import type { ApiResponse } from '@/types/api';
 
-export const request = async <T>(url: string, options: Record<string, unknown> = {}) => {
+export class ApiRequestError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+export interface RequestOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  data?: Record<string, unknown>;
+  params?: Record<string, unknown>;
+  headers?: Record<string, string>;
+  autoRedirectOnUnauthorized?: boolean;
+  skipAuth?: boolean;
+}
+
+export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   const response = await umiRequest<ApiResponse<T>>(`${API_PREFIX}${url}`, {
     timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
-    ...options,
+    method: options.method,
+    params: options.params,
+    data: options.data,
+    getResponse: true,
+    errorHandler: undefined,
     headers: {
-      ...(options.headers as Record<string, string>),
-      [AUTHORIZATION_HEADER]: tokenManager.getToken() ? `Bearer ${tokenManager.getToken()}` : '',
-      [TENANT_HEADER]: tenantContext.getTenantId() || '',
+      ...(options.headers || {}),
+      [AUTHORIZATION_HEADER]: options.skipAuth ? '' : buildAuthorization(),
+      [TENANT_HEADER]: tenantContext.getTenantId(),
       [REQUEST_ID_HEADER]: crypto.randomUUID(),
       [TRACE_ID_HEADER]: '',
     },
-    getResponse: true,
-    errorHandler: undefined,
   });
 
   const serverRequestId = response.response.headers.get(REQUEST_ID_HEADER) || response.data.requestId;
@@ -31,19 +51,34 @@ export const request = async <T>(url: string, options: Record<string, unknown> =
   }
 
   if (response.data.code === ErrorCode.UNAUTHORIZED) {
-    message.error('登录已失效，请重新登录');
-    tokenManager.clearToken();
-    history.push('/user/login');
-    throw new Error('Unauthorized');
+    if (options.autoRedirectOnUnauthorized !== false) {
+      message.error('登录已失效，请重新登录');
+      cleanUnauthorizedState();
+      history.replace('/user/login');
+    }
+    throw new ApiRequestError(response.data.code, response.data.message || '未登录');
   }
 
-  message.error(response.data.message || '请求失败');
-  throw new Error(response.data.message);
+  const errorMessage = response.data.message || '请求失败';
+  message.error(errorMessage);
+  throw new ApiRequestError(response.data.code, errorMessage);
 };
 
-export const requestFile = async (url: string, options: Record<string, unknown> = {}) => {
+export const requestFile = async (url: string, options: RequestOptions = {}) => {
   return umiRequest(`${API_PREFIX}${url}`, {
-    ...options,
+    method: options.method,
+    params: options.params,
+    data: options.data,
     responseType: 'blob',
   });
+};
+
+const buildAuthorization = () => {
+  const accessToken = tokenManager.getAccessToken();
+  return accessToken ? `Bearer ${accessToken}` : '';
+};
+
+const cleanUnauthorizedState = () => {
+  tokenManager.clearTokenState();
+  tenantContext.clearTenantContext();
 };
