@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "umi dev",
-    "build": "umi build",
-    "start": "umi preview",
+    "dev": "max dev",
+    "build": "max build",
+    "start": "max preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

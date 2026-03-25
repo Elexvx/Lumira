@@ -17,7 +17,7 @@ export class ApiRequestError extends Error {
 
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  data?: Record<string, unknown>;
+  data?: unknown;
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   autoRedirectOnUnauthorized?: boolean;

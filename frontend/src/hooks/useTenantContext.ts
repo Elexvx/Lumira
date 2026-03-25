@@ -1,6 +1,7 @@
-import { tenantContext, switchTenant } from '@/tenant/context';
+import { tenantContext } from '@/tenant/context';
 
 export const useTenantContext = () => ({
   tenantId: tenantContext.getTenantId(),
-  switchTenant,
+  currentTenant: tenantContext.getCurrentTenant(),
+  myTenants: tenantContext.getMyTenants(),
 });
