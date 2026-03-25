@@ -1,0 +1,10 @@
+export enum ErrorCode {
+  SUCCESS = '0',
+  BAD_REQUEST = 'A0400',
+  UNAUTHORIZED = 'A0401',
+  FORBIDDEN = 'A0403',
+  NOT_FOUND = 'A0404',
+  BIZ_ERROR = 'B0001',
+  TENANT_ERROR = 'T0001',
+  SYSTEM_ERROR = 'S0001',
+}
