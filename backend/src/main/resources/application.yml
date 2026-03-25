@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/saas_foundation?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
@@ -29,10 +29,15 @@ springdoc:
 
 saas:
   security:
-    jwt-secret: ${JWT_SECRET:replace_me}
+    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
+    issuer: saas-foundation
+    access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
+    refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
     permit-paths:
-      - /api/auth/login
+      - /api/v1/auth/login
+      - /api/v1/auth/refresh-token
       - /actuator/health
+      - /api/health
       - /swagger-ui.html
       - /swagger-ui/**
       - /api-docs/**
