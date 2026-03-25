@@ -1,15 +1,53 @@
-import { restoreSession } from '@/auth/session';
-import type { CurrentUser } from '@/types/api';
-import { request } from '@/services/common/request';
+import { history } from '@umijs/max';
+import { getStoredCurrentUser, isLoggedIn, restoreSession } from '@/auth/session';
+import { tenantContext } from '@/tenant/context';
+import type { CurrentUser, MyTenant, TenantSummary } from '@/types/api';
 
-export async function getInitialState(): Promise<{ currentUser?: CurrentUser }> {
-  if (!restoreSession()) {
-    return {};
-  }
+const LOGIN_PATH = '/user/login';
+const DEFAULT_HOME_PATH = '/dashboard/home';
+const PUBLIC_PATHS = new Set([LOGIN_PATH, '/403', '/blank/workflow']);
+
+export interface AppInitialState {
+  currentUser?: CurrentUser;
+  currentTenant?: TenantSummary | null;
+  myTenants: MyTenant[];
+}
+
+export async function getInitialState(): Promise<AppInitialState> {
   try {
-    const currentUser = await request<CurrentUser>('/auth/current-user');
-    return { currentUser };
+    const restored = await restoreSession();
+    if (restored?.currentUser) {
+      return {
+        currentUser: restored.currentUser,
+        currentTenant: tenantContext.getCurrentTenant(),
+        myTenants: tenantContext.getMyTenants(),
+      };
+    }
   } catch (error) {
-    return {};
+    // 恢复失败时继续走本地兜底，交给路由守卫引导登录
+  }
+
+  return {
+    currentUser: getStoredCurrentUser() || undefined,
+    currentTenant: tenantContext.getCurrentTenant(),
+    myTenants: tenantContext.getMyTenants(),
+  };
+}
+
+export function onRouteChange({ location }: { location: Location }) {
+  const path = location.pathname;
+  const loggedIn = isLoggedIn();
+  const isPublicPath = PUBLIC_PATHS.has(path);
+
+  if (!loggedIn && !isPublicPath) {
+    const redirect = `${path}${location.search || ''}`;
+    history.replace(`${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`);
+    return;
+  }
+
+  if (loggedIn && path === LOGIN_PATH) {
+    const searchParams = new URLSearchParams(location.search || '');
+    const redirect = searchParams.get('redirect') || DEFAULT_HOME_PATH;
+    history.replace(redirect);
   }
 }

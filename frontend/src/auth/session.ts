@@ -55,11 +55,15 @@ export const initializeAfterLogin = async (loginResponse: LoginResponse): Promis
   tenantContext.setMyTenants(loginResponse.tenants || []);
   tenantContext.setCurrentTenant(loginResponse.currentTenant || null);
 
-  const currentUser = await authService.currentUser();
-  persistCurrentUser(currentUser);
-
-  await syncTenantFromServer();
-  return { currentUser };
+  try {
+    const currentUser = await authService.currentUser();
+    persistCurrentUser(currentUser);
+    await syncTenantFromServer();
+    return { currentUser };
+  } catch (error) {
+    clearAuthSession();
+    throw error;
+  }
 };
 
 export const restoreSession = async (): Promise<SessionBootstrapResult | null> => {
@@ -79,10 +83,15 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
       return null;
     }
 
-    const currentUser = await authService.currentUser({ autoRedirectOnUnauthorized: false });
-    persistCurrentUser(currentUser);
-    await syncTenantFromServer();
-    return { currentUser };
+    try {
+      const currentUser = await authService.currentUser({ autoRedirectOnUnauthorized: false });
+      persistCurrentUser(currentUser);
+      await syncTenantFromServer();
+      return { currentUser };
+    } catch (refreshError) {
+      clearAuthSession();
+      return null;
+    }
   }
 };
 
