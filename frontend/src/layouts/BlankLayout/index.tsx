@@ -1,4 +1,4 @@
-import { Outlet } from '@umijs/max';
+import { Outlet } from 'umi';
 
 const BlankLayout = () => <Outlet />;
 

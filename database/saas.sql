@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS tenant_info (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     tenant_code VARCHAR(64) NOT NULL,
     tenant_name VARCHAR(128) NOT NULL,
+    tenant_short_name VARCHAR(64) DEFAULT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'ENABLED',
     created_by BIGINT DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -53,6 +54,9 @@ CREATE TABLE IF NOT EXISTS tenant_quota (
 CREATE TABLE IF NOT EXISTS sys_user (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(64) NOT NULL,
+    nickname VARCHAR(64) DEFAULT NULL,
+    real_name VARCHAR(64) DEFAULT NULL,
+    avatar_url VARCHAR(255) DEFAULT NULL,
     password_hash VARCHAR(255) NOT NULL,
     mobile VARCHAR(32) DEFAULT NULL,
     email VARCHAR(128) DEFAULT NULL,
@@ -69,6 +73,8 @@ CREATE TABLE IF NOT EXISTS sys_user_tenant (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     tenant_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
+    is_default TINYINT NOT NULL DEFAULT 0,
+    status VARCHAR(32) NOT NULL DEFAULT 'ENABLED',
     joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by BIGINT DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -285,10 +291,93 @@ CREATE TABLE IF NOT EXISTS audit_login_log (
     tenant_id BIGINT DEFAULT NULL,
     user_id BIGINT DEFAULT NULL,
     username VARCHAR(64) DEFAULT NULL,
+    login_type VARCHAR(32) NOT NULL DEFAULT 'PASSWORD',
     login_result VARCHAR(32) NOT NULL,
+    fail_reason VARCHAR(255) DEFAULT NULL,
     login_ip VARCHAR(64) DEFAULT NULL,
     user_agent VARCHAR(255) DEFAULT NULL,
     request_id VARCHAR(64) NOT NULL,
     trace_id VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_sys_user_mobile ON sys_user (mobile);
+CREATE INDEX idx_sys_user_tenant_user_status ON sys_user_tenant (user_id, status);
+CREATE INDEX idx_audit_login_log_trace_id ON audit_login_log (trace_id);
+
+INSERT INTO tenant_info (
+    id,
+    tenant_code,
+    tenant_name,
+    tenant_short_name,
+    status,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'default', '默认租户', '默认', 'ENABLED', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM tenant_info WHERE id = 1001);
+
+INSERT INTO tenant_info (
+    id,
+    tenant_code,
+    tenant_name,
+    tenant_short_name,
+    status,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1002, 'demo', '演示租户', '演示', 'ENABLED', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM tenant_info WHERE id = 1002);
+
+INSERT INTO sys_user (
+    id,
+    username,
+    nickname,
+    real_name,
+    password_hash,
+    mobile,
+    email,
+    status,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT
+    1001,
+    'admin',
+    '管理员',
+    '系统管理员',
+    '$2a$10$vieE7/xcgtcStPtFa4qIzejdXPbS0xv3OvsOjUAy03w3vjKsGJd6C',
+    '13800000000',
+    'admin@example.com',
+    'ENABLED',
+    0,
+    0,
+    0
+WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE id = 1001);
+
+INSERT INTO sys_user_tenant (
+    tenant_id,
+    user_id,
+    is_default,
+    status,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 1001, 1, 'ENABLED', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_user_tenant WHERE tenant_id = 1001 AND user_id = 1001);
+
+INSERT INTO sys_user_tenant (
+    tenant_id,
+    user_id,
+    is_default,
+    status,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1002, 1001, 0, 'ENABLED', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_user_tenant WHERE tenant_id = 1002 AND user_id = 1001);

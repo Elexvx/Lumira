@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { history, useLocation, useModel } from '@umijs/max';
+import { history, useLocation } from 'umi';
 import { Alert, Button, Form, Input, Tabs, Typography } from 'antd';
 import { authService } from '@/services/auth';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
 type LoginMode = 'username' | 'mobile';
 
@@ -18,7 +19,7 @@ const Login = () => {
   const [loginMode, setLoginMode] = useState<LoginMode>('username');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { setInitialState } = useModel('@@initialState');
+  const { setInitialState } = useInitialStateModel();
   const location = useLocation();
 
   const handleSubmit = async (values: LoginFormValues) => {

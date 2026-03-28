@@ -1,4 +1,4 @@
-import { useAccess } from '@umijs/max';
+import { useAccess } from 'umi';
 
 export const usePermission = () => {
   const access = useAccess();

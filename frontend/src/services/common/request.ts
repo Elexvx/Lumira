@@ -1,5 +1,5 @@
 import { message } from 'antd';
-import { history, request as umiRequest } from '@umijs/max';
+import { history, request as umiRequest } from 'umi';
 import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TENANT_HEADER, TRACE_ID_HEADER } from '@/constants/http';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
@@ -41,7 +41,7 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     },
   });
 
-  const serverRequestId = response.response.headers.get(REQUEST_ID_HEADER) || response.data.requestId;
+  const serverRequestId = (response as any).response?.headers?.get?.(REQUEST_ID_HEADER) || response.data.requestId;
   if (serverRequestId) {
     (response.data as ApiResponse<T>).requestId = serverRequestId;
   }

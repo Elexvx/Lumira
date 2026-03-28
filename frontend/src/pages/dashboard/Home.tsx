@@ -1,8 +1,8 @@
-import { useModel } from '@umijs/max';
 import { Card, Descriptions, Typography } from 'antd';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
 export default () => {
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useInitialStateModel();
   return (
     <Card>
       <Typography.Title level={4}>首页占位</Typography.Title>

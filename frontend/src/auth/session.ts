@@ -1,4 +1,4 @@
-import { history } from '@umijs/max';
+import { history } from 'umi';
 import { authService } from '@/services/auth';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';

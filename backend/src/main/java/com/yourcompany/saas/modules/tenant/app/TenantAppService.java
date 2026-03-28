@@ -16,7 +16,6 @@ import com.yourcompany.saas.modules.tenant.vo.TenantSummaryVO;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -79,7 +78,7 @@ public class TenantAppService {
         session.setCurrentTenantId(targetTenantId);
         session.setSessionVersion(session.getSessionVersion() == null ? 1 : session.getSessionVersion() + 1);
 
-        Duration sessionTtl = Duration.between(LocalDateTime.now(), session.getExpireTime());
+        Duration sessionTtl = jwtTokenService.calculateSessionTtl(session.getExpireTime());
         if (sessionTtl.isNegative() || sessionTtl.isZero()) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "会话已过期，请重新登录");
         }

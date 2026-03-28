@@ -1,4 +1,4 @@
-import { history } from '@umijs/max';
+import { history } from 'umi';
 import { getStoredCurrentUser, isLoggedIn, restoreSession } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { CurrentUser, MyTenant, TenantSummary } from '@/types/api';

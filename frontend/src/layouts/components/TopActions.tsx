@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { BellOutlined, UserOutlined } from '@ant-design/icons';
 import { Avatar, Dropdown, Space } from 'antd';
-import { useModel } from '@umijs/max';
 import { TenantSelector } from '@/components/TenantSelector';
 import { performLogout } from '@/auth/session';
 import type { AppInitialState } from '@/app';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
 export const TopActions = () => {
   const [loggingOut, setLoggingOut] = useState(false);
-  const { initialState, setInitialState } = useModel('@@initialState');
+  const { initialState, setInitialState } = useInitialStateModel();
 
   const userName =
     initialState?.currentUser?.nickname ||
