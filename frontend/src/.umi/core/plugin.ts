@@ -4,7 +4,8 @@
 import * as Plugin_0 from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/app.ts';
 import * as Plugin_1 from '@@/core/helmet.ts';
 import * as Plugin_2 from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-access/runtime.tsx';
-import * as Plugin_3 from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-model/runtime.tsx';
+import * as Plugin_3 from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-initialState/runtime.tsx';
+import * as Plugin_4 from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-model/runtime.tsx';
 import { PluginManager } from 'umi';
 
 function __defaultExport (obj) {
@@ -29,13 +30,17 @@ export function getPlugins() {
     },
     {
       apply: Plugin_3,
+      path: process.env.NODE_ENV === 'production' ? void 0 : '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-initialState/runtime.tsx',
+    },
+    {
+      apply: Plugin_4,
       path: process.env.NODE_ENV === 'production' ? void 0 : '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-model/runtime.tsx',
     },
   ];
 }
 
 export function getValidKeys() {
-  return ['patchRoutes','patchClientRoutes','modifyContextOpts','modifyClientRenderOpts','rootContainer','innerProvider','i18nProvider','accessProvider','dataflowProvider','outerProvider','render','onRouteChange','antd','qiankun','request',];
+  return ['patchRoutes','patchClientRoutes','modifyContextOpts','modifyClientRenderOpts','rootContainer','innerProvider','i18nProvider','accessProvider','dataflowProvider','outerProvider','render','onRouteChange','antd','getInitialState','qiankun','request',];
 }
 
 let pluginManager = null;

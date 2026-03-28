@@ -64,6 +64,19 @@ class JwtTokenServiceTest {
         assertEquals("JWT密钥长度不足", exception.getMessage());
     }
 
+    @Test
+    void shouldRejectBase64SecretWhenDecodedBytesTooShort() {
+        String shortRawSecret = "short-secret-for-test";
+        String base64Secret = Base64.getEncoder().encodeToString(shortRawSecret.getBytes(StandardCharsets.UTF_8));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new JwtTokenService(buildSecurityProperties(base64Secret))
+        );
+
+        assertEquals("JWT密钥长度不足", exception.getMessage());
+    }
+
     private SecurityProperties buildSecurityProperties(String jwtSecret) {
         SecurityProperties securityProperties = new SecurityProperties();
         securityProperties.setJwtSecret(jwtSecret);
