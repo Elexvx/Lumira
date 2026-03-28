@@ -18,15 +18,13 @@ import com.yourcompany.saas.modules.auth.vo.RefreshTokenResponseVO;
 import com.yourcompany.saas.modules.tenant.domain.TenantDomainService;
 import com.yourcompany.saas.modules.tenant.domain.UserTenantAccess;
 import com.yourcompany.saas.modules.tenant.entity.TenantInfoEntity;
-import com.yourcompany.saas.modules.tenant.vo.MyTenantVO;
 import com.yourcompany.saas.modules.tenant.vo.TenantSummaryVO;
 import com.yourcompany.saas.modules.user.domain.UserDomainService;
 import com.yourcompany.saas.modules.user.entity.SysUserEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -83,7 +81,7 @@ public class AuthAppService {
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
 
-        authSessionStore.save(session, Duration.ofSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
+        authSessionStore.save(session, jwtTokenService.getRefreshTokenTtl());
 
         LoginResponseVO response = new LoginResponseVO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
@@ -128,8 +126,8 @@ public class AuthAppService {
 
         String newRefreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(newRefreshTokenId);
-        session.setExpireTime(LocalDateTime.now().plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
-        authSessionStore.save(session, Duration.ofSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
+        session.setExpireTime(jwtTokenService.createRefreshTokenExpireAt());
+        authSessionStore.save(session, jwtTokenService.getRefreshTokenTtl());
 
         RefreshTokenResponseVO response = new RefreshTokenResponseVO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
@@ -172,7 +170,7 @@ public class AuthAppService {
         if (session.getRefreshTokenId() == null || !session.getRefreshTokenId().equals(tokenClaims.getTokenId())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "refreshToken已失效");
         }
-        if (session.getExpireTime() == null || session.getExpireTime().isBefore(LocalDateTime.now())) {
+        if (jwtTokenService.isExpired(session.getExpireTime())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "会话已过期，请重新登录");
         }
     }
@@ -186,13 +184,14 @@ public class AuthAppService {
     }
 
     private AuthSession buildNewSession(SysUserEntity user, Long currentTenantId, String loginIp, String userAgent) {
+        Instant now = Instant.now();
         AuthSession session = new AuthSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(user.getId());
         session.setUsername(user.getUsername());
         session.setCurrentTenantId(currentTenantId);
-        session.setLoginTime(LocalDateTime.now());
-        session.setExpireTime(LocalDateTime.now().plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
+        session.setLoginTime(now);
+        session.setExpireTime(now.plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
         session.setSessionVersion(1);
         session.setClientType("WEB");
         session.setLoginIp(loginIp);

@@ -1,5 +1,5 @@
 import { ProLayout } from '@ant-design/pro-components';
-import { history, Outlet } from '@umijs/max';
+import { history, Outlet } from 'umi';
 import { TopActions } from '../components/TopActions';
 import { useResponsive } from '@/hooks/useResponsive';
 

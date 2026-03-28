@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { useModel } from '@umijs/max';
 import { Select } from 'antd';
 import { switchTenantAction } from '@/tenant/actions';
 import type { AppInitialState } from '@/app';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
 export const TenantSelector = () => {
-  const { initialState, setInitialState } = useModel('@@initialState');
+  const { initialState, setInitialState } = useInitialStateModel();
   const [switching, setSwitching] = useState(false);
 
   const tenantOptions = useMemo(
@@ -29,6 +29,7 @@ export const TenantSelector = () => {
       setInitialState((prev: AppInitialState | undefined) => ({
         ...prev,
         currentTenant: response.currentTenant,
+        myTenants: prev?.myTenants ?? [],
       }));
     } finally {
       setSwitching(false);

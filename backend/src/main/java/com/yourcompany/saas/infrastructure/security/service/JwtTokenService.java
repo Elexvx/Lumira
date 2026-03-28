@@ -14,12 +14,15 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 
 @Component
 public class JwtTokenService {
 
+    private static final int MINIMUM_HMAC_KEY_BYTES = 32;
     private static final String CLAIM_SESSION_ID = "sid";
     private static final String CLAIM_USER_ID = "uid";
     private static final String CLAIM_USERNAME = "uname";
@@ -32,7 +35,7 @@ public class JwtTokenService {
 
     public JwtTokenService(SecurityProperties securityProperties) {
         this.securityProperties = securityProperties;
-        this.secretKey = Keys.hmacShaKeyFor(securityProperties.getJwtSecret().getBytes(StandardCharsets.UTF_8));
+        this.secretKey = buildSecretKey(securityProperties.getJwtSecret());
     }
 
     public String generateAccessToken(AuthSession session) {
@@ -91,6 +94,26 @@ public class JwtTokenService {
         return securityProperties.getRefreshTokenExpireSeconds();
     }
 
+    public Instant createRefreshTokenExpireAt() {
+        return Instant.now().plusSeconds(securityProperties.getRefreshTokenExpireSeconds());
+    }
+
+    public Duration getRefreshTokenTtl() {
+        return Duration.ofSeconds(securityProperties.getRefreshTokenExpireSeconds());
+    }
+
+    public boolean isExpired(Instant expireAt) {
+        return expireAt == null || !expireAt.isAfter(Instant.now());
+    }
+
+    public Duration calculateSessionTtl(Instant expireAt) {
+        if (expireAt == null) {
+            return Duration.ZERO;
+        }
+        Duration ttl = Duration.between(Instant.now(), expireAt);
+        return ttl.isNegative() ? Duration.ZERO : ttl;
+    }
+
     private TokenClaims toTokenClaims(Claims claims) {
         TokenClaims tokenClaims = new TokenClaims();
         tokenClaims.setSessionId(claims.get(CLAIM_SESSION_ID, String.class));
@@ -101,5 +124,31 @@ public class JwtTokenService {
         tokenClaims.setTokenId(claims.getId());
         tokenClaims.setTokenType(TokenType.valueOf(claims.get(CLAIM_TOKEN_TYPE, String.class)));
         return tokenClaims;
+    }
+
+    private SecretKey buildSecretKey(String jwtSecret) {
+        byte[] secretBytes = decodeSecret(jwtSecret);
+        if (secretBytes.length < MINIMUM_HMAC_KEY_BYTES) {
+            throw new IllegalStateException("JWT密钥长度不足");
+        }
+        return Keys.hmacShaKeyFor(secretBytes);
+    }
+
+    private byte[] decodeSecret(String jwtSecret) {
+        String normalizedJwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
+        if (normalizedJwtSecret.isEmpty()) {
+            throw new IllegalStateException("JWT密钥未配置");
+        }
+        if (looksLikeBase64(normalizedJwtSecret)) {
+            try {
+                return Base64.getDecoder().decode(normalizedJwtSecret);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return normalizedJwtSecret.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private boolean looksLikeBase64(String value) {
+        return value.length() % 4 == 0 && value.matches("^[A-Za-z0-9+/]+={0,2}$");
     }
 }

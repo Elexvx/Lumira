@@ -20,7 +20,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Collections;
 
 @Component
@@ -77,7 +76,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (session.getSessionVersion() == null || !session.getSessionVersion().equals(claims.getSessionVersion())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "会话版本已变更，请重新登录");
         }
-        if (session.getExpireTime() == null || session.getExpireTime().isBefore(LocalDateTime.now())) {
+        if (jwtTokenService.isExpired(session.getExpireTime())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "会话已过期，请重新登录");
         }
     }

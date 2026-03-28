@@ -1,6 +1,6 @@
 package com.yourcompany.saas.infrastructure.security.model;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public class AuthSession {
 
@@ -8,8 +8,8 @@ public class AuthSession {
     private Long userId;
     private String username;
     private Long currentTenantId;
-    private LocalDateTime loginTime;
-    private LocalDateTime expireTime;
+    private Instant loginTime;
+    private Instant expireTime;
     private Integer sessionVersion;
     private String clientType;
     private String loginIp;
@@ -48,19 +48,19 @@ public class AuthSession {
         this.currentTenantId = currentTenantId;
     }
 
-    public LocalDateTime getLoginTime() {
+    public Instant getLoginTime() {
         return loginTime;
     }
 
-    public void setLoginTime(LocalDateTime loginTime) {
+    public void setLoginTime(Instant loginTime) {
         this.loginTime = loginTime;
     }
 
-    public LocalDateTime getExpireTime() {
+    public Instant getExpireTime() {
         return expireTime;
     }
 
-    public void setExpireTime(LocalDateTime expireTime) {
+    public void setExpireTime(Instant expireTime) {
         this.expireTime = expireTime;
     }
 
