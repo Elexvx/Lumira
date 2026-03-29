@@ -10,11 +10,10 @@ public class ApiResponse<T> {
     private Integer httpStatus;
     private String code;
     private String message;
-    private String errorCode;
-    private String errorMessage;
-    private String userTip;
+    private String userMessage;
     private T data;
     private String requestId;
+    private String path;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
@@ -26,57 +25,66 @@ public class ApiResponse<T> {
             Integer httpStatus,
             String code,
             String message,
-            String errorCode,
-            String errorMessage,
-            String userTip,
+            String userMessage,
             T data,
             String requestId,
-            LocalDateTime timestamp
+            LocalDateTime timestamp,
+            String path
     ) {
         this.httpStatus = httpStatus;
         this.code = code;
         this.message = message;
-        this.errorCode = errorCode;
-        this.errorMessage = errorMessage;
-        this.userTip = userTip;
+        this.userMessage = userMessage;
         this.data = data;
         this.requestId = requestId;
         this.timestamp = timestamp;
+        this.path = path;
     }
 
     public static <T> ApiResponse<T> success(T data, String requestId) {
+        return success(data, requestId, null);
+    }
+
+    public static <T> ApiResponse<T> success(T data, String requestId, String path) {
         return new ApiResponse<>(
                 200,
                 ErrorCode.SUCCESS.getCode(),
                 ErrorCode.SUCCESS.getDefaultMessage(),
                 null,
-                null,
-                null,
                 data,
                 requestId,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                path
         );
     }
 
-    public static <T> ApiResponse<T> fail(ErrorCode errorCode, String requestId) {
+    public static <T> ApiResponse<T> fail(ErrorCode errorCode, String requestId, String path) {
+        return fail(
+                errorCode,
+                errorCode.getDefaultMessage(),
+                errorCode.getDefaultUserMessage(),
+                requestId,
+                path
+        );
+    }
+
+    public static <T> ApiResponse<T> fail(
+            ErrorCode errorCode,
+            String errorMessage,
+            String userMessage,
+            String requestId,
+            String path
+    ) {
         return new ApiResponse<>(
                 errorCode.getHttpStatus(),
                 errorCode.getCode(),
-                errorCode.getDefaultMessage(),
-                errorCode.getCode(),
-                errorCode.getDefaultMessage(),
-                errorCode.getDefaultUserTip(),
+                errorMessage,
+                userMessage,
                 null,
                 requestId,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                path
         );
-    }
-
-    public static <T> ApiResponse<T> fail(ErrorCode errorCode, String requestId, String message) {
-        ApiResponse<T> fail = fail(errorCode, requestId);
-        fail.setMessage(message);
-        fail.setErrorMessage(message);
-        return fail;
     }
 
     public Integer getHttpStatus() {
@@ -103,28 +111,12 @@ public class ApiResponse<T> {
         this.message = message;
     }
 
-    public String getErrorCode() {
-        return errorCode;
+    public String getUserMessage() {
+        return userMessage;
     }
 
-    public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public String getUserTip() {
-        return userTip;
-    }
-
-    public void setUserTip(String userTip) {
-        this.userTip = userTip;
+    public void setUserMessage(String userMessage) {
+        this.userMessage = userMessage;
     }
 
     public T getData() {
@@ -141,6 +133,14 @@ public class ApiResponse<T> {
 
     public void setRequestId(String requestId) {
         this.requestId = requestId;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
     }
 
     public LocalDateTime getTimestamp() {

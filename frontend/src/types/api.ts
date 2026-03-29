@@ -1,13 +1,11 @@
 export interface ApiResponse<T> {
-  httpStatus?: number;
   code: string;
   message: string;
-  errorCode?: string;
-  errorMessage?: string;
-  userTip?: string;
+  userMessage?: string;
   data: T;
   requestId?: string;
   timestamp: string;
+  path?: string;
 }
 
 export interface TenantSummary {

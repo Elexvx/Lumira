@@ -24,7 +24,6 @@ public class UserDomainService {
 
         LambdaQueryWrapper<SysUserEntity> wrapper = new LambdaQueryWrapper<SysUserEntity>()
                 .eq(SysUserEntity::getDeleted, 0)
-                .eq(SysUserEntity::getStatus, "ENABLED")
                 .and(query -> query.eq(SysUserEntity::getUsername, account).or().eq(SysUserEntity::getMobile, account))
                 .last("limit 1");
 

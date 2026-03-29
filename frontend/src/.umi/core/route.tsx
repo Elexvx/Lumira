@@ -4,7 +4,7 @@
 import React from 'react';
 
 export async function getRoutes() {
-  const routes = {"1":{"path":"/user","id":"1"},"2":{"path":"/user/login","parentId":"1","id":"2"},"3":{"path":"/","id":"3"},"4":{"path":"/","redirect":"/dashboard/home","parentId":"3","id":"4"},"5":{"path":"/dashboard/home","parentId":"3","id":"5"},"6":{"path":"/system/management","parentId":"3","id":"6"},"7":{"path":"/tenant/overview","parentId":"3","id":"7"},"8":{"path":"/iam/overview","parentId":"3","id":"8"},"9":{"path":"/audit/overview","parentId":"3","id":"9"},"10":{"path":"/profile/center","parentId":"3","id":"10"},"11":{"path":"/403","parentId":"3","id":"11"},"12":{"path":"/blank","id":"12"},"13":{"path":"/blank/workflow","parentId":"12","id":"13"},"14":{"path":"*","id":"14"}} as const;
+  const routes = {"1":{"path":"/user","id":"1"},"2":{"path":"/user/login","parentId":"1","id":"2"},"3":{"path":"/","id":"3"},"4":{"path":"/","redirect":"/dashboard/home","parentId":"3","id":"4"},"5":{"path":"/dashboard/home","parentId":"3","id":"5"},"6":{"path":"/system/plugins","parentId":"3","id":"6"},"7":{"path":"/plugins/:pluginCode","parentId":"3","id":"7"},"8":{"path":"/profile/center","parentId":"3","id":"8"},"9":{"path":"/403","parentId":"3","id":"9"},"10":{"path":"/blank","id":"10"},"11":{"path":"/blank/workflow","parentId":"10","id":"11"},"12":{"path":"*","id":"12"}} as const;
   return {
     routes,
     routeComponents: {
@@ -13,15 +13,13 @@ export async function getRoutes() {
 '3': React.lazy(() => import(/* webpackChunkName: "layouts__BasicLayout__index" */'@/layouts/BasicLayout/index.tsx')),
 '4': React.lazy(() => import('./EmptyRoute')),
 '5': React.lazy(() => import(/* webpackChunkName: "p__dashboard__Home" */'@/pages/dashboard/Home.tsx')),
-'6': React.lazy(() => import(/* webpackChunkName: "p__system__Management" */'@/pages/system/Management.tsx')),
-'7': React.lazy(() => import(/* webpackChunkName: "p__tenant__Overview" */'@/pages/tenant/Overview.tsx')),
-'8': React.lazy(() => import(/* webpackChunkName: "p__iam__Overview" */'@/pages/iam/Overview.tsx')),
-'9': React.lazy(() => import(/* webpackChunkName: "p__audit__Overview" */'@/pages/audit/Overview.tsx')),
-'10': React.lazy(() => import(/* webpackChunkName: "p__profile__Center" */'@/pages/profile/Center.tsx')),
-'11': React.lazy(() => import(/* webpackChunkName: "p__exception__NoPermission" */'@/pages/exception/NoPermission.tsx')),
-'12': React.lazy(() => import(/* webpackChunkName: "layouts__BlankLayout__index" */'@/layouts/BlankLayout/index.tsx')),
-'13': React.lazy(() => import(/* webpackChunkName: "p__exception__BlankFlow" */'@/pages/exception/BlankFlow.tsx')),
-'14': React.lazy(() => import(/* webpackChunkName: "p__exception__NotFound" */'@/pages/exception/NotFound.tsx')),
+'6': React.lazy(() => import(/* webpackChunkName: "p__system__Plugins" */'@/pages/system/Plugins.tsx')),
+'7': React.lazy(() => import(/* webpackChunkName: "p__plugins__RuntimeContainer" */'@/pages/plugins/RuntimeContainer.tsx')),
+'8': React.lazy(() => import(/* webpackChunkName: "p__profile__Center" */'@/pages/profile/Center.tsx')),
+'9': React.lazy(() => import(/* webpackChunkName: "p__exception__NoPermission" */'@/pages/exception/NoPermission.tsx')),
+'10': React.lazy(() => import(/* webpackChunkName: "layouts__BlankLayout__index" */'@/layouts/BlankLayout/index.tsx')),
+'11': React.lazy(() => import(/* webpackChunkName: "p__exception__BlankFlow" */'@/pages/exception/BlankFlow.tsx')),
+'12': React.lazy(() => import(/* webpackChunkName: "p__exception__NotFound" */'@/pages/exception/NotFound.tsx')),
 },
   };
 }

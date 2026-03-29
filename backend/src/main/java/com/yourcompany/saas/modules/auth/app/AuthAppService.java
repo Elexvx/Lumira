@@ -63,12 +63,29 @@ public class AuthAppService {
         SysUserEntity user = userDomainService.findLoginUser(account)
                 .orElseThrow(() -> {
                     loginAuditService.log(null, null, account, "PASSWORD", "FAIL", "用户不存在", loginIp, userAgent);
-                    return new BizException(ErrorCode.UNAUTHORIZED, "账号或密码错误");
+                    return new BizException(
+                            ErrorCode.ACCOUNT_NOT_FOUND,
+                            "登录失败，账号不存在: " + account,
+                            ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
+                    );
                 });
+
+        if (isUserDisabled(user)) {
+            loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "账号已禁用", loginIp, userAgent);
+            throw new BizException(
+                    ErrorCode.ACCOUNT_DISABLED,
+                    "登录失败，账号已禁用: " + user.getUsername(),
+                    ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage()
+            );
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
-            throw new BizException(ErrorCode.UNAUTHORIZED, "账号或密码错误");
+            throw new BizException(
+                    ErrorCode.PASSWORD_ERROR,
+                    "登录失败，密码错误: " + user.getUsername(),
+                    ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
+            );
         }
 
         List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
@@ -77,7 +94,11 @@ public class AuthAppService {
 
         if (enabledTenantAccessList.isEmpty()) {
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "用户未绑定可用租户", loginIp, userAgent);
-            throw new BizException(ErrorCode.TENANT_ERROR, "当前用户未绑定可用租户");
+            throw new BizException(
+                    ErrorCode.TENANT_NOT_BOUND,
+                    "登录失败，用户未绑定可用租户: " + user.getUsername(),
+                    ErrorCode.TENANT_NOT_BOUND.getDefaultUserMessage()
+            );
         }
 
         TenantInfoEntity currentTenant = pickCurrentTenant(enabledTenantAccessList);
@@ -120,11 +141,19 @@ public class AuthAppService {
     public RefreshTokenResponseVO refreshToken(RefreshTokenRequest request) {
         TokenClaims tokenClaims = jwtTokenService.parseToken(request.getRefreshToken());
         if (tokenClaims.getTokenType() != TokenType.REFRESH) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "refreshToken非法");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "refreshToken非法",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
 
         AuthSession session = authSessionStore.findBySessionId(tokenClaims.getSessionId())
-                .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED, "会话已失效"));
+                .orElseThrow(() -> new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "刷新失败，会话已失效",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                ));
 
         validateSessionForRefresh(session, tokenClaims);
 
@@ -145,7 +174,11 @@ public class AuthAppService {
 
     public CurrentUserVO currentUser(CurrentUser currentUser) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED, "用户不存在"));
+                .orElseThrow(() -> new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "会话关联用户不存在: " + currentUser.getUserId(),
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                ));
 
         TenantSummaryVO currentTenant = tenantDomainService.findTenantById(currentUser.getCurrentTenantId())
                 .map(tenantDomainService::toTenantSummary)
@@ -171,17 +204,37 @@ public class AuthAppService {
 
     private void validateSessionForRefresh(AuthSession session, TokenClaims tokenClaims) {
         if (!session.getUserId().equals(tokenClaims.getUserId())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "refreshToken与会话不匹配");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "refreshToken与会话不匹配",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
         if (session.getSessionVersion() == null || !session.getSessionVersion().equals(tokenClaims.getSessionVersion())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "会话版本已变更，请重新登录");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "会话版本已变更，请重新登录",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
         if (session.getRefreshTokenId() == null || !session.getRefreshTokenId().equals(tokenClaims.getTokenId())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "refreshToken已失效");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "refreshToken已失效",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
         if (jwtTokenService.isExpired(session.getExpireTime())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "会话已过期，请重新登录");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "会话已过期，请重新登录",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
+    }
+
+    private boolean isUserDisabled(SysUserEntity user) {
+        return user.getStatus() != null && !"ENABLED".equalsIgnoreCase(user.getStatus());
     }
 
     private TenantInfoEntity pickCurrentTenant(List<UserTenantAccess> accessList) {
