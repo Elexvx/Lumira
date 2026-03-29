@@ -25,6 +25,8 @@ export const TopActions = () => {
         currentUser: undefined,
         currentTenant: null,
         myTenants: [],
+        menuTree: [],
+        availablePlugins: [],
       }));
     } finally {
       setLoggingOut(false);

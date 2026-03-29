@@ -44,18 +44,24 @@
 
 ```json
 {
+  "httpStatus": 200,
   "code": "A0000",
   "message": "success",
+  "userMessage": null,
   "data": {},
   "requestId": "trace_xxx",
-  "timestamp": "2026-03-25T10:00:00Z"
+  "path": "/api/example",
+  "timestamp": "2026-03-25 10:00:00"
 }
 ```
 
+- `httpStatus` 表示 HTTP 状态码镜像，便于前端统一处理。
 - `code` 表示业务响应码。
-- `message` 表示可展示描述。
+- `message` 表示面向排障与日志的详细描述。
+- `userMessage` 表示面向用户展示的提示文案；如为空，前端可回退展示 `message`。
 - `data` 表示业务载荷。
 - `requestId` 用于链路追踪。
+- `path` 表示当前请求路径。
 - `timestamp` 用于时间标识。
 
 文件下载和流式响应可例外，但必须保留鉴权和审计约束。

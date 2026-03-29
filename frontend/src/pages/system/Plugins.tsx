@@ -35,11 +35,11 @@ const PluginsPage = () => {
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [uploadVisible, setUploadVisible] = useState(false);
 
-  const definitionQuery = useRequest(() => pluginService.definitions(), {
+  const definitionQuery = useRequest<PluginDefinition[]>(() => pluginService.definitions(), {
     refreshDeps: [initialState?.currentTenant?.tenantId],
   });
 
-  const versionQuery = useRequest(
+  const versionQuery = useRequest<PluginVersion[]>(
     () => (selectedPlugin ? pluginService.versions(selectedPlugin.pluginCode) : Promise.resolve([] as PluginVersion[])),
     {
       manual: false,
@@ -47,7 +47,7 @@ const PluginsPage = () => {
     },
   );
 
-  const logQuery = useRequest(
+  const logQuery = useRequest<PluginRuntimeLog[]>(
     () => (selectedPlugin ? pluginService.runtimeLogs(selectedPlugin.pluginCode) : Promise.resolve([] as PluginRuntimeLog[])),
     {
       manual: false,
@@ -55,11 +55,15 @@ const PluginsPage = () => {
     },
   );
 
+  const definitionList = (definitionQuery.data as PluginDefinition[] | undefined) ?? [];
+  const versionList = (versionQuery.data as PluginVersion[] | undefined) ?? [];
+  const runtimeLogList = (logQuery.data as PluginRuntimeLog[] | undefined) ?? [];
+
   useEffect(() => {
-    if (!selectedPlugin && definitionQuery.data?.length) {
-      setSelectedPlugin(definitionQuery.data[0]);
+    if (!selectedPlugin && definitionList.length > 0) {
+      setSelectedPlugin(definitionList[0]);
     }
-  }, [definitionQuery.data, selectedPlugin]);
+  }, [definitionList, selectedPlugin]);
 
   const definitionColumns = useMemo<ColumnsType<PluginDefinition>>(
     () => [
@@ -233,7 +237,7 @@ const PluginsPage = () => {
     }
     const result = await pluginService.upload(uploadFile);
     setSelectedPlugin(
-      definitionQuery.data?.find((item) => item.pluginCode === result.pluginCode) || {
+      definitionList.find((item) => item.pluginCode === result.pluginCode) || {
         pluginCode: result.pluginCode,
         pluginName: result.pluginName,
         pluginType: 'PLUGIN',
@@ -270,7 +274,7 @@ const PluginsPage = () => {
               placeholder="按名称筛选"
               onSearch={(value) => {
                 const keyword = value.trim().toLowerCase();
-                const next = definitionQuery.data?.find((item) => item.pluginName.toLowerCase().includes(keyword));
+                const next = definitionList.find((item) => item.pluginName.toLowerCase().includes(keyword));
                 if (next) {
                   setSelectedPlugin(next);
                 }
@@ -281,12 +285,12 @@ const PluginsPage = () => {
             <Select
               allowClear
               style={{ width: 240 }}
-              options={(definitionQuery.data || []).map((item) => ({
+              options={definitionList.map((item) => ({
                 label: item.pluginName,
                 value: item.pluginCode,
               }))}
               value={selectedPlugin?.pluginCode}
-              onChange={(value) => setSelectedPlugin(definitionQuery.data?.find((item) => item.pluginCode === value))}
+              onChange={(value) => setSelectedPlugin(definitionList.find((item) => item.pluginCode === value))}
             />
           </Form.Item>
         </Form>
@@ -298,7 +302,7 @@ const PluginsPage = () => {
             rowKey="pluginCode"
             loading={definitionQuery.loading}
             columns={definitionColumns}
-            dataSource={definitionQuery.data || []}
+            dataSource={definitionList}
             pagination={false}
             locale={{ emptyText: <Empty description="暂无插件定义" /> }}
           />
@@ -320,17 +324,17 @@ const PluginsPage = () => {
             {selectedPlugin?.description || '-'}
           </Descriptions.Item>
         </Descriptions>
-        <Table
+        <Table<PluginVersion>
           style={{ marginTop: 16 }}
           rowKey="version"
           loading={versionQuery.loading}
           columns={versionColumns}
-          dataSource={versionQuery.data || []}
+          dataSource={versionList}
           pagination={false}
         />
         <Card title="最近一次校验结果" style={{ marginTop: 16 }}>
           <Paragraph style={{ marginBottom: 0 }}>
-            {versionQuery.data?.find((item) => item.version === selectedVersion)?.validationReportJson || '请选择一个版本查看'}
+            {versionList.find((item) => item.version === selectedVersion)?.validationReportJson || '请选择一个版本查看'}
           </Paragraph>
         </Card>
       </Drawer>
@@ -341,11 +345,11 @@ const PluginsPage = () => {
         width={900}
         onClose={() => setLogDrawerOpen(false)}
       >
-        <Table
+        <Table<PluginRuntimeLog>
           rowKey="id"
           loading={logQuery.loading}
           pagination={false}
-          dataSource={logQuery.data || []}
+          dataSource={runtimeLogList}
           columns={[
             { title: '时间', dataIndex: 'createdAt', width: 180 },
             { title: '操作', dataIndex: 'operationType', width: 120 },
