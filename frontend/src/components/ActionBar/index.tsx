@@ -1,4 +1,5 @@
-import { Card, Space } from 'antd';
+import { ProCard } from '@ant-design/pro-components';
+import { Space } from 'antd';
 import type { CSSProperties, PropsWithChildren, ReactNode } from 'react';
 
 export interface ActionBarProps extends PropsWithChildren {
@@ -22,7 +23,7 @@ export const ActionBar = ({
   const primary = left ?? children;
 
   return (
-    <Card bordered={false} bodyStyle={{ padding: 16 }} className={className} style={style}>
+    <ProCard ghost className={className} style={style}>
       <Space
         wrap
         style={{
@@ -40,6 +41,6 @@ export const ActionBar = ({
           {extra}
         </Space>
       </Space>
-    </Card>
+    </ProCard>
   );
 };

@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksaas_frontend=self.webpackChunksaas_frontend||[]).push([[869],{1885:function(a,n,u){u.r(n);var t=u(71209),s=u(52676);n.default=function(){return(0,s.jsx)(t.ZP,{status:"info",title:"\u7A7A\u767D\u6D41\u7A0B\u9875",subTitle:"\u7528\u4E8E\u5BA1\u6279\u3001\u56DE\u8C03\u7B49\u7279\u6B8A\u6D41\u7A0B\u627F\u8F7D"})}}}]);
