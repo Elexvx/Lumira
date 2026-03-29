@@ -46,22 +46,26 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     (response.data as ApiResponse<T>).requestId = serverRequestId;
   }
 
-  if (response.data.code === ErrorCode.SUCCESS) {
+  const responseCode = response.data.errorCode || response.data.code;
+  const responseMessage = response.data.errorMessage || response.data.message;
+  const userTip = response.data.userTip || responseMessage;
+
+  if (responseCode === ErrorCode.SUCCESS) {
     return response.data.data;
   }
 
-  if (response.data.code === ErrorCode.UNAUTHORIZED) {
+  if (responseCode === ErrorCode.UNAUTHORIZED) {
     if (options.autoRedirectOnUnauthorized !== false) {
-      message.error('登录已失效，请重新登录');
+      message.error(userTip || '登录已失效，请重新登录');
       cleanUnauthorizedState();
       history.replace('/user/login');
     }
-    throw new ApiRequestError(response.data.code, response.data.message || '未登录');
+    throw new ApiRequestError(responseCode, responseMessage || '未登录');
   }
 
-  const errorMessage = response.data.message || '请求失败';
+  const errorMessage = userTip || responseMessage || '请求失败';
   message.error(errorMessage);
-  throw new ApiRequestError(response.data.code, errorMessage);
+  throw new ApiRequestError(responseCode, errorMessage);
 };
 
 export const requestFile = async (url: string, options: RequestOptions = {}) => {

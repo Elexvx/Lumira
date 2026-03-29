@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { history, useLocation } from 'umi';
 import { Alert, Button, Form, Input, Tabs, Typography } from 'antd';
 import { authService } from '@/services/auth';
+import { pluginService } from '@/services/plugin';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
@@ -33,11 +34,17 @@ const Login = () => {
       });
 
       const sessionResult = await initializeAfterLogin(loginResponse);
+      const [menuTree, availablePlugins] = await Promise.all([
+        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
+        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+      ]);
       setInitialState((prev: AppInitialState | undefined) => ({
         ...prev,
         currentUser: sessionResult.currentUser,
         currentTenant: tenantContext.getCurrentTenant(),
         myTenants: tenantContext.getMyTenants(),
+        menuTree,
+        availablePlugins,
       }));
 
       const searchParams = new URLSearchParams(location.search);

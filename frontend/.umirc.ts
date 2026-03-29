@@ -22,10 +22,8 @@ export default defineConfig({
       routes: [
         { path: '/', redirect: '/dashboard/home' },
         { path: '/dashboard/home', component: '@/pages/dashboard/Home' },
-        { path: '/system/management', component: '@/pages/system/Management' },
-        { path: '/tenant/overview', component: '@/pages/tenant/Overview' },
-        { path: '/iam/overview', component: '@/pages/iam/Overview' },
-        { path: '/audit/overview', component: '@/pages/audit/Overview' },
+        { path: '/system/plugins', component: '@/pages/system/Plugins' },
+        { path: '/plugins/:pluginCode', component: '@/pages/plugins/RuntimeContainer' },
         { path: '/profile/center', component: '@/pages/profile/Center' },
         { path: '/403', component: '@/pages/exception/NoPermission' },
       ],

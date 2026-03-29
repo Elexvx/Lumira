@@ -2,6 +2,8 @@ package com.yourcompany.saas.modules.auth.vo;
 
 import com.yourcompany.saas.modules.tenant.vo.TenantSummaryVO;
 
+import java.util.List;
+
 public class CurrentUserVO {
 
     private Long userId;
@@ -13,6 +15,7 @@ public class CurrentUserVO {
     private String sessionId;
     private String permissionsVersion;
     private Integer sessionVersion;
+    private List<String> permissions;
 
     public Long getUserId() {
         return userId;
@@ -84,5 +87,13 @@ public class CurrentUserVO {
 
     public void setSessionVersion(Integer sessionVersion) {
         this.sessionVersion = sessionVersion;
+    }
+
+    public List<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(List<String> permissions) {
+        this.permissions = permissions;
     }
 }

@@ -5,6 +5,7 @@ import com.yourcompany.saas.common.enums.ErrorCode;
 import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -19,32 +20,39 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class, HttpMessageNotReadableException.class})
-    public ApiResponse<Void> handleValidationException(Exception exception) {
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(Exception exception) {
         log.warn("Validation failed requestId={} traceId={}", TraceContext.getRequestId(), TraceContext.getTraceId(), exception);
-        return ApiResponse.fail(ErrorCode.BAD_REQUEST, TraceContext.getRequestId());
+        return buildResponse(ApiResponse.fail(ErrorCode.BAD_REQUEST, TraceContext.getRequestId()), ErrorCode.BAD_REQUEST.getHttpStatus());
     }
 
     @ExceptionHandler(BizException.class)
-    public ApiResponse<Void> handleBizException(BizException exception) {
+    public ResponseEntity<ApiResponse<Void>> handleBizException(BizException exception) {
         log.warn("Business error requestId={} traceId={} msg={}", TraceContext.getRequestId(), TraceContext.getTraceId(), exception.getMessage());
-        return ApiResponse.fail(exception.getErrorCode(), TraceContext.getRequestId(), exception.getMessage());
+        ApiResponse<Void> response = ApiResponse.fail(exception.getErrorCode(), TraceContext.getRequestId(), exception.getMessage());
+        response.setUserTip(exception.getUserTip());
+        response.setHttpStatus(exception.getHttpStatus());
+        return buildResponse(response, exception.getHttpStatus());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ApiResponse<Void> handleAccessDenied(AccessDeniedException exception) {
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException exception) {
         log.warn("Forbidden requestId={} traceId={}", TraceContext.getRequestId(), TraceContext.getTraceId());
-        return ApiResponse.fail(ErrorCode.FORBIDDEN, TraceContext.getRequestId());
+        return buildResponse(ApiResponse.fail(ErrorCode.FORBIDDEN, TraceContext.getRequestId()), ErrorCode.FORBIDDEN.getHttpStatus());
     }
 
     @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
-    public ApiResponse<Void> handleAuthenticationException(AuthenticationCredentialsNotFoundException exception) {
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationCredentialsNotFoundException exception) {
         log.warn("Unauthorized requestId={} traceId={}", TraceContext.getRequestId(), TraceContext.getTraceId());
-        return ApiResponse.fail(ErrorCode.UNAUTHORIZED, TraceContext.getRequestId());
+        return buildResponse(ApiResponse.fail(ErrorCode.UNAUTHORIZED, TraceContext.getRequestId()), ErrorCode.UNAUTHORIZED.getHttpStatus());
     }
 
     @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleSystemException(Exception exception) {
+    public ResponseEntity<ApiResponse<Void>> handleSystemException(Exception exception) {
         log.error("System error requestId={} traceId={}", TraceContext.getRequestId(), TraceContext.getTraceId(), exception);
-        return ApiResponse.fail(ErrorCode.SYSTEM_ERROR, TraceContext.getRequestId());
+        return buildResponse(ApiResponse.fail(ErrorCode.SYSTEM_ERROR, TraceContext.getRequestId()), ErrorCode.SYSTEM_ERROR.getHttpStatus());
+    }
+
+    private ResponseEntity<ApiResponse<Void>> buildResponse(ApiResponse<Void> body, Integer httpStatus) {
+        return ResponseEntity.status(httpStatus).body(body);
     }
 }
