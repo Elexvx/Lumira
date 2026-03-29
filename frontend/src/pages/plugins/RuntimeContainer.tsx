@@ -11,7 +11,7 @@ const RuntimeContainer = () => {
   const location = useLocation();
   const { initialState } = useInitialStateModel();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [version, setVersion] = useState<string>();
+  const mountedRef = useRef<{ pluginCode: string; version: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -25,12 +25,17 @@ const RuntimeContainer = () => {
     if (!container) {
       return;
     }
+    let active = true;
+    const previousMounted = mountedRef.current;
+    mountedRef.current = null;
+    if (previousMounted) {
+      void unmountPlugin(previousMounted.pluginCode, previousMounted.version, container);
+    }
     if (!plugin) {
       setLoading(false);
       setError('当前租户未启用该插件');
       return;
     }
-    let destroyed = false;
     setLoading(true);
     setError(undefined);
     mountPlugin(plugin.pluginCode, container, {
@@ -42,33 +47,32 @@ const RuntimeContainer = () => {
       requestId: crypto.randomUUID(),
     })
       .then((result) => {
-        if (destroyed) {
+        if (!active) {
           return;
         }
-        setVersion(result.manifest.version);
+        mountedRef.current = {
+          pluginCode: plugin.pluginCode,
+          version: result.manifest.version,
+        };
         setLoading(false);
       })
       .catch((pluginError) => {
-        if (destroyed) {
+        if (!active) {
           return;
         }
         notifyPluginLoadError(pluginError);
-        setError(pluginError instanceof Error ? pluginError.message : '插件加载失败');
+        setError(pluginError instanceof Error ? pluginError.message : '插件加载失败，请稍后重试');
         setLoading(false);
       });
     return () => {
-      destroyed = true;
-      if (version) {
-        void unmountPlugin(plugin.pluginCode, version, container);
+      active = false;
+      const currentMounted = mountedRef.current;
+      if (currentMounted) {
+        void unmountPlugin(currentMounted.pluginCode, currentMounted.version, container);
+        mountedRef.current = null;
       }
     };
-  }, [
-    initialState?.currentTenant,
-    initialState?.currentUser,
-    location.pathname,
-    plugin,
-    version,
-  ]);
+  }, [initialState?.currentTenant, initialState?.currentUser, location.pathname, plugin]);
 
   if (error) {
     return (
@@ -86,7 +90,7 @@ const RuntimeContainer = () => {
             <Spin />
           </div>
         ) : (
-          <div ref={containerRef} />
+          <div ref={containerRef} style={{ minHeight: 'calc(100vh - 220px)' }} />
         )}
       </Card>
     </PluginErrorBoundary>

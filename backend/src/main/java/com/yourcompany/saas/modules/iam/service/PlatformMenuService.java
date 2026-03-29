@@ -28,6 +28,7 @@ public class PlatformMenuService {
                         from sys_menu
                         where tenant_id = ?
                           and deleted = 0
+                          and status = 'ENABLED'
                         order by sort_no asc, id asc
                         """,
                 (rs, rowNum) -> {

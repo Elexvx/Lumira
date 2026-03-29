@@ -73,6 +73,7 @@ const injectStyle = async (pluginCode: string, relativePath: string) => {
   const content = await response.text();
   const styleElement = document.createElement('style');
   styleElement.dataset.pluginAsset = `${pluginCode}:${relativePath}`;
+  styleElement.dataset.pluginCode = pluginCode;
   styleElement.textContent = content;
   document.head.appendChild(styleElement);
 };
@@ -86,6 +87,7 @@ const executeSource = async (key: string, source: string) => {
       scriptElement.async = true;
       scriptElement.src = blobUrl;
       scriptElement.dataset.pluginAsset = key;
+      scriptElement.dataset.pluginCode = key.split(':')[0];
       scriptElement.onload = () => resolve();
       scriptElement.onerror = () => reject(new Error(`插件脚本执行失败: ${key}`));
       document.body.appendChild(scriptElement);
@@ -116,3 +118,11 @@ export const notifyPluginLoadError = (error: unknown) => {
 
 export const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>
   pluginRegistry.getModule(pluginCode, version);
+
+export const cleanupPluginAssets = (pluginCode: string) => {
+  document
+    .querySelectorAll<HTMLElement>(`[data-plugin-code="${pluginCode}"]`)
+    .forEach((element) => {
+      element.remove();
+    });
+};

@@ -5,10 +5,12 @@ import { pluginService } from '@/services/plugin';
 import { switchTenantAction } from '@/tenant/actions';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export const TenantSelector = () => {
   const { initialState, setInitialState } = useInitialStateModel();
   const [switching, setSwitching] = useState(false);
+  const { isMobile } = useResponsive();
 
   const tenantOptions = useMemo(
     () =>
@@ -49,7 +51,10 @@ export const TenantSelector = () => {
   return (
     <Select
       size="small"
-      style={{ width: 180 }}
+      variant="borderless"
+      className="tenant-selector"
+      style={{ width: isMobile ? 120 : 150, maxWidth: '100%' }}
+      dropdownMatchSelectWidth={false}
       placeholder="选择租户"
       loading={switching}
       disabled={switching || tenantOptions.length <= 1}

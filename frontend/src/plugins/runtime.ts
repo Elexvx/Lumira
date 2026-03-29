@@ -1,5 +1,5 @@
 import { pluginRegistry } from '@/plugins/registry';
-import { loadPlugin } from '@/plugins/loader';
+import { cleanupPluginAssets, loadPlugin } from '@/plugins/loader';
 import type { PluginContext } from '@/plugins/types';
 
 export const mountPlugin = async (
@@ -18,8 +18,10 @@ export const unmountPlugin = async (pluginCode: string, version: string, contain
   if (!module?.unmount) {
     container.innerHTML = '';
     pluginRegistry.clearMounted(pluginCode, version);
+    cleanupPluginAssets(pluginCode);
     return;
   }
   await module.unmount(container);
   pluginRegistry.clearMounted(pluginCode, version);
+  cleanupPluginAssets(pluginCode);
 };
