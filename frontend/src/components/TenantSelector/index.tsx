@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Select } from 'antd';
+import { authService } from '@/services/auth';
+import { pluginService } from '@/services/plugin';
 import { switchTenantAction } from '@/tenant/actions';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -26,10 +28,18 @@ export const TenantSelector = () => {
     setSwitching(true);
     try {
       const response = await switchTenantAction(nextTenantId);
+      const [currentUser, menuTree, availablePlugins] = await Promise.all([
+        authService.currentUser({ autoRedirectOnUnauthorized: false }),
+        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
+        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+      ]);
       setInitialState((prev: AppInitialState | undefined) => ({
         ...prev,
+        currentUser,
         currentTenant: response.currentTenant,
         myTenants: prev?.myTenants ?? [],
+        menuTree,
+        availablePlugins,
       }));
     } finally {
       setSwitching(false);

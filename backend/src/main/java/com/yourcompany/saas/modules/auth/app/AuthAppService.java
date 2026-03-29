@@ -15,6 +15,7 @@ import com.yourcompany.saas.modules.auth.vo.AuthUserVO;
 import com.yourcompany.saas.modules.auth.vo.CurrentUserVO;
 import com.yourcompany.saas.modules.auth.vo.LoginResponseVO;
 import com.yourcompany.saas.modules.auth.vo.RefreshTokenResponseVO;
+import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import com.yourcompany.saas.modules.tenant.domain.TenantDomainService;
 import com.yourcompany.saas.modules.tenant.domain.UserTenantAccess;
 import com.yourcompany.saas.modules.tenant.entity.TenantInfoEntity;
@@ -37,6 +38,7 @@ public class AuthAppService {
     private final AuthSessionStore authSessionStore;
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final PermissionSnapshotService permissionSnapshotService;
 
     public AuthAppService(
             UserDomainService userDomainService,
@@ -44,7 +46,8 @@ public class AuthAppService {
             LoginAuditService loginAuditService,
             AuthSessionStore authSessionStore,
             JwtTokenService jwtTokenService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            PermissionSnapshotService permissionSnapshotService
     ) {
         this.userDomainService = userDomainService;
         this.tenantDomainService = tenantDomainService;
@@ -52,6 +55,7 @@ public class AuthAppService {
         this.authSessionStore = authSessionStore;
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
+        this.permissionSnapshotService = permissionSnapshotService;
     }
 
     public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent) {
@@ -135,7 +139,7 @@ public class AuthAppService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
         response.setSessionVersion(session.getSessionVersion());
-        response.setPermissionsVersion("0");
+        response.setPermissionsVersion(permissionSnapshotService.loadSnapshot(session.getCurrentTenantId(), session.getUserId()).getVersion());
         return response;
     }
 
@@ -146,6 +150,10 @@ public class AuthAppService {
         TenantSummaryVO currentTenant = tenantDomainService.findTenantById(currentUser.getCurrentTenantId())
                 .map(tenantDomainService::toTenantSummary)
                 .orElse(null);
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
+                currentUser.getCurrentTenantId(),
+                currentUser.getUserId()
+        );
 
         CurrentUserVO response = new CurrentUserVO();
         response.setUserId(user.getId());
@@ -155,8 +163,9 @@ public class AuthAppService {
         response.setAvatarUrl(user.getAvatarUrl());
         response.setCurrentTenant(currentTenant);
         response.setSessionId(currentUser.getSessionId());
-        response.setPermissionsVersion("0");
+        response.setPermissionsVersion(snapshot.getVersion());
         response.setSessionVersion(currentUser.getSessionVersion());
+        response.setPermissions(snapshot.getPermissionList());
         return response;
     }
 

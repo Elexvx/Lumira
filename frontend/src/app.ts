@@ -1,7 +1,8 @@
 import { history } from 'umi';
 import { getStoredCurrentUser, isLoggedIn, restoreSession } from '@/auth/session';
+import { pluginService } from '@/services/plugin';
 import { tenantContext } from '@/tenant/context';
-import type { CurrentUser, MyTenant, TenantSummary } from '@/types/api';
+import type { CurrentUser, MenuNode, MyTenant, TenantPlugin, TenantSummary } from '@/types/api';
 
 const LOGIN_PATH = '/user/login';
 const DEFAULT_HOME_PATH = '/dashboard/home';
@@ -11,26 +12,32 @@ export interface AppInitialState {
   currentUser?: CurrentUser;
   currentTenant?: TenantSummary | null;
   myTenants: MyTenant[];
+  menuTree: MenuNode[];
+  availablePlugins: TenantPlugin[];
 }
 
 export async function getInitialState(): Promise<AppInitialState> {
   try {
     const restored = await restoreSession();
     if (restored?.currentUser) {
+      const [menuTree, availablePlugins] = await loadPluginBootstrap();
       return {
         currentUser: restored.currentUser,
         currentTenant: tenantContext.getCurrentTenant(),
         myTenants: tenantContext.getMyTenants(),
+        menuTree,
+        availablePlugins,
       };
     }
   } catch (error) {
-    // 恢复失败时继续走本地兜底，交给路由守卫引导登录
   }
 
   return {
     currentUser: getStoredCurrentUser() || undefined,
     currentTenant: tenantContext.getCurrentTenant(),
     myTenants: tenantContext.getMyTenants(),
+    menuTree: [],
+    availablePlugins: [],
   };
 }
 
@@ -51,3 +58,15 @@ export function onRouteChange({ location }: { location: Location }) {
     history.replace(redirect);
   }
 }
+
+const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
+  try {
+    const [menuTree, availablePlugins] = await Promise.all([
+      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
+      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+    ]);
+    return [menuTree, availablePlugins];
+  } catch (error) {
+    return [[], []];
+  }
+};

@@ -8,6 +8,7 @@ import com.yourcompany.saas.infrastructure.security.model.TokenClaims;
 import com.yourcompany.saas.infrastructure.security.model.TokenType;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
 import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
+import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,10 +30,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenService jwtTokenService;
     private final AuthSessionStore authSessionStore;
+    private final PermissionSnapshotService permissionSnapshotService;
 
-    public JwtAuthFilter(JwtTokenService jwtTokenService, AuthSessionStore authSessionStore) {
+    public JwtAuthFilter(
+            JwtTokenService jwtTokenService,
+            AuthSessionStore authSessionStore,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
         this.jwtTokenService = jwtTokenService;
         this.authSessionStore = authSessionStore;
+        this.permissionSnapshotService = permissionSnapshotService;
     }
 
     @Override
@@ -82,6 +89,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     private void setAuthentication(TokenClaims claims, AuthSession session) {
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
+                session.getCurrentTenantId(),
+                claims.getUserId()
+        );
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(claims.getUserId());
         currentUser.setUsername(claims.getUsername());
@@ -89,7 +100,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         currentUser.setSessionId(claims.getSessionId());
         currentUser.setSessionVersion(session.getSessionVersion());
         currentUser.setAuthenticated(true);
-        currentUser.setPermissions(Collections.emptySet());
+        currentUser.setPermissions(snapshot.getPermissions());
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(currentUser, null, Collections.emptyList());

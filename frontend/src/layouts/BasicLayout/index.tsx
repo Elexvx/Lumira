@@ -1,10 +1,13 @@
 import { ProLayout } from '@ant-design/pro-components';
 import { history, Outlet } from 'umi';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { TopActions } from '../components/TopActions';
 import { useResponsive } from '@/hooks/useResponsive';
 
 const BasicLayout = () => {
   const { isMobile } = useResponsive();
+  const { initialState } = useInitialStateModel();
+  const routes = initialState?.menuTree ?? [];
 
   return (
     <ProLayout
@@ -16,13 +19,7 @@ const BasicLayout = () => {
       actionsRender={() => [<TopActions key="top-actions" />]}
       route={{
         path: '/',
-        routes: [
-          { path: '/dashboard/home', name: '首页' },
-          { path: '/system/management', name: '系统管理' },
-          { path: '/tenant/overview', name: '租户中心' },
-          { path: '/iam/overview', name: '权限中心' },
-          { path: '/audit/overview', name: '审计中心' },
-        ],
+        routes,
       }}
       menuItemRender={(item, dom) => (
         <a

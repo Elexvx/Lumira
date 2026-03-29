@@ -7,8 +7,12 @@ import java.time.LocalDateTime;
 
 public class ApiResponse<T> {
 
+    private Integer httpStatus;
     private String code;
     private String message;
+    private String errorCode;
+    private String errorMessage;
+    private String userTip;
     private T data;
     private String requestId;
 
@@ -18,9 +22,23 @@ public class ApiResponse<T> {
     public ApiResponse() {
     }
 
-    public ApiResponse(String code, String message, T data, String requestId, LocalDateTime timestamp) {
+    public ApiResponse(
+            Integer httpStatus,
+            String code,
+            String message,
+            String errorCode,
+            String errorMessage,
+            String userTip,
+            T data,
+            String requestId,
+            LocalDateTime timestamp
+    ) {
+        this.httpStatus = httpStatus;
         this.code = code;
         this.message = message;
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
+        this.userTip = userTip;
         this.data = data;
         this.requestId = requestId;
         this.timestamp = timestamp;
@@ -28,8 +46,12 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> success(T data, String requestId) {
         return new ApiResponse<>(
+                200,
                 ErrorCode.SUCCESS.getCode(),
-                ErrorCode.SUCCESS.getMessage(),
+                ErrorCode.SUCCESS.getDefaultMessage(),
+                null,
+                null,
+                null,
                 data,
                 requestId,
                 LocalDateTime.now()
@@ -38,8 +60,12 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> fail(ErrorCode errorCode, String requestId) {
         return new ApiResponse<>(
+                errorCode.getHttpStatus(),
                 errorCode.getCode(),
-                errorCode.getMessage(),
+                errorCode.getDefaultMessage(),
+                errorCode.getCode(),
+                errorCode.getDefaultMessage(),
+                errorCode.getDefaultUserTip(),
                 null,
                 requestId,
                 LocalDateTime.now()
@@ -49,7 +75,16 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> fail(ErrorCode errorCode, String requestId, String message) {
         ApiResponse<T> fail = fail(errorCode, requestId);
         fail.setMessage(message);
+        fail.setErrorMessage(message);
         return fail;
+    }
+
+    public Integer getHttpStatus() {
+        return httpStatus;
+    }
+
+    public void setHttpStatus(Integer httpStatus) {
+        this.httpStatus = httpStatus;
     }
 
     public String getCode() {
@@ -66,6 +101,30 @@ public class ApiResponse<T> {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public String getUserTip() {
+        return userTip;
+    }
+
+    public void setUserTip(String userTip) {
+        this.userTip = userTip;
     }
 
     public T getData() {

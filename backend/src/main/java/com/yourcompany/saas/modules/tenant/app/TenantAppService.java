@@ -7,6 +7,7 @@ import com.yourcompany.saas.infrastructure.security.model.AuthSession;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
 import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
 import com.yourcompany.saas.modules.audit.app.LoginAuditService;
+import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import com.yourcompany.saas.modules.tenant.domain.TenantDomainService;
 import com.yourcompany.saas.modules.tenant.entity.TenantInfoEntity;
 import com.yourcompany.saas.modules.tenant.vo.CurrentTenantVO;
@@ -25,17 +26,20 @@ public class TenantAppService {
     private final AuthSessionStore authSessionStore;
     private final JwtTokenService jwtTokenService;
     private final LoginAuditService loginAuditService;
+    private final PermissionSnapshotService permissionSnapshotService;
 
     public TenantAppService(
             TenantDomainService tenantDomainService,
             AuthSessionStore authSessionStore,
             JwtTokenService jwtTokenService,
-            LoginAuditService loginAuditService
+            LoginAuditService loginAuditService,
+            PermissionSnapshotService permissionSnapshotService
     ) {
         this.tenantDomainService = tenantDomainService;
         this.authSessionStore = authSessionStore;
         this.jwtTokenService = jwtTokenService;
         this.loginAuditService = loginAuditService;
+        this.permissionSnapshotService = permissionSnapshotService;
     }
 
     public CurrentTenantVO currentTenant(CurrentUser currentUser) {
@@ -91,7 +95,8 @@ public class TenantAppService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
         response.setSessionVersion(session.getSessionVersion());
-        response.setPermissionsVersion("0");
+        permissionSnapshotService.invalidateTenant(targetTenantId);
+        response.setPermissionsVersion(permissionSnapshotService.loadSnapshot(targetTenantId, currentUser.getUserId()).getVersion());
 
         loginAuditService.log(currentUser.getUserId(), targetTenantId, currentUser.getUsername(), "TENANT_SWITCH", "SUCCESS", null, loginIp, userAgent);
         return response;
