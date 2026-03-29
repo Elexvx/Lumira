@@ -70,21 +70,37 @@ public class TenantAppService {
         }
 
         TenantInfoEntity tenantInfo = tenantDomainService.findTenantById(targetTenantId)
-                .orElseThrow(() -> new BizException(ErrorCode.TENANT_ERROR, "租户不存在"));
+                .orElseThrow(() -> new BizException(
+                        ErrorCode.TENANT_ERROR,
+                        "租户不存在: " + targetTenantId,
+                        ErrorCode.TENANT_ERROR.getDefaultUserMessage()
+                ));
 
         if (!"ENABLED".equalsIgnoreCase(tenantInfo.getStatus())) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "租户已停用");
+            throw new BizException(
+                    ErrorCode.TENANT_ERROR,
+                    "租户已停用: " + targetTenantId,
+                    ErrorCode.TENANT_ERROR.getDefaultUserMessage()
+            );
         }
 
         AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED, "会话已失效，请重新登录"));
+                .orElseThrow(() -> new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "租户切换失败，会话已失效",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                ));
 
         session.setCurrentTenantId(targetTenantId);
         session.setSessionVersion(session.getSessionVersion() == null ? 1 : session.getSessionVersion() + 1);
 
         Duration sessionTtl = jwtTokenService.calculateSessionTtl(session.getExpireTime());
         if (sessionTtl.isNegative() || sessionTtl.isZero()) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "会话已过期，请重新登录");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "租户切换失败，会话已过期",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
 
         authSessionStore.save(session, sessionTtl);

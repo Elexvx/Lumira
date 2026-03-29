@@ -301,9 +301,50 @@ CREATE TABLE IF NOT EXISTS audit_login_log (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_sys_user_mobile ON sys_user (mobile);
-CREATE INDEX idx_sys_user_tenant_user_status ON sys_user_tenant (user_id, status);
-CREATE INDEX idx_audit_login_log_trace_id ON audit_login_log (trace_id);
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'sys_user'
+          AND index_name = 'idx_sys_user_mobile'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_sys_user_mobile ON sys_user (mobile)'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'sys_user_tenant'
+          AND index_name = 'idx_sys_user_tenant_user_status'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_sys_user_tenant_user_status ON sys_user_tenant (user_id, status)'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'audit_login_log'
+          AND index_name = 'idx_audit_login_log_trace_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_audit_login_log_trace_id ON audit_login_log (trace_id)'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 INSERT INTO tenant_info (
     id,
@@ -349,7 +390,7 @@ SELECT
     'admin',
     '管理员',
     '系统管理员',
-    '$2a$10$vieE7/xcgtcStPtFa4qIzejdXPbS0xv3OvsOjUAy03w3vjKsGJd6C',
+    '$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G',
     '13800000000',
     'admin@example.com',
     'ENABLED',
@@ -357,6 +398,11 @@ SELECT
     0,
     0
 WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE id = 1001);
+
+UPDATE sys_user
+SET password_hash = '$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G'
+WHERE id = 1001
+   OR username = 'admin';
 
 INSERT INTO sys_user_tenant (
     tenant_id,

@@ -26,6 +26,7 @@ import java.util.Collections;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    public static final String AUTH_BIZ_EXCEPTION_ATTR = "auth.bizException";
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenService jwtTokenService;
@@ -60,17 +61,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             TokenClaims claims = jwtTokenService.parseToken(token);
             if (claims.getTokenType() != TokenType.ACCESS) {
-                throw new BizException(ErrorCode.UNAUTHORIZED, "accessToken非法");
+                throw new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "accessToken类型非法",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                );
             }
 
             AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.UNAUTHORIZED, "会话不存在或已失效"));
+                    .orElseThrow(() -> new BizException(
+                            ErrorCode.SESSION_EXPIRED,
+                            "会话不存在或已失效",
+                            ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                    ));
 
             validateSession(claims, session);
             setAuthentication(claims, session);
         } catch (BizException ex) {
             SecurityContextHolder.clearContext();
+            request.setAttribute(AUTH_BIZ_EXCEPTION_ATTR, ex);
             throw new BadCredentialsException(ex.getMessage(), ex);
+        } catch (RuntimeException ex) {
+            SecurityContextHolder.clearContext();
+            BizException bizException = new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "accessToken解析失败: " + ex.getMessage(),
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
+            request.setAttribute(AUTH_BIZ_EXCEPTION_ATTR, bizException);
+            throw new BadCredentialsException(bizException.getMessage(), ex);
         }
 
         filterChain.doFilter(request, response);
@@ -78,13 +97,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private void validateSession(TokenClaims claims, AuthSession session) {
         if (!session.getUserId().equals(claims.getUserId())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "token与会话不匹配");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "token与会话不匹配",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
         if (session.getSessionVersion() == null || !session.getSessionVersion().equals(claims.getSessionVersion())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "会话版本已变更，请重新登录");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "会话版本已变更，请重新登录",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
         if (jwtTokenService.isExpired(session.getExpireTime())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "会话已过期，请重新登录");
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "会话已过期，请重新登录",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
         }
     }
 

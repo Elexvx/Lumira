@@ -294,7 +294,7 @@ INSERT INTO sys_user (
 )
 SELECT
     1001, 'admin', '管理员', '系统管理员',
-    '$2a$10$vieE7/xcgtcStPtFa4qIzejdXPbS0xv3OvsOjUAy03w3vjKsGJd6C',
+    '$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G',
     '13800000000', 'admin@example.com', 'ENABLED', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE id = 1001);
 

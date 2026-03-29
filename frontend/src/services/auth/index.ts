@@ -17,6 +17,7 @@ export const authService = {
       method: 'POST',
       data: payload,
       skipAuth: true,
+      silent: true,
       ...options,
     }),
   logout: (options: RequestOptions = {}) =>

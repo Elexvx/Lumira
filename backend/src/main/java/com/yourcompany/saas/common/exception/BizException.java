@@ -5,33 +5,29 @@ import com.yourcompany.saas.common.enums.ErrorCode;
 public class BizException extends RuntimeException {
 
     private final ErrorCode errorCode;
-    private final Integer httpStatus;
-    private final String userTip;
+    private final String errorMessage;
+    private final String userMessage;
 
     public BizException(ErrorCode errorCode, String message) {
-        this(errorCode, errorCode.getHttpStatus(), message, errorCode.getDefaultUserTip());
+        this(errorCode, message, message);
     }
 
-    public BizException(ErrorCode errorCode, String message, String userTip) {
-        this(errorCode, errorCode.getHttpStatus(), message, userTip);
-    }
-
-    public BizException(ErrorCode errorCode, Integer httpStatus, String message, String userTip) {
-        super(message);
+    public BizException(ErrorCode errorCode, String errorMessage, String userMessage) {
+        super(errorMessage);
         this.errorCode = errorCode;
-        this.httpStatus = httpStatus;
-        this.userTip = userTip;
+        this.errorMessage = errorMessage;
+        this.userMessage = userMessage;
     }
 
     public ErrorCode getErrorCode() {
         return errorCode;
     }
 
-    public Integer getHttpStatus() {
-        return httpStatus;
+    public String getErrorMessage() {
+        return errorMessage;
     }
 
-    public String getUserTip() {
-        return userTip;
+    public String getUserMessage() {
+        return userMessage;
     }
 }

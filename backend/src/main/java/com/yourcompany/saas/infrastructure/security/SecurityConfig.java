@@ -3,9 +3,11 @@ package com.yourcompany.saas.infrastructure.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yourcompany.saas.common.api.ApiResponse;
 import com.yourcompany.saas.common.enums.ErrorCode;
+import com.yourcompany.saas.common.exception.BizException;
 import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import com.yourcompany.saas.infrastructure.observability.TraceIdFilter;
 import com.yourcompany.saas.infrastructure.tenant.TenantFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -60,9 +62,9 @@ public class SecurityConfig {
                         .authenticated())
                 .exceptionHandling(handler -> handler
                         .authenticationEntryPoint((request, response, authException) ->
-                                writeUnauthorizedResponse(response))
+                                writeUnauthorizedResponse(request, response))
                         .accessDeniedHandler((request, response, accessDeniedException) ->
-                                writeForbiddenResponse(response)))
+                                writeForbiddenResponse(request, response)))
                 .addFilterBefore(traceIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthFilter, TraceIdFilter.class)
                 .addFilterAfter(tenantFilter, JwtAuthFilter.class);
@@ -74,17 +76,38 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    private void writeUnauthorizedResponse(HttpServletResponse response) throws IOException {
-        response.setStatus(ErrorCode.UNAUTHORIZED.getHttpStatus());
+    private void writeUnauthorizedResponse(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        BizException bizException = resolveAuthBizException(request);
+        ErrorCode errorCode = bizException == null ? ErrorCode.UNAUTHORIZED : bizException.getErrorCode();
+        ApiResponse<Void> body = bizException == null
+                ? ApiResponse.fail(errorCode, TraceContext.getRequestId(), request.getRequestURI())
+                : ApiResponse.fail(
+                        errorCode,
+                        bizException.getErrorMessage(),
+                        bizException.getUserMessage(),
+                        TraceContext.getRequestId(),
+                        request.getRequestURI()
+                );
+        response.setStatus(errorCode.getHttpStatus());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.fail(ErrorCode.UNAUTHORIZED, TraceContext.getRequestId())));
+        response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 
-    private void writeForbiddenResponse(HttpServletResponse response) throws IOException {
+    private void writeForbiddenResponse(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setStatus(ErrorCode.FORBIDDEN.getHttpStatus());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.fail(ErrorCode.FORBIDDEN, TraceContext.getRequestId())));
+        response.getWriter().write(
+                objectMapper.writeValueAsString(ApiResponse.fail(ErrorCode.FORBIDDEN, TraceContext.getRequestId(), request.getRequestURI()))
+        );
+    }
+
+    private BizException resolveAuthBizException(HttpServletRequest request) {
+        Object attribute = request.getAttribute(JwtAuthFilter.AUTH_BIZ_EXCEPTION_ATTR);
+        if (attribute instanceof BizException bizException) {
+            return bizException;
+        }
+        return null;
     }
 }

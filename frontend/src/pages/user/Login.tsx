@@ -3,6 +3,7 @@ import { history, useLocation } from 'umi';
 import { Alert, Button, Form, Input, Tabs, Typography } from 'antd';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
+import { ApiRequestError } from '@/services/common/request';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
@@ -16,16 +17,21 @@ interface LoginFormValues {
   password: string;
 }
 
+interface LoginErrorState {
+  message: string;
+  requestId?: string;
+}
+
 const Login = () => {
   const [loginMode, setLoginMode] = useState<LoginMode>('username');
   const [submitting, setSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [loginError, setLoginError] = useState<LoginErrorState | null>(null);
   const { setInitialState } = useInitialStateModel();
   const location = useLocation();
 
   const handleSubmit = async (values: LoginFormValues) => {
     setSubmitting(true);
-    setErrorMessage('');
+    setLoginError(null);
     try {
       const loginResponse = await authService.login({
         username: loginMode === 'username' ? values.username : undefined,
@@ -51,7 +57,24 @@ const Login = () => {
       const redirect = searchParams.get('redirect') || '/dashboard/home';
       history.replace(redirect);
     } catch (error) {
-      setErrorMessage('登录失败，请检查账号信息后重试');
+      if (error instanceof ApiRequestError) {
+        setLoginError({
+          message: error.userMessage || error.message || '登录失败，请稍后重试',
+          requestId: error.requestId,
+        });
+        return;
+      }
+
+      if (error instanceof Error) {
+        setLoginError({
+          message: error.message || '登录失败，请稍后重试',
+        });
+        return;
+      }
+
+      setLoginError({
+        message: '登录失败，请稍后重试',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -61,7 +84,16 @@ const Login = () => {
     <>
       <Typography.Title level={3}>SaaS 平台登录</Typography.Title>
       <Typography.Paragraph type="secondary">登录后可进入租户上下文并进行租户切换。</Typography.Paragraph>
-      {errorMessage ? <Alert type="error" message={errorMessage} showIcon style={{ marginBottom: 16 }} /> : null}
+      {loginError ? (
+        <div style={{ marginBottom: 16 }}>
+          <Alert type="error" message={loginError.message} showIcon />
+          {loginError.requestId ? (
+            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+              请求编号：{loginError.requestId}
+            </Typography.Text>
+          ) : null}
+        </div>
+      ) : null}
       <Tabs
         activeKey={loginMode}
         onChange={(next) => setLoginMode(next as LoginMode)}
