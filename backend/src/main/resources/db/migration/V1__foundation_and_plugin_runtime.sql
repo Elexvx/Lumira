@@ -136,20 +136,6 @@ CREATE TABLE IF NOT EXISTS audit_login_log (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS audit_operate_log (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT DEFAULT NULL,
-    user_id BIGINT DEFAULT NULL,
-    operation VARCHAR(128) NOT NULL,
-    request_uri VARCHAR(255) NOT NULL,
-    request_method VARCHAR(16) NOT NULL,
-    request_id VARCHAR(64) NOT NULL,
-    trace_id VARCHAR(64) NOT NULL,
-    result_code VARCHAR(32) NOT NULL,
-    cost_ms BIGINT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS sys_plugin_definition (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     plugin_code VARCHAR(64) NOT NULL,

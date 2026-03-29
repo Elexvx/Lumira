@@ -50,7 +50,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 5
       },
       "enableBy": "register"
     },
@@ -114,7 +114,7 @@
             0
           ]
         },
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -127,7 +127,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -141,10 +141,10 @@
       "time": {
         "hooks": {
           "modifyAppData": [
-            5
+            9
           ]
         },
-        "register": 10
+        "register": 11
       },
       "enableBy": "register"
     },
@@ -174,10 +174,10 @@
             0
           ],
           "onCheck": [
-            0
+            1
           ]
         },
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -194,7 +194,7 @@
             0
           ]
         },
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1119,7 +1119,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 41
+        "register": 45
       },
       "enableBy": "register"
     },
@@ -1132,7 +1132,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 17
+        "register": 18
       },
       "enableBy": "config"
     },
@@ -1145,7 +1145,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 10
+        "register": 13
       },
       "enableBy": "config"
     },
@@ -1175,7 +1175,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1188,7 +1188,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1201,7 +1201,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 16
+        "register": 18
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/mpa/mpa": {
@@ -1251,7 +1251,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1265,7 +1265,7 @@
       "time": {
         "hooks": {
           "modifyConfig": [
-            1
+            0
           ]
         },
         "register": 1
@@ -1345,7 +1345,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -1358,7 +1358,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1371,7 +1371,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/ssr/ssr": {
@@ -1409,7 +1409,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1422,7 +1422,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 2
       },
       "enableBy": "config"
     },
@@ -1448,7 +1448,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 2
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/monorepo/redirect": {
@@ -1473,7 +1473,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/clickToComponent/clickToComponent": {
@@ -1485,7 +1485,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1498,7 +1498,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1511,7 +1511,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1524,7 +1524,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/swc/swc": {
@@ -1553,7 +1553,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/mako/mako": {
@@ -1565,7 +1565,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1578,7 +1578,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/hmrGuardian/hmrGuardian": {
@@ -1614,7 +1614,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1627,7 +1627,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1640,7 +1640,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1653,7 +1653,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 18
+        "register": 23
       },
       "enableBy": "register"
     },
@@ -1666,7 +1666,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 16
+        "register": 23
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/commands/help": {
@@ -1678,7 +1678,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1717,7 +1717,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1730,7 +1730,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1743,7 +1743,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1756,7 +1756,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1795,7 +1795,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1821,7 +1821,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1873,7 +1873,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1899,7 +1899,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1912,7 +1912,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 10
+        "register": 11
       },
       "enableBy": "register"
     },
@@ -2000,7 +2000,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 2
       },
       "enableBy": "config"
     },
@@ -2013,7 +2013,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2041,7 +2041,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 2
       },
       "enableBy": "config"
     },
@@ -2067,7 +2067,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2106,7 +2106,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+plugins@4.6.36_@babel+core@7.29.0_@types+react-dom@18.3.7_@types+react@18.3.28___3453aec3d2f7a38972126ffecf5938fd/node_modules/@umijs/plugins/dist/qiankun/slave": {
@@ -2118,7 +2118,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       }
     },
     "./node_modules/.pnpm/@umijs+plugins@4.6.36_@babel+core@7.29.0_@types+react-dom@18.3.7_@types+react@18.3.28___3453aec3d2f7a38972126ffecf5938fd/node_modules/@umijs/plugins/dist/react-query": {
@@ -2130,7 +2130,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2156,7 +2156,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2182,7 +2182,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2199,7 +2199,7 @@
             0
           ]
         },
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -2229,7 +2229,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -2242,7 +2242,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     }
@@ -3391,7 +3391,7 @@
       "parentId": "3",
       "id": "6",
       "absPath": "/system/plugins",
-      "__content": "import { useEffect, useMemo, useState } from 'react';\nimport {\n  Button,\n  Card,\n  Descriptions,\n  Drawer,\n  Empty,\n  Form,\n  Input,\n  Modal,\n  Select,\n  Space,\n  Table,\n  Tag,\n  Typography,\n  Upload,\n  message,\n} from 'antd';\nimport type { ColumnsType } from 'antd/es/table';\nimport { UploadOutlined } from '@ant-design/icons';\nimport { useRequest } from 'umi';\nimport { PermissionButton } from '@/components/PermissionButton';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { pluginService } from '@/services/plugin';\nimport type { PluginDefinition, PluginRuntimeLog, PluginVersion } from '@/types/api';\n\nconst { Paragraph, Text } = Typography;\n\nconst PluginsPage = () => {\n  const { initialState, setInitialState } = useInitialStateModel();\n  const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition>();\n  const [selectedVersion, setSelectedVersion] = useState<string>();\n  const [uploadFile, setUploadFile] = useState<File>();\n  const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);\n  const [logDrawerOpen, setLogDrawerOpen] = useState(false);\n  const [uploadVisible, setUploadVisible] = useState(false);\n\n  const definitionQuery = useRequest(() => pluginService.definitions(), {\n    refreshDeps: [initialState?.currentTenant?.tenantId],\n  });\n\n  const versionQuery = useRequest(\n    () => (selectedPlugin ? pluginService.versions(selectedPlugin.pluginCode) : Promise.resolve([] as PluginVersion[])),\n    {\n      manual: false,\n      refreshDeps: [selectedPlugin?.pluginCode],\n    },\n  );\n\n  const logQuery = useRequest(\n    () => (selectedPlugin ? pluginService.runtimeLogs(selectedPlugin.pluginCode) : Promise.resolve([] as PluginRuntimeLog[])),\n    {\n      manual: false,\n      refreshDeps: [selectedPlugin?.pluginCode, logDrawerOpen],\n    },\n  );\n\n  useEffect(() => {\n    if (!selectedPlugin && definitionQuery.data?.length) {\n      setSelectedPlugin(definitionQuery.data[0]);\n    }\n  }, [definitionQuery.data, selectedPlugin]);\n\n  const definitionColumns = useMemo<ColumnsType<PluginDefinition>>(\n    () => [\n      {\n        title: '插件编码',\n        dataIndex: 'pluginCode',\n      },\n      {\n        title: '名称',\n        dataIndex: 'pluginName',\n      },\n      {\n        title: '类型',\n        dataIndex: 'pluginType',\n      },\n      {\n        title: '作者',\n        dataIndex: 'author',\n      },\n      {\n        title: '状态',\n        dataIndex: 'status',\n        render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space>\n            <PermissionButton\n              permission=\"plugin:management:view\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setVersionDrawerOpen(true);\n              }}\n            >\n              版本\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:logs\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setLogDrawerOpen(true);\n              }}\n            >\n              日志\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [],\n  );\n\n  const versionColumns = useMemo<ColumnsType<PluginVersion>>(\n    () => [\n      { title: '版本', dataIndex: 'version' },\n      { title: '安装状态', dataIndex: 'installStatus' },\n      { title: '加载状态', dataIndex: 'loadStatus' },\n      { title: '健康状态', dataIndex: 'healthStatus' },\n      {\n        title: '激活',\n        dataIndex: 'isActive',\n        render: (value: number) => <Tag color={value === 1 ? 'green' : 'default'}>{value === 1 ? '是' : '否'}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space wrap>\n            <PermissionButton\n              permission=\"plugin:management:install\"\n              onClick={() => handleInstall(record.pluginCode, record.version)}\n            >\n              安装\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:upgrade\"\n              onClick={() => handleUpgrade(record.pluginCode, record.version)}\n            >\n              激活\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:enable\"\n              onClick={() => handleEnable(record.pluginCode, record.version)}\n            >\n              启用\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:disable\"\n              onClick={() => handleDisable(record.pluginCode)}\n            >\n              停用\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:rollback\"\n              onClick={() => handleRollback(record.pluginCode, record.version)}\n            >\n              回滚\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [initialState?.currentTenant?.tenantId],\n  );\n\n  const refreshBootstrap = async () => {\n    const [menuTree, availablePlugins] = await Promise.all([\n      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n    ]);\n    setInitialState((prev) =>\n      prev\n        ? {\n            ...prev,\n            menuTree,\n            availablePlugins,\n          }\n        : prev,\n    );\n  };\n\n  const handleInstall = async (pluginCode: string, version: string) => {\n    await pluginService.install({ pluginCode, version });\n    await versionQuery.refresh();\n    await definitionQuery.refresh();\n    message.success('插件安装完成');\n  };\n\n  const handleUpgrade = async (pluginCode: string, version: string) => {\n    await pluginService.upgrade({ pluginCode, version });\n    await versionQuery.refresh();\n    await refreshBootstrap();\n    message.success('插件激活版本已切换');\n  };\n\n  const handleEnable = async (pluginCode: string, version: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    await pluginService.enable({ tenantId, pluginCode, version });\n    await refreshBootstrap();\n    message.success('插件已启用');\n  };\n\n  const handleDisable = async (pluginCode: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    await pluginService.disable({ tenantId, pluginCode });\n    await refreshBootstrap();\n    message.success('插件已停用');\n  };\n\n  const handleRollback = async (pluginCode: string, version: string) => {\n    await pluginService.rollback({ pluginCode, targetVersion: version });\n    await versionQuery.refresh();\n    await refreshBootstrap();\n    message.success('插件已回滚');\n  };\n\n  const handleUpload = async () => {\n    if (!uploadFile) {\n      message.error('请先选择插件包');\n      return;\n    }\n    const result = await pluginService.upload(uploadFile);\n    setSelectedPlugin(\n      definitionQuery.data?.find((item) => item.pluginCode === result.pluginCode) || {\n        pluginCode: result.pluginCode,\n        pluginName: result.pluginName,\n        pluginType: 'PLUGIN',\n        pluginApiVersion: '1.0.0',\n        status: 'ENABLED',\n        builtinFlag: 0,\n        sortNo: 0,\n      },\n    );\n    setSelectedVersion(result.version);\n    setUploadVisible(false);\n    setUploadFile(undefined);\n    await definitionQuery.refresh();\n    message.success('插件上传并完成校验');\n  };\n\n  return (\n    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 112px)' }}>\n      <Card\n        bodyStyle={{ padding: 16 }}\n        extra={\n          <Space>\n            <Text type=\"secondary\">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Text>\n            <PermissionButton permission=\"plugin:management:upload\" onClick={() => setUploadVisible(true)}>\n              上传插件\n            </PermissionButton>\n          </Space>\n        }\n      >\n        <Form layout=\"inline\">\n          <Form.Item label=\"插件名称\">\n            <Input.Search\n              allowClear\n              placeholder=\"按名称筛选\"\n              onSearch={(value) => {\n                const keyword = value.trim().toLowerCase();\n                const next = definitionQuery.data?.find((item) => item.pluginName.toLowerCase().includes(keyword));\n                if (next) {\n                  setSelectedPlugin(next);\n                }\n              }}\n            />\n          </Form.Item>\n          <Form.Item label=\"插件编码\">\n            <Select\n              allowClear\n              style={{ width: 240 }}\n              options={(definitionQuery.data || []).map((item) => ({\n                label: item.pluginName,\n                value: item.pluginCode,\n              }))}\n              value={selectedPlugin?.pluginCode}\n              onChange={(value) => setSelectedPlugin(definitionQuery.data?.find((item) => item.pluginCode === value))}\n            />\n          </Form.Item>\n        </Form>\n      </Card>\n\n      <Card bodyStyle={{ padding: 0, height: '100%' }}>\n        <div style={{ height: '100%', overflow: 'auto' }}>\n          <Table\n            rowKey=\"pluginCode\"\n            loading={definitionQuery.loading}\n            columns={definitionColumns}\n            dataSource={definitionQuery.data || []}\n            pagination={false}\n            locale={{ emptyText: <Empty description=\"暂无插件定义\" /> }}\n          />\n        </div>\n      </Card>\n\n      <Drawer\n        open={versionDrawerOpen}\n        title={`版本列表 · ${selectedPlugin?.pluginName || ''}`}\n        width={960}\n        onClose={() => setVersionDrawerOpen(false)}\n      >\n        <Descriptions column={2} bordered size=\"small\">\n          <Descriptions.Item label=\"插件编码\">{selectedPlugin?.pluginCode}</Descriptions.Item>\n          <Descriptions.Item label=\"API 版本\">{selectedPlugin?.pluginApiVersion}</Descriptions.Item>\n          <Descriptions.Item label=\"作者\">{selectedPlugin?.author || '-'}</Descriptions.Item>\n          <Descriptions.Item label=\"状态\">{selectedPlugin?.status || '-'}</Descriptions.Item>\n          <Descriptions.Item label=\"描述\" span={2}>\n            {selectedPlugin?.description || '-'}\n          </Descriptions.Item>\n        </Descriptions>\n        <Table\n          style={{ marginTop: 16 }}\n          rowKey=\"version\"\n          loading={versionQuery.loading}\n          columns={versionColumns}\n          dataSource={versionQuery.data || []}\n          pagination={false}\n        />\n        <Card title=\"最近一次校验结果\" style={{ marginTop: 16 }}>\n          <Paragraph style={{ marginBottom: 0 }}>\n            {versionQuery.data?.find((item) => item.version === selectedVersion)?.validationReportJson || '请选择一个版本查看'}\n          </Paragraph>\n        </Card>\n      </Drawer>\n\n      <Drawer\n        open={logDrawerOpen}\n        title={`运行日志 · ${selectedPlugin?.pluginName || ''}`}\n        width={900}\n        onClose={() => setLogDrawerOpen(false)}\n      >\n        <Table\n          rowKey=\"id\"\n          loading={logQuery.loading}\n          pagination={false}\n          dataSource={logQuery.data || []}\n          columns={[\n            { title: '时间', dataIndex: 'createdAt', width: 180 },\n            { title: '操作', dataIndex: 'operationType', width: 120 },\n            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },\n            { title: '结果', dataIndex: 'resultStatus', width: 120 },\n            { title: '详情', dataIndex: 'detailMessage' },\n          ]}\n        />\n      </Drawer>\n\n      <Modal\n        open={uploadVisible}\n        title=\"上传插件包\"\n        onCancel={() => setUploadVisible(false)}\n        onOk={handleUpload}\n        okText=\"开始上传\"\n      >\n        <Upload\n          maxCount={1}\n          beforeUpload={(file) => {\n            setUploadFile(file);\n            return false;\n          }}\n          onRemove={() => {\n            setUploadFile(undefined);\n          }}\n        >\n          <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>\n        </Upload>\n      </Modal>\n    </div>\n  );\n};\n\nexport default PluginsPage;\n",
+      "__content": "import { useEffect, useMemo, useState } from 'react';\nimport {\n  Button,\n  Card,\n  Descriptions,\n  Drawer,\n  Empty,\n  Form,\n  Input,\n  Modal,\n  Select,\n  Space,\n  Table,\n  Tag,\n  Typography,\n  Upload,\n  message,\n} from 'antd';\nimport type { ColumnsType } from 'antd/es/table';\nimport { UploadOutlined } from '@ant-design/icons';\nimport { useRequest } from 'umi';\nimport { PermissionButton } from '@/components/PermissionButton';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { pluginService } from '@/services/plugin';\nimport type { PluginDefinition, PluginRuntimeLog, PluginVersion } from '@/types/api';\n\nconst { Paragraph, Text } = Typography;\n\nconst PluginsPage = () => {\n  const { initialState, setInitialState } = useInitialStateModel();\n  const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition>();\n  const [selectedVersion, setSelectedVersion] = useState<string>();\n  const [uploadFile, setUploadFile] = useState<File>();\n  const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);\n  const [logDrawerOpen, setLogDrawerOpen] = useState(false);\n  const [uploadVisible, setUploadVisible] = useState(false);\n\n  const definitionQuery = useRequest<PluginDefinition[]>(() => pluginService.definitions(), {\n    refreshDeps: [initialState?.currentTenant?.tenantId],\n  });\n\n  const versionQuery = useRequest<PluginVersion[]>(\n    () => (selectedPlugin ? pluginService.versions(selectedPlugin.pluginCode) : Promise.resolve([] as PluginVersion[])),\n    {\n      manual: false,\n      refreshDeps: [selectedPlugin?.pluginCode],\n    },\n  );\n\n  const logQuery = useRequest<PluginRuntimeLog[]>(\n    () => (selectedPlugin ? pluginService.runtimeLogs(selectedPlugin.pluginCode) : Promise.resolve([] as PluginRuntimeLog[])),\n    {\n      manual: false,\n      refreshDeps: [selectedPlugin?.pluginCode, logDrawerOpen],\n    },\n  );\n\n  const definitionList = (definitionQuery.data as PluginDefinition[] | undefined) ?? [];\n  const versionList = (versionQuery.data as PluginVersion[] | undefined) ?? [];\n  const runtimeLogList = (logQuery.data as PluginRuntimeLog[] | undefined) ?? [];\n\n  useEffect(() => {\n    if (!selectedPlugin && definitionList.length > 0) {\n      setSelectedPlugin(definitionList[0]);\n    }\n  }, [definitionList, selectedPlugin]);\n\n  const definitionColumns = useMemo<ColumnsType<PluginDefinition>>(\n    () => [\n      {\n        title: '插件编码',\n        dataIndex: 'pluginCode',\n      },\n      {\n        title: '名称',\n        dataIndex: 'pluginName',\n      },\n      {\n        title: '类型',\n        dataIndex: 'pluginType',\n      },\n      {\n        title: '作者',\n        dataIndex: 'author',\n      },\n      {\n        title: '状态',\n        dataIndex: 'status',\n        render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space>\n            <PermissionButton\n              permission=\"plugin:management:view\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setVersionDrawerOpen(true);\n              }}\n            >\n              版本\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:logs\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setLogDrawerOpen(true);\n              }}\n            >\n              日志\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [],\n  );\n\n  const versionColumns = useMemo<ColumnsType<PluginVersion>>(\n    () => [\n      { title: '版本', dataIndex: 'version' },\n      { title: '安装状态', dataIndex: 'installStatus' },\n      { title: '加载状态', dataIndex: 'loadStatus' },\n      { title: '健康状态', dataIndex: 'healthStatus' },\n      {\n        title: '激活',\n        dataIndex: 'isActive',\n        render: (value: number) => <Tag color={value === 1 ? 'green' : 'default'}>{value === 1 ? '是' : '否'}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space wrap>\n            <PermissionButton\n              permission=\"plugin:management:install\"\n              onClick={() => handleInstall(record.pluginCode, record.version)}\n            >\n              安装\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:upgrade\"\n              onClick={() => handleUpgrade(record.pluginCode, record.version)}\n            >\n              激活\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:enable\"\n              onClick={() => handleEnable(record.pluginCode, record.version)}\n            >\n              启用\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:disable\"\n              onClick={() => handleDisable(record.pluginCode)}\n            >\n              停用\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:rollback\"\n              onClick={() => handleRollback(record.pluginCode, record.version)}\n            >\n              回滚\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [initialState?.currentTenant?.tenantId],\n  );\n\n  const refreshBootstrap = async () => {\n    const [menuTree, availablePlugins] = await Promise.all([\n      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n    ]);\n    setInitialState((prev) =>\n      prev\n        ? {\n            ...prev,\n            menuTree,\n            availablePlugins,\n          }\n        : prev,\n    );\n  };\n\n  const handleInstall = async (pluginCode: string, version: string) => {\n    await pluginService.install({ pluginCode, version });\n    await versionQuery.refresh();\n    await definitionQuery.refresh();\n    message.success('插件安装完成');\n  };\n\n  const handleUpgrade = async (pluginCode: string, version: string) => {\n    await pluginService.upgrade({ pluginCode, version });\n    await versionQuery.refresh();\n    await refreshBootstrap();\n    message.success('插件激活版本已切换');\n  };\n\n  const handleEnable = async (pluginCode: string, version: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    await pluginService.enable({ tenantId, pluginCode, version });\n    await refreshBootstrap();\n    message.success('插件已启用');\n  };\n\n  const handleDisable = async (pluginCode: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    await pluginService.disable({ tenantId, pluginCode });\n    await refreshBootstrap();\n    message.success('插件已停用');\n  };\n\n  const handleRollback = async (pluginCode: string, version: string) => {\n    await pluginService.rollback({ pluginCode, targetVersion: version });\n    await versionQuery.refresh();\n    await refreshBootstrap();\n    message.success('插件已回滚');\n  };\n\n  const handleUpload = async () => {\n    if (!uploadFile) {\n      message.error('请先选择插件包');\n      return;\n    }\n    const result = await pluginService.upload(uploadFile);\n    setSelectedPlugin(\n      definitionList.find((item) => item.pluginCode === result.pluginCode) || {\n        pluginCode: result.pluginCode,\n        pluginName: result.pluginName,\n        pluginType: 'PLUGIN',\n        pluginApiVersion: '1.0.0',\n        status: 'ENABLED',\n        builtinFlag: 0,\n        sortNo: 0,\n      },\n    );\n    setSelectedVersion(result.version);\n    setUploadVisible(false);\n    setUploadFile(undefined);\n    await definitionQuery.refresh();\n    message.success('插件上传并完成校验');\n  };\n\n  return (\n    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 112px)' }}>\n      <Card\n        bodyStyle={{ padding: 16 }}\n        extra={\n          <Space>\n            <Text type=\"secondary\">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Text>\n            <PermissionButton permission=\"plugin:management:upload\" onClick={() => setUploadVisible(true)}>\n              上传插件\n            </PermissionButton>\n          </Space>\n        }\n      >\n        <Form layout=\"inline\">\n          <Form.Item label=\"插件名称\">\n            <Input.Search\n              allowClear\n              placeholder=\"按名称筛选\"\n              onSearch={(value) => {\n                const keyword = value.trim().toLowerCase();\n                const next = definitionList.find((item) => item.pluginName.toLowerCase().includes(keyword));\n                if (next) {\n                  setSelectedPlugin(next);\n                }\n              }}\n            />\n          </Form.Item>\n          <Form.Item label=\"插件编码\">\n            <Select\n              allowClear\n              style={{ width: 240 }}\n              options={definitionList.map((item) => ({\n                label: item.pluginName,\n                value: item.pluginCode,\n              }))}\n              value={selectedPlugin?.pluginCode}\n              onChange={(value) => setSelectedPlugin(definitionList.find((item) => item.pluginCode === value))}\n            />\n          </Form.Item>\n        </Form>\n      </Card>\n\n      <Card bodyStyle={{ padding: 0, height: '100%' }}>\n        <div style={{ height: '100%', overflow: 'auto' }}>\n          <Table\n            rowKey=\"pluginCode\"\n            loading={definitionQuery.loading}\n            columns={definitionColumns}\n            dataSource={definitionList}\n            pagination={false}\n            locale={{ emptyText: <Empty description=\"暂无插件定义\" /> }}\n          />\n        </div>\n      </Card>\n\n      <Drawer\n        open={versionDrawerOpen}\n        title={`版本列表 · ${selectedPlugin?.pluginName || ''}`}\n        width={960}\n        onClose={() => setVersionDrawerOpen(false)}\n      >\n        <Descriptions column={2} bordered size=\"small\">\n          <Descriptions.Item label=\"插件编码\">{selectedPlugin?.pluginCode}</Descriptions.Item>\n          <Descriptions.Item label=\"API 版本\">{selectedPlugin?.pluginApiVersion}</Descriptions.Item>\n          <Descriptions.Item label=\"作者\">{selectedPlugin?.author || '-'}</Descriptions.Item>\n          <Descriptions.Item label=\"状态\">{selectedPlugin?.status || '-'}</Descriptions.Item>\n          <Descriptions.Item label=\"描述\" span={2}>\n            {selectedPlugin?.description || '-'}\n          </Descriptions.Item>\n        </Descriptions>\n        <Table<PluginVersion>\n          style={{ marginTop: 16 }}\n          rowKey=\"version\"\n          loading={versionQuery.loading}\n          columns={versionColumns}\n          dataSource={versionList}\n          pagination={false}\n        />\n        <Card title=\"最近一次校验结果\" style={{ marginTop: 16 }}>\n          <Paragraph style={{ marginBottom: 0 }}>\n            {versionList.find((item) => item.version === selectedVersion)?.validationReportJson || '请选择一个版本查看'}\n          </Paragraph>\n        </Card>\n      </Drawer>\n\n      <Drawer\n        open={logDrawerOpen}\n        title={`运行日志 · ${selectedPlugin?.pluginName || ''}`}\n        width={900}\n        onClose={() => setLogDrawerOpen(false)}\n      >\n        <Table<PluginRuntimeLog>\n          rowKey=\"id\"\n          loading={logQuery.loading}\n          pagination={false}\n          dataSource={runtimeLogList}\n          columns={[\n            { title: '时间', dataIndex: 'createdAt', width: 180 },\n            { title: '操作', dataIndex: 'operationType', width: 120 },\n            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },\n            { title: '结果', dataIndex: 'resultStatus', width: 120 },\n            { title: '详情', dataIndex: 'detailMessage' },\n          ]}\n        />\n      </Drawer>\n\n      <Modal\n        open={uploadVisible}\n        title=\"上传插件包\"\n        onCancel={() => setUploadVisible(false)}\n        onOk={handleUpload}\n        okText=\"开始上传\"\n      >\n        <Upload\n          maxCount={1}\n          beforeUpload={(file) => {\n            setUploadFile(file);\n            return false;\n          }}\n          onRemove={() => {\n            setUploadFile(undefined);\n          }}\n        >\n          <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>\n        </Upload>\n      </Modal>\n    </div>\n  );\n};\n\nexport default PluginsPage;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/Plugins.tsx"
     },

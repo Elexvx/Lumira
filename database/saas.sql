@@ -12,45 +12,6 @@ CREATE TABLE IF NOT EXISTS tenant_info (
     UNIQUE KEY uk_tenant_info_code (tenant_code)
 );
 
-CREATE TABLE IF NOT EXISTS tenant_package (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    package_code VARCHAR(64) NOT NULL,
-    package_name VARCHAR(128) NOT NULL,
-    expire_at DATETIME DEFAULT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_tenant_package_tenant_code (tenant_id, package_code)
-);
-
-CREATE TABLE IF NOT EXISTS tenant_domain (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    domain VARCHAR(255) NOT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_tenant_domain_domain (domain)
-);
-
-CREATE TABLE IF NOT EXISTS tenant_quota (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    quota_key VARCHAR(64) NOT NULL,
-    quota_value BIGINT NOT NULL DEFAULT 0,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_tenant_quota_key (tenant_id, quota_key)
-);
-
 CREATE TABLE IF NOT EXISTS sys_user (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(64) NOT NULL,
@@ -84,48 +45,6 @@ CREATE TABLE IF NOT EXISTS sys_user_tenant (
     UNIQUE KEY uk_sys_user_tenant_rel (tenant_id, user_id)
 );
 
-CREATE TABLE IF NOT EXISTS sys_user_tenant_profile (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    display_name VARCHAR(128) NOT NULL,
-    avatar_url VARCHAR(255) DEFAULT NULL,
-    locale VARCHAR(32) DEFAULT 'zh-CN',
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_user_tenant_profile (tenant_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS sys_department (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    parent_id BIGINT DEFAULT 0,
-    dept_code VARCHAR(64) NOT NULL,
-    dept_name VARCHAR(128) NOT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_department_code (tenant_id, dept_code)
-);
-
-CREATE TABLE IF NOT EXISTS sys_position (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    position_code VARCHAR(64) NOT NULL,
-    position_name VARCHAR(128) NOT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_position_code (tenant_id, position_code)
-);
-
 CREATE TABLE IF NOT EXISTS sys_role (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     tenant_id BIGINT NOT NULL,
@@ -149,6 +68,9 @@ CREATE TABLE IF NOT EXISTS sys_menu (
     menu_type VARCHAR(32) NOT NULL,
     path VARCHAR(255) DEFAULT NULL,
     component VARCHAR(255) DEFAULT NULL,
+    icon VARCHAR(64) DEFAULT NULL,
+    sort_no INT NOT NULL DEFAULT 0,
+    permission_key VARCHAR(128) DEFAULT NULL,
     created_by BIGINT DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by BIGINT DEFAULT 0,
@@ -156,6 +78,51 @@ CREATE TABLE IF NOT EXISTS sys_menu (
     deleted TINYINT NOT NULL DEFAULT 0,
     UNIQUE KEY uk_sys_menu_code (tenant_id, menu_code)
 );
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'sys_menu'
+          AND column_name = 'icon'
+    ),
+    'SELECT 1',
+    'ALTER TABLE sys_menu ADD COLUMN icon VARCHAR(64) DEFAULT NULL'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'sys_menu'
+          AND column_name = 'sort_no'
+    ),
+    'SELECT 1',
+    'ALTER TABLE sys_menu ADD COLUMN sort_no INT NOT NULL DEFAULT 0'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'sys_menu'
+          AND column_name = 'permission_key'
+    ),
+    'SELECT 1',
+    'ALTER TABLE sys_menu ADD COLUMN permission_key VARCHAR(128) DEFAULT NULL'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS sys_user_role (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -170,120 +137,33 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
     UNIQUE KEY uk_sys_user_role_rel (tenant_id, user_id, role_id)
 );
 
-CREATE TABLE IF NOT EXISTS sys_role_menu (
+CREATE TABLE IF NOT EXISTS sys_permission (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id BIGINT NOT NULL,
+    permission_key VARCHAR(128) NOT NULL,
+    permission_name VARCHAR(128) NOT NULL,
+    permission_group VARCHAR(64) DEFAULT NULL,
+    source_type VARCHAR(32) NOT NULL DEFAULT 'CORE',
+    plugin_code VARCHAR(64) DEFAULT NULL,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_permission_key (tenant_id, permission_key)
+);
+
+CREATE TABLE IF NOT EXISTS sys_role_permission (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     tenant_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
-    menu_id BIGINT NOT NULL,
+    permission_key VARCHAR(128) NOT NULL,
     created_by BIGINT DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by BIGINT DEFAULT 0,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_role_menu_rel (tenant_id, role_id, menu_id)
-);
-
-CREATE TABLE IF NOT EXISTS sys_data_scope_rule (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    rule_code VARCHAR(64) NOT NULL,
-    rule_name VARCHAR(128) NOT NULL,
-    rule_expr VARCHAR(512) NOT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_data_scope_rule_code (tenant_id, rule_code)
-);
-
-CREATE TABLE IF NOT EXISTS sys_dict_type (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    dict_code VARCHAR(64) NOT NULL,
-    dict_name VARCHAR(128) NOT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_dict_type_code (tenant_id, dict_code)
-);
-
-CREATE TABLE IF NOT EXISTS sys_dict_item (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    dict_type_id BIGINT NOT NULL,
-    item_value VARCHAR(64) NOT NULL,
-    item_label VARCHAR(128) NOT NULL,
-    sort_no INT NOT NULL DEFAULT 0,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_dict_item_value (tenant_id, dict_type_id, item_value)
-);
-
-CREATE TABLE IF NOT EXISTS sys_config (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    config_key VARCHAR(128) NOT NULL,
-    config_value VARCHAR(2000) NOT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_sys_config_key (tenant_id, config_key)
-);
-
-CREATE TABLE IF NOT EXISTS file_object (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    storage_type VARCHAR(32) NOT NULL,
-    bucket VARCHAR(128) DEFAULT NULL,
-    object_key VARCHAR(255) NOT NULL,
-    original_filename VARCHAR(255) NOT NULL,
-    content_type VARCHAR(128) DEFAULT NULL,
-    file_size BIGINT NOT NULL DEFAULT 0,
-    checksum VARCHAR(128) DEFAULT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_file_object_key (tenant_id, object_key)
-);
-
-CREATE TABLE IF NOT EXISTS task_job (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT NOT NULL,
-    job_code VARCHAR(64) NOT NULL,
-    job_name VARCHAR(128) NOT NULL,
-    cron_expr VARCHAR(64) NOT NULL,
-    status VARCHAR(32) NOT NULL DEFAULT 'ENABLED',
-    last_run_at DATETIME DEFAULT NULL,
-    created_by BIGINT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT DEFAULT 0,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted TINYINT NOT NULL DEFAULT 0,
-    UNIQUE KEY uk_task_job_code (tenant_id, job_code)
-);
-
-CREATE TABLE IF NOT EXISTS audit_operate_log (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id BIGINT DEFAULT NULL,
-    user_id BIGINT DEFAULT NULL,
-    operation VARCHAR(128) NOT NULL,
-    request_uri VARCHAR(255) NOT NULL,
-    request_method VARCHAR(16) NOT NULL,
-    request_id VARCHAR(64) NOT NULL,
-    trace_id VARCHAR(64) NOT NULL,
-    result_code VARCHAR(32) NOT NULL,
-    cost_ms BIGINT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    UNIQUE KEY uk_sys_role_permission_rel (tenant_id, role_id, permission_key)
 );
 
 CREATE TABLE IF NOT EXISTS audit_login_log (
@@ -299,6 +179,132 @@ CREATE TABLE IF NOT EXISTS audit_login_log (
     request_id VARCHAR(64) NOT NULL,
     trace_id VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_definition (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    plugin_code VARCHAR(64) NOT NULL,
+    plugin_name VARCHAR(128) NOT NULL,
+    plugin_type VARCHAR(32) NOT NULL,
+    description VARCHAR(512) DEFAULT NULL,
+    author VARCHAR(128) DEFAULT NULL,
+    plugin_api_version VARCHAR(32) NOT NULL,
+    builtin_flag TINYINT NOT NULL DEFAULT 0,
+    status VARCHAR(32) NOT NULL DEFAULT 'ENABLED',
+    sort_no INT NOT NULL DEFAULT 0,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_plugin_definition_code (plugin_code)
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_version (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    plugin_code VARCHAR(64) NOT NULL,
+    version VARCHAR(32) NOT NULL,
+    package_path VARCHAR(512) DEFAULT NULL,
+    artifact_path VARCHAR(512) DEFAULT NULL,
+    frontend_manifest_path VARCHAR(512) DEFAULT NULL,
+    backend_jar_path VARCHAR(512) DEFAULT NULL,
+    checksum VARCHAR(128) DEFAULT NULL,
+    signature_path VARCHAR(512) DEFAULT NULL,
+    min_platform_version VARCHAR(32) NOT NULL,
+    install_status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED',
+    load_status VARCHAR(32) NOT NULL DEFAULT 'UNLOADED',
+    health_status VARCHAR(32) NOT NULL DEFAULT 'UNKNOWN',
+    is_active TINYINT NOT NULL DEFAULT 0,
+    rollbackable TINYINT NOT NULL DEFAULT 0,
+    metadata_json JSON DEFAULT NULL,
+    validation_report_json JSON DEFAULT NULL,
+    staged_path VARCHAR(512) DEFAULT NULL,
+    installed_at DATETIME DEFAULT NULL,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_plugin_version_code_version (plugin_code, version)
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_tenant (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id BIGINT NOT NULL,
+    plugin_code VARCHAR(64) NOT NULL,
+    plugin_version VARCHAR(32) NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    config_json JSON DEFAULT NULL,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_plugin_tenant_rel (tenant_id, plugin_code)
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_dependency (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    plugin_code VARCHAR(64) NOT NULL,
+    depends_on_plugin_code VARCHAR(64) NOT NULL,
+    min_version VARCHAR(32) NOT NULL,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_plugin_dependency_rel (plugin_code, depends_on_plugin_code)
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_runtime_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id BIGINT DEFAULT NULL,
+    plugin_code VARCHAR(64) NOT NULL,
+    plugin_version VARCHAR(32) DEFAULT NULL,
+    operation_type VARCHAR(32) NOT NULL,
+    lifecycle_status VARCHAR(32) NOT NULL,
+    result_status VARCHAR(32) NOT NULL,
+    detail_message VARCHAR(512) DEFAULT NULL,
+    request_id VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    failure_stack TEXT DEFAULT NULL,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_menu_rel (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    plugin_code VARCHAR(64) NOT NULL,
+    plugin_version VARCHAR(32) NOT NULL,
+    menu_code VARCHAR(64) NOT NULL,
+    menu_name VARCHAR(128) NOT NULL,
+    route_path VARCHAR(255) NOT NULL,
+    icon VARCHAR(64) DEFAULT NULL,
+    permission_key VARCHAR(128) DEFAULT NULL,
+    parent_menu_code VARCHAR(64) DEFAULT NULL,
+    sort_no INT NOT NULL DEFAULT 0,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_plugin_menu_rel (plugin_code, plugin_version, menu_code)
+);
+
+CREATE TABLE IF NOT EXISTS sys_plugin_permission_rel (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    plugin_code VARCHAR(64) NOT NULL,
+    plugin_version VARCHAR(32) NOT NULL,
+    permission_key VARCHAR(128) NOT NULL,
+    permission_name VARCHAR(128) NOT NULL,
+    permission_group VARCHAR(64) DEFAULT NULL,
+    created_by BIGINT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_plugin_permission_rel (plugin_code, plugin_version, permission_key)
 );
 
 SET @ddl = IF (
@@ -341,6 +347,21 @@ SET @ddl = IF (
     ),
     'SELECT 1',
     'CREATE INDEX idx_audit_login_log_trace_id ON audit_login_log (trace_id)'
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF (
+    EXISTS (
+        SELECT 1
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'sys_plugin_runtime_log'
+          AND index_name = 'idx_sys_plugin_runtime_log_plugin_created'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_sys_plugin_runtime_log_plugin_created ON sys_plugin_runtime_log (plugin_code, created_at)'
 );
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
@@ -427,3 +448,350 @@ INSERT INTO sys_user_tenant (
 )
 SELECT 1002, 1001, 0, 'ENABLED', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_user_tenant WHERE tenant_id = 1002 AND user_id = 1001);
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'dashboard:view', '查看首页', 'dashboard', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'dashboard:view');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'system:view', '查看系统管理', 'system', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'system:view');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'profile:view', '查看个人中心', 'profile', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'profile:view');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:view', '查看插件管理', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:view');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:upload', '上传插件', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:upload');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:install', '安装插件', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:install');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:upgrade', '升级插件', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:upgrade');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:rollback', '回滚插件', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:rollback');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:enable', '启用插件', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:enable');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:disable', '停用插件', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:disable');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1001, 'plugin:management:logs', '查看插件日志', 'plugin', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'plugin:management:logs');
+
+INSERT INTO sys_permission (
+    tenant_id,
+    permission_key,
+    permission_name,
+    permission_group,
+    source_type,
+    plugin_code,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 1002, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted
+FROM sys_permission
+WHERE tenant_id = 1001
+  AND NOT EXISTS (
+      SELECT 1 FROM sys_permission p2
+      WHERE p2.tenant_id = 1002 AND p2.permission_key = sys_permission.permission_key
+  );
+
+INSERT INTO sys_role_permission (
+    tenant_id, role_id, permission_key, created_by, updated_by, deleted
+)
+SELECT 1001, 2001, permission_key, 0, 0, 0
+FROM sys_permission
+WHERE tenant_id = 1001
+  AND NOT EXISTS (
+      SELECT 1 FROM sys_role_permission rp
+      WHERE rp.tenant_id = 1001 AND rp.role_id = 2001 AND rp.permission_key = sys_permission.permission_key
+  );
+
+INSERT INTO sys_role_permission (
+    tenant_id, role_id, permission_key, created_by, updated_by, deleted
+)
+SELECT 1002, 2002, permission_key, 0, 0, 0
+FROM sys_permission
+WHERE tenant_id = 1002
+  AND NOT EXISTS (
+      SELECT 1 FROM sys_role_permission rp
+      WHERE rp.tenant_id = 1002 AND rp.role_id = 2002 AND rp.permission_key = sys_permission.permission_key
+  );
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 3001, 1001, 0, 'dashboard.home', '首页', 'MENU', '/dashboard/home', '@/pages/dashboard/Home', 'DashboardOutlined', 10, 'dashboard:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 3001);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 3002, 1001, 0, 'system.root', '系统管理', 'CATALOG', '/system/plugins', '@/pages/system/Management', 'AppstoreOutlined', 20, 'system:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 3002);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 3003, 1001, 3002, 'system.plugins', '插件管理中心', 'MENU', '/system/plugins', '@/pages/system/Plugins', 'ApiOutlined', 21, 'plugin:management:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 3003);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 3004, 1001, 0, 'profile.center', '个人中心', 'MENU', '/profile/center', '@/pages/profile/Center', 'UserOutlined', 30, 'profile:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 3004);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 4001, 1002, 0, 'dashboard.home', '首页', 'MENU', '/dashboard/home', '@/pages/dashboard/Home', 'DashboardOutlined', 10, 'dashboard:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 4001);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 4002, 1002, 0, 'system.root', '系统管理', 'CATALOG', '/system/plugins', '@/pages/system/Management', 'AppstoreOutlined', 20, 'system:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 4002);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 4003, 1002, 4002, 'system.plugins', '插件管理中心', 'MENU', '/system/plugins', '@/pages/system/Plugins', 'ApiOutlined', 21, 'plugin:management:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 4003);
+
+INSERT INTO sys_menu (
+    id,
+    tenant_id,
+    parent_id,
+    menu_code,
+    menu_name,
+    menu_type,
+    path,
+    component,
+    icon,
+    sort_no,
+    permission_key,
+    created_by,
+    updated_by,
+    deleted
+)
+SELECT 4004, 1002, 0, 'profile.center', '个人中心', 'MENU', '/profile/center', '@/pages/profile/Center', 'UserOutlined', 30, 'profile:view', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 4004);
