@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { history, useLocation } from 'umi';
-import { Button, Form, Input, Tabs, Typography, message } from 'antd';
+import { Button, Form, Input, Typography, message } from 'antd';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { ApiRequestError } from '@/services/common/request';
@@ -9,16 +9,12 @@ import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
-type LoginMode = 'username' | 'mobile';
-
 interface LoginFormValues {
   username?: string;
-  mobile?: string;
-  password: string;
+  password?: string;
 }
 
 const Login = () => {
-  const [loginMode, setLoginMode] = useState<LoginMode>('username');
   const [submitting, setSubmitting] = useState(false);
   const { setInitialState } = useInitialStateModel();
   const location = useLocation();
@@ -27,9 +23,8 @@ const Login = () => {
     setSubmitting(true);
     try {
       const loginResponse = await authService.login({
-        username: loginMode === 'username' ? values.username : undefined,
-        mobile: loginMode === 'mobile' ? values.mobile : undefined,
-        password: values.password,
+        username: values.username,
+        password: values.password || '',
       });
 
       const sessionResult = await initializeAfterLogin(loginResponse);
@@ -88,58 +83,33 @@ const Login = () => {
       >
         宏翔商道-综合管理系统
       </Typography.Title>
-      <Tabs
-        activeKey={loginMode}
-        onChange={(next) => setLoginMode(next as LoginMode)}
-        size="small"
-        tabBarGutter={28}
-        style={{ marginBottom: 8 }}
-        items={[
-          { key: 'username', label: '账号登录' },
-          { key: 'mobile', label: '手机号登录' },
-        ]}
-      />
+      
       <Form<LoginFormValues>
         layout="vertical"
         onFinish={handleSubmit}
-        requiredMark={false}
-        colon
-        style={{ width: '100%' }}
+        colon={false}
+        style={{ width: '100%', marginTop: '16px' }}
       >
-        {loginMode === 'username' ? (
-          <Form.Item
-            label="用户名"
-            name="username"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input size="large" placeholder="" autoComplete="username" />
-          </Form.Item>
-        ) : (
-          <Form.Item
-            label="手机号"
-            name="mobile"
-            rules={[
-              { required: true, message: '请输入手机号' },
-              { pattern: /^1\d{10}$/, message: '请输入有效的手机号' },
-            ]}
-          >
-            <Input size="large" placeholder="" autoComplete="tel" maxLength={11} />
-          </Form.Item>
-        )}
         <Form.Item
-          label="密码"
+          name="username"
+          rules={[{ required: true, message: '请输入账号' }]}
+          style={{ marginBottom: 16 }}
+        >
+          <Input placeholder="请输入账号" autoComplete="username" />
+        </Form.Item>
+        <Form.Item
           name="password"
           rules={[
             { required: true, message: '请输入密码' },
             { min: 6, message: '密码长度不能少于 6 位' },
           ]}
+          style={{ marginBottom: 24 }}
         >
-          <Input.Password size="large" placeholder="" autoComplete="current-password" />
+          <Input.Password placeholder="请输入密码" autoComplete="current-password" />
         </Form.Item>
         <Button
           type="primary"
           block
-          size="large"
           htmlType="submit"
           loading={submitting}
           style={{ height: 32, fontWeight: 600, marginTop: 4 }}

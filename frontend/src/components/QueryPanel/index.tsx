@@ -1,5 +1,6 @@
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Space, Typography } from 'antd';
+import { ProCard } from '@ant-design/pro-components';
+import { Button, Form, Space, Typography } from 'antd';
 import type { FormInstance, FormProps } from 'antd';
 import { Children, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -52,10 +53,9 @@ export const QueryPanel = <T extends object = Record<string, unknown>>({
   };
 
   return (
-    <Card
-      bordered={false}
+    <ProCard
       className={className}
-      bodyStyle={{ padding: 20 }}
+      ghost
       style={{
         ...style,
       }}
@@ -123,6 +123,6 @@ export const QueryPanel = <T extends object = Record<string, unknown>>({
           </Space>
         </div>
       </Form>
-    </Card>
+    </ProCard>
   );
 };

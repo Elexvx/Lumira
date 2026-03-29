@@ -14,6 +14,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { MenuNode } from '@/types/api';
 import { TopActions } from '../components/TopActions';
 import { useResponsive } from '@/hooks/useResponsive';
+import './index.less';
 
 type LayoutMenuNode = Omit<MenuNode, 'icon' | 'children'> & {
   icon?: ReactNode;
@@ -45,31 +46,66 @@ const BasicLayout = () => {
 
   return (
     <ProLayout
+      className="saas-basic-layout"
       title="宏翔商道"
-      logo={<AppstoreOutlined style={{ color: '#fff', fontSize: 18 }} />}
-      layout={isMobile ? 'top' : 'mix'}
-      navTheme="realDark"
-      splitMenus={!isMobile}
-      fixedHeader={!isMobile}
+      logo={<AppstoreOutlined style={{ fontSize: 16, color: '#1677ff' }} />}
+      layout={isMobile ? 'top' : 'side'}
+      navTheme="light"
+      splitMenus={false}
+      fixedHeader
       fixSiderbar={!isMobile}
       contentWidth="Fluid"
-      collapsed={isMobile ? true : undefined}
+      siderWidth={216}
       collapsedButtonRender={isMobile ? false : undefined}
       rightContentRender={() => <TopActions />}
+      menuHeaderRender={(logoDom, titleDom) => (
+        <div
+          className="saas-menu-header"
+          onClick={() => {
+            history.push('/dashboard/home');
+          }}
+        >
+          {logoDom}
+          {titleDom}
+        </div>
+      )}
       location={location}
       route={{
         path: '/',
         routes,
       }}
+      token={{
+        bgLayout: '#f5f7fa',
+        sider: {
+          colorMenuBackground: '#ffffff',
+          colorTextMenu: '#2f3640',
+          colorTextMenuActive: '#1677ff',
+          colorTextMenuSelected: '#1677ff',
+          colorBgMenuItemSelected: '#eaf2ff',
+          colorBgMenuItemHover: '#f3f8ff',
+          colorBgCollapsedButton: '#ffffff',
+          colorTextCollapsedButton: '#5b6275',
+          colorTextCollapsedButtonHover: '#1677ff',
+          colorMenuItemDivider: '#f0f0f0',
+        },
+        header: {
+          colorBgHeader: '#ffffff',
+          colorTextMenu: '#5b6275',
+          colorTextMenuSecondary: '#5b6275',
+          colorTextMenuActive: '#1677ff',
+          colorTextMenuSelected: '#1677ff',
+          colorBgMenuItemHover: '#f5f9ff',
+          colorBgMenuItemSelected: '#eaf2ff',
+        },
+      }}
       contentStyle={{
         margin: 0,
         padding: isMobile ? 12 : 16,
         minHeight: 0,
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        overflow: 'auto',
       }}
       menuItemRender={(item, dom) => (
-        <a
+        <span
           onClick={() => {
             if (item.path) {
               history.push(item.path);
@@ -77,10 +113,10 @@ const BasicLayout = () => {
           }}
         >
           {dom}
-        </a>
+        </span>
       )}
     >
-      <div style={{ minHeight: 0, overflow: 'visible' }}>
+      <div className="saas-layout-content">
         <Outlet />
       </div>
     </ProLayout>

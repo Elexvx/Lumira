@@ -1,4 +1,5 @@
-import { Card, Empty, Pagination, Spin, Table } from 'antd';
+import { ProCard, ProTable } from '@ant-design/pro-components';
+import { Empty, Pagination, Spin } from 'antd';
 import type { ColumnsType, TablePaginationConfig, TableProps } from 'antd/es/table';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -145,21 +146,9 @@ export const DataTable = <T extends object>({
     [effectivePagination, pageState.current, pageState.pageSize, total],
   );
 
-  const handleTableChange: TableProps<T>['onChange'] = (nextPagination) => {
-    setPageState({
-      current: nextPagination.current,
-      pageSize: nextPagination.pageSize,
-    });
-  };
-
   return (
-    <Card
-      bordered={false}
-      bodyStyle={{
-        padding: 16,
-        height: '100%',
-        minHeight: 0,
-      }}
+    <ProCard
+      ghost
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -190,20 +179,28 @@ export const DataTable = <T extends object>({
               ))}
             </div>
           ) : (
-            <Table<T>
-              {...tableProps}
+            <ProTable<T>
+              {...(tableProps as Record<string, unknown>)}
               rowKey={rowKey}
               size={size}
-              columns={columns}
+              columns={columns as never}
               dataSource={records}
-              loading={mergedLoading}
+              loading={false}
+              search={false}
+              options={false}
+              toolBarRender={false}
+              cardBordered={false}
+              tableAlertRender={false}
+              tableAlertOptionRender={false}
               pagination={false}
+              locale={{
+                emptyText: emptyText || '暂无数据',
+              }}
               scroll={{
                 x: 'max-content',
                 y: middleScroll ? tableScrollY : scroll?.y,
                 ...scroll,
               }}
-              onChange={handleTableChange}
             />
           )}
         </div>
@@ -224,6 +221,6 @@ export const DataTable = <T extends object>({
 
         {footer ? <div style={{ marginTop: 16 }}>{footer}</div> : null}
       </div>
-    </Card>
+    </ProCard>
   );
 };

@@ -1,4 +1,4 @@
-import { Card, Space, Typography } from 'antd';
+import { PageContainer } from '@ant-design/pro-components';
 import type { CSSProperties, PropsWithChildren, ReactNode } from 'react';
 
 export interface ManagementPageContainerProps extends PropsWithChildren {
@@ -22,38 +22,25 @@ export const ManagementPageContainer = ({
   children,
 }: ManagementPageContainerProps) => {
   return (
-    <div
+    <PageContainer
       className={className}
+      ghost
+      title={title}
+      subTitle={description}
+      extra={extra}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
         height: '100%',
-        gap: 16,
+        minHeight: 0,
         ...style,
       }}
+      content={null}
     >
-      <Card bodyStyle={{ padding: 20 }} bordered={false}>
-        <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
-          <div style={{ minWidth: 0 }}>
-            <Typography.Title level={4} style={{ marginBottom: 8 }}>
-              {title}
-            </Typography.Title>
-            {description ? (
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                {description}
-              </Typography.Paragraph>
-            ) : null}
-          </div>
-          {extra ? <div style={{ flexShrink: 0 }}>{extra}</div> : null}
-        </Space>
-      </Card>
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
-          flex: 1,
+          height: '100%',
           gap: 16,
           ...bodyStyle,
         }}
@@ -61,6 +48,6 @@ export const ManagementPageContainer = ({
         {children}
       </div>
       {footer ? <div>{footer}</div> : null}
-    </div>
+    </PageContainer>
   );
 };
