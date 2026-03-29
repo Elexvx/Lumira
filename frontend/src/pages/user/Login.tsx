@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { history, useLocation } from 'umi';
-import { Alert, Button, Form, Input, Tabs, Typography } from 'antd';
+import { Button, Form, Input, Tabs, Typography, message } from 'antd';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { ApiRequestError } from '@/services/common/request';
@@ -17,21 +17,14 @@ interface LoginFormValues {
   password: string;
 }
 
-interface LoginErrorState {
-  message: string;
-  requestId?: string;
-}
-
 const Login = () => {
   const [loginMode, setLoginMode] = useState<LoginMode>('username');
   const [submitting, setSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState<LoginErrorState | null>(null);
   const { setInitialState } = useInitialStateModel();
   const location = useLocation();
 
   const handleSubmit = async (values: LoginFormValues) => {
     setSubmitting(true);
-    setLoginError(null);
     try {
       const loginResponse = await authService.login({
         username: loginMode === 'username' ? values.username : undefined,
@@ -58,58 +51,68 @@ const Login = () => {
       history.replace(redirect);
     } catch (error) {
       if (error instanceof ApiRequestError) {
-        setLoginError({
-          message: error.userMessage || error.message || '登录失败，请稍后重试',
-          requestId: error.requestId,
-        });
+        message.error(error.userMessage || error.message || '登录失败，请稍后重试');
         return;
       }
 
       if (error instanceof Error) {
-        setLoginError({
-          message: error.message || '登录失败，请稍后重试',
-        });
+        message.error(error.message || '登录失败，请稍后重试');
         return;
       }
 
-      setLoginError({
-        message: '登录失败，请稍后重试',
-      });
+      message.error('登录失败，请稍后重试');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <>
-      <Typography.Title level={3}>SaaS 平台登录</Typography.Title>
-      <Typography.Paragraph type="secondary">登录后可进入租户上下文并进行租户切换。</Typography.Paragraph>
-      {loginError ? (
-        <div style={{ marginBottom: 16 }}>
-          <Alert type="error" message={loginError.message} showIcon />
-          {loginError.requestId ? (
-            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-              请求编号：{loginError.requestId}
-            </Typography.Text>
-          ) : null}
-        </div>
-      ) : null}
+    <div
+      style={{
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+      }}
+    >
+      <Typography.Title
+        level={2}
+        style={{
+          textAlign: 'center',
+          margin: '0 0 22px',
+          fontWeight: 700,
+          color: '#222',
+          fontSize: 28,
+          lineHeight: 1.2,
+        }}
+      >
+        宏翔商道-综合管理系统
+      </Typography.Title>
       <Tabs
         activeKey={loginMode}
         onChange={(next) => setLoginMode(next as LoginMode)}
+        size="small"
+        tabBarGutter={28}
+        style={{ marginBottom: 8 }}
         items={[
-          { key: 'username', label: '用户名登录' },
+          { key: 'username', label: '账号登录' },
           { key: 'mobile', label: '手机号登录' },
         ]}
       />
-      <Form<LoginFormValues> layout="vertical" onFinish={handleSubmit}>
+      <Form<LoginFormValues>
+        layout="vertical"
+        onFinish={handleSubmit}
+        requiredMark={false}
+        colon
+        style={{ width: '100%' }}
+      >
         {loginMode === 'username' ? (
           <Form.Item
             label="用户名"
             name="username"
             rules={[{ required: true, message: '请输入用户名' }]}
           >
-            <Input placeholder="请输入用户名" autoComplete="username" />
+            <Input size="large" placeholder="" autoComplete="username" />
           </Form.Item>
         ) : (
           <Form.Item
@@ -120,7 +123,7 @@ const Login = () => {
               { pattern: /^1\d{10}$/, message: '请输入有效的手机号' },
             ]}
           >
-            <Input placeholder="请输入手机号" autoComplete="tel" maxLength={11} />
+            <Input size="large" placeholder="" autoComplete="tel" maxLength={11} />
           </Form.Item>
         )}
         <Form.Item
@@ -131,13 +134,20 @@ const Login = () => {
             { min: 6, message: '密码长度不能少于 6 位' },
           ]}
         >
-          <Input.Password placeholder="请输入密码" autoComplete="current-password" />
+          <Input.Password size="large" placeholder="" autoComplete="current-password" />
         </Form.Item>
-        <Button type="primary" block htmlType="submit" loading={submitting}>
+        <Button
+          type="primary"
+          block
+          size="large"
+          htmlType="submit"
+          loading={submitting}
+          style={{ height: 32, fontWeight: 600, marginTop: 4 }}
+        >
           登录
         </Button>
       </Form>
-    </>
+    </div>
   );
 };
 

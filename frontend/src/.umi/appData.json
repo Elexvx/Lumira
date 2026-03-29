@@ -37,7 +37,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -50,7 +50,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 8
       },
       "enableBy": "register"
     },
@@ -63,7 +63,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -94,10 +94,10 @@
       "time": {
         "hooks": {
           "onStart": [
-            2
+            1
           ]
         },
-        "register": 1
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -141,7 +141,7 @@
       "time": {
         "hooks": {
           "modifyAppData": [
-            9
+            6
           ]
         },
         "register": 11
@@ -171,13 +171,13 @@
       "time": {
         "hooks": {
           "onCheckConfig": [
-            0
+            1
           ],
           "onCheck": [
             1
           ]
         },
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -194,7 +194,7 @@
             0
           ]
         },
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -224,7 +224,7 @@
             0
           ]
         },
-        "register": 4
+        "register": 5
       },
       "enableBy": "register"
     },
@@ -1093,7 +1093,7 @@
             0
           ]
         },
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1106,7 +1106,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1119,7 +1119,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 45
+        "register": 42
       },
       "enableBy": "register"
     },
@@ -1132,7 +1132,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 18
+        "register": 19
       },
       "enableBy": "config"
     },
@@ -1145,7 +1145,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 13
+        "register": 12
       },
       "enableBy": "config"
     },
@@ -1162,7 +1162,7 @@
             0
           ]
         },
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1188,7 +1188,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1213,7 +1213,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1238,7 +1238,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1251,7 +1251,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1265,7 +1265,7 @@
       "time": {
         "hooks": {
           "modifyConfig": [
-            0
+            1
           ]
         },
         "register": 1
@@ -1371,7 +1371,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/ssr/ssr": {
@@ -1409,7 +1409,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -1422,7 +1422,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1460,7 +1460,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 11
+        "register": 12
       },
       "enableBy": "config"
     },
@@ -1524,7 +1524,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/swc/swc": {
@@ -1540,7 +1540,7 @@
             0
           ]
         },
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1565,7 +1565,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1578,7 +1578,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/hmrGuardian/hmrGuardian": {
@@ -1602,7 +1602,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 15
+        "register": 14
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/features/forget/forget": {
@@ -1653,7 +1653,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 23
+        "register": 19
       },
       "enableBy": "register"
     },
@@ -1666,7 +1666,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 23
+        "register": 22
       }
     },
     "./node_modules/.pnpm/@umijs+preset-umi@4.6.36_@types+node@24.12.0_@types+react@18.3.28_lightningcss@1.22.1_r_0df598350265c5469d1b5a0661e49e33/node_modules/@umijs/preset-umi/dist/commands/help": {
@@ -1925,7 +1925,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1938,7 +1938,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -1951,7 +1951,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1966,7 +1966,7 @@
       },
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       }
     },
     "./node_modules/.pnpm/@umijs+plugins@4.6.36_@babel+core@7.29.0_@types+react-dom@18.3.7_@types+react@18.3.28___3453aec3d2f7a38972126ffecf5938fd/node_modules/@umijs/plugins/dist/antd": {
@@ -2000,7 +2000,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 3
       },
       "enableBy": "config"
     },
@@ -2013,7 +2013,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2028,7 +2028,7 @@
       },
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 2
       },
       "enableBy": "config"
     },
@@ -2041,7 +2041,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2080,7 +2080,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 0
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2093,7 +2093,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -2199,7 +2199,7 @@
             0
           ]
         },
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -2216,7 +2216,7 @@
             0
           ]
         },
-        "register": 0
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -2242,7 +2242,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     }
@@ -3345,7 +3345,7 @@
       "file": "@/layouts/UserLayout/index.tsx",
       "id": "1",
       "absPath": "/user",
-      "__content": "import { Outlet } from 'umi';\n\nconst UserLayout = () => {\n  return (\n    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f0f2f5' }}>\n      <div style={{ width: 420, padding: 32, background: '#fff', borderRadius: 8 }}>\n        <Outlet />\n      </div>\n    </div>\n  );\n};\n\nexport default UserLayout;\n",
+      "__content": "import { Outlet } from 'umi';\n\nconst UserLayout = () => {\n  return (\n    <div\n      style={{\n        minHeight: '100vh',\n        display: 'flex',\n        alignItems: 'center',\n        justifyContent: 'center',\n        background: '#ffffff',\n        padding: '24px 16px',\n        boxSizing: 'border-box',\n      }}\n    >\n      <div style={{ width: '100%', maxWidth: 320 }}>\n        <Outlet />\n      </div>\n    </div>\n  );\n};\n\nexport default UserLayout;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/layouts/UserLayout/index.tsx"
     },
@@ -3355,7 +3355,7 @@
       "parentId": "1",
       "id": "2",
       "absPath": "/user/login",
-      "__content": "import { useState } from 'react';\nimport { history, useLocation } from 'umi';\nimport { Alert, Button, Form, Input, Tabs, Typography } from 'antd';\nimport { authService } from '@/services/auth';\nimport { pluginService } from '@/services/plugin';\nimport { ApiRequestError } from '@/services/common/request';\nimport { initializeAfterLogin } from '@/auth/session';\nimport { tenantContext } from '@/tenant/context';\nimport type { AppInitialState } from '@/app';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\n\ntype LoginMode = 'username' | 'mobile';\n\ninterface LoginFormValues {\n  username?: string;\n  mobile?: string;\n  password: string;\n}\n\ninterface LoginErrorState {\n  message: string;\n  requestId?: string;\n}\n\nconst Login = () => {\n  const [loginMode, setLoginMode] = useState<LoginMode>('username');\n  const [submitting, setSubmitting] = useState(false);\n  const [loginError, setLoginError] = useState<LoginErrorState | null>(null);\n  const { setInitialState } = useInitialStateModel();\n  const location = useLocation();\n\n  const handleSubmit = async (values: LoginFormValues) => {\n    setSubmitting(true);\n    setLoginError(null);\n    try {\n      const loginResponse = await authService.login({\n        username: loginMode === 'username' ? values.username : undefined,\n        mobile: loginMode === 'mobile' ? values.mobile : undefined,\n        password: values.password,\n      });\n\n      const sessionResult = await initializeAfterLogin(loginResponse);\n      const [menuTree, availablePlugins] = await Promise.all([\n        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n      ]);\n      setInitialState((prev: AppInitialState | undefined) => ({\n        ...prev,\n        currentUser: sessionResult.currentUser,\n        currentTenant: tenantContext.getCurrentTenant(),\n        myTenants: tenantContext.getMyTenants(),\n        menuTree,\n        availablePlugins,\n      }));\n\n      const searchParams = new URLSearchParams(location.search);\n      const redirect = searchParams.get('redirect') || '/dashboard/home';\n      history.replace(redirect);\n    } catch (error) {\n      if (error instanceof ApiRequestError) {\n        setLoginError({\n          message: error.userMessage || error.message || '登录失败，请稍后重试',\n          requestId: error.requestId,\n        });\n        return;\n      }\n\n      if (error instanceof Error) {\n        setLoginError({\n          message: error.message || '登录失败，请稍后重试',\n        });\n        return;\n      }\n\n      setLoginError({\n        message: '登录失败，请稍后重试',\n      });\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  return (\n    <>\n      <Typography.Title level={3}>SaaS 平台登录</Typography.Title>\n      <Typography.Paragraph type=\"secondary\">登录后可进入租户上下文并进行租户切换。</Typography.Paragraph>\n      {loginError ? (\n        <div style={{ marginBottom: 16 }}>\n          <Alert type=\"error\" message={loginError.message} showIcon />\n          {loginError.requestId ? (\n            <Typography.Text type=\"secondary\" style={{ display: 'block', marginTop: 8 }}>\n              请求编号：{loginError.requestId}\n            </Typography.Text>\n          ) : null}\n        </div>\n      ) : null}\n      <Tabs\n        activeKey={loginMode}\n        onChange={(next) => setLoginMode(next as LoginMode)}\n        items={[\n          { key: 'username', label: '用户名登录' },\n          { key: 'mobile', label: '手机号登录' },\n        ]}\n      />\n      <Form<LoginFormValues> layout=\"vertical\" onFinish={handleSubmit}>\n        {loginMode === 'username' ? (\n          <Form.Item\n            label=\"用户名\"\n            name=\"username\"\n            rules={[{ required: true, message: '请输入用户名' }]}\n          >\n            <Input placeholder=\"请输入用户名\" autoComplete=\"username\" />\n          </Form.Item>\n        ) : (\n          <Form.Item\n            label=\"手机号\"\n            name=\"mobile\"\n            rules={[\n              { required: true, message: '请输入手机号' },\n              { pattern: /^1\\d{10}$/, message: '请输入有效的手机号' },\n            ]}\n          >\n            <Input placeholder=\"请输入手机号\" autoComplete=\"tel\" maxLength={11} />\n          </Form.Item>\n        )}\n        <Form.Item\n          label=\"密码\"\n          name=\"password\"\n          rules={[\n            { required: true, message: '请输入密码' },\n            { min: 6, message: '密码长度不能少于 6 位' },\n          ]}\n        >\n          <Input.Password placeholder=\"请输入密码\" autoComplete=\"current-password\" />\n        </Form.Item>\n        <Button type=\"primary\" block htmlType=\"submit\" loading={submitting}>\n          登录\n        </Button>\n      </Form>\n    </>\n  );\n};\n\nexport default Login;\n",
+      "__content": "import { useState } from 'react';\nimport { history, useLocation } from 'umi';\nimport { Button, Form, Input, Tabs, Typography, message } from 'antd';\nimport { authService } from '@/services/auth';\nimport { pluginService } from '@/services/plugin';\nimport { ApiRequestError } from '@/services/common/request';\nimport { initializeAfterLogin } from '@/auth/session';\nimport { tenantContext } from '@/tenant/context';\nimport type { AppInitialState } from '@/app';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\n\ntype LoginMode = 'username' | 'mobile';\n\ninterface LoginFormValues {\n  username?: string;\n  mobile?: string;\n  password: string;\n}\n\nconst Login = () => {\n  const [loginMode, setLoginMode] = useState<LoginMode>('username');\n  const [submitting, setSubmitting] = useState(false);\n  const { setInitialState } = useInitialStateModel();\n  const location = useLocation();\n\n  const handleSubmit = async (values: LoginFormValues) => {\n    setSubmitting(true);\n    try {\n      const loginResponse = await authService.login({\n        username: loginMode === 'username' ? values.username : undefined,\n        mobile: loginMode === 'mobile' ? values.mobile : undefined,\n        password: values.password,\n      });\n\n      const sessionResult = await initializeAfterLogin(loginResponse);\n      const [menuTree, availablePlugins] = await Promise.all([\n        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n      ]);\n      setInitialState((prev: AppInitialState | undefined) => ({\n        ...prev,\n        currentUser: sessionResult.currentUser,\n        currentTenant: tenantContext.getCurrentTenant(),\n        myTenants: tenantContext.getMyTenants(),\n        menuTree,\n        availablePlugins,\n      }));\n\n      const searchParams = new URLSearchParams(location.search);\n      const redirect = searchParams.get('redirect') || '/dashboard/home';\n      history.replace(redirect);\n    } catch (error) {\n      if (error instanceof ApiRequestError) {\n        message.error(error.userMessage || error.message || '登录失败，请稍后重试');\n        return;\n      }\n\n      if (error instanceof Error) {\n        message.error(error.message || '登录失败，请稍后重试');\n        return;\n      }\n\n      message.error('登录失败，请稍后重试');\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  return (\n    <div\n      style={{\n        width: '100%',\n        display: 'flex',\n        flexDirection: 'column',\n        alignItems: 'stretch',\n      }}\n    >\n      <Typography.Title\n        level={2}\n        style={{\n          textAlign: 'center',\n          margin: '0 0 22px',\n          fontWeight: 700,\n          color: '#222',\n          fontSize: 28,\n          lineHeight: 1.2,\n        }}\n      >\n        宏翔商道-综合管理系统\n      </Typography.Title>\n      <Tabs\n        activeKey={loginMode}\n        onChange={(next) => setLoginMode(next as LoginMode)}\n        size=\"small\"\n        tabBarGutter={28}\n        style={{ marginBottom: 8 }}\n        items={[\n          { key: 'username', label: '账号登录' },\n          { key: 'mobile', label: '手机号登录' },\n        ]}\n      />\n      <Form<LoginFormValues>\n        layout=\"vertical\"\n        onFinish={handleSubmit}\n        requiredMark={false}\n        colon\n        style={{ width: '100%' }}\n      >\n        {loginMode === 'username' ? (\n          <Form.Item\n            label=\"用户名\"\n            name=\"username\"\n            rules={[{ required: true, message: '请输入用户名' }]}\n          >\n            <Input size=\"large\" placeholder=\"\" autoComplete=\"username\" />\n          </Form.Item>\n        ) : (\n          <Form.Item\n            label=\"手机号\"\n            name=\"mobile\"\n            rules={[\n              { required: true, message: '请输入手机号' },\n              { pattern: /^1\\d{10}$/, message: '请输入有效的手机号' },\n            ]}\n          >\n            <Input size=\"large\" placeholder=\"\" autoComplete=\"tel\" maxLength={11} />\n          </Form.Item>\n        )}\n        <Form.Item\n          label=\"密码\"\n          name=\"password\"\n          rules={[\n            { required: true, message: '请输入密码' },\n            { min: 6, message: '密码长度不能少于 6 位' },\n          ]}\n        >\n          <Input.Password size=\"large\" placeholder=\"\" autoComplete=\"current-password\" />\n        </Form.Item>\n        <Button\n          type=\"primary\"\n          block\n          size=\"large\"\n          htmlType=\"submit\"\n          loading={submitting}\n          style={{ height: 32, fontWeight: 600, marginTop: 4 }}\n        >\n          登录\n        </Button>\n      </Form>\n    </div>\n  );\n};\n\nexport default Login;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user/Login.tsx"
     },
@@ -3364,7 +3364,7 @@
       "file": "@/layouts/BasicLayout/index.tsx",
       "id": "3",
       "absPath": "/",
-      "__content": "import { ProLayout } from '@ant-design/pro-components';\nimport { history, Outlet } from 'umi';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { TopActions } from '../components/TopActions';\nimport { useResponsive } from '@/hooks/useResponsive';\n\nconst BasicLayout = () => {\n  const { isMobile } = useResponsive();\n  const { initialState } = useInitialStateModel();\n  const routes = initialState?.menuTree ?? [];\n\n  return (\n    <ProLayout\n      title=\"SaaS Foundation\"\n      layout=\"mix\"\n      splitMenus\n      fixSiderbar\n      collapsedButtonRender={isMobile ? false : undefined}\n      actionsRender={() => [<TopActions key=\"top-actions\" />]}\n      route={{\n        path: '/',\n        routes,\n      }}\n      menuItemRender={(item, dom) => (\n        <a\n          onClick={() => {\n            if (item.path) {\n              history.push(item.path);\n            }\n          }}\n        >\n          {dom}\n        </a>\n      )}\n    >\n      <Outlet />\n    </ProLayout>\n  );\n};\n\nexport default BasicLayout;\n",
+      "__content": "import { ProLayout } from '@ant-design/pro-components';\nimport {\n  ApartmentOutlined,\n  AppstoreOutlined,\n  AuditOutlined,\n  DatabaseOutlined,\n  SettingOutlined,\n  TeamOutlined,\n  UserOutlined,\n} from '@ant-design/icons';\nimport { useMemo, type ReactNode } from 'react';\nimport { history, Outlet, useLocation } from 'umi';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport type { MenuNode } from '@/types/api';\nimport { TopActions } from '../components/TopActions';\nimport { useResponsive } from '@/hooks/useResponsive';\n\ntype LayoutMenuNode = Omit<MenuNode, 'icon' | 'children'> & {\n  icon?: ReactNode;\n  children?: LayoutMenuNode[];\n};\n\nconst iconMap: Record<string, ReactNode> = {\n  ApartmentOutlined: <ApartmentOutlined />,\n  AppstoreOutlined: <AppstoreOutlined />,\n  AuditOutlined: <AuditOutlined />,\n  DatabaseOutlined: <DatabaseOutlined />,\n  SettingOutlined: <SettingOutlined />,\n  TeamOutlined: <TeamOutlined />,\n  UserOutlined: <UserOutlined />,\n};\n\nconst mapMenuNodes = (nodes: MenuNode[]): LayoutMenuNode[] =>\n  nodes.map((node) => ({\n    ...node,\n    icon: node.icon ? iconMap[node.icon] || <AppstoreOutlined /> : undefined,\n    children: node.children?.length ? mapMenuNodes(node.children) : undefined,\n  }));\n\nconst BasicLayout = () => {\n  const { isMobile } = useResponsive();\n  const { initialState } = useInitialStateModel();\n  const location = useLocation();\n  const routes = useMemo(() => mapMenuNodes(initialState?.menuTree ?? []), [initialState?.menuTree]);\n\n  return (\n    <ProLayout\n      title=\"宏翔商道\"\n      logo={<AppstoreOutlined style={{ color: '#fff', fontSize: 18 }} />}\n      layout={isMobile ? 'top' : 'mix'}\n      navTheme=\"realDark\"\n      splitMenus={!isMobile}\n      fixedHeader={!isMobile}\n      fixSiderbar={!isMobile}\n      contentWidth=\"Fluid\"\n      collapsed={isMobile ? true : undefined}\n      collapsedButtonRender={isMobile ? false : undefined}\n      rightContentRender={() => <TopActions />}\n      location={location}\n      route={{\n        path: '/',\n        routes,\n      }}\n      contentStyle={{\n        margin: 0,\n        padding: isMobile ? 12 : 16,\n        minHeight: 0,\n        overflowY: 'auto',\n        overflowX: 'hidden',\n      }}\n      menuItemRender={(item, dom) => (\n        <a\n          onClick={() => {\n            if (item.path) {\n              history.push(item.path);\n            }\n          }}\n        >\n          {dom}\n        </a>\n      )}\n    >\n      <div style={{ minHeight: 0, overflow: 'visible' }}>\n        <Outlet />\n      </div>\n    </ProLayout>\n  );\n};\n\nexport default BasicLayout;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/layouts/BasicLayout/index.tsx"
     },
@@ -3381,7 +3381,7 @@
       "parentId": "3",
       "id": "5",
       "absPath": "/dashboard/home",
-      "__content": "import { Card, Descriptions, Typography } from 'antd';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\n\nexport default () => {\n  const { initialState } = useInitialStateModel();\n  return (\n    <Card>\n      <Typography.Title level={4}>首页占位</Typography.Title>\n      <Typography.Paragraph>当前阶段已打通认证与租户切换主链路。</Typography.Paragraph>\n      <Descriptions column={1} size=\"small\">\n        <Descriptions.Item label=\"当前用户\">{initialState?.currentUser?.username || '-'}</Descriptions.Item>\n        <Descriptions.Item label=\"当前租户\">{initialState?.currentTenant?.tenantName || '未选择'}</Descriptions.Item>\n      </Descriptions>\n    </Card>\n  );\n};\n",
+      "__content": "import { useMemo } from 'react';\nimport { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag, Timeline, Typography } from 'antd';\nimport { AppstoreOutlined, AuditOutlined, SettingOutlined, TeamOutlined } from '@ant-design/icons';\nimport { history, useRequest } from 'umi';\nimport { ManagementPageContainer } from '@/components/ManagementPageContainer';\nimport { EmptyState } from '@/components/EmptyState';\nimport { dashboardService } from '@/services/dashboard';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { useResponsive } from '@/hooks/useResponsive';\nimport type { DashboardSummary } from '@/types/api';\n\nconst quickEntries = [\n  { title: '系统管理', path: '/system/management', description: '用户、角色、菜单、字典、配置', icon: <SettingOutlined /> },\n  { title: '租户中心', path: '/tenant/overview', description: '当前租户与可访问租户', icon: <TeamOutlined /> },\n  { title: '审计中心', path: '/audit/overview', description: '登录和操作日志', icon: <AuditOutlined /> },\n  { title: '插件管理', path: '/system/plugins', description: '插件安装、启用、运行态', icon: <AppstoreOutlined /> },\n];\n\nexport default () => {\n  const { initialState } = useInitialStateModel();\n  const { isMobile } = useResponsive();\n  const summaryQuery = useRequest(async () => ({ data: await dashboardService.summary({ autoRedirectOnUnauthorized: false }) }) as {\n    data: DashboardSummary;\n  }, {\n    refreshDeps: [initialState?.currentTenant?.tenantId],\n  });\n  const summary = summaryQuery.data;\n\n  const userInfo = useMemo(\n    () => summary?.currentUser || initialState?.currentUser,\n    [initialState?.currentUser, summary?.currentUser],\n  );\n\n  const tenantInfo = useMemo(\n    () => summary?.currentTenant || initialState?.currentTenant || null,\n    [initialState?.currentTenant, summary?.currentTenant],\n  );\n\n  return (\n    <ManagementPageContainer\n      title=\"控制台首页\"\n      description=\"当前阶段聚焦平台可用性、租户上下文、插件能力和基础管理闭环。\"\n    >\n      <Row gutter={[16, 16]}>\n        <Col xs={24} md={12} xl={6}>\n          <Card>\n            <Statistic title=\"当前用户\" value={userInfo?.username || '未登录'} />\n            <Typography.Paragraph type=\"secondary\" style={{ marginTop: 12, marginBottom: 0 }}>\n              {userInfo?.realName || userInfo?.nickname || '账号信息已同步'}\n            </Typography.Paragraph>\n          </Card>\n        </Col>\n        <Col xs={24} md={12} xl={6}>\n          <Card>\n            <Statistic title=\"当前租户\" value={tenantInfo?.tenantShortName || tenantInfo?.tenantName || '未选择'} />\n            <Typography.Paragraph type=\"secondary\" style={{ marginTop: 12, marginBottom: 0 }}>\n              {tenantInfo?.tenantCode || '租户上下文会随切换同步刷新'}\n            </Typography.Paragraph>\n          </Card>\n        </Col>\n        <Col xs={24} md={12} xl={6}>\n          <Card>\n            <Statistic title=\"已启用插件\" value={summary?.tenantPlugins?.length ?? initialState?.availablePlugins?.length ?? 0} />\n            <Typography.Paragraph type=\"secondary\" style={{ marginTop: 12, marginBottom: 0 }}>\n              插件运行时、菜单和权限已纳入统一加载链路\n            </Typography.Paragraph>\n          </Card>\n        </Col>\n        <Col xs={24} md={12} xl={6}>\n          <Card>\n            <Statistic title=\"菜单 / 权限\" value={summary ? `${summary.menuCount} / ${summary.permissionCount}` : '--'} />\n            <Typography.Paragraph type=\"secondary\" style={{ marginTop: 12, marginBottom: 0 }}>\n              页面访问和按钮控制都来自同一份权限快照\n            </Typography.Paragraph>\n          </Card>\n        </Col>\n      </Row>\n\n      <Row gutter={[16, 16]} style={{ flex: 1, minHeight: 0 }}>\n        <Col xs={24} xl={16}>\n          <Card title=\"快捷入口\" bodyStyle={{ minHeight: isMobile ? undefined : 260 }}>\n            <Row gutter={[16, 16]}>\n              {quickEntries.map((item) => (\n                <Col key={item.path} xs={24} sm={12}>\n                  <Card hoverable onClick={() => history.push(item.path)} style={{ height: '100%' }}>\n                    <Space align=\"start\">\n                      <div\n                        style={{\n                          width: 40,\n                          height: 40,\n                          borderRadius: 12,\n                          display: 'grid',\n                          placeItems: 'center',\n                          background: '#eef4ff',\n                          color: '#1d4ed8',\n                          flexShrink: 0,\n                        }}\n                      >\n                        {item.icon}\n                      </div>\n                      <div>\n                        <Typography.Title level={5} style={{ marginBottom: 4 }}>\n                          {item.title}\n                        </Typography.Title>\n                        <Typography.Paragraph type=\"secondary\" style={{ marginBottom: 0 }}>\n                          {item.description}\n                        </Typography.Paragraph>\n                      </div>\n                    </Space>\n                  </Card>\n                </Col>\n              ))}\n            </Row>\n          </Card>\n        </Col>\n        <Col xs={24} xl={8}>\n          <Card title=\"待处理与公告\">\n            <Timeline\n              items={[\n                { children: '当前已接入登录、租户切换、权限快照和插件运行时。' },\n                { children: '系统管理页已补齐最小闭环，后续可继续扩展审批、工单和消息中心。' },\n                { children: '所有页面已统一到查询区、操作区、表格区和详情区的规范骨架。' },\n              ]}\n            />\n          </Card>\n        </Col>\n      </Row>\n\n      <Row gutter={[16, 16]}>\n        <Col xs={24} lg={12}>\n          <Card title=\"最近登录摘要\" loading={summaryQuery.loading}>\n            {summary?.recentLoginLogs?.length ? (\n              <Timeline\n                items={summary.recentLoginLogs.map((item) => ({\n                  children: (\n                    <Space direction=\"vertical\" size={0}>\n                      <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>\n                      <Typography.Text type=\"secondary\">\n                        {item.logResult || item.loginResult || '-'} · {item.createdAt}\n                      </Typography.Text>\n                    </Space>\n                  ),\n                  color: item.logResult === 'SUCCESS' || item.loginResult === 'SUCCESS' ? 'green' : 'red',\n                }))}\n              />\n            ) : (\n              <EmptyState description=\"暂无最近登录日志\" />\n            )}\n          </Card>\n        </Col>\n        <Col xs={24} lg={12}>\n          <Card title=\"最近操作摘要\">\n            {summary?.recentOperationLogs?.length ? (\n              <Timeline\n                items={summary.recentOperationLogs.map((item) => ({\n                  children: (\n                    <Space direction=\"vertical\" size={0}>\n                      <Typography.Text strong>{item.moduleName || item.operationType || '系统操作'}</Typography.Text>\n                      <Typography.Text type=\"secondary\">{item.detailMessage || item.actionName || '-'}</Typography.Text>\n                    </Space>\n                  ),\n                  color: 'blue',\n                }))}\n              />\n            ) : (\n              <EmptyState description=\"暂无最近操作日志\" />\n            )}\n          </Card>\n        </Col>\n      </Row>\n\n      <Card title=\"系统信息\" extra={<Button onClick={() => summaryQuery.refresh()}>刷新</Button>}>\n        <Descriptions column={isMobile ? 1 : 3} size=\"small\">\n          <Descriptions.Item label=\"请求状态\">{summaryQuery.error ? '加载失败' : '正常'}</Descriptions.Item>\n          <Descriptions.Item label=\"当前租户\">{tenantInfo?.tenantName || '未选择'}</Descriptions.Item>\n          <Descriptions.Item label=\"权限数量\">{summary?.permissionCount ?? userInfo?.permissions?.length ?? 0}</Descriptions.Item>\n        </Descriptions>\n      </Card>\n    </ManagementPageContainer>\n  );\n};\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard/Home.tsx"
     },
@@ -3391,7 +3391,7 @@
       "parentId": "3",
       "id": "6",
       "absPath": "/system/plugins",
-      "__content": "import { useEffect, useMemo, useState } from 'react';\nimport {\n  Button,\n  Card,\n  Descriptions,\n  Drawer,\n  Empty,\n  Form,\n  Input,\n  Modal,\n  Select,\n  Space,\n  Table,\n  Tag,\n  Typography,\n  Upload,\n  message,\n} from 'antd';\nimport type { ColumnsType } from 'antd/es/table';\nimport { UploadOutlined } from '@ant-design/icons';\nimport { useRequest } from 'umi';\nimport { PermissionButton } from '@/components/PermissionButton';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { pluginService } from '@/services/plugin';\nimport type { PluginDefinition, PluginRuntimeLog, PluginVersion } from '@/types/api';\n\nconst { Paragraph, Text } = Typography;\n\nconst PluginsPage = () => {\n  const { initialState, setInitialState } = useInitialStateModel();\n  const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition>();\n  const [selectedVersion, setSelectedVersion] = useState<string>();\n  const [uploadFile, setUploadFile] = useState<File>();\n  const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);\n  const [logDrawerOpen, setLogDrawerOpen] = useState(false);\n  const [uploadVisible, setUploadVisible] = useState(false);\n\n  const definitionQuery = useRequest<PluginDefinition[]>(() => pluginService.definitions(), {\n    refreshDeps: [initialState?.currentTenant?.tenantId],\n  });\n\n  const versionQuery = useRequest<PluginVersion[]>(\n    () => (selectedPlugin ? pluginService.versions(selectedPlugin.pluginCode) : Promise.resolve([] as PluginVersion[])),\n    {\n      manual: false,\n      refreshDeps: [selectedPlugin?.pluginCode],\n    },\n  );\n\n  const logQuery = useRequest<PluginRuntimeLog[]>(\n    () => (selectedPlugin ? pluginService.runtimeLogs(selectedPlugin.pluginCode) : Promise.resolve([] as PluginRuntimeLog[])),\n    {\n      manual: false,\n      refreshDeps: [selectedPlugin?.pluginCode, logDrawerOpen],\n    },\n  );\n\n  const definitionList = (definitionQuery.data as PluginDefinition[] | undefined) ?? [];\n  const versionList = (versionQuery.data as PluginVersion[] | undefined) ?? [];\n  const runtimeLogList = (logQuery.data as PluginRuntimeLog[] | undefined) ?? [];\n\n  useEffect(() => {\n    if (!selectedPlugin && definitionList.length > 0) {\n      setSelectedPlugin(definitionList[0]);\n    }\n  }, [definitionList, selectedPlugin]);\n\n  const definitionColumns = useMemo<ColumnsType<PluginDefinition>>(\n    () => [\n      {\n        title: '插件编码',\n        dataIndex: 'pluginCode',\n      },\n      {\n        title: '名称',\n        dataIndex: 'pluginName',\n      },\n      {\n        title: '类型',\n        dataIndex: 'pluginType',\n      },\n      {\n        title: '作者',\n        dataIndex: 'author',\n      },\n      {\n        title: '状态',\n        dataIndex: 'status',\n        render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space>\n            <PermissionButton\n              permission=\"plugin:management:view\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setVersionDrawerOpen(true);\n              }}\n            >\n              版本\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:logs\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setLogDrawerOpen(true);\n              }}\n            >\n              日志\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [],\n  );\n\n  const versionColumns = useMemo<ColumnsType<PluginVersion>>(\n    () => [\n      { title: '版本', dataIndex: 'version' },\n      { title: '安装状态', dataIndex: 'installStatus' },\n      { title: '加载状态', dataIndex: 'loadStatus' },\n      { title: '健康状态', dataIndex: 'healthStatus' },\n      {\n        title: '激活',\n        dataIndex: 'isActive',\n        render: (value: number) => <Tag color={value === 1 ? 'green' : 'default'}>{value === 1 ? '是' : '否'}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space wrap>\n            <PermissionButton\n              permission=\"plugin:management:install\"\n              onClick={() => handleInstall(record.pluginCode, record.version)}\n            >\n              安装\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:upgrade\"\n              onClick={() => handleUpgrade(record.pluginCode, record.version)}\n            >\n              激活\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:enable\"\n              onClick={() => handleEnable(record.pluginCode, record.version)}\n            >\n              启用\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:disable\"\n              onClick={() => handleDisable(record.pluginCode)}\n            >\n              停用\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:rollback\"\n              onClick={() => handleRollback(record.pluginCode, record.version)}\n            >\n              回滚\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [initialState?.currentTenant?.tenantId],\n  );\n\n  const refreshBootstrap = async () => {\n    const [menuTree, availablePlugins] = await Promise.all([\n      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n    ]);\n    setInitialState((prev) =>\n      prev\n        ? {\n            ...prev,\n            menuTree,\n            availablePlugins,\n          }\n        : prev,\n    );\n  };\n\n  const handleInstall = async (pluginCode: string, version: string) => {\n    await pluginService.install({ pluginCode, version });\n    await versionQuery.refresh();\n    await definitionQuery.refresh();\n    message.success('插件安装完成');\n  };\n\n  const handleUpgrade = async (pluginCode: string, version: string) => {\n    await pluginService.upgrade({ pluginCode, version });\n    await versionQuery.refresh();\n    await refreshBootstrap();\n    message.success('插件激活版本已切换');\n  };\n\n  const handleEnable = async (pluginCode: string, version: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    await pluginService.enable({ tenantId, pluginCode, version });\n    await refreshBootstrap();\n    message.success('插件已启用');\n  };\n\n  const handleDisable = async (pluginCode: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    await pluginService.disable({ tenantId, pluginCode });\n    await refreshBootstrap();\n    message.success('插件已停用');\n  };\n\n  const handleRollback = async (pluginCode: string, version: string) => {\n    await pluginService.rollback({ pluginCode, targetVersion: version });\n    await versionQuery.refresh();\n    await refreshBootstrap();\n    message.success('插件已回滚');\n  };\n\n  const handleUpload = async () => {\n    if (!uploadFile) {\n      message.error('请先选择插件包');\n      return;\n    }\n    const result = await pluginService.upload(uploadFile);\n    setSelectedPlugin(\n      definitionList.find((item) => item.pluginCode === result.pluginCode) || {\n        pluginCode: result.pluginCode,\n        pluginName: result.pluginName,\n        pluginType: 'PLUGIN',\n        pluginApiVersion: '1.0.0',\n        status: 'ENABLED',\n        builtinFlag: 0,\n        sortNo: 0,\n      },\n    );\n    setSelectedVersion(result.version);\n    setUploadVisible(false);\n    setUploadFile(undefined);\n    await definitionQuery.refresh();\n    message.success('插件上传并完成校验');\n  };\n\n  return (\n    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 112px)' }}>\n      <Card\n        bodyStyle={{ padding: 16 }}\n        extra={\n          <Space>\n            <Text type=\"secondary\">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Text>\n            <PermissionButton permission=\"plugin:management:upload\" onClick={() => setUploadVisible(true)}>\n              上传插件\n            </PermissionButton>\n          </Space>\n        }\n      >\n        <Form layout=\"inline\">\n          <Form.Item label=\"插件名称\">\n            <Input.Search\n              allowClear\n              placeholder=\"按名称筛选\"\n              onSearch={(value) => {\n                const keyword = value.trim().toLowerCase();\n                const next = definitionList.find((item) => item.pluginName.toLowerCase().includes(keyword));\n                if (next) {\n                  setSelectedPlugin(next);\n                }\n              }}\n            />\n          </Form.Item>\n          <Form.Item label=\"插件编码\">\n            <Select\n              allowClear\n              style={{ width: 240 }}\n              options={definitionList.map((item) => ({\n                label: item.pluginName,\n                value: item.pluginCode,\n              }))}\n              value={selectedPlugin?.pluginCode}\n              onChange={(value) => setSelectedPlugin(definitionList.find((item) => item.pluginCode === value))}\n            />\n          </Form.Item>\n        </Form>\n      </Card>\n\n      <Card bodyStyle={{ padding: 0, height: '100%' }}>\n        <div style={{ height: '100%', overflow: 'auto' }}>\n          <Table\n            rowKey=\"pluginCode\"\n            loading={definitionQuery.loading}\n            columns={definitionColumns}\n            dataSource={definitionList}\n            pagination={false}\n            locale={{ emptyText: <Empty description=\"暂无插件定义\" /> }}\n          />\n        </div>\n      </Card>\n\n      <Drawer\n        open={versionDrawerOpen}\n        title={`版本列表 · ${selectedPlugin?.pluginName || ''}`}\n        width={960}\n        onClose={() => setVersionDrawerOpen(false)}\n      >\n        <Descriptions column={2} bordered size=\"small\">\n          <Descriptions.Item label=\"插件编码\">{selectedPlugin?.pluginCode}</Descriptions.Item>\n          <Descriptions.Item label=\"API 版本\">{selectedPlugin?.pluginApiVersion}</Descriptions.Item>\n          <Descriptions.Item label=\"作者\">{selectedPlugin?.author || '-'}</Descriptions.Item>\n          <Descriptions.Item label=\"状态\">{selectedPlugin?.status || '-'}</Descriptions.Item>\n          <Descriptions.Item label=\"描述\" span={2}>\n            {selectedPlugin?.description || '-'}\n          </Descriptions.Item>\n        </Descriptions>\n        <Table<PluginVersion>\n          style={{ marginTop: 16 }}\n          rowKey=\"version\"\n          loading={versionQuery.loading}\n          columns={versionColumns}\n          dataSource={versionList}\n          pagination={false}\n        />\n        <Card title=\"最近一次校验结果\" style={{ marginTop: 16 }}>\n          <Paragraph style={{ marginBottom: 0 }}>\n            {versionList.find((item) => item.version === selectedVersion)?.validationReportJson || '请选择一个版本查看'}\n          </Paragraph>\n        </Card>\n      </Drawer>\n\n      <Drawer\n        open={logDrawerOpen}\n        title={`运行日志 · ${selectedPlugin?.pluginName || ''}`}\n        width={900}\n        onClose={() => setLogDrawerOpen(false)}\n      >\n        <Table<PluginRuntimeLog>\n          rowKey=\"id\"\n          loading={logQuery.loading}\n          pagination={false}\n          dataSource={runtimeLogList}\n          columns={[\n            { title: '时间', dataIndex: 'createdAt', width: 180 },\n            { title: '操作', dataIndex: 'operationType', width: 120 },\n            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },\n            { title: '结果', dataIndex: 'resultStatus', width: 120 },\n            { title: '详情', dataIndex: 'detailMessage' },\n          ]}\n        />\n      </Drawer>\n\n      <Modal\n        open={uploadVisible}\n        title=\"上传插件包\"\n        onCancel={() => setUploadVisible(false)}\n        onOk={handleUpload}\n        okText=\"开始上传\"\n      >\n        <Upload\n          maxCount={1}\n          beforeUpload={(file) => {\n            setUploadFile(file);\n            return false;\n          }}\n          onRemove={() => {\n            setUploadFile(undefined);\n          }}\n        >\n          <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>\n        </Upload>\n      </Modal>\n    </div>\n  );\n};\n\nexport default PluginsPage;\n",
+      "__content": "import { useEffect, useMemo, useState } from 'react';\nimport { Button, Card, Form, Input, Modal, Select, Space, Tag, Upload, message } from 'antd';\nimport type { ColumnsType } from 'antd/es/table';\nimport { UploadOutlined } from '@ant-design/icons';\nimport { useRequest } from 'umi';\nimport { ManagementPageContainer } from '@/components/ManagementPageContainer';\nimport { QueryPanel } from '@/components/QueryPanel';\nimport { ActionBar } from '@/components/ActionBar';\nimport { DataTable } from '@/components/DataTable';\nimport { DetailDrawer } from '@/components/DetailDrawer';\nimport { PermissionButton } from '@/components/PermissionButton';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { pluginService } from '@/services/plugin';\nimport type { PluginDefinition, PluginRuntimeLog, PluginVersion } from '@/types/api';\n\nconst PluginsPage = () => {\n  const [queryForm] = Form.useForm();\n  const { initialState, setInitialState } = useInitialStateModel();\n  const [query, setQuery] = useState<Record<string, unknown>>({});\n  const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition | null>(null);\n  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);\n  const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);\n  const [logDrawerOpen, setLogDrawerOpen] = useState(false);\n  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);\n  const [uploadVisible, setUploadVisible] = useState(false);\n  const [uploadFile, setUploadFile] = useState<File | null>(null);\n\n  const definitionQuery = useRequest(async () => ({\n    data: await pluginService.definitions({ autoRedirectOnUnauthorized: false }),\n  }) as { data: PluginDefinition[] }, {\n    refreshDeps: [initialState?.currentTenant?.tenantId],\n  });\n\n  const versionQuery = useRequest(\n    async () =>\n      selectedPlugin\n        ? ({ data: await pluginService.versions(selectedPlugin.pluginCode, { autoRedirectOnUnauthorized: false }) } as { data: PluginVersion[] })\n        : ({ data: [] as PluginVersion[] } as { data: PluginVersion[] }),\n    { refreshDeps: [selectedPlugin?.pluginCode] },\n  );\n\n  const logQuery = useRequest(\n    async () =>\n      selectedPlugin\n        ? ({ data: await pluginService.runtimeLogs(selectedPlugin.pluginCode, { autoRedirectOnUnauthorized: false }) } as { data: PluginRuntimeLog[] })\n        : ({ data: [] as PluginRuntimeLog[] } as { data: PluginRuntimeLog[] }),\n    { refreshDeps: [selectedPlugin?.pluginCode, logDrawerOpen] },\n  );\n\n  const availableQuery = useRequest(async () => ({\n    data: await pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n  }) as { data: import('@/types/api').TenantPlugin[] }, {\n    refreshDeps: [initialState?.currentTenant?.tenantId],\n  });\n\n  const definitionList = definitionQuery.data || [];\n  const versionList = versionQuery.data || [];\n  const runtimeLogList = logQuery.data || [];\n  const currentAvailable = availableQuery.data || initialState?.availablePlugins || [];\n\n  useEffect(() => {\n    if (!selectedPlugin && definitionList.length > 0) {\n      setSelectedPlugin(definitionList[0]);\n    }\n  }, [definitionList, selectedPlugin]);\n\n  const filteredDefinitions = useMemo(() => {\n    const keyword = String(query.keyword || '').trim().toLowerCase();\n    const pluginCode = String(query.pluginCode || '').trim().toLowerCase();\n    const status = String(query.status || '').trim().toLowerCase();\n    return definitionList.filter((item) => {\n      const matchesKeyword = !keyword || item.pluginName.toLowerCase().includes(keyword) || item.pluginCode.toLowerCase().includes(keyword);\n      const matchesCode = !pluginCode || item.pluginCode.toLowerCase().includes(pluginCode);\n      const matchesStatus = !status || item.status.toLowerCase() === status;\n      return matchesKeyword && matchesCode && matchesStatus;\n    });\n  }, [definitionList, query]);\n\n  const definitionColumns = useMemo<ColumnsType<PluginDefinition>>(\n    () => [\n      { title: '插件编码', dataIndex: 'pluginCode' },\n      { title: '名称', dataIndex: 'pluginName' },\n      { title: '作者', dataIndex: 'author' },\n      { title: 'API 版本', dataIndex: 'pluginApiVersion' },\n      {\n        title: '状态',\n        dataIndex: 'status',\n        render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space wrap>\n            <PermissionButton\n              permission=\"plugin:management:view\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setSelectedVersion(null);\n                setDetailDrawerOpen(true);\n              }}\n            >\n              详情\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:view\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setVersionDrawerOpen(true);\n              }}\n            >\n              版本\n            </PermissionButton>\n            <PermissionButton\n              permission=\"plugin:management:logs\"\n              onClick={() => {\n                setSelectedPlugin(record);\n                setLogDrawerOpen(true);\n              }}\n            >\n              日志\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [],\n  );\n\n  const versionColumns = useMemo<ColumnsType<PluginVersion>>(\n    () => [\n      { title: '版本', dataIndex: 'version' },\n      { title: '安装状态', dataIndex: 'installStatus' },\n      { title: '加载状态', dataIndex: 'loadStatus' },\n      { title: '健康状态', dataIndex: 'healthStatus' },\n      {\n        title: '激活',\n        dataIndex: 'isActive',\n        render: (value: number) => <Tag color={value === 1 ? 'green' : 'default'}>{value === 1 ? '是' : '否'}</Tag>,\n      },\n      {\n        title: '操作',\n        key: 'actions',\n        render: (_, record) => (\n          <Space wrap>\n            <PermissionButton permission=\"plugin:management:install\" onClick={() => confirmInstall(record.pluginCode, record.version)}>\n              安装\n            </PermissionButton>\n            <PermissionButton permission=\"plugin:management:upgrade\" onClick={() => confirmActivate(record.pluginCode, record.version)}>\n              激活\n            </PermissionButton>\n            <PermissionButton permission=\"plugin:management:enable\" onClick={() => confirmEnable(record.pluginCode, record.version)}>\n              启用\n            </PermissionButton>\n            <PermissionButton permission=\"plugin:management:disable\" onClick={() => confirmDisable(record.pluginCode)}>\n              停用\n            </PermissionButton>\n            <PermissionButton permission=\"plugin:management:rollback\" onClick={() => confirmRollback(record.pluginCode, record.version)}>\n              回滚\n            </PermissionButton>\n          </Space>\n        ),\n      },\n    ],\n    [initialState?.currentTenant?.tenantId],\n  );\n\n  const refreshBootstrap = async () => {\n    const [menuTree, availablePlugins] = await Promise.all([\n      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n    ]);\n    setInitialState((prev) =>\n      prev\n        ? {\n            ...prev,\n            menuTree,\n            availablePlugins,\n          }\n        : prev,\n    );\n  };\n\n  const confirm = (title: string, content: string, action: () => Promise<void>) =>\n    Modal.confirm({\n      title,\n      content,\n      okText: '确认',\n      cancelText: '取消',\n      onOk: action,\n    });\n\n  const confirmInstall = (pluginCode: string, version: string) =>\n    confirm('安装插件版本', `${pluginCode} @ ${version}`, async () => {\n      await pluginService.install({ pluginCode, version }, { autoRedirectOnUnauthorized: false });\n      await versionQuery.refresh();\n      await definitionQuery.refresh();\n      message.success('插件安装完成');\n    });\n\n  const confirmActivate = (pluginCode: string, version: string) =>\n    confirm('激活插件版本', `${pluginCode} @ ${version}`, async () => {\n      await pluginService.upgrade({ pluginCode, version }, { autoRedirectOnUnauthorized: false });\n      await versionQuery.refresh();\n      await refreshBootstrap();\n      message.success('插件激活版本已切换');\n    });\n\n  const confirmEnable = (pluginCode: string, version: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    confirm('启用插件', `${pluginCode} @ ${version}`, async () => {\n      await pluginService.enable({ tenantId, pluginCode, version }, { autoRedirectOnUnauthorized: false });\n      await refreshBootstrap();\n      message.success('插件已启用');\n    });\n  };\n\n  const confirmDisable = (pluginCode: string) => {\n    const tenantId = initialState?.currentTenant?.tenantId;\n    if (!tenantId) {\n      message.error('当前未选择租户');\n      return;\n    }\n    confirm('停用插件', pluginCode, async () => {\n      await pluginService.disable({ tenantId, pluginCode }, { autoRedirectOnUnauthorized: false });\n      await refreshBootstrap();\n      message.success('插件已停用');\n    });\n  };\n\n  const confirmRollback = (pluginCode: string, version: string) =>\n    confirm('回滚插件版本', `${pluginCode} -> ${version}`, async () => {\n      await pluginService.rollback({ pluginCode, targetVersion: version }, { autoRedirectOnUnauthorized: false });\n      await versionQuery.refresh();\n      await refreshBootstrap();\n      message.success('插件已回滚');\n    });\n\n  const handleUpload = async () => {\n    if (!uploadFile) {\n      message.error('请先选择插件包');\n      return;\n    }\n    if (!uploadFile.name.toLowerCase().endsWith('.zip')) {\n      message.error('仅支持 zip 插件包');\n      return;\n    }\n    if (uploadFile.size > 50 * 1024 * 1024) {\n      message.error('插件包不能超过 50MB');\n      return;\n    }\n    await pluginService.upload(uploadFile, { autoRedirectOnUnauthorized: false });\n    setUploadVisible(false);\n    setUploadFile(null);\n    await definitionQuery.refresh();\n    message.success('插件上传并完成校验');\n  };\n\n  const selectedPluginDetail = useMemo(() => {\n    if (!selectedPlugin) {\n      return null;\n    }\n    const activeVersion = versionList.find((item) => item.isActive === 1) || versionList[0];\n    const tenantPlugin = currentAvailable.find((item) => item.pluginCode === selectedPlugin.pluginCode);\n    return {\n      pluginCode: selectedPlugin.pluginCode,\n      pluginName: selectedPlugin.pluginName,\n      version: tenantPlugin?.version || activeVersion?.version || '-',\n      author: selectedPlugin.author || '-',\n      pluginApiVersion: selectedPlugin.pluginApiVersion || '-',\n      status: selectedPlugin.status,\n      healthStatus: activeVersion?.healthStatus || 'UNKNOWN',\n      installStatus: activeVersion?.installStatus || '-',\n      loadStatus: activeVersion?.loadStatus || '-',\n      dependencyInfo: tenantPlugin?.sharedDeps?.length ? tenantPlugin.sharedDeps.join(', ') : '-',\n      tenantEnabled: tenantPlugin ? '已启用' : '未启用',\n      menuCount: tenantPlugin?.menus?.length || 0,\n    };\n  }, [currentAvailable, selectedPlugin, versionList]);\n\n  return (\n    <ManagementPageContainer title=\"插件管理\" description=\"插件列表、版本、日志和运行态统一纳入页面规范。\">\n      <QueryPanel\n        form={queryForm}\n        onSearch={(values) => setQuery(values)}\n        onReset={() => {\n          queryForm.resetFields();\n          setQuery({});\n        }}\n        columns={3}\n        collapseCount={3}\n        actions={\n          <>\n            <Button onClick={() => definitionQuery.refresh()}>刷新</Button>\n            <PermissionButton permission=\"plugin:management:upload\" type=\"primary\" onClick={() => setUploadVisible(true)}>\n              上传插件\n            </PermissionButton>\n          </>\n        }\n      >\n        <Form.Item name=\"keyword\" label=\"关键词\">\n          <Input allowClear placeholder=\"插件名称或编码\" />\n        </Form.Item>\n        <Form.Item name=\"pluginCode\" label=\"插件编码\">\n          <Input allowClear placeholder=\"输入插件编码\" />\n        </Form.Item>\n        <Form.Item name=\"status\" label=\"状态\">\n          <Select allowClear options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />\n        </Form.Item>\n      </QueryPanel>\n\n      <ActionBar\n        left={<Space><Tag color=\"blue\">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Tag></Space>}\n        right={<Button onClick={() => definitionQuery.refresh()}>重新加载</Button>}\n      />\n\n      <Card bodyStyle={{ height: 520, minHeight: 0 }}>\n        <DataTable<PluginDefinition>\n          rowKey=\"pluginCode\"\n          columns={definitionColumns}\n          dataSource={filteredDefinitions}\n          pagination={false}\n          loading={definitionQuery.loading}\n          middleScroll\n          emptyText=\"暂无插件定义\"\n        />\n      </Card>\n\n      <DetailDrawer\n        title={selectedPlugin ? `插件详情 · ${selectedPlugin.pluginName}` : '插件详情'}\n        open={detailDrawerOpen}\n        onClose={() => setDetailDrawerOpen(false)}\n        descriptionItems={\n          selectedPluginDetail\n            ? [\n                { key: 'pluginCode', label: '插件编码', children: selectedPluginDetail.pluginCode },\n                { key: 'pluginName', label: '插件名称', children: selectedPluginDetail.pluginName },\n                { key: 'version', label: '当前版本', children: selectedPluginDetail.version },\n                { key: 'author', label: '作者', children: selectedPluginDetail.author },\n                { key: 'pluginApiVersion', label: 'API 版本', children: selectedPluginDetail.pluginApiVersion },\n                { key: 'status', label: '状态', children: selectedPluginDetail.status },\n                { key: 'healthStatus', label: '健康状态', children: selectedPluginDetail.healthStatus },\n                { key: 'tenantEnabled', label: '租户启用', children: selectedPluginDetail.tenantEnabled },\n              ]\n            : undefined\n        }\n      >\n        {selectedPluginDetail ? (\n          <Space direction=\"vertical\" style={{ width: '100%' }}>\n            <Card size=\"small\" title=\"依赖和菜单\">\n              <Space direction=\"vertical\" size={8}>\n                <div>依赖信息：{selectedPluginDetail.dependencyInfo}</div>\n                <div>菜单数量：{selectedPluginDetail.menuCount}</div>\n                <div>安装状态：{selectedPluginDetail.installStatus}</div>\n                <div>加载状态：{selectedPluginDetail.loadStatus}</div>\n              </Space>\n            </Card>\n          </Space>\n        ) : null}\n      </DetailDrawer>\n\n      <DetailDrawer\n        title={selectedPlugin ? `版本列表 · ${selectedPlugin.pluginName}` : '版本列表'}\n        open={versionDrawerOpen}\n        onClose={() => setVersionDrawerOpen(false)}\n        width={960}\n        loading={versionQuery.loading}\n      >\n        <DataTable<PluginVersion>\n          rowKey=\"version\"\n          columns={versionColumns}\n          dataSource={versionList}\n          pagination={false}\n          middleScroll\n          emptyText=\"暂无版本数据\"\n        />\n      </DetailDrawer>\n\n      <DetailDrawer\n        title={selectedPlugin ? `运行日志 · ${selectedPlugin.pluginName}` : '运行日志'}\n        open={logDrawerOpen}\n        onClose={() => setLogDrawerOpen(false)}\n        width={960}\n        loading={logQuery.loading}\n      >\n        <DataTable<PluginRuntimeLog>\n          rowKey=\"id\"\n          columns={[\n            { title: '时间', dataIndex: 'createdAt', width: 180 },\n            { title: '操作', dataIndex: 'operationType', width: 120 },\n            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },\n            { title: '结果', dataIndex: 'resultStatus', width: 120 },\n            { title: '详情', dataIndex: 'detailMessage' },\n          ]}\n          dataSource={runtimeLogList}\n          pagination={false}\n          middleScroll\n          emptyText=\"暂无插件日志\"\n        />\n      </DetailDrawer>\n\n      <Modal\n        open={uploadVisible}\n        title=\"上传插件包\"\n        onCancel={() => setUploadVisible(false)}\n        onOk={handleUpload}\n        okText=\"开始上传\"\n        destroyOnClose\n      >\n        <Upload\n          maxCount={1}\n          beforeUpload={(file) => {\n            if (!file.name.toLowerCase().endsWith('.zip')) {\n              message.error('仅支持 zip 插件包');\n              return Upload.LIST_IGNORE;\n            }\n            setUploadFile(file);\n            return false;\n          }}\n          onRemove={() => {\n            setUploadFile(null);\n          }}\n        >\n          <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>\n        </Upload>\n      </Modal>\n    </ManagementPageContainer>\n  );\n};\n\nexport default PluginsPage;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/Plugins.tsx"
     },
@@ -3401,7 +3401,7 @@
       "parentId": "3",
       "id": "7",
       "absPath": "/plugins/:pluginCode",
-      "__content": "import { useEffect, useMemo, useRef, useState } from 'react';\nimport { Alert, Card, Spin } from 'antd';\nimport { history, useLocation, useParams } from 'umi';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { notifyPluginLoadError } from '@/plugins/loader';\nimport { PluginErrorBoundary } from '@/plugins/errorBoundary';\nimport { mountPlugin, unmountPlugin } from '@/plugins/runtime';\n\nconst RuntimeContainer = () => {\n  const params = useParams<{ pluginCode: string }>();\n  const location = useLocation();\n  const { initialState } = useInitialStateModel();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const [version, setVersion] = useState<string>();\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string>();\n\n  const plugin = useMemo(\n    () => initialState?.availablePlugins?.find((item) => item.pluginCode === params.pluginCode),\n    [initialState?.availablePlugins, params.pluginCode],\n  );\n\n  useEffect(() => {\n    const container = containerRef.current;\n    if (!container) {\n      return;\n    }\n    if (!plugin) {\n      setLoading(false);\n      setError('当前租户未启用该插件');\n      return;\n    }\n    let destroyed = false;\n    setLoading(true);\n    setError(undefined);\n    mountPlugin(plugin.pluginCode, container, {\n      pluginCode: plugin.pluginCode,\n      version: plugin.version,\n      routePath: location.pathname,\n      currentUser: initialState?.currentUser,\n      currentTenant: initialState?.currentTenant,\n      requestId: crypto.randomUUID(),\n    })\n      .then((result) => {\n        if (destroyed) {\n          return;\n        }\n        setVersion(result.manifest.version);\n        setLoading(false);\n      })\n      .catch((pluginError) => {\n        if (destroyed) {\n          return;\n        }\n        notifyPluginLoadError(pluginError);\n        setError(pluginError instanceof Error ? pluginError.message : '插件加载失败');\n        setLoading(false);\n      });\n    return () => {\n      destroyed = true;\n      if (version) {\n        void unmountPlugin(plugin.pluginCode, version, container);\n      }\n    };\n  }, [\n    initialState?.currentTenant,\n    initialState?.currentUser,\n    location.pathname,\n    plugin,\n    version,\n  ]);\n\n  if (error) {\n    return (\n      <Card>\n        <Alert type=\"error\" showIcon message=\"插件不可用\" description={error} />\n      </Card>\n    );\n  }\n\n  return (\n    <PluginErrorBoundary>\n      <Card bodyStyle={{ minHeight: 'calc(100vh - 160px)' }}>\n        {loading ? (\n          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>\n            <Spin />\n          </div>\n        ) : (\n          <div ref={containerRef} />\n        )}\n      </Card>\n    </PluginErrorBoundary>\n  );\n};\n\nexport default RuntimeContainer;\n",
+      "__content": "import { useEffect, useMemo, useRef, useState } from 'react';\nimport { Alert, Card, Spin } from 'antd';\nimport { history, useLocation, useParams } from 'umi';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { notifyPluginLoadError } from '@/plugins/loader';\nimport { PluginErrorBoundary } from '@/plugins/errorBoundary';\nimport { mountPlugin, unmountPlugin } from '@/plugins/runtime';\n\nconst RuntimeContainer = () => {\n  const params = useParams<{ pluginCode: string }>();\n  const location = useLocation();\n  const { initialState } = useInitialStateModel();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const mountedRef = useRef<{ pluginCode: string; version: string } | null>(null);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string>();\n\n  const plugin = useMemo(\n    () => initialState?.availablePlugins?.find((item) => item.pluginCode === params.pluginCode),\n    [initialState?.availablePlugins, params.pluginCode],\n  );\n\n  useEffect(() => {\n    const container = containerRef.current;\n    if (!container) {\n      return;\n    }\n    let active = true;\n    const previousMounted = mountedRef.current;\n    mountedRef.current = null;\n    if (previousMounted) {\n      void unmountPlugin(previousMounted.pluginCode, previousMounted.version, container);\n    }\n    if (!plugin) {\n      setLoading(false);\n      setError('当前租户未启用该插件');\n      return;\n    }\n    setLoading(true);\n    setError(undefined);\n    mountPlugin(plugin.pluginCode, container, {\n      pluginCode: plugin.pluginCode,\n      version: plugin.version,\n      routePath: location.pathname,\n      currentUser: initialState?.currentUser,\n      currentTenant: initialState?.currentTenant,\n      requestId: crypto.randomUUID(),\n    })\n      .then((result) => {\n        if (!active) {\n          return;\n        }\n        mountedRef.current = {\n          pluginCode: plugin.pluginCode,\n          version: result.manifest.version,\n        };\n        setLoading(false);\n      })\n      .catch((pluginError) => {\n        if (!active) {\n          return;\n        }\n        notifyPluginLoadError(pluginError);\n        setError(pluginError instanceof Error ? pluginError.message : '插件加载失败，请稍后重试');\n        setLoading(false);\n      });\n    return () => {\n      active = false;\n      const currentMounted = mountedRef.current;\n      if (currentMounted) {\n        void unmountPlugin(currentMounted.pluginCode, currentMounted.version, container);\n        mountedRef.current = null;\n      }\n    };\n  }, [initialState?.currentTenant, initialState?.currentUser, location.pathname, plugin]);\n\n  if (error) {\n    return (\n      <Card>\n        <Alert type=\"error\" showIcon message=\"插件不可用\" description={error} />\n      </Card>\n    );\n  }\n\n  return (\n    <PluginErrorBoundary>\n      <Card bodyStyle={{ minHeight: 'calc(100vh - 160px)' }}>\n        {loading ? (\n          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>\n            <Spin />\n          </div>\n        ) : (\n          <div ref={containerRef} style={{ minHeight: 'calc(100vh - 220px)' }} />\n        )}\n      </Card>\n    </PluginErrorBoundary>\n  );\n};\n\nexport default RuntimeContainer;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins/RuntimeContainer.tsx"
     },
@@ -3411,7 +3411,7 @@
       "parentId": "3",
       "id": "8",
       "absPath": "/profile/center",
-      "__content": "import { Card } from 'antd';\n\nexport default () => <Card title=\"个人中心\">个人中心占位页。</Card>;\n",
+      "__content": "import { Card, Col, Descriptions, Row, Space, Tag, Timeline, Typography } from 'antd';\nimport { ManagementPageContainer } from '@/components/ManagementPageContainer';\nimport { EmptyState } from '@/components/EmptyState';\nimport { profileService } from '@/services/profile';\nimport { useRequest } from 'umi';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { useResponsive } from '@/hooks/useResponsive';\nimport type { ProfileSummary } from '@/types/api';\n\nexport default () => {\n  const { initialState } = useInitialStateModel();\n  const { isMobile } = useResponsive();\n  const profileQuery = useRequest(async () => ({ data: await profileService.summary({ autoRedirectOnUnauthorized: false }) }) as {\n    data: ProfileSummary;\n  });\n  const summary = profileQuery.data;\n  const currentUser = summary?.currentUser || initialState?.currentUser;\n  const currentTenant = summary?.currentTenant || initialState?.currentTenant || null;\n  const roleNames = summary?.roleNames || [];\n  const recentLoginLogs = summary?.recentLoginLogs || [];\n\n  return (\n    <ManagementPageContainer title=\"个人中心\" description=\"查看当前账号、角色权限摘要、租户上下文和最近登录记录。\">\n      <Row gutter={[16, 16]}>\n        <Col xs={24} lg={12}>\n          <Card title=\"账号信息\" loading={profileQuery.loading}>\n            <Descriptions column={isMobile ? 1 : 2} size=\"small\" bordered>\n              <Descriptions.Item label=\"用户名\">{currentUser?.username || '-'}</Descriptions.Item>\n              <Descriptions.Item label=\"昵称\">{currentUser?.nickname || '-'}</Descriptions.Item>\n              <Descriptions.Item label=\"姓名\">{currentUser?.realName || '-'}</Descriptions.Item>\n              <Descriptions.Item label=\"用户ID\">{currentUser?.userId || '-'}</Descriptions.Item>\n              <Descriptions.Item label=\"会话ID\">{currentUser?.sessionId || '-'}</Descriptions.Item>\n              <Descriptions.Item label=\"会话版本\">{currentUser?.sessionVersion ?? '-'}</Descriptions.Item>\n            </Descriptions>\n          </Card>\n        </Col>\n        <Col xs={24} lg={12}>\n          <Card title=\"租户与安全\">\n            <Descriptions column={isMobile ? 1 : 2} size=\"small\" bordered>\n              <Descriptions.Item label=\"当前租户\">{currentTenant?.tenantName || '未选择'}</Descriptions.Item>\n              <Descriptions.Item label=\"租户编码\">{currentTenant?.tenantCode || '-'}</Descriptions.Item>\n              <Descriptions.Item label=\"权限数\">{summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}</Descriptions.Item>\n              <Descriptions.Item label=\"角色摘要\">\n                <Space wrap>\n                  {roleNames.length ? (\n                    roleNames.map((name) => <Tag key={name}>{name}</Tag>)\n                  ) : (\n                    <Tag>暂无角色摘要</Tag>\n                  )}\n                </Space>\n              </Descriptions.Item>\n            </Descriptions>\n          </Card>\n        </Col>\n      </Row>\n\n      <Row gutter={[16, 16]}>\n        <Col xs={24} lg={14}>\n          <Card title=\"最近登录记录\" loading={profileQuery.loading}>\n            {recentLoginLogs.length ? (\n              <Timeline\n                items={recentLoginLogs.map((item) => ({\n                  children: (\n                    <Space direction=\"vertical\" size={0}>\n                      <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>\n                      <Typography.Text type=\"secondary\">\n                        {item.logResult || item.failReason || '登录记录'} · {item.createdAt}\n                      </Typography.Text>\n                    </Space>\n                  ),\n                  color: item.logResult === 'SUCCESS' ? 'green' : 'red',\n                }))}\n              />\n            ) : (\n              <EmptyState description=\"暂无最近登录记录\" />\n            )}\n          </Card>\n        </Col>\n        <Col xs={24} lg={10}>\n          <Card title=\"账号安全\">\n            <Typography.Paragraph>\n              当前阶段已保留 Redis 会话、JWT 刷新和租户上下文恢复逻辑。退出登录后会同步清理本地 token 与租户缓存。\n            </Typography.Paragraph>\n            <Space wrap>\n              <Tag color=\"green\">JWT</Tag>\n              <Tag color=\"blue\">Redis 会话</Tag>\n              <Tag color=\"purple\">租户恢复</Tag>\n            </Space>\n          </Card>\n        </Col>\n      </Row>\n    </ManagementPageContainer>\n  );\n};\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile/Center.tsx"
     },

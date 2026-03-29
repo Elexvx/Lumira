@@ -46,13 +46,14 @@ export const pluginService = {
       method: 'GET',
       ...options,
     }),
-  upload: async (file: File) => {
+  upload: async (file: File, options: RequestOptions = {}) => {
     const formData = new FormData();
     formData.append('file', file);
     return request<PluginUploadResult>('/v1/plugins/upload', {
       method: 'POST',
       headers: {},
       data: formData,
+      ...options,
     });
   },
   install: (payload: PluginInstallPayload, options: RequestOptions = {}) =>

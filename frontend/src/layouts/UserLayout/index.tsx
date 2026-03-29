@@ -2,8 +2,18 @@ import { Outlet } from 'umi';
 
 const UserLayout = () => {
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f0f2f5' }}>
-      <div style={{ width: 420, padding: 32, background: '#fff', borderRadius: 8 }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#ffffff',
+        padding: '24px 16px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 320 }}>
         <Outlet />
       </div>
     </div>

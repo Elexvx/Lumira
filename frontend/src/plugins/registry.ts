@@ -30,6 +30,10 @@ class PluginRegistry {
   clearMounted(pluginCode: string, version: string) {
     this.mounted.delete(this.getKey(pluginCode, version));
   }
+
+  getMounted(pluginCode: string, version: string) {
+    return this.mounted.get(this.getKey(pluginCode, version));
+  }
 }
 
 export const pluginRegistry = new PluginRegistry();
