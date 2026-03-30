@@ -1,4 +1,5 @@
 import { defineConfig } from '@umijs/max';
+import { backendRoutes } from './src/routes/meta';
 
 export default defineConfig({
   antd: {},
@@ -6,35 +7,9 @@ export default defineConfig({
   initialState: {},
   model: {},
   request: {},
-  layout: false,
+  layout: {},
   npmClient: 'pnpm',
-  routes: [
-    {
-      path: '/user',
-      component: '@/layouts/UserLayout',
-      routes: [
-        { path: '/user/login', component: '@/pages/user/Login' },
-      ],
-    },
-    {
-      path: '/',
-      component: '@/layouts/BasicLayout',
-      routes: [
-        { path: '/', redirect: '/dashboard/home' },
-        { path: '/dashboard/home', component: '@/pages/dashboard/Home' },
-        { path: '/system/plugins', component: '@/pages/system/Plugins' },
-        { path: '/plugins/:pluginCode', component: '@/pages/plugins/RuntimeContainer' },
-        { path: '/profile/center', component: '@/pages/profile/Center' },
-        { path: '/403', component: '@/pages/exception/NoPermission' },
-      ],
-    },
-    {
-      path: '/blank',
-      component: '@/layouts/BlankLayout',
-      routes: [{ path: '/blank/workflow', component: '@/pages/exception/BlankFlow' }],
-    },
-    { path: '*', component: '@/pages/exception/NotFound' },
-  ],
+  routes: backendRoutes,
   proxy: {
     '/api': {
       target: 'http://localhost:8080',
