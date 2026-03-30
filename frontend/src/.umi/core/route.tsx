@@ -4,22 +4,31 @@
 import React from 'react';
 
 export async function getRoutes() {
-  const routes = {"1":{"path":"/user","id":"1"},"2":{"path":"/user/login","parentId":"1","id":"2"},"3":{"path":"/","id":"3"},"4":{"path":"/","redirect":"/dashboard/home","parentId":"3","id":"4"},"5":{"path":"/dashboard/home","parentId":"3","id":"5"},"6":{"path":"/system/plugins","parentId":"3","id":"6"},"7":{"path":"/plugins/:pluginCode","parentId":"3","id":"7"},"8":{"path":"/profile/center","parentId":"3","id":"8"},"9":{"path":"/403","parentId":"3","id":"9"},"10":{"path":"/blank","id":"10"},"11":{"path":"/blank/workflow","parentId":"10","id":"11"},"12":{"path":"*","id":"12"}} as const;
+  const routes = {"1":{"path":"/","redirect":"/dashboard/home","parentId":"ant-design-pro-layout","id":"1"},"2":{"path":"/dashboard/home","name":"控制台","icon":"DashboardOutlined","access":"canVisitDashboard","parentId":"ant-design-pro-layout","id":"2"},"3":{"path":"/tenant/overview","name":"租户中心","icon":"ApartmentOutlined","access":"canVisitTenant","parentId":"ant-design-pro-layout","id":"3"},"4":{"path":"/iam/overview","name":"权限中心","icon":"SafetyCertificateOutlined","access":"canVisitIam","parentId":"ant-design-pro-layout","id":"4"},"5":{"path":"/audit/overview","name":"审计中心","icon":"AuditOutlined","access":"canVisitAudit","parentId":"ant-design-pro-layout","id":"5"},"6":{"path":"/profile/center","name":"个人中心","icon":"UserOutlined","access":"canVisitProfile","parentId":"ant-design-pro-layout","id":"6"},"7":{"path":"/system","name":"系统管理","icon":"SettingOutlined","access":"canVisitSystemManagement","parentId":"ant-design-pro-layout","id":"7"},"8":{"path":"/system/management","name":"系统总览","icon":"AppstoreOutlined","access":"canVisitSystemManagement","parentId":"7","id":"8"},"9":{"path":"/system/users","name":"用户管理","icon":"TeamOutlined","access":"canVisitSystemUsers","parentId":"7","id":"9"},"10":{"path":"/system/roles","name":"角色管理","icon":"SafetyOutlined","access":"canVisitSystemRoles","parentId":"7","id":"10"},"11":{"path":"/system/menus","name":"菜单管理","icon":"AppstoreOutlined","access":"canVisitSystemMenus","parentId":"7","id":"11"},"12":{"path":"/system/dicts","name":"字典管理","icon":"DatabaseOutlined","access":"canVisitSystemDicts","parentId":"7","id":"12"},"13":{"path":"/system/configs","name":"参数配置","icon":"ControlOutlined","access":"canVisitSystemConfigs","parentId":"7","id":"13"},"14":{"path":"/system/plugins","name":"插件管理","icon":"ApiOutlined","access":"canVisitSystemPlugins","parentId":"7","id":"14"},"15":{"path":"/plugins/:pluginCode","name":"插件页面","access":"canVisitPluginRuntime","hideInMenu":true,"parentId":"ant-design-pro-layout","id":"15"},"16":{"path":"/blank/workflow","layout":false,"name":"空白流程","hideInMenu":true,"id":"16"},"17":{"path":"/user/login","layout":false,"name":"登录","hideInMenu":true,"id":"17"},"18":{"path":"/403","layout":false,"name":"无权限","hideInMenu":true,"id":"18"},"19":{"path":"/404","layout":false,"name":"页面不存在","hideInMenu":true,"id":"19"},"20":{"path":"*","redirect":"/404","parentId":"ant-design-pro-layout","id":"20"},"ant-design-pro-layout":{"id":"ant-design-pro-layout","path":"/","isLayout":true}} as const;
   return {
     routes,
     routeComponents: {
-'1': React.lazy(() => import(/* webpackChunkName: "layouts__UserLayout__index" */'@/layouts/UserLayout/index.tsx')),
-'2': React.lazy(() => import(/* webpackChunkName: "p__user__Login" */'@/pages/user/Login.tsx')),
-'3': React.lazy(() => import(/* webpackChunkName: "layouts__BasicLayout__index" */'@/layouts/BasicLayout/index.tsx')),
-'4': React.lazy(() => import('./EmptyRoute')),
-'5': React.lazy(() => import(/* webpackChunkName: "p__dashboard__Home" */'@/pages/dashboard/Home.tsx')),
-'6': React.lazy(() => import(/* webpackChunkName: "p__system__Plugins" */'@/pages/system/Plugins.tsx')),
-'7': React.lazy(() => import(/* webpackChunkName: "p__plugins__RuntimeContainer" */'@/pages/plugins/RuntimeContainer.tsx')),
-'8': React.lazy(() => import(/* webpackChunkName: "p__profile__Center" */'@/pages/profile/Center.tsx')),
-'9': React.lazy(() => import(/* webpackChunkName: "p__exception__NoPermission" */'@/pages/exception/NoPermission.tsx')),
-'10': React.lazy(() => import(/* webpackChunkName: "layouts__BlankLayout__index" */'@/layouts/BlankLayout/index.tsx')),
-'11': React.lazy(() => import(/* webpackChunkName: "p__exception__BlankFlow" */'@/pages/exception/BlankFlow.tsx')),
-'12': React.lazy(() => import(/* webpackChunkName: "p__exception__NotFound" */'@/pages/exception/NotFound.tsx')),
+'1': React.lazy(() => import('./EmptyRoute')),
+'2': React.lazy(() => import(/* webpackChunkName: "p__dashboard__Home" */'@/pages/dashboard/Home.tsx')),
+'3': React.lazy(() => import(/* webpackChunkName: "p__tenant__Overview" */'@/pages/tenant/Overview.tsx')),
+'4': React.lazy(() => import(/* webpackChunkName: "p__iam__Overview" */'@/pages/iam/Overview.tsx')),
+'5': React.lazy(() => import(/* webpackChunkName: "p__audit__Overview" */'@/pages/audit/Overview.tsx')),
+'6': React.lazy(() => import(/* webpackChunkName: "p__profile__Center" */'@/pages/profile/Center.tsx')),
+'7': React.lazy(() => import('./EmptyRoute')),
+'8': React.lazy(() => import(/* webpackChunkName: "p__system__Management" */'@/pages/system/Management.tsx')),
+'9': React.lazy(() => import(/* webpackChunkName: "p__system__users" */'@/pages/system/users.tsx')),
+'10': React.lazy(() => import(/* webpackChunkName: "p__system__roles" */'@/pages/system/roles.tsx')),
+'11': React.lazy(() => import(/* webpackChunkName: "p__system__menus" */'@/pages/system/menus.tsx')),
+'12': React.lazy(() => import(/* webpackChunkName: "p__system__dicts" */'@/pages/system/dicts.tsx')),
+'13': React.lazy(() => import(/* webpackChunkName: "p__system__configs" */'@/pages/system/configs.tsx')),
+'14': React.lazy(() => import(/* webpackChunkName: "p__system__Plugins" */'@/pages/system/Plugins.tsx')),
+'15': React.lazy(() => import(/* webpackChunkName: "p__plugins__RuntimeContainer" */'@/pages/plugins/RuntimeContainer.tsx')),
+'16': React.lazy(() => import(/* webpackChunkName: "p__exception__BlankFlow" */'@/pages/exception/BlankFlow.tsx')),
+'17': React.lazy(() => import(/* webpackChunkName: "p__user__Login" */'@/pages/user/Login.tsx')),
+'18': React.lazy(() => import(/* webpackChunkName: "p__exception__NoPermission" */'@/pages/exception/NoPermission.tsx')),
+'19': React.lazy(() => import(/* webpackChunkName: "p__exception__NotFound" */'@/pages/exception/NotFound.tsx')),
+'20': React.lazy(() => import('./EmptyRoute')),
+'ant-design-pro-layout': React.lazy(() => import(/* webpackChunkName: "umi__plugin-layout__Layout" */'/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout/Layout.tsx')),
 },
   };
 }

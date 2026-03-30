@@ -1,0 +1,26 @@
+- generic [ref=e11]:
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - img [ref=e16]:
+        - img [ref=e17]
+      - generic [ref=e19]: 宏翔商道
+    - generic [ref=e20]: 企业级智能协同管理平台
+  - generic [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e24]: 账号密码登录
+      - generic [ref=e25]: 使用平台账号登录，进入宏翔商道后台工作台。
+    - generic [ref=e31]:
+      - img "user" [ref=e33]:
+        - img [ref=e34]
+      - textbox "请输入账号" [ref=e36]
+    - generic [ref=e43]:
+      - img "lock" [ref=e45]:
+        - img [ref=e46]
+      - textbox "请输入密码" [ref=e48]
+      - img "eye-invisible" [ref=e50] [cursor=pointer]:
+        - img [ref=e51]
+    - generic [ref=e55] [cursor=pointer]:
+      - checkbox "保持登录状态" [checked] [ref=e57]
+      - generic [ref=e59]: 保持登录状态
+    - button "登 录" [ref=e60] [cursor=pointer]:
+      - generic [ref=e61]: 登 录

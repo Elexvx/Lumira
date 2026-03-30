@@ -11,6 +11,7 @@ export { useRequest, UseRequestProvider, request, getRequestInstance } from '/Us
 // plugins types.d.ts
 export * from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-access/types.d';
 export * from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-antd/types.d';
+export * from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout/types.d';
 export * from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-request/types.d';
 // @umijs/renderer-*
 export { createBrowserHistory, createHashHistory, createMemoryHistory, Helmet, HelmetProvider, createSearchParams, generatePath, matchPath, matchRoutes, Navigate, NavLink, Outlet, resolvePath, useLocation, useMatch, useNavigate, useOutlet, useOutletContext, useParams, useResolvedPath, useRoutes, useSearchParams, useAppData, useClientLoaderData, useLoaderData, useRouteProps, useSelectedRoutes, useServerLoaderData, renderClient, __getRoot, Link, useRouteData, __useFetcher, withRouter } from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/@umijs+renderer-react@4.6.36_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@umijs/renderer-react';

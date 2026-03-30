@@ -43,11 +43,17 @@ export const TopActions = () => {
           <TenantSelector />
         </div>
       ) : null}
-      <Space size={isMobile ? 8 : 12} wrap={false}>
-        <QuestionCircleOutlined className="saas-top-actions-icon" />
-        <GlobalOutlined className="saas-top-actions-icon" />
-        <Badge dot offset={[-4, 4]}>
-          <BellOutlined className="saas-top-actions-icon" />
+      <Space size={isMobile ? 8 : 12} wrap={false} className="saas-top-actions-toolbar">
+        <span className="saas-top-actions-trigger" aria-label="帮助中心">
+          <QuestionCircleOutlined className="saas-top-actions-icon" />
+        </span>
+        <span className="saas-top-actions-trigger" aria-label="语言切换">
+          <GlobalOutlined className="saas-top-actions-icon" />
+        </span>
+        <Badge dot offset={[-4, 4]} className="saas-top-actions-badge">
+          <span className="saas-top-actions-trigger" aria-label="通知中心">
+            <BellOutlined className="saas-top-actions-icon" />
+          </span>
         </Badge>
         <Dropdown
           menu={{
@@ -65,7 +71,7 @@ export const TopActions = () => {
             },
           }}
         >
-          <Space className="saas-top-actions-user">
+          <Space className="saas-top-actions-user" size={8} wrap={false}>
             <Avatar
               size="small"
               icon={<UserOutlined />}
@@ -73,7 +79,7 @@ export const TopActions = () => {
             <span className="saas-top-actions-user-name">{userName}</span>
           </Space>
         </Dropdown>
-        </Space>
+      </Space>
     </div>
   );
 };
