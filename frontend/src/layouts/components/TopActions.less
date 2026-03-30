@@ -2,18 +2,41 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 12px;
+  height: 100%;
   min-width: 0;
 }
 
 .saas-top-actions-tenant {
   width: 160px;
-  margin-right: 8px;
+  flex: 0 0 auto;
 }
 
 .saas-top-actions-tenant .tenant-selector {
   border: 1px solid #e8ebf2;
   border-radius: 8px;
   background: #f8faff;
+}
+
+.saas-top-actions-toolbar {
+  align-items: center;
+}
+
+.saas-top-actions-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.saas-top-actions-trigger:hover {
+  background: #f5f9ff;
+}
+
+.saas-top-actions-badge {
+  display: inline-flex;
 }
 
 .saas-top-actions-icon {
@@ -27,6 +50,8 @@
 }
 
 .saas-top-actions-user {
+  display: inline-flex;
+  align-items: center;
   max-width: 180px;
   padding: 4px 8px;
   border-radius: 8px;
@@ -43,4 +68,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #1f2430;
+}
+
+@media (max-width: 767px) {
+  .saas-top-actions {
+    gap: 8px;
+  }
+
+  .saas-top-actions-user-name {
+    display: none;
+  }
 }

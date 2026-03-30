@@ -1,5 +1,6 @@
 import { AppstoreOutlined } from '@ant-design/icons';
 import type { RunTimeLayoutConfig } from '@umijs/max';
+import type { ReactNode } from 'react';
 import { history } from 'umi';
 import { getStoredCurrentUser, isLoggedIn, restoreSession } from '@/auth/session';
 import { TopActions } from '@/layouts/components/TopActions';
@@ -32,6 +33,18 @@ interface RuntimeMenuDataItem {
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
+
+const renderBrand = (logoDom: ReactNode, titleDom: ReactNode) => (
+  <div
+    onClick={() => {
+      history.push(DEFAULT_HOME_PATH);
+    }}
+    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+  >
+    {logoDom}
+    {titleDom}
+  </div>
+);
 
 const composeMenuItem = (
   backendNode: MenuNode,
@@ -100,19 +113,37 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => ({
   logo: <AppstoreOutlined style={{ fontSize: 16, color: '#1677ff' }} />,
   fixedHeader: true,
   fixSiderbar: true,
-  layout: 'side',
+  layout: 'mix',
   splitMenus: false,
-  menuHeaderRender: (logoDom, titleDom) => (
-    <div
-      onClick={() => {
-        history.push(DEFAULT_HOME_PATH);
-      }}
-      style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-    >
-      {logoDom}
-      {titleDom}
-    </div>
-  ),
+  menuHeaderRender: false,
+  menuFooterRender: false,
+  menuExtraRender: false,
+  headerTitleRender: (logoDom, titleDom) => renderBrand(logoDom, titleDom),
+  headerContentRender: (props) => {
+    if (props?.isMobile) {
+      return null;
+    }
+
+    const routeTitle = routeMetaMap.get(history.location.pathname)?.name;
+    const runtimeTitle = props?.title && props.title !== '宏翔商道' ? props.title : undefined;
+    const pageTitle = routeTitle || runtimeTitle || '工作台';
+    return (
+      <div style={{ minWidth: 0, lineHeight: 1.2 }}>
+        <div
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: 16,
+            fontWeight: 600,
+            color: '#1f2430',
+          }}
+        >
+          {pageTitle}
+        </div>
+      </div>
+    );
+  },
   rightContentRender: () => <TopActions />,
   unAccessible: <NoPermission />,
   pageTitleRender: (props, defaultTitle) => {
