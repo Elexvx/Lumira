@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
+import { Button, Card, Descriptions, Drawer, Form, Input, InputNumber, Select, Space, Tag, Typography, message } from 'antd';
 import { useRequest } from 'umi';
-import { ManagementPageContainer } from '@/components/ManagementPageContainer';
-import { QueryPanel } from '@/components/QueryPanel';
-import { ActionBar } from '@/components/ActionBar';
-import { DataTable } from '@/components/DataTable';
-import { DetailDrawer } from '@/components/DetailDrawer';
-import { PermissionButton } from '@/components/PermissionButton';
 import { dictService } from '@/services/dict';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
-import { useResponsive } from '@/hooks/useResponsive';
+import { usePermission } from '@/hooks/usePermission';
 
 export default () => {
+  const [queryForm] = Form.useForm();
   const [typeForm] = Form.useForm();
   const [itemForm] = Form.useForm();
-  const { isMobile } = useResponsive();
+  const { canAccess } = usePermission();
   const [query, setQuery] = useState<Record<string, unknown>>({});
   const [selectedType, setSelectedType] = useState<DictTypeRecord | null>(null);
   const [selectedItem, setSelectedItem] = useState<DictItemRecord | null>(null);
@@ -26,15 +22,17 @@ export default () => {
   const [reloadTick, setReloadTick] = useState(0);
 
   const fetchTypes = useCallback(
-    async (params: { current: number; pageSize: number }) =>
-      dictService.types(
+    async (params: { current?: number; pageSize?: number }) => {
+      const result = await dictService.types(
         {
           pageNo: params.current,
           pageSize: params.pageSize,
           ...(query || {}),
         },
         { autoRedirectOnUnauthorized: false },
-      ),
+      );
+      return { data: result.records, success: true, total: result.total };
+    },
     [query, reloadTick],
   );
 
@@ -58,62 +56,65 @@ export default () => {
     }
   }, [itemEditorOpen, itemForm, selectedItem]);
 
-  const columns = useMemo(
+  const columns = useMemo<ProColumns<DictTypeRecord>[]>(
     () => [
       { title: '字典编码', dataIndex: 'dictCode' },
       { title: '字典名称', dataIndex: 'dictName' },
       {
         title: '系统内置',
         dataIndex: 'isSystem',
-        render: (value: number) => <Tag color={value ? 'green' : 'default'}>{value ? '是' : '否'}</Tag>,
+        render: (_, record) => <Tag color={record.isSystem ? 'green' : 'default'}>{record.isSystem ? '是' : '否'}</Tag>,
       },
       {
         title: '状态',
         dataIndex: 'status',
-        render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,
+        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
       },
       {
         title: '操作',
-        render: (_: unknown, record: DictTypeRecord) => (
+        render: (_, record) => (
           <Space wrap>
-            <PermissionButton
-              permission="system:dict:view"
-              onClick={() => {
-                setSelectedType(record);
-                setDetailOpen(true);
-              }}
-            >
-              详情
-            </PermissionButton>
-            <PermissionButton
-              permission="system:dict:update"
-              onClick={() => {
-                setSelectedType(record);
-                setEditingTypeId(record.id);
-                setTypeEditorOpen(true);
-              }}
-            >
-              编辑
-            </PermissionButton>
-            <PermissionButton
-              permission="system:dict:view"
-              onClick={() => {
-                setSelectedType(record);
-                setDetailOpen(true);
-              }}
-            >
-              字典项
-            </PermissionButton>
+            {canAccess('system:dict:view') ? (
+              <Button
+                onClick={() => {
+                  setSelectedType(record);
+                  setDetailOpen(true);
+                }}
+              >
+                详情
+              </Button>
+            ) : null}
+            {canAccess('system:dict:update') ? (
+              <Button
+                onClick={() => {
+                  setSelectedType(record);
+                  setEditingTypeId(record.id);
+                  setTypeEditorOpen(true);
+                }}
+              >
+                编辑
+              </Button>
+            ) : null}
+            {canAccess('system:dict:view') ? (
+              <Button
+                onClick={() => {
+                  setSelectedType(record);
+                  setDetailOpen(true);
+                }}
+              >
+                字典项
+              </Button>
+            ) : null}
           </Space>
         ),
       },
     ],
-    [],
+    [canAccess],
   );
 
   const submitQuery = async (values: Record<string, unknown>) => setQuery(values);
   const resetQuery = () => {
-    typeForm.resetFields();
+    queryForm.resetFields();
     setQuery({});
   };
 
@@ -163,156 +164,207 @@ export default () => {
   };
 
   return (
-    <ManagementPageContainer title="字典管理" description="支持字典类型、字典项和基础查询。">
-      <QueryPanel
-        form={typeForm}
-        onSearch={submitQuery}
-        onReset={resetQuery}
-        columns={isMobile ? 1 : 3}
-        collapseCount={3}
-        actions={<Button onClick={() => setReloadTick((value) => value + 1)}>刷新</Button>}
-      >
-        <Form.Item name="dictCode" label="字典编码">
-          <Input allowClear placeholder="输入字典编码" />
-        </Form.Item>
-        <Form.Item name="dictName" label="字典名称">
-          <Input allowClear placeholder="输入字典名称" />
-        </Form.Item>
-        <Form.Item name="status" label="状态">
-          <Select allowClear options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
-        </Form.Item>
-      </QueryPanel>
+    <PageContainer
+      className="saas-management-page saas-crud-page"
+      ghost
+      breadcrumbRender={false}
+      title="字典管理"
+      subTitle="支持字典类型、字典项和基础查询。"
+      style={{ height: '100%', minHeight: 0 }}
+      content={null}
+    >
+      <div className="saas-management-page-body">
+        <Card className="saas-query-panel">
+          <Form form={queryForm} layout="vertical" onFinish={submitQuery} onReset={resetQuery}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+              <Form.Item name="dictCode" label="字典编码">
+                <Input allowClear placeholder="输入字典编码" />
+              </Form.Item>
+              <Form.Item name="dictName" label="字典名称">
+                <Input allowClear placeholder="输入字典名称" />
+              </Form.Item>
+              <Form.Item name="status" label="状态">
+                <Select allowClear options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
+              </Form.Item>
+            </div>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button htmlType="reset">重置</Button>
+              <Button type="primary" htmlType="submit">
+                查询
+              </Button>
+              <Button onClick={() => setReloadTick((value) => value + 1)}>刷新</Button>
+            </Space>
+          </Form>
+        </Card>
 
-      <ActionBar
-        left={
-          <PermissionButton permission="system:dict:create" type="primary" onClick={openCreateType}>
-            新增字典类型
-          </PermissionButton>
-        }
-        right={<Button onClick={() => setReloadTick((value) => value + 1)}>刷新列表</Button>}
-      />
-
-      <Card bodyStyle={{ height: 520, minHeight: 0 }}>
-        <DataTable<DictTypeRecord>
-          rowKey="id"
-          columns={columns}
-          request={fetchTypes}
-          middleScroll
-          emptyText="暂无字典类型"
-        />
-      </Card>
-
-      <Modal
-        open={typeEditorOpen}
-        title={editingTypeId ? '编辑字典类型' : '新增字典类型'}
-        onCancel={() => setTypeEditorOpen(false)}
-        onOk={saveType}
-        destroyOnClose
-      >
-        <Form form={typeForm} layout="vertical" initialValues={{ status: 'ENABLED' }}>
-          <Form.Item name="dictCode" label="字典编码" rules={[{ required: true, message: '请输入字典编码' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="dictName" label="字典名称" rules={[{ required: true, message: '请输入字典名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
-          </Form.Item>
-          <Form.Item name="remark" label="备注">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <DetailDrawer
-        title={selectedType ? `字典详情 · ${selectedType.dictName}` : '字典详情'}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        descriptionItems={
-          selectedType
-            ? [
-                { key: 'dictCode', label: '字典编码', children: selectedType.dictCode },
-                { key: 'dictName', label: '字典名称', children: selectedType.dictName },
-                { key: 'status', label: '状态', children: selectedType.status },
-                { key: 'isSystem', label: '系统内置', children: selectedType.isSystem ? '是' : '否' },
-                { key: 'remark', label: '备注', children: selectedType.remark || '-' },
-              ]
-            : undefined
-        }
-      >
-        {selectedType ? (
-          <Card
-            title={
-              <Space>
-                <Typography.Text>字典项</Typography.Text>
-                <Button size="small" onClick={openCreateItem}>
-                  新增项
+        <Card className="saas-action-bar">
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Space>
+              {canAccess('system:dict:create') ? (
+                <Button type="primary" onClick={openCreateType}>
+                  新增字典类型
                 </Button>
-              </Space>
-            }
-          >
-            <DataTable<DictItemRecord>
-              rowKey="id"
-              columns={[
-                { title: '标签', dataIndex: 'itemLabel' },
-                { title: '值', dataIndex: 'itemValue' },
-                { title: '排序', dataIndex: 'sortNo' },
-                {
-                  title: '状态',
-                  dataIndex: 'status',
-                  render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,
-                },
-                {
-                  title: '操作',
-                  render: (_: unknown, record: DictItemRecord) => (
-                    <PermissionButton
-                      permission="system:dict:update"
-                      onClick={() => {
-                        setSelectedItem(record);
-                        setEditingItemId(record.id);
-                        setItemEditorOpen(true);
-                      }}
-                    >
-                      编辑
-                    </PermissionButton>
-                  ),
-                },
-              ]}
-              dataSource={itemListQuery.data || []}
-              pagination={false}
-              middleScroll
-              emptyText="暂无字典项"
-            />
-          </Card>
-        ) : null}
-      </DetailDrawer>
+              ) : null}
+            </Space>
+            <Button onClick={() => setReloadTick((value) => value + 1)}>刷新列表</Button>
+          </Space>
+        </Card>
 
-      <Modal
-        open={itemEditorOpen}
-        title={editingItemId ? '编辑字典项' : '新增字典项'}
-        onCancel={() => setItemEditorOpen(false)}
-        onOk={saveItem}
-        destroyOnClose
-      >
-        <Form form={itemForm} layout="vertical" initialValues={{ sortNo: 0, status: 'ENABLED' }}>
-          <Form.Item name="itemLabel" label="标签" rules={[{ required: true, message: '请输入标签' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="itemValue" label="值" rules={[{ required: true, message: '请输入值' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="sortNo" label="排序">
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
-          </Form.Item>
-          <Form.Item name="remark" label="备注">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </ManagementPageContainer>
+        <Card className="saas-crud-table-card" bodyStyle={{ minHeight: 0 }}>
+          <ProTable<DictTypeRecord>
+            rowKey="id"
+            columns={columns}
+            request={fetchTypes}
+            params={{ ...query, reloadTick }}
+            search={false}
+            options={false}
+            toolBarRender={false}
+            pagination={{ showSizeChanger: true }}
+          />
+        </Card>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={editingTypeId ? '编辑字典类型' : '新增字典类型'}
+          open={typeEditorOpen}
+          onClose={() => setTypeEditorOpen(false)}
+          width={720}
+          destroyOnClose
+          extra={
+            <Space>
+              <Button onClick={() => setTypeEditorOpen(false)}>取消</Button>
+              <Button type="primary" onClick={saveType}>
+                保存
+              </Button>
+            </Space>
+          }
+        >
+          <Form form={typeForm} layout="vertical" initialValues={{ status: 'ENABLED' }}>
+            <Form.Item name="dictCode" label="字典编码" rules={[{ required: true, message: '请输入字典编码' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="dictName" label="字典名称" rules={[{ required: true, message: '请输入字典名称' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="status" label="状态">
+              <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
+            </Form.Item>
+            <Form.Item name="remark" label="备注">
+              <Input.TextArea rows={3} />
+            </Form.Item>
+          </Form>
+        </Drawer>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={selectedType ? `字典详情 · ${selectedType.dictName}` : '字典详情'}
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          width={900}
+          destroyOnClose
+        >
+          {selectedType ? (
+            <Space direction="vertical" style={{ width: '100%' }} size={16}>
+              <Descriptions
+                bordered
+                size="small"
+                column={2}
+                items={[
+                  { key: 'dictCode', label: '字典编码', children: selectedType.dictCode },
+                  { key: 'dictName', label: '字典名称', children: selectedType.dictName },
+                  { key: 'status', label: '状态', children: selectedType.status },
+                  { key: 'isSystem', label: '系统内置', children: selectedType.isSystem ? '是' : '否' },
+                  { key: 'remark', label: '备注', children: selectedType.remark || '-' },
+                ]}
+              />
+
+              <Card
+                className="saas-crud-info-card"
+                title={
+                  <Space>
+                    <Typography.Text>字典项</Typography.Text>
+                    {canAccess('system:dict:update') ? (
+                      <Button size="small" onClick={openCreateItem}>
+                        新增项
+                      </Button>
+                    ) : null}
+                  </Space>
+                }
+              >
+                <ProTable<DictItemRecord>
+                  rowKey="id"
+                  columns={[
+                    { title: '标签', dataIndex: 'itemLabel' },
+                    { title: '值', dataIndex: 'itemValue' },
+                    { title: '排序', dataIndex: 'sortNo' },
+                    {
+                      title: '状态',
+                      dataIndex: 'status',
+                      render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
+                    },
+                    {
+                      title: '操作',
+                      render: (_, record) =>
+                        canAccess('system:dict:update') ? (
+                          <Button
+                            onClick={() => {
+                              setSelectedItem(record);
+                              setEditingItemId(record.id);
+                              setItemEditorOpen(true);
+                            }}
+                          >
+                            编辑
+                          </Button>
+                        ) : null,
+                    },
+                  ]}
+                  dataSource={itemListQuery.data || []}
+                  loading={itemListQuery.loading}
+                  search={false}
+                  options={false}
+                  toolBarRender={false}
+                  pagination={false}
+                />
+              </Card>
+            </Space>
+          ) : null}
+        </Drawer>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={editingItemId ? '编辑字典项' : '新增字典项'}
+          open={itemEditorOpen}
+          onClose={() => setItemEditorOpen(false)}
+          width={720}
+          destroyOnClose
+          extra={
+            <Space>
+              <Button onClick={() => setItemEditorOpen(false)}>取消</Button>
+              <Button type="primary" onClick={saveItem}>
+                保存
+              </Button>
+            </Space>
+          }
+        >
+          <Form form={itemForm} layout="vertical" initialValues={{ sortNo: 0, status: 'ENABLED' }}>
+            <Form.Item name="itemLabel" label="标签" rules={[{ required: true, message: '请输入标签' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="itemValue" label="值" rules={[{ required: true, message: '请输入值' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="sortNo" label="排序">
+              <InputNumber style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="status" label="状态">
+              <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
+            </Form.Item>
+            <Form.Item name="remark" label="备注">
+              <Input.TextArea rows={3} />
+            </Form.Item>
+          </Form>
+        </Drawer>
+      </div>
+    </PageContainer>
   );
 };

@@ -47,6 +47,7 @@ export const QueryPanel = <T extends object = Record<string, unknown>>({
   const childList = useMemo(() => Children.toArray(children), [children]);
   const visibleChildren = collapsed && collapsible ? childList.slice(0, collapseCount) : childList;
   const gridColumns = isMobile ? 1 : isTablet ? Math.min(2, columns) : columns;
+  const mergedClassName = ['saas-query-panel', className].filter(Boolean).join(' ');
 
   const handleReset: FormProps<T>['onReset'] = () => {
     onReset?.();
@@ -54,8 +55,7 @@ export const QueryPanel = <T extends object = Record<string, unknown>>({
 
   return (
     <ProCard
-      className={className}
-      ghost
+      className={mergedClassName}
       style={{
         ...style,
       }}

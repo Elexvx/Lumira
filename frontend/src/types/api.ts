@@ -38,6 +38,20 @@ export interface LoginResponse {
   currentTenant?: TenantSummary | null;
 }
 
+export interface SecuritySettings {
+  idleTimeoutSeconds: number;
+  accessTokenExpireSeconds: number;
+  refreshTokenExpireSeconds: number;
+}
+
+export interface BrandingSettings {
+  websiteName: string;
+  websiteFaviconUrl?: string;
+  websiteLogoUrl?: string;
+  footerIcp?: string;
+  footerCopyright?: string;
+}
+
 export interface RefreshTokenResponse {
   accessToken: string;
   refreshToken: string;

@@ -21,10 +21,13 @@ export const ManagementPageContainer = ({
   style,
   children,
 }: ManagementPageContainerProps) => {
+  const mergedClassName = ['saas-management-page', className].filter(Boolean).join(' ');
+
   return (
     <PageContainer
-      className={className}
+      className={mergedClassName}
       ghost
+      breadcrumbRender={false}
       title={title}
       subTitle={description}
       extra={extra}
@@ -36,6 +39,7 @@ export const ManagementPageContainer = ({
       content={null}
     >
       <div
+        className="saas-management-page-body"
         style={{
           display: 'flex',
           flexDirection: 'column',

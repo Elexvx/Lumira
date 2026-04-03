@@ -1,6 +1,6 @@
 import { storage } from '@/cache/storage';
 
-const TOKEN_KEY = 'auth_tokens';
+export const TOKEN_STORAGE_KEY = 'auth_tokens';
 
 export interface AuthTokenState {
   accessToken: string;
@@ -10,11 +10,11 @@ export interface AuthTokenState {
   expiresAt: number;
 }
 
-const getTokenState = (): AuthTokenState | null => storage.get<AuthTokenState>(TOKEN_KEY);
+const getTokenState = (): AuthTokenState | null => storage.get<AuthTokenState>(TOKEN_STORAGE_KEY);
 
-const setTokenState = (state: AuthTokenState) => storage.set(TOKEN_KEY, state);
+const setTokenState = (state: AuthTokenState) => storage.set(TOKEN_STORAGE_KEY, state);
 
-const clearTokenState = () => storage.remove(TOKEN_KEY);
+const clearTokenState = () => storage.remove(TOKEN_STORAGE_KEY);
 
 export const tokenManager = {
   getTokenState,

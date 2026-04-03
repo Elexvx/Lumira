@@ -21,9 +21,10 @@ export const ActionBar = ({
   style,
 }: ActionBarProps) => {
   const primary = left ?? children;
+  const mergedClassName = ['saas-action-bar', className].filter(Boolean).join(' ');
 
   return (
-    <ProCard ghost className={className} style={style}>
+    <ProCard className={mergedClassName} style={style}>
       <Space
         wrap
         style={{

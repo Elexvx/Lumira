@@ -8,6 +8,7 @@ import com.yourcompany.saas.infrastructure.security.model.TokenClaims;
 import com.yourcompany.saas.infrastructure.security.model.TokenType;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
 import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
+import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
 import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,6 +22,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 
 @Component
@@ -32,15 +35,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final AuthSessionStore authSessionStore;
     private final PermissionSnapshotService permissionSnapshotService;
+    private final SecuritySettingsService securitySettingsService;
 
     public JwtAuthFilter(
             JwtTokenService jwtTokenService,
             AuthSessionStore authSessionStore,
-            PermissionSnapshotService permissionSnapshotService
+            PermissionSnapshotService permissionSnapshotService,
+            SecuritySettingsService securitySettingsService
     ) {
         this.jwtTokenService = jwtTokenService;
         this.authSessionStore = authSessionStore;
         this.permissionSnapshotService = permissionSnapshotService;
+        this.securitySettingsService = securitySettingsService;
     }
 
     @Override
@@ -77,6 +83,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             validateSession(claims, session);
             setAuthentication(claims, session);
+            session.setLastActivityAt(Instant.now());
+            authSessionStore.save(session);
         } catch (BizException ex) {
             SecurityContextHolder.clearContext();
             request.setAttribute(AUTH_BIZ_EXCEPTION_ATTR, ex);
@@ -116,6 +124,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     "会话已过期，请重新登录",
                     ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
             );
+        }
+        Instant lastActivityAt = session.getLastActivityAt() != null ? session.getLastActivityAt() : session.getLoginTime();
+        long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
+        if (lastActivityAt != null && idleTimeoutSeconds > 0) {
+            Duration idleDuration = Duration.between(lastActivityAt, Instant.now());
+            if (idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) >= 0) {
+                throw new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "会话空闲超时，请重新登录",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                );
+            }
         }
     }
 

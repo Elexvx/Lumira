@@ -39,25 +39,16 @@ public class PermissionSnapshotService {
         String cacheKey = CacheKeyConstants.userKey(String.valueOf(tenantId), String.valueOf(userId), "permission_snapshot:" + version);
         String cached = cacheTemplate.get(cacheKey);
         if (StringUtils.hasText(cached)) {
-            return deserialize(cached);
+            try {
+                PermissionSnapshot snapshot = deserialize(cached);
+                if (!snapshot.getPermissions().isEmpty()) {
+                    return snapshot;
+                }
+            } catch (BizException exception) {
+                // Allow stale or incompatible cache payloads to self-heal from DB state.
+            }
         }
-        Set<String> permissions = new LinkedHashSet<>(jdbcTemplate.query(
-                """
-                        select distinct rp.permission_key
-                        from sys_user_role ur
-                        join sys_role_permission rp
-                          on rp.tenant_id = ur.tenant_id
-                         and rp.role_id = ur.role_id
-                         and rp.deleted = 0
-                        where ur.tenant_id = ?
-                          and ur.user_id = ?
-                          and ur.deleted = 0
-                        order by rp.permission_key
-                        """,
-                (rs, rowNum) -> rs.getString("permission_key"),
-                tenantId,
-                userId
-        ));
+        Set<String> permissions = queryPermissions(tenantId, userId);
         PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions);
         cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
         return snapshot;
@@ -79,6 +70,26 @@ public class PermissionSnapshotService {
         String newVersion = String.valueOf(System.currentTimeMillis());
         cacheTemplate.put(key, newVersion, Duration.ofDays(30));
         return newVersion;
+    }
+
+    private Set<String> queryPermissions(Long tenantId, Long userId) {
+        return new LinkedHashSet<>(jdbcTemplate.query(
+                """
+                        select distinct rp.permission_key
+                        from sys_user_role ur
+                        join sys_role_permission rp
+                          on rp.tenant_id = ur.tenant_id
+                         and rp.role_id = ur.role_id
+                         and rp.deleted = 0
+                        where ur.tenant_id = ?
+                          and ur.user_id = ?
+                          and ur.deleted = 0
+                        order by rp.permission_key
+                        """,
+                (rs, rowNum) -> rs.getString("permission_key"),
+                tenantId,
+                userId
+        ));
     }
 
     private String serialize(PermissionSnapshot snapshot) {

@@ -6,6 +6,7 @@ export interface DetailDrawerProps {
   title: ReactNode;
   open: boolean;
   onClose: () => void;
+  className?: string;
   width?: number | string;
   loading?: boolean;
   descriptionItems?: DescriptionsProps['items'];
@@ -19,6 +20,7 @@ export const DetailDrawer = ({
   title,
   open,
   onClose,
+  className,
   width = 720,
   loading = false,
   descriptionItems,
@@ -28,9 +30,11 @@ export const DetailDrawer = ({
   bodyStyle,
 }: DetailDrawerProps) => {
   const { isMobile } = useResponsive();
+  const mergedClassName = ['saas-detail-drawer', className].filter(Boolean).join(' ');
 
   return (
     <Drawer
+      className={mergedClassName}
       title={title}
       open={open}
       onClose={onClose}

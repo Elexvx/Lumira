@@ -3,6 +3,7 @@ import { Empty, Pagination, Spin } from 'antd';
 import type { ColumnsType, TablePaginationConfig, TableProps } from 'antd/es/table';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useResponsive } from '@/hooks/useResponsive';
+import { ApiRequestError } from '@/services/common/request';
 
 export interface DataTablePageResult<T> {
   records: T[];
@@ -45,6 +46,8 @@ export const DataTable = <T extends object>({
   mobileCardRender,
   rowKey = 'id',
   size = 'middle',
+  className,
+  style,
   scroll,
   ...tableProps
 }: DataTableProps<T>) => {
@@ -61,6 +64,7 @@ export const DataTable = <T extends object>({
   const [remoteRecords, setRemoteRecords] = useState<T[]>([]);
   const [remoteTotal, setRemoteTotal] = useState<number>(0);
   const [requestLoading, setRequestLoading] = useState(false);
+  const [requestFailed, setRequestFailed] = useState(false);
 
   useEffect(() => {
     if (!request) {
@@ -68,6 +72,7 @@ export const DataTable = <T extends object>({
     }
     let active = true;
     setRequestLoading(true);
+    setRequestFailed(false);
     request({
       current: Number(pageState.current || 1),
       pageSize: Number(pageState.pageSize || DEFAULT_PAGE_SIZE),
@@ -84,6 +89,17 @@ export const DataTable = <T extends object>({
         }
         setRemoteRecords(result.records);
         setRemoteTotal(result.total);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setRemoteRecords([]);
+        setRemoteTotal(0);
+        if (!(error instanceof ApiRequestError)) {
+          console.error(error);
+        }
+        setRequestFailed(true);
       })
       .finally(() => {
         if (active) {
@@ -134,6 +150,7 @@ export const DataTable = <T extends object>({
   const total = request ? remoteTotal : records.length;
   const effectivePagination = typeof pagination === 'object' && pagination ? pagination : {};
   const shouldRenderCardList = Boolean(isMobile && mobileCardRender);
+  const mergedClassName = ['saas-data-table', className].filter(Boolean).join(' ');
 
   const currentPagination = useMemo<TablePaginationConfig>(
     () => ({
@@ -148,12 +165,13 @@ export const DataTable = <T extends object>({
 
   return (
     <ProCard
-      ghost
+      className={mergedClassName}
       style={{
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
         height: '100%',
+        ...style,
       }}
     >
       <div ref={rootRef} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
@@ -169,7 +187,7 @@ export const DataTable = <T extends object>({
               <Spin />
             </div>
           ) : records.length === 0 ? (
-            <Empty description={emptyText || '暂无数据'} />
+            <Empty description={requestFailed ? '数据加载失败，请稍后重试' : emptyText || '暂无数据'} />
           ) : shouldRenderCardList ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {records.map((record, index) => (

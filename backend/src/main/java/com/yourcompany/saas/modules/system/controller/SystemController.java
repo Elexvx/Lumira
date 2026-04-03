@@ -47,11 +47,11 @@ public class SystemController {
 
     @GetMapping("/users")
     public ApiResponse<PageResponse<SystemVO.UserVO>> users(
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String mobile,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize
+            @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "mobile", required = false) String mobile,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:user:view");
         return ApiResponse.success(
@@ -92,11 +92,11 @@ public class SystemController {
 
     @GetMapping("/roles")
     public ApiResponse<PageResponse<SystemVO.RoleVO>> roles(
-            @RequestParam(required = false) String roleCode,
-            @RequestParam(required = false) String roleName,
-            @RequestParam(required = false) String roleType,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize
+            @RequestParam(name = "roleCode", required = false) String roleCode,
+            @RequestParam(name = "roleName", required = false) String roleName,
+            @RequestParam(name = "roleType", required = false) String roleType,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:role:view");
         return ApiResponse.success(
@@ -161,11 +161,11 @@ public class SystemController {
 
     @GetMapping("/dict-types")
     public ApiResponse<PageResponse<SystemVO.DictTypeVO>> dictTypes(
-            @RequestParam(required = false) String dictCode,
-            @RequestParam(required = false) String dictName,
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize
+            @RequestParam(name = "dictCode", required = false) String dictCode,
+            @RequestParam(name = "dictName", required = false) String dictName,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:dict:view");
         return ApiResponse.success(
@@ -216,11 +216,11 @@ public class SystemController {
 
     @GetMapping("/configs")
     public ApiResponse<PageResponse<SystemVO.ConfigVO>> configs(
-            @RequestParam(required = false) String configKey,
-            @RequestParam(required = false) String configName,
-            @RequestParam(required = false) String configScope,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize
+            @RequestParam(name = "configKey", required = false) String configKey,
+            @RequestParam(name = "configName", required = false) String configName,
+            @RequestParam(name = "configScope", required = false) String configScope,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:config:view");
         return ApiResponse.success(
@@ -245,6 +245,37 @@ public class SystemController {
     public ApiResponse<SystemVO.ConfigVO> updateConfig(@PathVariable Long id, @Valid @RequestBody SystemDTO.ConfigUpsertRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.updateConfig(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/security-settings")
+    public ApiResponse<SystemVO.SecuritySettingsVO> securitySettings() {
+        return ApiResponse.success(systemManagementAppService.getSecuritySettings(), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/security-settings")
+    public ApiResponse<SystemVO.SecuritySettingsVO> updateSecuritySettings(@Valid @RequestBody SystemDTO.SecuritySettingsRequest request) {
+        require("system:config:update");
+        return ApiResponse.success(
+                systemManagementAppService.updateSecuritySettings(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/branding-settings")
+    public ApiResponse<SystemVO.BrandingSettingsVO> brandingSettings() {
+        return ApiResponse.success(
+                systemManagementAppService.getBrandingSettings(securityContextFacade.getCurrentUser()),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/branding-settings")
+    public ApiResponse<SystemVO.BrandingSettingsVO> updateBrandingSettings(@RequestBody SystemDTO.BrandingSettingsRequest request) {
+        require("system:config:update");
+        return ApiResponse.success(
+                systemManagementAppService.updateBrandingSettings(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
     }
 
     private void require(String permissionKey) {

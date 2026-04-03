@@ -9,6 +9,7 @@ public class AuthSession {
     private String username;
     private Long currentTenantId;
     private Instant loginTime;
+    private Instant lastActivityAt;
     private Instant expireTime;
     private Integer sessionVersion;
     private String clientType;
@@ -54,6 +55,14 @@ public class AuthSession {
 
     public void setLoginTime(Instant loginTime) {
         this.loginTime = loginTime;
+    }
+
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
+    }
+
+    public void setLastActivityAt(Instant lastActivityAt) {
+        this.lastActivityAt = lastActivityAt;
     }
 
     public Instant getExpireTime() {

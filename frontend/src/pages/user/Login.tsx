@@ -1,8 +1,10 @@
-import { AppstoreOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
+import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginFormPage, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
 import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { history, useLocation } from 'umi';
-import { Alert, Typography } from 'antd';
+import { Alert } from 'antd';
+import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { ApiRequestError } from '@/services/common/request';
@@ -11,6 +13,7 @@ import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import UserLayout from '@/layouts/UserLayout';
+import { systemService } from '@/services/system';
 import './Login.less';
 
 interface LoginFormValues {
@@ -22,8 +25,9 @@ interface LoginFormValues {
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string>();
-  const { setInitialState } = useInitialStateModel();
+  const { initialState, setInitialState } = useInitialStateModel();
   const location = useLocation();
+  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     setSubmitting(true);
@@ -35,18 +39,25 @@ const Login = () => {
       });
 
       const sessionResult = await initializeAfterLogin(loginResponse);
-      const [menuTree, availablePlugins] = await Promise.all([
+      const [menuTree, availablePlugins, latestBrandingSettings] = await Promise.all([
         pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
         pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+        systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),
       ]);
-      setInitialState((prev: AppInitialState | undefined) => ({
-        ...prev,
-        currentUser: sessionResult.currentUser,
-        currentTenant: tenantContext.getCurrentTenant(),
-        myTenants: tenantContext.getMyTenants(),
-        menuTree,
-        availablePlugins,
-      }));
+      const normalizedBrandingSettings = normalizeBrandingSettings(latestBrandingSettings);
+      persistBrandingSettings(normalizedBrandingSettings);
+      flushSync(() => {
+        setInitialState((prev: AppInitialState | undefined) => ({
+          ...prev,
+          currentUser: sessionResult.currentUser,
+          currentTenant: tenantContext.getCurrentTenant(),
+          myTenants: tenantContext.getMyTenants(),
+          menuTree,
+          availablePlugins,
+          securitySettings: sessionResult.securitySettings,
+          brandingSettings: normalizedBrandingSettings,
+        }));
+      });
 
       const searchParams = new URLSearchParams(location.search);
       const redirect = searchParams.get('redirect') || '/dashboard/home';
@@ -74,13 +85,12 @@ const Login = () => {
     <UserLayout>
       <div className="saas-login-page">
         <LoginFormPage<LoginFormValues>
+          title={brandingSettings.websiteName}
           logo={
-            <span className="saas-login-page__brand-mark" aria-hidden="true">
-              <AppstoreOutlined />
-            </span>
+            brandingSettings.websiteLogoUrl
+              ? <img className="saas-login-page__logo" src={brandingSettings.websiteLogoUrl} alt={brandingSettings.websiteName} />
+              : undefined
           }
-          title="宏翔商道"
-          subTitle="企业级智能协同管理平台"
           initialValues={{ remember: true }}
           message={loginError ? <Alert showIcon type="error" message={loginError} /> : false}
           onFinish={handleSubmit}
@@ -92,18 +102,16 @@ const Login = () => {
           }}
           containerStyle={{
             minWidth: 0,
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            boxShadow: 'none',
           }}
           style={{
-            minHeight: '100vh',
+            minHeight: 'auto',
             background: 'transparent',
           }}
         >
-          <div className="saas-login-page__heading">
-            <Typography.Text className="saas-login-page__eyebrow">账号密码登录</Typography.Text>
-            <Typography.Paragraph className="saas-login-page__helper">
-              使用平台账号登录，进入宏翔商道后台工作台。
-            </Typography.Paragraph>
-          </div>
           <ProFormText
             name="username"
             fieldProps={{

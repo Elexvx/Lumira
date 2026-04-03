@@ -2,10 +2,10 @@ package com.yourcompany.saas.infrastructure.security.service;
 
 import com.yourcompany.saas.common.enums.ErrorCode;
 import com.yourcompany.saas.common.exception.BizException;
-import com.yourcompany.saas.infrastructure.security.SecurityProperties;
 import com.yourcompany.saas.infrastructure.security.model.AuthSession;
 import com.yourcompany.saas.infrastructure.security.model.TokenClaims;
 import com.yourcompany.saas.infrastructure.security.model.TokenType;
+import com.yourcompany.saas.infrastructure.security.SecurityProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -31,16 +31,18 @@ public class JwtTokenService {
     private static final String CLAIM_TOKEN_TYPE = "tt";
 
     private final SecurityProperties securityProperties;
+    private final SecuritySettingsService securitySettingsService;
     private final SecretKey secretKey;
 
-    public JwtTokenService(SecurityProperties securityProperties) {
+    public JwtTokenService(SecurityProperties securityProperties, SecuritySettingsService securitySettingsService) {
         this.securityProperties = securityProperties;
+        this.securitySettingsService = securitySettingsService;
         this.secretKey = buildSecretKey(securityProperties.getJwtSecret());
     }
 
     public String generateAccessToken(AuthSession session) {
         Instant now = Instant.now();
-        Instant expireAt = now.plusSeconds(securityProperties.getAccessTokenExpireSeconds());
+        Instant expireAt = now.plusSeconds(getAccessTokenExpireSeconds());
         return Jwts.builder()
                 .issuer(securityProperties.getIssuer())
                 .issuedAt(Date.from(now))
@@ -58,7 +60,7 @@ public class JwtTokenService {
 
     public String generateRefreshToken(AuthSession session, String refreshTokenId) {
         Instant now = Instant.now();
-        Instant expireAt = now.plusSeconds(securityProperties.getRefreshTokenExpireSeconds());
+        Instant expireAt = now.plusSeconds(getRefreshTokenExpireSeconds());
         return Jwts.builder()
                 .issuer(securityProperties.getIssuer())
                 .issuedAt(Date.from(now))
@@ -87,19 +89,23 @@ public class JwtTokenService {
     }
 
     public long getAccessTokenExpireSeconds() {
-        return securityProperties.getAccessTokenExpireSeconds();
+        return securitySettingsService.getAccessTokenExpireSeconds();
     }
 
     public long getRefreshTokenExpireSeconds() {
-        return securityProperties.getRefreshTokenExpireSeconds();
+        return securitySettingsService.getRefreshTokenExpireSeconds();
+    }
+
+    public long getIdleTimeoutSeconds() {
+        return securitySettingsService.getIdleTimeoutSeconds();
     }
 
     public Instant createRefreshTokenExpireAt() {
-        return Instant.now().plusSeconds(securityProperties.getRefreshTokenExpireSeconds());
+        return Instant.now().plusSeconds(getRefreshTokenExpireSeconds());
     }
 
     public Duration getRefreshTokenTtl() {
-        return Duration.ofSeconds(securityProperties.getRefreshTokenExpireSeconds());
+        return Duration.ofSeconds(getRefreshTokenExpireSeconds());
     }
 
     public boolean isExpired(Instant expireAt) {

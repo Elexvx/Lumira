@@ -1,6 +1,7 @@
 import { message } from 'antd';
 import { history, request as umiRequest } from 'umi';
 import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TENANT_HEADER, TRACE_ID_HEADER } from '@/constants/http';
+import { clearAuthSession } from '@/auth/session';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import { ErrorCode } from '@/enums/errorCode';
@@ -28,6 +29,7 @@ export interface RequestOptions {
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   autoRedirectOnUnauthorized?: boolean;
+  allowUnauthorizedWithoutRedirect?: boolean;
   skipAuth?: boolean;
   silent?: boolean;
 }
@@ -99,7 +101,10 @@ const buildAuthorization = () => {
 };
 
 const handleApiError = (error: ApiRequestError, options: RequestOptions) => {
-  if (shouldRedirectOnUnauthorized(error.code) && options.autoRedirectOnUnauthorized !== false) {
+  const bypassUnauthorizedRedirect =
+    options.autoRedirectOnUnauthorized === false && options.allowUnauthorizedWithoutRedirect === true;
+
+  if (shouldRedirectOnUnauthorized(error.code) && !bypassUnauthorizedRedirect) {
     cleanUnauthorizedState();
     if (!options.silent) {
       message.error(error.userMessage || error.message);
@@ -235,6 +240,5 @@ const buildUnexpectedError = (error: unknown) => {
 };
 
 const cleanUnauthorizedState = () => {
-  tokenManager.clearTokenState();
-  tenantContext.clearTenantContext();
+  clearAuthSession();
 };

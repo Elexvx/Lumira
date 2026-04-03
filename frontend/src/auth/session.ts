@@ -1,10 +1,18 @@
 import { history } from 'umi';
 import { authService } from '@/services/auth';
+import { systemService } from '@/services/system';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import { syncTenantFromServer } from '@/tenant/actions';
 import { storage } from '@/cache/storage';
-import type { CurrentUser, LoginResponse } from '@/types/api';
+import { clearSessionActivity, persistSessionActivity } from '@/auth/activity';
+import {
+  DEFAULT_SECURITY_SETTINGS,
+  getStoredSecuritySettings,
+  normalizeSecuritySettings,
+  persistSecuritySettings,
+} from '@/auth/securitySettings';
+import type { CurrentUser, LoginResponse, SecuritySettings } from '@/types/api';
 
 const USER_PROFILE_KEY = 'current_user_profile';
 const SESSION_META_KEY = 'current_session_meta';
@@ -17,6 +25,7 @@ export interface SessionMetaState {
 
 export interface SessionBootstrapResult {
   currentUser: CurrentUser;
+  securitySettings: SecuritySettings;
 }
 
 export const isLoggedIn = () => tokenManager.hasToken();
@@ -29,14 +38,18 @@ export const clearAuthSession = () => {
   tokenManager.clearTokenState();
   storage.remove(USER_PROFILE_KEY);
   storage.remove(SESSION_META_KEY);
+  clearSessionActivity();
   tenantContext.clearTenantContext();
 };
 
 export const performLogout = async () => {
   if (isLoggedIn()) {
     try {
-      await authService.logout({ autoRedirectOnUnauthorized: false });
-    } catch (error) {
+      await authService.logout({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+      });
+    } catch {
       // 后端会话已失效时继续做本地清理，不阻塞退出流程
     }
   }
@@ -54,12 +67,15 @@ export const initializeAfterLogin = async (loginResponse: LoginResponse): Promis
 
   tenantContext.setMyTenants(loginResponse.tenants || []);
   tenantContext.setCurrentTenant(loginResponse.currentTenant || null);
+  persistSessionActivity(Date.now());
 
   try {
     const currentUser = await authService.currentUser();
     persistCurrentUser(currentUser);
     await syncTenantFromServer();
-    return { currentUser };
+    persistSessionActivity(Date.now());
+    const securitySettings = await loadSecuritySettings();
+    return { currentUser, securitySettings };
   } catch (error) {
     clearAuthSession();
     throw error;
@@ -72,11 +88,15 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
   }
 
   try {
-    const currentUser = await authService.currentUser({ autoRedirectOnUnauthorized: false });
+    const currentUser = await authService.currentUser({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    });
     persistCurrentUser(currentUser);
     await syncTenantFromServer();
-    return { currentUser };
-  } catch (error) {
+    const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+    return { currentUser, securitySettings };
+  } catch {
     const refreshed = await tryRefreshToken();
     if (!refreshed) {
       clearAuthSession();
@@ -84,11 +104,16 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
     }
 
     try {
-      const currentUser = await authService.currentUser({ autoRedirectOnUnauthorized: false });
+      const currentUser = await authService.currentUser({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+      });
       persistCurrentUser(currentUser);
       await syncTenantFromServer();
-      return { currentUser };
-    } catch (refreshError) {
+      persistSessionActivity(Date.now());
+      const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+      return { currentUser, securitySettings };
+    } catch {
       clearAuthSession();
       return null;
     }
@@ -102,7 +127,13 @@ export const tryRefreshToken = async (): Promise<boolean> => {
   }
 
   try {
-    const response = await authService.refreshToken({ refreshToken }, { autoRedirectOnUnauthorized: false });
+    const response = await authService.refreshToken(
+      { refreshToken },
+      {
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+      },
+    );
     tokenManager.setTokens({
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,
@@ -114,9 +145,38 @@ export const tryRefreshToken = async (): Promise<boolean> => {
       permissionsVersion: response.permissionsVersion,
     });
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
+};
+
+export const loadSecuritySettings = async (
+  options: {
+    allowUnauthorizedWithoutRedirect?: boolean;
+  } = {},
+): Promise<SecuritySettings> => {
+  try {
+    const requestOptions = options.allowUnauthorizedWithoutRedirect
+      ? {
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+        }
+      : {};
+    const securitySettings = normalizeSecuritySettings(
+      await systemService.securitySettings(requestOptions),
+    );
+    persistSecuritySettings(securitySettings);
+    return securitySettings;
+  } catch {
+    return normalizeSecuritySettings(getStoredSecuritySettings() || DEFAULT_SECURITY_SETTINGS);
+  }
+};
+
+export const saveSecuritySettings = async (securitySettings: SecuritySettings): Promise<SecuritySettings> => {
+  const response = await systemService.updateSecuritySettings(securitySettings);
+  const normalized = normalizeSecuritySettings(response);
+  persistSecuritySettings(normalized);
+  return normalized;
 };
 
 const persistCurrentUser = (currentUser: CurrentUser) => {
