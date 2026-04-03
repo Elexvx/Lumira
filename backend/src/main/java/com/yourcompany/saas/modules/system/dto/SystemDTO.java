@@ -2,6 +2,7 @@ package com.yourcompany.saas.modules.system.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.util.List;
 
@@ -416,6 +417,92 @@ public final class SystemDTO {
 
         public void setRemark(String remark) {
             this.remark = remark;
+        }
+    }
+
+    public static class SecuritySettingsRequest {
+        @NotNull
+        @Positive
+        private Long idleTimeoutSeconds;
+
+        @NotNull
+        @Positive
+        private Long accessTokenExpireSeconds;
+
+        @NotNull
+        @Positive
+        private Long refreshTokenExpireSeconds;
+
+        public Long getIdleTimeoutSeconds() {
+            return idleTimeoutSeconds;
+        }
+
+        public void setIdleTimeoutSeconds(Long idleTimeoutSeconds) {
+            this.idleTimeoutSeconds = idleTimeoutSeconds;
+        }
+
+        public Long getAccessTokenExpireSeconds() {
+            return accessTokenExpireSeconds;
+        }
+
+        public void setAccessTokenExpireSeconds(Long accessTokenExpireSeconds) {
+            this.accessTokenExpireSeconds = accessTokenExpireSeconds;
+        }
+
+        public Long getRefreshTokenExpireSeconds() {
+            return refreshTokenExpireSeconds;
+        }
+
+        public void setRefreshTokenExpireSeconds(Long refreshTokenExpireSeconds) {
+            this.refreshTokenExpireSeconds = refreshTokenExpireSeconds;
+        }
+    }
+
+    public static class BrandingSettingsRequest {
+        private String websiteName;
+        private String websiteFaviconUrl;
+        private String websiteLogoUrl;
+        private String footerIcp;
+        private String footerCopyright;
+
+        public String getWebsiteName() {
+            return websiteName;
+        }
+
+        public void setWebsiteName(String websiteName) {
+            this.websiteName = websiteName;
+        }
+
+        public String getWebsiteFaviconUrl() {
+            return websiteFaviconUrl;
+        }
+
+        public void setWebsiteFaviconUrl(String websiteFaviconUrl) {
+            this.websiteFaviconUrl = websiteFaviconUrl;
+        }
+
+        public String getWebsiteLogoUrl() {
+            return websiteLogoUrl;
+        }
+
+        public void setWebsiteLogoUrl(String websiteLogoUrl) {
+            this.websiteLogoUrl = websiteLogoUrl;
+        }
+
+        public String getFooterIcp() {
+            return footerIcp;
+        }
+
+        public void setFooterIcp(String footerIcp) {
+            this.footerIcp = footerIcp;
+        }
+
+        public String getFooterCopyright() {
+            return footerCopyright;
+        }
+
+        public void setFooterCopyright(String footerCopyright) {
+            this.footerCopyright = footerCopyright;
         }
     }
 }

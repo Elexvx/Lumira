@@ -10,6 +10,7 @@ import com.yourcompany.saas.infrastructure.security.model.AuthSession;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 @Component
@@ -30,6 +31,15 @@ public class AuthSessionStore {
         } catch (JsonProcessingException ex) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "会话序列化失败");
         }
+    }
+
+    public void save(AuthSession session) {
+        if (session.getExpireTime() == null) {
+            save(session, Duration.ZERO);
+            return;
+        }
+        Duration ttl = Duration.between(Instant.now(), session.getExpireTime());
+        save(session, ttl.isNegative() ? Duration.ZERO : ttl);
     }
 
     public Optional<AuthSession> findBySessionId(String sessionId) {

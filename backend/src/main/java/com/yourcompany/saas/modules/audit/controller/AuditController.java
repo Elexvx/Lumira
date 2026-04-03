@@ -46,13 +46,13 @@ public class AuditController {
 
     @GetMapping("/login-logs")
     public ApiResponse<PageResponse<SystemVO.AuditLogVO>> loginLogs(
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) Long tenantId,
-            @RequestParam(required = false) String loginType,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize
+            @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "tenantId", required = false) Long tenantId,
+            @RequestParam(name = "loginType", required = false) String loginType,
+            @RequestParam(name = "startTime", required = false) String startTime,
+            @RequestParam(name = "endTime", required = false) String endTime,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("audit:login:view");
         return ApiResponse.success(
@@ -63,12 +63,12 @@ public class AuditController {
 
     @GetMapping("/operation-logs")
     public ApiResponse<PageResponse<SystemVO.AuditLogVO>> operationLogs(
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) Long tenantId,
-            @RequestParam(required = false) String startTime,
-            @RequestParam(required = false) String endTime,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize
+            @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "tenantId", required = false) Long tenantId,
+            @RequestParam(name = "startTime", required = false) String startTime,
+            @RequestParam(name = "endTime", required = false) String endTime,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("audit:operation:view");
         return ApiResponse.success(

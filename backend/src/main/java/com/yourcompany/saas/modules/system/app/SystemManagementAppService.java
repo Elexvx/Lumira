@@ -4,6 +4,7 @@ import com.yourcompany.saas.common.enums.ErrorCode;
 import com.yourcompany.saas.common.exception.BizException;
 import com.yourcompany.saas.common.vo.PageResponse;
 import com.yourcompany.saas.infrastructure.security.CurrentUser;
+import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
 import com.yourcompany.saas.modules.audit.app.LoginAuditService;
 import com.yourcompany.saas.modules.audit.app.OperationAuditService;
 import com.yourcompany.saas.modules.auth.app.AuthAppService;
@@ -41,8 +42,24 @@ import java.util.stream.Collectors;
 @Service
 public class SystemManagementAppService {
 
+    private static final Long DEFAULT_PUBLIC_TENANT_ID = 1001L;
+    private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
+    private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
+    private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
+    private static final String BRANDING_FOOTER_ICP_KEY = "branding.footer-icp";
+    private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
+    private static final List<String> BRANDING_CONFIG_KEYS = List.of(
+            BRANDING_WEBSITE_NAME_KEY,
+            BRANDING_WEBSITE_FAVICON_URL_KEY,
+            BRANDING_WEBSITE_LOGO_URL_KEY,
+            BRANDING_FOOTER_ICP_KEY,
+            BRANDING_FOOTER_COPYRIGHT_KEY
+    );
+
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("系统管理", "用户、角色、菜单、字典、配置", "/system/management", "system:view"),
+            shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
+            shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
             shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
             shortcut("审计中心", "登录和操作日志", "/audit/overview", "audit:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
@@ -57,6 +74,7 @@ public class SystemManagementAppService {
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
+    private final SecuritySettingsService securitySettingsService;
 
     public SystemManagementAppService(
             JdbcTemplate jdbcTemplate,
@@ -67,7 +85,8 @@ public class SystemManagementAppService {
             PluginManagementAppService pluginManagementAppService,
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService,
-            OperationAuditService operationAuditService
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.authAppService = authAppService;
@@ -78,6 +97,7 @@ public class SystemManagementAppService {
         this.passwordEncoder = passwordEncoder;
         this.loginAuditService = loginAuditService;
         this.operationAuditService = operationAuditService;
+        this.securitySettingsService = securitySettingsService;
     }
 
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
@@ -588,6 +608,93 @@ public class SystemManagementAppService {
         );
     }
 
+    public SystemVO.SecuritySettingsVO getSecuritySettings() {
+        return toSecuritySettingsVO(securitySettingsService.loadSettings());
+    }
+
+    @Transactional
+    public SystemVO.SecuritySettingsVO updateSecuritySettings(CurrentUser currentUser, SystemDTO.SecuritySettingsRequest request) {
+        SecuritySettingsService.SecuritySettingsSnapshot updated = securitySettingsService.updateSettings(toSnapshot(request));
+        operationAuditService.log(
+                currentTenantId(currentUser),
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "security",
+                "update",
+                "UPDATE",
+                "SUCCESS",
+                "更新安全设置"
+        );
+        return toSecuritySettingsVO(updated);
+    }
+
+    public SystemVO.BrandingSettingsVO getBrandingSettings(CurrentUser currentUser) {
+        return loadBrandingSettings(currentTenantId(currentUser));
+    }
+
+    public SystemVO.BrandingSettingsVO getPublicBrandingSettings(Long preferredTenantId) {
+        Long tenantId = preferredTenantId == null ? DEFAULT_PUBLIC_TENANT_ID : preferredTenantId;
+        return loadBrandingSettings(tenantId);
+    }
+
+    @Transactional
+    public SystemVO.BrandingSettingsVO updateBrandingSettings(CurrentUser currentUser, SystemDTO.BrandingSettingsRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_WEBSITE_NAME_KEY,
+                "站点名称",
+                sanitizeBrandingText(request.getWebsiteName(), "宏翔商道"),
+                "控制台顶部与浏览器标题展示名称",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_WEBSITE_FAVICON_URL_KEY,
+                "站点图标地址",
+                sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""),
+                "浏览器标签页 icon 地址",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_WEBSITE_LOGO_URL_KEY,
+                "站点 Logo 地址",
+                sanitizeBrandingText(request.getWebsiteLogoUrl(), ""),
+                "控制台左上角品牌 Logo 地址",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_FOOTER_ICP_KEY,
+                "页脚 ICP 备案",
+                sanitizeBrandingText(request.getFooterIcp(), ""),
+                "页脚备案信息",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_FOOTER_COPYRIGHT_KEY,
+                "页脚版权声明",
+                sanitizeBrandingText(request.getFooterCopyright(), ""),
+                "页脚版权声明",
+                operatorId
+        );
+
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "system",
+                "branding-update",
+                "UPDATE",
+                "SUCCESS",
+                "更新个性化设置"
+        );
+        return loadBrandingSettings(tenantId);
+    }
+
     public PageResponse<SystemVO.AuditLogVO> listLoginLogs(CurrentUser currentUser, String username, Long tenantId, long pageNo, long pageSize) {
         return listLoginLogs(currentUser, username, tenantId, null, null, null, pageNo, pageSize);
     }
@@ -687,6 +794,131 @@ public class SystemManagementAppService {
                 tenantId
         );
         return count == null ? 0 : count.intValue();
+    }
+
+    private SystemVO.BrandingSettingsVO loadBrandingSettings(Long tenantId) {
+        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+        String placeholders = BRANDING_CONFIG_KEYS.stream().map(item -> "?").collect(Collectors.joining(", "));
+        String sql = """
+                select tenant_id as tenantId, config_key as configKey, config_value as configValue
+                from sys_config
+                where deleted = 0
+                  and config_scope = 'PLATFORM'
+                  and config_key in (%s)
+                  and (tenant_id = ? or tenant_id is null)
+                order by case when tenant_id = ? then 0 else 1 end, id desc
+                """.formatted(placeholders);
+        List<Object> params = new ArrayList<>(BRANDING_CONFIG_KEYS);
+        params.add(effectiveTenantId);
+        params.add(effectiveTenantId);
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
+        Map<String, String> valueByKey = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String configKey = String.valueOf(row.get("configKey"));
+            if (!valueByKey.containsKey(configKey)) {
+                valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
+            }
+        }
+
+        SystemVO.BrandingSettingsVO settings = new SystemVO.BrandingSettingsVO();
+        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
+        settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
+        settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
+        settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
+        settings.setFooterCopyright(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY), ""));
+        return settings;
+    }
+
+    private void upsertBrandingConfig(
+            Long tenantId,
+            String configKey,
+            String configName,
+            String configValue,
+            String remark,
+            Long operatorId
+    ) {
+        Long existingId = queryBrandingConfigId(configKey, tenantId);
+        if (existingId == null) {
+            jdbcTemplate.update(
+                    """
+                            insert into sys_config (
+                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+                                created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                            """,
+                    tenantId,
+                    configKey,
+                    configName,
+                    configValue,
+                    remark,
+                    operatorId,
+                    operatorId
+            );
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        update sys_config
+                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
+                            updated_by = ?, updated_at = ?, deleted = 0
+                        where id = ?
+                        """,
+                configName,
+                configValue,
+                remark,
+                operatorId,
+                LocalDateTime.now(),
+                existingId
+        );
+    }
+
+    private Long queryBrandingConfigId(String configKey, Long tenantId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select id
+                            from sys_config
+                            where config_key = ? and tenant_id <=> ?
+                            order by id desc
+                            limit 1
+                            """,
+                    Long.class,
+                    configKey,
+                    tenantId
+            );
+        } catch (EmptyResultDataAccessException exception) {
+            return null;
+        }
+    }
+
+    private String sanitizeBrandingText(String value, String fallback) {
+        String normalized = normalizeConfigText(value);
+        return StringUtils.hasText(normalized) ? normalized : fallback;
+    }
+
+    private String normalizeConfigText(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String defaultIfBlank(String value, String fallback) {
+        return StringUtils.hasText(value) ? value : fallback;
+    }
+
+    private SecuritySettingsService.SecuritySettingsSnapshot toSnapshot(SystemDTO.SecuritySettingsRequest request) {
+        SecuritySettingsService.SecuritySettingsSnapshot snapshot = new SecuritySettingsService.SecuritySettingsSnapshot();
+        snapshot.setIdleTimeoutSeconds(request.getIdleTimeoutSeconds());
+        snapshot.setAccessTokenExpireSeconds(request.getAccessTokenExpireSeconds());
+        snapshot.setRefreshTokenExpireSeconds(request.getRefreshTokenExpireSeconds());
+        return snapshot;
+    }
+
+    private SystemVO.SecuritySettingsVO toSecuritySettingsVO(SecuritySettingsService.SecuritySettingsSnapshot snapshot) {
+        SystemVO.SecuritySettingsVO vo = new SystemVO.SecuritySettingsVO();
+        vo.setIdleTimeoutSeconds(snapshot.getIdleTimeoutSeconds());
+        vo.setAccessTokenExpireSeconds(snapshot.getAccessTokenExpireSeconds());
+        vo.setRefreshTokenExpireSeconds(snapshot.getRefreshTokenExpireSeconds());
+        return vo;
     }
 
     private Long currentTenantId(CurrentUser currentUser) {

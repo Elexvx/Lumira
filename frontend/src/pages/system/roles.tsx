@@ -1,26 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Checkbox, Form, Input, Modal, Select, Space, Tag, message } from 'antd';
+import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
+import { Button, Card, Checkbox, Descriptions, Drawer, Form, Input, Select, Space, Tag, message } from 'antd';
 import { useRequest } from 'umi';
-import { ManagementPageContainer } from '@/components/ManagementPageContainer';
-import { QueryPanel } from '@/components/QueryPanel';
-import { ActionBar } from '@/components/ActionBar';
-import { DataTable } from '@/components/DataTable';
-import { DetailDrawer } from '@/components/DetailDrawer';
-import { PermissionButton } from '@/components/PermissionButton';
 import { iamService } from '@/services/iam';
 import type { PermissionRecord, RoleDetail, RoleRecord } from '@/types/api';
-import { useResponsive } from '@/hooks/useResponsive';
+import { usePermission } from '@/hooks/usePermission';
 
 export default () => {
   const [queryForm] = Form.useForm();
   const [editorForm] = Form.useForm();
-  const { isMobile } = useResponsive();
+  const { canAccess } = usePermission();
   const [query, setQuery] = useState<Record<string, unknown>>({});
   const [selectedRole, setSelectedRole] = useState<RoleRecord | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+
   const permissionQuery = useRequest(async () => ({
     data: await iamService.permissions({ autoRedirectOnUnauthorized: false }),
   }) as { data: PermissionRecord[] });
@@ -30,18 +26,6 @@ export default () => {
         ? ({ data: await iamService.roleDetail(selectedRole.id, { autoRedirectOnUnauthorized: false }) } as { data: RoleDetail | null })
         : ({ data: null } as { data: RoleDetail | null }),
     { refreshDeps: [selectedRole?.id, reloadTick] },
-  );
-  const fetchRoles = useCallback(
-    async (params: { current: number; pageSize: number }) =>
-      iamService.roles(
-        {
-          pageNo: params.current,
-          pageSize: params.pageSize,
-          ...(query || {}),
-        },
-        { autoRedirectOnUnauthorized: false },
-      ),
-    [query, reloadTick],
   );
 
   const permissionOptions = useMemo(
@@ -62,51 +46,54 @@ export default () => {
     }
   }, [editorForm, editorOpen, roleDetailQuery.data]);
 
-  const columns = useMemo(
+  const columns = useMemo<ProColumns<RoleRecord>[]>(
     () => [
       { title: '角色编码', dataIndex: 'roleCode' },
       { title: '角色名称', dataIndex: 'roleName' },
       { title: '角色类型', dataIndex: 'roleType' },
-      { title: '权限数', dataIndex: 'permissionCount', render: (value: number) => value ?? 0 },
-      { title: '用户数', dataIndex: 'userCount', render: (value: number) => value ?? 0 },
+      { title: '权限数', dataIndex: 'permissionCount', render: (_, record) => record.permissionCount ?? 0 },
+      { title: '用户数', dataIndex: 'userCount', render: (_, record) => record.userCount ?? 0 },
       {
         title: '操作',
-        render: (_: unknown, record: RoleRecord) => (
+        render: (_, record) => (
           <Space wrap>
-            <PermissionButton
-              permission="system:role:view"
-              onClick={() => {
-                setSelectedRole(record);
-                setDetailOpen(true);
-              }}
-            >
-              详情
-            </PermissionButton>
-            <PermissionButton
-              permission="system:role:update"
-              onClick={() => {
-                setSelectedRole(record);
-                setEditingId(record.id);
-                setEditorOpen(true);
-              }}
-            >
-              编辑
-            </PermissionButton>
-            <PermissionButton
-              permission="system:role:permissions"
-              onClick={() => {
-                setSelectedRole(record);
-                setEditingId(record.id);
-                setEditorOpen(true);
-              }}
-            >
-              权限分配
-            </PermissionButton>
+            {canAccess('system:role:view') ? (
+              <Button
+                onClick={() => {
+                  setSelectedRole(record);
+                  setDetailOpen(true);
+                }}
+              >
+                详情
+              </Button>
+            ) : null}
+            {canAccess('system:role:update') ? (
+              <Button
+                onClick={() => {
+                  setSelectedRole(record);
+                  setEditingId(record.id);
+                  setEditorOpen(true);
+                }}
+              >
+                编辑
+              </Button>
+            ) : null}
+            {canAccess('system:role:permissions') ? (
+              <Button
+                onClick={() => {
+                  setSelectedRole(record);
+                  setEditingId(record.id);
+                  setEditorOpen(true);
+                }}
+              >
+                权限分配
+              </Button>
+            ) : null}
           </Space>
         ),
       },
     ],
-    [],
+    [canAccess],
   );
 
   const submitQuery = async (values: Record<string, unknown>) => {
@@ -117,6 +104,21 @@ export default () => {
     queryForm.resetFields();
     setQuery({});
   };
+
+  const fetchRoles = useCallback(
+    async (params: { current?: number; pageSize?: number }) => {
+      const result = await iamService.roles(
+        {
+          pageNo: params.current,
+          pageSize: params.pageSize,
+          ...(query || {}),
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
+      return { data: result.records, success: true, total: result.total };
+    },
+    [query, reloadTick],
+  );
 
   const openCreate = () => {
     setSelectedRole(null);
@@ -146,102 +148,138 @@ export default () => {
   const detail = roleDetailQuery.data as RoleDetail | undefined;
 
   return (
-    <ManagementPageContainer title="角色管理" description="支持角色查询、新增、编辑、查看与权限分配。">
-      <QueryPanel
-        form={queryForm}
-        onSearch={submitQuery}
-        onReset={resetQuery}
-        columns={isMobile ? 1 : 3}
-        collapseCount={3}
-        actions={<Button onClick={() => setReloadTick((value) => value + 1)}>刷新</Button>}
-      >
-        <Form.Item name="roleCode" label="角色编码">
-          <Input allowClear placeholder="输入角色编码" />
-        </Form.Item>
-        <Form.Item name="roleName" label="角色名称">
-          <Input allowClear placeholder="输入角色名称" />
-        </Form.Item>
-        <Form.Item name="roleType" label="角色类型">
-          <Select
-            allowClear
-            options={[
-              { label: '系统角色', value: 'SYSTEM' },
-              { label: '自定义角色', value: 'CUSTOM' },
-            ]}
-          />
-        </Form.Item>
-      </QueryPanel>
+    <PageContainer
+      className="saas-management-page saas-crud-page"
+      ghost
+      breadcrumbRender={false}
+      title="角色管理"
+      subTitle="支持角色查询、新增、编辑、查看与权限分配。"
+      style={{ height: '100%', minHeight: 0 }}
+      content={null}
+    >
+      <div className="saas-management-page-body">
+        <Card className="saas-query-panel">
+          <Form form={queryForm} layout="vertical" onFinish={submitQuery} onReset={resetQuery}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+              <Form.Item name="roleCode" label="角色编码">
+                <Input allowClear placeholder="输入角色编码" />
+              </Form.Item>
+              <Form.Item name="roleName" label="角色名称">
+                <Input allowClear placeholder="输入角色名称" />
+              </Form.Item>
+              <Form.Item name="roleType" label="角色类型">
+                <Select
+                  allowClear
+                  options={[
+                    { label: '系统角色', value: 'SYSTEM' },
+                    { label: '自定义角色', value: 'CUSTOM' },
+                  ]}
+                />
+              </Form.Item>
+            </div>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button htmlType="reset">重置</Button>
+              <Button type="primary" htmlType="submit">
+                查询
+              </Button>
+              <Button onClick={() => setReloadTick((value) => value + 1)}>刷新</Button>
+            </Space>
+          </Form>
+        </Card>
 
-      <ActionBar
-        left={
-          <PermissionButton permission="system:role:create" type="primary" onClick={openCreate}>
-            新增角色
-          </PermissionButton>
-        }
-        right={<Button onClick={() => setReloadTick((value) => value + 1)}>刷新列表</Button>}
-      />
-
-      <Card bodyStyle={{ height: 520, minHeight: 0 }}>
-        <DataTable<RoleRecord>
-          rowKey="id"
-          columns={columns}
-          request={fetchRoles}
-          middleScroll
-          emptyText="暂无角色数据"
-        />
-      </Card>
-
-      <Modal
-        open={editorOpen}
-        title={editingId ? '编辑角色 / 分配权限' : '新增角色'}
-        onCancel={() => setEditorOpen(false)}
-        onOk={saveRole}
-        width={720}
-        destroyOnClose
-      >
-        <Form form={editorForm} layout="vertical" initialValues={{ roleType: 'CUSTOM', permissionKeys: [] }}>
-          <Form.Item name="roleCode" label="角色编码" rules={[{ required: true, message: '请输入角色编码' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
-            <Select options={[{ label: '系统角色', value: 'SYSTEM' }, { label: '自定义角色', value: 'CUSTOM' }]} />
-          </Form.Item>
-          <Form.Item name="permissionKeys" label="权限">
-            <Checkbox.Group options={permissionOptions} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <DetailDrawer
-        title={selectedRole ? `角色详情 · ${selectedRole.roleName}` : '角色详情'}
-        open={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        loading={roleDetailQuery.loading}
-        descriptionItems={
-          detail
-            ? [
-                { key: 'roleCode', label: '角色编码', children: detail.roleCode },
-                { key: 'roleName', label: '角色名称', children: detail.roleName },
-                { key: 'roleType', label: '角色类型', children: detail.roleType },
-                { key: 'permissionCount', label: '权限数', children: detail.permissionCount ?? 0 },
-                { key: 'userCount', label: '用户数', children: detail.userCount ?? 0 },
-              ]
-            : undefined
-        }
-      >
-        {detail?.permissionKeys?.length ? (
-          <Space wrap>
-            {detail.permissionKeys.map((item) => (
-              <Tag key={item} color="geekblue">
-                {item}
-              </Tag>
-            ))}
+        <Card className="saas-action-bar">
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Space>
+              {canAccess('system:role:create') ? (
+                <Button type="primary" onClick={openCreate}>
+                  新增角色
+                </Button>
+              ) : null}
+            </Space>
+            <Button onClick={() => setReloadTick((value) => value + 1)}>刷新列表</Button>
           </Space>
-        ) : null}
-      </DetailDrawer>
-    </ManagementPageContainer>
+        </Card>
+
+        <Card className="saas-crud-table-card" bodyStyle={{ minHeight: 0 }}>
+          <ProTable<RoleRecord>
+            rowKey="id"
+            columns={columns}
+            request={fetchRoles}
+            params={{ ...query, reloadTick }}
+            search={false}
+            options={false}
+            toolBarRender={false}
+            pagination={{ showSizeChanger: true }}
+          />
+        </Card>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={editingId ? '编辑角色 / 分配权限' : '新增角色'}
+          open={editorOpen}
+          onClose={() => setEditorOpen(false)}
+          width={720}
+          destroyOnClose
+          extra={
+            <Space>
+              <Button onClick={() => setEditorOpen(false)}>取消</Button>
+              <Button type="primary" onClick={saveRole}>
+                保存
+              </Button>
+            </Space>
+          }
+        >
+          <Form form={editorForm} layout="vertical" initialValues={{ roleType: 'CUSTOM', permissionKeys: [] }}>
+            <Form.Item name="roleCode" label="角色编码" rules={[{ required: true, message: '请输入角色编码' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
+              <Select options={[{ label: '系统角色', value: 'SYSTEM' }, { label: '自定义角色', value: 'CUSTOM' }]} />
+            </Form.Item>
+            <Form.Item name="permissionKeys" label="权限">
+              <Checkbox.Group options={permissionOptions} />
+            </Form.Item>
+          </Form>
+        </Drawer>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={selectedRole ? `角色详情 · ${selectedRole.roleName}` : '角色详情'}
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          width={720}
+          destroyOnClose
+        >
+          {detail ? (
+            <Space direction="vertical" style={{ width: '100%' }} size={16}>
+              <Descriptions
+                bordered
+                size="small"
+                column={2}
+                items={[
+                  { key: 'roleCode', label: '角色编码', children: detail.roleCode },
+                  { key: 'roleName', label: '角色名称', children: detail.roleName },
+                  { key: 'roleType', label: '角色类型', children: detail.roleType },
+                  { key: 'permissionCount', label: '权限数', children: detail.permissionCount ?? 0 },
+                  { key: 'userCount', label: '用户数', children: detail.userCount ?? 0 },
+                ]}
+              />
+              {detail.permissionKeys?.length ? (
+                <Space wrap>
+                  {detail.permissionKeys.map((item) => (
+                    <Tag key={item} color="geekblue">
+                      {item}
+                    </Tag>
+                  ))}
+                </Space>
+              ) : null}
+            </Space>
+          ) : null}
+        </Drawer>
+      </div>
+    </PageContainer>
   );
 };

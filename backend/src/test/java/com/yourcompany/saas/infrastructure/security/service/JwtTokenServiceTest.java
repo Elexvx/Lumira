@@ -4,6 +4,7 @@ import com.yourcompany.saas.infrastructure.security.SecurityProperties;
 import com.yourcompany.saas.infrastructure.security.model.AuthSession;
 import com.yourcompany.saas.infrastructure.security.model.TokenClaims;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -19,7 +20,7 @@ class JwtTokenServiceTest {
 
     @Test
     void shouldSupportUtf8Secret() {
-        JwtTokenService jwtTokenService = new JwtTokenService(buildSecurityProperties("saas_foundation_jwt_secret_for_dev_env_please_change_me_2026"));
+        JwtTokenService jwtTokenService = buildJwtTokenService("saas_foundation_jwt_secret_for_dev_env_please_change_me_2026");
 
         TokenClaims tokenClaims = jwtTokenService.parseToken(jwtTokenService.generateAccessToken(buildSession()));
 
@@ -33,7 +34,7 @@ class JwtTokenServiceTest {
     void shouldSupportBase64Secret() {
         String rawSecret = "saas_foundation_jwt_secret_for_prod_env_change_me_2026";
         String base64Secret = Base64.getEncoder().encodeToString(rawSecret.getBytes(StandardCharsets.UTF_8));
-        JwtTokenService jwtTokenService = new JwtTokenService(buildSecurityProperties(base64Secret));
+        JwtTokenService jwtTokenService = buildJwtTokenService(base64Secret);
 
         TokenClaims tokenClaims = jwtTokenService.parseToken(jwtTokenService.generateRefreshToken(buildSession(), "refresh-1"));
 
@@ -44,7 +45,7 @@ class JwtTokenServiceTest {
 
     @Test
     void shouldCalculateSessionTtlWithInstant() {
-        JwtTokenService jwtTokenService = new JwtTokenService(buildSecurityProperties("saas_foundation_jwt_secret_for_dev_env_please_change_me_2026"));
+        JwtTokenService jwtTokenService = buildJwtTokenService("saas_foundation_jwt_secret_for_dev_env_please_change_me_2026");
 
         Duration sessionTtl = jwtTokenService.calculateSessionTtl(Instant.now().plusSeconds(5));
 
@@ -58,7 +59,7 @@ class JwtTokenServiceTest {
     void shouldRejectTooShortSecret() {
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtTokenService(buildSecurityProperties("too-short-secret"))
+                () -> buildJwtTokenService("too-short-secret")
         );
 
         assertEquals("JWT密钥长度不足", exception.getMessage());
@@ -71,7 +72,7 @@ class JwtTokenServiceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtTokenService(buildSecurityProperties(base64Secret))
+                () -> buildJwtTokenService(base64Secret)
         );
 
         assertEquals("JWT密钥长度不足", exception.getMessage());
@@ -84,6 +85,27 @@ class JwtTokenServiceTest {
         securityProperties.setAccessTokenExpireSeconds(1800);
         securityProperties.setRefreshTokenExpireSeconds(604800);
         return securityProperties;
+    }
+
+    private JwtTokenService buildJwtTokenService(String jwtSecret) {
+        SecurityProperties securityProperties = buildSecurityProperties(jwtSecret);
+        SecuritySettingsService securitySettingsService = new SecuritySettingsService(new JdbcTemplate(), securityProperties) {
+            @Override
+            public long getAccessTokenExpireSeconds() {
+                return 1800L;
+            }
+
+            @Override
+            public long getRefreshTokenExpireSeconds() {
+                return 604800L;
+            }
+
+            @Override
+            public long getIdleTimeoutSeconds() {
+                return 1800L;
+            }
+        };
+        return new JwtTokenService(securityProperties, securitySettingsService);
     }
 
     private AuthSession buildSession() {

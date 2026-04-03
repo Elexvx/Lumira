@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Select } from 'antd';
+import { DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { switchTenantAction } from '@/tenant/actions';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettings';
 
 export const TenantSelector = () => {
   const { initialState, setInitialState } = useInitialStateModel();
@@ -42,6 +44,8 @@ export const TenantSelector = () => {
         myTenants: prev?.myTenants ?? [],
         menuTree,
         availablePlugins,
+        securitySettings: prev?.securitySettings || initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS,
+        brandingSettings: prev?.brandingSettings || initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
       }));
     } finally {
       setSwitching(false);

@@ -25,6 +25,7 @@ import com.yourcompany.saas.modules.user.entity.SysUserEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -106,7 +107,7 @@ public class AuthAppService {
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
 
-        authSessionStore.save(session, jwtTokenService.getRefreshTokenTtl());
+        authSessionStore.save(session);
 
         LoginResponseVO response = new LoginResponseVO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
@@ -160,7 +161,8 @@ public class AuthAppService {
         String newRefreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(newRefreshTokenId);
         session.setExpireTime(jwtTokenService.createRefreshTokenExpireAt());
-        authSessionStore.save(session, jwtTokenService.getRefreshTokenTtl());
+        session.setLastActivityAt(Instant.now());
+        authSessionStore.save(session);
 
         RefreshTokenResponseVO response = new RefreshTokenResponseVO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
@@ -231,6 +233,18 @@ public class AuthAppService {
                     ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
             );
         }
+        Instant lastActivityAt = session.getLastActivityAt() != null ? session.getLastActivityAt() : session.getLoginTime();
+        long idleTimeoutSeconds = jwtTokenService.getIdleTimeoutSeconds();
+        if (lastActivityAt != null && idleTimeoutSeconds > 0) {
+            Duration idleDuration = Duration.between(lastActivityAt, Instant.now());
+            if (idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) >= 0) {
+                throw new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "会话空闲超时，请重新登录",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                );
+            }
+        }
     }
 
     private boolean isUserDisabled(SysUserEntity user) {
@@ -253,6 +267,7 @@ public class AuthAppService {
         session.setUsername(user.getUsername());
         session.setCurrentTenantId(currentTenantId);
         session.setLoginTime(now);
+        session.setLastActivityAt(now);
         session.setExpireTime(now.plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
         session.setSessionVersion(1);
         session.setClientType("WEB");

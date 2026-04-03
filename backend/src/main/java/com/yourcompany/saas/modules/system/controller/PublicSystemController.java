@@ -1,0 +1,41 @@
+package com.yourcompany.saas.modules.system.controller;
+
+import com.yourcompany.saas.common.api.ApiResponse;
+import com.yourcompany.saas.infrastructure.observability.TraceContext;
+import com.yourcompany.saas.infrastructure.tenant.TenantContext;
+import com.yourcompany.saas.modules.system.app.SystemManagementAppService;
+import com.yourcompany.saas.modules.system.vo.SystemVO;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/public")
+public class PublicSystemController {
+
+    private final SystemManagementAppService systemManagementAppService;
+
+    public PublicSystemController(SystemManagementAppService systemManagementAppService) {
+        this.systemManagementAppService = systemManagementAppService;
+    }
+
+    @GetMapping("/branding-settings")
+    public ApiResponse<SystemVO.BrandingSettingsVO> brandingSettings() {
+        return ApiResponse.success(
+                systemManagementAppService.getPublicBrandingSettings(resolveTenantId()),
+                TraceContext.getRequestId()
+        );
+    }
+
+    private Long resolveTenantId() {
+        String tenantId = TenantContext.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(tenantId.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+}

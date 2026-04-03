@@ -1,0 +1,679 @@
+[     343ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[     353ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[     392ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[     544ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi'
+Did you mean './umi'?
+Requests that should resolve in the current directory need to start with './'.
+Requests that start with a name are treated as module requests and resolve within module directories (node_modules).
+If changing the source code is not an option there is also a resolve options called 'preferRelative' which tries to resolve these kind of requests in the current directory too. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/layouts/UserLayout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/iam' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/tenant' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   90927ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/services/common' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[   95866ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[   95897ms] Error: Module ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/core-js@3.34.0/node_modules/core-js/modules/es.error.cause.js" does not exist in container.
+while loading ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/core-js@3.34.0/node_modules/core-js/modules/es.error.cause.js" from webpack/container/reference/mf
+    at http://localhost:8001/mf-va_remoteEntry.js:106:11
+[   95897ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[  137836ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137836ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi'
+Did you mean './umi'?
+Requests that should resolve in the current directory need to start with './'.
+Requests that start with a name are treated as module requests and resolve within module directories (node_modules).
+If changing the source code is not an option there is also a resolve options called 'preferRelative' which tries to resolve these kind of requests in the current directory too. @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/layouts/UserLayout' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/iam' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/tenant' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  137837ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/services/common' @ http://localhost:8001/mf-dep____vendor.a3c018a7.js:315569
+[  142614ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[  142618ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[  142687ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.fa8b8216.js:315478
+[  142702ms] Error: Module ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/umi@4.6.36_@babel+core@7.29.0_@types+node@24.12.0_@types+react@18.3.28_eslint@8.35.0_li_186120bbcc6bc42d9348d9382de65f9b/node_modules/umi/client/client/plugin.js" does not exist in container.
+while loading ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/umi@4.6.36_@babel+core@7.29.0_@types+node@24.12.0_@types+react@18.3.28_eslint@8.35.0_li_186120bbcc6bc42d9348d9382de65f9b/node_modules/umi/client/client/plugin.js" from webpack/container/reference/mf
+    at http://localhost:8001/mf-va_remoteEntry.js:109:11
+[  760913ms] [INFO] [webpack] Dev server disconnected. Polling for restart... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:608
+[  760917ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[  761921ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[  762923ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[  763924ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[  767483ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[  767488ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[  767533ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[ 1574702ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265132:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265269:24)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:153323:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:278720:32)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:215415:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:115555:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.3150f503.js:254682:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.3150f503.js:255120:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250815:90)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250846:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250970:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:187324:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.3150f503.js:254798:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:251736:23)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250309:27
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187647:55
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187558:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:115849:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:184951:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:116107:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:116366:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:185236:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109409:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.3150f503.js:119580:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:186529:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:119707:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109745:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.3150f503.js:155001:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.3150f503.js:154232:76)
+    at Router (http://localhost:8001/mf-dep____vendor.3150f503.js:321640:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.3150f503.js:154192:23)
+    at r (http://localhost:8001/mf-dep____vendor.3150f503.js:319893:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2923:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.3150f503.js:154298:68) @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1574715ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1574767ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1636671ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1636674ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1636697ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[ 1636841ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1636861ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265132:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265269:24)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:153323:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:278720:32)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:215415:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:115555:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.3150f503.js:254682:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.3150f503.js:255120:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250815:90)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250846:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250970:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:187324:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.3150f503.js:254798:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:251736:23)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250309:27
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187647:55
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187558:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:115849:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:184951:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:116107:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:116366:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:185236:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109409:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.3150f503.js:119580:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:186529:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:119707:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109745:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.3150f503.js:155001:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.3150f503.js:154232:76)
+    at Router (http://localhost:8001/mf-dep____vendor.3150f503.js:321640:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.3150f503.js:154192:23)
+    at r (http://localhost:8001/mf-dep____vendor.3150f503.js:319893:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2923:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.3150f503.js:154298:68) @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1636875ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1645836ms] [LOG] [HMR] Reload all css @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-ca1946.async.js:238
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-access/runtime.tsx' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve '@@/plugin-access' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi'
+Did you mean './umi'?
+Requests that should resolve in the current directory need to start with './'.
+Requests that start with a name are treated as module requests and resolve within module directories (node_modules).
+If changing the source code is not an option there is also a resolve options called 'preferRelative' which tries to resolve these kind of requests in the current directory too. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652743ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/layouts/UserLayout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/iam' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/tenant' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1652744ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/services/common' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1654160ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1654162ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1654186ms] Error: Module ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/core-js@3.34.0/node_modules/core-js/modules/es.error.cause.js" does not exist in container.
+while loading ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/core-js@3.34.0/node_modules/core-js/modules/es.error.cause.js" from webpack/container/reference/mf
+    at http://localhost:8001/mf-va_remoteEntry.js:106:11
+[ 1663009ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1663012ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1663022ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[ 1663184ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1663208ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265132:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265269:24)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:153323:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:278720:32)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:215415:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:115555:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.3150f503.js:254682:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.3150f503.js:255120:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250815:90)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250846:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250970:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:187324:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.3150f503.js:254798:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:251736:23)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250309:27
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187647:55
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187558:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:115849:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:184951:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:116107:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:116366:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:185236:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109409:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.3150f503.js:119580:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:186529:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:119707:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109745:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.3150f503.js:155001:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.3150f503.js:154232:76)
+    at Router (http://localhost:8001/mf-dep____vendor.3150f503.js:321640:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.3150f503.js:154192:23)
+    at r (http://localhost:8001/mf-dep____vendor.3150f503.js:319893:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2923:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.3150f503.js:154298:68) @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1663227ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1727707ms] [LOG] [HMR] Reload all css @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-ca1946.async.js:238
+[ 1731887ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1731889ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1731896ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[ 1732049ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1732069ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265132:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265269:24)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:153323:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:278720:32)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:215415:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:115555:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.3150f503.js:254682:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.3150f503.js:255120:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250815:90)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250846:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250970:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:187324:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.3150f503.js:254798:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:251736:23)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250309:27
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187647:55
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187558:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:115849:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:184951:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:116107:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:116366:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:185236:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109409:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.3150f503.js:119580:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:186529:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:119707:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109745:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.3150f503.js:155001:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.3150f503.js:154232:76)
+    at Router (http://localhost:8001/mf-dep____vendor.3150f503.js:321640:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.3150f503.js:154192:23)
+    at r (http://localhost:8001/mf-dep____vendor.3150f503.js:319893:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2923:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.3150f503.js:154298:68) @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1732084ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1758608ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1758610ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1758616ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[ 1758740ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1758758ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265132:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265269:24)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:153323:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:278720:32)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:215415:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:115555:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.3150f503.js:254682:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.3150f503.js:255120:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250815:90)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250846:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250970:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:187324:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.3150f503.js:254798:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:251736:23)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250309:27
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187647:55
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187558:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:115849:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:184951:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:116107:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:116366:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:185236:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109409:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.3150f503.js:119580:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:186529:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:119707:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109745:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.3150f503.js:155001:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.3150f503.js:154232:76)
+    at Router (http://localhost:8001/mf-dep____vendor.3150f503.js:321640:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.3150f503.js:154192:23)
+    at r (http://localhost:8001/mf-dep____vendor.3150f503.js:319893:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2923:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.3150f503.js:154298:68) @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1758772ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763505ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve '@@/plugin-access' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi'
+Did you mean './umi'?
+Requests that should resolve in the current directory need to start with './'.
+Requests that start with a name are treated as module requests and resolve within module directories (node_modules).
+If changing the source code is not an option there is also a resolve options called 'preferRelative' which tries to resolve these kind of requests in the current directory too. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/layouts/UserLayout' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/iam' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/tenant' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1763506ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/services/common' @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 1765046ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1765048ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1765097ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.fa8b8216.js:315478
+[ 1765296ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.fa8b8216.js:315595
+[ 1765332ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.fa8b8216.js:261011:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.fa8b8216.js:261148:24)
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:149202:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.fa8b8216.js:274599:32)
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:211294:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.fa8b8216.js:111434:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.fa8b8216.js:250561:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.fa8b8216.js:250999:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.fa8b8216.js:246694:90)
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:246725:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.fa8b8216.js:246849:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.fa8b8216.js:183203:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.fa8b8216.js:250677:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:247615:23)
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:246188:27
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:183526:55
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:183437:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.fa8b8216.js:111728:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:180830:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.fa8b8216.js:111986:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.fa8b8216.js:112245:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.fa8b8216.js:166441:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167109:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167411:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.fa8b8216.js:181115:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.fa8b8216.js:105288:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.fa8b8216.js:166441:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167109:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167411:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.fa8b8216.js:115459:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:182408:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.fa8b8216.js:166441:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167109:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167411:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:115586:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.fa8b8216.js:166441:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167109:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.fa8b8216.js:167411:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.fa8b8216.js:105624:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.fa8b8216.js:150880:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.fa8b8216.js:150111:76)
+    at Router (http://localhost:8001/mf-dep____vendor.fa8b8216.js:317519:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.fa8b8216.js:150071:23)
+    at r (http://localhost:8001/mf-dep____vendor.fa8b8216.js:315772:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1930:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2271:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2720:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2922:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.fa8b8216.js:150177:68) @ http://localhost:8001/mf-dep____vendor.fa8b8216.js:315595
+[ 1765349ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.fa8b8216.js:315595
+[ 1771523ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 1771524ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 1771556ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.f90c7f7e.js:319582
+[ 1771758ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.f90c7f7e.js:319699
+[ 1771792ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:265115:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:265252:24)
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:153306:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:278703:32)
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:215398:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:115538:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:254665:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:255103:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:250798:90)
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:250829:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:250953:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:187307:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:254781:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:251719:23)
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:250292:27
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:187630:55
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:187541:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:115832:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:184934:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:116090:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:116349:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:170545:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171213:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171515:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.f90c7f7e.js:185219:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:109392:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:170545:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171213:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171515:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:119563:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:186512:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:170545:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171213:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171515:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:119690:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:170545:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171213:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:171515:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:109728:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:154984:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:154215:76)
+    at Router (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:321623:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:154175:23)
+    at r (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:319876:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1930:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2271:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2720:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2922:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.f90c7f7e.js:154281:68) @ http://localhost:8001/mf-dep____vendor.f90c7f7e.js:319699
+[ 1771813ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.f90c7f7e.js:319699
+[ 2188012ms] [INFO] [webpack] Dev server disconnected. Polling for restart... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:608
+[ 2188015ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2189019ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2190023ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2191027ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2192031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2193034ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2194037ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8001/__umi_ping:0
+[ 2197231ms] [LOG] [webpack] connecting... @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[ 2197233ms] [LOG] [webpack] connected. @ http://localhost:8001/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[ 2197246ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:8001/mf-dep____vendor.3150f503.js:319599
+[ 2197473ms] [ERROR] Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 2197493ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265132:24)
+    at ResizeObserver (http://localhost:8001/mf-dep____vendor.3150f503.js:265269:24)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:153323:34
+    at Tooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:278720:32)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:215415:18
+    at MenuItemTooltip (http://localhost:8001/mf-dep____vendor.3150f503.js:115555:73)
+    at span
+    at li
+    at InternalItem (http://localhost:8001/mf-dep____vendor.3150f503.js:254682:25)
+    at InternalRawItem (http://localhost:8001/mf-dep____vendor.3150f503.js:255120:52)
+    at LegacyMenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250815:90)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250846:21
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:250970:24)
+    at MenuItem (http://localhost:8001/mf-dep____vendor.3150f503.js:187324:5)
+    at ul
+    at Overflow (http://localhost:8001/mf-dep____vendor.3150f503.js:254798:32)
+    at InheritableContextProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:251736:23)
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:250309:27
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187647:55
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:187558:64
+    at BaseMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:115849:20)
+    at div
+    at div
+    at aside
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:184951:18
+    at SiderMenu (http://localhost:8001/mf-dep____vendor.3150f503.js:116107:25)
+    at SiderMenuWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:116366:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at div
+    at http://localhost:8001/mf-dep____vendor.3150f503.js:185236:42
+    at Layout
+    at div
+    at BaseProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109409:13)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ConfigProviderContainer (http://localhost:8001/mf-dep____vendor.3150f503.js:119580:24)
+    at LocaleProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:186529:5)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:119707:24)
+    at MotionWrapper (http://localhost:8001/mf-dep____vendor.3150f503.js:170562:59)
+    at ProviderChildren (http://localhost:8001/mf-dep____vendor.3150f503.js:171230:5)
+    at ConfigProvider (http://localhost:8001/mf-dep____vendor.3150f503.js:171532:54)
+    at ProLayout (http://localhost:8001/mf-dep____vendor.3150f503.js:109745:28)
+    at http://localhost:8001/umi__plugin-layout__Layout.async.js:209:73
+    at Suspense
+    at RemoteComponent (http://localhost:8001/mf-dep____vendor.3150f503.js:155001:25)
+    at Routes (http://localhost:8001/mf-dep____vendor.3150f503.js:154232:76)
+    at Router (http://localhost:8001/mf-dep____vendor.3150f503.js:321640:15)
+    at BrowserRoutes (http://localhost:8001/mf-dep____vendor.3150f503.js:154192:23)
+    at r (http://localhost:8001/mf-dep____vendor.3150f503.js:319893:7350)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://localhost:8001/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://localhost:8001/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://localhost:8001/src_umi_umi_ts.async.js:2923:137)
+    at Browser (http://localhost:8001/mf-dep____vendor.3150f503.js:154298:68) @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 2197508ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716
+[ 3374588ms] [ERROR] Warning: [antd: message] Static function can not consume context like dynamic theme. Please use 'App' component instead. @ http://localhost:8001/mf-dep____vendor.3150f503.js:319716

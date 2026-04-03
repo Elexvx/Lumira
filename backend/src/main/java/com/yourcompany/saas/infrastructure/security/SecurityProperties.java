@@ -10,6 +10,7 @@ public class SecurityProperties {
 
     private String jwtSecret = "replace_me";
     private String issuer = "saas-foundation";
+    private long idleTimeoutSeconds = 1800;
     private long accessTokenExpireSeconds = 1800;
     private long refreshTokenExpireSeconds = 604800;
     private List<String> permitPaths = new ArrayList<>();
@@ -36,6 +37,14 @@ public class SecurityProperties {
 
     public void setAccessTokenExpireSeconds(long accessTokenExpireSeconds) {
         this.accessTokenExpireSeconds = accessTokenExpireSeconds;
+    }
+
+    public long getIdleTimeoutSeconds() {
+        return idleTimeoutSeconds;
+    }
+
+    public void setIdleTimeoutSeconds(long idleTimeoutSeconds) {
+        this.idleTimeoutSeconds = idleTimeoutSeconds;
     }
 
     public long getRefreshTokenExpireSeconds() {

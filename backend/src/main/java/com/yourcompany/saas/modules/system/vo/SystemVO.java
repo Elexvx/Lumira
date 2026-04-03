@@ -777,6 +777,84 @@ public final class SystemVO {
         }
     }
 
+    public static class SecuritySettingsVO {
+        private Long idleTimeoutSeconds;
+        private Long accessTokenExpireSeconds;
+        private Long refreshTokenExpireSeconds;
+
+        public Long getIdleTimeoutSeconds() {
+            return idleTimeoutSeconds;
+        }
+
+        public void setIdleTimeoutSeconds(Long idleTimeoutSeconds) {
+            this.idleTimeoutSeconds = idleTimeoutSeconds;
+        }
+
+        public Long getAccessTokenExpireSeconds() {
+            return accessTokenExpireSeconds;
+        }
+
+        public void setAccessTokenExpireSeconds(Long accessTokenExpireSeconds) {
+            this.accessTokenExpireSeconds = accessTokenExpireSeconds;
+        }
+
+        public Long getRefreshTokenExpireSeconds() {
+            return refreshTokenExpireSeconds;
+        }
+
+        public void setRefreshTokenExpireSeconds(Long refreshTokenExpireSeconds) {
+            this.refreshTokenExpireSeconds = refreshTokenExpireSeconds;
+        }
+    }
+
+    public static class BrandingSettingsVO {
+        private String websiteName;
+        private String websiteFaviconUrl;
+        private String websiteLogoUrl;
+        private String footerIcp;
+        private String footerCopyright;
+
+        public String getWebsiteName() {
+            return websiteName;
+        }
+
+        public void setWebsiteName(String websiteName) {
+            this.websiteName = websiteName;
+        }
+
+        public String getWebsiteFaviconUrl() {
+            return websiteFaviconUrl;
+        }
+
+        public void setWebsiteFaviconUrl(String websiteFaviconUrl) {
+            this.websiteFaviconUrl = websiteFaviconUrl;
+        }
+
+        public String getWebsiteLogoUrl() {
+            return websiteLogoUrl;
+        }
+
+        public void setWebsiteLogoUrl(String websiteLogoUrl) {
+            this.websiteLogoUrl = websiteLogoUrl;
+        }
+
+        public String getFooterIcp() {
+            return footerIcp;
+        }
+
+        public void setFooterIcp(String footerIcp) {
+            this.footerIcp = footerIcp;
+        }
+
+        public String getFooterCopyright() {
+            return footerCopyright;
+        }
+
+        public void setFooterCopyright(String footerCopyright) {
+            this.footerCopyright = footerCopyright;
+        }
+    }
+
     public static class AuditLogVO {
         private Long id;
         private Long tenantId;

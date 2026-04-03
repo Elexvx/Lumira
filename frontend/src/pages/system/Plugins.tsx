@@ -1,24 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, Modal, Select, Space, Tag, Upload, message } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
 import { UploadOutlined } from '@ant-design/icons';
+import { Button, Card, Descriptions, Drawer, Form, Input, Modal, Select, Space, Tag, Upload, message } from 'antd';
 import { useRequest } from 'umi';
-import { ManagementPageContainer } from '@/components/ManagementPageContainer';
-import { QueryPanel } from '@/components/QueryPanel';
-import { ActionBar } from '@/components/ActionBar';
-import { DataTable } from '@/components/DataTable';
-import { DetailDrawer } from '@/components/DetailDrawer';
-import { PermissionButton } from '@/components/PermissionButton';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { usePermission } from '@/hooks/usePermission';
 import { pluginService } from '@/services/plugin';
-import type { PluginDefinition, PluginRuntimeLog, PluginVersion } from '@/types/api';
+import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 
 const PluginsPage = () => {
   const [queryForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
+  const { canAccess } = usePermission();
   const [query, setQuery] = useState<Record<string, unknown>>({});
   const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition | null>(null);
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
@@ -49,7 +44,7 @@ const PluginsPage = () => {
 
   const availableQuery = useRequest(async () => ({
     data: await pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
-  }) as { data: import('@/types/api').TenantPlugin[] }, {
+  }) as { data: TenantPlugin[] }, {
     refreshDeps: [initialState?.currentTenant?.tenantId],
   });
 
@@ -76,95 +71,6 @@ const PluginsPage = () => {
     });
   }, [definitionList, query]);
 
-  const definitionColumns = useMemo<ColumnsType<PluginDefinition>>(
-    () => [
-      { title: '插件编码', dataIndex: 'pluginCode' },
-      { title: '名称', dataIndex: 'pluginName' },
-      { title: '作者', dataIndex: 'author' },
-      { title: 'API 版本', dataIndex: 'pluginApiVersion' },
-      {
-        title: '状态',
-        dataIndex: 'status',
-        render: (value: string) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value}</Tag>,
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        render: (_, record) => (
-          <Space wrap>
-            <PermissionButton
-              permission="plugin:management:view"
-              onClick={() => {
-                setSelectedPlugin(record);
-                setSelectedVersion(null);
-                setDetailDrawerOpen(true);
-              }}
-            >
-              详情
-            </PermissionButton>
-            <PermissionButton
-              permission="plugin:management:view"
-              onClick={() => {
-                setSelectedPlugin(record);
-                setVersionDrawerOpen(true);
-              }}
-            >
-              版本
-            </PermissionButton>
-            <PermissionButton
-              permission="plugin:management:logs"
-              onClick={() => {
-                setSelectedPlugin(record);
-                setLogDrawerOpen(true);
-              }}
-            >
-              日志
-            </PermissionButton>
-          </Space>
-        ),
-      },
-    ],
-    [],
-  );
-
-  const versionColumns = useMemo<ColumnsType<PluginVersion>>(
-    () => [
-      { title: '版本', dataIndex: 'version' },
-      { title: '安装状态', dataIndex: 'installStatus' },
-      { title: '加载状态', dataIndex: 'loadStatus' },
-      { title: '健康状态', dataIndex: 'healthStatus' },
-      {
-        title: '激活',
-        dataIndex: 'isActive',
-        render: (value: number) => <Tag color={value === 1 ? 'green' : 'default'}>{value === 1 ? '是' : '否'}</Tag>,
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        render: (_, record) => (
-          <Space wrap>
-            <PermissionButton permission="plugin:management:install" onClick={() => confirmInstall(record.pluginCode, record.version)}>
-              安装
-            </PermissionButton>
-            <PermissionButton permission="plugin:management:upgrade" onClick={() => confirmActivate(record.pluginCode, record.version)}>
-              激活
-            </PermissionButton>
-            <PermissionButton permission="plugin:management:enable" onClick={() => confirmEnable(record.pluginCode, record.version)}>
-              启用
-            </PermissionButton>
-            <PermissionButton permission="plugin:management:disable" onClick={() => confirmDisable(record.pluginCode)}>
-              停用
-            </PermissionButton>
-            <PermissionButton permission="plugin:management:rollback" onClick={() => confirmRollback(record.pluginCode, record.version)}>
-              回滚
-            </PermissionButton>
-          </Space>
-        ),
-      },
-    ],
-    [initialState?.currentTenant?.tenantId],
-  );
-
   const refreshBootstrap = async () => {
     const [menuTree, availablePlugins] = await Promise.all([
       pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
@@ -176,6 +82,7 @@ const PluginsPage = () => {
             ...prev,
             menuTree,
             availablePlugins,
+            securitySettings: prev.securitySettings,
           }
         : prev,
     );
@@ -282,153 +189,286 @@ const PluginsPage = () => {
     };
   }, [currentAvailable, selectedPlugin, versionList]);
 
-  return (
-    <ManagementPageContainer title="插件管理" description="插件列表、版本、日志和运行态统一纳入页面规范。">
-      <QueryPanel
-        form={queryForm}
-        onSearch={(values) => setQuery(values)}
-        onReset={() => {
-          queryForm.resetFields();
-          setQuery({});
-        }}
-        columns={3}
-        collapseCount={3}
-        actions={
-          <>
-            <Button onClick={() => definitionQuery.refresh()}>刷新</Button>
-            <PermissionButton permission="plugin:management:upload" type="primary" onClick={() => setUploadVisible(true)}>
-              上传插件
-            </PermissionButton>
-          </>
-        }
-      >
-        <Form.Item name="keyword" label="关键词">
-          <Input allowClear placeholder="插件名称或编码" />
-        </Form.Item>
-        <Form.Item name="pluginCode" label="插件编码">
-          <Input allowClear placeholder="输入插件编码" />
-        </Form.Item>
-        <Form.Item name="status" label="状态">
-          <Select allowClear options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
-        </Form.Item>
-      </QueryPanel>
-
-      <ActionBar
-        left={<Space><Tag color="blue">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Tag></Space>}
-        right={<Button onClick={() => definitionQuery.refresh()}>重新加载</Button>}
-      />
-
-      <Card bodyStyle={{ height: 520, minHeight: 0 }}>
-        <DataTable<PluginDefinition>
-          rowKey="pluginCode"
-          columns={definitionColumns}
-          dataSource={filteredDefinitions}
-          pagination={false}
-          loading={definitionQuery.loading}
-          middleScroll
-          emptyText="暂无插件定义"
-        />
-      </Card>
-
-      <DetailDrawer
-        title={selectedPlugin ? `插件详情 · ${selectedPlugin.pluginName}` : '插件详情'}
-        open={detailDrawerOpen}
-        onClose={() => setDetailDrawerOpen(false)}
-        descriptionItems={
-          selectedPluginDetail
-            ? [
-                { key: 'pluginCode', label: '插件编码', children: selectedPluginDetail.pluginCode },
-                { key: 'pluginName', label: '插件名称', children: selectedPluginDetail.pluginName },
-                { key: 'version', label: '当前版本', children: selectedPluginDetail.version },
-                { key: 'author', label: '作者', children: selectedPluginDetail.author },
-                { key: 'pluginApiVersion', label: 'API 版本', children: selectedPluginDetail.pluginApiVersion },
-                { key: 'status', label: '状态', children: selectedPluginDetail.status },
-                { key: 'healthStatus', label: '健康状态', children: selectedPluginDetail.healthStatus },
-                { key: 'tenantEnabled', label: '租户启用', children: selectedPluginDetail.tenantEnabled },
-              ]
-            : undefined
-        }
-      >
-        {selectedPluginDetail ? (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Card size="small" title="依赖和菜单">
-              <Space direction="vertical" size={8}>
-                <div>依赖信息：{selectedPluginDetail.dependencyInfo}</div>
-                <div>菜单数量：{selectedPluginDetail.menuCount}</div>
-                <div>安装状态：{selectedPluginDetail.installStatus}</div>
-                <div>加载状态：{selectedPluginDetail.loadStatus}</div>
-              </Space>
-            </Card>
+  const definitionColumns = useMemo<ProColumns<PluginDefinition>[]>(
+    () => [
+      { title: '插件编码', dataIndex: 'pluginCode' },
+      { title: '名称', dataIndex: 'pluginName' },
+      { title: '作者', dataIndex: 'author' },
+      { title: 'API 版本', dataIndex: 'pluginApiVersion' },
+      {
+        title: '状态',
+        dataIndex: 'status',
+        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
+      },
+      {
+        title: '操作',
+        key: 'actions',
+        render: (_, record) => (
+          <Space wrap>
+            {canAccess('plugin:management:view') ? (
+              <Button
+                onClick={() => {
+                  setSelectedPlugin(record);
+                  setDetailDrawerOpen(true);
+                }}
+              >
+                详情
+              </Button>
+            ) : null}
+            {canAccess('plugin:management:view') ? (
+              <Button
+                onClick={() => {
+                  setSelectedPlugin(record);
+                  setVersionDrawerOpen(true);
+                }}
+              >
+                版本
+              </Button>
+            ) : null}
+            {canAccess('plugin:management:logs') ? (
+              <Button
+                onClick={() => {
+                  setSelectedPlugin(record);
+                  setLogDrawerOpen(true);
+                }}
+              >
+                日志
+              </Button>
+            ) : null}
           </Space>
-        ) : null}
-      </DetailDrawer>
+        ),
+      },
+    ],
+    [canAccess],
+  );
 
-      <DetailDrawer
-        title={selectedPlugin ? `版本列表 · ${selectedPlugin.pluginName}` : '版本列表'}
-        open={versionDrawerOpen}
-        onClose={() => setVersionDrawerOpen(false)}
-        width={960}
-        loading={versionQuery.loading}
-      >
-        <DataTable<PluginVersion>
-          rowKey="version"
-          columns={versionColumns}
-          dataSource={versionList}
-          pagination={false}
-          middleScroll
-          emptyText="暂无版本数据"
-        />
-      </DetailDrawer>
+  const versionColumns = useMemo<ProColumns<PluginVersion>[]>(
+    () => [
+      { title: '版本', dataIndex: 'version' },
+      { title: '安装状态', dataIndex: 'installStatus' },
+      { title: '加载状态', dataIndex: 'loadStatus' },
+      { title: '健康状态', dataIndex: 'healthStatus' },
+      {
+        title: '激活',
+        dataIndex: 'isActive',
+        render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
+      },
+      {
+        title: '操作',
+        key: 'actions',
+        render: (_, record) => (
+          <Space wrap>
+            {canAccess('plugin:management:install') ? (
+              <Button onClick={() => confirmInstall(record.pluginCode, record.version)}>安装</Button>
+            ) : null}
+            {canAccess('plugin:management:upgrade') ? (
+              <Button onClick={() => confirmActivate(record.pluginCode, record.version)}>激活</Button>
+            ) : null}
+            {canAccess('plugin:management:enable') ? (
+              <Button onClick={() => confirmEnable(record.pluginCode, record.version)}>启用</Button>
+            ) : null}
+            {canAccess('plugin:management:disable') ? (
+              <Button onClick={() => confirmDisable(record.pluginCode)}>停用</Button>
+            ) : null}
+            {canAccess('plugin:management:rollback') ? (
+              <Button onClick={() => confirmRollback(record.pluginCode, record.version)}>回滚</Button>
+            ) : null}
+          </Space>
+        ),
+      },
+    ],
+    [canAccess, initialState?.currentTenant?.tenantId],
+  );
 
-      <DetailDrawer
-        title={selectedPlugin ? `运行日志 · ${selectedPlugin.pluginName}` : '运行日志'}
-        open={logDrawerOpen}
-        onClose={() => setLogDrawerOpen(false)}
-        width={960}
-        loading={logQuery.loading}
-      >
-        <DataTable<PluginRuntimeLog>
-          rowKey="id"
-          columns={[
-            { title: '时间', dataIndex: 'createdAt', width: 180 },
-            { title: '操作', dataIndex: 'operationType', width: 120 },
-            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },
-            { title: '结果', dataIndex: 'resultStatus', width: 120 },
-            { title: '详情', dataIndex: 'detailMessage' },
-          ]}
-          dataSource={runtimeLogList}
-          pagination={false}
-          middleScroll
-          emptyText="暂无插件日志"
-        />
-      </DetailDrawer>
+  return (
+    <PageContainer
+      className="saas-management-page saas-crud-page"
+      ghost
+      breadcrumbRender={false}
+      title="插件管理"
+      subTitle="插件列表、版本、日志和运行态统一纳入页面规范。"
+      style={{ height: '100%', minHeight: 0 }}
+      content={null}
+    >
+      <div className="saas-management-page-body">
+        <Card className="saas-query-panel">
+          <Form
+            form={queryForm}
+            layout="vertical"
+            onFinish={(values) => setQuery(values)}
+            onReset={() => {
+              queryForm.resetFields();
+              setQuery({});
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+              <Form.Item name="keyword" label="关键词">
+                <Input allowClear placeholder="插件名称或编码" />
+              </Form.Item>
+              <Form.Item name="pluginCode" label="插件编码">
+                <Input allowClear placeholder="输入插件编码" />
+              </Form.Item>
+              <Form.Item name="status" label="状态">
+                <Select allowClear options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
+              </Form.Item>
+            </div>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button htmlType="reset">重置</Button>
+              <Button type="primary" htmlType="submit">
+                查询
+              </Button>
+              <Button onClick={() => definitionQuery.refresh()}>刷新</Button>
+              {canAccess('plugin:management:upload') ? (
+                <Button type="primary" onClick={() => setUploadVisible(true)}>
+                  上传插件
+                </Button>
+              ) : null}
+            </Space>
+          </Form>
+        </Card>
 
-      <Modal
-        open={uploadVisible}
-        title="上传插件包"
-        onCancel={() => setUploadVisible(false)}
-        onOk={handleUpload}
-        okText="开始上传"
-        destroyOnClose
-      >
-        <Upload
-          maxCount={1}
-          beforeUpload={(file) => {
-            if (!file.name.toLowerCase().endsWith('.zip')) {
-              message.error('仅支持 zip 插件包');
-              return Upload.LIST_IGNORE;
-            }
-            setUploadFile(file);
-            return false;
-          }}
-          onRemove={() => {
-            setUploadFile(null);
-          }}
+        <Card className="saas-action-bar">
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Space>
+              <Tag color="blue">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Tag>
+            </Space>
+            <Button onClick={() => definitionQuery.refresh()}>重新加载</Button>
+          </Space>
+        </Card>
+
+        <Card className="saas-crud-table-card" bodyStyle={{ minHeight: 0 }}>
+          <ProTable<PluginDefinition>
+            rowKey="pluginCode"
+            columns={definitionColumns}
+            dataSource={filteredDefinitions}
+            loading={definitionQuery.loading}
+            search={false}
+            options={false}
+            toolBarRender={false}
+            pagination={false}
+          />
+        </Card>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={selectedPlugin ? `插件详情 · ${selectedPlugin.pluginName}` : '插件详情'}
+          open={detailDrawerOpen}
+          onClose={() => setDetailDrawerOpen(false)}
+          width={720}
+          destroyOnClose
         >
-          <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>
-        </Upload>
-      </Modal>
-    </ManagementPageContainer>
+          {selectedPluginDetail ? (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Descriptions
+                bordered
+                size="small"
+                column={2}
+                items={[
+                  { key: 'pluginCode', label: '插件编码', children: selectedPluginDetail.pluginCode },
+                  { key: 'pluginName', label: '插件名称', children: selectedPluginDetail.pluginName },
+                  { key: 'version', label: '当前版本', children: selectedPluginDetail.version },
+                  { key: 'author', label: '作者', children: selectedPluginDetail.author },
+                  { key: 'pluginApiVersion', label: 'API 版本', children: selectedPluginDetail.pluginApiVersion },
+                  { key: 'status', label: '状态', children: selectedPluginDetail.status },
+                  { key: 'healthStatus', label: '健康状态', children: selectedPluginDetail.healthStatus },
+                  { key: 'tenantEnabled', label: '租户启用', children: selectedPluginDetail.tenantEnabled },
+                ]}
+              />
+              <Card className="saas-crud-info-card" size="small" title="依赖和菜单">
+                <Space direction="vertical" size={8}>
+                  <div>依赖信息：{selectedPluginDetail.dependencyInfo}</div>
+                  <div>菜单数量：{selectedPluginDetail.menuCount}</div>
+                  <div>安装状态：{selectedPluginDetail.installStatus}</div>
+                  <div>加载状态：{selectedPluginDetail.loadStatus}</div>
+                </Space>
+              </Card>
+            </Space>
+          ) : null}
+        </Drawer>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={selectedPlugin ? `版本列表 · ${selectedPlugin.pluginName}` : '版本列表'}
+          open={versionDrawerOpen}
+          onClose={() => setVersionDrawerOpen(false)}
+          width={980}
+          destroyOnClose
+        >
+          <Card loading={versionQuery.loading} bordered={false} bodyStyle={{ padding: 0 }}>
+            <ProTable<PluginVersion>
+              rowKey="version"
+              columns={versionColumns}
+              dataSource={versionList}
+              search={false}
+              options={false}
+              toolBarRender={false}
+              pagination={false}
+            />
+          </Card>
+        </Drawer>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title={selectedPlugin ? `运行日志 · ${selectedPlugin.pluginName}` : '运行日志'}
+          open={logDrawerOpen}
+          onClose={() => setLogDrawerOpen(false)}
+          width={980}
+          destroyOnClose
+        >
+          <Card loading={logQuery.loading} bordered={false} bodyStyle={{ padding: 0 }}>
+            <ProTable<PluginRuntimeLog>
+              rowKey="id"
+              columns={[
+                { title: '时间', dataIndex: 'createdAt', width: 180 },
+                { title: '操作', dataIndex: 'operationType', width: 120 },
+                { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },
+                { title: '结果', dataIndex: 'resultStatus', width: 120 },
+                { title: '详情', dataIndex: 'detailMessage' },
+              ]}
+              dataSource={runtimeLogList}
+              search={false}
+              options={false}
+              toolBarRender={false}
+              pagination={false}
+            />
+          </Card>
+        </Drawer>
+
+        <Drawer
+          className="saas-detail-drawer"
+          title="上传插件包"
+          open={uploadVisible}
+          onClose={() => setUploadVisible(false)}
+          width={720}
+          destroyOnClose
+          extra={
+            <Space>
+              <Button onClick={() => setUploadVisible(false)}>取消</Button>
+              <Button type="primary" onClick={handleUpload}>
+                开始上传
+              </Button>
+            </Space>
+          }
+        >
+          <Upload
+            maxCount={1}
+            beforeUpload={(file) => {
+              if (!file.name.toLowerCase().endsWith('.zip')) {
+                message.error('仅支持 zip 插件包');
+                return Upload.LIST_IGNORE;
+              }
+              setUploadFile(file as unknown as File);
+              return false;
+            }}
+            onRemove={() => {
+              setUploadFile(null);
+            }}
+          >
+            <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>
+          </Upload>
+        </Drawer>
+      </div>
+    </PageContainer>
   );
 };
 
