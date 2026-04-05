@@ -284,9 +284,7 @@ const PluginsPage = () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="插件管理"
-      subTitle="插件列表、版本、日志和运行态统一纳入页面规范。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

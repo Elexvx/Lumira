@@ -152,9 +152,7 @@ export default () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="菜单管理"
-      subTitle="支持菜单树、路由、组件、权限标识和启停状态维护。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

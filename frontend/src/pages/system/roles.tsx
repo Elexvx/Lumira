@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { Button, Card, Checkbox, Descriptions, Drawer, Form, Input, Select, Space, Tag, message } from 'antd';
+import { Button, Card, Checkbox, Drawer, Form, Input, Select, Space, Tag, message } from 'antd';
 import { useRequest } from 'umi';
 import { iamService } from '@/services/iam';
 import type { PermissionRecord, RoleDetail, RoleRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { DetailDrawer } from '@/components/DetailDrawer';
+import { useDetailState } from '@/hooks/useDetailState';
+import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
 
 export default () => {
   const [queryForm] = Form.useForm();
@@ -14,20 +17,12 @@ export default () => {
   const [selectedRole, setSelectedRole] = useState<RoleRecord | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const detailState = useDetailState<RoleDetail>();
 
   const permissionQuery = useRequest(async () => ({
     data: await iamService.permissions({ autoRedirectOnUnauthorized: false }),
   }) as { data: PermissionRecord[] });
-  const roleDetailQuery = useRequest(
-    async () =>
-      selectedRole
-        ? ({ data: await iamService.roleDetail(selectedRole.id, { autoRedirectOnUnauthorized: false }) } as { data: RoleDetail | null })
-        : ({ data: null } as { data: RoleDetail | null }),
-    { refreshDeps: [selectedRole?.id, reloadTick] },
-  );
-
   const permissionOptions = useMemo(
     () =>
       (permissionQuery.data || []).map((item) => ({
@@ -38,13 +33,12 @@ export default () => {
   );
 
   useEffect(() => {
-    if (editorOpen && roleDetailQuery.data) {
-      editorForm.setFieldsValue({
-        ...roleDetailQuery.data,
-        permissionKeys: roleDetailQuery.data.permissionKeys || [],
+    if (editorOpen && selectedRole?.id) {
+      iamService.roleDetail(selectedRole.id, { autoRedirectOnUnauthorized: false }).then((detail) => {
+        editorForm.setFieldsValue({ ...detail, permissionKeys: detail.permissionKeys || [] });
       });
     }
-  }, [editorForm, editorOpen, roleDetailQuery.data]);
+  }, [editorForm, editorOpen, selectedRole?.id]);
 
   const columns = useMemo<ProColumns<RoleRecord>[]>(
     () => [
@@ -61,7 +55,7 @@ export default () => {
               <Button
                 onClick={() => {
                   setSelectedRole(record);
-                  setDetailOpen(true);
+                  void detailState.load(() => iamService.roleDetail(record.id, { autoRedirectOnUnauthorized: false }));
                 }}
               >
                 详情
@@ -145,15 +139,11 @@ export default () => {
     setReloadTick((value) => value + 1);
   };
 
-  const detail = roleDetailQuery.data as RoleDetail | undefined;
-
   return (
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="角色管理"
-      subTitle="支持角色查询、新增、编辑、查看与权限分配。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >
@@ -170,10 +160,7 @@ export default () => {
               <Form.Item name="roleType" label="角色类型">
                 <Select
                   allowClear
-                  options={[
-                    { label: '系统角色', value: 'SYSTEM' },
-                    { label: '自定义角色', value: 'CUSTOM' },
-                  ]}
+                  options={ROLE_TYPE_OPTIONS as unknown as {label:string;value:string}[]}
                 />
               </Form.Item>
             </div>
@@ -237,7 +224,7 @@ export default () => {
               <Input />
             </Form.Item>
             <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
-              <Select options={[{ label: '系统角色', value: 'SYSTEM' }, { label: '自定义角色', value: 'CUSTOM' }]} />
+              <Select options={ROLE_TYPE_OPTIONS as unknown as {label:string;value:string}[]} />
             </Form.Item>
             <Form.Item name="permissionKeys" label="权限">
               <Checkbox.Group options={permissionOptions} />
@@ -245,40 +232,23 @@ export default () => {
           </Form>
         </Drawer>
 
-        <Drawer
-          className="saas-detail-drawer"
+        <DetailDrawer<RoleDetail>
           title={selectedRole ? `角色详情 · ${selectedRole.roleName}` : '角色详情'}
-          open={detailOpen}
-          onClose={() => setDetailOpen(false)}
-          width={720}
-          destroyOnClose
+          open={detailState.open}
+          onClose={detailState.close}
+          status={detailState.status}
+          errorMessage={detailState.errorMessage}
+          dataSource={detailState.data}
+          columns={[
+            { title: '角色编码', dataIndex: 'roleCode' },
+            { title: '角色名称', dataIndex: 'roleName' },
+            { title: '角色类型', dataIndex: 'roleType', render: (_, entity) => ROLE_TYPE_LABEL_MAP[entity.roleType || ''] || entity.roleType },
+            { title: '权限数', dataIndex: 'permissionCount' },
+            { title: '用户数', dataIndex: 'userCount' },
+          ]}
         >
-          {detail ? (
-            <Space direction="vertical" style={{ width: '100%' }} size={16}>
-              <Descriptions
-                bordered
-                size="small"
-                column={2}
-                items={[
-                  { key: 'roleCode', label: '角色编码', children: detail.roleCode },
-                  { key: 'roleName', label: '角色名称', children: detail.roleName },
-                  { key: 'roleType', label: '角色类型', children: detail.roleType },
-                  { key: 'permissionCount', label: '权限数', children: detail.permissionCount ?? 0 },
-                  { key: 'userCount', label: '用户数', children: detail.userCount ?? 0 },
-                ]}
-              />
-              {detail.permissionKeys?.length ? (
-                <Space wrap>
-                  {detail.permissionKeys.map((item) => (
-                    <Tag key={item} color="geekblue">
-                      {item}
-                    </Tag>
-                  ))}
-                </Space>
-              ) : null}
-            </Space>
-          ) : null}
-        </Drawer>
+          {detailState.data?.permissionKeys?.length ? <Space wrap>{detailState.data.permissionKeys.map((item) => <Tag key={item}>{item}</Tag>)}</Space> : null}
+        </DetailDrawer>
       </div>
     </PageContainer>
   );

@@ -68,9 +68,7 @@ const SecuritySettingsPage = () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="安全设置"
-      subTitle="配置空闲超时、Access Token 过期和 Refresh Token 刷新时限，保存后立即生效。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

@@ -52,6 +52,24 @@ export interface BrandingSettings {
   footerCopyright?: string;
 }
 
+
+export interface WatermarkSettings {
+  enabled: boolean;
+  mode: 'TEXT' | 'IMAGE';
+  textLines: string[];
+  imageUrl?: string;
+  fontColor: string;
+  fontSize: number;
+  fontWeight: string;
+  rotate: number;
+  gapX: number;
+  gapY: number;
+  offsetX: number;
+  offsetY: number;
+  zIndex: number;
+  opacity: number;
+}
+
 export interface RefreshTokenResponse {
   accessToken: string;
   refreshToken: string;
