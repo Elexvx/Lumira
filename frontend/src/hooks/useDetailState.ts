@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ApiRequestError } from '@/services/common/request';
-import type { DetailStatus } from '@/components/DetailDrawer';
+
+export type DetailStatus = 'idle' | 'loading' | 'success' | 'error' | 'empty';
 
 export const useDetailState = <T,>() => {
   const [open, setOpen] = useState(false);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Button, Card, Form, InputNumber, Space, Typography, message } from 'antd';
+import { Button, Card, Form, InputNumber, Space, Typography, message } from 'antd';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettings';
 import { loadSecuritySettings, saveSecuritySettings } from '@/auth/session';
@@ -73,14 +73,6 @@ const SecuritySettingsPage = () => {
       content={null}
     >
       <div className="saas-management-page-body">
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="安全策略会影响所有已登录用户"
-          description="空闲超时采用全局统一策略，用户长时间无操作后会被强制回到登录页。"
-        />
-
         <Card className="saas-crud-form-card" loading={loading} bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <Typography.Title level={5} style={{ marginBottom: 8 }}>

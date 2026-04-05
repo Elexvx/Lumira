@@ -103,7 +103,7 @@ public class TenantAppService {
             );
         }
 
-        authSessionStore.save(session, sessionTtl);
+        authSessionStore.save(session, sessionTtl, true);
 
         SwitchTenantVO response = new SwitchTenantVO();
         response.setCurrentTenant(tenantDomainService.toTenantSummary(tenantInfo));

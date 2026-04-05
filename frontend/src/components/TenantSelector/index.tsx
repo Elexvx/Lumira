@@ -43,6 +43,7 @@ export const TenantSelector = () => {
         currentTenant: response.currentTenant,
         myTenants: prev?.myTenants ?? [],
         menuTree,
+        menuVersion: (prev?.menuVersion ?? 0) + 1,
         availablePlugins,
         securitySettings: prev?.securitySettings || initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS,
         brandingSettings: prev?.brandingSettings || initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,

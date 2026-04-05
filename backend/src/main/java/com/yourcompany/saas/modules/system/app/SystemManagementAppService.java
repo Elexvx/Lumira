@@ -10,6 +10,7 @@ import com.yourcompany.saas.modules.audit.app.OperationAuditService;
 import com.yourcompany.saas.modules.auth.app.AuthAppService;
 import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import com.yourcompany.saas.modules.plugin.app.PluginManagementAppService;
+import com.yourcompany.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.yourcompany.saas.modules.system.dto.SystemDTO;
 import com.yourcompany.saas.modules.system.vo.SystemVO;
 import com.yourcompany.saas.modules.tenant.domain.TenantDomainService;
@@ -79,7 +80,8 @@ public class SystemManagementAppService {
     );
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
-            shortcut("系统管理", "用户、角色、菜单、字典、配置", "/system/management", "system:view"),
+            shortcut("系统管理", "用户、角色、菜单、字典", "/system/management", "system:view"),
+            shortcut("在线用户", "实时会话、踢出和封禁", "/system/online-users", "system:online-user:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
             shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
             shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
@@ -93,6 +95,7 @@ public class SystemManagementAppService {
     private final UserDomainService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final PluginManagementAppService pluginManagementAppService;
+    private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
@@ -105,6 +108,7 @@ public class SystemManagementAppService {
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             PluginManagementAppService pluginManagementAppService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService,
             OperationAuditService operationAuditService,
@@ -116,6 +120,7 @@ public class SystemManagementAppService {
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.pluginManagementAppService = pluginManagementAppService;
+        this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.passwordEncoder = passwordEncoder;
         this.loginAuditService = loginAuditService;
         this.operationAuditService = operationAuditService;
@@ -227,6 +232,9 @@ public class SystemManagementAppService {
                 LocalDateTime.now(),
                 userId
         );
+        if ("DISABLED".equalsIgnoreCase(status)) {
+            onlineSessionManagementAppService.revokeUserSessions(userId);
+        }
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + status);
         return true;
     }
@@ -364,6 +372,46 @@ public class SystemManagementAppService {
                 tenantId
         );
         return buildMenuTree(menus);
+    }
+
+    @Transactional
+    public boolean reorderMenus(CurrentUser currentUser, SystemDTO.MenuReorderRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        LocalDateTime now = LocalDateTime.now();
+        if (request == null || CollectionUtils.isEmpty(request.getItems())) {
+            return true;
+        }
+
+        for (SystemDTO.MenuOrderItem item : request.getItems()) {
+            if (item == null || item.getId() == null || item.getSortNo() == null) {
+                continue;
+            }
+            jdbcTemplate.update(
+                    """
+                            update sys_menu
+                            set parent_id = ?, sort_no = ?, updated_by = ?, updated_at = ?
+                            where id = ? and tenant_id = ? and deleted = 0
+                            """,
+                    item.getParentId() == null ? 0L : item.getParentId(),
+                    item.getSortNo(),
+                    currentUser.getUserId(),
+                    now,
+                    item.getId(),
+                    tenantId
+            );
+        }
+
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "menu",
+                "reorder",
+                "UPDATE",
+                "SUCCESS",
+                "调整菜单顺序"
+        );
+        return true;
     }
 
     public SystemVO.MenuVO getMenu(CurrentUser currentUser, Long menuId) {

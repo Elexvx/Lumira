@@ -30,6 +30,16 @@ export interface MenuMutationPayload {
   status: string;
 }
 
+export interface MenuOrderItem {
+  id: number;
+  parentId?: number | null;
+  sortNo: number;
+}
+
+export interface MenuReorderPayload {
+  items: MenuOrderItem[];
+}
+
 export const iamService = {
   roles: (params: RoleListQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<RoleRecord>>('/v1/system/roles', {
@@ -86,6 +96,12 @@ export const iamService = {
     }),
   updateMenu: (id: number, payload: MenuMutationPayload, options: RequestOptions = {}) =>
     request<MenuRecord>(`/v1/system/menus/${id}`, {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  reorderMenus: (payload: MenuReorderPayload, options: RequestOptions = {}) =>
+    request<boolean>('/v1/system/menus/reorder', {
       method: 'PUT',
       data: payload,
       ...options,

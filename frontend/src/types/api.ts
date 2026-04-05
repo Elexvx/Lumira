@@ -261,6 +261,30 @@ export interface UserDetail extends UserRecord {
   tenantIds?: number[];
 }
 
+export interface OnlineSessionRecord {
+  sessionId: string;
+  userId: number;
+  username: string;
+  nickname?: string | null;
+  realName?: string | null;
+  currentTenantId?: number | null;
+  loginTime?: string | null;
+  lastActivityAt?: string | null;
+  expireTime?: string | null;
+  clientType?: string | null;
+  loginIp?: string | null;
+  userAgent?: string | null;
+}
+
+export interface OnlineSessionEventRecord {
+  action: string;
+  tenantId?: number | null;
+  userId?: number | null;
+  sessionId?: string | null;
+  operatorUsername?: string | null;
+  occurredAt?: string | null;
+}
+
 export interface RoleRecord {
   id: number;
   tenantId: number;
