@@ -1,37 +1,11 @@
 .saas-user-layout {
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
-  background: #fff;
+  background: radial-gradient(circle at top, #eef4ff 0, #f7f9fc 45%, #fff 100%);
 }
 
-.saas-user-layout__background,
-.saas-user-layout__grid,
-.saas-user-layout__orb {
-  display: none;
-}
-
-.saas-user-layout__content {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  box-sizing: border-box;
-}
-
-.saas-user-layout__inner {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@media (max-width: 767px) {
-  .saas-user-layout__content {
-    padding: 16px;
-  }
+.saas-user-layout__background {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
 }

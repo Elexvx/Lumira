@@ -121,9 +121,7 @@ export default () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="权限中心"
-      subTitle="查看角色、权限和角色权限分配。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

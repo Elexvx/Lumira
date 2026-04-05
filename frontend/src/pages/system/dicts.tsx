@@ -167,9 +167,7 @@ export default () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="字典管理"
-      subTitle="支持字典类型、字典项和基础查询。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

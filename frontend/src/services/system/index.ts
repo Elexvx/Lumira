@@ -1,8 +1,9 @@
 import { request, type RequestOptions } from '@/services/common/request';
-import type { BrandingSettings, SecuritySettings } from '@/types/api';
+import type { BrandingSettings, SecuritySettings, WatermarkSettings } from '@/types/api';
 
 export interface SecuritySettingsPayload extends SecuritySettings {}
 export interface BrandingSettingsPayload extends BrandingSettings {}
+export interface WatermarkSettingsPayload extends WatermarkSettings {}
 
 export const systemService = {
   brandingSettings: (options: RequestOptions = {}) =>
@@ -34,4 +35,16 @@ export const systemService = {
       data: payload,
       ...options,
     }),
+  watermarkSettings: (options: RequestOptions = {}) =>
+    request<WatermarkSettings>('/v1/system/watermark-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updateWatermarkSettings: (payload: WatermarkSettingsPayload, options: RequestOptions = {}) =>
+    request<WatermarkSettings>('/v1/system/watermark-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+
 };
