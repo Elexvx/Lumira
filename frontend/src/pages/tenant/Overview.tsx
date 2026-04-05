@@ -80,9 +80,7 @@ export default () => {
     <PageContainer
       className="saas-management-page"
       ghost
-      breadcrumbRender={false}
       title="租户中心"
-      subTitle="查看当前租户、可访问租户、切换说明和当前租户下已启用插件。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

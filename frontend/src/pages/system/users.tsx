@@ -171,9 +171,7 @@ export default () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="用户管理"
-      subTitle="支持查询、新增、编辑、查看详情和启停用户。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

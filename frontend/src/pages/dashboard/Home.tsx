@@ -188,9 +188,7 @@ export default () => {
     <PageContainer
       className="saas-dashboard-workplace"
       ghost
-      breadcrumbRender={false}
       title="工作台"
-      subTitle="参考 Ant Design Pro Workplace 的布局规范，聚合当前租户下的项目、动态和团队信息。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

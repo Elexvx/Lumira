@@ -56,6 +56,28 @@ public class SystemManagementAppService {
             BRANDING_FOOTER_COPYRIGHT_KEY
     );
 
+
+    private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
+    private static final String WATERMARK_MODE_KEY = "watermark.mode";
+    private static final String WATERMARK_TEXT_LINES_KEY = "watermark.text-lines";
+    private static final String WATERMARK_IMAGE_URL_KEY = "watermark.image-url";
+    private static final String WATERMARK_FONT_COLOR_KEY = "watermark.font-color";
+    private static final String WATERMARK_FONT_SIZE_KEY = "watermark.font-size";
+    private static final String WATERMARK_FONT_WEIGHT_KEY = "watermark.font-weight";
+    private static final String WATERMARK_ROTATE_KEY = "watermark.rotate";
+    private static final String WATERMARK_GAP_X_KEY = "watermark.gap-x";
+    private static final String WATERMARK_GAP_Y_KEY = "watermark.gap-y";
+    private static final String WATERMARK_OFFSET_X_KEY = "watermark.offset-x";
+    private static final String WATERMARK_OFFSET_Y_KEY = "watermark.offset-y";
+    private static final String WATERMARK_Z_INDEX_KEY = "watermark.z-index";
+    private static final String WATERMARK_OPACITY_KEY = "watermark.opacity";
+    private static final List<String> WATERMARK_CONFIG_KEYS = List.of(
+            WATERMARK_ENABLED_KEY, WATERMARK_MODE_KEY, WATERMARK_TEXT_LINES_KEY, WATERMARK_IMAGE_URL_KEY,
+            WATERMARK_FONT_COLOR_KEY, WATERMARK_FONT_SIZE_KEY, WATERMARK_FONT_WEIGHT_KEY, WATERMARK_ROTATE_KEY,
+            WATERMARK_GAP_X_KEY, WATERMARK_GAP_Y_KEY, WATERMARK_OFFSET_X_KEY, WATERMARK_OFFSET_Y_KEY,
+            WATERMARK_Z_INDEX_KEY, WATERMARK_OPACITY_KEY
+    );
+
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("系统管理", "用户、角色、菜单、字典、配置", "/system/management", "system:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
@@ -695,6 +717,52 @@ public class SystemManagementAppService {
         return loadBrandingSettings(tenantId);
     }
 
+
+    public SystemVO.WatermarkSettingsVO getWatermarkSettings(CurrentUser currentUser) {
+        return loadWatermarkSettings(currentTenantId(currentUser));
+    }
+
+    @Transactional
+    public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        upsertBrandingConfig(tenantId, WATERMARK_ENABLED_KEY, "水印开关", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "全局水印开关", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_MODE_KEY, "水印模式", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_TEXT_LINES_KEY, "水印文本", String.join("\n", request.getTextLines() == null ? List.of("宏翔商道", "后台管理系统") : request.getTextLines()), "多行文本水印", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_IMAGE_URL_KEY, "水印图片", defaultIfBlank(request.getImageUrl(), ""), "图片水印 URL", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_FONT_COLOR_KEY, "字体颜色", defaultIfBlank(request.getFontColor(), "rgba(0,0,0,0.15)"), "字体颜色", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_FONT_SIZE_KEY, "字体大小", String.valueOf(request.getFontSize() == null ? 14 : request.getFontSize()), "字体大小", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_FONT_WEIGHT_KEY, "字体粗细", defaultIfBlank(request.getFontWeight(), "normal"), "字体粗细", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_ROTATE_KEY, "旋转角度", String.valueOf(request.getRotate() == null ? -22 : request.getRotate()), "旋转角度", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_GAP_X_KEY, "横向间距", String.valueOf(request.getGapX() == null ? 100 : request.getGapX()), "横向间距", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_GAP_Y_KEY, "纵向间距", String.valueOf(request.getGapY() == null ? 100 : request.getGapY()), "纵向间距", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_OFFSET_X_KEY, "横向偏移", String.valueOf(request.getOffsetX() == null ? 0 : request.getOffsetX()), "横向偏移", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_OFFSET_Y_KEY, "纵向偏移", String.valueOf(request.getOffsetY() == null ? 0 : request.getOffsetY()), "纵向偏移", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_Z_INDEX_KEY, "层级", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "z-index", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_OPACITY_KEY, "透明度", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "透明度", operatorId);
+        return loadWatermarkSettings(tenantId);
+    }
+
+    private SystemVO.WatermarkSettingsVO loadWatermarkSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, WATERMARK_CONFIG_KEYS);
+        SystemVO.WatermarkSettingsVO settings = new SystemVO.WatermarkSettingsVO();
+        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WATERMARK_ENABLED_KEY), "false")));
+        settings.setMode(defaultIfBlank(valueByKey.get(WATERMARK_MODE_KEY), "TEXT"));
+        settings.setTextLines(List.of(defaultIfBlank(valueByKey.get(WATERMARK_TEXT_LINES_KEY), "宏翔商道\n后台管理系统").split("\n")));
+        settings.setImageUrl(defaultIfBlank(valueByKey.get(WATERMARK_IMAGE_URL_KEY), ""));
+        settings.setFontColor(defaultIfBlank(valueByKey.get(WATERMARK_FONT_COLOR_KEY), "rgba(0,0,0,0.15)"));
+        settings.setFontSize(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_FONT_SIZE_KEY), "14")));
+        settings.setFontWeight(defaultIfBlank(valueByKey.get(WATERMARK_FONT_WEIGHT_KEY), "normal"));
+        settings.setRotate(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_ROTATE_KEY), "-22")));
+        settings.setGapX(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_GAP_X_KEY), "100")));
+        settings.setGapY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_GAP_Y_KEY), "100")));
+        settings.setOffsetX(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_X_KEY), "0")));
+        settings.setOffsetY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_Y_KEY), "0")));
+        settings.setZIndex(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_Z_INDEX_KEY), "9")));
+        settings.setOpacity(Double.parseDouble(defaultIfBlank(valueByKey.get(WATERMARK_OPACITY_KEY), "0.15")));
+        return settings;
+    }
+
     public PageResponse<SystemVO.AuditLogVO> listLoginLogs(CurrentUser currentUser, String username, Long tenantId, long pageNo, long pageSize) {
         return listLoginLogs(currentUser, username, tenantId, null, null, null, pageNo, pageSize);
     }
@@ -797,8 +865,21 @@ public class SystemManagementAppService {
     }
 
     private SystemVO.BrandingSettingsVO loadBrandingSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, BRANDING_CONFIG_KEYS);
+
+        SystemVO.BrandingSettingsVO settings = new SystemVO.BrandingSettingsVO();
+        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
+        settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
+        settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
+        settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
+        settings.setFooterCopyright(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY), ""));
+        return settings;
+    }
+
+
+    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
         Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
-        String placeholders = BRANDING_CONFIG_KEYS.stream().map(item -> "?").collect(Collectors.joining(", "));
+        String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select tenant_id as tenantId, config_key as configKey, config_value as configValue
                 from sys_config
@@ -808,10 +889,9 @@ public class SystemManagementAppService {
                   and (tenant_id = ? or tenant_id is null)
                 order by case when tenant_id = ? then 0 else 1 end, id desc
                 """.formatted(placeholders);
-        List<Object> params = new ArrayList<>(BRANDING_CONFIG_KEYS);
+        List<Object> params = new ArrayList<>(keys);
         params.add(effectiveTenantId);
         params.add(effectiveTenantId);
-
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -820,14 +900,7 @@ public class SystemManagementAppService {
                 valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
             }
         }
-
-        SystemVO.BrandingSettingsVO settings = new SystemVO.BrandingSettingsVO();
-        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
-        settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
-        settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
-        settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
-        settings.setFooterCopyright(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY), ""));
-        return settings;
+        return valueByKey;
     }
 
     private void upsertBrandingConfig(

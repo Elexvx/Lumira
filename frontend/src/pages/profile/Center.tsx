@@ -22,9 +22,7 @@ export default () => {
     <PageContainer
       className="saas-management-page"
       ghost
-      breadcrumbRender={false}
       title="个人中心"
-      subTitle="查看当前账号、角色权限摘要、租户上下文和最近登录记录。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >
