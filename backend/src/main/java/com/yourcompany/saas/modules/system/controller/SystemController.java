@@ -261,6 +261,19 @@ public class SystemController {
         );
     }
 
+
+    @GetMapping("/watermark-settings")
+    public ApiResponse<SystemVO.WatermarkSettingsVO> watermarkSettings() {
+        require("system:config:view");
+        return ApiResponse.success(systemManagementAppService.getWatermarkSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/watermark-settings")
+    public ApiResponse<SystemVO.WatermarkSettingsVO> updateWatermarkSettings(@RequestBody SystemDTO.WatermarkSettingsRequest request) {
+        require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateWatermarkSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
     @GetMapping("/branding-settings")
     public ApiResponse<SystemVO.BrandingSettingsVO> brandingSettings() {
         return ApiResponse.success(

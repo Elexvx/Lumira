@@ -27,9 +27,7 @@ export default () => {
     <PageContainer
       className="saas-management-page"
       ghost
-      breadcrumbRender={false}
       title="系统管理"
-      subTitle="平台管理导航页，所有核心管理能力从这里进入。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

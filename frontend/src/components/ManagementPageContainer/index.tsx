@@ -27,9 +27,7 @@ export const ManagementPageContainer = ({
     <PageContainer
       className={mergedClassName}
       ghost
-      breadcrumbRender={false}
       title={title}
-      subTitle={description}
       extra={extra}
       style={{
         height: '100%',

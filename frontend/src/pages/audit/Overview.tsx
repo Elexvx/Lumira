@@ -164,7 +164,6 @@ export default () => {
     <PageContainer
       className="saas-management-page saas-crud-page saas-audit-page"
       ghost
-      breadcrumbRender={false}
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

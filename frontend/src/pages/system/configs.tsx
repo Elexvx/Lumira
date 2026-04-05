@@ -105,9 +105,7 @@ export default () => {
     <PageContainer
       className="saas-management-page saas-crud-page"
       ghost
-      breadcrumbRender={false}
       title="参数配置"
-      subTitle="支持平台级和租户级配置查询与编辑。"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >

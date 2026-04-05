@@ -12,7 +12,6 @@ import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import UserLayout from '@/layouts/UserLayout';
 import { systemService } from '@/services/system';
 import './Login.less';
 
@@ -82,8 +81,7 @@ const Login = () => {
   };
 
   return (
-    <UserLayout>
-      <div className="saas-login-page">
+    <div className="saas-login-page">
         <LoginFormPage<LoginFormValues>
           title={brandingSettings.websiteName}
           logo={
@@ -142,7 +140,6 @@ const Login = () => {
           </div>
         </LoginFormPage>
       </div>
-    </UserLayout>
   );
 };
 
