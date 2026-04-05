@@ -9,6 +9,9 @@ public final class CacheKeyConstants {
     public static final String SESSION = "session";
     public static final String TENANT_CONTEXT = "tenant_context";
     public static final String SESSION_USER = "session_user";
+    public static final String ONLINE_SESSION_TENANT = "online_session_tenant";
+    public static final String ONLINE_SESSION_USER = "online_session_user";
+    public static final String ONLINE_SESSION_EVENTS = "online_session_events";
 
     public static String tenantKey(String tenantId, String suffix) {
         return String.join(":", PREFIX, "tenant", tenantId, suffix);
@@ -24,5 +27,17 @@ public final class CacheKeyConstants {
 
     public static String userSessionKey(Long userId, String sessionId) {
         return String.join(":", PREFIX, SESSION_USER, String.valueOf(userId), sessionId);
+    }
+
+    public static String onlineSessionTenantKey(Long tenantId) {
+        return String.join(":", PREFIX, ONLINE_SESSION_TENANT, String.valueOf(tenantId));
+    }
+
+    public static String onlineSessionUserKey(Long userId) {
+        return String.join(":", PREFIX, ONLINE_SESSION_USER, String.valueOf(userId));
+    }
+
+    public static String onlineSessionEventsChannel() {
+        return String.join(":", PREFIX, ONLINE_SESSION_EVENTS);
     }
 }

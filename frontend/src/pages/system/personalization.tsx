@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PageContainer, ProCard } from '@ant-design/pro-components';
+import { PageContainer } from '@ant-design/pro-components';
 import { Watermark } from 'antd';
-import { Alert, Button, Card, Form, Input, InputNumber, Segmented, Space, Switch, Typography, message } from 'antd';
+import { Button, Card, Form, Input, InputNumber, Segmented, Switch, Tabs, Typography, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, applyFavicon, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
+import { LocalImageUploadField } from '@/components/LocalImageUploadField';
 import { usePermission } from '@/hooks/usePermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
 import type { BrandingSettings, WatermarkSettings } from '@/types/api';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { history, useLocation } from 'umi';
+
+type PersonalizationTabKey = 'branding' | 'watermark';
 
 const defaultWatermark: WatermarkSettings = {
   enabled: false,
@@ -25,16 +30,43 @@ const defaultWatermark: WatermarkSettings = {
   opacity: 0.15,
 };
 
+const normalizeTabKey = (value?: string | null): PersonalizationTabKey => (value === 'watermark' ? 'watermark' : 'branding');
+
 const PersonalizationSettingsPage = () => {
   const [brandingForm] = Form.useForm<BrandingSettings>();
   const [watermarkForm] = Form.useForm<WatermarkSettings>();
+  const location = useLocation();
   const { initialState, setInitialState } = useInitialStateModel();
   const { canAccess } = usePermission();
   const canUpdate = canAccess('system:config:update');
-  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<PersonalizationTabKey>(() => normalizeTabKey(new URLSearchParams(location.search).get('tab')));
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [watermarkSaving, setWatermarkSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [previewState, setPreviewState] = useState<BrandingSettings>(normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS));
-  const [watermarkPreview, setWatermarkPreview] = useState<WatermarkSettings>(initialState?.watermarkSettings || defaultWatermark);
+  const [watermarkPreview, setWatermarkPreview] = useState<WatermarkSettings>(() => ({
+    ...defaultWatermark,
+    ...(initialState?.watermarkSettings || defaultWatermark),
+    imageUrl: normalizeUploadUrl(initialState?.watermarkSettings?.imageUrl),
+  }));
+
+  const updateTabInUrl = useCallback((nextTab: PersonalizationTabKey) => {
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set('tab', nextTab);
+    history.replace({
+      pathname: location.pathname,
+      search: `?${searchParams.toString()}`,
+    });
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const normalizedTab = normalizeTabKey(searchParams.get('tab'));
+    setActiveTab(normalizedTab);
+    if (searchParams.get('tab') !== normalizedTab) {
+      updateTabInUrl(normalizedTab);
+    }
+  }, [location.search, updateTabInUrl]);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -44,13 +76,17 @@ const PersonalizationSettingsPage = () => {
         systemService.watermarkSettings({ autoRedirectOnUnauthorized: false, silent: true }),
       ]);
       const normalizedBranding = normalizeBrandingSettings(brandingResult);
+      const normalizedWatermark = {
+        ...defaultWatermark,
+        ...watermarkResult,
+        imageUrl: normalizeUploadUrl(watermarkResult.imageUrl),
+      };
       brandingForm.setFieldsValue(normalizedBranding);
-      watermarkForm.setFieldsValue(watermarkResult);
+      watermarkForm.setFieldsValue(normalizedWatermark);
       setPreviewState(normalizedBranding);
-      setWatermarkPreview(watermarkResult);
+      setWatermarkPreview(normalizedWatermark);
       persistBrandingSettings(normalizedBranding);
-      applyFavicon(normalizedBranding.websiteFaviconUrl);
-      setInitialState((prev) => prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: watermarkResult } : prev);
+      setInitialState((prev) => prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: normalizedWatermark } : prev);
     } finally {
       setLoading(false);
     }
@@ -58,58 +94,125 @@ const PersonalizationSettingsPage = () => {
 
   useEffect(() => { void loadSettings(); }, [loadSettings, initialState?.currentTenant?.tenantId]);
 
-  const handleSave = async () => {
+  const handleSaveBranding = async () => {
     if (!canUpdate) return;
-    setSaving(true);
+    setBrandingSaving(true);
     try {
-      const [brandingValues, watermarkValues] = await Promise.all([brandingForm.validateFields(), watermarkForm.validateFields()]);
-      const [updatedBranding, updatedWatermark] = await Promise.all([
-        systemService.updateBrandingSettings(normalizeBrandingSettings(brandingValues), { autoRedirectOnUnauthorized: false }),
-        systemService.updateWatermarkSettings({ ...defaultWatermark, ...watermarkValues }, { autoRedirectOnUnauthorized: false }),
-      ]);
-      setInitialState((prev) => prev ? { ...prev, brandingSettings: updatedBranding, watermarkSettings: updatedWatermark } : prev);
-      message.success('品牌与水印设置已保存并即时生效');
-    } finally { setSaving(false); }
+      const brandingValues = await brandingForm.validateFields();
+      const updatedBranding = await systemService.updateBrandingSettings(normalizeBrandingSettings(brandingValues), { autoRedirectOnUnauthorized: false });
+      brandingForm.setFieldsValue(updatedBranding);
+      setInitialState((prev) => (prev ? { ...prev, brandingSettings: updatedBranding } : prev));
+      setPreviewState(updatedBranding);
+      persistBrandingSettings(updatedBranding);
+      message.success('品牌设置已保存并即时生效');
+    } finally {
+      setBrandingSaving(false);
+    }
+  };
+
+  const handleSaveWatermark = async () => {
+    if (!canUpdate) return;
+    setWatermarkSaving(true);
+    try {
+      const watermarkValues = await watermarkForm.validateFields();
+      const updatedWatermark = await systemService.updateWatermarkSettings(
+        {
+          ...defaultWatermark,
+          ...watermarkValues,
+          imageUrl: normalizeUploadUrl(watermarkValues.imageUrl),
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
+      watermarkForm.setFieldsValue(updatedWatermark);
+      setInitialState((prev) => (prev ? { ...prev, watermarkSettings: updatedWatermark } : prev));
+      setWatermarkPreview(updatedWatermark);
+      message.success('水印设置已保存并即时生效');
+    } finally {
+      setWatermarkSaving(false);
+    }
   };
 
   const wm = useMemo(() => ({ ...defaultWatermark, ...watermarkPreview }), [watermarkPreview]);
 
+  useEffect(() => {
+    applyFavicon(previewState.websiteFaviconUrl);
+  }, [previewState.websiteFaviconUrl]);
+
   return (
-    <PageContainer className="saas-management-page saas-crud-page" ghost style={{ height: '100%', minHeight: 0 }} content={null}>
+    <PageContainer
+      className="saas-management-page saas-crud-page"
+      ghost
+      title="个性化设置"
+      style={{ height: '100%', minHeight: 0 }}
+      content={null}
+    >
       <div className="saas-management-page-body">
-        <Alert showIcon type="info" message="保存后将同步更新全局品牌与水印" />
-        <Card className="saas-action-bar">
-          <Space><Button type="primary" loading={saving} onClick={handleSave}>保存设置</Button><Button onClick={() => loadSettings()}>重新拉取</Button></Space>
-        </Card>
-        <ProCard split="vertical" gutter={16}>
-          <ProCard title="品牌设置" loading={loading}>
-            <Form form={brandingForm} layout="vertical" onValuesChange={(_, v) => setPreviewState(normalizeBrandingSettings(v))}>
-              <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}><Input /></Form.Item>
-              <Form.Item name="websiteFaviconUrl" label="网站 Icon 地址"><Input allowClear /></Form.Item>
-              <Form.Item name="websiteLogoUrl" label="Logo 地址"><Input allowClear /></Form.Item>
-              <Form.Item name="footerIcp" label="Footer ICP"><Input allowClear /></Form.Item>
-              <Form.Item name="footerCopyright" label="Footer 版权声明"><Input.TextArea rows={3} /></Form.Item>
-            </Form>
-          </ProCard>
-          <ProCard title="全局水印" loading={loading}>
-            <Form form={watermarkForm} layout="vertical" onValuesChange={(_, v) => setWatermarkPreview({ ...defaultWatermark, ...v })} initialValues={wm}>
-              <Form.Item name="enabled" label="启用水印" valuePropName="checked"><Switch /></Form.Item>
-              <Form.Item name="mode" label="模式"><Segmented options={[{ label: '文字', value: 'TEXT' }, { label: '图片', value: 'IMAGE' }]} /></Form.Item>
-              <Form.Item label="多行文字（每行一个）" name="textLines"><SelectTextLines /></Form.Item>
-              <Form.Item name="imageUrl" label="图片 URL"><Input /></Form.Item>
-              <Form.Item name="fontColor" label="字体颜色"><Input /></Form.Item>
-              <Form.Item name="fontSize" label="字号"><InputNumber min={10} max={48} style={{ width: '100%' }} /></Form.Item>
-              <Form.Item name="gapX" label="横向间距"><InputNumber min={40} style={{ width: '100%' }} /></Form.Item>
-              <Form.Item name="gapY" label="纵向间距"><InputNumber min={40} style={{ width: '100%' }} /></Form.Item>
-              <Form.Item name="rotate" label="旋转"><InputNumber style={{ width: '100%' }} /></Form.Item>
-              <Form.Item name="opacity" label="透明度"><InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} /></Form.Item>
-            </Form>
-          </ProCard>
-        </ProCard>
-        <Card title="预览">
-          <Watermark content={wm.mode === 'TEXT' ? wm.textLines : undefined} image={wm.mode === 'IMAGE' ? wm.imageUrl : undefined}>
-            <div style={{ height: 180, display: 'grid', placeItems: 'center', background: '#fafafa' }}><Typography.Text>{previewState.websiteName}</Typography.Text></div>
-          </Watermark>
+        <Card loading={loading} bodyStyle={{ paddingTop: 8 }}>
+          <Tabs
+            activeKey={activeTab}
+            destroyInactiveTabPane={false}
+            onChange={(key) => {
+              const nextTab = normalizeTabKey(key);
+              setActiveTab(nextTab);
+              updateTabInUrl(nextTab);
+            }}
+            items={[
+              {
+                key: 'branding',
+                label: '品牌设置',
+                children: (
+                  <>
+                    <Form form={brandingForm} layout="vertical" onValuesChange={(_, v) => setPreviewState(normalizeBrandingSettings(v))}>
+                      <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}><Input /></Form.Item>
+                      <Form.Item name="websiteFaviconUrl" label="网站 Icon（本地上传）">
+                        <LocalImageUploadField buttonText="上传 Icon" previewWidth={72} previewHeight={72} accept="image/*,.ico" />
+                      </Form.Item>
+                      <Form.Item name="websiteLogoUrl" label="Logo（本地上传）">
+                        <LocalImageUploadField buttonText="上传 Logo" previewWidth={180} previewHeight={72} />
+                      </Form.Item>
+                      <Form.Item name="footerIcp" label="Footer ICP"><Input allowClear /></Form.Item>
+                      <Form.Item name="footerCopyright" label="Footer 版权声明"><Input.TextArea rows={3} /></Form.Item>
+                    </Form>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+                      <Button type="primary" loading={brandingSaving} onClick={() => void handleSaveBranding()}>保存设置</Button>
+                    </div>
+                  </>
+                ),
+              },
+              {
+                key: 'watermark',
+                label: '全局水印',
+                children: (
+                  <>
+                    <Form form={watermarkForm} layout="vertical" onValuesChange={(_, v) => setWatermarkPreview({ ...defaultWatermark, ...v })} initialValues={wm}>
+                      <Form.Item name="enabled" label="启用水印" valuePropName="checked"><Switch /></Form.Item>
+                      <Form.Item name="mode" label="模式"><Segmented options={[{ label: '文字', value: 'TEXT' }, { label: '图片', value: 'IMAGE' }]} /></Form.Item>
+                      <Form.Item label="多行文字（每行一个）" name="textLines"><SelectTextLines /></Form.Item>
+                      <Form.Item name="imageUrl" label="水印图片（本地上传）">
+                        <LocalImageUploadField buttonText="上传水印图片" previewWidth={180} previewHeight={100} />
+                      </Form.Item>
+                      <Form.Item name="fontColor" label="字体颜色"><Input /></Form.Item>
+                      <Form.Item name="fontSize" label="字号"><InputNumber min={10} max={48} style={{ width: '100%' }} /></Form.Item>
+                      <Form.Item name="gapX" label="横向间距"><InputNumber min={40} style={{ width: '100%' }} /></Form.Item>
+                      <Form.Item name="gapY" label="纵向间距"><InputNumber min={40} style={{ width: '100%' }} /></Form.Item>
+                      <Form.Item name="rotate" label="旋转"><InputNumber style={{ width: '100%' }} /></Form.Item>
+                      <Form.Item name="opacity" label="透明度"><InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} /></Form.Item>
+                    </Form>
+                    <Card title="预览" style={{ marginTop: 24 }}>
+                      <Watermark content={wm.mode === 'TEXT' ? wm.textLines : undefined} image={wm.mode === 'IMAGE' ? normalizeUploadUrl(wm.imageUrl) : undefined}>
+                        <div style={{ height: 180, display: 'grid', placeItems: 'center', background: '#fafafa' }}>
+                          <Typography.Text>{previewState.websiteName}</Typography.Text>
+                        </div>
+                      </Watermark>
+                    </Card>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+                      <Button type="primary" loading={watermarkSaving} onClick={() => void handleSaveWatermark()}>保存设置</Button>
+                    </div>
+                  </>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
     </PageContainer>

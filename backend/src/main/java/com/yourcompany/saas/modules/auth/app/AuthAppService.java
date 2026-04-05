@@ -107,7 +107,7 @@ public class AuthAppService {
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
 
-        authSessionStore.save(session);
+        authSessionStore.save(session, true);
 
         LoginResponseVO response = new LoginResponseVO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
@@ -126,7 +126,7 @@ public class AuthAppService {
         if (currentUser.getSessionId() == null) {
             return;
         }
-        authSessionStore.findBySessionId(currentUser.getSessionId()).ifPresent(authSessionStore::remove);
+        authSessionStore.findBySessionId(currentUser.getSessionId()).ifPresent(session -> authSessionStore.remove(session, true));
         loginAuditService.log(
                 currentUser.getUserId(),
                 currentUser.getCurrentTenantId(),
@@ -162,7 +162,7 @@ public class AuthAppService {
         session.setRefreshTokenId(newRefreshTokenId);
         session.setExpireTime(jwtTokenService.createRefreshTokenExpireAt());
         session.setLastActivityAt(Instant.now());
-        authSessionStore.save(session);
+        authSessionStore.save(session, false);
 
         RefreshTokenResponseVO response = new RefreshTokenResponseVO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));

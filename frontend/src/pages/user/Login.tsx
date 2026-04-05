@@ -52,6 +52,7 @@ const Login = () => {
           currentTenant: tenantContext.getCurrentTenant(),
           myTenants: tenantContext.getMyTenants(),
           menuTree,
+          menuVersion: (prev?.menuVersion ?? 0) + 1,
           availablePlugins,
           securitySettings: sessionResult.securitySettings,
           brandingSettings: normalizedBrandingSettings,
@@ -82,64 +83,62 @@ const Login = () => {
 
   return (
     <div className="saas-login-page">
-        <LoginFormPage<LoginFormValues>
-          title={brandingSettings.websiteName}
-          logo={
-            brandingSettings.websiteLogoUrl
-              ? <img className="saas-login-page__logo" src={brandingSettings.websiteLogoUrl} alt={brandingSettings.websiteName} />
-              : undefined
-          }
-          initialValues={{ remember: true }}
-          message={loginError ? <Alert showIcon type="error" message={loginError} /> : false}
-          onFinish={handleSubmit}
-          submitter={{
-            submitButtonProps: {
-              size: 'large',
-              loading: submitting,
-            },
+      <LoginFormPage<LoginFormValues>
+        title={brandingSettings.websiteName}
+        subTitle="后台管理系统登录"
+        logo={
+          brandingSettings.websiteLogoUrl ? (
+            <img className="saas-login-page__logo" src={brandingSettings.websiteLogoUrl} alt={brandingSettings.websiteName} />
+          ) : undefined
+        }
+        initialValues={{ remember: true }}
+        message={loginError ? <Alert showIcon type="error" message={loginError} /> : false}
+        onFinish={handleSubmit}
+        submitter={{
+          submitButtonProps: {
+            children: '登录',
+            loading: submitting,
+            block: true,
+          },
+          resetButtonProps: false,
+        }}
+        containerStyle={{
+          width: '100%',
+          maxWidth: 360,
+        }}
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
+      >
+        <ProFormText
+          name="username"
+          fieldProps={{
+            prefix: <UserOutlined className="saas-login-page__field-icon" />,
+            autoComplete: 'username',
           }}
-          containerStyle={{
-            minWidth: 0,
-            padding: 0,
-            border: 'none',
-            background: 'transparent',
-            boxShadow: 'none',
+          placeholder="请输入账号"
+          rules={[{ required: true, message: '请输入账号' }]}
+        />
+        <ProFormText.Password
+          name="password"
+          fieldProps={{
+            prefix: <LockOutlined className="saas-login-page__field-icon" />,
+            autoComplete: 'current-password',
           }}
-          style={{
-            minHeight: 'auto',
-            background: 'transparent',
-          }}
-        >
-          <ProFormText
-            name="username"
-            fieldProps={{
-              size: 'large',
-              prefix: <UserOutlined className="saas-login-page__field-icon" />,
-              autoComplete: 'username',
-            }}
-            placeholder="请输入账号"
-            rules={[{ required: true, message: '请输入账号' }]}
-          />
-          <ProFormText.Password
-            name="password"
-            fieldProps={{
-              size: 'large',
-              prefix: <LockOutlined className="saas-login-page__field-icon" />,
-              autoComplete: 'current-password',
-            }}
-            placeholder="请输入密码"
-            rules={[
-              { required: true, message: '请输入密码' },
-              { min: 6, message: '密码长度不能少于 6 位' },
-            ]}
-          />
-          <div className="saas-login-page__actions">
-            <ProFormCheckbox noStyle name="remember">
-              保持登录状态
-            </ProFormCheckbox>
-          </div>
-        </LoginFormPage>
-      </div>
+          placeholder="请输入密码"
+          rules={[
+            { required: true, message: '请输入密码' },
+            { min: 6, message: '密码长度不能少于 6 位' },
+          ]}
+        />
+        <div className="saas-login-page__actions">
+          <ProFormCheckbox noStyle name="remember">
+            保持登录状态
+          </ProFormCheckbox>
+        </div>
+      </LoginFormPage>
+    </div>
   );
 };
 

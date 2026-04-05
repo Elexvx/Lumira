@@ -1,0 +1,102 @@
+[    2211ms] [LOG] [webpack] connecting... @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_client_client_client_js.async.js:515
+[    2230ms] [LOG] [webpack] connected. @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_client_client_client_js.async.js:548
+[    2352ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319847
+[    2879ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[   55281ms] [ERROR] Warning: findDOMNode is deprecated and will be removed in the next major release. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-find-node%s 
+    at SingleObserver (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:265238:24)
+    at ResizeObserver (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:265375:24)
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:120314:34
+    at Tooltip (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:278826:32)
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:215521:18
+    at MenuItemTooltip (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:82440:73)
+    at span
+    at li
+    at InternalItem (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:254788:25)
+    at InternalRawItem (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:255226:52)
+    at LegacyMenuItem (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:250921:90)
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:250952:21
+    at MenuItem (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:251076:24)
+    at MenuItem (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:187430:5)
+    at ul
+    at Overflow (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:254904:32)
+    at InheritableContextProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:251842:23)
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:250415:27
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:187753:55
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:187664:64
+    at BaseMenu (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:82734:20)
+    at div
+    at div
+    at aside
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:185057:18
+    at SiderMenu (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:82992:25)
+    at SiderMenuWrapper (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:83251:24)
+    at MotionWrapper (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:170668:59)
+    at ProviderChildren (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171336:5)
+    at ConfigProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171638:54)
+    at div
+    at http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:185342:42
+    at Layout
+    at div
+    at BaseProLayout (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:76294:13)
+    at MotionWrapper (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:170668:59)
+    at ProviderChildren (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171336:5)
+    at ConfigProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171638:54)
+    at ConfigProviderContainer (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:86571:24)
+    at LocaleProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:186635:5)
+    at MotionWrapper (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:170668:59)
+    at ProviderChildren (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171336:5)
+    at ConfigProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171638:54)
+    at ProConfigProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:86698:24)
+    at MotionWrapper (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:170668:59)
+    at ProviderChildren (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171336:5)
+    at ConfigProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171638:54)
+    at ProLayout (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:76630:28)
+    at http://127.0.0.1:8002/umi__plugin-layout__Layout.async.js:208:73
+    at Suspense
+    at RemoteComponent (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:155107:25)
+    at Routes (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:154338:76)
+    at Router (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:321640:15)
+    at BrowserRoutes (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:154298:23)
+    at r (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:320141:7350)
+    at Provider (http://127.0.0.1:8002/src_umi_umi_ts.async.js:1931:74)
+    at InitialStateProvider (http://127.0.0.1:8002/src_umi_umi_ts.async.js:2272:140)
+    at Provider (http://127.0.0.1:8002/src_umi_umi_ts.async.js:2721:34)
+    at ProviderWrapper (http://127.0.0.1:8002/src_umi_umi_ts.async.js:2923:137)
+    at MotionWrapper (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:170668:59)
+    at ProviderChildren (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171336:5)
+    at ConfigProvider (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:171638:54)
+    at ThemePreferenceProvider (http://127.0.0.1:8002/src_umi_umi_ts.async.js:7580:23)
+    at Browser (http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:154404:68) @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[   56126ms] [ERROR] Warning: `expandable` is not config but there exist `EXPAND_COLUMN` in `columns`. @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  114255ms] [LOG] [HMR] Reload all css @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_compiled_mini-css-extract-plugin_hmr_hotModuleRepl-6a3f5c.async.js:238
+[  178042ms] [LOG] [HMR] Reload all css @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_compiled_mini-css-extract-plugin_hmr_hotModuleRepl-6a3f5c.async.js:238
+[  471094ms] [LOG] [HMR] Reload all css @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_compiled_mini-css-extract-plugin_hmr_hotModuleRepl-6a3f5c.async.js:238
+[  701140ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi'
+Did you mean './umi'?
+Requests that should resolve in the current directory need to start with './'.
+Requests that start with a name are treated as module requests and resolve within module directories (node_modules).
+If changing the source code is not an option there is also a resolve options called 'preferRelative' which tries to resolve these kind of requests in the current directory too. @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/iam' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701141ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/tenant' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  701142ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/services/common' @ http://127.0.0.1:8002/mf-dep____vendor.d3dfc198.js:319964
+[  745410ms] [LOG] [webpack] connecting... @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_client_client_client_js.async.js:515
+[  745432ms] [LOG] [webpack] connected. @ http://127.0.0.1:8002/vendors-node_modules_umijs_bundler-webpack_client_client_client_js.async.js:548
+[  745519ms] Error: Module ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/core-js/modules/es.error.cause.js" does not exist in container.
+while loading ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/core-js/modules/es.error.cause.js" from webpack/container/reference/mf
+    at http://127.0.0.1:8002/mf-va_remoteEntry.js:109:11

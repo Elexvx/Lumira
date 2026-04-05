@@ -15,7 +15,6 @@ import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { DashboardSummary } from '@/types/api';
-import './Home.less';
 
 interface QuickEntry {
   title: string;

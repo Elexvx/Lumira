@@ -1,6 +1,6 @@
 import * as AntdIcons from '@ant-design/icons';
-import { AppstoreOutlined } from '@ant-design/icons';
 import type { RunTimeLayoutConfig } from '@umijs/max';
+import type { BreadcrumbProps } from 'antd';
 import { Watermark } from 'antd';
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import { history } from 'umi';
@@ -21,6 +21,8 @@ import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
 import { tenantContext } from '@/tenant/context';
 import type { BrandingSettings, CurrentUser, MenuNode, MyTenant, SecuritySettings, TenantPlugin, TenantSummary, WatermarkSettings } from '@/types/api';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { ThemePreferenceProvider } from '@/theme/ThemePreferenceProvider';
 
 const LOGIN_PATH = '/user/login';
 const DEFAULT_HOME_PATH = '/dashboard/home';
@@ -48,6 +50,7 @@ export interface AppInitialState {
   currentTenant?: TenantSummary | null;
   myTenants: MyTenant[];
   menuTree: MenuNode[];
+  menuVersion: number;
   availablePlugins: TenantPlugin[];
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;
@@ -68,6 +71,7 @@ const ANT_DESIGN_ICONS = AntdIcons as unknown as Record<string, AntdIconComponen
 const OUTLINED_ICON_SUFFIX = 'Outlined';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
+type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 
@@ -94,18 +98,6 @@ const resolveMenuIcon = (icon?: ReactNode | string) => {
 
   return createElement(IconComponent);
 };
-
-const renderBrand = (logoDom: ReactNode, brandingSettings: BrandingSettings) => (
-  <div
-    onClick={() => {
-      history.push(DEFAULT_HOME_PATH);
-    }}
-    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-  >
-    {logoDom}
-    <span style={{ fontSize: 20, fontWeight: 700, color: '#1f2430' }}>{brandingSettings.websiteName}</span>
-  </div>
-);
 
 const renderFooter = (brandingSettings: BrandingSettings) => {
   const fallbackCopyright = `Copyright © ${new Date().getFullYear()} ${brandingSettings.websiteName} All Rights Reserved`;
@@ -161,6 +153,37 @@ const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string,
   return map;
 };
 
+const findMenuTrail = (menuNodes: MenuNode[], pathname: string): MenuNode[] => {
+  for (const node of menuNodes) {
+    const children = node.children || [];
+    const childTrail = children.length ? findMenuTrail(children, pathname) : [];
+    if (childTrail.length) {
+      return [node, ...childTrail];
+    }
+    if (node.path === pathname) {
+      return [node];
+    }
+  }
+  return [];
+};
+
+const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname: string): BreadcrumbItem[] => {
+  if (!menuNodes?.length) {
+    return [];
+  }
+
+  const trail = findMenuTrail(menuNodes, pathname);
+  if (!trail.length) {
+    return [];
+  }
+
+  return trail.map((node, index) => ({
+    key: node.path || String(node.id),
+    title: node.name || routeMetaMap.get(node.path || '')?.name || node.path,
+    path: index === trail.length - 1 ? undefined : node.path,
+  }));
+};
+
 export async function getInitialState(): Promise<AppInitialState> {
   const storedBrandingSettings = normalizeBrandingSettings(getStoredBrandingSettings() || DEFAULT_BRANDING_SETTINGS);
   let brandingSettings = storedBrandingSettings;
@@ -178,6 +201,7 @@ export async function getInitialState(): Promise<AppInitialState> {
         currentTenant: tenantContext.getCurrentTenant(),
         myTenants: tenantContext.getMyTenants(),
         menuTree,
+        menuVersion: 0,
         availablePlugins,
         securitySettings: restored.securitySettings,
         brandingSettings,
@@ -194,6 +218,7 @@ export async function getInitialState(): Promise<AppInitialState> {
     currentTenant: tenantContext.getCurrentTenant(),
     myTenants: tenantContext.getMyTenants(),
     menuTree: [],
+    menuVersion: 0,
     availablePlugins: [],
     securitySettings: normalizeSecuritySettings(getStoredSecuritySettings() || DEFAULT_SECURITY_SETTINGS),
     brandingSettings,
@@ -204,9 +229,8 @@ export async function getInitialState(): Promise<AppInitialState> {
 export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const brandName = brandingSettings.websiteName;
-  const logoNode = brandingSettings.websiteLogoUrl
-    ? <img src={brandingSettings.websiteLogoUrl} alt={brandName} className="saas-brand-logo" />
-    : <AppstoreOutlined style={{ fontSize: 16, color: '#1677ff' }} />;
+  const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
+  const logoNode = hasBrandLogo ? brandingSettings.websiteLogoUrl : false;
 
   applyFavicon(brandingSettings.websiteFaviconUrl);
 
@@ -217,10 +241,18 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     fixSiderbar: true,
     layout: 'mix',
     splitMenus: false,
+    breadcrumbRender: (routers = []) => {
+      const pathname = history.location.pathname;
+      const menuBreadcrumb = buildBreadcrumbItems(initialState?.menuTree, pathname);
+      return menuBreadcrumb.length ? menuBreadcrumb : routers;
+    },
+    breadcrumbProps: {
+      minLength: 1,
+    },
+    headerTitleRender: (logo, title) => (hasBrandLogo ? logo : title),
     menuHeaderRender: false,
     menuFooterRender: false,
     menuExtraRender: false,
-    headerTitleRender: (logoDom) => renderBrand(logoDom, brandingSettings),
     childrenRender: (dom) => {
       const watermark = initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
       const content = <SessionActivityGuard>{dom}</SessionActivityGuard>;
@@ -230,7 +262,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       return (
         <Watermark
           content={watermark.mode === 'TEXT' ? watermark.textLines : undefined}
-          image={watermark.mode === 'IMAGE' ? watermark.imageUrl : undefined}
+          image={watermark.mode === 'IMAGE' ? normalizeUploadUrl(watermark.imageUrl) : undefined}
           gap={[watermark.gapX, watermark.gapY]}
           offset={[watermark.offsetX, watermark.offsetY]}
           zIndex={watermark.zIndex}
@@ -253,7 +285,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     },
     menu: {
       params: {
-        menuVersion: initialState?.menuTree?.length ?? 0,
+        menuVersion: initialState?.menuVersion ?? 0,
       },
     },
     menuDataRender: (menuData) => {
@@ -286,6 +318,10 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       }
     },
   };
+};
+
+export const rootContainer = (container: ReactNode) => {
+  return <ThemePreferenceProvider>{container}</ThemePreferenceProvider>;
 };
 
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {

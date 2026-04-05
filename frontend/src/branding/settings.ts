@@ -1,5 +1,6 @@
 import { storage } from '@/cache/storage';
 import type { BrandingSettings } from '@/types/api';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
 const BRANDING_SETTINGS_KEY = 'branding_settings';
 
@@ -14,8 +15,8 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
 export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> | null): BrandingSettings => {
   return {
     websiteName: normalizeText(settings?.websiteName, DEFAULT_BRANDING_SETTINGS.websiteName),
-    websiteFaviconUrl: normalizeText(settings?.websiteFaviconUrl, ''),
-    websiteLogoUrl: normalizeText(settings?.websiteLogoUrl, ''),
+    websiteFaviconUrl: normalizeUploadUrl(settings?.websiteFaviconUrl),
+    websiteLogoUrl: normalizeUploadUrl(settings?.websiteLogoUrl),
     footerIcp: normalizeText(settings?.footerIcp, ''),
     footerCopyright: normalizeText(settings?.footerCopyright, ''),
   };
@@ -35,7 +36,7 @@ export const applyFavicon = (faviconUrl?: string) => {
   if (typeof document === 'undefined') {
     return;
   }
-  const href = normalizeText(faviconUrl, '');
+  const href = normalizeUploadUrl(faviconUrl);
   const selector = 'link[rel="icon"]';
   const head = document.head;
   if (!head) {

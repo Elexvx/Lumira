@@ -81,6 +81,7 @@ const PluginsPage = () => {
         ? {
             ...prev,
             menuTree,
+            menuVersion: (prev.menuVersion ?? 0) + 1,
             availablePlugins,
             securitySettings: prev.securitySettings,
           }

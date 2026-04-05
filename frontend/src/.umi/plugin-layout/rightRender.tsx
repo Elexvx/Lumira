@@ -3,7 +3,7 @@
 // DO NOT CHANGE IT MANUALLY!
 import React from 'react';
 import { Avatar, version, Dropdown, Menu, Spin } from 'antd';
-import { LogoutOutlined } from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/@ant-design+icons@4.8.3_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@ant-design/icons';
+import { LogoutOutlined } from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons';
 
 export function getRightRenderContent (opts: {
    runtimeConfig: any,

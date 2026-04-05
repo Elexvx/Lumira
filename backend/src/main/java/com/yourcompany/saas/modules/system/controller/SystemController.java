@@ -6,6 +6,7 @@ import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import com.yourcompany.saas.infrastructure.security.SecurityContextFacade;
 import com.yourcompany.saas.modules.iam.service.PermissionGuard;
 import com.yourcompany.saas.modules.system.app.SystemManagementAppService;
+import com.yourcompany.saas.infrastructure.upload.ImageUploadService;
 import com.yourcompany.saas.modules.system.dto.SystemDTO;
 import com.yourcompany.saas.modules.system.vo.SystemVO;
 import jakarta.validation.Valid;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,15 +31,18 @@ public class SystemController {
     private final SystemManagementAppService systemManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final ImageUploadService imageUploadService;
 
     public SystemController(
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard
+            PermissionGuard permissionGuard,
+            ImageUploadService imageUploadService
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.imageUploadService = imageUploadService;
     }
 
     @GetMapping("/permissions")
@@ -151,6 +157,12 @@ public class SystemController {
     public ApiResponse<SystemVO.MenuVO> updateMenu(@PathVariable Long id, @Valid @RequestBody SystemDTO.MenuUpsertRequest request) {
         require("system:menu:update");
         return ApiResponse.success(systemManagementAppService.updateMenu(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/menus/reorder")
+    public ApiResponse<Boolean> reorderMenus(@Valid @RequestBody SystemDTO.MenuReorderRequest request) {
+        require("system:menu:update");
+        return ApiResponse.success(systemManagementAppService.reorderMenus(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PatchMapping("/menus/{id}/status")
@@ -289,6 +301,12 @@ public class SystemController {
                 systemManagementAppService.updateBrandingSettings(securityContextFacade.getCurrentUser(), request),
                 TraceContext.getRequestId()
         );
+    }
+
+    @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<String> uploadImage(@RequestParam("file") MultipartFile file) {
+        require("system:config:update");
+        return ApiResponse.success(imageUploadService.upload(file), TraceContext.getRequestId());
     }
 
     private void require(String permissionKey) {

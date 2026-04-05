@@ -4,7 +4,7 @@
 import './core/polyfill';
 import '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/global.less';
 import 'antd/dist/reset.css';
-import { renderClient } from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/@umijs+renderer-react@4.6.36_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@umijs/renderer-react';
+import { renderClient } from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/renderer-react';
 import { getRoutes } from './core/route';
 import { createPluginManager } from './core/plugin';
 import { createHistory } from './core/history';
@@ -77,6 +77,6 @@ render();
 
     if (typeof window !== 'undefined') {
       window.g_umi = {
-        version: '4.6.36',
+        version: '4.6.39',
       };
     }
