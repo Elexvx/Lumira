@@ -224,6 +224,113 @@ export interface DashboardSummary {
   }>;
 }
 
+export interface ServiceMonitorCpu {
+  coreCount: number;
+  processUsagePercent?: number | null;
+  systemUsagePercent?: number | null;
+  idlePercent?: number | null;
+  loadAverage?: number | null;
+}
+
+export interface ServiceMonitorMemory {
+  totalBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+  usagePercent?: number | null;
+  heapMaxBytes?: number | null;
+  heapUsedBytes: number;
+  heapCommittedBytes: number;
+  nonHeapUsedBytes: number;
+}
+
+export interface ServiceMonitorServer {
+  serverName: string;
+  serverIp: string;
+  osName?: string | null;
+  osArch?: string | null;
+  osVersion?: string | null;
+  projectPath?: string | null;
+  installPath?: string | null;
+  userHome?: string | null;
+  tempDir?: string | null;
+}
+
+export interface ServiceMonitorJvm {
+  vmName?: string | null;
+  vmVersion?: string | null;
+  vmVendor?: string | null;
+  javaVersion?: string | null;
+  javaHome?: string | null;
+  pid?: number | null;
+  startTime?: string | null;
+  uptimeSeconds?: number | null;
+  threadCount?: number | null;
+  daemonThreadCount?: number | null;
+  peakThreadCount?: number | null;
+  inputArguments?: string[];
+}
+
+export interface ServiceMonitorSnapshot {
+  cpu: ServiceMonitorCpu;
+  memory: ServiceMonitorMemory;
+  server: ServiceMonitorServer;
+  jvm: ServiceMonitorJvm;
+}
+
+export interface RedisMonitorOverview {
+  version?: string | null;
+  mode?: string | null;
+  port?: number | null;
+  connectedClients?: number | null;
+  uptimeSeconds?: number | null;
+  uptimeDays?: number | null;
+  keyCount?: number | null;
+  totalConnectionsReceived?: number | null;
+  totalCommandsProcessed?: number | null;
+  instantaneousOpsPerSec?: number | null;
+  memoryUsedBytes?: number | null;
+  memoryPeakBytes?: number | null;
+  memoryMaxBytes?: number | null;
+  memoryUsagePercent?: number | null;
+  hits?: number | null;
+  misses?: number | null;
+  hitRate?: number | null;
+}
+
+export interface RedisMonitorCommandStat {
+  command: string;
+  calls: number;
+  totalUsec: number;
+  avgUsec: number;
+  rejectedCalls: number;
+  failedCalls: number;
+}
+
+export interface RedisMonitorKeyspace {
+  database: string;
+  keys: number;
+  expires: number;
+  avgTtl: number;
+}
+
+export interface RedisMonitorClient {
+  addressPort?: string | null;
+  name?: string | null;
+  age?: number | null;
+  idle?: number | null;
+  flags?: string | null;
+  databaseId?: number | null;
+  lastCommand?: string | null;
+}
+
+export interface RedisMonitorSnapshot {
+  overview: RedisMonitorOverview;
+  commandStats: RedisMonitorCommandStat[];
+  keyspaces: RedisMonitorKeyspace[];
+  clients: RedisMonitorClient[];
+  sampleTime?: string | null;
+}
+
 export interface TenantOverview {
   currentTenant: TenantSummary | null;
   myTenants: MyTenant[];

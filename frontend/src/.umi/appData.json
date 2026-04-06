@@ -37,7 +37,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 20
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -50,7 +50,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 281
+        "register": 3
       },
       "enableBy": "register"
     },
@@ -63,7 +63,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 11
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -80,7 +80,7 @@
             0
           ]
         },
-        "register": 27
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -94,10 +94,10 @@
       "time": {
         "hooks": {
           "onStart": [
-            22
+            1
           ]
         },
-        "register": 11
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -114,7 +114,7 @@
             0
           ]
         },
-        "register": 4
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -127,7 +127,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -141,10 +141,10 @@
       "time": {
         "hooks": {
           "modifyAppData": [
-            247
+            11
           ]
         },
-        "register": 126
+        "register": 12
       },
       "enableBy": "register"
     },
@@ -157,7 +157,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -174,10 +174,10 @@
             0
           ],
           "onCheck": [
-            2
+            0
           ]
         },
-        "register": 3
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -191,10 +191,10 @@
       "time": {
         "hooks": {
           "onCheck": [
-            1
+            0
           ]
         },
-        "register": 32
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -207,7 +207,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -221,10 +221,10 @@
       "time": {
         "hooks": {
           "modifyConfig": [
-            1
+            0
           ]
         },
-        "register": 46
+        "register": 4
       },
       "enableBy": "register"
     },
@@ -1076,7 +1076,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 7
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1090,10 +1090,10 @@
       "time": {
         "hooks": {
           "onStart": [
-            2
+            0
           ]
         },
-        "register": 5
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1106,7 +1106,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1119,7 +1119,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 565
+        "register": 44
       },
       "enableBy": "register"
     },
@@ -1132,7 +1132,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 353
+        "register": 22
       },
       "enableBy": "config"
     },
@@ -1145,7 +1145,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 129
+        "register": 10
       },
       "enableBy": "config"
     },
@@ -1159,10 +1159,10 @@
       "time": {
         "hooks": {
           "modifyAppData": [
-            1
+            0
           ]
         },
-        "register": 3
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1175,7 +1175,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1188,7 +1188,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 7
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1202,10 +1202,10 @@
       "time": {
         "hooks": {
           "onStart": [
-            8
+            0
           ]
         },
-        "register": 555
+        "register": 16
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/mpa/mpa": {
@@ -1217,7 +1217,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1230,7 +1230,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/overrides/overrides": {
@@ -1242,7 +1242,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1255,7 +1255,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1269,10 +1269,10 @@
       "time": {
         "hooks": {
           "modifyConfig": [
-            2
+            0
           ]
         },
-        "register": 23
+        "register": 1
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/polyfill/publicPathPolyfill": {
@@ -1284,7 +1284,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1297,7 +1297,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 10
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1310,7 +1310,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1323,7 +1323,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1336,7 +1336,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 35
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1349,7 +1349,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 83
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -1362,7 +1362,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 9
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1375,7 +1375,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 22
+        "register": 0
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/ssr/ssr": {
@@ -1387,7 +1387,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 9
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1400,7 +1400,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 35
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1413,7 +1413,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 23
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1426,7 +1426,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 23
+        "register": 2
       },
       "enableBy": "config"
     },
@@ -1439,7 +1439,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1452,7 +1452,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 25
+        "register": 2
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/monorepo/redirect": {
@@ -1464,7 +1464,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 129
+        "register": 11
       },
       "enableBy": "config"
     },
@@ -1477,7 +1477,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 1
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/clickToComponent/clickToComponent": {
@@ -1489,7 +1489,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 7
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1502,7 +1502,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1528,7 +1528,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 6
+        "register": 0
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/swc/swc": {
@@ -1541,10 +1541,10 @@
       "time": {
         "hooks": {
           "addOnDemandDeps": [
-            1
+            0
           ]
         },
-        "register": 4
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1557,7 +1557,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 24
+        "register": 1
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/mako/mako": {
@@ -1569,7 +1569,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 14
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1582,7 +1582,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/hmrGuardian/hmrGuardian": {
@@ -1594,7 +1594,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 7
+        "register": 1
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/routePreloadOnLoad/routePreloadOnLoad": {
@@ -1606,7 +1606,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 211
+        "register": 14
       }
     },
     "./node_modules/@umijs/preset-umi/dist/features/forget/forget": {
@@ -1618,7 +1618,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -1631,7 +1631,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1644,7 +1644,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 21
+        "register": 2
       },
       "enableBy": "register"
     },
@@ -1657,7 +1657,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 338
+        "register": 18
       },
       "enableBy": "register"
     },
@@ -1671,10 +1671,10 @@
       "time": {
         "hooks": {
           "modifyAppData": [
-            288
+            8
           ]
         },
-        "register": 402
+        "register": 16
       }
     },
     "./node_modules/@umijs/preset-umi/dist/commands/help": {
@@ -1686,7 +1686,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1699,7 +1699,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1712,7 +1712,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 1
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1725,7 +1725,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1738,7 +1738,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1751,7 +1751,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1764,7 +1764,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 10
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1777,7 +1777,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 36
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1790,7 +1790,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 15
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1803,7 +1803,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 10
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1816,7 +1816,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 12
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1829,7 +1829,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1842,7 +1842,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1855,7 +1855,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1868,7 +1868,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1881,7 +1881,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 5
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1894,7 +1894,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1907,7 +1907,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -1920,7 +1920,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 158
+        "register": 11
       },
       "enableBy": "register"
     },
@@ -1933,7 +1933,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 19
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1946,7 +1946,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 11
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -1959,7 +1959,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 8
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -1974,7 +1974,7 @@
       },
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 1
       }
     },
     "./node_modules/@umijs/plugins/dist/antd": {
@@ -1987,7 +1987,7 @@
       "time": {
         "hooks": {
           "modifyConfig": [
-            5
+            1
           ],
           "modifyAppData": [
             0
@@ -1996,7 +1996,7 @@
             0
           ]
         },
-        "register": 198
+        "register": 3
       }
     },
     "./node_modules/@umijs/plugins/dist/dva": {
@@ -2008,7 +2008,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 19
+        "register": 3
       },
       "enableBy": "config"
     },
@@ -2021,7 +2021,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2040,13 +2040,13 @@
             0
           ],
           "addLayouts": [
-            1
+            0
           ],
           "modifyAppData": [
-            1
+            0
           ]
         },
-        "register": 11
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2059,7 +2059,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 30
+        "register": 2
       },
       "enableBy": "config"
     },
@@ -2072,7 +2072,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 30
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2085,7 +2085,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2098,7 +2098,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2111,7 +2111,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 7
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -2124,7 +2124,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 7
+        "register": 1
       }
     },
     "./node_modules/@umijs/plugins/dist/qiankun/slave": {
@@ -2136,7 +2136,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 57
+        "register": 0
       }
     },
     "./node_modules/@umijs/plugins/dist/react-query": {
@@ -2148,7 +2148,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 6
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2161,7 +2161,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2174,7 +2174,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 9
+        "register": 1
       },
       "enableBy": "config"
     },
@@ -2187,7 +2187,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 2
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2200,7 +2200,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 3
+        "register": 0
       },
       "enableBy": "config"
     },
@@ -2217,7 +2217,7 @@
             0
           ]
         },
-        "register": 2
+        "register": 1
       },
       "enableBy": "register"
     },
@@ -2234,7 +2234,7 @@
             0
           ]
         },
-        "register": 3
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -2251,7 +2251,7 @@
             0
           ]
         },
-        "register": 6
+        "register": 0
       },
       "enableBy": "register"
     },
@@ -2264,7 +2264,7 @@
       "config": {},
       "time": {
         "hooks": {},
-        "register": 4
+        "register": 0
       },
       "enableBy": "register"
     }
@@ -2395,6 +2395,36 @@
             "name": "插件管理",
             "icon": "ApiOutlined",
             "access": "canVisitSystemPlugins"
+          }
+        ]
+      },
+      {
+        "path": "/system/monitoring",
+        "component": "@/pages/system/monitoring/index",
+        "name": "系统监控",
+        "icon": "FundOutlined",
+        "access": "canVisitSystemMonitoring",
+        "routes": [
+          {
+            "path": "/system/monitoring/service",
+            "component": "@/pages/system/monitoring/Service",
+            "name": "服务监控",
+            "icon": "RadarChartOutlined",
+            "access": "canVisitSystemMonitoringService"
+          },
+          {
+            "path": "/system/monitoring/redis",
+            "component": "@/pages/system/monitoring/Redis",
+            "name": "Redis监控",
+            "icon": "DatabaseOutlined",
+            "access": "canVisitSystemMonitoringRedis"
+          },
+          {
+            "path": "/system/monitoring/api-docs",
+            "component": "@/pages/system/monitoring/ApiDocs",
+            "name": "接口文档",
+            "icon": "FileTextOutlined",
+            "access": "canVisitSystemMonitoringDocs"
           }
         ]
       },
@@ -2595,6 +2625,36 @@
             "name": "插件管理",
             "icon": "ApiOutlined",
             "access": "canVisitSystemPlugins"
+          }
+        ]
+      },
+      {
+        "path": "/system/monitoring",
+        "component": "@/pages/system/monitoring/index",
+        "name": "系统监控",
+        "icon": "FundOutlined",
+        "access": "canVisitSystemMonitoring",
+        "routes": [
+          {
+            "path": "/system/monitoring/service",
+            "component": "@/pages/system/monitoring/Service",
+            "name": "服务监控",
+            "icon": "RadarChartOutlined",
+            "access": "canVisitSystemMonitoringService"
+          },
+          {
+            "path": "/system/monitoring/redis",
+            "component": "@/pages/system/monitoring/Redis",
+            "name": "Redis监控",
+            "icon": "DatabaseOutlined",
+            "access": "canVisitSystemMonitoringRedis"
+          },
+          {
+            "path": "/system/monitoring/api-docs",
+            "component": "@/pages/system/monitoring/ApiDocs",
+            "name": "接口文档",
+            "icon": "FileTextOutlined",
+            "access": "canVisitSystemMonitoringDocs"
           }
         ]
       },
@@ -3761,71 +3821,123 @@
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/Plugins.tsx"
     },
     "17": {
+      "path": "/system/monitoring",
+      "name": "系统监控",
+      "icon": "FundOutlined",
+      "access": "canVisitSystemMonitoring",
+      "file": "@/pages/system/monitoring/index.tsx",
+      "parentId": "ant-design-pro-layout",
+      "id": "17",
+      "absPath": "/system/monitoring",
+      "__content": "import { useEffect } from 'react';\nimport { history, Outlet, useLocation } from 'umi';\n\nexport default () => {\n  const location = useLocation();\n\n  useEffect(() => {\n    if (location.pathname === '/system/monitoring') {\n      history.replace('/system/monitoring/service');\n    }\n  }, [location.pathname]);\n\n  if (location.pathname === '/system/monitoring') {\n    return null;\n  }\n\n  return <Outlet />;\n};\n",
+      "__isJSFile": true,
+      "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring/index.tsx"
+    },
+    "18": {
+      "path": "/system/monitoring/service",
+      "name": "服务监控",
+      "icon": "RadarChartOutlined",
+      "access": "canVisitSystemMonitoringService",
+      "file": "@/pages/system/monitoring/Service.tsx",
+      "parentId": "17",
+      "id": "18",
+      "absPath": "/system/monitoring/service",
+      "__content": "import { useEffect } from 'react';\nimport { PageContainer } from '@ant-design/pro-components';\nimport { Badge, Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';\nimport { useRequest } from 'umi';\nimport { monitorService } from '@/services/system/monitor';\nimport type { ServiceMonitorSnapshot } from '@/types/api';\nimport { formatBytes, formatDateTime, formatDuration, formatNumber, formatPercent } from './shared';\n\nconst valueStyle = { fontSize: 24, fontWeight: 700 };\n\nconst ServiceMonitorPage = () => {\n  const query = useRequest(async () => ({ data: await monitorService.service({ autoRedirectOnUnauthorized: false }) }) as { data: ServiceMonitorSnapshot });\n\n  useEffect(() => {\n    const timer = window.setInterval(() => {\n      void query.refresh();\n    }, 10000);\n    return () => {\n      window.clearInterval(timer);\n    };\n  }, [query.refresh]);\n\n  const service = query.data;\n\n  return (\n    <PageContainer\n      title=\"服务监控\"\n      ghost\n      extra={\n        <Space>\n          <Tag color=\"processing\">\n            <Badge status=\"processing\" />\n            真实运行时数据\n          </Tag>\n          <Tag color=\"blue\">{service?.server?.serverName || '本机'}</Tag>\n        </Space>\n      }\n      content=\"展示当前后端进程的 CPU、内存、JVM 与主机信息，数据直接来自运行环境。\"\n    >\n      <Space direction=\"vertical\" size={16} style={{ width: '100%' }}>\n        <Row gutter={[16, 16]}>\n          <Col xs={24} lg={12}>\n            <Card\n              title=\"CPU\"\n              loading={query.loading && !service}\n              extra={<Tag color=\"geekblue\">核心数 {service?.cpu?.coreCount ?? '-'}</Tag>}\n              style={{ height: '100%' }}\n              bodyStyle={{ minHeight: 170 }}\n            >\n              <Row gutter={[16, 16]}>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"用户使用率\" value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix=\"%\" valueStyle={valueStyle} />\n                </Col>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"系统使用率\" value={service?.cpu?.systemUsagePercent ?? 0} precision={2} suffix=\"%\" valueStyle={valueStyle} />\n                </Col>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"当前空闲率\" value={service?.cpu?.idlePercent ?? 0} precision={2} suffix=\"%\" valueStyle={valueStyle} />\n                </Col>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"平均负载\" value={service?.cpu?.loadAverage ?? '-'} valueStyle={valueStyle} />\n                </Col>\n              </Row>\n            </Card>\n          </Col>\n          <Col xs={24} lg={12}>\n            <Card title=\"内存\" loading={query.loading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: 170 }}>\n              <Row gutter={[16, 16]}>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"总内存\" value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />\n                </Col>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"已用内存\" value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />\n                </Col>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"剩余内存\" value={formatBytes(service?.memory?.freeBytes)} valueStyle={valueStyle} />\n                </Col>\n                <Col xs={12} sm={6}>\n                  <Statistic title=\"使用率\" value={formatPercent(service?.memory?.usagePercent)} valueStyle={valueStyle} />\n                </Col>\n              </Row>\n            </Card>\n          </Col>\n        </Row>\n\n        <Card title=\"服务器信息\" loading={query.loading && !service}>\n          <Descriptions bordered column={{ xs: 1, sm: 2, xl: 4 }} size=\"small\">\n            <Descriptions.Item label=\"服务器名称\">{service?.server?.serverName || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"服务器IP\">{service?.server?.serverIp || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"操作系统\">{service?.server?.osName || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"系统架构\">{service?.server?.osArch || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"系统版本\">{service?.server?.osVersion || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"项目路径\">{service?.server?.projectPath || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"安装路径\">{service?.server?.installPath || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"用户目录\">{service?.server?.userHome || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"临时目录\">{service?.server?.tempDir || '-'}</Descriptions.Item>\n          </Descriptions>\n        </Card>\n\n        <Card title=\"Java虚拟机信息\" loading={query.loading && !service}>\n          <Descriptions bordered column={{ xs: 1, sm: 2, xl: 4 }} size=\"small\">\n            <Descriptions.Item label=\"Java名称\">{service?.jvm?.vmName || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"Java版本\">{service?.jvm?.javaVersion || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"虚拟机版本\">{service?.jvm?.vmVersion || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"虚拟机厂商\">{service?.jvm?.vmVendor || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"启动时间\">{formatDateTime(service?.jvm?.startTime)}</Descriptions.Item>\n            <Descriptions.Item label=\"运行时长\">{formatDuration(service?.jvm?.uptimeSeconds)}</Descriptions.Item>\n            <Descriptions.Item label=\"进程ID\">{formatNumber(service?.jvm?.pid)}</Descriptions.Item>\n            <Descriptions.Item label=\"线程数\">{formatNumber(service?.jvm?.threadCount)}</Descriptions.Item>\n            <Descriptions.Item label=\"守护线程\">{formatNumber(service?.jvm?.daemonThreadCount)}</Descriptions.Item>\n            <Descriptions.Item label=\"峰值线程数\">{formatNumber(service?.jvm?.peakThreadCount)}</Descriptions.Item>\n            <Descriptions.Item label=\"Java Home\">{service?.jvm?.javaHome || '-'}</Descriptions.Item>\n            <Descriptions.Item label=\"启动参数\">\n              <Typography.Paragraph style={{ marginBottom: 0 }} ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>\n                {service?.jvm?.inputArguments?.join(' ') || '-'}\n              </Typography.Paragraph>\n            </Descriptions.Item>\n          </Descriptions>\n        </Card>\n      </Space>\n    </PageContainer>\n  );\n};\n\nexport default ServiceMonitorPage;\n",
+      "__isJSFile": true,
+      "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring/Service.tsx"
+    },
+    "19": {
+      "path": "/system/monitoring/redis",
+      "name": "Redis监控",
+      "icon": "DatabaseOutlined",
+      "access": "canVisitSystemMonitoringRedis",
+      "file": "@/pages/system/monitoring/Redis.tsx",
+      "parentId": "17",
+      "id": "19",
+      "absPath": "/system/monitoring/redis",
+      "__content": "import { useEffect, useMemo, useState } from 'react';\nimport { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';\nimport { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';\nimport { useRequest } from 'umi';\nimport { monitorService } from '@/services/system/monitor';\nimport type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';\nimport TrendAreaChart from './TrendAreaChart';\nimport { formatBytes, formatDateTime, formatNumber, formatPercent } from './shared';\n\ntype TrendPoint = {\n  label: string;\n  memoryBytes: number;\n  qps: number;\n};\n\nconst valueStyle = { fontSize: 24, fontWeight: 700 };\n\nconst RedisMonitorPage = () => {\n  const query = useRequest(async () => ({ data: await monitorService.redis({ autoRedirectOnUnauthorized: false }) }) as { data: RedisMonitorSnapshot });\n  const [samples, setSamples] = useState<TrendPoint[]>([]);\n\n  useEffect(() => {\n    const timer = window.setInterval(() => {\n      void query.refresh();\n    }, 5000);\n    return () => {\n      window.clearInterval(timer);\n    };\n  }, [query.refresh]);\n\n  useEffect(() => {\n    const snapshot = query.data;\n    if (!snapshot?.overview) {\n      return;\n    }\n    const nextPoint: TrendPoint = {\n      label: new Date().toLocaleTimeString('zh-CN', { hour12: false }),\n      memoryBytes: snapshot.overview.memoryUsedBytes || 0,\n      qps: snapshot.overview.instantaneousOpsPerSec || 0,\n    };\n    setSamples((current) => [...current.slice(-11), nextPoint]);\n  }, [query.data]);\n\n  const redis = query.data;\n\n  const memoryTrend = useMemo(\n    () => samples.map((item) => ({ label: item.label, value: item.memoryBytes })),\n    [samples],\n  );\n  const qpsTrend = useMemo(\n    () => samples.map((item) => ({ label: item.label, value: item.qps })),\n    [samples],\n  );\n\n  const commandColumns = useMemo<ProColumns<RedisMonitorCommandStat>[]>(\n    () => [\n      { title: '命令', dataIndex: 'command', width: 180, fixed: 'left' },\n      { title: '调用次数', dataIndex: 'calls', width: 140, render: (_, record) => formatNumber(record.calls) },\n      { title: '耗时(ms)', dataIndex: 'totalUsec', width: 160, render: (_, record) => formatNumber(record.totalUsec) },\n      { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 160, render: (_, record) => record.avgUsec.toFixed(2) },\n      { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 120, render: (_, record) => formatNumber(record.rejectedCalls) },\n      { title: '失败次数', dataIndex: 'failedCalls', width: 120, render: (_, record) => formatNumber(record.failedCalls) },\n    ],\n    [],\n  );\n\n  const keyspaceColumns = useMemo<ProColumns<RedisMonitorKeyspace>[]>(\n    () => [\n      { title: '数据库', dataIndex: 'database', width: 120 },\n      { title: '键数量', dataIndex: 'keys', width: 120, render: (_, record) => formatNumber(record.keys) },\n      { title: '过期键数量', dataIndex: 'expires', width: 140, render: (_, record) => formatNumber(record.expires) },\n      { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 160, render: (_, record) => formatNumber(record.avgTtl) },\n    ],\n    [],\n  );\n\n  return (\n    <PageContainer\n      title=\"Redis监控\"\n      ghost\n      extra={\n        <Space>\n          <Tag color=\"processing\">真实 Redis INFO</Tag>\n          <Button onClick={async () => await query.refresh()}>立即刷新</Button>\n        </Space>\n      }\n      content=\"展示当前 Redis 实例的版本、连接、命中率、内存、命令分布和 keyspace 概况。\"\n    >\n      <Space direction=\"vertical\" size={16} style={{ width: '100%' }}>\n        <Card loading={query.loading && !redis} title=\"Redis信息\">\n          <Row gutter={[16, 16]}>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"Redis版本\" value={redis?.overview.version || '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"运行模式\" value={redis?.overview.mode || '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"端口\" value={redis?.overview.port ?? '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"客户端数\" value={redis?.overview.connectedClients ?? '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"运行时间(天)\" value={redis?.overview.uptimeDays ?? '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"命中率\" value={formatPercent(redis?.overview.hitRate)} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"QPS\" value={redis?.overview.instantaneousOpsPerSec ?? '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"键数量\" value={redis?.overview.keyCount ?? '-'} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"内存使用量\" value={formatBytes(redis?.overview.memoryUsedBytes)} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"内存峰值\" value={formatBytes(redis?.overview.memoryPeakBytes)} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"内存使用率\" value={formatPercent(redis?.overview.memoryUsagePercent)} valueStyle={valueStyle} />\n            </Col>\n            <Col xs={12} sm={6} xl={4}>\n              <Statistic title=\"总连接数\" value={redis?.overview.totalConnectionsReceived ?? '-'} valueStyle={valueStyle} />\n            </Col>\n          </Row>\n\n          <Descriptions bordered column={{ xs: 1, sm: 2, xl: 4 }} size=\"small\" style={{ marginTop: 16 }}>\n            <Descriptions.Item label=\"总命中\">{formatNumber(redis?.overview.hits)}</Descriptions.Item>\n            <Descriptions.Item label=\"总未命中\">{formatNumber(redis?.overview.misses)}</Descriptions.Item>\n            <Descriptions.Item label=\"总命令数\">{formatNumber(redis?.overview.totalCommandsProcessed)}</Descriptions.Item>\n            <Descriptions.Item label=\"采样时间\">{formatDateTime(redis?.sampleTime)}</Descriptions.Item>\n          </Descriptions>\n        </Card>\n\n        <Row gutter={[16, 16]}>\n          <Col xs={24} lg={12}>\n            <TrendAreaChart title=\"内存趋势 (MB)\" subtitle=\"最近 12 次采样\" points={memoryTrend.map((item) => ({ ...item, value: item.value / 1024 / 1024 }))} valueFormatter={(value) => `${value.toFixed(2)} MB`} />\n          </Col>\n          <Col xs={24} lg={12}>\n            <TrendAreaChart title=\"吞吐趋势 (OPS)\" subtitle=\"最近 12 次采样\" points={qpsTrend} valueFormatter={(value) => value.toFixed(0)} />\n          </Col>\n        </Row>\n\n        <Card title=\"命令统计\" loading={query.loading && !redis}>\n          <ProTable<RedisMonitorCommandStat>\n            rowKey=\"command\"\n            search={false}\n            options={false}\n            pagination={false}\n            columns={commandColumns}\n            dataSource={redis?.commandStats || []}\n            scroll={{ x: 900 }}\n            toolBarRender={false}\n          />\n        </Card>\n\n        <Card title=\"Key信息\" loading={query.loading && !redis}>\n          <ProTable<RedisMonitorKeyspace>\n            rowKey=\"database\"\n            search={false}\n            options={false}\n            pagination={false}\n            columns={keyspaceColumns}\n            dataSource={redis?.keyspaces || []}\n            scroll={{ x: 600 }}\n            toolBarRender={false}\n          />\n        </Card>\n\n        <Card title=\"连接客户端\" loading={query.loading && !redis}>\n          <Typography.Paragraph type=\"secondary\" style={{ marginBottom: 16 }}>\n            当前实例已连接的客户端会话列表，取自 Redis `CLIENT LIST`。\n          </Typography.Paragraph>\n          <ProTable\n            rowKey={(record: RedisMonitorClient) => `${record.addressPort || ''}-${record.name || ''}-${record.databaseId || ''}`}\n            search={false}\n            options={false}\n            pagination={false}\n            dataSource={redis?.clients || []}\n            columns={[\n              { title: '地址', dataIndex: 'addressPort', width: 180 },\n              { title: '名称', dataIndex: 'name', width: 160 },\n              { title: '空闲(s)', dataIndex: 'idle', width: 100 },\n              { title: '年龄(s)', dataIndex: 'age', width: 100 },\n              { title: '数据库', dataIndex: 'databaseId', width: 100 },\n              { title: '标记', dataIndex: 'flags', width: 140 },\n              { title: '最后命令', dataIndex: 'lastCommand', width: 140 },\n            ]}\n            scroll={{ x: 900 }}\n            toolBarRender={false}\n          />\n        </Card>\n      </Space>\n    </PageContainer>\n  );\n};\n\nexport default RedisMonitorPage;\n",
+      "__isJSFile": true,
+      "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring/Redis.tsx"
+    },
+    "20": {
+      "path": "/system/monitoring/api-docs",
+      "name": "接口文档",
+      "icon": "FileTextOutlined",
+      "access": "canVisitSystemMonitoringDocs",
+      "file": "@/pages/system/monitoring/ApiDocs.tsx",
+      "parentId": "17",
+      "id": "20",
+      "absPath": "/system/monitoring/api-docs",
+      "__content": "import { useMemo } from 'react';\nimport { LinkOutlined } from '@ant-design/icons';\nimport { PageContainer } from '@ant-design/pro-components';\nimport { Button, Card, Space, Tag, Typography } from 'antd';\nimport { API_PREFIX } from '@/constants/http';\n\nconst resolveSwaggerUrl = () => {\n  try {\n    const parsed = new URL(API_PREFIX);\n    const basePath = parsed.pathname.replace(/\\/api\\/?$/, '');\n    return `${parsed.origin}${basePath}/swagger-ui.html`;\n  } catch {\n    return '/swagger-ui.html';\n  }\n};\n\nexport default () => {\n  const swaggerUrl = useMemo(() => resolveSwaggerUrl(), []);\n\n  return (\n    <PageContainer\n      title=\"接口文档\"\n      ghost\n      extra={\n        <Space>\n          <Tag color=\"green\">Springdoc OpenAPI</Tag>\n          <Button icon={<LinkOutlined />} onClick={() => window.open(swaggerUrl, '_blank', 'noopener,noreferrer')}>\n            打开原始文档\n          </Button>\n        </Space>\n      }\n      content=\"当前页面直接嵌入后端生成的 Swagger UI，内容与 /swagger-ui.html 保持一致。\"\n    >\n      <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>\n        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>\n          <Typography.Title level={4} style={{ marginBottom: 6 }}>\n            系统接口文档\n          </Typography.Title>\n          <Typography.Paragraph type=\"secondary\" style={{ marginBottom: 0 }}>\n            直接查看当前后端暴露的 OpenAPI 定义和在线调试能力，便于排查接口与联调。\n          </Typography.Paragraph>\n        </div>\n        <div style={{ height: 'calc(100vh - 280px)', minHeight: 760, background: '#fff' }}>\n          <iframe title=\"Swagger UI\" src={swaggerUrl} style={{ width: '100%', height: '100%', border: 0 }} />\n        </div>\n      </Card>\n    </PageContainer>\n  );\n};\n",
+      "__isJSFile": true,
+      "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring/ApiDocs.tsx"
+    },
+    "21": {
       "path": "/plugins/:pluginCode",
       "name": "插件页面",
       "access": "canVisitPluginRuntime",
       "hideInMenu": true,
       "file": "@/pages/plugins/RuntimeContainer.tsx",
       "parentId": "ant-design-pro-layout",
-      "id": "17",
+      "id": "21",
       "absPath": "/plugins/:pluginCode",
       "__content": "import { useEffect, useMemo, useRef, useState } from 'react';\nimport { Alert, Card, Spin } from 'antd';\nimport { history, useLocation, useParams } from 'umi';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { notifyPluginLoadError } from '@/plugins/loader';\nimport { PluginErrorBoundary } from '@/plugins/errorBoundary';\nimport { mountPlugin, unmountPlugin } from '@/plugins/runtime';\n\nconst RuntimeContainer = () => {\n  const params = useParams<{ pluginCode: string }>();\n  const location = useLocation();\n  const { initialState } = useInitialStateModel();\n  const containerRef = useRef<HTMLDivElement>(null);\n  const mountedRef = useRef<{ pluginCode: string; version: string } | null>(null);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string>();\n\n  const plugin = useMemo(\n    () => initialState?.availablePlugins?.find((item) => item.pluginCode === params.pluginCode),\n    [initialState?.availablePlugins, params.pluginCode],\n  );\n\n  useEffect(() => {\n    const container = containerRef.current;\n    if (!container) {\n      return;\n    }\n    let active = true;\n    const previousMounted = mountedRef.current;\n    mountedRef.current = null;\n    if (previousMounted) {\n      void unmountPlugin(previousMounted.pluginCode, previousMounted.version, container);\n    }\n    if (!plugin) {\n      setLoading(false);\n      setError('当前租户未启用该插件');\n      return;\n    }\n    setLoading(true);\n    setError(undefined);\n    mountPlugin(plugin.pluginCode, container, {\n      pluginCode: plugin.pluginCode,\n      version: plugin.version,\n      routePath: location.pathname,\n      currentUser: initialState?.currentUser,\n      currentTenant: initialState?.currentTenant,\n      requestId: crypto.randomUUID(),\n    })\n      .then((result) => {\n        if (!active) {\n          return;\n        }\n        mountedRef.current = {\n          pluginCode: plugin.pluginCode,\n          version: result.manifest.version,\n        };\n        setLoading(false);\n      })\n      .catch((pluginError) => {\n        if (!active) {\n          return;\n        }\n        notifyPluginLoadError(pluginError);\n        setError(pluginError instanceof Error ? pluginError.message : '插件加载失败，请稍后重试');\n        setLoading(false);\n      });\n    return () => {\n      active = false;\n      const currentMounted = mountedRef.current;\n      if (currentMounted) {\n        void unmountPlugin(currentMounted.pluginCode, currentMounted.version, container);\n        mountedRef.current = null;\n      }\n    };\n  }, [initialState?.currentTenant, initialState?.currentUser, location.pathname, plugin]);\n\n  if (error) {\n    return (\n      <Card>\n        <Alert type=\"error\" showIcon message=\"插件不可用\" description={error} />\n      </Card>\n    );\n  }\n\n  return (\n    <PluginErrorBoundary>\n      <Card bodyStyle={{ minHeight: 'calc(100vh - 160px)' }}>\n        {loading ? (\n          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>\n            <Spin />\n          </div>\n        ) : (\n          <div ref={containerRef} style={{ minHeight: 'calc(100vh - 220px)' }} />\n        )}\n      </Card>\n    </PluginErrorBoundary>\n  );\n};\n\nexport default RuntimeContainer;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins/RuntimeContainer.tsx"
     },
-    "18": {
+    "22": {
       "path": "/blank/workflow",
       "layout": false,
       "name": "空白流程",
       "hideInMenu": true,
       "file": "@/pages/exception/BlankFlow.tsx",
-      "id": "18",
+      "id": "22",
       "absPath": "/blank/workflow",
       "__content": "import { Result } from 'antd';\n\nexport default () => <Result status=\"info\" title=\"空白流程页\" />;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/exception/BlankFlow.tsx"
     },
-    "19": {
+    "23": {
       "path": "/user/login",
       "layout": false,
       "name": "登录",
       "hideInMenu": true,
       "file": "@/pages/user/Login.tsx",
-      "id": "19",
+      "id": "23",
       "absPath": "/user/login",
       "__content": "import { LockOutlined, UserOutlined } from '@ant-design/icons';\nimport { LoginFormPage, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';\nimport { useState } from 'react';\nimport { flushSync } from 'react-dom';\nimport { history, useLocation } from 'umi';\nimport { Alert } from 'antd';\nimport { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';\nimport { authService } from '@/services/auth';\nimport { pluginService } from '@/services/plugin';\nimport { ApiRequestError } from '@/services/common/request';\nimport { initializeAfterLogin } from '@/auth/session';\nimport { tenantContext } from '@/tenant/context';\nimport type { AppInitialState } from '@/app';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { systemService } from '@/services/system';\nimport './Login.less';\n\ninterface LoginFormValues {\n  username?: string;\n  password?: string;\n  remember?: boolean;\n}\n\nconst Login = () => {\n  const [submitting, setSubmitting] = useState(false);\n  const [loginError, setLoginError] = useState<string>();\n  const { initialState, setInitialState } = useInitialStateModel();\n  const location = useLocation();\n  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);\n\n  const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {\n    setSubmitting(true);\n    setLoginError(undefined);\n    try {\n      const loginResponse = await authService.login({\n        username: values.username,\n        password: values.password || '',\n      });\n\n      const sessionResult = await initializeAfterLogin(loginResponse);\n      const [menuTree, availablePlugins, latestBrandingSettings] = await Promise.all([\n        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n        systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),\n      ]);\n      const normalizedBrandingSettings = normalizeBrandingSettings(latestBrandingSettings);\n      persistBrandingSettings(normalizedBrandingSettings);\n      flushSync(() => {\n        setInitialState((prev: AppInitialState | undefined) => ({\n          ...prev,\n          currentUser: sessionResult.currentUser,\n          currentTenant: tenantContext.getCurrentTenant(),\n          myTenants: tenantContext.getMyTenants(),\n          menuTree,\n          menuVersion: (prev?.menuVersion ?? 0) + 1,\n          availablePlugins,\n          securitySettings: sessionResult.securitySettings,\n          brandingSettings: normalizedBrandingSettings,\n        }));\n      });\n\n      const searchParams = new URLSearchParams(location.search);\n      const redirect = searchParams.get('redirect') || '/dashboard/home';\n      history.replace(redirect);\n      return true;\n    } catch (error) {\n      if (error instanceof ApiRequestError) {\n        setLoginError(error.userMessage || error.message || '登录失败，请稍后重试');\n        return false;\n      }\n\n      if (error instanceof Error) {\n        setLoginError(error.message || '登录失败，请稍后重试');\n        return false;\n      }\n\n      setLoginError('登录失败，请稍后重试');\n      return false;\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  return (\n    <div className=\"saas-login-page\">\n      <LoginFormPage<LoginFormValues>\n        title={brandingSettings.websiteName}\n        subTitle=\"后台管理系统登录\"\n        logo={\n          brandingSettings.websiteLogoUrl ? (\n            <img className=\"saas-login-page__logo\" src={brandingSettings.websiteLogoUrl} alt={brandingSettings.websiteName} />\n          ) : undefined\n        }\n        initialValues={{ remember: true }}\n        message={loginError ? <Alert showIcon type=\"error\" message={loginError} /> : false}\n        onFinish={handleSubmit}\n        submitter={{\n          submitButtonProps: {\n            children: '登录',\n            loading: submitting,\n            block: true,\n          },\n          resetButtonProps: false,\n        }}\n        containerStyle={{\n          width: '100%',\n          maxWidth: 360,\n        }}\n        style={{\n          width: '100%',\n          height: '100%',\n        }}\n      >\n        <ProFormText\n          name=\"username\"\n          fieldProps={{\n            prefix: <UserOutlined className=\"saas-login-page__field-icon\" />,\n            autoComplete: 'username',\n          }}\n          placeholder=\"请输入账号\"\n          rules={[{ required: true, message: '请输入账号' }]}\n        />\n        <ProFormText.Password\n          name=\"password\"\n          fieldProps={{\n            prefix: <LockOutlined className=\"saas-login-page__field-icon\" />,\n            autoComplete: 'current-password',\n          }}\n          placeholder=\"请输入密码\"\n          rules={[\n            { required: true, message: '请输入密码' },\n            { min: 6, message: '密码长度不能少于 6 位' },\n          ]}\n        />\n        <div className=\"saas-login-page__actions\">\n          <ProFormCheckbox noStyle name=\"remember\">\n            保持登录状态\n          </ProFormCheckbox>\n        </div>\n      </LoginFormPage>\n    </div>\n  );\n};\n\nexport default Login;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user/Login.tsx"
     },
-    "20": {
+    "24": {
       "path": "/403",
       "layout": false,
       "name": "无权限",
       "hideInMenu": true,
       "file": "@/pages/exception/NoPermission.tsx",
-      "id": "20",
+      "id": "24",
       "absPath": "/403",
       "__content": "import { Result } from 'antd';\n\nexport default () => <Result status=\"403\" title=\"403\" />;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/exception/NoPermission.tsx"
     },
-    "21": {
+    "25": {
       "path": "/404",
       "layout": false,
       "name": "页面不存在",
       "hideInMenu": true,
       "file": "@/pages/exception/NotFound.tsx",
-      "id": "21",
+      "id": "25",
       "absPath": "/404",
       "__content": "import { Result } from 'antd';\n\nexport default () => <Result status=\"404\" title=\"404\" />;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/exception/NotFound.tsx"
     },
-    "22": {
+    "26": {
       "path": "*",
       "redirect": "/404",
       "parentId": "ant-design-pro-layout",
-      "id": "22",
+      "id": "26",
       "absPath": "/*"
     },
     "ant-design-pro-layout": {

@@ -14,4 +14,7 @@ import SafetyOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/
 import DatabaseOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons/es/icons/DatabaseOutlined';
 import SkinOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons/es/icons/SkinOutlined';
 import ApiOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons/es/icons/ApiOutlined';
-export default { DashboardOutlined, ApartmentOutlined, SafetyCertificateOutlined, AuditOutlined, UserOutlined, SettingOutlined, AppstoreOutlined, TeamOutlined, UserSwitchOutlined, SafetyOutlined, DatabaseOutlined, SkinOutlined, ApiOutlined };
+import FundOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons/es/icons/FundOutlined';
+import RadarChartOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons/es/icons/RadarChartOutlined';
+import FileTextOutlined from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/@umijs/plugins/node_modules/@ant-design/icons/es/icons/FileTextOutlined';
+export default { DashboardOutlined, ApartmentOutlined, SafetyCertificateOutlined, AuditOutlined, UserOutlined, SettingOutlined, AppstoreOutlined, TeamOutlined, UserSwitchOutlined, SafetyOutlined, DatabaseOutlined, SkinOutlined, ApiOutlined, FundOutlined, RadarChartOutlined, FileTextOutlined };
