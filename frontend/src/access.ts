@@ -17,9 +17,24 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitProfile: isLogin,
     canVisitSystemManagement:
       isLogin &&
-      ['system:view', 'system:user:view', 'system:role:view', 'system:menu:view', 'system:dict:view', 'system:config:view', 'system:online-user:view', 'plugin:management:view'].some(
+      [
+        'system:view',
+        'system:user:view',
+        'system:role:view',
+        'system:menu:view',
+        'system:dict:view',
+        'system:config:view',
+        'system:online-user:view',
+        'plugin:management:view',
+      ].some((item) => hasPermission(permissions, item)),
+    canVisitSystemMonitoring:
+      isLogin &&
+      ['system:monitor:view', 'system:monitor:service:view', 'system:monitor:redis:view', 'system:monitor:docs:view'].some(
         (item) => hasPermission(permissions, item),
       ),
+    canVisitSystemMonitoringService: isLogin && hasPermission(permissions, 'system:monitor:service:view'),
+    canVisitSystemMonitoringRedis: isLogin && hasPermission(permissions, 'system:monitor:redis:view'),
+    canVisitSystemMonitoringDocs: isLogin && hasPermission(permissions, 'system:monitor:docs:view'),
     canVisitSystemUsers: isLogin && hasPermission(permissions, 'system:user:view'),
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
     canVisitSystemMenus: isLogin && hasPermission(permissions, 'system:menu:view'),

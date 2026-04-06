@@ -65,6 +65,7 @@ public class SecurityConfig {
                                 writeUnauthorizedResponse(request, response))
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeForbiddenResponse(request, response)))
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .addFilterBefore(traceIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthFilter, TraceIdFilter.class)
                 .addFilterAfter(tenantFilter, JwtAuthFilter.class);
