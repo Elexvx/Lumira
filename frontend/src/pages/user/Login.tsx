@@ -1,9 +1,9 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginFormPage, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { history, useLocation } from 'umi';
-import { Alert } from 'antd';
+import { Alert, Form, Input, Spin, Typography } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
@@ -13,28 +13,91 @@ import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
+import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
+import type { CaptchaChallenge, SecuritySettings } from '@/types/api';
 import './Login.less';
 
 interface LoginFormValues {
   username?: string;
   password?: string;
   remember?: boolean;
+  captchaCode?: string;
 }
 
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string>();
+  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(DEFAULT_SECURITY_SETTINGS);
+  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const { initialState, setInitialState } = useInitialStateModel();
   const location = useLocation();
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
 
+  useEffect(() => {
+    let active = true;
+    const loadSecuritySettings = async () => {
+      try {
+        const result = await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true });
+        if (!active) {
+          return;
+        }
+        setSecuritySettings(normalizeSecuritySettings(result));
+      } catch {
+        if (active) {
+          setSecuritySettings(DEFAULT_SECURITY_SETTINGS);
+        }
+      }
+    };
+
+    void loadSecuritySettings();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const refreshCaptcha = useCallback(async () => {
+    setCaptchaLoading(true);
+    try {
+      const challenge = await systemService.captchaChallenge(securitySettings.captchaType, {
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      });
+      setCaptchaChallenge(challenge);
+      return challenge;
+    } finally {
+      setCaptchaLoading(false);
+    }
+  }, [securitySettings.captchaType]);
+
+  useEffect(() => {
+    if (!securitySettings.captchaEnabled) {
+      setCaptchaChallenge(null);
+      return;
+    }
+
+    void refreshCaptcha();
+  }, [refreshCaptcha, securitySettings.captchaEnabled]);
+
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
+    if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
+      setLoginError('验证码已过期，请刷新后重试');
+      return false;
+    }
+
+    if (securitySettings.captchaEnabled && !values.captchaCode) {
+      setLoginError('请输入验证码');
+      return false;
+    }
+
     setSubmitting(true);
     setLoginError(undefined);
     try {
       const loginResponse = await authService.login({
         username: values.username,
         password: values.password || '',
+        captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
+        captchaCode: securitySettings.captchaEnabled ? values.captchaCode : undefined,
       });
 
       const sessionResult = await initializeAfterLogin(loginResponse);
@@ -66,15 +129,24 @@ const Login = () => {
     } catch (error) {
       if (error instanceof ApiRequestError) {
         setLoginError(error.userMessage || error.message || '登录失败，请稍后重试');
+        if (securitySettings.captchaEnabled) {
+          void refreshCaptcha();
+        }
         return false;
       }
 
       if (error instanceof Error) {
         setLoginError(error.message || '登录失败，请稍后重试');
+        if (securitySettings.captchaEnabled) {
+          void refreshCaptcha();
+        }
         return false;
       }
 
       setLoginError('登录失败，请稍后重试');
+      if (securitySettings.captchaEnabled) {
+        void refreshCaptcha();
+      }
       return false;
     } finally {
       setSubmitting(false);
@@ -86,11 +158,6 @@ const Login = () => {
       <LoginFormPage<LoginFormValues>
         title={brandingSettings.websiteName}
         subTitle="后台管理系统登录"
-        logo={
-          brandingSettings.websiteLogoUrl ? (
-            <img className="saas-login-page__logo" src={brandingSettings.websiteLogoUrl} alt={brandingSettings.websiteName} />
-          ) : undefined
-        }
         initialValues={{ remember: true }}
         message={loginError ? <Alert showIcon type="error" message={loginError} /> : false}
         onFinish={handleSubmit}
@@ -132,6 +199,45 @@ const Login = () => {
             { min: 6, message: '密码长度不能少于 6 位' },
           ]}
         />
+        {securitySettings.captchaEnabled ? (
+          <div className="saas-login-page__captcha-section">
+            <div className="saas-login-page__captcha-input">
+              <Form.Item
+                key={captchaChallenge?.captchaId || 'captcha-code'}
+                name="captchaCode"
+                rules={[{ required: true, message: '请输入验证码' }]}
+              >
+                <Input
+                  size="large"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={8}
+                  placeholder="请输入验证码"
+                  aria-label="验证码"
+                />
+              </Form.Item>
+            </div>
+            <button
+              type="button"
+              className="saas-login-page__captcha-media"
+              title="刷新验证码"
+              aria-label="刷新验证码"
+              onClick={() => void refreshCaptcha()}
+            >
+              <span className="saas-login-page__captcha-image">
+                {captchaLoading ? (
+                  <span className="saas-login-page__captcha-loading">
+                    <Spin size="small" />
+                  </span>
+                ) : captchaChallenge?.imageUrl ? (
+                  <img src={captchaChallenge.imageUrl} alt="验证码" />
+                ) : (
+                  <Typography.Text className="saas-login-page__captcha-placeholder">点击刷新验证码</Typography.Text>
+                )}
+              </span>
+            </button>
+          </div>
+        ) : null}
         <div className="saas-login-page__actions">
           <ProFormCheckbox noStyle name="remember">
             保持登录状态

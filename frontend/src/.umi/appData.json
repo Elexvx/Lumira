@@ -114,7 +114,14 @@
         "hooks": {
           "modifyRoutes": [
             0,
-            0
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1
           ]
         },
         "register": 0
@@ -134,7 +141,14 @@
             12,
             4,
             9,
-            7
+            7,
+            10,
+            18,
+            21,
+            8,
+            14,
+            5,
+            46
           ]
         },
         "register": 1
@@ -155,7 +169,14 @@
           ],
           "onGenerateFiles": [
             2,
-            24
+            24,
+            29,
+            67,
+            19,
+            27,
+            22,
+            25,
+            23
           ]
         },
         "register": 12
@@ -173,6 +194,13 @@
         "hooks": {
           "addEntryCode": [
             0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
             0
           ]
         },
@@ -196,6 +224,8 @@
             0
           ],
           "onPrepareBuildSuccess": [
+            0,
+            0,
             0,
             0,
             0
@@ -230,6 +260,8 @@
             0,
             0,
             1,
+            0,
+            0,
             0,
             0,
             0,
@@ -1250,7 +1282,15 @@
             0,
             0,
             0,
-            1
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
           ]
         },
         "register": 1
@@ -1268,9 +1308,23 @@
         "hooks": {
           "onGenerateFiles": [
             1,
+            1,
+            0,
+            0,
+            1,
+            2,
+            0,
+            1,
             1
           ],
           "addRuntimePlugin": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ]
@@ -1347,9 +1401,30 @@
         "hooks": {
           "onGenerateFiles": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "addEntryImports": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -1387,9 +1462,30 @@
           ],
           "onGenerateFiles": [
             31,
-            23
+            23,
+            24,
+            35,
+            16,
+            35,
+            13,
+            27,
+            17
           ],
           "addPolyfillImports": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -1412,6 +1508,20 @@
             0,
             0,
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ]
         },
@@ -1430,6 +1540,13 @@
         "hooks": {
           "onGenerateFiles": [
             58,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ]
         },
@@ -1474,6 +1591,13 @@
         "hooks": {
           "onGenerateFiles": [
             0,
+            1,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
             1
           ],
           "addBeforeMiddlewares": [
@@ -1497,7 +1621,21 @@
             7,
             3,
             100,
-            7
+            7,
+            25,
+            30,
+            38,
+            16,
+            10,
+            4,
+            115,
+            13,
+            7,
+            3,
+            17,
+            5,
+            25,
+            5
           ]
         },
         "register": 3
@@ -1553,7 +1691,14 @@
         "hooks": {
           "onGenerateFiles": [
             187,
-            28
+            28,
+            15,
+            18,
+            7,
+            28,
+            6,
+            7,
+            9
           ]
         },
         "register": 1
@@ -1638,6 +1783,13 @@
       "time": {
         "hooks": {
           "onGenerateFiles": [
+            1,
+            1,
+            1,
+            2,
+            1,
+            3,
+            0,
             1,
             1
           ]
@@ -1790,6 +1942,14 @@
             0,
             0,
             1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0,
             0
@@ -2154,11 +2314,25 @@
         "hooks": {
           "addRuntimePlugin": [
             0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "onGenerateFiles": [
             0,
-            0
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1
           ],
           "addTmpGenerateWatcherPaths": [
             0
@@ -2204,19 +2378,54 @@
             0,
             0,
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "addRuntimePlugin": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ],
           "addRuntimePluginKey": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "onGenerateFiles": [
             1,
-            2
+            2,
+            3,
+            4,
+            1,
+            4,
+            0,
+            1,
+            1
           ],
           "addExtraBabelPlugins": [
             0
@@ -2252,17 +2461,45 @@
         "hooks": {
           "addRuntimePlugin": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "addRuntimePluginKey": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ],
           "onGenerateFiles": [
             1,
-            0
+            0,
+            2,
+            1,
+            0,
+            1,
+            0,
+            1,
+            1
           ],
           "addExtraModels": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ]
@@ -2287,6 +2524,13 @@
           ],
           "addLayouts": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "modifyAppData": [
@@ -2294,14 +2538,35 @@
           ],
           "addRuntimePlugin": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "addRuntimePluginKey": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ],
           "onGenerateFiles": [
             2,
+            3,
+            4,
+            29,
+            1,
+            4,
+            5,
+            4,
             3
           ]
         },
@@ -2346,11 +2611,25 @@
         "hooks": {
           "addRuntimePlugin": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "onGenerateFiles": [
             9,
-            35
+            35,
+            37,
+            42,
+            16,
+            48,
+            10,
+            17,
+            16
           ],
           "addTmpGenerateWatcherPaths": [
             0
@@ -2383,6 +2662,13 @@
       "time": {
         "hooks": {
           "addRuntimePluginKey": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0
           ]
@@ -2439,11 +2725,25 @@
         "hooks": {
           "addRuntimePluginKey": [
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "onGenerateFiles": [
             1,
-            0
+            0,
+            2,
+            2,
+            0,
+            1,
+            0,
+            0,
+            1
           ]
         },
         "register": 0
@@ -4347,7 +4647,7 @@
       "file": "@/pages/user/Login.tsx",
       "id": "30",
       "absPath": "/user/login",
-      "__content": "import { AuditOutlined, SafetyOutlined, UserOutlined, LockOutlined } from '@ant-design/icons';\nimport { Alert, Button, Checkbox, Form, Input, Modal, Select, Space, Spin, Typography } from 'antd';\nimport { useCallback, useEffect, useMemo, useState } from 'react';\nimport { flushSync } from 'react-dom';\nimport { history, useLocation } from 'umi';\nimport { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';\nimport { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';\nimport { initializeAfterLogin } from '@/auth/session';\nimport { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';\nimport type { AppInitialState } from '@/app';\nimport { MarkdownViewer } from '@/components/MarkdownEditor';\nimport { ApiRequestError } from '@/services/common/request';\nimport { authService } from '@/services/auth';\nimport { pluginService } from '@/services/plugin';\nimport { systemService } from '@/services/system';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { tenantContext } from '@/tenant/context';\nimport type { CaptchaChallenge, LoginResponse, SecuritySettings } from '@/types/api';\nimport './Login.less';\n\ntype AgreementKind = 'user' | 'privacy';\n\ninterface LoginFormValues {\n  username?: string;\n  password?: string;\n  remember?: boolean;\n  agreementAccepted?: boolean;\n  secondFactorPluginCode?: string;\n  verificationCode?: string;\n  captchaCode?: string;\n}\n\nconst Login = () => {\n  const [form] = Form.useForm<LoginFormValues>();\n  const [submitting, setSubmitting] = useState(false);\n  const [loginError, setLoginError] = useState<string>();\n  const [agreementSettings, setAgreementSettings] = useState(DEFAULT_AGREEMENT_SETTINGS);\n  const [agreementLoading, setAgreementLoading] = useState(true);\n  const [agreementModalOpen, setAgreementModalOpen] = useState(false);\n  const [agreementModalKind, setAgreementModalKind] = useState<AgreementKind>('user');\n  const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);\n  const [selectedSecondFactorPluginCode, setSelectedSecondFactorPluginCode] = useState<string>();\n  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(DEFAULT_SECURITY_SETTINGS);\n  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);\n  const [captchaLoading, setCaptchaLoading] = useState(false);\n  const { initialState, setInitialState } = useInitialStateModel();\n  const location = useLocation();\n  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);\n\n  useEffect(() => {\n    let active = true;\n    const loadAgreementSettings = async () => {\n      setAgreementLoading(true);\n      try {\n        const result = await systemService.publicAgreementSettings({ autoRedirectOnUnauthorized: false, silent: true });\n        if (!active) {\n          return;\n        }\n        setAgreementSettings(normalizeAgreementSettings(result));\n      } finally {\n        if (active) {\n          setAgreementLoading(false);\n        }\n      }\n    };\n\n    void loadAgreementSettings();\n    return () => {\n      active = false;\n    };\n  }, []);\n\n  useEffect(() => {\n    let active = true;\n    const loadSecuritySettings = async () => {\n      try {\n        const result = await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true });\n        if (!active) {\n          return;\n        }\n        const normalized = normalizeSecuritySettings(result);\n        setSecuritySettings(normalized);\n      } catch {\n        if (active) {\n          setSecuritySettings(DEFAULT_SECURITY_SETTINGS);\n        }\n      }\n    };\n\n    void loadSecuritySettings();\n    return () => {\n      active = false;\n    };\n  }, []);\n\n  useEffect(() => {\n    if (!pendingSecondFactorLogin) {\n      setSelectedSecondFactorPluginCode(undefined);\n      form.setFieldsValue({\n        secondFactorPluginCode: undefined,\n        verificationCode: undefined,\n      });\n      return;\n    }\n\n    const defaultPluginCode =\n      pendingSecondFactorLogin.secondFactorPluginCode || pendingSecondFactorLogin.secondFactorOptions?.[0]?.pluginCode;\n    setSelectedSecondFactorPluginCode((current) => current || defaultPluginCode);\n    form.setFieldsValue({\n      secondFactorPluginCode: defaultPluginCode,\n      verificationCode: '',\n    });\n  }, [form, pendingSecondFactorLogin]);\n\n  const openAgreementModal = (kind: AgreementKind) => {\n    setAgreementModalKind(kind);\n    setAgreementModalOpen(true);\n  };\n\n  const refreshImageCaptcha = useCallback(async () => {\n    setCaptchaLoading(true);\n    setLoginError(undefined);\n    try {\n      const challenge = await systemService.captchaChallenge('IMAGE', {\n        autoRedirectOnUnauthorized: false,\n        silent: true,\n      });\n      setCaptchaChallenge(challenge);\n      return challenge;\n    } finally {\n      setCaptchaLoading(false);\n    }\n  }, []);\n\n  useEffect(() => {\n    if (!securitySettings.captchaEnabled) {\n      setCaptchaChallenge(null);\n      return;\n    }\n\n    void refreshImageCaptcha();\n  }, [refreshImageCaptcha, securitySettings.captchaEnabled]);\n\n  const completeLoginSession = async (loginResponse: LoginResponse): Promise<boolean> => {\n    const sessionResult = await initializeAfterLogin(loginResponse);\n    const [menuTree, availablePlugins, latestBrandingSettings] = await Promise.all([\n      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n      systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),\n    ]);\n    const normalizedBrandingSettings = normalizeBrandingSettings(latestBrandingSettings);\n    persistBrandingSettings(normalizedBrandingSettings);\n    flushSync(() => {\n      setInitialState((prev: AppInitialState | undefined) => ({\n        ...prev,\n        currentUser: sessionResult.currentUser,\n        currentTenant: tenantContext.getCurrentTenant(),\n        myTenants: tenantContext.getMyTenants(),\n        menuTree,\n        menuVersion: (prev?.menuVersion ?? 0) + 1,\n        availablePlugins,\n        securitySettings: sessionResult.securitySettings,\n        brandingSettings: normalizedBrandingSettings,\n      }));\n    });\n\n    const searchParams = new URLSearchParams(location.search);\n    const redirect = searchParams.get('redirect') || '/dashboard/home';\n    history.replace(redirect);\n    return true;\n  };\n\n  const handleLoginSubmit = async (values: LoginFormValues): Promise<boolean> => {\n    if (!values.agreementAccepted) {\n      setLoginError('请先阅读并同意《用户协议》和《隐私协议》');\n      return false;\n    }\n\n    if (securitySettings.captchaEnabled) {\n      if (!captchaChallenge?.captchaId) {\n        setLoginError('验证码已过期，请刷新后重试');\n        return false;\n      }\n      if (!values.captchaCode) {\n        setLoginError('请输入验证码');\n        return false;\n      }\n    }\n\n    setSubmitting(true);\n    setLoginError(undefined);\n    try {\n      const loginResponse = await authService.login({\n        username: values.username,\n        password: values.password || '',\n        captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,\n        captchaCode: securitySettings.captchaEnabled ? values.captchaCode : undefined,\n      });\n\n      if (loginResponse.requiresSecondFactor) {\n        setPendingSecondFactorLogin(loginResponse);\n        setLoginError('检测到二次验证，请完成验证后继续');\n        return false;\n      }\n\n      await completeLoginSession(loginResponse);\n      return true;\n    } catch (error) {\n      if (error instanceof ApiRequestError) {\n        setLoginError(error.userMessage || error.message || '登录失败，请稍后重试');\n        return false;\n      }\n\n      if (error instanceof Error) {\n        setLoginError(error.message || '登录失败，请稍后重试');\n        return false;\n      }\n\n      setLoginError('登录失败，请稍后重试');\n      return false;\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  const handleSecondFactorSubmit = async (values: LoginFormValues): Promise<boolean> => {\n    const activeLogin = pendingSecondFactorLogin;\n    if (!activeLogin) {\n      setLoginError('请先完成账号登录');\n      return false;\n    }\n\n    const pluginCode = values.secondFactorPluginCode || selectedSecondFactorPluginCode || activeLogin.secondFactorPluginCode;\n    if (!pluginCode) {\n      setLoginError('请选择验证方式');\n      return false;\n    }\n\n    const selectedOption = activeLogin.secondFactorOptions?.find((option) => option.pluginCode === pluginCode);\n    const challengeId = selectedOption?.challengeId || activeLogin.secondFactorChallengeId;\n    if (!challengeId) {\n      setLoginError('验证挑战已失效，请重新登录');\n      return false;\n    }\n\n    if (!values.verificationCode) {\n      setLoginError('请输入验证码');\n      return false;\n    }\n\n    setSubmitting(true);\n    setLoginError(undefined);\n    try {\n      const response = await authService.secondFactorComplete({\n        pluginCode,\n        challengeId,\n        verificationCode: values.verificationCode,\n      });\n      setPendingSecondFactorLogin(null);\n      await completeLoginSession(response);\n      return true;\n    } catch (error) {\n      if (error instanceof ApiRequestError) {\n        setLoginError(error.userMessage || error.message || '二次验证失败，请稍后重试');\n        return false;\n      }\n\n      if (error instanceof Error) {\n        setLoginError(error.message || '二次验证失败，请稍后重试');\n        return false;\n      }\n\n      setLoginError('二次验证失败，请稍后重试');\n      return false;\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  const agreementContent =\n    agreementModalKind === 'user' ? agreementSettings.userAgreementMarkdown : agreementSettings.privacyAgreementMarkdown;\n  const agreementModalTitle = agreementModalKind === 'user' ? '用户协议' : '隐私协议';\n\n  const secondFactorOptions = useMemo(\n    () => pendingSecondFactorLogin?.secondFactorOptions || [],\n    [pendingSecondFactorLogin],\n  );\n  const selectedSecondFactorOption = useMemo(() => {\n    if (!pendingSecondFactorLogin) {\n      return undefined;\n    }\n    return (\n      secondFactorOptions.find((option) => option.pluginCode === selectedSecondFactorPluginCode) ||\n      pendingSecondFactorLogin.secondFactorOptions?.[0]\n    );\n  }, [pendingSecondFactorLogin, secondFactorOptions, selectedSecondFactorPluginCode]);\n\n  const isSecondFactorStep = Boolean(pendingSecondFactorLogin?.requiresSecondFactor);\n  const loginSubtitle = isSecondFactorStep\n    ? '请输入二次验证码'\n    : securitySettings.captchaEnabled\n      ? '请先完成验证码'\n      : '后台管理系统登录';\n\n  const heroBullets = isSecondFactorStep\n    ? [\n        { title: '二次验证', desc: '按插件配置完成短信或 2FA 复核。', icon: <SafetyOutlined /> },\n        { title: '挑战会话', desc: '同一账号只保留当前挑战链路。', icon: <AuditOutlined /> },\n        { title: '安全进入', desc: '通过后直接恢复租户与权限上下文。', icon: <LockOutlined /> },\n      ]\n    : [\n        { title: '统一账号', desc: '单一入口登录后进入工作台。', icon: <UserOutlined /> },\n        { title: '验证码校验', desc: '人机验证与登录强度策略联动。', icon: <SafetyOutlined /> },\n        { title: '统一审计', desc: '登录、失败和风控记录同步留痕。', icon: <AuditOutlined /> },\n      ];\n\n  return (\n    <div className=\"saas-login-page\">\n      <div className=\"saas-login-page__shell\">\n        <aside className=\"saas-login-page__hero\" aria-hidden=\"true\">\n          <div className=\"saas-login-page__hero-content\">\n            <Typography.Text className=\"saas-login-page__eyebrow\" translate=\"no\">\n              宏翔商道\n            </Typography.Text>\n            <Typography.Title level={1} className=\"saas-login-page__brand\">\n              {brandingSettings.websiteName}\n            </Typography.Title>\n            <Typography.Paragraph className=\"saas-login-page__hero-copy\">\n              统一登录中心，保持同一套宽高标尺和安全节奏。登录后直接进入工作台，安全、审计、插件和租户状态在同一屏完成承接。\n            </Typography.Paragraph>\n            <div className=\"saas-login-page__hero-list\">\n              {heroBullets.map((item) => (\n                <div className=\"saas-login-page__hero-item\" key={item.title}>\n                  <span className=\"saas-login-page__hero-icon\">{item.icon}</span>\n                  <span className=\"saas-login-page__hero-text\">\n                    <span className=\"saas-login-page__hero-title\">{item.title}</span>\n                    <span className=\"saas-login-page__hero-desc\">{item.desc}</span>\n                  </span>\n                </div>\n              ))}\n            </div>\n          </div>\n          <div className=\"saas-login-page__hero-visual\">\n            <div className=\"saas-login-page__hero-orb saas-login-page__hero-orb--one\" />\n            <div className=\"saas-login-page__hero-orb saas-login-page__hero-orb--two\" />\n            <div className=\"saas-login-page__hero-card\">\n              <span className=\"saas-login-page__hero-card-label\">首页体系</span>\n              <span className=\"saas-login-page__hero-card-value\">标准宽高</span>\n            </div>\n          </div>\n        </aside>\n\n        <section className=\"saas-login-page__panel\" aria-labelledby=\"login-panel-title\">\n          <div className=\"saas-login-page__panel-inner\">\n            <div className=\"saas-login-page__panel-header\">\n              <Typography.Text className=\"saas-login-page__panel-kicker\">\n                {isSecondFactorStep ? '二次验证' : '安全登录'}\n              </Typography.Text>\n              <Typography.Title level={3} id=\"login-panel-title\" className=\"saas-login-page__panel-title\">\n                {loginSubtitle}\n              </Typography.Title>\n              <Typography.Paragraph className=\"saas-login-page__panel-copy\">\n                {isSecondFactorStep\n                  ? selectedSecondFactorOption?.promptMessage || pendingSecondFactorLogin?.secondFactorPluginName || '请选择验证方式并输入验证码'\n                  : '请使用账号密码登录，完成验证码后即可进入后台管理系统。'}\n              </Typography.Paragraph>\n            </div>\n\n            <div aria-live=\"polite\" className=\"saas-login-page__message\">\n              {loginError ? <Alert showIcon type=\"error\" message={loginError} /> : null}\n            </div>\n\n            <Form<LoginFormValues>\n              key={isSecondFactorStep ? 'second-factor' : 'password-login'}\n              form={form}\n              layout=\"vertical\"\n              initialValues={\n                isSecondFactorStep\n                  ? {\n                      secondFactorPluginCode: selectedSecondFactorOption?.pluginCode,\n                      verificationCode: '',\n                    }\n                  : { remember: true, agreementAccepted: false }\n              }\n              onFinish={isSecondFactorStep ? handleSecondFactorSubmit : handleLoginSubmit}\n              requiredMark={false}\n              className=\"saas-login-form\"\n            >\n              {isSecondFactorStep ? (\n                <>\n                  <Alert\n                    showIcon\n                    type=\"info\"\n                    message=\"二次验证\"\n                    description={\n                      <Space direction=\"vertical\" size={4}>\n                        <Typography.Text>\n                          当前账号需要完成二次验证后才能继续登录。短信验证和 2FA 验证是两个独立插件，请选择对应方式。\n                        </Typography.Text>\n                        <Typography.Text type=\"secondary\">\n                          {selectedSecondFactorOption?.promptMessage || pendingSecondFactorLogin?.secondFactorPluginName || '请选择验证方式并输入验证码'}\n                        </Typography.Text>\n                      </Space>\n                    }\n                    style={{ marginBottom: 16 }}\n                  />\n                  {secondFactorOptions.length > 1 ? (\n                    <Form.Item\n                      name=\"secondFactorPluginCode\"\n                      label=\"验证方式\"\n                      rules={[{ required: true, message: '请选择验证方式' }]}\n                    >\n                      <Select\n                        options={secondFactorOptions.map((option) => ({\n                          label: `${option.pluginName} · ${option.factorName}${option.maskedContact ? ` (${option.maskedContact})` : ''}`,\n                          value: option.pluginCode,\n                        }))}\n                        onChange={(value) => setSelectedSecondFactorPluginCode(value)}\n                        placeholder=\"请选择验证方式…\"\n                      />\n                    </Form.Item>\n                  ) : selectedSecondFactorOption ? (\n                    <div className=\"saas-login-page__second-factor-summary\">\n                      <Typography.Text strong>{selectedSecondFactorOption.pluginName}</Typography.Text>\n                      {selectedSecondFactorOption.maskedContact ? (\n                        <Typography.Text type=\"secondary\">{selectedSecondFactorOption.maskedContact}</Typography.Text>\n                      ) : null}\n                    </div>\n                  ) : null}\n                  <Form.Item\n                    name=\"verificationCode\"\n                    rules={[\n                      { required: true, message: '请输入验证码' },\n                      { min: 4, message: '验证码长度不正确' },\n                    ]}\n                  >\n                    <Input\n                      size=\"large\"\n                      autoComplete=\"one-time-code\"\n                      inputMode=\"numeric\"\n                      spellCheck={false}\n                      placeholder=\"请输入验证码…\"\n                      aria-label=\"请输入验证码\"\n                    />\n                  </Form.Item>\n                  <div className=\"saas-login-form__footer saas-login-form__footer--compact\">\n                    <Button\n                      type=\"link\"\n                      onClick={() => {\n                        setPendingSecondFactorLogin(null);\n                        setLoginError(undefined);\n                        form.resetFields();\n                      }}\n                    >\n                      返回重新登录\n                    </Button>\n                    <Typography.Text type=\"secondary\">\n                      {selectedSecondFactorOption?.maskedContact ? `验证码会发送/校验到 ${selectedSecondFactorOption.maskedContact}` : null}\n                    </Typography.Text>\n                  </div>\n                </>\n              ) : (\n                <>\n                  <Form.Item\n                    name=\"username\"\n                    rules={[{ required: true, message: '请输入账号' }]}\n                  >\n                    <Input\n                      size=\"large\"\n                      prefix={<UserOutlined className=\"saas-login-page__field-icon\" />}\n                      autoComplete=\"username\"\n                      spellCheck={false}\n                      placeholder=\"请输入账号…\"\n                      aria-label=\"账号\"\n                    />\n                  </Form.Item>\n                  <Form.Item\n                    name=\"password\"\n                    rules={[\n                      { required: true, message: '请输入密码' },\n                      { min: 6, message: '密码长度不能少于 6 位' },\n                    ]}\n                  >\n                    <Input.Password\n                      size=\"large\"\n                      prefix={<LockOutlined className=\"saas-login-page__field-icon\" />}\n                      autoComplete=\"current-password\"\n                      placeholder=\"请输入密码…\"\n                      aria-label=\"密码\"\n                    />\n                  </Form.Item>\n\n                  {securitySettings.captchaEnabled ? (\n                    <div className=\"saas-login-page__captcha-section\">\n                      <div className=\"saas-login-page__captcha-input\">\n                        <Form.Item\n                          key={captchaChallenge?.captchaId || 'captcha-code'}\n                          name=\"captchaCode\"\n                          rules={[{ required: true, message: '请输入图片验证码' }]}\n                        >\n                          <Input\n                            size=\"large\"\n                            autoComplete=\"off\"\n                            spellCheck={false}\n                            maxLength={8}\n                            placeholder=\"请输入图片验证码…\"\n                            aria-label=\"图片验证码\"\n                          />\n                        </Form.Item>\n                      </div>\n                      <button\n                        type=\"button\"\n                        className=\"saas-login-page__captcha-media\"\n                        title=\"刷新验证码\"\n                        aria-label=\"刷新验证码\"\n                        onClick={() => void refreshImageCaptcha()}\n                      >\n                        <span className=\"saas-login-page__captcha-image\">\n                          {captchaLoading ? (\n                            <span className=\"saas-login-page__captcha-loading\">\n                              <Spin size=\"small\" />\n                            </span>\n                          ) : captchaChallenge?.imageUrl ? (\n                            <img\n                              src={captchaChallenge.imageUrl}\n                              alt=\"图片验证码\"\n                              width={160}\n                              height={56}\n                              loading=\"eager\"\n                              decoding=\"async\"\n                            />\n                          ) : (\n                            <span className=\"saas-login-page__captcha-placeholder\">点击刷新验证码</span>\n                          )}\n                        </span>\n                      </button>\n                    </div>\n                  ) : null}\n\n                  <Form.Item\n                    name=\"agreementAccepted\"\n                    valuePropName=\"checked\"\n                    className=\"saas-login-page__agreement-item\"\n                    rules={[\n                      {\n                        validator: (_, value) =>\n                          value ? Promise.resolve() : Promise.reject(new Error('请先阅读并同意《用户协议》和《隐私协议》')),\n                      },\n                    ]}\n                  >\n                    <Checkbox className=\"saas-login-page__agreement-checkbox\">\n                      <span className=\"saas-login-page__agreement-text\">我已阅读并同意</span>\n                      <Typography.Link\n                        className=\"saas-login-page__agreement-link\"\n                        onClick={(event) => {\n                          event.preventDefault();\n                          event.stopPropagation();\n                          openAgreementModal('user');\n                        }}\n                      >\n                        《用户协议》\n                      </Typography.Link>\n                      <span className=\"saas-login-page__agreement-text\">和</span>\n                      <Typography.Link\n                        className=\"saas-login-page__agreement-link\"\n                        onClick={(event) => {\n                          event.preventDefault();\n                          event.stopPropagation();\n                          openAgreementModal('privacy');\n                        }}\n                      >\n                        《隐私协议》\n                      </Typography.Link>\n                    </Checkbox>\n                  </Form.Item>\n\n                  <div className=\"saas-login-form__footer\">\n                    <Form.Item name=\"remember\" valuePropName=\"checked\" noStyle>\n                      <Checkbox className=\"saas-login-page__remember-checkbox\">保持登录状态</Checkbox>\n                    </Form.Item>\n                    <Button\n                      type=\"primary\"\n                      htmlType=\"submit\"\n                      loading={submitting}\n                      block\n                      size=\"large\"\n                      className=\"saas-login-form__submit\"\n                    >\n                      登录\n                    </Button>\n                  </div>\n                </>\n              )}\n            </Form>\n          </div>\n        </section>\n      </div>\n\n      <Modal\n        className=\"saas-login-page__agreement-modal-shell\"\n        open={agreementModalOpen}\n        title={agreementModalTitle}\n        onCancel={() => setAgreementModalOpen(false)}\n        footer={null}\n        width={Math.min(880, typeof window === 'undefined' ? 880 : window.innerWidth - 32)}\n        centered\n      >\n        <div className=\"saas-login-page__agreement-modal\">\n          {agreementLoading ? (\n            <div style={{ display: 'grid', placeItems: 'center', minHeight: 220 }}>\n              <Spin />\n            </div>\n          ) : (\n            <MarkdownViewer value={agreementContent} className=\"saas-login-page__agreement-markdown\" minHeight={180} />\n          )}\n        </div>\n      </Modal>\n    </div>\n  );\n};\n\nexport default Login;\n",
+      "__content": "import { LockOutlined, UserOutlined } from '@ant-design/icons';\nimport { LoginFormPage, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';\nimport { useCallback, useEffect, useState } from 'react';\nimport { flushSync } from 'react-dom';\nimport { history, useLocation } from 'umi';\nimport { Alert, Form, Input, Spin, Typography } from 'antd';\nimport { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';\nimport { authService } from '@/services/auth';\nimport { pluginService } from '@/services/plugin';\nimport { ApiRequestError } from '@/services/common/request';\nimport { initializeAfterLogin } from '@/auth/session';\nimport { tenantContext } from '@/tenant/context';\nimport type { AppInitialState } from '@/app';\nimport { useInitialStateModel } from '@/hooks/useInitialStateModel';\nimport { systemService } from '@/services/system';\nimport { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';\nimport type { CaptchaChallenge, SecuritySettings } from '@/types/api';\nimport './Login.less';\n\ninterface LoginFormValues {\n  username?: string;\n  password?: string;\n  remember?: boolean;\n  captchaCode?: string;\n}\n\nconst Login = () => {\n  const [submitting, setSubmitting] = useState(false);\n  const [loginError, setLoginError] = useState<string>();\n  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(DEFAULT_SECURITY_SETTINGS);\n  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);\n  const [captchaLoading, setCaptchaLoading] = useState(false);\n  const { initialState, setInitialState } = useInitialStateModel();\n  const location = useLocation();\n  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);\n\n  useEffect(() => {\n    let active = true;\n    const loadSecuritySettings = async () => {\n      try {\n        const result = await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true });\n        if (!active) {\n          return;\n        }\n        setSecuritySettings(normalizeSecuritySettings(result));\n      } catch {\n        if (active) {\n          setSecuritySettings(DEFAULT_SECURITY_SETTINGS);\n        }\n      }\n    };\n\n    void loadSecuritySettings();\n    return () => {\n      active = false;\n    };\n  }, []);\n\n  const refreshCaptcha = useCallback(async () => {\n    setCaptchaLoading(true);\n    try {\n      const challenge = await systemService.captchaChallenge(securitySettings.captchaType, {\n        autoRedirectOnUnauthorized: false,\n        silent: true,\n      });\n      setCaptchaChallenge(challenge);\n      return challenge;\n    } finally {\n      setCaptchaLoading(false);\n    }\n  }, [securitySettings.captchaType]);\n\n  useEffect(() => {\n    if (!securitySettings.captchaEnabled) {\n      setCaptchaChallenge(null);\n      return;\n    }\n\n    void refreshCaptcha();\n  }, [refreshCaptcha, securitySettings.captchaEnabled]);\n\n  const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {\n    if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {\n      setLoginError('验证码已过期，请刷新后重试');\n      return false;\n    }\n\n    if (securitySettings.captchaEnabled && !values.captchaCode) {\n      setLoginError('请输入验证码');\n      return false;\n    }\n\n    setSubmitting(true);\n    setLoginError(undefined);\n    try {\n      const loginResponse = await authService.login({\n        username: values.username,\n        password: values.password || '',\n        captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,\n        captchaCode: securitySettings.captchaEnabled ? values.captchaCode : undefined,\n      });\n\n      const sessionResult = await initializeAfterLogin(loginResponse);\n      const [menuTree, availablePlugins, latestBrandingSettings] = await Promise.all([\n        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),\n        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),\n        systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),\n      ]);\n      const normalizedBrandingSettings = normalizeBrandingSettings(latestBrandingSettings);\n      persistBrandingSettings(normalizedBrandingSettings);\n      flushSync(() => {\n        setInitialState((prev: AppInitialState | undefined) => ({\n          ...prev,\n          currentUser: sessionResult.currentUser,\n          currentTenant: tenantContext.getCurrentTenant(),\n          myTenants: tenantContext.getMyTenants(),\n          menuTree,\n          menuVersion: (prev?.menuVersion ?? 0) + 1,\n          availablePlugins,\n          securitySettings: sessionResult.securitySettings,\n          brandingSettings: normalizedBrandingSettings,\n        }));\n      });\n\n      const searchParams = new URLSearchParams(location.search);\n      const redirect = searchParams.get('redirect') || '/dashboard/home';\n      history.replace(redirect);\n      return true;\n    } catch (error) {\n      if (error instanceof ApiRequestError) {\n        setLoginError(error.userMessage || error.message || '登录失败，请稍后重试');\n        if (securitySettings.captchaEnabled) {\n          void refreshCaptcha();\n        }\n        return false;\n      }\n\n      if (error instanceof Error) {\n        setLoginError(error.message || '登录失败，请稍后重试');\n        if (securitySettings.captchaEnabled) {\n          void refreshCaptcha();\n        }\n        return false;\n      }\n\n      setLoginError('登录失败，请稍后重试');\n      if (securitySettings.captchaEnabled) {\n        void refreshCaptcha();\n      }\n      return false;\n    } finally {\n      setSubmitting(false);\n    }\n  };\n\n  return (\n    <div className=\"saas-login-page\">\n      <LoginFormPage<LoginFormValues>\n        title={brandingSettings.websiteName}\n        subTitle=\"后台管理系统登录\"\n        initialValues={{ remember: true }}\n        message={loginError ? <Alert showIcon type=\"error\" message={loginError} /> : false}\n        onFinish={handleSubmit}\n        submitter={{\n          submitButtonProps: {\n            children: '登录',\n            loading: submitting,\n            block: true,\n          },\n          resetButtonProps: false,\n        }}\n        containerStyle={{\n          width: '100%',\n          maxWidth: 360,\n        }}\n        style={{\n          width: '100%',\n          height: '100%',\n        }}\n      >\n        <ProFormText\n          name=\"username\"\n          fieldProps={{\n            prefix: <UserOutlined className=\"saas-login-page__field-icon\" />,\n            autoComplete: 'username',\n          }}\n          placeholder=\"请输入账号\"\n          rules={[{ required: true, message: '请输入账号' }]}\n        />\n        <ProFormText.Password\n          name=\"password\"\n          fieldProps={{\n            prefix: <LockOutlined className=\"saas-login-page__field-icon\" />,\n            autoComplete: 'current-password',\n          }}\n          placeholder=\"请输入密码\"\n          rules={[\n            { required: true, message: '请输入密码' },\n            { min: 6, message: '密码长度不能少于 6 位' },\n          ]}\n        />\n        {securitySettings.captchaEnabled ? (\n          <div className=\"saas-login-page__captcha-section\">\n            <div className=\"saas-login-page__captcha-input\">\n              <Form.Item\n                key={captchaChallenge?.captchaId || 'captcha-code'}\n                name=\"captchaCode\"\n                rules={[{ required: true, message: '请输入验证码' }]}\n              >\n                <Input\n                  size=\"large\"\n                  autoComplete=\"off\"\n                  spellCheck={false}\n                  maxLength={8}\n                  placeholder=\"请输入验证码\"\n                  aria-label=\"验证码\"\n                />\n              </Form.Item>\n            </div>\n            <button\n              type=\"button\"\n              className=\"saas-login-page__captcha-media\"\n              title=\"刷新验证码\"\n              aria-label=\"刷新验证码\"\n              onClick={() => void refreshCaptcha()}\n            >\n              <span className=\"saas-login-page__captcha-image\">\n                {captchaLoading ? (\n                  <span className=\"saas-login-page__captcha-loading\">\n                    <Spin size=\"small\" />\n                  </span>\n                ) : captchaChallenge?.imageUrl ? (\n                  <img src={captchaChallenge.imageUrl} alt=\"验证码\" />\n                ) : (\n                  <Typography.Text className=\"saas-login-page__captcha-placeholder\">点击刷新验证码</Typography.Text>\n                )}\n              </span>\n            </button>\n          </div>\n        ) : null}\n        <div className=\"saas-login-page__actions\">\n          <ProFormCheckbox noStyle name=\"remember\">\n            保持登录状态\n          </ProFormCheckbox>\n        </div>\n      </LoginFormPage>\n    </div>\n  );\n};\n\nexport default Login;\n",
       "__isJSFile": true,
       "__absFile": "/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user/Login.tsx"
     },
@@ -7887,7 +8187,7 @@
             "format": "esm"
           },
           "src/pages/user/Login.tsx": {
-            "bytes": 5265,
+            "bytes": 9025,
             "imports": [
               {
                 "path": "@ant-design/icons",
@@ -7958,6 +8258,11 @@
                 "path": "src/services/system/index.ts",
                 "kind": "import-statement",
                 "original": "@/services/system"
+              },
+              {
+                "path": "src/auth/securitySettings.ts",
+                "kind": "import-statement",
+                "original": "@/auth/securitySettings"
               },
               {
                 "path": "./Login.less",
@@ -10676,7 +10981,7 @@
                 "bytesInOutput": 432
               },
               "src/pages/user/Login.tsx": {
-                "bytesInOutput": 5884
+                "bytesInOutput": 10219
               },
               "src/pages/exception/NotFound.tsx": {
                 "bytesInOutput": 397
@@ -10703,7 +11008,7 @@
                 "bytesInOutput": 2136
               }
             },
-            "bytes": 446142
+            "bytes": 450477
           }
         }
       }
@@ -19484,10 +19789,20 @@
           "type": "ImportDeclaration"
         },
         {
-          "end": 188,
+          "end": 212,
           "importKind": "value",
           "source": "react",
           "specifiers": [
+            {
+              "imported": "useCallback",
+              "local": "useCallback",
+              "type": "ImportSpecifier"
+            },
+            {
+              "imported": "useEffect",
+              "local": "useEffect",
+              "type": "ImportSpecifier"
+            },
             {
               "imported": "useState",
               "local": "useState",
@@ -19498,7 +19813,7 @@
           "type": "ImportDeclaration"
         },
         {
-          "end": 227,
+          "end": 251,
           "importKind": "value",
           "source": "react-dom",
           "specifiers": [
@@ -19508,11 +19823,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 189,
+          "start": 213,
           "type": "ImportDeclaration"
         },
         {
-          "end": 271,
+          "end": 295,
           "importKind": "value",
           "source": "umi",
           "specifiers": [
@@ -19527,11 +19842,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 228,
+          "start": 252,
           "type": "ImportDeclaration"
         },
         {
-          "end": 301,
+          "end": 356,
           "importKind": "value",
           "source": "antd",
           "specifiers": [
@@ -19539,13 +19854,33 @@
               "imported": "Alert",
               "local": "Alert",
               "type": "ImportSpecifier"
+            },
+            {
+              "imported": "Form",
+              "local": "Form",
+              "type": "ImportSpecifier"
+            },
+            {
+              "imported": "Input",
+              "local": "Input",
+              "type": "ImportSpecifier"
+            },
+            {
+              "imported": "Spin",
+              "local": "Spin",
+              "type": "ImportSpecifier"
+            },
+            {
+              "imported": "Typography",
+              "local": "Typography",
+              "type": "ImportSpecifier"
             }
           ],
-          "start": 272,
+          "start": 296,
           "type": "ImportDeclaration"
         },
         {
-          "end": 418,
+          "end": 473,
           "importKind": "value",
           "source": "@/branding/settings",
           "specifiers": [
@@ -19565,11 +19900,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 302,
+          "start": 357,
           "type": "ImportDeclaration"
         },
         {
-          "end": 465,
+          "end": 520,
           "importKind": "value",
           "source": "@/services/auth",
           "specifiers": [
@@ -19579,11 +19914,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 419,
+          "start": 474,
           "type": "ImportDeclaration"
         },
         {
-          "end": 516,
+          "end": 571,
           "importKind": "value",
           "source": "@/services/plugin",
           "specifiers": [
@@ -19593,11 +19928,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 466,
+          "start": 521,
           "type": "ImportDeclaration"
         },
         {
-          "end": 577,
+          "end": 632,
           "importKind": "value",
           "source": "@/services/common/request",
           "specifiers": [
@@ -19607,11 +19942,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 517,
+          "start": 572,
           "type": "ImportDeclaration"
         },
         {
-          "end": 632,
+          "end": 687,
           "importKind": "value",
           "source": "@/auth/session",
           "specifiers": [
@@ -19621,11 +19956,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 578,
+          "start": 633,
           "type": "ImportDeclaration"
         },
         {
-          "end": 682,
+          "end": 737,
           "importKind": "value",
           "source": "@/tenant/context",
           "specifiers": [
@@ -19635,11 +19970,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 633,
+          "start": 688,
           "type": "ImportDeclaration"
         },
         {
-          "end": 728,
+          "end": 783,
           "importKind": "type",
           "source": "@/app",
           "specifiers": [
@@ -19649,11 +19984,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 683,
+          "start": 738,
           "type": "ImportDeclaration"
         },
         {
-          "end": 797,
+          "end": 852,
           "importKind": "value",
           "source": "@/hooks/useInitialStateModel",
           "specifiers": [
@@ -19663,11 +19998,11 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 729,
+          "start": 784,
           "type": "ImportDeclaration"
         },
         {
-          "end": 848,
+          "end": 903,
           "importKind": "value",
           "source": "@/services/system",
           "specifiers": [
@@ -19677,15 +20012,53 @@
               "type": "ImportSpecifier"
             }
           ],
-          "start": 798,
+          "start": 853,
           "type": "ImportDeclaration"
         },
         {
-          "end": 871,
+          "end": 999,
+          "importKind": "value",
+          "source": "@/auth/securitySettings",
+          "specifiers": [
+            {
+              "imported": "DEFAULT_SECURITY_SETTINGS",
+              "local": "DEFAULT_SECURITY_SETTINGS",
+              "type": "ImportSpecifier"
+            },
+            {
+              "imported": "normalizeSecuritySettings",
+              "local": "normalizeSecuritySettings",
+              "type": "ImportSpecifier"
+            }
+          ],
+          "start": 904,
+          "type": "ImportDeclaration"
+        },
+        {
+          "end": 1070,
+          "importKind": "type",
+          "source": "@/types/api",
+          "specifiers": [
+            {
+              "imported": "CaptchaChallenge",
+              "local": "CaptchaChallenge",
+              "type": "ImportSpecifier"
+            },
+            {
+              "imported": "SecuritySettings",
+              "local": "SecuritySettings",
+              "type": "ImportSpecifier"
+            }
+          ],
+          "start": 1000,
+          "type": "ImportDeclaration"
+        },
+        {
+          "end": 1093,
           "importKind": "value",
           "source": "./Login.less",
           "specifiers": [],
-          "start": 849,
+          "start": 1071,
           "type": "ImportDeclaration"
         }
       ],
