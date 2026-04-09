@@ -15,12 +15,19 @@ import com.yourcompany.saas.modules.plugin.loader.PluginArtifactLoader;
 import com.yourcompany.saas.modules.plugin.loader.PluginRuntimeLoader;
 import com.yourcompany.saas.modules.plugin.registry.PluginRegistry;
 import com.yourcompany.saas.modules.plugin.registry.PluginRuntimeDescriptor;
+import com.yourcompany.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.yourcompany.saas.modules.plugin.service.PluginMigrationService;
 import com.yourcompany.saas.modules.plugin.service.PluginPersistenceService;
 import com.yourcompany.saas.modules.plugin.service.PluginSemver;
 import com.yourcompany.saas.modules.plugin.vo.PluginVO;
+import com.yourcompany.saas.modules.user.domain.UserDomainService;
+import com.yourcompany.saas.modules.user.entity.SysUserEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
@@ -34,6 +41,7 @@ import java.util.Optional;
 @Service
 public class PluginManagementAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(PluginManagementAppService.class);
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
     };
 
@@ -44,6 +52,8 @@ public class PluginManagementAppService {
     private final PluginRegistry pluginRegistry;
     private final PluginSemver pluginSemver;
     private final PermissionSnapshotService permissionSnapshotService;
+    private final UserDomainService userDomainService;
+    private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
 
     public PluginManagementAppService(
@@ -54,6 +64,8 @@ public class PluginManagementAppService {
             PluginRegistry pluginRegistry,
             PluginSemver pluginSemver,
             PermissionSnapshotService permissionSnapshotService,
+            UserDomainService userDomainService,
+            PlatformTransactionManager transactionManager,
             ObjectMapper objectMapper
     ) {
         this.pluginArtifactLoader = pluginArtifactLoader;
@@ -63,6 +75,8 @@ public class PluginManagementAppService {
         this.pluginRegistry = pluginRegistry;
         this.pluginSemver = pluginSemver;
         this.permissionSnapshotService = permissionSnapshotService;
+        this.userDomainService = userDomainService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper;
     }
 
@@ -72,6 +86,7 @@ public class PluginManagementAppService {
         PluginVersionEntity versionEntity = pluginPersistenceService.saveUploadedPackage(
                 artifact.metadata(),
                 artifact.zipPath(),
+                artifact.packageRoot(),
                 artifact.validationReportJson(),
                 artifact.packageChecksum(),
                 artifact.signaturePath().toString(),
@@ -161,24 +176,33 @@ public class PluginManagementAppService {
                 .orElseThrow();
     }
 
-    @Transactional
     public void enable(PluginDTO.EnableRequest request, CurrentUser currentUser) {
-        String version = request.getVersion();
-        if (version == null || version.isBlank()) {
-            version = pluginRegistry.findActiveVersion(request.getPluginCode())
-                    .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "当前插件不存在激活版本"));
+        try {
+            String resolvedVersion = request.getVersion();
+            if (resolvedVersion == null || resolvedVersion.isBlank()) {
+                resolvedVersion = pluginRegistry.findActiveVersion(request.getPluginCode())
+                        .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "当前插件不存在激活版本"));
+            }
+            final String version = resolvedVersion;
+            ensureLoaded(request.getPluginCode(), version);
+            enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
+            transactionTemplate.executeWithoutResult(status -> {
+                pluginPersistenceService.enablePluginForTenant(
+                        request.getTenantId(),
+                        request.getPluginCode(),
+                        version,
+                        request.getConfigJson(),
+                        currentUser.getUserId()
+                );
+                pluginPersistenceService.registerTenantPermissions(request.getTenantId(), request.getPluginCode(), version);
+            });
+            permissionSnapshotService.invalidateTenant(request.getTenantId());
+            safeLog(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "租户插件已启用", null, currentUser.getUserId());
+        } catch (BizException exception) {
+            throw exception;
+        } catch (Throwable throwable) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "启用插件失败: " + rootCauseMessage(throwable));
         }
-        ensureLoaded(request.getPluginCode(), version);
-        pluginPersistenceService.enablePluginForTenant(
-                request.getTenantId(),
-                request.getPluginCode(),
-                version,
-                request.getConfigJson(),
-                currentUser.getUserId()
-        );
-        pluginPersistenceService.registerTenantPermissions(request.getTenantId(), request.getPluginCode(), version);
-        permissionSnapshotService.invalidateTenant(request.getTenantId());
-        log(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "租户插件已启用", null, currentUser.getUserId());
     }
 
     @Transactional
@@ -187,7 +211,7 @@ public class PluginManagementAppService {
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前租户尚未启用该插件"));
         pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());
         permissionSnapshotService.invalidateTenant(request.getTenantId());
-        log(request.getTenantId(), request.getPluginCode(), tenantEntity.getPluginVersion(), "DISABLE", "DISABLED", "SUCCESS", "租户插件已停用", null, currentUser.getUserId());
+        safeLog(request.getTenantId(), request.getPluginCode(), tenantEntity.getPluginVersion(), "DISABLE", "DISABLED", "SUCCESS", "租户插件已停用", null, currentUser.getUserId());
     }
 
     public List<PluginVO.PluginDefinitionVO> listDefinitions() {
@@ -221,6 +245,61 @@ public class PluginManagementAppService {
             }
         }
         return result;
+    }
+
+    @Transactional
+    public void uninstall(String pluginCode, CurrentUser currentUser) {
+        List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
+        for (PluginVersionEntity versionEntity : versions) {
+            if (versionEntity.getArtifactPath() != null) {
+                pluginArtifactLoader.removeVersionHome(Path.of(versionEntity.getArtifactPath()));
+            }
+            try {
+                pluginRegistry.unload(pluginCode, versionEntity.getVersion());
+            } catch (Exception exception) {
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时卸载失败: " + exception.getMessage());
+            }
+        }
+        pluginPersistenceService.uninstallPlugin(pluginCode, currentUser.getUserId());
+        for (Long tenantId : pluginPersistenceService.listTenantIdsForPlugin(pluginCode)) {
+            permissionSnapshotService.invalidateTenant(tenantId);
+        }
+        safeLog(null, pluginCode, versions.isEmpty() ? null : versions.get(0).getVersion(), "UNINSTALL", "REMOVED", "SUCCESS", "插件已卸载", null, currentUser.getUserId());
+    }
+
+    public Optional<PluginRuntimeDescriptor> findTenantRuntimeDescriptor(Long tenantId, String pluginCode) {
+        return availablePlugins(tenantId).stream()
+                .filter(item -> pluginCode.equals(item.getPluginCode()))
+                .findFirst()
+                .flatMap(item -> pluginRegistry.find(item.getPluginCode(), item.getVersion()));
+    }
+
+    public Optional<PluginRuntimeDescriptor> findActiveRuntimeDescriptor(String pluginCode) {
+        return pluginRegistry.findActiveVersion(pluginCode).flatMap(version -> pluginRegistry.find(pluginCode, version));
+    }
+
+    public Optional<PluginSecondFactorProvider> findSecondFactorProvider(Long tenantId, String pluginCode) {
+        return findTenantRuntimeDescriptor(tenantId, pluginCode).map(PluginRuntimeDescriptor::getSecondFactorProvider);
+    }
+
+    public Optional<PluginSecondFactorProvider> findSecondFactorProvider(String pluginCode) {
+        return findActiveRuntimeDescriptor(pluginCode).map(PluginRuntimeDescriptor::getSecondFactorProvider);
+    }
+
+    private void enforceEmailRequirementIfNeeded(String pluginCode, String version, CurrentUser currentUser) {
+        PluginRuntimeDescriptor descriptor = pluginRegistry.find(pluginCode, version)
+                .orElse(null);
+        if (descriptor == null || descriptor.getSecondFactorProvider() == null) {
+            return;
+        }
+        PluginSecondFactorProvider provider = descriptor.getSecondFactorProvider();
+        if (!provider.requiresEmail()) {
+            return;
+        }
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId()).orElse(null);
+        if (user == null || !org.springframework.util.StringUtils.hasText(user.getEmail())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先补充邮箱后再启用该验证方式");
+        }
     }
 
     public PluginRuntimeDescriptor requireTenantRuntime(Long tenantId, String pluginCode) {
@@ -267,6 +346,9 @@ public class PluginManagementAppService {
             return;
         }
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
+        if (versionEntity.getArtifactPath() == null || versionEntity.getArtifactPath().isBlank()) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件版本尚未安装，请先安装后再启用");
+        }
         if (!Files.exists(Path.of(versionEntity.getArtifactPath()))) {
             install(pluginCode, version, new CurrentUser(0L, "system", null, null, 0, true, java.util.Set.of()));
             return;
@@ -348,5 +430,49 @@ public class PluginManagementAppService {
                 failureStack,
                 operatorId
         );
+    }
+
+    private void safeLog(
+            Long tenantId,
+            String pluginCode,
+            String version,
+            String operationType,
+            String lifecycleStatus,
+            String resultStatus,
+            String detailMessage,
+            String failureStack,
+            Long operatorId
+    ) {
+        try {
+            log(
+                    tenantId,
+                    pluginCode,
+                    version,
+                    operationType,
+                    lifecycleStatus,
+                    resultStatus,
+                    detailMessage,
+                    failureStack,
+                    operatorId
+            );
+        } catch (Throwable throwable) {
+            log.warn("Failed to write plugin runtime log pluginCode={} version={} operationType={}", pluginCode, version, operationType, throwable);
+        }
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable cursor = throwable;
+        while (cursor.getCause() != null && cursor.getCause() != cursor) {
+            cursor = cursor.getCause();
+        }
+        String message = cursor.getMessage();
+        if (message != null && !message.isBlank()) {
+            return message;
+        }
+        message = throwable.getMessage();
+        if (message != null && !message.isBlank()) {
+            return message;
+        }
+        return throwable.getClass().getSimpleName();
     }
 }

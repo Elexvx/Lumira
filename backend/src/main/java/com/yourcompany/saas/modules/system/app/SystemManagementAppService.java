@@ -17,7 +17,11 @@ import com.yourcompany.saas.modules.tenant.domain.TenantDomainService;
 import com.yourcompany.saas.modules.tenant.entity.TenantInfoEntity;
 import com.yourcompany.saas.modules.user.domain.UserDomainService;
 import com.yourcompany.saas.modules.user.entity.SysUserEntity;
+import com.yourcompany.saas.infrastructure.security.service.PasswordPolicyService;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,8 +32,10 @@ import org.springframework.util.StringUtils;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Properties;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -47,14 +53,48 @@ public class SystemManagementAppService {
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
     private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
+    private static final String BRANDING_GITHUB_LINK_URL_KEY = "branding.github-link-url";
+    private static final String BRANDING_HELP_LINK_URL_KEY = "branding.help-link-url";
+    private static final String BRANDING_COMPANY_NAME_KEY = "branding.company-name";
+    private static final String BRANDING_COPYRIGHT_START_YEAR_KEY = "branding.copyright-start-year";
     private static final String BRANDING_FOOTER_ICP_KEY = "branding.footer-icp";
     private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
     private static final List<String> BRANDING_CONFIG_KEYS = List.of(
             BRANDING_WEBSITE_NAME_KEY,
             BRANDING_WEBSITE_FAVICON_URL_KEY,
             BRANDING_WEBSITE_LOGO_URL_KEY,
+            BRANDING_GITHUB_LINK_URL_KEY,
+            BRANDING_HELP_LINK_URL_KEY,
+            BRANDING_COMPANY_NAME_KEY,
+            BRANDING_COPYRIGHT_START_YEAR_KEY,
             BRANDING_FOOTER_ICP_KEY,
             BRANDING_FOOTER_COPYRIGHT_KEY
+    );
+
+    private static final String AGREEMENT_USER_MARKDOWN_KEY = "agreement.user-agreement-markdown";
+    private static final String AGREEMENT_PRIVACY_MARKDOWN_KEY = "agreement.privacy-agreement-markdown";
+    private static final List<String> AGREEMENT_CONFIG_KEYS = List.of(
+            AGREEMENT_USER_MARKDOWN_KEY,
+            AGREEMENT_PRIVACY_MARKDOWN_KEY
+    );
+
+    private static final String SMTP_HOST_KEY = "smtp.host";
+    private static final String SMTP_PORT_KEY = "smtp.port";
+    private static final String SMTP_USERNAME_KEY = "smtp.username";
+    private static final String SMTP_PASSWORD_KEY = "smtp.password";
+    private static final String SMTP_FROM_KEY = "smtp.from";
+    private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
+    private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
+    private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
+    private static final List<String> SMTP_CONFIG_KEYS = List.of(
+            SMTP_HOST_KEY,
+            SMTP_PORT_KEY,
+            SMTP_USERNAME_KEY,
+            SMTP_PASSWORD_KEY,
+            SMTP_FROM_KEY,
+            SMTP_AUTH_ENABLED_KEY,
+            SMTP_STARTTLS_ENABLED_KEY,
+            SMTP_SSL_ENABLED_KEY
     );
 
 
@@ -81,11 +121,11 @@ public class SystemManagementAppService {
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("系统管理", "用户、角色、菜单、字典", "/system/management", "system:view"),
-            shortcut("在线用户", "实时会话、踢出和封禁", "/system/online-users", "system:online-user:view"),
+            shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
             shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
             shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
-            shortcut("审计中心", "登录和操作日志", "/audit/overview", "audit:view"),
+            shortcut("审计中心", "登录和操作日志", "/system/monitoring/audit", "audit:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
     );
 
@@ -100,6 +140,7 @@ public class SystemManagementAppService {
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
     private final SecuritySettingsService securitySettingsService;
+    private final PasswordPolicyService passwordPolicyService;
 
     public SystemManagementAppService(
             JdbcTemplate jdbcTemplate,
@@ -112,7 +153,8 @@ public class SystemManagementAppService {
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService,
             OperationAuditService operationAuditService,
-            SecuritySettingsService securitySettingsService
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.authAppService = authAppService;
@@ -125,6 +167,7 @@ public class SystemManagementAppService {
         this.loginAuditService = loginAuditService;
         this.operationAuditService = operationAuditService;
         this.securitySettingsService = securitySettingsService;
+        this.passwordPolicyService = passwordPolicyService;
     }
 
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
@@ -643,6 +686,66 @@ public class SystemManagementAppService {
         return getConfig(currentUser, id);
     }
 
+    public SystemVO.SmtpSettingsVO getSmtpSettings(CurrentUser currentUser) {
+        return loadSmtpSettings(currentTenantId(currentUser));
+    }
+
+    @Transactional
+    public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        Map<String, String> currentValues = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
+        SystemVO.SmtpSettingsVO current = loadSmtpSettings(tenantId);
+        String host = sanitizeText(request.getHost(), current.getHost());
+        Integer port = request.getPort() == null ? current.getPort() : request.getPort();
+        String username = sanitizeText(request.getUsername(), current.getUsername());
+        String existingPassword = defaultIfBlank(currentValues.get(SMTP_PASSWORD_KEY), "");
+        String password = StringUtils.hasText(request.getPassword()) ? request.getPassword() : existingPassword;
+        String from = sanitizeText(request.getFrom(), current.getFrom());
+        boolean authEnabled = request.getAuthEnabled() == null ? Boolean.TRUE.equals(current.getAuthEnabled()) : request.getAuthEnabled();
+        boolean startTlsEnabled = request.getStartTlsEnabled() == null ? Boolean.TRUE.equals(current.getStartTlsEnabled()) : request.getStartTlsEnabled();
+        boolean sslEnabled = request.getSslEnabled() == null ? Boolean.TRUE.equals(current.getSslEnabled()) : request.getSslEnabled();
+
+        upsertPlatformConfig(tenantId, SMTP_HOST_KEY, "SMTP 主机", host, "邮件服务器地址", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_PORT_KEY, "SMTP 端口", String.valueOf(port == null ? 25 : port), "邮件服务器端口", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_USERNAME_KEY, "SMTP 用户名", username, "SMTP 登录用户名", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_PASSWORD_KEY, "SMTP 密码", password, "SMTP 登录密码", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_FROM_KEY, "发件人地址", from, "SMTP 默认发件人", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_AUTH_ENABLED_KEY, "SMTP 认证", String.valueOf(authEnabled), "是否启用 SMTP AUTH", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "是否启用 STARTTLS", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "是否启用 SSL", operatorId);
+
+        operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
+        return loadSmtpSettings(tenantId);
+    }
+
+    @Transactional
+    public SystemVO.SmtpTestVO testSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpTestRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
+        JavaMailSenderImpl mailSender = buildSmtpSender(values);
+        String from = defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY));
+        if (!StringUtils.hasText(from)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先补充 SMTP 发件人地址");
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(request.getToEmail());
+        message.setFrom(from);
+        message.setSubject(defaultIfBlank(request.getSubject(), "SMTP 测试邮件"));
+        message.setText(defaultIfBlank(request.getContent(), "这是一封来自系统的 SMTP 测试邮件。"));
+        try {
+            mailSender.send(message);
+        } catch (MailException exception) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "SMTP 测试发送失败: " + exception.getMessage());
+        }
+        SystemVO.SmtpTestVO result = new SystemVO.SmtpTestVO();
+        result.setSuccess(Boolean.TRUE);
+        result.setMessage("SMTP 测试邮件已发送");
+        result.setToEmail(request.getToEmail());
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "smtp", "test", "CREATE", "SUCCESS", "SMTP 测试发送至 " + request.getToEmail());
+        return result;
+    }
+
     @Transactional
     public SystemVO.ConfigVO createConfig(CurrentUser currentUser, SystemDTO.ConfigUpsertRequest request) {
         Long tenantId = "TENANT".equalsIgnoreCase(request.getConfigScope()) ? currentTenantId(currentUser) : null;
@@ -684,7 +787,12 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.SecuritySettingsVO updateSecuritySettings(CurrentUser currentUser, SystemDTO.SecuritySettingsRequest request) {
-        SecuritySettingsService.SecuritySettingsSnapshot updated = securitySettingsService.updateSettings(toSnapshot(request));
+        SecuritySettingsService.SecuritySettingsSnapshot updated = securitySettingsService.updateSettings(
+                toSnapshot(securitySettingsService.loadSettings(), request)
+        );
+        if (!updated.isAllowMultiDeviceLogin()) {
+            onlineSessionManagementAppService.retainLatestSessionForEachUser();
+        }
         operationAuditService.log(
                 currentTenantId(currentUser),
                 currentUser.getUserId(),
@@ -707,15 +815,30 @@ public class SystemManagementAppService {
         return loadBrandingSettings(tenantId);
     }
 
+    public SystemVO.SecuritySettingsVO getPublicSecuritySettings() {
+        return toSecuritySettingsVO(securitySettingsService.loadSettings());
+    }
+
+    public SystemVO.AgreementSettingsVO getAgreementSettings() {
+        return loadAgreementSettings(DEFAULT_PUBLIC_TENANT_ID);
+    }
+
+    public SystemVO.AgreementSettingsVO getPublicAgreementSettings() {
+        return loadAgreementSettings(DEFAULT_PUBLIC_TENANT_ID);
+    }
+
     @Transactional
     public SystemVO.BrandingSettingsVO updateBrandingSettings(CurrentUser currentUser, SystemDTO.BrandingSettingsRequest request) {
         Long tenantId = currentTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
+        String websiteName = sanitizeBrandingText(request.getWebsiteName(), "宏翔商道");
+        String companyName = sanitizeBrandingText(request.getCompanyName(), websiteName);
+        Integer copyrightStartYear = request.getCopyrightStartYear() == null ? LocalDate.now().getYear() : request.getCopyrightStartYear();
         upsertBrandingConfig(
                 tenantId,
                 BRANDING_WEBSITE_NAME_KEY,
                 "站点名称",
-                sanitizeBrandingText(request.getWebsiteName(), "宏翔商道"),
+                websiteName,
                 "控制台顶部与浏览器标题展示名称",
                 operatorId
         );
@@ -737,6 +860,38 @@ public class SystemManagementAppService {
         );
         upsertBrandingConfig(
                 tenantId,
+                BRANDING_GITHUB_LINK_URL_KEY,
+                "GitHub 链接",
+                sanitizeBrandingText(request.getGithubLinkUrl(), ""),
+                "顶部 GitHub 图标跳转地址",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_HELP_LINK_URL_KEY,
+                "帮助链接",
+                sanitizeBrandingText(request.getHelpLinkUrl(), ""),
+                "顶部帮助图标跳转地址",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_COMPANY_NAME_KEY,
+                "公司名称",
+                companyName,
+                "页脚版权主体名称",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
+                BRANDING_COPYRIGHT_START_YEAR_KEY,
+                "版权起始年份",
+                String.valueOf(copyrightStartYear),
+                "页脚版权起始年份",
+                operatorId
+        );
+        upsertBrandingConfig(
+                tenantId,
                 BRANDING_FOOTER_ICP_KEY,
                 "页脚 ICP 备案",
                 sanitizeBrandingText(request.getFooterIcp(), ""),
@@ -747,8 +902,8 @@ public class SystemManagementAppService {
                 tenantId,
                 BRANDING_FOOTER_COPYRIGHT_KEY,
                 "页脚版权声明",
-                sanitizeBrandingText(request.getFooterCopyright(), ""),
-                "页脚版权声明",
+                buildCopyrightText(companyName, copyrightStartYear),
+                "页脚版权声明（由公司名称和起始年份生成）",
                 operatorId
         );
 
@@ -763,6 +918,39 @@ public class SystemManagementAppService {
                 "更新个性化设置"
         );
         return loadBrandingSettings(tenantId);
+    }
+
+    @Transactional
+    public SystemVO.AgreementSettingsVO updateAgreementSettings(CurrentUser currentUser, SystemDTO.AgreementSettingsRequest request) {
+        Long tenantId = DEFAULT_PUBLIC_TENANT_ID;
+        Long operatorId = currentUser.getUserId();
+        upsertConfigValue(
+                tenantId,
+                AGREEMENT_USER_MARKDOWN_KEY,
+                "用户协议",
+                normalizeMarkdownText(request.getUserAgreementMarkdown()),
+                "用户协议 Markdown",
+                operatorId
+        );
+        upsertConfigValue(
+                tenantId,
+                AGREEMENT_PRIVACY_MARKDOWN_KEY,
+                "隐私协议",
+                normalizeMarkdownText(request.getPrivacyAgreementMarkdown()),
+                "隐私协议 Markdown",
+                operatorId
+        );
+        operationAuditService.log(
+                currentTenantId(currentUser),
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "system",
+                "agreement-update",
+                "UPDATE",
+                "SUCCESS",
+                "更新协议设置"
+        );
+        return loadAgreementSettings(tenantId);
     }
 
 
@@ -919,13 +1107,87 @@ public class SystemManagementAppService {
         settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
         settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
         settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
+        settings.setGithubLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_URL_KEY), ""));
+        settings.setHelpLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_URL_KEY), ""));
+        settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
+        settings.setCopyrightStartYear(parseInteger(valueByKey.get(BRANDING_COPYRIGHT_START_YEAR_KEY), LocalDate.now().getYear()));
         settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
-        settings.setFooterCopyright(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY), ""));
+        settings.setFooterCopyright(defaultIfBlank(
+                valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY),
+                buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())
+        ));
         return settings;
+    }
+
+    private SystemVO.AgreementSettingsVO loadAgreementSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, AGREEMENT_CONFIG_KEYS, false);
+
+        SystemVO.AgreementSettingsVO settings = new SystemVO.AgreementSettingsVO();
+        settings.setUserAgreementMarkdown(defaultIfBlank(valueByKey.get(AGREEMENT_USER_MARKDOWN_KEY), ""));
+        settings.setPrivacyAgreementMarkdown(defaultIfBlank(valueByKey.get(AGREEMENT_PRIVACY_MARKDOWN_KEY), ""));
+        return settings;
+    }
+
+    private SystemVO.SmtpSettingsVO loadSmtpSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
+        SystemVO.SmtpSettingsVO settings = new SystemVO.SmtpSettingsVO();
+        settings.setHost(defaultIfBlank(valueByKey.get(SMTP_HOST_KEY), ""));
+        settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
+        settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
+        settings.setPassword("");
+        settings.setFrom(defaultIfBlank(valueByKey.get(SMTP_FROM_KEY), ""));
+        settings.setAuthEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_AUTH_ENABLED_KEY), "true")));
+        settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));
+        settings.setSslEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_SSL_ENABLED_KEY), "false")));
+        settings.setConfigured(
+                StringUtils.hasText(settings.getHost())
+                        && settings.getPort() != null
+                        && settings.getPort() > 0
+                        && StringUtils.hasText(settings.getFrom())
+        );
+        return settings;
+    }
+
+    private void upsertPlatformConfig(
+            Long tenantId,
+            String configKey,
+            String configName,
+            String configValue,
+            String remark,
+            Long operatorId
+    ) {
+        upsertBrandingConfig(tenantId, configKey, configName, configValue, remark, operatorId);
+    }
+
+    private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {
+        String host = defaultIfBlank(values.get(SMTP_HOST_KEY), "");
+        Integer port = parseInteger(values.get(SMTP_PORT_KEY), 25);
+        String username = defaultIfBlank(values.get(SMTP_USERNAME_KEY), "");
+        String password = defaultIfBlank(values.get(SMTP_PASSWORD_KEY), "");
+        if (!StringUtils.hasText(host)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 主机");
+        }
+        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+        sender.setHost(host);
+        sender.setPort(port == null ? 25 : port);
+        sender.setUsername(username);
+        sender.setPassword(password);
+        Properties properties = sender.getJavaMailProperties();
+        properties.put("mail.smtp.auth", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_AUTH_ENABLED_KEY), "true"))));
+        properties.put("mail.smtp.starttls.enable", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_STARTTLS_ENABLED_KEY), "true"))));
+        properties.put("mail.smtp.ssl.enable", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_SSL_ENABLED_KEY), "false"))));
+        properties.put("mail.smtp.connectiontimeout", "5000");
+        properties.put("mail.smtp.timeout", "5000");
+        properties.put("mail.smtp.writetimeout", "5000");
+        return sender;
     }
 
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
+        return loadConfigValuesByKeys(tenantId, keys, true);
+    }
+
+    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys, boolean trimValues) {
         Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
@@ -945,7 +1207,10 @@ public class SystemManagementAppService {
         for (Map<String, Object> row : rows) {
             String configKey = String.valueOf(row.get("configKey"));
             if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
+                valueByKey.put(
+                        configKey,
+                        trimValues ? normalizeConfigText(row.get("configValue")) : normalizeConfigTextRaw(row.get("configValue"))
+                );
             }
         }
         return valueByKey;
@@ -959,7 +1224,31 @@ public class SystemManagementAppService {
             String remark,
             Long operatorId
     ) {
-        Long existingId = queryBrandingConfigId(configKey, tenantId);
+        Long existingId = queryConfigId(configKey, tenantId);
+        upsertConfigRecord(existingId, tenantId, configKey, configName, configValue, remark, operatorId);
+    }
+
+    private void upsertConfigValue(
+            Long tenantId,
+            String configKey,
+            String configName,
+            String configValue,
+            String remark,
+            Long operatorId
+    ) {
+        Long existingId = queryConfigId(configKey, tenantId);
+        upsertConfigRecord(existingId, tenantId, configKey, configName, configValue, remark, operatorId);
+    }
+
+    private void upsertConfigRecord(
+            Long existingId,
+            Long tenantId,
+            String configKey,
+            String configName,
+            String configValue,
+            String remark,
+            Long operatorId
+    ) {
         if (existingId == null) {
             jdbcTemplate.update(
                     """
@@ -995,6 +1284,10 @@ public class SystemManagementAppService {
     }
 
     private Long queryBrandingConfigId(String configKey, Long tenantId) {
+        return queryConfigId(configKey, tenantId);
+    }
+
+    private Long queryConfigId(String configKey, Long tenantId) {
         try {
             return jdbcTemplate.queryForObject(
                     """
@@ -1018,19 +1311,65 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : fallback;
     }
 
+    private String sanitizeText(String value, String fallback) {
+        String normalized = normalizeConfigText(value);
+        return StringUtils.hasText(normalized) ? normalized : fallback;
+    }
+
+    private String buildCopyrightText(String companyName, Integer copyrightStartYear) {
+        int currentYear = LocalDate.now().getYear();
+        int startYear = copyrightStartYear == null ? currentYear : copyrightStartYear;
+        String yearLabel = startYear < currentYear ? startYear + "-" + currentYear : String.valueOf(startYear);
+        String owner = StringUtils.hasText(companyName) ? companyName : "宏翔商道";
+        return "Copyright © " + yearLabel + " " + owner + " All Rights Reserved";
+    }
+
+    private Integer parseInteger(String value, Integer fallback) {
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
     private String normalizeConfigText(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String normalizeConfigTextRaw(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String normalizeMarkdownText(String value) {
+        return value == null ? "" : value;
     }
 
     private String defaultIfBlank(String value, String fallback) {
         return StringUtils.hasText(value) ? value : fallback;
     }
 
-    private SecuritySettingsService.SecuritySettingsSnapshot toSnapshot(SystemDTO.SecuritySettingsRequest request) {
+    private SecuritySettingsService.SecuritySettingsSnapshot toSnapshot(
+            SecuritySettingsService.SecuritySettingsSnapshot current,
+            SystemDTO.SecuritySettingsRequest request
+    ) {
         SecuritySettingsService.SecuritySettingsSnapshot snapshot = new SecuritySettingsService.SecuritySettingsSnapshot();
         snapshot.setIdleTimeoutSeconds(request.getIdleTimeoutSeconds());
         snapshot.setAccessTokenExpireSeconds(request.getAccessTokenExpireSeconds());
         snapshot.setRefreshTokenExpireSeconds(request.getRefreshTokenExpireSeconds());
+        snapshot.setAllowMultiDeviceLogin(Boolean.TRUE.equals(request.getAllowMultiDeviceLogin()));
+        snapshot.setCaptchaEnabled(Boolean.TRUE.equals(request.getCaptchaEnabled()));
+        snapshot.setCaptchaType(defaultIfBlank(request.getCaptchaType(), "IMAGE").trim().toUpperCase());
+        snapshot.setLoginDefenseWindowMinutes(current.getLoginDefenseWindowMinutes());
+        snapshot.setLoginMaxValidationAttempts(current.getLoginMaxValidationAttempts());
+        snapshot.setLoginMaxFailureCount(current.getLoginMaxFailureCount());
+        snapshot.setPasswordMinLength(current.getPasswordMinLength());
+        snapshot.setPasswordRequireUppercase(current.isPasswordRequireUppercase());
+        snapshot.setPasswordRequireLowercase(current.isPasswordRequireLowercase());
+        snapshot.setPasswordRequireSpecialCharacter(current.isPasswordRequireSpecialCharacter());
+        snapshot.setPasswordAllowConsecutiveCharacters(current.isPasswordAllowConsecutiveCharacters());
         return snapshot;
     }
 
@@ -1039,6 +1378,17 @@ public class SystemManagementAppService {
         vo.setIdleTimeoutSeconds(snapshot.getIdleTimeoutSeconds());
         vo.setAccessTokenExpireSeconds(snapshot.getAccessTokenExpireSeconds());
         vo.setRefreshTokenExpireSeconds(snapshot.getRefreshTokenExpireSeconds());
+        vo.setAllowMultiDeviceLogin(snapshot.isAllowMultiDeviceLogin());
+        vo.setCaptchaEnabled(snapshot.isCaptchaEnabled());
+        vo.setCaptchaType(defaultIfBlank(snapshot.getCaptchaType(), "IMAGE").trim().toUpperCase());
+        vo.setLoginDefenseWindowMinutes(snapshot.getLoginDefenseWindowMinutes());
+        vo.setLoginMaxValidationAttempts(snapshot.getLoginMaxValidationAttempts());
+        vo.setLoginMaxFailureCount(snapshot.getLoginMaxFailureCount());
+        vo.setPasswordMinLength(snapshot.getPasswordMinLength());
+        vo.setPasswordRequireUppercase(snapshot.isPasswordRequireUppercase());
+        vo.setPasswordRequireLowercase(snapshot.isPasswordRequireLowercase());
+        vo.setPasswordRequireSpecialCharacter(snapshot.isPasswordRequireSpecialCharacter());
+        vo.setPasswordAllowConsecutiveCharacters(snapshot.isPasswordAllowConsecutiveCharacters());
         return vo;
     }
 
@@ -1189,6 +1539,11 @@ public class SystemManagementAppService {
 
     private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId) {
         if (userId == null) {
+            if (!StringUtils.hasText(request.getPassword())) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "初始密码不能为空");
+            }
+            String password = request.getPassword();
+            passwordPolicyService.validatePassword(password);
             jdbcTemplate.update(
                     """
                             insert into sys_user (
@@ -1197,7 +1552,7 @@ public class SystemManagementAppService {
                             ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     request.getUsername(),
-                    passwordEncoder.encode(StringUtils.hasText(request.getPassword()) ? request.getPassword() : "ChangeMe123!"),
+                    passwordEncoder.encode(password),
                     request.getMobile(),
                     request.getNickname(),
                     request.getRealName(),
@@ -1228,6 +1583,7 @@ public class SystemManagementAppService {
                 userId
         );
         if (StringUtils.hasText(request.getPassword())) {
+            passwordPolicyService.validatePassword(request.getPassword());
             jdbcTemplate.update(
                     "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                     passwordEncoder.encode(request.getPassword()),

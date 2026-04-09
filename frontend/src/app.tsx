@@ -6,6 +6,7 @@ import { createElement, type ComponentType, type ReactNode } from 'react';
 import { history } from 'umi';
 import {
   DEFAULT_BRANDING_SETTINGS,
+  buildCopyrightText,
   applyFavicon,
   getStoredBrandingSettings,
   normalizeBrandingSettings,
@@ -43,6 +44,17 @@ const DEFAULT_WATERMARK_SETTINGS: WatermarkSettings = {
   offsetY: 0,
   zIndex: 9,
   opacity: 0.15,
+};
+
+const resolveLayoutNavTheme = (): 'light' | 'realDark' => {
+  if (typeof document !== 'undefined') {
+    const theme = document.documentElement.dataset.theme;
+    if (theme === 'dark') {
+      return 'realDark';
+    }
+  }
+
+  return 'light';
 };
 
 export interface AppInitialState {
@@ -100,8 +112,7 @@ const resolveMenuIcon = (icon?: ReactNode | string) => {
 };
 
 const renderFooter = (brandingSettings: BrandingSettings) => {
-  const fallbackCopyright = `Copyright © ${new Date().getFullYear()} ${brandingSettings.websiteName} All Rights Reserved`;
-  const copyrightText = brandingSettings.footerCopyright || fallbackCopyright;
+  const copyrightText = brandingSettings.footerCopyright || buildCopyrightText(brandingSettings);
 
   if (!brandingSettings.footerIcp && !copyrightText) {
     return null;
@@ -231,6 +242,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const brandName = brandingSettings.websiteName;
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const logoNode = hasBrandLogo ? brandingSettings.websiteLogoUrl : false;
+  const navTheme = resolveLayoutNavTheme();
 
   applyFavicon(brandingSettings.websiteFaviconUrl);
 
@@ -240,6 +252,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     fixedHeader: true,
     fixSiderbar: true,
     layout: 'mix',
+    navTheme,
     splitMenus: false,
     breadcrumbRender: (routers = []) => {
       const pathname = history.location.pathname;

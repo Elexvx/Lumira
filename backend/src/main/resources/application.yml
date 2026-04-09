@@ -39,10 +39,16 @@ saas:
     idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
     access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
+    captcha-enabled: ${CAPTCHA_ENABLED:false}
+    captcha-type: ${CAPTCHA_TYPE:IMAGE}
     permit-paths:
       - /api/v1/auth/login
+      - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
       - /api/v1/public/branding-settings
+      - /api/v1/public/agreement-settings
+      - /api/v1/public/security-settings
+      - /api/v1/public/captcha/**
       - /api/uploads/**
       - /actuator/health
       - /api/health

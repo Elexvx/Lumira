@@ -1,4 +1,4 @@
-import { AppstoreOutlined, BuildOutlined, DatabaseOutlined, SafetyOutlined, SkinOutlined, TeamOutlined, UserOutlined, UserSwitchOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BuildOutlined, DatabaseOutlined, MailOutlined, SafetyOutlined, SkinOutlined, TeamOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { history, useRequest } from 'umi';
@@ -7,13 +7,12 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { DashboardSummary } from '@/types/api';
 
 const managementEntries = [
-  { title: '用户管理', path: '/system/users', icon: <UserOutlined />, description: '查询、新增、编辑、启停用户', permission: 'system:user:view' },
-  { title: '在线用户', path: '/system/online-users', icon: <UserSwitchOutlined />, description: '实时查看会话、踢出与封禁', permission: 'system:online-user:view' },
-  { title: '角色管理', path: '/system/roles', icon: <TeamOutlined />, description: '角色维护与权限分配', permission: 'system:role:view' },
+  { title: '用户中心', path: '/user-center', icon: <TeamOutlined />, description: '用户、在线会话、角色和个人中心', permission: 'profile:view' },
   { title: '菜单管理', path: '/system/menus', icon: <AppstoreOutlined />, description: '菜单树、路由和权限标识', permission: 'system:menu:view' },
   { title: '字典管理', path: '/system/dicts', icon: <DatabaseOutlined />, description: '字典类型和字典项', permission: 'system:dict:view' },
-  { title: '个性化设置', path: '/system/personalization', icon: <SkinOutlined />, description: '站点名、Logo、Icon、页脚展示', permission: 'system:config:view' },
-  { title: '安全设置', path: '/system/security', icon: <SafetyOutlined />, description: '空闲超时、token 生命周期', permission: 'system:config:view' },
+  { title: '个性化设置', path: '/system/personalization', icon: <SkinOutlined />, description: '品牌标识、版权设置和水印', permission: 'system:config:view' },
+  { title: '安全设置', path: '/system/security', icon: <SafetyOutlined />, description: 'Token、验证码、阈值、密码规范', permission: 'system:config:view' },
+  { title: 'SMTP 配置', path: '/system/smtp', icon: <MailOutlined />, description: '平台邮件基础服务与测试发送', permission: 'system:config:view' },
   { title: '插件管理', path: '/system/plugins', icon: <BuildOutlined />, description: '插件运行时和版本管理', permission: 'plugin:management:view' },
 ];
 

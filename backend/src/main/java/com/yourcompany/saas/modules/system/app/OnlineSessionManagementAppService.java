@@ -6,6 +6,7 @@ import com.yourcompany.saas.common.vo.PageResponse;
 import com.yourcompany.saas.infrastructure.security.CurrentUser;
 import com.yourcompany.saas.infrastructure.security.model.AuthSession;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
+import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
 import com.yourcompany.saas.modules.audit.app.OperationAuditService;
 import com.yourcompany.saas.modules.system.online.OnlineSessionStreamService;
 import com.yourcompany.saas.modules.system.vo.SystemVO;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -35,17 +37,20 @@ public class OnlineSessionManagementAppService {
 
     private final JdbcTemplate jdbcTemplate;
     private final AuthSessionStore authSessionStore;
+    private final SecuritySettingsService securitySettingsService;
     private final OperationAuditService operationAuditService;
     private final OnlineSessionStreamService onlineSessionStreamService;
 
     public OnlineSessionManagementAppService(
             JdbcTemplate jdbcTemplate,
             AuthSessionStore authSessionStore,
+            SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,
             OnlineSessionStreamService onlineSessionStreamService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.authSessionStore = authSessionStore;
+        this.securitySettingsService = securitySettingsService;
         this.operationAuditService = operationAuditService;
         this.onlineSessionStreamService = onlineSessionStreamService;
     }
@@ -54,10 +59,17 @@ public class OnlineSessionManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         long normalizedPageNo = Math.max(pageNo, 1L);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
 
-        long total = authSessionStore.countActiveTenantSessions(tenantId);
+        List<AuthSession> sessions = fetchOnlineTenantSessions(tenantId, idleTimeoutSeconds);
+        long total = sessions.size();
         long start = (normalizedPageNo - 1) * normalizedPageSize;
-        List<AuthSession> sessions = fetchTenantSessions(tenantId, start, normalizedPageSize, total);
+        if (start >= total) {
+            sessions = List.of();
+        } else {
+            long end = Math.min(total, start + normalizedPageSize);
+            sessions = new ArrayList<>(sessions.subList((int) start, (int) end));
+        }
         Map<Long, TenantUserRow> userMap = loadUsers(sessions.stream().map(AuthSession::getUserId).filter(Objects::nonNull).toList());
 
         PageResponse<SystemVO.OnlineSessionVO> response = new PageResponse<>();
@@ -129,39 +141,65 @@ public class OnlineSessionManagementAppService {
         authSessionStore.revokeUserSessions(userId, true);
     }
 
+    public void retainLatestSessionForEachUser() {
+        authSessionStore.retainLatestSessionForEachUser();
+    }
+
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter stream(CurrentUser currentUser) {
         return onlineSessionStreamService.openStream(currentUser);
     }
 
-    private List<AuthSession> fetchTenantSessions(Long tenantId, long start, long pageSize, long total) {
-        if (total <= 0 || start >= total) {
+    private List<AuthSession> fetchOnlineTenantSessions(Long tenantId, long idleTimeoutSeconds) {
+        List<String> sessionIds = authSessionStore.listActiveTenantSessionIds(tenantId, 0, -1);
+        if (CollectionUtils.isEmpty(sessionIds)) {
             return List.of();
         }
 
-        long cursor = start;
-        long end = Math.min(total - 1, start + Math.max(pageSize * 3, 20L) - 1);
         List<AuthSession> collected = new ArrayList<>();
-
-        while (cursor <= end && collected.size() < pageSize) {
-            List<String> sessionIds = authSessionStore.listActiveTenantSessionIds(tenantId, cursor, end);
-            if (CollectionUtils.isEmpty(sessionIds)) {
-                break;
-            }
-            for (String sessionId : sessionIds) {
-                authSessionStore.findBySessionId(sessionId).ifPresent(session -> {
-                    if (session.getExpireTime() == null || session.getExpireTime().isAfter(Instant.now())) {
-                        collected.add(session);
-                    }
-                });
-                if (collected.size() >= pageSize) {
-                    break;
+        for (String sessionId : sessionIds) {
+            authSessionStore.findBySessionId(sessionId).ifPresentOrElse(session -> {
+                if (isOnlineSession(session, idleTimeoutSeconds)) {
+                    collected.add(session);
+                } else {
+                    authSessionStore.remove(session, true);
                 }
-            }
-            cursor = end + 1;
-            end = Math.min(total - 1, cursor + Math.max(pageSize * 3, 20L) - 1);
+            }, () -> {
+                // 会话实体已不在缓存中，后续分页会自然忽略该索引项。
+            });
+        }
+        if (securitySettingsService.isAllowMultiDeviceLogin()) {
+            return collected;
         }
 
-        return collected;
+        List<AuthSession> latestSessions = new ArrayList<>();
+        for (AuthSession session : collected) {
+            if (session.getUserId() == null) {
+                continue;
+            }
+            String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId()).orElse(null);
+            if (session.getSessionId().equals(latestSessionId)) {
+                latestSessions.add(session);
+            }
+        }
+        return latestSessions;
+    }
+
+    private boolean isOnlineSession(AuthSession session, long idleTimeoutSeconds) {
+        if (session == null || session.getExpireTime() == null || !session.getExpireTime().isAfter(Instant.now())) {
+            return false;
+        }
+
+        if (idleTimeoutSeconds <= 0) {
+            return true;
+        }
+
+        Instant lastActivityAt = session.getLastActivityAt() != null ? session.getLastActivityAt() : session.getLoginTime();
+        if (lastActivityAt == null) {
+            return false;
+        }
+
+        Duration idleDuration = Duration.between(lastActivityAt, Instant.now());
+        return idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) < 0;
     }
 
     private Map<Long, TenantUserRow> loadUsers(Collection<Long> userIds) {

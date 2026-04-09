@@ -888,10 +888,135 @@ public final class SystemVO {
         }
     }
 
+    public static class SmtpSettingsVO {
+        private String host;
+        private Integer port;
+        private String username;
+        private String password;
+        private String from;
+        private Boolean authEnabled;
+        private Boolean startTlsEnabled;
+        private Boolean sslEnabled;
+        private Boolean configured;
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public Integer getPort() {
+            return port;
+        }
+
+        public void setPort(Integer port) {
+            this.port = port;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getFrom() {
+            return from;
+        }
+
+        public void setFrom(String from) {
+            this.from = from;
+        }
+
+        public Boolean getAuthEnabled() {
+            return authEnabled;
+        }
+
+        public void setAuthEnabled(Boolean authEnabled) {
+            this.authEnabled = authEnabled;
+        }
+
+        public Boolean getStartTlsEnabled() {
+            return startTlsEnabled;
+        }
+
+        public void setStartTlsEnabled(Boolean startTlsEnabled) {
+            this.startTlsEnabled = startTlsEnabled;
+        }
+
+        public Boolean getSslEnabled() {
+            return sslEnabled;
+        }
+
+        public void setSslEnabled(Boolean sslEnabled) {
+            this.sslEnabled = sslEnabled;
+        }
+
+        public Boolean getConfigured() {
+            return configured;
+        }
+
+        public void setConfigured(Boolean configured) {
+            this.configured = configured;
+        }
+    }
+
+    public static class SmtpTestVO {
+        private Boolean success;
+        private String message;
+        private String toEmail;
+
+        public Boolean getSuccess() {
+            return success;
+        }
+
+        public void setSuccess(Boolean success) {
+            this.success = success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public String getToEmail() {
+            return toEmail;
+        }
+
+        public void setToEmail(String toEmail) {
+            this.toEmail = toEmail;
+        }
+    }
+
     public static class SecuritySettingsVO {
         private Long idleTimeoutSeconds;
         private Long accessTokenExpireSeconds;
         private Long refreshTokenExpireSeconds;
+        private Boolean allowMultiDeviceLogin;
+        private Boolean captchaEnabled;
+        private String captchaType;
+        private Long loginDefenseWindowMinutes;
+        private Long loginMaxValidationAttempts;
+        private Long loginMaxFailureCount;
+        private Long passwordMinLength;
+        private Boolean passwordRequireUppercase;
+        private Boolean passwordRequireLowercase;
+        private Boolean passwordRequireSpecialCharacter;
+        private Boolean passwordAllowConsecutiveCharacters;
 
         public Long getIdleTimeoutSeconds() {
             return idleTimeoutSeconds;
@@ -916,12 +1041,245 @@ public final class SystemVO {
         public void setRefreshTokenExpireSeconds(Long refreshTokenExpireSeconds) {
             this.refreshTokenExpireSeconds = refreshTokenExpireSeconds;
         }
+
+        public Boolean getAllowMultiDeviceLogin() {
+            return allowMultiDeviceLogin;
+        }
+
+        public void setAllowMultiDeviceLogin(Boolean allowMultiDeviceLogin) {
+            this.allowMultiDeviceLogin = allowMultiDeviceLogin;
+        }
+
+        public Boolean getCaptchaEnabled() {
+            return captchaEnabled;
+        }
+
+        public void setCaptchaEnabled(Boolean captchaEnabled) {
+            this.captchaEnabled = captchaEnabled;
+        }
+
+        public String getCaptchaType() {
+            return captchaType;
+        }
+
+        public void setCaptchaType(String captchaType) {
+            this.captchaType = captchaType;
+        }
+
+        public Long getLoginDefenseWindowMinutes() {
+            return loginDefenseWindowMinutes;
+        }
+
+        public void setLoginDefenseWindowMinutes(Long loginDefenseWindowMinutes) {
+            this.loginDefenseWindowMinutes = loginDefenseWindowMinutes;
+        }
+
+        public Long getLoginMaxValidationAttempts() {
+            return loginMaxValidationAttempts;
+        }
+
+        public void setLoginMaxValidationAttempts(Long loginMaxValidationAttempts) {
+            this.loginMaxValidationAttempts = loginMaxValidationAttempts;
+        }
+
+        public Long getLoginMaxFailureCount() {
+            return loginMaxFailureCount;
+        }
+
+        public void setLoginMaxFailureCount(Long loginMaxFailureCount) {
+            this.loginMaxFailureCount = loginMaxFailureCount;
+        }
+
+        public Long getPasswordMinLength() {
+            return passwordMinLength;
+        }
+
+        public void setPasswordMinLength(Long passwordMinLength) {
+            this.passwordMinLength = passwordMinLength;
+        }
+
+        public Boolean getPasswordRequireUppercase() {
+            return passwordRequireUppercase;
+        }
+
+        public void setPasswordRequireUppercase(Boolean passwordRequireUppercase) {
+            this.passwordRequireUppercase = passwordRequireUppercase;
+        }
+
+        public Boolean getPasswordRequireLowercase() {
+            return passwordRequireLowercase;
+        }
+
+        public void setPasswordRequireLowercase(Boolean passwordRequireLowercase) {
+            this.passwordRequireLowercase = passwordRequireLowercase;
+        }
+
+        public Boolean getPasswordRequireSpecialCharacter() {
+            return passwordRequireSpecialCharacter;
+        }
+
+        public void setPasswordRequireSpecialCharacter(Boolean passwordRequireSpecialCharacter) {
+            this.passwordRequireSpecialCharacter = passwordRequireSpecialCharacter;
+        }
+
+        public Boolean getPasswordAllowConsecutiveCharacters() {
+            return passwordAllowConsecutiveCharacters;
+        }
+
+        public void setPasswordAllowConsecutiveCharacters(Boolean passwordAllowConsecutiveCharacters) {
+            this.passwordAllowConsecutiveCharacters = passwordAllowConsecutiveCharacters;
+        }
+    }
+
+    public static class CaptchaChallengeVO {
+        private String captchaId;
+        private String captchaType;
+        private String imageUrl;
+        private String bgUrl;
+        private String puzzleUrl;
+        private Integer bgWidth;
+        private Integer bgHeight;
+        private Integer puzzleWidth;
+        private Integer puzzleHeight;
+        private Integer puzzleLeft;
+        private Integer puzzleTop;
+        private Integer expiresInSeconds;
+
+        public String getCaptchaId() {
+            return captchaId;
+        }
+
+        public void setCaptchaId(String captchaId) {
+            this.captchaId = captchaId;
+        }
+
+        public String getCaptchaType() {
+            return captchaType;
+        }
+
+        public void setCaptchaType(String captchaType) {
+            this.captchaType = captchaType;
+        }
+
+        public String getImageUrl() {
+            return imageUrl;
+        }
+
+        public void setImageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
+        }
+
+        public String getBgUrl() {
+            return bgUrl;
+        }
+
+        public void setBgUrl(String bgUrl) {
+            this.bgUrl = bgUrl;
+        }
+
+        public String getPuzzleUrl() {
+            return puzzleUrl;
+        }
+
+        public void setPuzzleUrl(String puzzleUrl) {
+            this.puzzleUrl = puzzleUrl;
+        }
+
+        public Integer getBgWidth() {
+            return bgWidth;
+        }
+
+        public void setBgWidth(Integer bgWidth) {
+            this.bgWidth = bgWidth;
+        }
+
+        public Integer getBgHeight() {
+            return bgHeight;
+        }
+
+        public void setBgHeight(Integer bgHeight) {
+            this.bgHeight = bgHeight;
+        }
+
+        public Integer getPuzzleWidth() {
+            return puzzleWidth;
+        }
+
+        public void setPuzzleWidth(Integer puzzleWidth) {
+            this.puzzleWidth = puzzleWidth;
+        }
+
+        public Integer getPuzzleHeight() {
+            return puzzleHeight;
+        }
+
+        public void setPuzzleHeight(Integer puzzleHeight) {
+            this.puzzleHeight = puzzleHeight;
+        }
+
+        public Integer getPuzzleLeft() {
+            return puzzleLeft;
+        }
+
+        public void setPuzzleLeft(Integer puzzleLeft) {
+            this.puzzleLeft = puzzleLeft;
+        }
+
+        public Integer getPuzzleTop() {
+            return puzzleTop;
+        }
+
+        public void setPuzzleTop(Integer puzzleTop) {
+            this.puzzleTop = puzzleTop;
+        }
+
+        public Integer getExpiresInSeconds() {
+            return expiresInSeconds;
+        }
+
+        public void setExpiresInSeconds(Integer expiresInSeconds) {
+            this.expiresInSeconds = expiresInSeconds;
+        }
+    }
+
+    public static class CaptchaVerifyVO {
+        private String captchaId;
+        private String captchaProof;
+        private Integer expiresInSeconds;
+
+        public String getCaptchaId() {
+            return captchaId;
+        }
+
+        public void setCaptchaId(String captchaId) {
+            this.captchaId = captchaId;
+        }
+
+        public String getCaptchaProof() {
+            return captchaProof;
+        }
+
+        public void setCaptchaProof(String captchaProof) {
+            this.captchaProof = captchaProof;
+        }
+
+        public Integer getExpiresInSeconds() {
+            return expiresInSeconds;
+        }
+
+        public void setExpiresInSeconds(Integer expiresInSeconds) {
+            this.expiresInSeconds = expiresInSeconds;
+        }
     }
 
     public static class BrandingSettingsVO {
         private String websiteName;
         private String websiteFaviconUrl;
         private String websiteLogoUrl;
+        private String githubLinkUrl;
+        private String helpLinkUrl;
+        private String companyName;
+        private Integer copyrightStartYear;
         private String footerIcp;
         private String footerCopyright;
 
@@ -949,6 +1307,38 @@ public final class SystemVO {
             this.websiteLogoUrl = websiteLogoUrl;
         }
 
+        public String getGithubLinkUrl() {
+            return githubLinkUrl;
+        }
+
+        public void setGithubLinkUrl(String githubLinkUrl) {
+            this.githubLinkUrl = githubLinkUrl;
+        }
+
+        public String getHelpLinkUrl() {
+            return helpLinkUrl;
+        }
+
+        public void setHelpLinkUrl(String helpLinkUrl) {
+            this.helpLinkUrl = helpLinkUrl;
+        }
+
+        public String getCompanyName() {
+            return companyName;
+        }
+
+        public void setCompanyName(String companyName) {
+            this.companyName = companyName;
+        }
+
+        public Integer getCopyrightStartYear() {
+            return copyrightStartYear;
+        }
+
+        public void setCopyrightStartYear(Integer copyrightStartYear) {
+            this.copyrightStartYear = copyrightStartYear;
+        }
+
         public String getFooterIcp() {
             return footerIcp;
         }
@@ -963,6 +1353,27 @@ public final class SystemVO {
 
         public void setFooterCopyright(String footerCopyright) {
             this.footerCopyright = footerCopyright;
+        }
+    }
+
+    public static class AgreementSettingsVO {
+        private String userAgreementMarkdown;
+        private String privacyAgreementMarkdown;
+
+        public String getUserAgreementMarkdown() {
+            return userAgreementMarkdown;
+        }
+
+        public void setUserAgreementMarkdown(String userAgreementMarkdown) {
+            this.userAgreementMarkdown = userAgreementMarkdown;
+        }
+
+        public String getPrivacyAgreementMarkdown() {
+            return privacyAgreementMarkdown;
+        }
+
+        public void setPrivacyAgreementMarkdown(String privacyAgreementMarkdown) {
+            this.privacyAgreementMarkdown = privacyAgreementMarkdown;
         }
     }
 

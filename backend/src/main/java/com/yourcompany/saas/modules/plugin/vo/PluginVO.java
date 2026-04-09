@@ -428,4 +428,88 @@ public final class PluginVO {
             this.menus = menus;
         }
     }
+
+    public static class SecondFactorStatusVO {
+        private String pluginCode;
+        private String pluginName;
+        private String factorCode;
+        private String factorName;
+        private Boolean enabled;
+        private Boolean bound;
+        private Boolean emailRequired;
+        private String maskedContact;
+        private String statusMessage;
+
+        public String getPluginCode() {
+            return pluginCode;
+        }
+
+        public void setPluginCode(String pluginCode) {
+            this.pluginCode = pluginCode;
+        }
+
+        public String getPluginName() {
+            return pluginName;
+        }
+
+        public void setPluginName(String pluginName) {
+            this.pluginName = pluginName;
+        }
+
+        public String getFactorCode() {
+            return factorCode;
+        }
+
+        public void setFactorCode(String factorCode) {
+            this.factorCode = factorCode;
+        }
+
+        public String getFactorName() {
+            return factorName;
+        }
+
+        public void setFactorName(String factorName) {
+            this.factorName = factorName;
+        }
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public Boolean getBound() {
+            return bound;
+        }
+
+        public void setBound(Boolean bound) {
+            this.bound = bound;
+        }
+
+        public Boolean getEmailRequired() {
+            return emailRequired;
+        }
+
+        public void setEmailRequired(Boolean emailRequired) {
+            this.emailRequired = emailRequired;
+        }
+
+        public String getMaskedContact() {
+            return maskedContact;
+        }
+
+        public void setMaskedContact(String maskedContact) {
+            this.maskedContact = maskedContact;
+        }
+
+        public String getStatusMessage() {
+            return statusMessage;
+        }
+
+        public void setStatusMessage(String statusMessage) {
+            this.statusMessage = statusMessage;
+        }
+    }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Col, Descriptions, Row, Space, Statistic, Typography } from 'antd';
 import { useRequest } from 'umi';
+import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';
 import TrendAreaChart from './TrendAreaChart';
@@ -13,9 +14,11 @@ type TrendPoint = {
   qps: number;
 };
 
+const MAX_TREND_SAMPLES = 5;
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 
 const RedisMonitorPage = () => {
+  const { isDesktop } = useResponsive();
   const query = useRequest(async () => ({ data: await monitorService.redis({ autoRedirectOnUnauthorized: false }) }) as { data: RedisMonitorSnapshot });
   const [samples, setSamples] = useState<TrendPoint[]>([]);
 
@@ -38,7 +41,7 @@ const RedisMonitorPage = () => {
       memoryBytes: snapshot.overview.memoryUsedBytes || 0,
       qps: snapshot.overview.instantaneousOpsPerSec || 0,
     };
-    setSamples((current) => [...current.slice(-11), nextPoint]);
+    setSamples((current) => [...current.slice(-(MAX_TREND_SAMPLES - 1)), nextPoint]);
   }, [query.data]);
 
   const redis = query.data;
@@ -79,12 +82,10 @@ const RedisMonitorPage = () => {
       title="Redis监控"
       ghost
       extra={
-        <Space>
-          <Tag color="processing">真实 Redis INFO</Tag>
+        <Space wrap>
           <Button onClick={async () => await query.refresh()}>立即刷新</Button>
         </Space>
       }
-      content="展示当前 Redis 实例的版本、连接、命中率、内存、命令分布和 keyspace 概况。"
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Card loading={query.loading && !redis} title="Redis信息">
@@ -127,7 +128,7 @@ const RedisMonitorPage = () => {
             </Col>
           </Row>
 
-          <Descriptions bordered column={{ xs: 1, sm: 2, xl: 4 }} size="small" style={{ marginTop: 16 }}>
+          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: isDesktop ? 2 : 1, xxl: 4 }} size="small" style={{ marginTop: 16 }}>
             <Descriptions.Item label="总命中">{formatNumber(redis?.overview.hits)}</Descriptions.Item>
             <Descriptions.Item label="总未命中">{formatNumber(redis?.overview.misses)}</Descriptions.Item>
             <Descriptions.Item label="总命令数">{formatNumber(redis?.overview.totalCommandsProcessed)}</Descriptions.Item>
@@ -137,10 +138,10 @@ const RedisMonitorPage = () => {
 
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
-            <TrendAreaChart title="内存趋势 (MB)" subtitle="最近 12 次采样" points={memoryTrend.map((item) => ({ ...item, value: item.value / 1024 / 1024 }))} valueFormatter={(value) => `${value.toFixed(2)} MB`} />
+            <TrendAreaChart title="内存趋势 (MB)" subtitle={`最近 ${MAX_TREND_SAMPLES} 次采样`} points={memoryTrend.map((item) => ({ ...item, value: item.value / 1024 / 1024 }))} valueFormatter={(value) => `${value.toFixed(2)} MB`} />
           </Col>
           <Col xs={24} lg={12}>
-            <TrendAreaChart title="吞吐趋势 (OPS)" subtitle="最近 12 次采样" points={qpsTrend} valueFormatter={(value) => value.toFixed(0)} />
+            <TrendAreaChart title="吞吐趋势 (OPS)" subtitle={`最近 ${MAX_TREND_SAMPLES} 次采样`} points={qpsTrend} valueFormatter={(value) => value.toFixed(0)} />
           </Col>
         </Row>
 

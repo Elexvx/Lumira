@@ -6,6 +6,7 @@ import com.yourcompany.saas.infrastructure.security.SecurityContextFacade;
 import com.yourcompany.saas.modules.auth.app.AuthAppService;
 import com.yourcompany.saas.modules.auth.dto.LoginRequest;
 import com.yourcompany.saas.modules.auth.dto.RefreshTokenRequest;
+import com.yourcompany.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.yourcompany.saas.modules.auth.vo.CurrentUserVO;
 import com.yourcompany.saas.modules.auth.vo.LoginResponseVO;
 import com.yourcompany.saas.modules.auth.vo.RefreshTokenResponseVO;
@@ -33,6 +34,19 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponseVO> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
         LoginResponseVO response = authAppService.login(request, resolveClientIp(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
+        return ApiResponse.success(response, TraceContext.getRequestId());
+    }
+
+    @PostMapping("/second-factor/complete")
+    public ApiResponse<LoginResponseVO> completeSecondFactor(
+            @Valid @RequestBody SecondFactorCompleteRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        LoginResponseVO response = authAppService.completeSecondFactorLogin(
+                request,
+                resolveClientIp(httpServletRequest),
+                httpServletRequest.getHeader("User-Agent")
+        );
         return ApiResponse.success(response, TraceContext.getRequestId());
     }
 

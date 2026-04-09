@@ -15,6 +15,7 @@ public class SysUserEntity {
     private String nickname;
     private String realName;
     private String avatarUrl;
+    private String email;
     private String status;
     private Integer deleted;
 
@@ -72,6 +73,14 @@ public class SysUserEntity {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getStatus() {

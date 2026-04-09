@@ -27,6 +27,22 @@ public class PublicSystemController {
         );
     }
 
+    @GetMapping("/agreement-settings")
+    public ApiResponse<SystemVO.AgreementSettingsVO> agreementSettings() {
+        return ApiResponse.success(
+                systemManagementAppService.getPublicAgreementSettings(),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/security-settings")
+    public ApiResponse<SystemVO.SecuritySettingsVO> securitySettings() {
+        return ApiResponse.success(
+                systemManagementAppService.getPublicSecuritySettings(),
+                TraceContext.getRequestId()
+        );
+    }
+
     private Long resolveTenantId() {
         String tenantId = TenantContext.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {

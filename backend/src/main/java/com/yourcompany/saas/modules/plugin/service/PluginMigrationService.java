@@ -45,8 +45,8 @@ public class PluginMigrationService {
                     ScriptUtils.executeSqlScript(connection, new org.springframework.core.io.FileSystemResource(script));
                 }
             }
-        } catch (IOException exception) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件迁移脚本读取失败: " + exception.getMessage());
+        } catch (Throwable throwable) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件迁移执行失败: " + throwable.getMessage());
         }
     }
 }

@@ -32,6 +32,7 @@ public class PluginPersistenceService {
     public PluginVersionEntity saveUploadedPackage(
             PluginDTO.PluginPackageMetadata metadata,
             Path stagedZipPath,
+            Path stagedPackageRoot,
             String validationReportJson,
             String packageChecksum,
             String signaturePath,
@@ -82,7 +83,7 @@ public class PluginPersistenceService {
                 metadata.getMinPlatformVersion(),
                 JsonUtils.toJson(metadata),
                 validationReportJson,
-                stagedZipPath.getParent().resolve("extracted").toString(),
+                stagedPackageRoot.toString(),
                 operatorId,
                 operatorId
         );
@@ -462,6 +463,55 @@ public class PluginPersistenceService {
         );
     }
 
+    @Transactional
+    public void uninstallPlugin(String pluginCode, Long operatorId) {
+        jdbcTemplate.update(
+                """
+                        update sys_plugin_tenant
+                        set enabled = 0,
+                            deleted = 1,
+                            updated_by = ?,
+                            updated_at = current_timestamp
+                        where plugin_code = ?
+                          and deleted = 0
+                        """,
+                operatorId,
+                pluginCode
+        );
+        jdbcTemplate.update(
+                """
+                        update sys_plugin_version
+                        set install_status = 'UNINSTALLED',
+                            load_status = 'UNLOADED',
+                            health_status = 'UNKNOWN',
+                            is_active = 0,
+                            deleted = 1,
+                            updated_by = ?,
+                            updated_at = current_timestamp
+                        where plugin_code = ?
+                          and deleted = 0
+                        """,
+                operatorId,
+                pluginCode
+        );
+        jdbcTemplate.update("update sys_plugin_menu_rel set deleted = 1, updated_by = ?, updated_at = current_timestamp where plugin_code = ? and deleted = 0", operatorId, pluginCode);
+        jdbcTemplate.update("update sys_plugin_permission_rel set deleted = 1, updated_by = ?, updated_at = current_timestamp where plugin_code = ? and deleted = 0", operatorId, pluginCode);
+        jdbcTemplate.update("update sys_plugin_dependency set deleted = 1, updated_by = ?, updated_at = current_timestamp where plugin_code = ? and deleted = 0", operatorId, pluginCode);
+        jdbcTemplate.update(
+                """
+                        update sys_plugin_definition
+                        set status = 'DISABLED',
+                            deleted = 1,
+                            updated_by = ?,
+                            updated_at = current_timestamp
+                        where plugin_code = ?
+                          and deleted = 0
+                        """,
+                operatorId,
+                pluginCode
+        );
+    }
+
     public Optional<PluginTenantEntity> findTenantPlugin(Long tenantId, String pluginCode) {
         List<PluginTenantEntity> result = jdbcTemplate.query(
                 """
@@ -516,6 +566,19 @@ public class PluginPersistenceService {
                     return vo;
                 },
                 tenantId
+        );
+    }
+
+    public List<Long> listTenantIdsForPlugin(String pluginCode) {
+        return jdbcTemplate.query(
+                """
+                        select distinct tenant_id
+                        from sys_plugin_tenant
+                        where plugin_code = ?
+                          and deleted = 0
+                        """,
+                (rs, rowNum) -> rs.getLong("tenant_id"),
+                pluginCode
         );
     }
 

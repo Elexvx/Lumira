@@ -1,14 +1,30 @@
-import { useEffect } from 'react';
-import { history, Outlet, useLocation } from 'umi';
+import { useEffect, useMemo } from 'react';
+import { history, Outlet, useAccess, useLocation } from 'umi';
 
 export default () => {
   const location = useLocation();
+  const access = useAccess();
+  const landingPath = useMemo(() => {
+    if (access.canVisitSystemMonitoringService) {
+      return '/system/monitoring/service';
+    }
+    if (access.canVisitSystemMonitoringRedis) {
+      return '/system/monitoring/redis';
+    }
+    if (access.canVisitSystemMonitoringDocs) {
+      return '/system/monitoring/api-docs';
+    }
+    if (access.hasPermission('audit:view')) {
+      return '/system/monitoring/audit';
+    }
+    return '/403';
+  }, [access]);
 
   useEffect(() => {
     if (location.pathname === '/system/monitoring') {
-      history.replace('/system/monitoring/service');
+      history.replace(landingPath);
     }
-  }, [location.pathname]);
+  }, [landingPath, location.pathname]);
 
   if (location.pathname === '/system/monitoring') {
     return null;

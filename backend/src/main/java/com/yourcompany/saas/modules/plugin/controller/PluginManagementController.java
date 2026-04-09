@@ -57,7 +57,7 @@ public class PluginManagementController {
     }
 
     @GetMapping("/{pluginCode}/versions")
-    public ApiResponse<List<PluginVO.PluginVersionVO>> versions(@PathVariable String pluginCode) {
+    public ApiResponse<List<PluginVO.PluginVersionVO>> versions(@PathVariable("pluginCode") String pluginCode) {
         require("plugin:management:view");
         return ApiResponse.success(pluginManagementAppService.listVersions(pluginCode), TraceContext.getRequestId());
     }
@@ -69,7 +69,7 @@ public class PluginManagementController {
     }
 
     @GetMapping("/{pluginCode}/{version}/validation")
-    public ApiResponse<String> validation(@PathVariable String pluginCode, @PathVariable String version) {
+    public ApiResponse<String> validation(@PathVariable("pluginCode") String pluginCode, @PathVariable("version") String version) {
         require("plugin:management:view");
         return ApiResponse.success(pluginManagementAppService.validationDetail(pluginCode, version), TraceContext.getRequestId());
     }
@@ -115,8 +115,15 @@ public class PluginManagementController {
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
+    @PostMapping("/{pluginCode}/uninstall")
+    public ApiResponse<Boolean> uninstall(@PathVariable("pluginCode") String pluginCode) {
+        require("plugin:management:disable");
+        pluginManagementAppService.uninstall(pluginCode, currentUser());
+        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+    }
+
     @GetMapping("/{pluginCode}/logs")
-    public ApiResponse<List<PluginVO.PluginRuntimeLogVO>> logs(@PathVariable String pluginCode) {
+    public ApiResponse<List<PluginVO.PluginRuntimeLogVO>> logs(@PathVariable("pluginCode") String pluginCode) {
         require("plugin:management:logs");
         return ApiResponse.success(pluginManagementAppService.runtimeLogs(pluginCode), TraceContext.getRequestId());
     }
@@ -147,7 +154,7 @@ public class PluginManagementController {
     }
 
     @GetMapping("/current/{pluginCode}/manifest")
-    public ResponseEntity<Resource> currentManifest(@PathVariable String pluginCode) {
+    public ResponseEntity<Resource> currentManifest(@PathVariable("pluginCode") String pluginCode) {
         PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentUser().getCurrentTenantId()).stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
@@ -159,7 +166,7 @@ public class PluginManagementController {
     }
 
     @GetMapping("/current/{pluginCode}/assets/**")
-    public ResponseEntity<Resource> currentAsset(@PathVariable String pluginCode, HttpServletRequest request) {
+    public ResponseEntity<Resource> currentAsset(@PathVariable("pluginCode") String pluginCode, HttpServletRequest request) {
         PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentUser().getCurrentTenantId()).stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()

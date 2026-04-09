@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
-import { Badge, Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';
+import { Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';
 import { useRequest } from 'umi';
+import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { ServiceMonitorSnapshot } from '@/types/api';
 import { formatBytes, formatDateTime, formatDuration, formatNumber, formatPercent } from './shared';
@@ -9,6 +10,7 @@ import { formatBytes, formatDateTime, formatDuration, formatNumber, formatPercen
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 
 const ServiceMonitorPage = () => {
+  const { isDesktop } = useResponsive();
   const query = useRequest(async () => ({ data: await monitorService.service({ autoRedirectOnUnauthorized: false }) }) as { data: ServiceMonitorSnapshot });
 
   useEffect(() => {
@@ -26,16 +28,6 @@ const ServiceMonitorPage = () => {
     <PageContainer
       title="服务监控"
       ghost
-      extra={
-        <Space>
-          <Tag color="processing">
-            <Badge status="processing" />
-            真实运行时数据
-          </Tag>
-          <Tag color="blue">{service?.server?.serverName || '本机'}</Tag>
-        </Space>
-      }
-      content="展示当前后端进程的 CPU、内存、JVM 与主机信息，数据直接来自运行环境。"
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Row gutter={[16, 16]}>
@@ -45,37 +37,37 @@ const ServiceMonitorPage = () => {
               loading={query.loading && !service}
               extra={<Tag color="geekblue">核心数 {service?.cpu?.coreCount ?? '-'}</Tag>}
               style={{ height: '100%' }}
-              bodyStyle={{ minHeight: 170 }}
+              bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}
             >
               <Row gutter={[16, 16]}>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="用户使用率" value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="系统使用率" value={service?.cpu?.systemUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="当前空闲率" value={service?.cpu?.idlePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="平均负载" value={service?.cpu?.loadAverage ?? '-'} valueStyle={valueStyle} />
                 </Col>
               </Row>
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title="内存" loading={query.loading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: 170 }}>
+            <Card title="内存" loading={query.loading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
               <Row gutter={[16, 16]}>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="总内存" value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="已用内存" value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="剩余内存" value={formatBytes(service?.memory?.freeBytes)} valueStyle={valueStyle} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="使用率" value={formatPercent(service?.memory?.usagePercent)} valueStyle={valueStyle} />
                 </Col>
               </Row>
@@ -84,7 +76,7 @@ const ServiceMonitorPage = () => {
         </Row>
 
         <Card title="服务器信息" loading={query.loading && !service}>
-          <Descriptions bordered column={{ xs: 1, sm: 2, xl: 4 }} size="small">
+          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: isDesktop ? 3 : 2, xxl: 4 }} size="small">
             <Descriptions.Item label="服务器名称">{service?.server?.serverName || '-'}</Descriptions.Item>
             <Descriptions.Item label="服务器IP">{service?.server?.serverIp || '-'}</Descriptions.Item>
             <Descriptions.Item label="操作系统">{service?.server?.osName || '-'}</Descriptions.Item>
@@ -98,7 +90,7 @@ const ServiceMonitorPage = () => {
         </Card>
 
         <Card title="Java虚拟机信息" loading={query.loading && !service}>
-          <Descriptions bordered column={{ xs: 1, sm: 2, xl: 4 }} size="small">
+          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: isDesktop ? 3 : 2, xxl: 4 }} size="small">
             <Descriptions.Item label="Java名称">{service?.jvm?.vmName || '-'}</Descriptions.Item>
             <Descriptions.Item label="Java版本">{service?.jvm?.javaVersion || '-'}</Descriptions.Item>
             <Descriptions.Item label="虚拟机版本">{service?.jvm?.vmVersion || '-'}</Descriptions.Item>

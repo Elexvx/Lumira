@@ -9,12 +9,14 @@ import com.yourcompany.saas.infrastructure.security.model.TokenType;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
 import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
 import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
+import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.BadCredentialsException;
+import com.yourcompany.saas.common.api.ApiResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -36,17 +38,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final AuthSessionStore authSessionStore;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SecuritySettingsService securitySettingsService;
+    private final ObjectMapper objectMapper;
 
     public JwtAuthFilter(
             JwtTokenService jwtTokenService,
             AuthSessionStore authSessionStore,
             PermissionSnapshotService permissionSnapshotService,
-            SecuritySettingsService securitySettingsService
+            SecuritySettingsService securitySettingsService,
+            ObjectMapper objectMapper
     ) {
         this.jwtTokenService = jwtTokenService;
         this.authSessionStore = authSessionStore;
         this.permissionSnapshotService = permissionSnapshotService;
         this.securitySettingsService = securitySettingsService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -67,11 +72,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             TokenClaims claims = jwtTokenService.parseToken(token);
             if (claims.getTokenType() != TokenType.ACCESS) {
-                throw new BizException(
+                writeUnauthorizedResponse(request, response, new BizException(
                         ErrorCode.SESSION_EXPIRED,
                         "accessToken类型非法",
                         ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-                );
+                ));
+                return;
             }
 
             AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())
@@ -87,8 +93,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             authSessionStore.save(session);
         } catch (BizException ex) {
             SecurityContextHolder.clearContext();
-            request.setAttribute(AUTH_BIZ_EXCEPTION_ATTR, ex);
-            throw new BadCredentialsException(ex.getMessage(), ex);
+            writeUnauthorizedResponse(request, response, ex);
+            return;
         } catch (RuntimeException ex) {
             SecurityContextHolder.clearContext();
             BizException bizException = new BizException(
@@ -96,8 +102,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     "accessToken解析失败: " + ex.getMessage(),
                     ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
             );
-            request.setAttribute(AUTH_BIZ_EXCEPTION_ATTR, bizException);
-            throw new BadCredentialsException(bizException.getMessage(), ex);
+            writeUnauthorizedResponse(request, response, bizException);
+            return;
         }
 
         filterChain.doFilter(request, response);
@@ -117,6 +123,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     "会话版本已变更，请重新登录",
                     ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
             );
+        }
+        if (!securitySettingsService.isAllowMultiDeviceLogin()) {
+            String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId()).orElse(null);
+            if (latestSessionId == null || !session.getSessionId().equals(latestSessionId)) {
+                throw new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "当前账号已在其他设备登录，请重新登录",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                );
+            }
         }
         if (jwtTokenService.isExpired(session.getExpireTime())) {
             throw new BizException(
@@ -156,5 +172,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(currentUser, null, Collections.emptyList());
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void writeUnauthorizedResponse(HttpServletRequest request, HttpServletResponse response, BizException exception)
+            throws IOException {
+        response.setStatus(exception.getErrorCode().getHttpStatus());
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        ApiResponse<Void> body = ApiResponse.fail(
+                exception.getErrorCode(),
+                exception.getErrorMessage(),
+                exception.getUserMessage(),
+                TraceContext.getRequestId(),
+                request.getRequestURI()
+        );
+        response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

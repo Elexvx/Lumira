@@ -8,18 +8,35 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   websiteName: '宏翔商道',
   websiteFaviconUrl: '',
   websiteLogoUrl: '',
+  githubLinkUrl: '',
+  helpLinkUrl: '',
+  companyName: '宏翔商道',
+  copyrightStartYear: new Date().getFullYear(),
   footerIcp: '',
   footerCopyright: '',
 };
 
 export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> | null): BrandingSettings => {
+  const websiteName = normalizeText(settings?.websiteName, DEFAULT_BRANDING_SETTINGS.websiteName);
   return {
-    websiteName: normalizeText(settings?.websiteName, DEFAULT_BRANDING_SETTINGS.websiteName),
+    websiteName,
     websiteFaviconUrl: normalizeUploadUrl(settings?.websiteFaviconUrl),
     websiteLogoUrl: normalizeUploadUrl(settings?.websiteLogoUrl),
+    githubLinkUrl: normalizeLink(settings?.githubLinkUrl),
+    helpLinkUrl: normalizeLink(settings?.helpLinkUrl),
+    companyName: normalizeText(settings?.companyName, websiteName),
+    copyrightStartYear: normalizeYear(settings?.copyrightStartYear, new Date().getFullYear()),
     footerIcp: normalizeText(settings?.footerIcp, ''),
     footerCopyright: normalizeText(settings?.footerCopyright, ''),
   };
+};
+
+export const buildCopyrightText = (settings?: Partial<BrandingSettings> | null) => {
+  const normalized = normalizeBrandingSettings(settings);
+  const currentYear = new Date().getFullYear();
+  const startYear = normalized.copyrightStartYear ?? currentYear;
+  const yearLabel = startYear < currentYear ? `${startYear}-${currentYear}` : String(startYear);
+  return `Copyright © ${yearLabel} ${normalized.companyName} All Rights Reserved`;
 };
 
 export const getStoredBrandingSettings = (): BrandingSettings | null => storage.get<BrandingSettings>(BRANDING_SETTINGS_KEY);
@@ -63,4 +80,24 @@ const normalizeText = (value: unknown, fallback: string) => {
   }
   const trimmed = value.trim();
   return trimmed || fallback;
+};
+
+const normalizeYear = (value: unknown, fallback: number) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
+};
+
+const normalizeLink = (value?: string | null) => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.trim();
 };

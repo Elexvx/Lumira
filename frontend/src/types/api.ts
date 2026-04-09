@@ -26,6 +26,18 @@ export interface AuthUser {
   nickname?: string;
   realName?: string;
   avatarUrl?: string;
+  mobile?: string | null;
+  email?: string | null;
+}
+
+export interface SecondFactorLoginOption {
+  pluginCode: string;
+  pluginName: string;
+  factorCode: string;
+  factorName: string;
+  challengeId: string;
+  maskedContact?: string | null;
+  promptMessage?: string | null;
 }
 
 export interface LoginResponse {
@@ -36,22 +48,70 @@ export interface LoginResponse {
   user: AuthUser;
   tenants: MyTenant[];
   currentTenant?: TenantSummary | null;
+  requiresSecondFactor?: boolean;
+  secondFactorPluginCode?: string | null;
+  secondFactorPluginName?: string | null;
+  secondFactorChallengeId?: string | null;
+  secondFactorOptions?: SecondFactorLoginOption[];
+  requiresCaptcha?: boolean | null;
 }
+
+export type CaptchaType = 'IMAGE';
 
 export interface SecuritySettings {
   idleTimeoutSeconds: number;
   accessTokenExpireSeconds: number;
   refreshTokenExpireSeconds: number;
+  allowMultiDeviceLogin: boolean;
+  captchaEnabled: boolean;
+  captchaType: CaptchaType;
+  loginDefenseWindowMinutes: number;
+  loginMaxValidationAttempts: number;
+  loginMaxFailureCount: number;
+  passwordMinLength: number;
+  passwordRequireUppercase: boolean;
+  passwordRequireLowercase: boolean;
+  passwordRequireSpecialCharacter: boolean;
+  passwordAllowConsecutiveCharacters: boolean;
+}
+
+export interface CaptchaChallenge {
+  captchaId: string;
+  captchaType: CaptchaType;
+  imageUrl?: string | null;
+  bgUrl?: string | null;
+  puzzleUrl?: string | null;
+  bgWidth?: number | null;
+  bgHeight?: number | null;
+  puzzleWidth?: number | null;
+  puzzleHeight?: number | null;
+  puzzleLeft?: number | null;
+  puzzleTop?: number | null;
+  expiresInSeconds?: number | null;
+}
+
+export interface CaptchaVerifyResult {
+  captchaId: string;
+  captchaProof: string;
+  expiresInSeconds?: number | null;
 }
 
 export interface BrandingSettings {
   websiteName: string;
   websiteFaviconUrl?: string;
   websiteLogoUrl?: string;
+  githubLinkUrl?: string;
+  helpLinkUrl?: string;
+  companyName?: string;
+  copyrightStartYear?: number;
   footerIcp?: string;
   footerCopyright?: string;
 }
 
+export interface AgreementSettings {
+  userAgreementMarkdown: string;
+  privacyAgreementMarkdown: string;
+}
 
 export interface WatermarkSettings {
   enabled: boolean;
@@ -85,6 +145,8 @@ export interface CurrentUser {
   nickname?: string;
   realName?: string;
   avatarUrl?: string;
+  mobile?: string | null;
+  email?: string | null;
   currentTenant?: TenantSummary | null;
   sessionId: string;
   permissionsVersion?: string;
@@ -206,6 +268,74 @@ export interface AuditLogRecord {
   loginIp?: string | null;
   userAgent?: string | null;
   createdAt: string;
+}
+
+export interface SecondFactorProviderStatus {
+  pluginCode: string;
+  pluginName?: string | null;
+  factorCode?: string | null;
+  factorName?: string | null;
+  enabled?: boolean | null;
+  bound?: boolean | null;
+  emailRequired?: boolean | null;
+  maskedContact?: string | null;
+  statusMessage?: string | null;
+}
+
+export interface SecondFactorChallenge {
+  pluginCode: string;
+  pluginName: string;
+  factorCode: string;
+  factorName: string;
+  challengeId: string;
+  maskedContact?: string | null;
+  promptMessage?: string | null;
+  setupUri?: string | null;
+  setupSecret?: string | null;
+  recoveryCodes?: string[];
+}
+
+export interface SecondFactorVerification {
+  verified: boolean;
+  tenantId?: number | null;
+  userId?: number | null;
+  username?: string | null;
+  message?: string | null;
+}
+
+export interface SmtpSettings {
+  host: string;
+  port: number;
+  username: string;
+  password?: string;
+  from: string;
+  authEnabled: boolean;
+  startTlsEnabled: boolean;
+  sslEnabled: boolean;
+  configured?: boolean;
+}
+
+export interface SmtpSettingsPayload {
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  from?: string;
+  authEnabled?: boolean;
+  startTlsEnabled?: boolean;
+  sslEnabled?: boolean;
+}
+
+export interface SmtpTestPayload {
+  toEmail: string;
+  subject?: string;
+  content?: string;
+}
+
+export interface SmtpTestResult {
+  success: boolean;
+  message: string;
+  toEmail: string;
 }
 
 export interface DashboardSummary {

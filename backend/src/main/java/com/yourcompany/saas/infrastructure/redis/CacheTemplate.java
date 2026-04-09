@@ -21,12 +21,25 @@ public class CacheTemplate {
         redisTemplate.opsForValue().set(key, value, ttl);
     }
 
+    public boolean putIfAbsent(String key, String value, Duration ttl) {
+        Boolean result = redisTemplate.opsForValue().setIfAbsent(key, value, ttl);
+        return Boolean.TRUE.equals(result);
+    }
+
     public String get(String key) {
         return redisTemplate.opsForValue().get(key);
     }
 
+    public Long increment(String key) {
+        return redisTemplate.opsForValue().increment(key);
+    }
+
     public void remove(String key) {
         redisTemplate.delete(key);
+    }
+
+    public Set<String> keys(String pattern) {
+        return redisTemplate.keys(pattern);
     }
 
     public void addToSortedSet(String key, String value, double score) {
