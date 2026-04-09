@@ -6,6 +6,7 @@ import com.yourcompany.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.P
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginBootstrap;
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginHealthIndicator;
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginHttpHandler;
+import com.yourcompany.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 
 import java.io.IOException;
 import java.net.URLClassLoader;
@@ -21,6 +22,7 @@ public class PluginRuntimeDescriptor {
     private final PluginBootstrap bootstrap;
     private final PluginHttpHandler httpHandler;
     private final PluginHealthIndicator healthIndicator;
+    private final PluginSecondFactorProvider secondFactorProvider;
     private final List<PluginDeclaredPermission> permissions;
     private final List<PluginDeclaredMenu> menus;
     private final List<ScheduledExecutorService> scheduledExecutors;
@@ -33,6 +35,7 @@ public class PluginRuntimeDescriptor {
             PluginBootstrap bootstrap,
             PluginHttpHandler httpHandler,
             PluginHealthIndicator healthIndicator,
+            PluginSecondFactorProvider secondFactorProvider,
             List<PluginDeclaredPermission> permissions,
             List<PluginDeclaredMenu> menus,
             List<ScheduledExecutorService> scheduledExecutors
@@ -44,6 +47,7 @@ public class PluginRuntimeDescriptor {
         this.bootstrap = bootstrap;
         this.httpHandler = httpHandler;
         this.healthIndicator = healthIndicator;
+        this.secondFactorProvider = secondFactorProvider;
         this.permissions = permissions;
         this.menus = menus;
         this.scheduledExecutors = scheduledExecutors;
@@ -75,6 +79,10 @@ public class PluginRuntimeDescriptor {
 
     public PluginHealthIndicator getHealthIndicator() {
         return healthIndicator;
+    }
+
+    public PluginSecondFactorProvider getSecondFactorProvider() {
+        return secondFactorProvider;
     }
 
     public List<PluginDeclaredPermission> getPermissions() {

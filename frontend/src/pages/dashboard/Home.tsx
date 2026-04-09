@@ -1,28 +1,21 @@
-import { useMemo, type ReactNode } from 'react';
-import { Avatar, Button, Card, Col, Empty, List, Progress, Row, Space, Tag, Typography } from 'antd';
+import { AppstoreOutlined, AuditOutlined, ControlOutlined, RocketOutlined, SettingOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import {
-  AppstoreOutlined,
-  AuditOutlined,
-  ControlOutlined,
-  RocketOutlined,
-  SettingOutlined,
-  TeamOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import { history, useRequest } from 'umi';
+import { Avatar, Card, Col, Empty, List, Row, Space, Tag, Typography } from 'antd';
+import { useMemo, type ReactNode } from 'react';
+import { Link, useRequest } from 'umi';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { DashboardSummary } from '@/types/api';
+import './Home.less';
 
 interface QuickEntry {
   title: string;
   path: string;
   description: string;
   icon: ReactNode;
-  iconBg: string;
-  iconColor: string;
+  accent: string;
+  tone: string;
 }
 
 const quickEntries: QuickEntry[] = [
@@ -31,36 +24,37 @@ const quickEntries: QuickEntry[] = [
     path: '/system/management',
     description: '用户、角色、菜单、字典、配置',
     icon: <SettingOutlined />,
-    iconBg: '#eef4ff',
-    iconColor: '#1d4ed8',
+    accent: '#1d4ed8',
+    tone: '#eef4ff',
   },
   {
     title: '租户中心',
     path: '/tenant/overview',
     description: '当前租户与可访问租户',
     icon: <TeamOutlined />,
-    iconBg: '#eefaf3',
-    iconColor: '#15803d',
+    accent: '#15803d',
+    tone: '#eefaf3',
   },
   {
     title: '审计中心',
-    path: '/audit/overview',
+    path: '/system/monitoring/audit',
     description: '登录和操作日志',
     icon: <AuditOutlined />,
-    iconBg: '#fff5eb',
-    iconColor: '#d97706',
+    accent: '#d97706',
+    tone: '#fff5eb',
   },
   {
     title: '插件管理',
     path: '/system/plugins',
     description: '插件安装、启用、运行态',
     icon: <AppstoreOutlined />,
-    iconBg: '#f4f3ff',
-    iconColor: '#6d28d9',
+    accent: '#6d28d9',
+    tone: '#f4f3ff',
   },
 ];
 
 const quickEntryByPath = new Map(quickEntries.map((item) => [item.path, item]));
+const numberFormatter = new Intl.NumberFormat('zh-CN');
 
 const parseTime = (time?: string) => {
   if (!time) {
@@ -104,7 +98,8 @@ export default () => {
   );
 
   const welcomeName = userInfo?.realName || userInfo?.nickname || userInfo?.username || '同学';
-  const greeting = `${getGreetingByHour(new Date().getHours())}，${welcomeName}，祝你开心每一天！`;
+  const greeting = `${getGreetingByHour(new Date().getHours())}，${welcomeName}`;
+  const greetingNote = tenantInfo?.tenantName || '当前尚未选择租户';
 
   const projectEntries = useMemo(() => {
     if (!summary?.shortcuts?.length) {
@@ -117,30 +112,30 @@ export default () => {
         path: item.path,
         description: item.description || matched?.description || '进入工作台模块',
         icon: matched?.icon || <ControlOutlined />,
-        iconBg: matched?.iconBg || '#eef4ff',
-        iconColor: matched?.iconColor || '#1d4ed8',
+        accent: matched?.accent || '#1d4ed8',
+        tone: matched?.tone || '#eef4ff',
       };
     });
   }, [summary?.shortcuts]);
 
-  const headerMetrics = [
-    { label: '项目数', value: projectEntries.length },
-    { label: '团队内排名', value: '8 / 24' },
-    { label: '项目访问', value: (summary?.menuCount ?? 0) * 42 + (summary?.permissionCount ?? 0) },
-  ];
-
-  const indexMetrics = useMemo(() => {
-    const menuScore = Math.min(100, Math.round(((summary?.menuCount ?? 0) / 40) * 100));
-    const permissionScore = Math.min(100, Math.round(((summary?.permissionCount ?? 0) / 120) * 100));
-    const pluginScore = Math.min(100, Math.round(((summary?.tenantPlugins?.length ?? 0) / 16) * 100));
-    return [
-      { key: 'menu', label: '导航覆盖', value: menuScore },
-      { key: 'permission', label: '权限完备', value: permissionScore },
-      { key: 'plugin', label: '插件活跃', value: pluginScore },
-    ];
-  }, [summary?.menuCount, summary?.permissionCount, summary?.tenantPlugins?.length]);
-
-  const overallIndex = Math.round(indexMetrics.reduce((acc, item) => acc + item.value, 0) / indexMetrics.length);
+  const heroMetrics = useMemo(
+    () => [
+      { label: '菜单', value: summary?.menuCount ?? initialState?.menuTree?.length ?? 0 },
+      { label: '权限', value: summary?.permissionCount ?? initialState?.currentUser?.permissions?.length ?? 0 },
+      { label: '插件', value: summary?.tenantPlugins?.length ?? initialState?.availablePlugins?.length ?? 0 },
+      { label: '动态', value: (summary?.recentLoginLogs?.length || 0) + (summary?.recentOperationLogs?.length || 0) },
+    ],
+    [
+      initialState?.availablePlugins?.length,
+      initialState?.currentUser?.permissions?.length,
+      initialState?.menuTree?.length,
+      summary?.menuCount,
+      summary?.permissionCount,
+      summary?.recentLoginLogs?.length,
+      summary?.recentOperationLogs?.length,
+      summary?.tenantPlugins?.length,
+    ],
+  );
 
   const activityItems = useMemo(() => {
     const loginItems = (summary?.recentLoginLogs || []).map((item) => ({
@@ -183,6 +178,12 @@ export default () => {
     return members.slice(0, 8);
   }, [summary?.recentLoginLogs, summary?.recentOperationLogs, userInfo?.nickname, userInfo?.realName, userInfo?.username]);
 
+  const trendLabels = [
+    { label: '最近登录', value: summary?.recentLoginLogs?.length ?? 0 },
+    { label: '最近操作', value: summary?.recentOperationLogs?.length ?? 0 },
+    { label: '当前角色', value: summary?.currentUser?.permissions?.length ?? 0 },
+  ];
+
   return (
     <PageContainer
       className="saas-dashboard-workplace"
@@ -191,94 +192,83 @@ export default () => {
       style={{ height: '100%', minHeight: 0 }}
       content={null}
     >
-      <div className="saas-management-page-body">
-        <Card className="saas-dashboard-hero" loading={summaryQuery.loading}>
-          <Row align="middle" gutter={[24, 16]}>
-            <Col flex="auto">
-              <Space align="start" size={16}>
-                <Avatar
-                  size={isMobile ? 56 : 72}
-                  src={userInfo?.avatarUrl}
-                  icon={<UserOutlined />}
-                  className="saas-dashboard-hero-avatar"
-                />
-                <div>
-                  <Typography.Title level={4} style={{ marginBottom: 4 }}>
-                    {greeting}
-                  </Typography.Title>
-                  <Typography.Text type="secondary">
-                    {tenantInfo?.tenantName || '未选择租户'} · 交互专家 | 插件平台协同 · 统一审计链路
-                  </Typography.Text>
-                </div>
-              </Space>
-            </Col>
-            <Col xs={24} md={12} lg={10} xl={9}>
-              <div className="saas-dashboard-hero-metrics">
-                {headerMetrics.map((item) => (
-                  <div className="saas-dashboard-hero-metric" key={item.label}>
-                    <div className="saas-dashboard-hero-metric-label">{item.label}</div>
-                    <div className="saas-dashboard-hero-metric-value">{item.value}</div>
-                  </div>
-                ))}
-              </div>
-            </Col>
-          </Row>
-        </Card>
+      <div className="saas-management-page-body saas-home-page">
+        <section className="saas-home-hero">
+          <div className="saas-home-hero__copy">
+            <Typography.Text className="saas-home-hero__eyebrow" translate="no">
+              宏翔商道
+            </Typography.Text>
+            <Typography.Title level={2} className="saas-home-hero__title">
+              {greeting}
+            </Typography.Title>
+            <Typography.Paragraph className="saas-home-hero__description">
+              {greetingNote}。统一审计、权限、插件与租户状态都在这里集中查看，保留同一套宽高节奏与操作路径。
+            </Typography.Paragraph>
+            <Space wrap size={12}>
+              <Link className="saas-home-hero__action saas-home-hero__action--primary" to="/system/management">
+                进入系统管理
+              </Link>
+              <Link className="saas-home-hero__action" to="/user-center/profile">
+                打开个人中心
+              </Link>
+            </Space>
+          </div>
 
-        <Row gutter={[16, 16]} style={{ flex: 1, minHeight: 0 }}>
+          <div className="saas-home-hero__metrics" aria-label="首页状态摘要">
+            {heroMetrics.map((item) => (
+              <div className="saas-home-hero__metric" key={item.label}>
+                <div className="saas-home-hero__metric-label">{item.label}</div>
+                <div className="saas-home-hero__metric-value">{numberFormatter.format(item.value)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <Row gutter={[20, 20]} align="stretch">
           <Col xs={24} xl={16}>
-            <Card
-              title="进行中的项目"
-              extra={(
-                <Typography.Link onClick={() => history.push('/system/management')}>
-                  全部项目
-                </Typography.Link>
-              )}
-            >
-              <List
-                grid={{ gutter: 16, column: isMobile ? 1 : 3 }}
-                dataSource={projectEntries}
-                renderItem={(item) => (
-                  <List.Item>
-                    <Card className="saas-dashboard-project-card" hoverable onClick={() => history.push(item.path)}>
-                      <Space align="start" size={12}>
-                        <span
-                          className="saas-dashboard-project-icon"
-                          style={{ background: item.iconBg, color: item.iconColor }}
-                        >
-                          {item.icon}
-                        </span>
-                        <div>
-                          <Typography.Text strong>{item.title}</Typography.Text>
-                          <Typography.Paragraph type="secondary" style={{ marginTop: 4, marginBottom: 8 }}>
-                            {item.description}
-                          </Typography.Paragraph>
-                          <Typography.Link>立即进入</Typography.Link>
-                        </div>
-                      </Space>
-                    </Card>
-                  </List.Item>
-                )}
-              />
+            <Card className="saas-home-panel saas-home-panel--entries" title="快捷入口">
+              <Row gutter={[16, 16]}>
+                {projectEntries.map((entry) => (
+                  <Col key={entry.path} xs={24} sm={12}>
+                    <Link className="saas-home-entry" to={entry.path} aria-label={`进入${entry.title}`}>
+                      <span className="saas-home-entry__icon" style={{ background: entry.tone, color: entry.accent }}>
+                        {entry.icon}
+                      </span>
+                      <span className="saas-home-entry__content">
+                        <span className="saas-home-entry__title">{entry.title}</span>
+                        <span className="saas-home-entry__desc">{entry.description}</span>
+                        <span className="saas-home-entry__cta">立即进入</span>
+                      </span>
+                    </Link>
+                  </Col>
+                ))}
+              </Row>
             </Card>
 
-            <Card title="动态" className="saas-dashboard-activity-card">
+            <Card className="saas-home-panel saas-home-panel--activity" title="最近动态">
               {activityItems.length ? (
                 <List
                   dataSource={activityItems}
+                  split={false}
                   renderItem={(item) => (
-                    <List.Item>
+                    <List.Item className="saas-home-activity__item">
                       <List.Item.Meta
-                        avatar={<Avatar size={32} icon={<RocketOutlined />} className="saas-dashboard-activity-avatar" />}
-                        title={(
+                        avatar={<Avatar size={36} icon={<RocketOutlined />} className="saas-home-activity__avatar" />}
+                        title={
                           <Space size={8} wrap>
-                            <Typography.Text>{item.title}</Typography.Text>
+                            <Typography.Text className="saas-home-activity__title">{item.title}</Typography.Text>
                             <Tag color={item.color}>{item.tag}</Tag>
                           </Space>
-                        )}
-                        description={item.desc}
+                        }
+                        description={
+                          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                            <Typography.Text className="saas-home-activity__desc">{item.desc}</Typography.Text>
+                            <Typography.Text type="secondary" className="saas-home-activity__time">
+                              {item.createdAt}
+                            </Typography.Text>
+                          </Space>
+                        }
                       />
-                      <Typography.Text type="secondary">{item.createdAt}</Typography.Text>
                     </List.Item>
                   )}
                 />
@@ -289,44 +279,31 @@ export default () => {
           </Col>
 
           <Col xs={24} xl={8}>
-            <Card
-              title="快捷开始 / 便捷导航"
-              extra={<Button type="link" size="small" onClick={() => history.push('/profile/center')}>个人中心</Button>}
-            >
-              <Space wrap className="saas-dashboard-quick-nav">
-                {quickEntries.map((entry) => (
-                  <Button key={entry.path} onClick={() => history.push(entry.path)}>
-                    {entry.title}
-                  </Button>
+            <Card className="saas-home-panel saas-home-panel--summary" title="状态摘要">
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                {trendLabels.map((item) => (
+                  <div className="saas-home-summary" key={item.label}>
+                    <span className="saas-home-summary__label">{item.label}</span>
+                    <span className="saas-home-summary__value">{numberFormatter.format(item.value)}</span>
+                  </div>
                 ))}
+                <Typography.Paragraph type="secondary" className="saas-home-summary__note">
+                  工作台、插件和租户信息均按统一宽度约束展示，避免页面内容因模块不同而出现高度抖动。
+                </Typography.Paragraph>
               </Space>
             </Card>
 
-            <Card title="XX 指数">
-              <div className="saas-dashboard-index-wrap">
-                <Progress type="dashboard" percent={overallIndex} width={isMobile ? 130 : 160} />
-                <div style={{ flex: 1 }}>
-                  {indexMetrics.map((item) => (
-                    <div key={item.key} className="saas-dashboard-index-item">
-                      <div className="saas-dashboard-index-label">{item.label}</div>
-                      <Progress percent={item.value} size="small" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-
-            <Card title="团队">
+            <Card className="saas-home-panel saas-home-panel--team" title="团队与最近使用">
               {teamMembers.length ? (
                 <List
                   dataSource={teamMembers}
                   renderItem={(member, index) => (
-                    <List.Item>
+                    <List.Item className="saas-home-team__item">
                       <Space>
-                        <Avatar size={24} icon={<UserOutlined />} />
-                        <Typography.Text>{member}</Typography.Text>
+                        <Avatar size={28} icon={<UserOutlined />} className="saas-home-team__avatar" />
+                        <Typography.Text className="saas-home-team__name">{member}</Typography.Text>
                       </Space>
-                      <Tag color={['blue', 'green', 'gold', 'purple'][index % 4]}>{index === 0 ? '负责人' : '成员'}</Tag>
+                      <Tag color={['blue', 'green', 'gold', 'purple'][index % 4]}>{index === 0 ? '当前账号' : '成员'}</Tag>
                     </List.Item>
                   )}
                 />

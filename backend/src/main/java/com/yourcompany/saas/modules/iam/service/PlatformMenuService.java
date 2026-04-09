@@ -1,6 +1,8 @@
 package com.yourcompany.saas.modules.iam.service;
 
 import com.yourcompany.saas.modules.plugin.app.PluginManagementAppService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -9,9 +11,13 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 public class PlatformMenuService {
+
+    private static final Logger log = LoggerFactory.getLogger(PlatformMenuService.class);
 
     private final JdbcTemplate jdbcTemplate;
     private final PluginManagementAppService pluginManagementAppService;
@@ -47,7 +53,13 @@ public class PlatformMenuService {
                 },
                 tenantId
         ));
-        List<Map<String, Object>> pluginMenus = pluginManagementAppService.tenantPluginMenus(tenantId, permissions);
+        List<Map<String, Object>> pluginMenus;
+        try {
+            pluginMenus = pluginManagementAppService.tenantPluginMenus(tenantId, permissions);
+        } catch (Throwable throwable) {
+            log.warn("Failed to load plugin menus tenantId={}", tenantId, throwable);
+            pluginMenus = List.of();
+        }
         long seed = -1L;
         for (Map<String, Object> pluginMenu : pluginMenus) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -64,26 +76,70 @@ public class PlatformMenuService {
             item.put("children", new ArrayList<Map<String, Object>>());
             flatMenus.add(item);
         }
-        Map<Long, Map<String, Object>> index = new LinkedHashMap<>();
+        flatMenus.sort(Comparator
+                .comparingInt((Map<String, Object> item) -> safeInt(item.get("sortNo")))
+                .thenComparingLong((Map<String, Object> item) -> safeLong(item.get("id"))));
+
+        Set<Long> knownIds = new HashSet<>();
+        Map<Long, List<Map<String, Object>>> childrenByParent = new LinkedHashMap<>();
         List<Map<String, Object>> roots = new ArrayList<>();
         for (Map<String, Object> menu : flatMenus) {
-            String permissionKey = (String) menu.get("permissionKey");
-            if (permissionKey != null && !permissionKey.isBlank() && !permissions.contains(permissionKey)) {
-                continue;
-            }
-            index.put((Long) menu.get("id"), menu);
-        }
-        for (Map<String, Object> menu : index.values()) {
+            Long id = (Long) menu.get("id");
             Long parentId = (Long) menu.get("parentId");
-            if (parentId == null || parentId == 0 || !index.containsKey(parentId)) {
-                roots.add(menu);
-                continue;
-            }
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> children = (List<Map<String, Object>>) index.get(parentId).get("children");
-            children.add(menu);
+            knownIds.add(id);
+            childrenByParent.computeIfAbsent(parentId == null ? 0L : parentId, key -> new ArrayList<>()).add(menu);
         }
-        roots.sort(Comparator.comparingInt(item -> (Integer) item.getOrDefault("sortNo", 0)));
-        return roots;
+        for (Map<String, Object> menu : flatMenus) {
+            Long parentId = (Long) menu.get("parentId");
+            if (parentId == null || parentId == 0 || !knownIds.contains(parentId)) {
+                roots.add(menu);
+            }
+        }
+
+        Set<String> permissionSet = permissions == null ? Set.of() : new HashSet<>(permissions);
+        List<Map<String, Object>> visibleRoots = new ArrayList<>();
+        for (Map<String, Object> root : roots) {
+            Map<String, Object> visibleRoot = pruneVisibleMenu(root, childrenByParent, permissionSet);
+            if (visibleRoot != null) {
+                visibleRoots.add(visibleRoot);
+            }
+        }
+        return visibleRoots;
+    }
+
+    private Map<String, Object> pruneVisibleMenu(Map<String, Object> menu, Map<Long, List<Map<String, Object>>> childrenByParent, Set<String> permissions) {
+        Long id = (Long) menu.get("id");
+        List<Map<String, Object>> visibleChildren = new ArrayList<>();
+        for (Map<String, Object> child : childrenByParent.getOrDefault(id, List.of())) {
+            Map<String, Object> visibleChild = pruneVisibleMenu(child, childrenByParent, permissions);
+            if (visibleChild != null) {
+                visibleChildren.add(visibleChild);
+            }
+        }
+        if (!isMenuAllowed(menu, permissions) && visibleChildren.isEmpty()) {
+            return null;
+        }
+        Map<String, Object> visibleMenu = new LinkedHashMap<>(menu);
+        visibleMenu.put("children", visibleChildren);
+        return visibleMenu;
+    }
+
+    private boolean isMenuAllowed(Map<String, Object> menu, Set<String> permissions) {
+        String permissionKey = (String) menu.get("permissionKey");
+        return permissionKey == null || permissionKey.isBlank() || permissions.contains("*") || permissions.contains(permissionKey);
+    }
+
+    private int safeInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
+    }
+
+    private long safeLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return 0L;
     }
 }

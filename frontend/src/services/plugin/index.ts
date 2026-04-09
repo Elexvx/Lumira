@@ -86,6 +86,11 @@ export const pluginService = {
       data: payload,
       ...options,
     }),
+  uninstall: (pluginCode: string, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/plugins/${pluginCode}/uninstall`, {
+      method: 'POST',
+      ...options,
+    }),
   runtimeLogs: (pluginCode: string, options: RequestOptions = {}) =>
     request<PluginRuntimeLog[]>(`/v1/plugins/${pluginCode}/logs`, {
       method: 'GET',

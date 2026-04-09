@@ -501,7 +501,8 @@ const MenuManagementPage = () => {
     {
       title: '菜单编码',
       dataIndex: 'menuCode',
-      search: true,
+      hideInSearch: true,
+      hideInTable: true,
     },
     {
       title: '菜单名称',
@@ -751,7 +752,6 @@ const MenuManagementPage = () => {
             column={2}
             dataSource={selectedMenu}
             columns={[
-              { title: '菜单编码', dataIndex: 'menuCode' },
               { title: '菜单名称', dataIndex: 'menuName' },
               { title: '菜单类型', dataIndex: 'menuType' },
               { title: '路由', dataIndex: 'path', renderText: (value) => value || '-' },

@@ -71,4 +71,47 @@ public final class PluginRuntimeModels {
             Runnable task
     ) {
     }
+
+    public record PluginSecondFactorProfile(
+            String pluginCode,
+            String pluginName,
+            String factorCode,
+            String factorName,
+            boolean enabled,
+            boolean bound,
+            boolean emailRequired,
+            String maskedContact,
+            String statusMessage
+    ) {
+    }
+
+    public record PluginSecondFactorChallenge(
+            String pluginCode,
+            String pluginName,
+            String factorCode,
+            String factorName,
+            String challengeId,
+            String maskedContact,
+            String promptMessage,
+            String setupUri,
+            String setupSecret,
+            List<String> recoveryCodes
+    ) {
+    }
+
+    public record PluginSecondFactorVerification(
+            boolean verified,
+            Long tenantId,
+            Long userId,
+            String username,
+            String message
+    ) {
+        public static PluginSecondFactorVerification success(Long tenantId, Long userId, String username, String message) {
+            return new PluginSecondFactorVerification(true, tenantId, userId, username, message);
+        }
+
+        public static PluginSecondFactorVerification failure(String message) {
+            return new PluginSecondFactorVerification(false, null, null, null, message);
+        }
+    }
 }

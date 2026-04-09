@@ -481,6 +481,15 @@ public final class SystemDTO {
         @Positive
         private Long refreshTokenExpireSeconds;
 
+        @NotNull
+        private Boolean allowMultiDeviceLogin;
+
+        @NotNull
+        private Boolean captchaEnabled;
+
+        @NotBlank
+        private String captchaType;
+
         public Long getIdleTimeoutSeconds() {
             return idleTimeoutSeconds;
         }
@@ -504,12 +513,121 @@ public final class SystemDTO {
         public void setRefreshTokenExpireSeconds(Long refreshTokenExpireSeconds) {
             this.refreshTokenExpireSeconds = refreshTokenExpireSeconds;
         }
+
+        public Boolean getAllowMultiDeviceLogin() {
+            return allowMultiDeviceLogin;
+        }
+
+        public void setAllowMultiDeviceLogin(Boolean allowMultiDeviceLogin) {
+            this.allowMultiDeviceLogin = allowMultiDeviceLogin;
+        }
+
+        public Boolean getCaptchaEnabled() {
+            return captchaEnabled;
+        }
+
+        public void setCaptchaEnabled(Boolean captchaEnabled) {
+            this.captchaEnabled = captchaEnabled;
+        }
+
+        public String getCaptchaType() {
+            return captchaType;
+        }
+
+        public void setCaptchaType(String captchaType) {
+            this.captchaType = captchaType;
+        }
+    }
+
+    public static class CaptchaSliderVerifyRequest {
+        @NotBlank
+        private String captchaId;
+        @NotNull
+        private Double x;
+        @NotNull
+        private Double y;
+        @NotNull
+        private Double sliderOffsetX;
+        @NotNull
+        @Positive
+        private Long duration;
+        private List<List<Double>> trail;
+        private String targetType;
+        private Integer errorCount;
+
+        public String getCaptchaId() {
+            return captchaId;
+        }
+
+        public void setCaptchaId(String captchaId) {
+            this.captchaId = captchaId;
+        }
+
+        public Double getX() {
+            return x;
+        }
+
+        public void setX(Double x) {
+            this.x = x;
+        }
+
+        public Double getY() {
+            return y;
+        }
+
+        public void setY(Double y) {
+            this.y = y;
+        }
+
+        public Double getSliderOffsetX() {
+            return sliderOffsetX;
+        }
+
+        public void setSliderOffsetX(Double sliderOffsetX) {
+            this.sliderOffsetX = sliderOffsetX;
+        }
+
+        public Long getDuration() {
+            return duration;
+        }
+
+        public void setDuration(Long duration) {
+            this.duration = duration;
+        }
+
+        public List<List<Double>> getTrail() {
+            return trail;
+        }
+
+        public void setTrail(List<List<Double>> trail) {
+            this.trail = trail;
+        }
+
+        public String getTargetType() {
+            return targetType;
+        }
+
+        public void setTargetType(String targetType) {
+            this.targetType = targetType;
+        }
+
+        public Integer getErrorCount() {
+            return errorCount;
+        }
+
+        public void setErrorCount(Integer errorCount) {
+            this.errorCount = errorCount;
+        }
     }
 
     public static class BrandingSettingsRequest {
         private String websiteName;
         private String websiteFaviconUrl;
         private String websiteLogoUrl;
+        private String githubLinkUrl;
+        private String helpLinkUrl;
+        private String companyName;
+        private Integer copyrightStartYear;
         private String footerIcp;
         private String footerCopyright;
 
@@ -537,6 +655,38 @@ public final class SystemDTO {
             this.websiteLogoUrl = websiteLogoUrl;
         }
 
+        public String getGithubLinkUrl() {
+            return githubLinkUrl;
+        }
+
+        public void setGithubLinkUrl(String githubLinkUrl) {
+            this.githubLinkUrl = githubLinkUrl;
+        }
+
+        public String getHelpLinkUrl() {
+            return helpLinkUrl;
+        }
+
+        public void setHelpLinkUrl(String helpLinkUrl) {
+            this.helpLinkUrl = helpLinkUrl;
+        }
+
+        public String getCompanyName() {
+            return companyName;
+        }
+
+        public void setCompanyName(String companyName) {
+            this.companyName = companyName;
+        }
+
+        public Integer getCopyrightStartYear() {
+            return copyrightStartYear;
+        }
+
+        public void setCopyrightStartYear(Integer copyrightStartYear) {
+            this.copyrightStartYear = copyrightStartYear;
+        }
+
         public String getFooterIcp() {
             return footerIcp;
         }
@@ -553,6 +703,134 @@ public final class SystemDTO {
             this.footerCopyright = footerCopyright;
         }
     }
+
+    public static class AgreementSettingsRequest {
+        private String userAgreementMarkdown;
+        private String privacyAgreementMarkdown;
+
+        public String getUserAgreementMarkdown() {
+            return userAgreementMarkdown;
+        }
+
+        public void setUserAgreementMarkdown(String userAgreementMarkdown) {
+            this.userAgreementMarkdown = userAgreementMarkdown;
+        }
+
+        public String getPrivacyAgreementMarkdown() {
+            return privacyAgreementMarkdown;
+        }
+
+        public void setPrivacyAgreementMarkdown(String privacyAgreementMarkdown) {
+            this.privacyAgreementMarkdown = privacyAgreementMarkdown;
+        }
+    }
+
+    public static class SmtpSettingsRequest {
+        private String host;
+        private Integer port;
+        private String username;
+        private String password;
+        private String from;
+        private Boolean authEnabled;
+        private Boolean startTlsEnabled;
+        private Boolean sslEnabled;
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public Integer getPort() {
+            return port;
+        }
+
+        public void setPort(Integer port) {
+            this.port = port;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getFrom() {
+            return from;
+        }
+
+        public void setFrom(String from) {
+            this.from = from;
+        }
+
+        public Boolean getAuthEnabled() {
+            return authEnabled;
+        }
+
+        public void setAuthEnabled(Boolean authEnabled) {
+            this.authEnabled = authEnabled;
+        }
+
+        public Boolean getStartTlsEnabled() {
+            return startTlsEnabled;
+        }
+
+        public void setStartTlsEnabled(Boolean startTlsEnabled) {
+            this.startTlsEnabled = startTlsEnabled;
+        }
+
+        public Boolean getSslEnabled() {
+            return sslEnabled;
+        }
+
+        public void setSslEnabled(Boolean sslEnabled) {
+            this.sslEnabled = sslEnabled;
+        }
+    }
+
+    public static class SmtpTestRequest {
+        @NotBlank
+        private String toEmail;
+        private String subject;
+        private String content;
+
+        public String getToEmail() {
+            return toEmail;
+        }
+
+        public void setToEmail(String toEmail) {
+            this.toEmail = toEmail;
+        }
+
+        public String getSubject() {
+            return subject;
+        }
+
+        public void setSubject(String subject) {
+            this.subject = subject;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
+    }
+
     public static class WatermarkSettingsRequest {
         private Boolean enabled;
         private String mode;

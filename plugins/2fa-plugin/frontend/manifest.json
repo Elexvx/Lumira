@@ -1,0 +1,15 @@
+{
+  "pluginCode": "2fa",
+  "version": "1.0.0",
+  "entry": "assets/2fa-plugin.js",
+  "assets": [
+    "assets/2fa-plugin.js"
+  ],
+  "styles": [],
+  "routes": [
+    "/plugins/2fa"
+  ],
+  "sharedDeps": [
+    "react"
+  ]
+}

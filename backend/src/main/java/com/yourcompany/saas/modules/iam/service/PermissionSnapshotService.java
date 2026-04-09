@@ -6,6 +6,8 @@ import com.yourcompany.saas.common.constant.CacheKeyConstants;
 import com.yourcompany.saas.common.enums.ErrorCode;
 import com.yourcompany.saas.common.exception.BizException;
 import com.yourcompany.saas.infrastructure.redis.CacheTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -17,6 +19,8 @@ import java.util.Set;
 
 @Service
 public class PermissionSnapshotService {
+
+    private static final Logger log = LoggerFactory.getLogger(PermissionSnapshotService.class);
 
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
     private static final String VERSION_SUFFIX = "permission_version";
@@ -58,7 +62,11 @@ public class PermissionSnapshotService {
         if (tenantId == null) {
             return;
         }
-        cacheTemplate.put(CacheKeyConstants.tenantKey(String.valueOf(tenantId), VERSION_SUFFIX), String.valueOf(System.currentTimeMillis()), Duration.ofDays(30));
+        try {
+            cacheTemplate.put(CacheKeyConstants.tenantKey(String.valueOf(tenantId), VERSION_SUFFIX), String.valueOf(System.currentTimeMillis()), Duration.ofDays(30));
+        } catch (Throwable throwable) {
+            log.warn("Failed to invalidate permission snapshot tenantId={}", tenantId, throwable);
+        }
     }
 
     private String getOrCreateTenantVersion(Long tenantId) {

@@ -67,25 +67,26 @@ public class PluginArtifactLoader {
                 Files.copy(inputStream, zipPath, StandardCopyOption.REPLACE_EXISTING);
             }
             unzip(zipPath, extractedDir);
+            Path packageRoot = resolvePackageRoot(extractedDir);
             for (String requiredPath : REQUIRED_PATHS) {
-                if (!Files.exists(extractedDir.resolve(requiredPath))) {
+                if (!Files.exists(packageRoot.resolve(requiredPath))) {
                     throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "缺少插件制品文件: " + requiredPath);
                 }
             }
             PluginDTO.PluginPackageMetadata metadata = objectMapper.readValue(
-                    extractedDir.resolve("plugin.json").toFile(),
+                    packageRoot.resolve("plugin.json").toFile(),
                     PluginDTO.PluginPackageMetadata.class
             );
             validateMetadata(metadata);
             PluginDTO.FrontendPluginManifest frontendManifest = objectMapper.readValue(
-                    extractedDir.resolve("frontend/manifest.json").toFile(),
+                    packageRoot.resolve("frontend/manifest.json").toFile(),
                     PluginDTO.FrontendPluginManifest.class
             );
             validateFrontendManifest(metadata, frontendManifest);
-            String checksumsRaw = Files.readString(extractedDir.resolve("checksums.json"));
+            String checksumsRaw = Files.readString(packageRoot.resolve("checksums.json"));
             Map<String, String> checksums = objectMapper.readValue(checksumsRaw, CHECKSUM_TYPE);
-            verifySignature(checksumsRaw, Files.readString(extractedDir.resolve("signature.sig")).trim());
-            verifyChecksums(extractedDir, checksums);
+            verifySignature(checksumsRaw, Files.readString(packageRoot.resolve("signature.sig")).trim());
+            verifyChecksums(packageRoot, checksums);
             String packageChecksum = digest(Files.readAllBytes(zipPath));
             Map<String, Object> validationReport = new LinkedHashMap<>();
             validationReport.put("pluginCode", metadata.getPluginCode());
@@ -99,7 +100,8 @@ public class PluginArtifactLoader {
                     frontendManifest,
                     zipPath,
                     extractedDir,
-                    extractedDir.resolve("signature.sig"),
+                    packageRoot,
+                    packageRoot.resolve("signature.sig"),
                     packageChecksum,
                     objectMapper.writeValueAsString(validationReport)
             );
@@ -133,6 +135,14 @@ public class PluginArtifactLoader {
             return versionHome;
         } catch (IOException exception) {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件落盘失败: " + exception.getMessage());
+        }
+    }
+
+    public void removeVersionHome(Path versionHome) {
+        try {
+            deleteRecursively(versionHome);
+        } catch (IOException exception) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件目录清理失败: " + exception.getMessage());
         }
     }
 
@@ -226,6 +236,24 @@ public class PluginArtifactLoader {
         }
     }
 
+    private Path resolvePackageRoot(Path extractedDir) throws IOException {
+        if (Files.exists(extractedDir.resolve("plugin.json"))) {
+            return extractedDir;
+        }
+        List<Path> topLevelEntries;
+        try (var stream = Files.list(extractedDir)) {
+            topLevelEntries = stream.toList();
+        }
+        List<Path> topLevelDirectories = topLevelEntries.stream().filter(Files::isDirectory).toList();
+        if (topLevelDirectories.size() == 1) {
+            Path candidate = topLevelDirectories.get(0);
+            if (Files.exists(candidate.resolve("plugin.json"))) {
+                return candidate;
+            }
+        }
+        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "缺少插件制品文件: plugin.json");
+    }
+
     private void copyDirectory(Path source, Path target) throws IOException {
         Files.walk(source).forEach(path -> {
             try {
@@ -258,6 +286,7 @@ public class PluginArtifactLoader {
             PluginDTO.FrontendPluginManifest frontendManifest,
             Path zipPath,
             Path extractedDir,
+            Path packageRoot,
             Path signaturePath,
             String packageChecksum,
             String validationReportJson

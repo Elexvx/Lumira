@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { UserSwitchOutlined } from '@ant-design/icons';
 import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Modal, Space, Tag, Typography, message } from 'antd';
 import { usePermission } from '@/hooks/usePermission';
@@ -22,6 +21,7 @@ const formatDateTime = (value?: string | null) => {
 const OnlineUsersPage = () => {
   const actionRef = useRef<ActionType>();
   const reloadTimerRef = useRef<number | null>(null);
+  const pollingTimerRef = useRef<number | null>(null);
   const { initialState } = useInitialStateModel();
   const { canAccess } = usePermission();
   const currentUser = initialState?.currentUser;
@@ -60,6 +60,27 @@ const OnlineUsersPage = () => {
       }
     };
   }, [canViewOnlineUsers, currentUser?.sessionId, currentUser?.userId, initialState?.currentTenant?.tenantId]);
+
+  useEffect(() => {
+    if (!currentUser?.sessionId || !canViewOnlineUsers) {
+      return;
+    }
+
+    if (pollingTimerRef.current) {
+      window.clearInterval(pollingTimerRef.current);
+    }
+
+    pollingTimerRef.current = window.setInterval(() => {
+      actionRef.current?.reload();
+    }, 30000);
+
+    return () => {
+      if (pollingTimerRef.current) {
+        window.clearInterval(pollingTimerRef.current);
+        pollingTimerRef.current = null;
+      }
+    };
+  }, [canViewOnlineUsers, currentUser?.sessionId, initialState?.currentTenant?.tenantId]);
 
   const columns: ProColumns<OnlineSessionRecord>[] = [
     {
@@ -201,7 +222,6 @@ const OnlineUsersPage = () => {
       title="在线用户"
       className="saas-online-users-page"
       ghost
-      extra={<Tag color="processing" icon={<UserSwitchOutlined />}>实时推送</Tag>}
     >
       <ProTable<OnlineSessionRecord>
         actionRef={actionRef}

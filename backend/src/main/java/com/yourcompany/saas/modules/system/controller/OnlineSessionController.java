@@ -54,7 +54,7 @@ public class OnlineSessionController {
     }
 
     @DeleteMapping("/{sessionId}")
-    public ApiResponse<Boolean> kick(@PathVariable String sessionId) {
+    public ApiResponse<Boolean> kick(@PathVariable("sessionId") String sessionId) {
         require("system:online-user:kick");
         return ApiResponse.success(
                 onlineSessionManagementAppService.kickSession(securityContextFacade.getCurrentUser(), sessionId),
@@ -63,7 +63,7 @@ public class OnlineSessionController {
     }
 
     @PatchMapping("/{userId}/ban")
-    public ApiResponse<Boolean> ban(@PathVariable Long userId) {
+    public ApiResponse<Boolean> ban(@PathVariable("userId") Long userId) {
         require("system:online-user:ban");
         return ApiResponse.success(
                 onlineSessionManagementAppService.banUser(securityContextFacade.getCurrentUser(), userId),

@@ -1,0 +1,7 @@
+{
+  "plugin.json": "d3aafbfb3de18e5c462b06e4855271bf10c1af68023d517c1ac991d890098249",
+  "backend/plugin.jar": "88a2e17668105f983ce521c29a2bd65bdc80a5ffe334e2eb39825f3f070c94f0",
+  "frontend/manifest.json": "ee9f5ecd863cb2520f8587e2ee5f8e0a6ad276667d7a2a8807ff2810f1cc3894",
+  "frontend/assets/2fa-plugin.js": "30308ef9111e41b6327eca08e814fa453217a9d669688bd3060f68123e8f1ed5",
+  "migrations/V1__twofactor_init.sql": "035e7cb26fa3209778dd44df41ae043c07d5677c1a8dea9c563d7177ae91f91b"
+}

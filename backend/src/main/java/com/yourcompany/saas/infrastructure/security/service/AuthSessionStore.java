@@ -140,12 +140,52 @@ public class AuthSessionStore {
         return new ArrayList<>(sessionIds);
     }
 
+    public Optional<String> findLatestActiveUserSessionId(Long userId) {
+        List<String> sessionIds = listActiveUserSessionIds(userId);
+        if (sessionIds.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(sessionIds.get(0));
+    }
+
     public void revokeUserSessions(Long userId, boolean publishChange) {
         for (String sessionId : listActiveUserSessionIds(userId)) {
             findBySessionId(sessionId).ifPresentOrElse(
                     session -> remove(session, publishChange),
                     () -> cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId), sessionId)
             );
+        }
+    }
+
+    public void retainLatestSessionForEachUser() {
+        Set<String> keys = cacheTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*");
+        if (CollectionUtils.isEmpty(keys)) {
+            return;
+        }
+
+        Set<Long> userIds = new LinkedHashSet<>();
+        for (String key : keys) {
+            String[] parts = key.split(":");
+            if (parts.length >= 4) {
+                try {
+                    userIds.add(Long.parseLong(parts[2]));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+
+        for (Long userId : userIds) {
+            List<String> sessionIds = listActiveUserSessionIds(userId);
+            if (sessionIds.size() <= 1) {
+                continue;
+            }
+            for (int index = 1; index < sessionIds.size(); index++) {
+                String sessionId = sessionIds.get(index);
+                findBySessionId(sessionId).ifPresentOrElse(
+                        session -> remove(session, true),
+                        () -> cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId), sessionId)
+                );
+            }
         }
     }
 

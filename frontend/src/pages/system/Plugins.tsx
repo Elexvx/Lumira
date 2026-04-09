@@ -1,78 +1,79 @@
+import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, PoweroffOutlined, SyncOutlined } from '@ant-design/icons';
+import { PageContainer } from '@ant-design/pro-components';
+import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Descriptions, Drawer, Form, Input, Modal, Select, Space, Tag, Upload, message } from 'antd';
-import { useRequest } from 'umi';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { usePermission } from '@/hooks/usePermission';
 import { pluginService } from '@/services/plugin';
 import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 
 const PluginsPage = () => {
-  const [queryForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
   const { canAccess } = usePermission();
-  const [query, setQuery] = useState<Record<string, unknown>>({});
+  const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
+  const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
+  const [versionMap, setVersionMap] = useState<Record<string, PluginVersion[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition | null>(null);
   const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [uploadVisible, setUploadVisible] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [runtimeLogs, setRuntimeLogs] = useState<PluginRuntimeLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [mutationLoading, setMutationLoading] = useState(false);
 
-  const definitionQuery = useRequest(async () => ({
-    data: await pluginService.definitions({ autoRedirectOnUnauthorized: false }),
-  }) as { data: PluginDefinition[] }, {
-    refreshDeps: [initialState?.currentTenant?.tenantId],
-  });
+  const loadOverview = async () => {
+    setLoading(true);
+    try {
+      const [definitionList, tenantPlugins] = await Promise.all([
+        pluginService.definitions({ autoRedirectOnUnauthorized: false }),
+        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+      ]);
+      const versionResults = await Promise.allSettled(
+        definitionList.map(async (plugin) => ({
+          pluginCode: plugin.pluginCode,
+          versions: await pluginService.versions(plugin.pluginCode, { autoRedirectOnUnauthorized: false }),
+        })),
+      );
+      const nextVersionMap: Record<string, PluginVersion[]> = {};
+      versionResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          nextVersionMap[result.value.pluginCode] = result.value.versions;
+        }
+      });
+      definitionList.forEach((plugin) => {
+        nextVersionMap[plugin.pluginCode] = nextVersionMap[plugin.pluginCode] || [];
+      });
 
-  const versionQuery = useRequest(
-    async () =>
-      selectedPlugin
-        ? ({ data: await pluginService.versions(selectedPlugin.pluginCode, { autoRedirectOnUnauthorized: false }) } as { data: PluginVersion[] })
-        : ({ data: [] as PluginVersion[] } as { data: PluginVersion[] }),
-    { refreshDeps: [selectedPlugin?.pluginCode] },
-  );
+      setDefinitions(definitionList);
+      setAvailablePlugins(tenantPlugins);
+      setVersionMap(nextVersionMap);
+      if (!selectedPlugin && definitionList.length > 0) {
+        setSelectedPlugin(definitionList[0]);
+      }
 
-  const logQuery = useRequest(
-    async () =>
-      selectedPlugin
-        ? ({ data: await pluginService.runtimeLogs(selectedPlugin.pluginCode, { autoRedirectOnUnauthorized: false }) } as { data: PluginRuntimeLog[] })
-        : ({ data: [] as PluginRuntimeLog[] } as { data: PluginRuntimeLog[] }),
-    { refreshDeps: [selectedPlugin?.pluginCode, logDrawerOpen] },
-  );
-
-  const availableQuery = useRequest(async () => ({
-    data: await pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
-  }) as { data: TenantPlugin[] }, {
-    refreshDeps: [initialState?.currentTenant?.tenantId],
-  });
-
-  const definitionList = definitionQuery.data || [];
-  const versionList = versionQuery.data || [];
-  const runtimeLogList = logQuery.data || [];
-  const currentAvailable = availableQuery.data || initialState?.availablePlugins || [];
+      setInitialState((prev) =>
+        prev
+          ? {
+              ...prev,
+              availablePlugins: tenantPlugins,
+            }
+          : prev,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!selectedPlugin && definitionList.length > 0) {
-      setSelectedPlugin(definitionList[0]);
-    }
-  }, [definitionList, selectedPlugin]);
-
-  const filteredDefinitions = useMemo(() => {
-    const keyword = String(query.keyword || '').trim().toLowerCase();
-    const pluginCode = String(query.pluginCode || '').trim().toLowerCase();
-    const status = String(query.status || '').trim().toLowerCase();
-    return definitionList.filter((item) => {
-      const matchesKeyword = !keyword || item.pluginName.toLowerCase().includes(keyword) || item.pluginCode.toLowerCase().includes(keyword);
-      const matchesCode = !pluginCode || item.pluginCode.toLowerCase().includes(pluginCode);
-      const matchesStatus = !status || item.status.toLowerCase() === status;
-      return matchesKeyword && matchesCode && matchesStatus;
-    });
-  }, [definitionList, query]);
+    void loadOverview();
+  }, [initialState?.currentTenant?.tenantId]);
 
   const refreshBootstrap = async () => {
-    const [menuTree, availablePlugins] = await Promise.all([
+    const [menuTree, available] = await Promise.all([
       pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
       pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
     ]);
@@ -82,71 +83,143 @@ const PluginsPage = () => {
             ...prev,
             menuTree,
             menuVersion: (prev.menuVersion ?? 0) + 1,
-            availablePlugins,
+            availablePlugins: available,
             securitySettings: prev.securitySettings,
           }
         : prev,
     );
   };
 
-  const confirm = (title: string, content: string, action: () => Promise<void>) =>
+  const showConfirm = (title: string, content: string, action: () => Promise<void>) =>
     Modal.confirm({
       title,
       content,
       okText: '确认',
       cancelText: '取消',
-      onOk: action,
+      onOk: async () => action(),
     });
 
-  const confirmInstall = (pluginCode: string, version: string) =>
-    confirm('安装插件版本', `${pluginCode} @ ${version}`, async () => {
-      await pluginService.install({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
-      await versionQuery.refresh();
-      await definitionQuery.refresh();
-      message.success('插件安装完成');
-    });
+  const getActiveVersion = (pluginCode: string) => {
+    const versions = versionMap[pluginCode] || [];
+    return versions.find((item) => item.isActive === 1) || versions[0];
+  };
 
-  const confirmActivate = (pluginCode: string, version: string) =>
-    confirm('激活插件版本', `${pluginCode} @ ${version}`, async () => {
-      await pluginService.upgrade({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
-      await versionQuery.refresh();
+  const isInstalledVersion = (version?: PluginVersion) => Boolean(version && version.installStatus === 'LOADED' && version.loadStatus === 'LOADED');
+
+  const refreshAfterMutation = async () => {
+    try {
+      await loadOverview();
+    } catch {
+      message.warning('插件已更新，但列表刷新失败，请手动刷新页面');
+    }
+    try {
       await refreshBootstrap();
-      message.success('插件激活版本已切换');
-    });
+    } catch {
+      message.warning('插件已更新，但菜单刷新失败，请手动刷新页面');
+    }
+  };
 
-  const confirmEnable = (pluginCode: string, version: string) => {
+  const handleInstall = async (pluginCode: string, version: string) => {
+    showConfirm('安装插件版本', `${pluginCode} @ ${version}`, async () => {
+      setMutationLoading(true);
+      try {
+        await pluginService.install({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
+        message.success('插件安装完成');
+        await refreshAfterMutation();
+      } finally {
+        setMutationLoading(false);
+      }
+    });
+  };
+
+  const handleActivate = async (pluginCode: string, version: string) => {
+    showConfirm('激活插件版本', `${pluginCode} @ ${version}`, async () => {
+      setMutationLoading(true);
+      try {
+        await pluginService.upgrade({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
+        message.success('插件激活版本已切换');
+        await refreshAfterMutation();
+      } finally {
+        setMutationLoading(false);
+      }
+    });
+  };
+
+  const handleEnable = async (pluginCode: string, version?: string) => {
     const tenantId = initialState?.currentTenant?.tenantId;
     if (!tenantId) {
       message.error('当前未选择租户');
       return;
     }
-    confirm('启用插件', `${pluginCode} @ ${version}`, async () => {
-      await pluginService.enable({ tenantId, pluginCode, version }, { autoRedirectOnUnauthorized: false });
-      await refreshBootstrap();
-      message.success('插件已启用');
+    const versionToUse = version || getActiveVersion(pluginCode)?.version;
+    const versionRecord = (versionMap[pluginCode] || []).find((item) => item.version === versionToUse) || getActiveVersion(pluginCode);
+    if (!versionToUse) {
+      message.warning('请先安装可用版本');
+      setSelectedPlugin(definitions.find((item) => item.pluginCode === pluginCode) || null);
+      setVersionDrawerOpen(true);
+      return;
+    }
+    if (!isInstalledVersion(versionRecord)) {
+      message.warning('请先安装并加载该版本后再启用');
+      setSelectedPlugin(definitions.find((item) => item.pluginCode === pluginCode) || null);
+      setVersionDrawerOpen(true);
+      return;
+    }
+    showConfirm('启用插件', `${pluginCode} @ ${versionToUse}`, async () => {
+      setMutationLoading(true);
+      try {
+        await pluginService.enable({ tenantId, pluginCode, version: versionToUse }, { autoRedirectOnUnauthorized: false });
+        message.success('插件已启用');
+        await refreshAfterMutation();
+      } finally {
+        setMutationLoading(false);
+      }
     });
   };
 
-  const confirmDisable = (pluginCode: string) => {
+  const handleDisable = async (pluginCode: string) => {
     const tenantId = initialState?.currentTenant?.tenantId;
     if (!tenantId) {
       message.error('当前未选择租户');
       return;
     }
-    confirm('停用插件', pluginCode, async () => {
-      await pluginService.disable({ tenantId, pluginCode }, { autoRedirectOnUnauthorized: false });
-      await refreshBootstrap();
-      message.success('插件已停用');
+    showConfirm('停用插件', pluginCode, async () => {
+      setMutationLoading(true);
+      try {
+        await pluginService.disable({ tenantId, pluginCode }, { autoRedirectOnUnauthorized: false });
+        message.success('插件已停用');
+        await refreshAfterMutation();
+      } finally {
+        setMutationLoading(false);
+      }
     });
   };
 
-  const confirmRollback = (pluginCode: string, version: string) =>
-    confirm('回滚插件版本', `${pluginCode} -> ${version}`, async () => {
-      await pluginService.rollback({ pluginCode, targetVersion: version }, { autoRedirectOnUnauthorized: false });
-      await versionQuery.refresh();
-      await refreshBootstrap();
-      message.success('插件已回滚');
+  const handleRollback = async (pluginCode: string, version: string) => {
+    showConfirm('回滚插件版本', `${pluginCode} -> ${version}`, async () => {
+      setMutationLoading(true);
+      try {
+        await pluginService.rollback({ pluginCode, targetVersion: version }, { autoRedirectOnUnauthorized: false });
+        message.success('插件已回滚');
+        await refreshAfterMutation();
+      } finally {
+        setMutationLoading(false);
+      }
     });
+  };
+
+  const handleUninstall = async (pluginCode: string) => {
+    showConfirm('卸载插件', `${pluginCode} 将从系统中移除，确认继续吗？`, async () => {
+      setMutationLoading(true);
+      try {
+        await pluginService.uninstall(pluginCode, { autoRedirectOnUnauthorized: false });
+        message.success('插件已卸载');
+        await refreshAfterMutation();
+      } finally {
+        setMutationLoading(false);
+      }
+    });
+  };
 
   const handleUpload = async () => {
     if (!uploadFile) {
@@ -161,312 +234,258 @@ const PluginsPage = () => {
       message.error('插件包不能超过 50MB');
       return;
     }
-    await pluginService.upload(uploadFile, { autoRedirectOnUnauthorized: false });
-    setUploadVisible(false);
-    setUploadFile(null);
-    await definitionQuery.refresh();
-    message.success('插件上传并完成校验');
+    setMutationLoading(true);
+    try {
+      await pluginService.upload(uploadFile, { autoRedirectOnUnauthorized: false });
+      setUploadVisible(false);
+      setUploadFile(null);
+      message.success('插件上传并完成校验');
+      await loadOverview();
+    } finally {
+      setMutationLoading(false);
+    }
   };
 
-  const selectedPluginDetail = useMemo(() => {
-    if (!selectedPlugin) {
-      return null;
+  const handleOpenVersions = (plugin: PluginDefinition) => {
+    setSelectedPlugin(plugin);
+    setVersionDrawerOpen(true);
+  };
+
+  const handleOpenDetails = (plugin: PluginDefinition) => {
+    setSelectedPlugin(plugin);
+    setDetailDrawerOpen(true);
+  };
+
+  const handleOpenLogs = async (plugin: PluginDefinition) => {
+    setSelectedPlugin(plugin);
+    setLogDrawerOpen(true);
+    setLogsLoading(true);
+    try {
+      setRuntimeLogs(await pluginService.runtimeLogs(plugin.pluginCode, { autoRedirectOnUnauthorized: false }));
+    } finally {
+      setLogsLoading(false);
     }
-    const activeVersion = versionList.find((item) => item.isActive === 1) || versionList[0];
-    const tenantPlugin = currentAvailable.find((item) => item.pluginCode === selectedPlugin.pluginCode);
-    return {
-      pluginCode: selectedPlugin.pluginCode,
-      pluginName: selectedPlugin.pluginName,
-      version: tenantPlugin?.version || activeVersion?.version || '-',
-      author: selectedPlugin.author || '-',
-      pluginApiVersion: selectedPlugin.pluginApiVersion || '-',
-      status: selectedPlugin.status,
-      healthStatus: activeVersion?.healthStatus || 'UNKNOWN',
-      installStatus: activeVersion?.installStatus || '-',
-      loadStatus: activeVersion?.loadStatus || '-',
-      dependencyInfo: tenantPlugin?.sharedDeps?.length ? tenantPlugin.sharedDeps.join(', ') : '-',
-      tenantEnabled: tenantPlugin ? '已启用' : '未启用',
-      menuCount: tenantPlugin?.menus?.length || 0,
-    };
-  }, [currentAvailable, selectedPlugin, versionList]);
+  };
 
-  const definitionColumns = useMemo<ProColumns<PluginDefinition>[]>(
-    () => [
-      { title: '插件编码', dataIndex: 'pluginCode' },
-      { title: '名称', dataIndex: 'pluginName' },
-      { title: '作者', dataIndex: 'author' },
-      { title: 'API 版本', dataIndex: 'pluginApiVersion' },
-      {
-        title: '状态',
-        dataIndex: 'status',
-        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        render: (_, record) => (
-          <Space wrap>
-            {canAccess('plugin:management:view') ? (
-              <Button
-                onClick={() => {
-                  setSelectedPlugin(record);
-                  setDetailDrawerOpen(true);
-                }}
-              >
-                详情
-              </Button>
-            ) : null}
-            {canAccess('plugin:management:view') ? (
-              <Button
-                onClick={() => {
-                  setSelectedPlugin(record);
-                  setVersionDrawerOpen(true);
-                }}
-              >
-                版本
-              </Button>
-            ) : null}
-            {canAccess('plugin:management:logs') ? (
-              <Button
-                onClick={() => {
-                  setSelectedPlugin(record);
-                  setLogDrawerOpen(true);
-                }}
-              >
-                日志
-              </Button>
-            ) : null}
-          </Space>
-        ),
-      },
-    ],
-    [canAccess],
+  const currentAvailableMap = useMemo(
+    () => new Map(availablePlugins.map((item) => [item.pluginCode, item])),
+    [availablePlugins],
   );
 
-  const versionColumns = useMemo<ProColumns<PluginVersion>[]>(
-    () => [
-      { title: '版本', dataIndex: 'version' },
-      { title: '安装状态', dataIndex: 'installStatus' },
-      { title: '加载状态', dataIndex: 'loadStatus' },
-      { title: '健康状态', dataIndex: 'healthStatus' },
-      {
-        title: '激活',
-        dataIndex: 'isActive',
-        render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
-      },
-      {
-        title: '操作',
-        key: 'actions',
-        render: (_, record) => (
-          <Space wrap>
-            {canAccess('plugin:management:install') ? (
-              <Button onClick={() => confirmInstall(record.pluginCode, record.version)}>安装</Button>
-            ) : null}
-            {canAccess('plugin:management:upgrade') ? (
-              <Button onClick={() => confirmActivate(record.pluginCode, record.version)}>激活</Button>
-            ) : null}
-            {canAccess('plugin:management:enable') ? (
-              <Button onClick={() => confirmEnable(record.pluginCode, record.version)}>启用</Button>
-            ) : null}
-            {canAccess('plugin:management:disable') ? (
-              <Button onClick={() => confirmDisable(record.pluginCode)}>停用</Button>
-            ) : null}
-            {canAccess('plugin:management:rollback') ? (
-              <Button onClick={() => confirmRollback(record.pluginCode, record.version)}>回滚</Button>
-            ) : null}
-          </Space>
-        ),
-      },
-    ],
-    [canAccess, initialState?.currentTenant?.tenantId],
-  );
+  const filteredDefinitions = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+    return definitions.filter((item) => {
+      if (!keyword) {
+        return true;
+      }
+      return item.pluginName.toLowerCase().includes(keyword) || item.pluginCode.toLowerCase().includes(keyword);
+    });
+  }, [definitions, searchKeyword]);
+
+  const selectedPluginVersions = selectedPlugin ? versionMap[selectedPlugin.pluginCode] || [] : [];
+  const selectedTenantPlugin = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
+  const selectedActiveVersion = selectedPluginVersions.find((item) => item.isActive === 1) || selectedPluginVersions[0];
 
   return (
     <PageContainer
-      className="saas-management-page saas-crud-page"
+      className="saas-management-page"
       ghost
       title="插件管理"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
+      extra={
+        <Space wrap>
+          <Button icon={<SyncOutlined />} onClick={() => void loadOverview()} loading={loading || mutationLoading}>
+            刷新
+          </Button>
+          <Button icon={<CloudUploadOutlined />} type="primary" onClick={() => setUploadVisible(true)}>
+            上传插件
+          </Button>
+        </Space>
+      }
     >
       <div className="saas-management-page-body">
-        <Card className="saas-query-panel">
-          <Form
-            form={queryForm}
-            layout="vertical"
-            onFinish={(values) => setQuery(values)}
-            onReset={() => {
-              queryForm.resetFields();
-              setQuery({});
-            }}
-          >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
-              <Form.Item name="keyword" label="关键词">
-                <Input allowClear placeholder="插件名称或编码" />
-              </Form.Item>
-              <Form.Item name="pluginCode" label="插件编码">
-                <Input allowClear placeholder="输入插件编码" />
-              </Form.Item>
-              <Form.Item name="status" label="状态">
-                <Select allowClear options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
-              </Form.Item>
-            </div>
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button htmlType="reset">重置</Button>
-              <Button type="primary" htmlType="submit">
-                查询
-              </Button>
-              <Button onClick={() => definitionQuery.refresh()}>刷新</Button>
-              {canAccess('plugin:management:upload') ? (
-                <Button type="primary" onClick={() => setUploadVisible(true)}>
-                  上传插件
-                </Button>
-              ) : null}
-            </Space>
-          </Form>
-        </Card>
-
-        <Card className="saas-action-bar">
-          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-            <Space>
-              <Tag color="blue">当前租户：{initialState?.currentTenant?.tenantName || '未选择'}</Tag>
-            </Space>
-            <Button onClick={() => definitionQuery.refresh()}>重新加载</Button>
-          </Space>
-        </Card>
-
-        <Card className="saas-crud-table-card" bodyStyle={{ minHeight: 0 }}>
-          <ProTable<PluginDefinition>
-            rowKey="pluginCode"
-            columns={definitionColumns}
-            dataSource={filteredDefinitions}
-            loading={definitionQuery.loading}
-            search={false}
-            options={false}
-            toolBarRender={false}
-            pagination={false}
+        <Card style={{ marginBottom: 16 }}>
+          <Input.Search
+            allowClear
+            placeholder="输入插件编码或名称"
+            value={searchKeyword}
+            onChange={(event) => setSearchKeyword(event.target.value)}
+            style={{ width: 320 }}
           />
         </Card>
 
-        <Drawer
-          className="saas-detail-drawer"
-          title={selectedPlugin ? `插件详情 · ${selectedPlugin.pluginName}` : '插件详情'}
-          open={detailDrawerOpen}
-          onClose={() => setDetailDrawerOpen(false)}
-          width={720}
-          destroyOnClose
-        >
-          {selectedPluginDetail ? (
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Descriptions
-                bordered
-                size="small"
-                column={2}
-                items={[
-                  { key: 'pluginCode', label: '插件编码', children: selectedPluginDetail.pluginCode },
-                  { key: 'pluginName', label: '插件名称', children: selectedPluginDetail.pluginName },
-                  { key: 'version', label: '当前版本', children: selectedPluginDetail.version },
-                  { key: 'author', label: '作者', children: selectedPluginDetail.author },
-                  { key: 'pluginApiVersion', label: 'API 版本', children: selectedPluginDetail.pluginApiVersion },
-                  { key: 'status', label: '状态', children: selectedPluginDetail.status },
-                  { key: 'healthStatus', label: '健康状态', children: selectedPluginDetail.healthStatus },
-                  { key: 'tenantEnabled', label: '租户启用', children: selectedPluginDetail.tenantEnabled },
-                ]}
-              />
-              <Card className="saas-crud-info-card" size="small" title="依赖和菜单">
-                <Space direction="vertical" size={8}>
-                  <div>依赖信息：{selectedPluginDetail.dependencyInfo}</div>
-                  <div>菜单数量：{selectedPluginDetail.menuCount}</div>
-                  <div>安装状态：{selectedPluginDetail.installStatus}</div>
-                  <div>加载状态：{selectedPluginDetail.loadStatus}</div>
-                </Space>
-              </Card>
-            </Space>
-          ) : null}
-        </Drawer>
+        <Row gutter={[16, 16]}>
+          {filteredDefinitions.map((plugin) => {
+            const activeVersion = getActiveVersion(plugin.pluginCode);
+            const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
+            const enabled = Boolean(enabledPlugin);
+            const versionLabel = enabledPlugin?.version || activeVersion?.version;
+            const canSwitchOn = Boolean(versionLabel && isInstalledVersion(activeVersion));
+            return (
+              <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
+                <Card
+                  loading={loading}
+                  title={
+                    <Space wrap>
+                      <BuildOutlined />
+                      <span>{plugin.pluginName}</span>
+                      <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
+                    </Space>
+                  }
+                  extra={
+                    <Switch
+                      checked={enabled}
+                      disabled={mutationLoading || (!enabled && !canSwitchOn)}
+                      onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
+                    />
+                  }
+                >
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Typography.Paragraph style={{ marginBottom: 0 }}>
+                      {plugin.description || '暂无插件描述'}
+                    </Typography.Paragraph>
+                    <Descriptions column={1} size="small" bordered>
+                      <Descriptions.Item label="插件编码">{plugin.pluginCode}</Descriptions.Item>
+                      <Descriptions.Item label="API 版本">{plugin.pluginApiVersion}</Descriptions.Item>
+                      <Descriptions.Item label="当前版本">{versionLabel || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="作者">{plugin.author || '-'}</Descriptions.Item>
+                    </Descriptions>
+                    <Space wrap>
+                      <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
+                      <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>
+                      <Button onClick={() => handleOpenLogs(plugin)} icon={<FileSearchOutlined />}>
+                        日志
+                      </Button>
+                      <Button danger icon={<DeleteOutlined />} onClick={() => void handleUninstall(plugin.pluginCode)}>
+                        卸载
+                      </Button>
+                    </Space>
+                  </Space>
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
 
-        <Drawer
-          className="saas-detail-drawer"
-          title={selectedPlugin ? `版本列表 · ${selectedPlugin.pluginName}` : '版本列表'}
-          open={versionDrawerOpen}
-          onClose={() => setVersionDrawerOpen(false)}
-          width={980}
-          destroyOnClose
-        >
-          <Card loading={versionQuery.loading} bordered={false} bodyStyle={{ padding: 0 }}>
-            <ProTable<PluginVersion>
-              rowKey="version"
-              columns={versionColumns}
-              dataSource={versionList}
-              search={false}
-              options={false}
-              toolBarRender={false}
-              pagination={false}
-            />
+        {!loading && filteredDefinitions.length === 0 ? (
+          <Card style={{ marginTop: 16 }}>
+            <Empty description="暂无插件定义" />
           </Card>
-        </Drawer>
-
-        <Drawer
-          className="saas-detail-drawer"
-          title={selectedPlugin ? `运行日志 · ${selectedPlugin.pluginName}` : '运行日志'}
-          open={logDrawerOpen}
-          onClose={() => setLogDrawerOpen(false)}
-          width={980}
-          destroyOnClose
-        >
-          <Card loading={logQuery.loading} bordered={false} bodyStyle={{ padding: 0 }}>
-            <ProTable<PluginRuntimeLog>
-              rowKey="id"
-              columns={[
-                { title: '时间', dataIndex: 'createdAt', width: 180 },
-                { title: '操作', dataIndex: 'operationType', width: 120 },
-                { title: '生命周期', dataIndex: 'lifecycleStatus', width: 140 },
-                { title: '结果', dataIndex: 'resultStatus', width: 120 },
-                { title: '详情', dataIndex: 'detailMessage' },
-              ]}
-              dataSource={runtimeLogList}
-              search={false}
-              options={false}
-              toolBarRender={false}
-              pagination={false}
-            />
-          </Card>
-        </Drawer>
-
-        <Drawer
-          className="saas-detail-drawer"
-          title="上传插件包"
-          open={uploadVisible}
-          onClose={() => setUploadVisible(false)}
-          width={720}
-          destroyOnClose
-          extra={
-            <Space>
-              <Button onClick={() => setUploadVisible(false)}>取消</Button>
-              <Button type="primary" onClick={handleUpload}>
-                开始上传
-              </Button>
-            </Space>
-          }
-        >
-          <Upload
-            maxCount={1}
-            beforeUpload={(file) => {
-              if (!file.name.toLowerCase().endsWith('.zip')) {
-                message.error('仅支持 zip 插件包');
-                return Upload.LIST_IGNORE;
-              }
-              setUploadFile(file as unknown as File);
-              return false;
-            }}
-            onRemove={() => {
-              setUploadFile(null);
-            }}
-          >
-            <Button icon={<UploadOutlined />}>选择 zip 插件包</Button>
-          </Upload>
-        </Drawer>
+        ) : null}
       </div>
+
+      <Drawer
+        title={selectedPlugin ? `${selectedPlugin.pluginName} · 版本管理` : '版本管理'}
+        open={versionDrawerOpen}
+        onClose={() => setVersionDrawerOpen(false)}
+        width={920}
+        destroyOnClose
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Descriptions bordered column={2} size="small">
+            <Descriptions.Item label="插件编码">{selectedPlugin?.pluginCode || '-'}</Descriptions.Item>
+            <Descriptions.Item label="当前启用版本">{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
+            <Descriptions.Item label="版本数量">{selectedPluginVersions.length}</Descriptions.Item>
+          </Descriptions>
+          <Table<PluginVersion>
+            rowKey={(record) => `${record.pluginCode}-${record.version}`}
+            loading={loading}
+            dataSource={selectedPluginVersions}
+            pagination={false}
+            columns={[
+              { title: '版本', dataIndex: 'version' },
+              { title: '安装状态', dataIndex: 'installStatus' },
+              { title: '加载状态', dataIndex: 'loadStatus' },
+              { title: '健康状态', dataIndex: 'healthStatus' },
+              {
+                title: '激活',
+                dataIndex: 'isActive',
+                render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
+              },
+              {
+                title: '操作',
+                render: (_, record) => (
+                  <Space wrap>
+                    <Button onClick={() => void handleInstall(record.pluginCode, record.version)}>安装</Button>
+                    <Button onClick={() => void handleActivate(record.pluginCode, record.version)}>激活</Button>
+                    <Button onClick={() => void handleEnable(record.pluginCode, record.version)}>启用</Button>
+                    <Button onClick={() => void handleDisable(record.pluginCode)}>停用</Button>
+                    <Button onClick={() => void handleRollback(record.pluginCode, record.version)}>回滚</Button>
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        </Space>
+      </Drawer>
+
+      <Drawer
+        title={selectedPlugin ? `${selectedPlugin.pluginName} · 详情` : '插件详情'}
+        open={detailDrawerOpen}
+        onClose={() => setDetailDrawerOpen(false)}
+        width={760}
+        destroyOnClose
+      >
+        {selectedPlugin ? (
+          <Descriptions bordered column={2} size="small">
+            <Descriptions.Item label="插件编码">{selectedPlugin.pluginCode}</Descriptions.Item>
+            <Descriptions.Item label="插件名称">{selectedPlugin.pluginName}</Descriptions.Item>
+            <Descriptions.Item label="描述">{selectedPlugin.description || '-'}</Descriptions.Item>
+            <Descriptions.Item label="作者">{selectedPlugin.author || '-'}</Descriptions.Item>
+            <Descriptions.Item label="API 版本">{selectedPlugin.pluginApiVersion}</Descriptions.Item>
+            <Descriptions.Item label="状态">{selectedPlugin.status}</Descriptions.Item>
+            <Descriptions.Item label="当前版本">{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
+            <Descriptions.Item label="是否启用">{selectedTenantPlugin ? '已启用' : '未启用'}</Descriptions.Item>
+            <Descriptions.Item label="菜单数">{selectedTenantPlugin?.menus?.length || 0}</Descriptions.Item>
+            <Descriptions.Item label="路由数">{selectedTenantPlugin?.routes?.length || 0}</Descriptions.Item>
+          </Descriptions>
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        title={selectedPlugin ? `${selectedPlugin.pluginName} · 日志` : '插件日志'}
+        open={logDrawerOpen}
+        onClose={() => setLogDrawerOpen(false)}
+        width={920}
+        destroyOnClose
+      >
+        <Table<PluginRuntimeLog>
+          rowKey="id"
+          loading={logsLoading}
+          dataSource={runtimeLogs}
+          pagination={false}
+          columns={[
+            { title: '时间', dataIndex: 'createdAt', width: 180 },
+            { title: '操作类型', dataIndex: 'operationType', width: 120 },
+            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
+            { title: '结果', dataIndex: 'resultStatus', width: 120 },
+            { title: '详情', dataIndex: 'detailMessage' },
+          ]}
+        />
+      </Drawer>
+
+      <Modal
+        open={uploadVisible}
+        title="上传插件包"
+        onCancel={() => setUploadVisible(false)}
+        onOk={() => void handleUpload()}
+        confirmLoading={mutationLoading}
+        okText="上传"
+        cancelText="取消"
+      >
+        <Upload
+          beforeUpload={(file) => {
+            setUploadFile(file);
+            return false;
+          }}
+          maxCount={1}
+          accept=".zip"
+          onRemove={() => setUploadFile(null)}
+        >
+          <Button icon={<CloudUploadOutlined />}>选择 zip 插件包</Button>
+        </Upload>
+      </Modal>
     </PageContainer>
   );
 };

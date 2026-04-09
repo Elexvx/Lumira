@@ -134,10 +134,10 @@ const IamOverviewPage = () => {
           };
         }}
         toolBarRender={() => [
-          <Button key="role" onClick={() => history.push('/system/roles')}>
+          <Button key="role" onClick={() => history.push('/user-center/roles')}>
             进入角色管理
           </Button>,
-          <Button key="user" onClick={() => history.push('/system/users')}>
+          <Button key="user" onClick={() => history.push('/user-center/users')}>
             进入用户管理
           </Button>,
           <Button key="refresh" type="primary" onClick={() => actionRef.current?.reload()}>
@@ -167,7 +167,7 @@ const IamOverviewPage = () => {
             <Typography.Paragraph type="secondary">
               用户角色关系请在用户管理页查看和维护，这里保留的是角色维度的权限收口视图。
             </Typography.Paragraph>
-            <Button onClick={() => history.push('/system/users')}>前往用户管理</Button>
+            <Button onClick={() => history.push('/user-center/users')}>前往用户管理</Button>
           </Card>
         </Col>
       </Row>

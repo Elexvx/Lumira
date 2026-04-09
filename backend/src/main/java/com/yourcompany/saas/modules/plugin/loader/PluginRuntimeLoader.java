@@ -16,6 +16,7 @@ import com.yourcompany.saas.modules.plugin.runtime.spi.PluginHealthIndicator;
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginHttpHandler;
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginMenuProvider;
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginPermissionProvider;
+import com.yourcompany.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.yourcompany.saas.modules.plugin.runtime.spi.PluginScheduledTaskProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,7 @@ public class PluginRuntimeLoader {
             PluginPermissionProvider permissionProvider = loadOptional(classLoader, PluginPermissionProvider.class);
             PluginMenuProvider menuProvider = loadOptional(classLoader, PluginMenuProvider.class);
             PluginHealthIndicator healthIndicator = loadOptional(classLoader, PluginHealthIndicator.class);
+            PluginSecondFactorProvider secondFactorProvider = loadOptional(classLoader, PluginSecondFactorProvider.class);
             PluginScheduledTaskProvider taskProvider = loadOptional(classLoader, PluginScheduledTaskProvider.class);
             List<PluginDeclaredPermission> permissions = permissionProvider == null
                     ? mapPermissions(metadata)
@@ -93,14 +95,15 @@ public class PluginRuntimeLoader {
                     bootstrap,
                     httpHandler,
                     healthIndicator,
+                    secondFactorProvider,
                     permissions,
                     menus,
                     executors
             );
         } catch (BizException exception) {
             throw exception;
-        } catch (Exception exception) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时加载失败: " + exception.getMessage());
+        } catch (Throwable throwable) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时加载失败: " + throwable.getMessage());
         }
     }
 

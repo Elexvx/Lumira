@@ -11,6 +11,8 @@ public class CurrentUserVO {
     private String nickname;
     private String realName;
     private String avatarUrl;
+    private String mobile;
+    private String email;
     private TenantSummaryVO currentTenant;
     private String sessionId;
     private String permissionsVersion;
@@ -55,6 +57,22 @@ public class CurrentUserVO {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public String getMobile() {
+        return mobile;
+    }
+
+    public void setMobile(String mobile) {
+        this.mobile = mobile;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public TenantSummaryVO getCurrentTenant() {

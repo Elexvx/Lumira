@@ -5,10 +5,19 @@ export interface LoginPayload {
   username?: string;
   mobile?: string;
   password: string;
+  captchaId?: string;
+  captchaCode?: string;
+  captchaProof?: string;
 }
 
 export interface RefreshTokenPayload {
   refreshToken: string;
+}
+
+export interface SecondFactorCompletePayload {
+  pluginCode: string;
+  challengeId: string;
+  verificationCode: string;
 }
 
 export const authService = {
@@ -30,6 +39,14 @@ export const authService = {
       method: 'POST',
       data: payload,
       skipAuth: true,
+      ...options,
+    }),
+  secondFactorComplete: (payload: SecondFactorCompletePayload, options: RequestOptions = {}) =>
+    request<LoginResponse>('/v1/auth/second-factor/complete', {
+      method: 'POST',
+      data: payload,
+      skipAuth: true,
+      silent: true,
       ...options,
     }),
   currentUser: (options: RequestOptions = {}) =>

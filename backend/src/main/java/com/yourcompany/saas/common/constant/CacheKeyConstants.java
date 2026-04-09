@@ -12,6 +12,9 @@ public final class CacheKeyConstants {
     public static final String ONLINE_SESSION_TENANT = "online_session_tenant";
     public static final String ONLINE_SESSION_USER = "online_session_user";
     public static final String ONLINE_SESSION_EVENTS = "online_session_events";
+    public static final String LOGIN_CAPTCHA = "login_captcha";
+    public static final String LOGIN_ATTEMPT = "login_attempt";
+    public static final String LOGIN_FAILURE = "login_failure";
 
     public static String tenantKey(String tenantId, String suffix) {
         return String.join(":", PREFIX, "tenant", tenantId, suffix);
@@ -39,5 +42,13 @@ public final class CacheKeyConstants {
 
     public static String onlineSessionEventsChannel() {
         return String.join(":", PREFIX, ONLINE_SESSION_EVENTS);
+    }
+
+    public static String loginCaptchaKey(String captchaId) {
+        return String.join(":", PREFIX, LOGIN_CAPTCHA, String.valueOf(captchaId));
+    }
+
+    public static String captchaKey(String captchaId) {
+        return loginCaptchaKey(captchaId);
     }
 }
