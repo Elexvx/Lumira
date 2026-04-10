@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
+import java.time.LocalDateTime;
+
 @TableName("tenant_info")
 public class TenantInfoEntity {
 
@@ -13,6 +15,8 @@ public class TenantInfoEntity {
     private String tenantName;
     private String tenantShortName;
     private String status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private Integer deleted;
 
     public Long getId() {
@@ -53,6 +57,22 @@ public class TenantInfoEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Integer getDeleted() {

@@ -1,8 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { message } from 'antd';
+import { history } from 'umi';
+import { clearAuthSession } from '@/auth/session';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
+import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
 import { validatePluginManifest } from '@/plugins/manifest';
 import { pluginRegistry } from '@/plugins/registry';
 import type { PluginLoadResult, PluginManifest, PluginModule } from '@/plugins/types';
@@ -14,6 +17,24 @@ window.SaaSSharedDeps = {
   React,
   ReactDOM,
 };
+
+export interface PluginLoadFeedback {
+  type: FeedbackType;
+  message: string;
+  redirectToLogin?: boolean;
+}
+
+export class PluginLoadError extends Error {
+  type: FeedbackType;
+  redirectToLogin?: boolean;
+
+  constructor(message: string, options: { type: FeedbackType; redirectToLogin?: boolean } = { type: 'error' }) {
+    super(message);
+    this.name = 'PluginLoadError';
+    this.type = options.type;
+    this.redirectToLogin = options.redirectToLogin;
+  }
+}
 
 export const loadPlugin = async (pluginCode: string): Promise<PluginLoadResult> => {
   const manifest = validatePluginManifest(await fetchJson<PluginManifest>(MANIFEST_URL(pluginCode)));
@@ -47,7 +68,7 @@ const fetchJson = async <T>(url: string): Promise<T> => {
     headers: buildHeaders(),
   });
   if (!response.ok) {
-    throw new Error(`加载插件资源失败: ${response.status}`);
+    throw await buildLoadError(response, '加载插件资源失败，请稍后重试');
   }
   return (await response.json()) as T;
 };
@@ -57,7 +78,7 @@ const injectScript = async (pluginCode: string, relativePath: string) => {
     headers: buildHeaders(),
   });
   if (!response.ok) {
-    throw new Error(`插件脚本加载失败: ${relativePath}`);
+    throw await buildLoadError(response, `插件脚本加载失败: ${relativePath}`);
   }
   const source = await response.text();
   await executeSource(`${pluginCode}:${relativePath}`, source);
@@ -68,7 +89,7 @@ const injectStyle = async (pluginCode: string, relativePath: string) => {
     headers: buildHeaders(),
   });
   if (!response.ok) {
-    throw new Error(`插件样式加载失败: ${relativePath}`);
+    throw await buildLoadError(response, `插件样式加载失败: ${relativePath}`);
   }
   const content = await response.text();
   const styleElement = document.createElement('style');
@@ -97,6 +118,36 @@ const executeSource = async (key: string, source: string) => {
   }
 };
 
+const buildLoadError = async (response: Response, fallbackMessage: string) => {
+  const payload = await parseJsonResponse(response);
+  if (payload && typeof payload === 'object' && typeof payload.code === 'string' && typeof payload.message === 'string') {
+    const feedback = resolveApiErrorFeedback(payload, tokenManager.hasToken());
+    return new PluginLoadError(feedback.message, {
+      type: feedback.type,
+      redirectToLogin: feedback.redirectToLogin,
+    });
+  }
+
+  const feedback = resolveHttpStatusFeedback(response.status, tokenManager.hasToken(), fallbackMessage);
+  return new PluginLoadError(feedback.message, {
+    type: feedback.type,
+    redirectToLogin: feedback.redirectToLogin,
+  });
+};
+
+const parseJsonResponse = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+
+  try {
+    return await response.clone().json();
+  } catch {
+    return null;
+  }
+};
+
 const buildHeaders = () => {
   const headers: Record<string, string> = {
     'X-Request-Id': crypto.randomUUID(),
@@ -113,7 +164,35 @@ const buildHeaders = () => {
 };
 
 export const notifyPluginLoadError = (error: unknown) => {
-  message.error(error instanceof Error ? error.message : '插件加载失败');
+  const feedback = resolvePluginLoadError(error);
+  if (feedback.redirectToLogin) {
+    clearAuthSession();
+    history.replace('/user/login');
+  }
+  message[feedback.type](feedback.message);
+  return feedback;
+};
+
+export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
+  if (error instanceof PluginLoadError) {
+    return {
+      type: error.type,
+      message: error.message,
+      redirectToLogin: error.redirectToLogin,
+    };
+  }
+
+  if (error instanceof Error && error.message) {
+    return {
+      type: 'error',
+      message: error.message,
+    };
+  }
+
+  return {
+    type: 'error',
+    message: '插件加载失败，请稍后重试',
+  };
 };
 
 export const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>

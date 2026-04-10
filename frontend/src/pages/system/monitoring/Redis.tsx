@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Row, Space, Statistic, Typography } from 'antd';
+import { Area } from '@ant-design/charts';
 import { useRequest } from 'umi';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';
-import TrendAreaChart from './TrendAreaChart';
 import { formatBytes, formatDateTime, formatNumber, formatPercent } from './shared';
 
 type TrendPoint = {
@@ -53,6 +53,24 @@ const RedisMonitorPage = () => {
   const qpsTrend = useMemo(
     () => samples.map((item) => ({ label: item.label, value: item.qps })),
     [samples],
+  );
+
+  const trendCharts = useMemo(
+    () => [
+      {
+        title: '内存趋势 (MB)',
+        subtitle: `最近 ${MAX_TREND_SAMPLES} 次采样`,
+        points: memoryTrend.map((item) => ({ ...item, value: item.value / 1024 / 1024 })),
+        valueFormatter: (value: number) => `${value.toFixed(2)} MB`,
+      },
+      {
+        title: '吞吐趋势 (OPS)',
+        subtitle: `最近 ${MAX_TREND_SAMPLES} 次采样`,
+        points: qpsTrend,
+        valueFormatter: (value: number) => value.toFixed(0),
+      },
+    ],
+    [memoryTrend, qpsTrend],
   );
 
   const commandColumns = useMemo<ProColumns<RedisMonitorCommandStat>[]>(
@@ -137,12 +155,52 @@ const RedisMonitorPage = () => {
         </Card>
 
         <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <TrendAreaChart title="内存趋势 (MB)" subtitle={`最近 ${MAX_TREND_SAMPLES} 次采样`} points={memoryTrend.map((item) => ({ ...item, value: item.value / 1024 / 1024 }))} valueFormatter={(value) => `${value.toFixed(2)} MB`} />
-          </Col>
-          <Col xs={24} lg={12}>
-            <TrendAreaChart title="吞吐趋势 (OPS)" subtitle={`最近 ${MAX_TREND_SAMPLES} 次采样`} points={qpsTrend} valueFormatter={(value) => value.toFixed(0)} />
-          </Col>
+          {trendCharts.map((chart) => (
+            <Col key={chart.title} xs={24} lg={12}>
+              <Card title={chart.title} extra={<Typography.Text type="secondary">{chart.subtitle}</Typography.Text>}>
+                <div style={{ height: 220 }}>
+                  <Area
+                    data={chart.points.length ? chart.points : [{ label: '-', value: 0 }]}
+                    xField="label"
+                    yField="value"
+                    autoFit
+                    height={220}
+                    tooltip={{ showMarkers: true, shared: true }}
+                    axis={{
+                      x: {
+                        label: {
+                          autoHide: true,
+                          autoRotate: true,
+                        },
+                      },
+                      y: {
+                        label: {
+                          formatter: (value: string | number) => chart.valueFormatter(Number(value)),
+                        },
+                      },
+                    }}
+                    style={{
+                      shape: 'smooth',
+                      fill: '#4f7cff',
+                      fillOpacity: 0.28,
+                      stroke: '#4f7cff',
+                      strokeWidth: 2.5,
+                    }}
+                    point={{
+                      size: 3.5,
+                      style: {
+                        fill: '#fff',
+                        stroke: '#4f7cff',
+                        lineWidth: 2,
+                      },
+                    }}
+                    legend={false}
+                    padding={[8, 0, 20, 24]}
+                  />
+                </div>
+              </Card>
+            </Col>
+          ))}
         </Row>
 
         <Card title="命令统计" loading={query.loading && !redis}>

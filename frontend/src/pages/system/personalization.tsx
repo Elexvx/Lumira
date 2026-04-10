@@ -1,19 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Watermark } from 'antd';
-import { Button, Card, Form, Input, InputNumber, Segmented, Switch, Tabs, Typography, message } from 'antd';
+import { Watermark, Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Tabs, Typography, Upload, message } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { history, useLocation } from 'umi';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_BRANDING_SETTINGS, applyFavicon, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
-import { MarkdownEditor } from '@/components/MarkdownEditor';
-import { LocalImageUploadField } from '@/components/LocalImageUploadField';
 import { usePermission } from '@/hooks/usePermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
-import type { AgreementSettings, BrandingSettings, WatermarkSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
-import { history, useLocation } from 'umi';
+import type { AgreementSettings, BrandingSettings, WatermarkSettings } from '@/types/api';
 
 type PersonalizationTabKey = 'branding' | 'watermark' | 'agreement';
+type UploadTarget = 'favicon' | 'logo' | 'watermark';
 
 const defaultWatermark: WatermarkSettings = {
   enabled: false,
@@ -55,6 +54,7 @@ const PersonalizationSettingsPage = () => {
     imageUrl: normalizeUploadUrl(initialState?.watermarkSettings?.imageUrl),
   }));
   const [agreementPreview, setAgreementPreview] = useState<AgreementSettings>(DEFAULT_AGREEMENT_SETTINGS);
+  const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
 
   const updateTabInUrl = useCallback(
     (nextTab: PersonalizationTabKey) => {
@@ -109,6 +109,27 @@ const PersonalizationSettingsPage = () => {
     void loadSettings();
   }, [loadSettings, initialState?.currentTenant?.tenantId]);
 
+  const handleUpload = useCallback(
+    async (target: UploadTarget, file: File) => {
+      setUploadingTarget(target);
+      try {
+        const uploadedUrl = await systemService.uploadImage(file, { autoRedirectOnUnauthorized: false });
+        const normalizedUrl = normalizeUploadUrl(uploadedUrl);
+        if (target === 'favicon') {
+          brandingForm.setFieldValue('websiteFaviconUrl', normalizedUrl);
+        } else if (target === 'logo') {
+          brandingForm.setFieldValue('websiteLogoUrl', normalizedUrl);
+        } else {
+          watermarkForm.setFieldValue('imageUrl', normalizedUrl);
+        }
+        message.success('图片已上传');
+      } finally {
+        setUploadingTarget(null);
+      }
+    },
+    [brandingForm, watermarkForm],
+  );
+
   const handleSaveBranding = async () => {
     if (!canUpdate) return;
     setBrandingSaving(true);
@@ -119,6 +140,7 @@ const PersonalizationSettingsPage = () => {
       setInitialState((prev) => (prev ? { ...prev, brandingSettings: updatedBranding } : prev));
       setPreviewState(updatedBranding);
       persistBrandingSettings(updatedBranding);
+      applyFavicon(updatedBranding.websiteFaviconUrl);
       message.success('品牌设置已保存并即时生效');
     } finally {
       setBrandingSaving(false);
@@ -179,13 +201,7 @@ const PersonalizationSettingsPage = () => {
   }, [previewState.websiteFaviconUrl]);
 
   return (
-    <PageContainer
-      className="saas-management-page saas-crud-page"
-      ghost
-      title="个性化设置"
-      style={{ height: '100%', minHeight: 0 }}
-      content={null}
-    >
+    <PageContainer className="saas-management-page saas-crud-page" ghost title="个性化设置" style={{ height: '100%', minHeight: 0 }} content={null}>
       <div className="saas-management-page-body">
         <Card loading={loading} bodyStyle={{ paddingTop: 8 }}>
           <Tabs
@@ -201,17 +217,104 @@ const PersonalizationSettingsPage = () => {
                 key: 'branding',
                 label: '品牌设置',
                 children: (
-                  <>
-                    <Form form={brandingForm} layout="vertical" onValuesChange={(_, v) => setPreviewState(normalizeBrandingSettings(v))}>
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Form
+                      form={brandingForm}
+                      layout="vertical"
+                      onValuesChange={(_, allValues) => setPreviewState(normalizeBrandingSettings(allValues))}
+                    >
                       <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
                         <Input />
                       </Form.Item>
-                      <Form.Item name="websiteFaviconUrl" label="网站 Icon（本地上传）">
-                        <LocalImageUploadField buttonText="上传 Icon" previewWidth={72} previewHeight={72} accept="image/*,.ico" />
+
+                      <Form.Item name="websiteFaviconUrl" hidden>
+                        <Input />
                       </Form.Item>
-                      <Form.Item name="websiteLogoUrl" label="Logo（本地上传）">
-                        <LocalImageUploadField buttonText="上传 Logo" previewWidth={180} previewHeight={72} />
+                      <Form.Item label="网站 Icon（本地上传）" extra="使用 antd Upload 上传后回填地址。">
+                        <Space align="start" size={16} wrap>
+                          <Card size="small" style={{ width: 104 }} bodyStyle={{ padding: 12 }}>
+                            <div style={{ width: '100%', height: 72, display: 'grid', placeItems: 'center' }}>
+                              {previewState.websiteFaviconUrl ? (
+                                <Image
+                                  width={72}
+                                  height={72}
+                                  preview={false}
+                                  src={normalizeUploadUrl(previewState.websiteFaviconUrl)}
+                                  style={{ objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <Typography.Text type="secondary">未上传</Typography.Text>
+                              )}
+                            </div>
+                          </Card>
+                          <Space direction="vertical" size={8}>
+                            <Upload
+                              accept="image/*,.ico"
+                              showUploadList={false}
+                              beforeUpload={async (file) => {
+                                await handleUpload('favicon', file);
+                                return Upload.LIST_IGNORE;
+                              }}
+                            >
+                              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'}>
+                                上传 Icon
+                              </Button>
+                            </Upload>
+                            <Button
+                              icon={<DeleteOutlined />}
+                              onClick={() => brandingForm.setFieldValue('websiteFaviconUrl', '')}
+                              disabled={!previewState.websiteFaviconUrl}
+                            >
+                              清除
+                            </Button>
+                          </Space>
+                        </Space>
                       </Form.Item>
+
+                      <Form.Item name="websiteLogoUrl" hidden>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="Logo（本地上传）" extra="Logo 会显示在顶部导航和登录页。">
+                        <Space align="start" size={16} wrap>
+                          <Card size="small" style={{ width: 200 }} bodyStyle={{ padding: 12 }}>
+                            <div style={{ width: '100%', height: 72, display: 'grid', placeItems: 'center' }}>
+                              {previewState.websiteLogoUrl ? (
+                                <Image
+                                  width={180}
+                                  height={72}
+                                  preview={false}
+                                  src={normalizeUploadUrl(previewState.websiteLogoUrl)}
+                                  style={{ objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <Typography.Text type="secondary">未上传</Typography.Text>
+                              )}
+                            </div>
+                          </Card>
+                          <Space direction="vertical" size={8}>
+                            <Upload
+                              accept="image/*"
+                              showUploadList={false}
+                              beforeUpload={async (file) => {
+                                await handleUpload('logo', file);
+                                return Upload.LIST_IGNORE;
+                              }}
+                            >
+                              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'}>
+                                上传 Logo
+                              </Button>
+                            </Upload>
+                            <Button
+                              icon={<DeleteOutlined />}
+                              onClick={() => brandingForm.setFieldValue('websiteLogoUrl', '')}
+                              disabled={!previewState.websiteLogoUrl}
+                            >
+                              清除
+                            </Button>
+                          </Space>
+                        </Space>
+                      </Form.Item>
+
                       <Form.Item
                         name="githubLinkUrl"
                         label="GitHub 链接"
@@ -233,32 +336,104 @@ const PersonalizationSettingsPage = () => {
                         <Input.TextArea rows={3} />
                       </Form.Item>
                     </Form>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+
+                    <Card title="预览">
+                      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                        <Typography.Title level={4} style={{ marginBottom: 0 }}>
+                          {previewState.websiteName}
+                        </Typography.Title>
+                        <Typography.Text type="secondary">{previewState.footerCopyright || '版权信息会显示在页面底部'}</Typography.Text>
+                      </Space>
+                    </Card>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <Button type="primary" loading={brandingSaving} onClick={() => void handleSaveBranding()}>
                         保存设置
                       </Button>
                     </div>
-                  </>
+                  </Space>
                 ),
               },
               {
                 key: 'watermark',
                 label: '全局水印',
                 children: (
-                  <>
-                    <Form form={watermarkForm} layout="vertical" onValuesChange={(_, v) => setWatermarkPreview({ ...defaultWatermark, ...v })} initialValues={wm}>
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Form
+                      form={watermarkForm}
+                      layout="vertical"
+                      onValuesChange={(_, allValues) =>
+                        setWatermarkPreview({
+                          ...defaultWatermark,
+                          ...allValues,
+                          imageUrl: normalizeUploadUrl(allValues.imageUrl),
+                        })
+                      }
+                    >
                       <Form.Item name="enabled" label="启用水印" valuePropName="checked">
                         <Switch />
                       </Form.Item>
                       <Form.Item name="mode" label="模式">
                         <Segmented options={[{ label: '文字', value: 'TEXT' }, { label: '图片', value: 'IMAGE' }]} />
                       </Form.Item>
-                      <Form.Item label="多行文字（每行一个）" name="textLines">
-                        <SelectTextLines />
+                      <Form.Item
+                        name="textLines"
+                        label="多行文字（每行一个）"
+                        getValueProps={(value?: string[]) => ({ value: (value || []).join('\n') })}
+                        getValueFromEvent={(event: { target: { value: string } }) =>
+                          event.target.value
+                            .split('\n')
+                            .map((item: string) => item.trim())
+                            .filter(Boolean)
+                        }
+                      >
+                        <Input.TextArea rows={4} placeholder="每行输入一条水印文字" />
                       </Form.Item>
-                      <Form.Item name="imageUrl" label="水印图片（本地上传）">
-                        <LocalImageUploadField buttonText="上传水印图片" previewWidth={180} previewHeight={100} />
+
+                      <Form.Item name="imageUrl" hidden>
+                        <Input />
                       </Form.Item>
+                      <Form.Item label="水印图片（本地上传）" extra="仅在图片模式下生效。">
+                        <Space align="start" size={16} wrap>
+                          <Card size="small" style={{ width: 200 }} bodyStyle={{ padding: 12 }}>
+                            <div style={{ width: '100%', height: 100, display: 'grid', placeItems: 'center' }}>
+                              {watermarkPreview.imageUrl ? (
+                                <Image
+                                  width={180}
+                                  height={100}
+                                  preview={false}
+                                  src={normalizeUploadUrl(watermarkPreview.imageUrl)}
+                                  style={{ objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <Typography.Text type="secondary">未上传</Typography.Text>
+                              )}
+                            </div>
+                          </Card>
+                          <Space direction="vertical" size={8}>
+                            <Upload
+                              accept="image/*"
+                              showUploadList={false}
+                              beforeUpload={async (file) => {
+                                await handleUpload('watermark', file);
+                                return Upload.LIST_IGNORE;
+                              }}
+                            >
+                              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'watermark'}>
+                                上传水印图片
+                              </Button>
+                            </Upload>
+                            <Button
+                              icon={<DeleteOutlined />}
+                              onClick={() => watermarkForm.setFieldValue('imageUrl', '')}
+                              disabled={!watermarkPreview.imageUrl}
+                            >
+                              清除
+                            </Button>
+                          </Space>
+                        </Space>
+                      </Form.Item>
+
                       <Form.Item name="fontColor" label="字体颜色">
                         <Input />
                       </Form.Item>
@@ -278,28 +453,33 @@ const PersonalizationSettingsPage = () => {
                         <InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} />
                       </Form.Item>
                     </Form>
-                    <Card title="预览" style={{ marginTop: 24 }}>
-                      <Watermark content={wm.mode === 'TEXT' ? wm.textLines : undefined} image={wm.mode === 'IMAGE' ? normalizeUploadUrl(wm.imageUrl) : undefined}>
+
+                    <Card title="预览">
+                      <Watermark
+                        content={wm.mode === 'TEXT' ? wm.textLines : undefined}
+                        image={wm.mode === 'IMAGE' ? normalizeUploadUrl(wm.imageUrl) : undefined}
+                      >
                         <div style={{ height: 180, display: 'grid', placeItems: 'center', background: '#fafafa' }}>
                           <Typography.Text>{previewState.websiteName}</Typography.Text>
                         </div>
                       </Watermark>
                     </Card>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <Button type="primary" loading={watermarkSaving} onClick={() => void handleSaveWatermark()}>
                         保存设置
                       </Button>
                     </div>
-                  </>
+                  </Space>
                 ),
               },
               {
                 key: 'agreement',
                 label: '协议设置',
                 children: (
-                  <>
-                    <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-                      支持 Markdown 语法，登录页点击协议链接后会直接展示这里保存的内容。
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                      使用原生的 Input.TextArea 编写协议内容，保存后会同步到登录页。
                     </Typography.Paragraph>
                     <Form
                       form={agreementForm}
@@ -308,13 +488,31 @@ const PersonalizationSettingsPage = () => {
                       onValuesChange={(_, values) => setAgreementPreview(normalizeAgreementSettings(values))}
                     >
                       <Form.Item name="userAgreementMarkdown" label="用户协议">
-                        <MarkdownEditor placeholder="请输入用户协议 Markdown 内容" height={360} style={{ marginBottom: 24 }} />
+                        <Input.TextArea rows={12} placeholder="请输入用户协议 Markdown 内容" />
                       </Form.Item>
                       <Form.Item name="privacyAgreementMarkdown" label="隐私协议">
-                        <MarkdownEditor placeholder="请输入隐私协议 Markdown 内容" height={360} />
+                        <Input.TextArea rows={12} placeholder="请输入隐私协议 Markdown 内容" />
                       </Form.Item>
                     </Form>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
+
+                    <Card title="内容预览">
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <div>
+                          <Typography.Text strong>用户协议</Typography.Text>
+                          <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
+                            {agreementPreview.userAgreementMarkdown || '暂无内容'}
+                          </Typography.Paragraph>
+                        </div>
+                        <div>
+                          <Typography.Text strong>隐私协议</Typography.Text>
+                          <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
+                            {agreementPreview.privacyAgreementMarkdown || '暂无内容'}
+                          </Typography.Paragraph>
+                        </div>
+                      </Space>
+                    </Card>
+
+                    <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
                       <Button danger onClick={() => handleClearAgreementField('userAgreementMarkdown')}>
                         清空用户协议
                       </Button>
@@ -324,8 +522,8 @@ const PersonalizationSettingsPage = () => {
                       <Button type="primary" loading={agreementSaving} onClick={() => void handleSaveAgreement()}>
                         保存设置
                       </Button>
-                    </div>
-                  </>
+                    </Space>
+                  </Space>
                 ),
               },
             ]}
@@ -335,13 +533,5 @@ const PersonalizationSettingsPage = () => {
     </PageContainer>
   );
 };
-
-const SelectTextLines = ({ value, onChange }: { value?: string[]; onChange?: (next: string[]) => void }) => (
-  <Input.TextArea
-    rows={3}
-    value={(value || []).join('\n')}
-    onChange={(e) => onChange?.(e.target.value.split('\n').map((item) => item.trim()).filter(Boolean))}
-  />
-);
 
 export default PersonalizationSettingsPage;

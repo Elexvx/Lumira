@@ -52,7 +52,7 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     clearTimer();
     clearTokenExpireTimer();
     if (reason === 'token_expired') {
-      message.warning('登录状态已过期，请重新登录');
+      message.info('登录状态已过期，请重新登录');
     }
     clearSessionActivity();
     clearAuthSession();

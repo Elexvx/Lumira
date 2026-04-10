@@ -110,5 +110,7 @@ public class TenantDomainService {
         vo.setTenantName(tenantInfo.getTenantName());
         vo.setTenantShortName(tenantInfo.getTenantShortName());
         vo.setStatus(tenantInfo.getStatus());
+        vo.setCreatedAt(tenantInfo.getCreatedAt());
+        vo.setUpdatedAt(tenantInfo.getUpdatedAt());
     }
 }

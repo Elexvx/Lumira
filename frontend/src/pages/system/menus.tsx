@@ -594,15 +594,6 @@ const MenuManagementPage = () => {
   return (
     <PageContainer
       title="菜单管理"
-      extra={
-        <Space>
-          {canAccess('system:menu:create') ? (
-            <Button type="primary" onClick={openCreate}>
-              新增菜单
-            </Button>
-          ) : null}
-        </Space>
-      }
     >
       <ProTable<MenuRecord & { level?: number }>
         actionRef={actionRef}
@@ -673,13 +664,15 @@ const MenuManagementPage = () => {
         onClose={() => setEditorOpen(false)}
         width={720}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={() => setEditorOpen(false)}>取消</Button>
-            <Button type="primary" loading={saving} onClick={() => void saveMenu()}>
-              保存
-            </Button>
-          </Space>
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={() => setEditorOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={() => void saveMenu()}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={editorForm} layout="vertical" initialValues={{ menuType: 'MENU', status: 'ENABLED', sortNo: 0 }}>

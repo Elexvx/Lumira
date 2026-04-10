@@ -1,11 +1,10 @@
 import { AppstoreOutlined, AuditOutlined, ControlOutlined, RocketOutlined, SettingOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Avatar, Card, Col, Empty, List, Row, Space, Tag, Typography } from 'antd';
+import { Avatar, Button, Card, Col, Empty, List, Row, Space, Statistic, Tag, Typography } from 'antd';
 import { useMemo, type ReactNode } from 'react';
-import { Link, useRequest } from 'umi';
+import { history, useRequest } from 'umi';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { useResponsive } from '@/hooks/useResponsive';
 import type { DashboardSummary } from '@/types/api';
 import './Home.less';
 
@@ -14,8 +13,7 @@ interface QuickEntry {
   path: string;
   description: string;
   icon: ReactNode;
-  accent: string;
-  tone: string;
+  color: string;
 }
 
 const quickEntries: QuickEntry[] = [
@@ -24,32 +22,28 @@ const quickEntries: QuickEntry[] = [
     path: '/system/management',
     description: '用户、角色、菜单、字典、配置',
     icon: <SettingOutlined />,
-    accent: '#1d4ed8',
-    tone: '#eef4ff',
+    color: '#1677ff',
   },
   {
     title: '租户中心',
     path: '/tenant/overview',
     description: '当前租户与可访问租户',
     icon: <TeamOutlined />,
-    accent: '#15803d',
-    tone: '#eefaf3',
+    color: '#52c41a',
   },
   {
     title: '审计中心',
     path: '/system/monitoring/audit',
     description: '登录和操作日志',
     icon: <AuditOutlined />,
-    accent: '#d97706',
-    tone: '#fff5eb',
+    color: '#fa8c16',
   },
   {
     title: '插件管理',
     path: '/system/plugins',
     description: '插件安装、启用、运行态',
     icon: <AppstoreOutlined />,
-    accent: '#6d28d9',
-    tone: '#f4f3ff',
+    color: '#722ed1',
   },
 ];
 
@@ -79,7 +73,6 @@ const getGreetingByHour = (hour: number) => {
 
 export default () => {
   const { initialState } = useInitialStateModel();
-  const { isMobile } = useResponsive();
   const summaryQuery = useRequest(async () => ({ data: await dashboardService.summary({ autoRedirectOnUnauthorized: false }) }) as {
     data: DashboardSummary;
   }, {
@@ -112,8 +105,7 @@ export default () => {
         path: item.path,
         description: item.description || matched?.description || '进入工作台模块',
         icon: matched?.icon || <ControlOutlined />,
-        accent: matched?.accent || '#1d4ed8',
-        tone: matched?.tone || '#eef4ff',
+        color: matched?.color || '#1677ff',
       };
     });
   }, [summary?.shortcuts]);
@@ -185,87 +177,89 @@ export default () => {
   ];
 
   return (
-    <PageContainer
-      className="saas-dashboard-workplace"
-      ghost
-      title="工作台"
-      style={{ height: '100%', minHeight: 0 }}
-      content={null}
-    >
+    <PageContainer className="saas-dashboard-workplace" ghost title="工作台" style={{ height: '100%', minHeight: 0 }} content={null}>
       <div className="saas-management-page-body saas-home-page">
-        <section className="saas-home-hero">
-          <div className="saas-home-hero__copy">
-            <Typography.Text className="saas-home-hero__eyebrow" translate="no">
-              宏翔商道
-            </Typography.Text>
-            <Typography.Title level={2} className="saas-home-hero__title">
-              {greeting}
-            </Typography.Title>
-            <Typography.Paragraph className="saas-home-hero__description">
-              {greetingNote}。统一审计、权限、插件与租户状态都在这里集中查看，保留同一套宽高节奏与操作路径。
-            </Typography.Paragraph>
-            <Space wrap size={12}>
-              <Link className="saas-home-hero__action saas-home-hero__action--primary" to="/system/management">
-                进入系统管理
-              </Link>
-              <Link className="saas-home-hero__action" to="/user-center/profile">
-                打开个人中心
-              </Link>
-            </Space>
-          </div>
+        <Card>
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} lg={14}>
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                <Typography.Text type="secondary" translate="no">
+                  宏翔商道
+                </Typography.Text>
+                <Typography.Title level={2} style={{ margin: 0 }}>
+                  {greeting}
+                </Typography.Title>
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  {greetingNote}。统一审计、权限、插件与租户状态都在这里集中查看。
+                </Typography.Paragraph>
+                <Space wrap>
+                  <Button type="primary" onClick={() => history.push('/system/management')}>
+                    进入系统管理
+                  </Button>
+                  <Button onClick={() => history.push('/user-center/profile')}>打开个人中心</Button>
+                </Space>
+              </Space>
+            </Col>
 
-          <div className="saas-home-hero__metrics" aria-label="首页状态摘要">
-            {heroMetrics.map((item) => (
-              <div className="saas-home-hero__metric" key={item.label}>
-                <div className="saas-home-hero__metric-label">{item.label}</div>
-                <div className="saas-home-hero__metric-value">{numberFormatter.format(item.value)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <Row gutter={[20, 20]} align="stretch">
-          <Col xs={24} xl={16}>
-            <Card className="saas-home-panel saas-home-panel--entries" title="快捷入口">
+            <Col xs={24} lg={10}>
               <Row gutter={[16, 16]}>
-                {projectEntries.map((entry) => (
-                  <Col key={entry.path} xs={24} sm={12}>
-                    <Link className="saas-home-entry" to={entry.path} aria-label={`进入${entry.title}`}>
-                      <span className="saas-home-entry__icon" style={{ background: entry.tone, color: entry.accent }}>
-                        {entry.icon}
-                      </span>
-                      <span className="saas-home-entry__content">
-                        <span className="saas-home-entry__title">{entry.title}</span>
-                        <span className="saas-home-entry__desc">{entry.description}</span>
-                        <span className="saas-home-entry__cta">立即进入</span>
-                      </span>
-                    </Link>
+                {heroMetrics.map((item) => (
+                  <Col key={item.label} xs={12}>
+                    <Card size="small">
+                      <Statistic title={item.label} value={numberFormatter.format(item.value)} />
+                    </Card>
                   </Col>
                 ))}
               </Row>
+            </Col>
+          </Row>
+        </Card>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} xl={16}>
+            <Card title="快捷入口">
+              <List
+                grid={{ gutter: 16, xs: 1, sm: 2 }}
+                dataSource={projectEntries}
+                renderItem={(entry) => (
+                  <List.Item>
+                    <Card hoverable onClick={() => history.push(entry.path)} style={{ height: '100%' }}>
+                      <Space align="start">
+                        <Avatar style={{ backgroundColor: entry.color }} icon={entry.icon} />
+                        <div>
+                          <Typography.Title level={5} style={{ marginBottom: 4 }}>
+                            {entry.title}
+                          </Typography.Title>
+                          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                            {entry.description}
+                          </Typography.Paragraph>
+                        </div>
+                      </Space>
+                    </Card>
+                  </List.Item>
+                )}
+              />
             </Card>
 
-            <Card className="saas-home-panel saas-home-panel--activity" title="最近动态">
+            <Card title="最近动态">
               {activityItems.length ? (
                 <List
                   dataSource={activityItems}
                   split={false}
                   renderItem={(item) => (
-                    <List.Item className="saas-home-activity__item">
+                    <List.Item>
                       <List.Item.Meta
-                        avatar={<Avatar size={36} icon={<RocketOutlined />} className="saas-home-activity__avatar" />}
+                        avatar={<Avatar size={36} icon={<RocketOutlined />} />}
                         title={
                           <Space size={8} wrap>
-                            <Typography.Text className="saas-home-activity__title">{item.title}</Typography.Text>
+                            <Typography.Text strong>{item.title}</Typography.Text>
                             <Tag color={item.color}>{item.tag}</Tag>
                           </Space>
                         }
                         description={
-                          <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                            <Typography.Text className="saas-home-activity__desc">{item.desc}</Typography.Text>
-                            <Typography.Text type="secondary" className="saas-home-activity__time">
-                              {item.createdAt}
-                            </Typography.Text>
+                          <Space direction="vertical" size={4}>
+                            <Typography.Text type="secondary">{item.desc}</Typography.Text>
+                            <Typography.Text type="secondary">{item.createdAt}</Typography.Text>
                           </Space>
                         }
                       />
@@ -279,29 +273,28 @@ export default () => {
           </Col>
 
           <Col xs={24} xl={8}>
-            <Card className="saas-home-panel saas-home-panel--summary" title="状态摘要">
+            <Card title="状态摘要">
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 {trendLabels.map((item) => (
-                  <div className="saas-home-summary" key={item.label}>
-                    <span className="saas-home-summary__label">{item.label}</span>
-                    <span className="saas-home-summary__value">{numberFormatter.format(item.value)}</span>
-                  </div>
+                  <Card key={item.label} size="small">
+                    <Statistic title={item.label} value={numberFormatter.format(item.value)} />
+                  </Card>
                 ))}
-                <Typography.Paragraph type="secondary" className="saas-home-summary__note">
-                  工作台、插件和租户信息均按统一宽度约束展示，避免页面内容因模块不同而出现高度抖动。
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  工作台、插件和租户信息均按统一宽度约束展示。
                 </Typography.Paragraph>
               </Space>
             </Card>
 
-            <Card className="saas-home-panel saas-home-panel--team" title="团队与最近使用">
+            <Card title="团队与最近使用">
               {teamMembers.length ? (
                 <List
                   dataSource={teamMembers}
                   renderItem={(member, index) => (
-                    <List.Item className="saas-home-team__item">
+                    <List.Item>
                       <Space>
-                        <Avatar size={28} icon={<UserOutlined />} className="saas-home-team__avatar" />
-                        <Typography.Text className="saas-home-team__name">{member}</Typography.Text>
+                        <Avatar size={28} icon={<UserOutlined />} />
+                        <Typography.Text>{member}</Typography.Text>
                       </Space>
                       <Tag color={['blue', 'green', 'gold', 'purple'][index % 4]}>{index === 0 ? '当前账号' : '成员'}</Tag>
                     </List.Item>

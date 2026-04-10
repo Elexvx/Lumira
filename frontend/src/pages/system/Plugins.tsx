@@ -104,8 +104,6 @@ const PluginsPage = () => {
     return versions.find((item) => item.isActive === 1) || versions[0];
   };
 
-  const isInstalledVersion = (version?: PluginVersion) => Boolean(version && version.installStatus === 'LOADED' && version.loadStatus === 'LOADED');
-
   const refreshAfterMutation = async () => {
     try {
       await loadOverview();
@@ -148,19 +146,12 @@ const PluginsPage = () => {
   const handleEnable = async (pluginCode: string, version?: string) => {
     const tenantId = initialState?.currentTenant?.tenantId;
     if (!tenantId) {
-      message.error('当前未选择租户');
+      message.warning('当前未选择租户');
       return;
     }
     const versionToUse = version || getActiveVersion(pluginCode)?.version;
-    const versionRecord = (versionMap[pluginCode] || []).find((item) => item.version === versionToUse) || getActiveVersion(pluginCode);
     if (!versionToUse) {
       message.warning('请先安装可用版本');
-      setSelectedPlugin(definitions.find((item) => item.pluginCode === pluginCode) || null);
-      setVersionDrawerOpen(true);
-      return;
-    }
-    if (!isInstalledVersion(versionRecord)) {
-      message.warning('请先安装并加载该版本后再启用');
       setSelectedPlugin(definitions.find((item) => item.pluginCode === pluginCode) || null);
       setVersionDrawerOpen(true);
       return;
@@ -180,7 +171,7 @@ const PluginsPage = () => {
   const handleDisable = async (pluginCode: string) => {
     const tenantId = initialState?.currentTenant?.tenantId;
     if (!tenantId) {
-      message.error('当前未选择租户');
+      message.warning('当前未选择租户');
       return;
     }
     showConfirm('停用插件', pluginCode, async () => {
@@ -223,15 +214,15 @@ const PluginsPage = () => {
 
   const handleUpload = async () => {
     if (!uploadFile) {
-      message.error('请先选择插件包');
+      message.warning('请先选择插件包');
       return;
     }
     if (!uploadFile.name.toLowerCase().endsWith('.zip')) {
-      message.error('仅支持 zip 插件包');
+      message.warning('仅支持 zip 插件包');
       return;
     }
     if (uploadFile.size > 50 * 1024 * 1024) {
-      message.error('插件包不能超过 50MB');
+      message.warning('插件包不能超过 50MB');
       return;
     }
     setMutationLoading(true);
@@ -293,26 +284,27 @@ const PluginsPage = () => {
       title="插件管理"
       style={{ height: '100%', minHeight: 0 }}
       content={null}
-      extra={
-        <Space wrap>
-          <Button icon={<SyncOutlined />} onClick={() => void loadOverview()} loading={loading || mutationLoading}>
-            刷新
-          </Button>
-          <Button icon={<CloudUploadOutlined />} type="primary" onClick={() => setUploadVisible(true)}>
-            上传插件
-          </Button>
-        </Space>
-      }
+      extra={null}
     >
       <div className="saas-management-page-body">
         <Card style={{ marginBottom: 16 }}>
-          <Input.Search
-            allowClear
-            placeholder="输入插件编码或名称"
-            value={searchKeyword}
-            onChange={(event) => setSearchKeyword(event.target.value)}
-            style={{ width: 320 }}
-          />
+          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Input.Search
+              allowClear
+              placeholder="输入插件编码或名称"
+              value={searchKeyword}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+              style={{ width: 320, maxWidth: '100%', flex: '0 1 320px' }}
+            />
+            <Space wrap>
+              <Button icon={<SyncOutlined />} onClick={() => void loadOverview()} loading={loading || mutationLoading}>
+                刷新
+              </Button>
+              <Button icon={<CloudUploadOutlined />} type="primary" onClick={() => setUploadVisible(true)}>
+                上传插件
+              </Button>
+            </Space>
+          </Space>
         </Card>
 
         <Row gutter={[16, 16]}>
@@ -321,7 +313,6 @@ const PluginsPage = () => {
             const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
             const enabled = Boolean(enabledPlugin);
             const versionLabel = enabledPlugin?.version || activeVersion?.version;
-            const canSwitchOn = Boolean(versionLabel && isInstalledVersion(activeVersion));
             return (
               <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
                 <Card
@@ -336,7 +327,7 @@ const PluginsPage = () => {
                   extra={
                     <Switch
                       checked={enabled}
-                      disabled={mutationLoading || (!enabled && !canSwitchOn)}
+                      disabled={mutationLoading || !versionLabel}
                       onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
                     />
                   }

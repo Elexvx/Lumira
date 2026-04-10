@@ -5,6 +5,7 @@ import { clearAuthSession } from '@/auth/session';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import { ErrorCode } from '@/enums/errorCode';
+import { resolveApiErrorFeedback, resolveHttpStatusFeedback } from '@/services/common/errorFeedback';
 import type { ApiResponse } from '@/types/api';
 
 export class ApiRequestError extends Error {
@@ -35,6 +36,7 @@ export interface RequestOptions {
 }
 
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
+  const hasAuthToken = tokenManager.hasToken();
   try {
     const response = await umiRequest<ApiResponse<T>>(`${API_PREFIX}${url}`, {
       timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
@@ -68,20 +70,20 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
         httpStatus,
       });
 
-      handleApiError(apiError, options);
+      handleApiError(apiError, options, hasAuthToken);
       throw apiError;
     }
 
-    const fallbackError = buildFallbackError(httpStatus, requestId);
-    handleApiError(fallbackError, options);
+    const fallbackError = buildFallbackError(httpStatus, requestId, hasAuthToken);
+    handleApiError(fallbackError, options, hasAuthToken);
     throw fallbackError;
   } catch (error) {
     if (error instanceof ApiRequestError) {
       throw error;
     }
 
-    const fallbackError = buildUnexpectedError(error);
-    handleApiError(fallbackError, options);
+    const fallbackError = buildUnexpectedError(error, hasAuthToken);
+    handleApiError(fallbackError, options, hasAuthToken);
     throw fallbackError;
   }
 };
@@ -100,26 +102,23 @@ const buildAuthorization = () => {
   return accessToken ? `Bearer ${accessToken}` : '';
 };
 
-const handleApiError = (error: ApiRequestError, options: RequestOptions) => {
+const handleApiError = (error: ApiRequestError, options: RequestOptions, hasAuthToken = true) => {
   const bypassUnauthorizedRedirect =
     options.autoRedirectOnUnauthorized === false && options.allowUnauthorizedWithoutRedirect === true;
+  const feedback = resolveApiErrorFeedback(error, hasAuthToken);
 
-  if (shouldRedirectOnUnauthorized(error.code) && !bypassUnauthorizedRedirect) {
+  if (feedback.redirectToLogin && !bypassUnauthorizedRedirect) {
     cleanUnauthorizedState();
     if (!options.silent) {
-      message.error(error.userMessage || error.message);
+      message[feedback.type](feedback.message);
     }
     history.replace('/user/login');
     return;
   }
 
   if (!options.silent) {
-    message.error(error.userMessage || error.message);
+    message[feedback.type](feedback.message);
   }
-};
-
-const shouldRedirectOnUnauthorized = (code: string) => {
-  return code === ErrorCode.UNAUTHORIZED || code === ErrorCode.SESSION_EXPIRED;
 };
 
 const getResponseRequestId = (
@@ -175,7 +174,57 @@ const isApiResponse = <T>(payload: unknown): payload is ApiResponse<T> => {
   return typeof candidate.code === 'string' && typeof candidate.message === 'string' && 'data' in candidate;
 };
 
-const buildFallbackError = (httpStatus?: number, requestId?: string) => {
+const buildFallbackError = (httpStatus?: number, requestId?: string, hasAuthToken = true) => {
+  if (httpStatus === 401) {
+    const code = hasAuthToken ? ErrorCode.SESSION_EXPIRED : ErrorCode.UNAUTHORIZED;
+    const message = hasAuthToken ? '登录状态已失效，请重新登录' : '请先登录后再继续操作';
+    return new ApiRequestError(code, message, {
+      userMessage: message,
+      requestId,
+      httpStatus,
+    });
+  }
+
+  if (httpStatus === 403) {
+    return new ApiRequestError(ErrorCode.FORBIDDEN, '当前账号没有访问权限', {
+      userMessage: '当前账号没有访问权限',
+      requestId,
+      httpStatus,
+    });
+  }
+
+  if (httpStatus === 404) {
+    return new ApiRequestError(ErrorCode.NOT_FOUND, '请求的资源不存在', {
+      userMessage: '请求的资源不存在',
+      requestId,
+      httpStatus,
+    });
+  }
+
+  if (httpStatus === 400 || httpStatus === 422) {
+    return new ApiRequestError(ErrorCode.BAD_REQUEST, '请求内容有误，请检查后重试', {
+      userMessage: '请求内容有误，请检查后重试',
+      requestId,
+      httpStatus,
+    });
+  }
+
+  if (httpStatus === 409) {
+    return new ApiRequestError(ErrorCode.BIZ_ERROR, '当前操作无法完成，请检查业务状态', {
+      userMessage: '当前操作无法完成，请检查业务状态',
+      requestId,
+      httpStatus,
+    });
+  }
+
+  if (httpStatus === 429) {
+    return new ApiRequestError(ErrorCode.LOGIN_RATE_LIMITED, '操作过于频繁，请稍后再试', {
+      userMessage: '操作过于频繁，请稍后再试',
+      requestId,
+      httpStatus,
+    });
+  }
+
   if (httpStatus === 502 || httpStatus === 503 || httpStatus === 504) {
     return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '服务暂时不可用，请稍后再试', {
       userMessage: '服务暂时不可用，请稍后再试',
@@ -184,22 +233,23 @@ const buildFallbackError = (httpStatus?: number, requestId?: string) => {
     });
   }
 
-  if (httpStatus === 401) {
-    return new ApiRequestError(ErrorCode.SESSION_EXPIRED, '登录状态已失效，请重新登录', {
-      userMessage: '登录状态已失效，请重新登录',
+  if (httpStatus && httpStatus >= 500) {
+    return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '系统异常，请稍后重试', {
+      userMessage: '系统异常，请稍后重试',
       requestId,
       httpStatus,
     });
   }
 
-  return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '系统异常，请稍后重试', {
-    userMessage: '系统异常，请稍后重试',
+  const feedback = resolveHttpStatusFeedback(httpStatus, hasAuthToken);
+  return new ApiRequestError(ErrorCode.BIZ_ERROR, feedback.message, {
+    userMessage: feedback.message,
     requestId,
     httpStatus,
   });
 };
 
-const buildUnexpectedError = (error: unknown) => {
+const buildUnexpectedError = (error: unknown, hasAuthToken = true) => {
   const errorLike = error as {
     name?: string;
     type?: string;
@@ -220,14 +270,6 @@ const buildUnexpectedError = (error: unknown) => {
     });
   }
 
-  if (httpStatus === 502 || httpStatus === 503 || httpStatus === 504) {
-    return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '服务暂时不可用，请稍后再试', {
-      userMessage: '服务暂时不可用，请稍后再试',
-      requestId,
-      httpStatus,
-    });
-  }
-
   if (!httpStatus || normalizedMessage.includes('network')) {
     return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '网络异常，请检查连接后重试', {
       userMessage: '网络异常，请检查连接后重试',
@@ -236,7 +278,7 @@ const buildUnexpectedError = (error: unknown) => {
     });
   }
 
-  return buildFallbackError(httpStatus, requestId);
+  return buildFallbackError(httpStatus, requestId, hasAuthToken);
 };
 
 const cleanUnauthorizedState = () => {

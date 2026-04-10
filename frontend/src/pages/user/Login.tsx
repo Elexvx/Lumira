@@ -8,6 +8,7 @@ import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSe
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { ApiRequestError } from '@/services/common/request';
+import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
@@ -24,9 +25,14 @@ interface LoginFormValues {
   captchaCode?: string;
 }
 
+interface LoginErrorState {
+  type: 'info' | 'warning' | 'error';
+  message: string;
+}
+
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState<string>();
+  const [loginError, setLoginError] = useState<LoginErrorState>();
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(DEFAULT_SECURITY_SETTINGS);
   const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
@@ -81,12 +87,18 @@ const Login = () => {
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
-      setLoginError('验证码已过期，请刷新后重试');
+      setLoginError({
+        type: 'warning',
+        message: '验证码已过期，请刷新后重试',
+      });
       return false;
     }
 
     if (securitySettings.captchaEnabled && !values.captchaCode) {
-      setLoginError('请输入验证码');
+      setLoginError({
+        type: 'warning',
+        message: '请输入验证码',
+      });
       return false;
     }
 
@@ -128,7 +140,11 @@ const Login = () => {
       return true;
     } catch (error) {
       if (error instanceof ApiRequestError) {
-        setLoginError(error.userMessage || error.message || '登录失败，请稍后重试');
+        const feedback = resolveApiErrorFeedback(error, false);
+        setLoginError({
+          type: feedback.type,
+          message: feedback.message,
+        });
         if (securitySettings.captchaEnabled) {
           void refreshCaptcha();
         }
@@ -136,14 +152,20 @@ const Login = () => {
       }
 
       if (error instanceof Error) {
-        setLoginError(error.message || '登录失败，请稍后重试');
+        setLoginError({
+          type: 'error',
+          message: error.message || '登录失败，请稍后重试',
+        });
         if (securitySettings.captchaEnabled) {
           void refreshCaptcha();
         }
         return false;
       }
 
-      setLoginError('登录失败，请稍后重试');
+      setLoginError({
+        type: 'error',
+        message: '登录失败，请稍后重试',
+      });
       if (securitySettings.captchaEnabled) {
         void refreshCaptcha();
       }
@@ -159,7 +181,7 @@ const Login = () => {
         title={brandingSettings.websiteName}
         subTitle="后台管理系统登录"
         initialValues={{ remember: true }}
-        message={loginError ? <Alert showIcon type="error" message={loginError} /> : false}
+        message={loginError ? <Alert showIcon type={loginError.type} message={loginError.message} /> : false}
         onFinish={handleSubmit}
         submitter={{
           submitButtonProps: {

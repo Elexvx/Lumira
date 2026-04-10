@@ -63,6 +63,7 @@ export interface AppInitialState {
   myTenants: MyTenant[];
   menuTree: MenuNode[];
   menuVersion: number;
+  themeRevision?: number;
   availablePlugins: TenantPlugin[];
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;

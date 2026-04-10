@@ -1,0 +1,37 @@
+[     465ms] [LOG] [webpack] connecting... @ http://127.0.0.1:8000/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[     468ms] [LOG] [webpack] connected. @ http://127.0.0.1:8000/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[     513ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530282
+[     671ms] [ERROR] Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead. @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10652ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10652ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/core' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve '@umijs/max' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi/plugin-layout' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/.umi'
+Did you mean './umi'?
+Requests that should resolve in the current directory need to start with './'.
+Requests that start with a name are treated as module requests and resolve within module directories (node_modules).
+If changing the source code is not an option there is also a resolve options called 'preferRelative' which tries to resolve these kind of requests in the current directory too. @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/auth' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/hooks' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/dashboard' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/iam' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/plugins' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/profile' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system/monitoring' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/system' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/tenant' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user-center' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/pages/user' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/plugins' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   10653ms] [ERROR] Module not found: Error: Can't resolve 'umi' in '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/services/common' @ http://127.0.0.1:8000/mf-dep____vendor.a2941036.js:530399
+[   16291ms] [LOG] [webpack] connecting... @ http://127.0.0.1:8000/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:515
+[   16294ms] [LOG] [webpack] connected. @ http://127.0.0.1:8000/vendors-node_modules_pnpm_umijs_bundler-webpack_4_6_36_type-fest_0_20_2_typescript_5_9_3_webp-5f6276.async.js:548
+[   16335ms] Error: Module ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/core-js@3.34.0/node_modules/core-js/modules/es.error.cause.js" does not exist in container.
+while loading ".//Users/johntao/Documents/GitHub/legendary-invention/frontend/node_modules/.pnpm/core-js@3.34.0/node_modules/core-js/modules/es.error.cause.js" from webpack/container/reference/mf
+    at http://127.0.0.1:8000/mf-va_remoteEntry.js:124:11

@@ -177,13 +177,15 @@ const ConfigManagementPage = () => {
         onClose={() => setEditorOpen(false)}
         width={720}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={() => setEditorOpen(false)}>取消</Button>
-            <Button type="primary" loading={saving} onClick={() => void saveConfig()}>
-              保存
-            </Button>
-          </Space>
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={() => setEditorOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={() => void saveConfig()}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={editorForm} layout="vertical" initialValues={{ configScope: 'PLATFORM' }}>
