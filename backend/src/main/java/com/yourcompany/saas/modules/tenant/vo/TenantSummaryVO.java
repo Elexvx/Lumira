@@ -1,5 +1,7 @@
 package com.yourcompany.saas.modules.tenant.vo;
 
+import java.time.LocalDateTime;
+
 public class TenantSummaryVO {
 
     private Long tenantId;
@@ -7,6 +9,8 @@ public class TenantSummaryVO {
     private String tenantName;
     private String tenantShortName;
     private String status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Long getTenantId() {
         return tenantId;
@@ -46,5 +50,21 @@ public class TenantSummaryVO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

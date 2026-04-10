@@ -215,7 +215,15 @@
   }
 
   .saas-login-page__captcha-section {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) clamp(112px, 34vw, 160px);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .saas-login-page__captcha-section {
+    grid-template-columns: minmax(0, 1fr) 104px;
+    gap: 8px;
   }
 }
 

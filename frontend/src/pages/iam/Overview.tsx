@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Card, Checkbox, Col, Drawer, Empty, Form, Input, Row, Space, Tag, Typography, message } from 'antd';
+import { Button, Card, Checkbox, Drawer, Empty, Form, Space, Tag, Typography, message } from 'antd';
 import { history, useRequest } from 'umi';
 import { usePermission } from '@/hooks/usePermission';
 import { iamService } from '@/services/iam';
@@ -109,7 +109,7 @@ const IamOverviewPage = () => {
   );
 
   return (
-    <PageContainer title="权限中心">
+    <PageContainer title="权限管理">
       <ProTable<RoleRecord>
         actionRef={actionRef}
         rowKey="id"
@@ -146,31 +146,12 @@ const IamOverviewPage = () => {
         ]}
       />
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={24} xl={12}>
-          <Card title="权限目录">
-            {permissionQuery.data?.length ? (
-              <Space wrap>
-                {permissionQuery.data.map((item) => (
-                  <Tag key={item.permissionKey} color="blue">
-                    {item.permissionName}
-                  </Tag>
-                ))}
-              </Space>
-            ) : (
-              <Empty description="暂无权限目录" />
-            )}
-          </Card>
-        </Col>
-        <Col xs={24} xl={12}>
-          <Card title="用户角色查看">
-            <Typography.Paragraph type="secondary">
-              用户角色关系请在用户管理页查看和维护，这里保留的是角色维度的权限收口视图。
-            </Typography.Paragraph>
-            <Button onClick={() => history.push('/user-center/users')}>前往用户管理</Button>
-          </Card>
-        </Col>
-      </Row>
+      <div style={{ marginTop: 16 }}>
+        <Typography.Paragraph type="secondary">
+          用户角色关系请在用户管理页查看和维护，这里保留的是角色维度的权限收口视图。
+        </Typography.Paragraph>
+        <Button onClick={() => history.push('/user-center/users')}>前往用户管理</Button>
+      </div>
 
       <Drawer
         title={selectedRole ? `角色详情 · ${selectedRole.roleName}` : '角色详情'}
@@ -215,34 +196,39 @@ const IamOverviewPage = () => {
         onClose={() => setPermissionDrawerOpen(false)}
         width={720}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={() => setPermissionDrawerOpen(false)}>取消</Button>
-            <Button
-              type="primary"
-              onClick={async () => {
-                if (!selectedRole) {
-                  return;
-                }
-                const nextPermissions = permissionOptions.map((item) => item.value as string);
-                await iamService.updateRolePermissions(selectedRole.id, nextPermissions, {
-                  autoRedirectOnUnauthorized: false,
-                });
-                message.success('权限已同步');
-                setPermissionDrawerOpen(false);
-                setReloadTick((value) => value + 1);
-                await roleDetailQuery.refresh();
-              }}
-            >
-              一键同步全部权限
-            </Button>
-          </Space>
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={() => setPermissionDrawerOpen(false)}>取消</Button>
+              <Button
+                onClick={async () => {
+                  if (!selectedRole) {
+                    return;
+                  }
+                  const nextPermissions = permissionOptions.map((item) => item.value as string);
+                  await iamService.updateRolePermissions(selectedRole.id, nextPermissions, {
+                    autoRedirectOnUnauthorized: false,
+                  });
+                  message.success('权限已同步');
+                  setPermissionDrawerOpen(false);
+                  setReloadTick((value) => value + 1);
+                  await roleDetailQuery.refresh();
+                }}
+              >
+                一键同步全部权限
+              </Button>
+              <Button type="primary" onClick={() => form.submit()}>
+                保存权限
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Typography.Paragraph type="secondary">
           当前仅提供最小闭环：可查看权限目录，也可以一键同步全部权限。后续可在此扩展更精细的角色权限勾选交互。
         </Typography.Paragraph>
         <Form
+          form={form}
           layout="vertical"
           onFinish={async (values: { permissionKeys?: string[] }) => {
             if (!selectedRole) {
@@ -261,9 +247,6 @@ const IamOverviewPage = () => {
           <Form.Item name="permissionKeys" label="权限列表">
             <Checkbox.Group options={permissionOptions} />
           </Form.Item>
-          <Button type="primary" htmlType="submit">
-            保存权限
-          </Button>
         </Form>
       </Drawer>
     </PageContainer>

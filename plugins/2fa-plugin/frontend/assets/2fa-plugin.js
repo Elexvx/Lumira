@@ -133,9 +133,10 @@
           display: 'grid',
           gap: '16px',
           maxWidth: '960px',
+          color: 'var(--saas-action-icon-color)',
         },
       },
-      React.createElement('h2', { style: { margin: 0 } }, '2FA 验证'),
+      React.createElement('h2', { style: { margin: 0, color: 'var(--saas-action-icon-color)' } }, '2FA 验证'),
       error ? React.createElement('div', { style: { color: '#d4380d' } }, error) : null,
       success ? React.createElement('div', { style: { color: '#389e0d' } }, success) : null,
       React.createElement(
@@ -151,10 +152,11 @@
           'section',
           {
             style: {
-              border: '1px solid #f0f0f0',
+              border: '1px solid var(--saas-border-color)',
               borderRadius: '12px',
               padding: '16px',
-              background: '#fff',
+              background: 'var(--saas-surface-bg)',
+              color: 'var(--saas-action-icon-color)',
               display: 'grid',
               gap: '12px',
             },
@@ -200,10 +202,11 @@
           'section',
           {
             style: {
-              border: '1px solid #f0f0f0',
+              border: '1px solid var(--saas-border-color)',
               borderRadius: '12px',
               padding: '16px',
-              background: '#fff',
+              background: 'var(--saas-surface-bg)',
+              color: 'var(--saas-action-icon-color)',
               display: 'grid',
               gap: '12px',
             },
@@ -241,7 +244,7 @@
                 'div',
                 {
                   style: {
-                    border: '1px dashed #d9d9d9',
+                    border: '1px dashed var(--saas-border-color)',
                     borderRadius: '8px',
                     padding: '12px',
                     display: 'grid',
@@ -258,7 +261,7 @@
             : null
         )
       ),
-      loading ? React.createElement('div', null, '处理中...') : null
+      loading ? React.createElement('div', { style: { color: 'var(--saas-text-secondary)' } }, '处理中...') : null
     );
   };
 
@@ -273,17 +276,19 @@
   });
 
   const inputStyle = {
-    border: '1px solid #d9d9d9',
+    border: '1px solid var(--saas-border-color)',
     borderRadius: '8px',
     height: '36px',
     padding: '0 12px',
     outline: 'none',
+    color: 'var(--saas-action-icon-color)',
+    background: 'var(--saas-input-bg)',
   };
 
   const preStyle = {
     margin: 0,
     padding: '10px',
-    background: '#fafafa',
+    background: 'var(--saas-code-bg)',
     borderRadius: '8px',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',

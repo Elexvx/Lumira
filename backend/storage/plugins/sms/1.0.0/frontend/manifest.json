@@ -1,0 +1,15 @@
+{
+  "pluginCode": "sms",
+  "version": "1.0.0",
+  "entry": "assets/sms-plugin.js",
+  "assets": [
+    "assets/sms-plugin.js"
+  ],
+  "styles": [],
+  "routes": [
+    "/plugins/sms"
+  ],
+  "sharedDeps": [
+    "react"
+  ]
+}

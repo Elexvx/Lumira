@@ -174,7 +174,7 @@ export const TopActions = () => {
           size="small"
           variant="borderless"
           style={{ width: 160 }}
-          dropdownMatchSelectWidth={false}
+          popupMatchSelectWidth={false}
           placeholder="选择租户"
           loading={switching}
           disabled={switching || tenantOptions.length <= 1}

@@ -6,6 +6,11 @@ import { notifyPluginLoadError } from '@/plugins/loader';
 import { PluginErrorBoundary } from '@/plugins/errorBoundary';
 import { mountPlugin, unmountPlugin } from '@/plugins/runtime';
 
+type RuntimeErrorState = {
+  type: 'info' | 'warning' | 'error';
+  message: string;
+};
+
 const RuntimeContainer = () => {
   const params = useParams<{ pluginCode: string }>();
   const location = useLocation();
@@ -13,12 +18,18 @@ const RuntimeContainer = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef<{ pluginCode: string; version: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<RuntimeErrorState>();
 
   const plugin = useMemo(
     () => initialState?.availablePlugins?.find((item) => item.pluginCode === params.pluginCode),
     [initialState?.availablePlugins, params.pluginCode],
   );
+
+  useEffect(() => {
+    if (params.pluginCode === '2fa') {
+      history.replace('/user-center/profile?tab=second-factor');
+    }
+  }, [params.pluginCode]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -33,7 +44,10 @@ const RuntimeContainer = () => {
     }
     if (!plugin) {
       setLoading(false);
-      setError('当前租户未启用该插件');
+      setError({
+        type: 'warning',
+        message: '当前租户未启用该插件',
+      });
       return;
     }
     setLoading(true);
@@ -60,8 +74,8 @@ const RuntimeContainer = () => {
         if (!active) {
           return;
         }
-        notifyPluginLoadError(pluginError);
-        setError(pluginError instanceof Error ? pluginError.message : '插件加载失败，请稍后重试');
+        const feedback = notifyPluginLoadError(pluginError);
+        setError(feedback);
         setLoading(false);
       });
     return () => {
@@ -77,21 +91,29 @@ const RuntimeContainer = () => {
   if (error) {
     return (
       <Card>
-        <Alert type="error" showIcon message="插件不可用" description={error} />
+        <Alert type={error.type} showIcon message="插件不可用" description={error.message} />
       </Card>
     );
   }
 
   return (
     <PluginErrorBoundary>
-      <Card bodyStyle={{ minHeight: 'calc(100vh - 160px)' }}>
+      <Card bodyStyle={{ position: 'relative', minHeight: 'calc(100vh - 160px)' }}>
+        <div ref={containerRef} style={{ minHeight: 'calc(100vh - 220px)' }} />
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
             <Spin />
           </div>
-        ) : (
-          <div ref={containerRef} style={{ minHeight: 'calc(100vh - 220px)' }} />
-        )}
+        ) : null}
       </Card>
     </PluginErrorBoundary>
   );

@@ -163,7 +163,7 @@ const AuditOverviewPage = () => {
         columns={columns}
         search={{ labelWidth: 'auto' }}
         options={false}
-        pagination={{ showSizeChanger: true, pageSize: logType === 'login' ? 10 : 20 }}
+        pagination={{ showSizeChanger: true, pageSize: 10 }}
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
           const payload = {

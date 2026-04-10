@@ -220,13 +220,15 @@ const DictManagementPage = () => {
         onClose={() => setTypeEditorOpen(false)}
         width={720}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={() => setTypeEditorOpen(false)}>取消</Button>
-            <Button type="primary" loading={saving} onClick={() => void saveType()}>
-              保存
-            </Button>
-          </Space>
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={() => setTypeEditorOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={() => void saveType()}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={typeForm} layout="vertical" initialValues={{ status: 'ENABLED' }}>
@@ -331,13 +333,15 @@ const DictManagementPage = () => {
         onClose={() => setItemEditorOpen(false)}
         width={720}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={() => setItemEditorOpen(false)}>取消</Button>
-            <Button type="primary" loading={saving} onClick={() => void saveItem()}>
-              保存
-            </Button>
-          </Space>
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={() => setItemEditorOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={() => void saveItem()}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={itemForm} layout="vertical" initialValues={{ sortNo: 0, status: 'ENABLED' }}>

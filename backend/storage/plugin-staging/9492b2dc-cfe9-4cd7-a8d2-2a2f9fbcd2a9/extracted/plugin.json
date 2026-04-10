@@ -1,0 +1,38 @@
+{
+  "pluginCode": "2fa",
+  "pluginName": "2FA验证插件",
+  "version": "1.0.0",
+  "pluginApiVersion": "1.0.0",
+  "kind": "BUSINESS",
+  "description": "为租户提供基于 TOTP 的两步验证能力",
+  "author": "legendary-invention",
+  "minPlatformVersion": "0.1.0",
+  "frontendEntry": "frontend/assets/2fa-plugin.js",
+  "backendEntry": "backend/plugin.jar",
+  "dependencyPlugins": [],
+  "requiredPermissions": [
+    {
+      "permissionKey": "plugin:2fa:view",
+      "permissionName": "查看 2FA 验证",
+      "permissionGroup": "2fa"
+    },
+    {
+      "permissionKey": "plugin:2fa:manage",
+      "permissionName": "管理 2FA 验证",
+      "permissionGroup": "2fa"
+    }
+  ],
+  "menuDeclarations": [
+    {
+      "menuCode": "plugin.2fa",
+      "menuName": "2FA验证",
+      "routePath": "/plugins/2fa",
+      "icon": "SafetyOutlined",
+      "permissionKey": "plugin:2fa:view",
+      "sortNo": 200
+    }
+  ],
+  "configSchema": "{}",
+  "migrationStrategy": "versioned-sql",
+  "checksumAlgorithm": "SHA-256"
+}

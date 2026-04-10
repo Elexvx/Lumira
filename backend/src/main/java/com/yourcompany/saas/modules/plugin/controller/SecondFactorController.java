@@ -61,23 +61,28 @@ public class SecondFactorController {
     public ApiResponse<PluginSecondFactorChallenge> bind(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
-        PluginRuntimeDescriptor descriptor = requireDescriptor(tenantId, pluginCode);
+        PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         PluginSecondFactorProvider provider = requireProvider(descriptor);
         SysUserEntity user = requireUser(currentUser);
         if (provider.requiresEmail() && (user.getEmail() == null || user.getEmail().isBlank())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "请先补充邮箱后再启用该验证方式");
         }
-        return ApiResponse.success(
-                provider.bind(descriptor.getRuntimeContext(), tenantId, currentUser.getUserId(), user.getEmail(), user.getMobile()),
-                TraceContext.getRequestId()
+        PluginSecondFactorChallenge challenge = provider.bind(
+                descriptor.getRuntimeContext(),
+                tenantId,
+                currentUser.getUserId(),
+                user.getEmail(),
+                user.getMobile()
         );
+        persistBindChallenge(descriptor, tenantId, currentUser.getUserId(), challenge.challengeId());
+        return ApiResponse.success(challenge, TraceContext.getRequestId());
     }
 
     @PostMapping("/providers/{pluginCode}/unbind")
     public ApiResponse<Boolean> unbind(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
-        PluginRuntimeDescriptor descriptor = requireDescriptor(tenantId, pluginCode);
+        PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         requireProvider(descriptor).unbind(descriptor.getRuntimeContext(), tenantId, currentUser.getUserId());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
@@ -86,7 +91,7 @@ public class SecondFactorController {
     public ApiResponse<PluginSecondFactorChallenge> challenge(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
-        PluginRuntimeDescriptor descriptor = requireDescriptor(tenantId, pluginCode);
+        PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         return ApiResponse.success(
                 requireProvider(descriptor).prepareChallenge(descriptor.getRuntimeContext(), tenantId, currentUser.getUserId()),
                 TraceContext.getRequestId()
@@ -100,7 +105,7 @@ public class SecondFactorController {
     ) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
-        PluginRuntimeDescriptor descriptor = requireDescriptor(tenantId, pluginCode);
+        PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         return ApiResponse.success(
                 requireProvider(descriptor).verify(descriptor.getRuntimeContext(), request.getChallengeId(), request.getVerificationCode()),
                 TraceContext.getRequestId()
@@ -115,7 +120,15 @@ public class SecondFactorController {
     }
 
     private PluginVO.SecondFactorStatusVO resolveStatus(Long tenantId, Long userId, String pluginCode) {
-        PluginRuntimeDescriptor descriptor = pluginManagementAppService.findTenantRuntimeDescriptor(tenantId, pluginCode).orElse(null);
+        PluginRuntimeDescriptor descriptor;
+        try {
+            descriptor = requireTenantRuntime(tenantId, pluginCode);
+        } catch (BizException exception) {
+            PluginVO.SecondFactorStatusVO empty = new PluginVO.SecondFactorStatusVO();
+            empty.setPluginCode(pluginCode);
+            empty.setStatusMessage(exception.getUserMessage() != null ? exception.getUserMessage() : exception.getErrorMessage());
+            return empty;
+        }
         if (descriptor == null || descriptor.getSecondFactorProvider() == null) {
             PluginVO.SecondFactorStatusVO empty = new PluginVO.SecondFactorStatusVO();
             empty.setPluginCode(pluginCode);
@@ -136,9 +149,8 @@ public class SecondFactorController {
         return status;
     }
 
-    private PluginRuntimeDescriptor requireDescriptor(Long tenantId, String pluginCode) {
-        return pluginManagementAppService.findTenantRuntimeDescriptor(tenantId, pluginCode)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "插件运行时不存在"));
+    private PluginRuntimeDescriptor requireTenantRuntime(Long tenantId, String pluginCode) {
+        return pluginManagementAppService.requireTenantRuntime(tenantId, pluginCode);
     }
 
     private PluginSecondFactorProvider requireProvider(PluginRuntimeDescriptor descriptor) {
@@ -147,6 +159,39 @@ public class SecondFactorController {
             throw new BizException(ErrorCode.NOT_FOUND, "插件未提供二次验证能力");
         }
         return provider;
+    }
+
+    private void persistBindChallenge(PluginRuntimeDescriptor descriptor, Long tenantId, Long userId, String challengeId) {
+        if (challengeId == null || challengeId.isBlank()) {
+            return;
+        }
+        descriptor.getRuntimeContext().getJdbcTemplate().update(
+                """
+                        update plugin_2fa_challenge
+                        set deleted = 1, updated_at = current_timestamp
+                        where tenant_id = ? and user_id = ? and challenge_type = 'BIND' and deleted = 0
+                        """,
+                tenantId,
+                userId
+        );
+        descriptor.getRuntimeContext().getJdbcTemplate().update(
+                """
+                        insert into plugin_2fa_challenge (
+                            challenge_id, tenant_id, user_id, challenge_type, expires_at, consumed_flag, created_at, updated_at, deleted
+                        ) values (?, ?, ?, 'BIND', date_add(current_timestamp, interval 5 minute), 0, current_timestamp, current_timestamp, 0)
+                        on duplicate key update
+                            tenant_id = values(tenant_id),
+                            user_id = values(user_id),
+                            challenge_type = values(challenge_type),
+                            expires_at = values(expires_at),
+                            consumed_flag = 0,
+                            updated_at = current_timestamp,
+                            deleted = 0
+                        """,
+                challengeId,
+                tenantId,
+                userId
+        );
     }
 
     private Long requireTenantId(CurrentUser currentUser) {

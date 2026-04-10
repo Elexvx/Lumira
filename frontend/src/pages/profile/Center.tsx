@@ -1,22 +1,47 @@
-import { SafetyOutlined } from '@ant-design/icons';
-import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Button, Card, Col, Descriptions, Empty, Modal, Row, Space, Tag, Tabs, Timeline, Typography, message } from 'antd';
-import { history, useRequest } from 'umi';
+import { PageContainer, StepsForm } from '@ant-design/pro-components';
+import { Alert, Button, Card, Col, Descriptions, Divider, Empty, Form, Input, Modal, QRCode, Result, Row, Space, Tag, Tabs, Timeline, Typography, message } from 'antd';
+import { useRequest } from 'umi';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'umi';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
+import { ApiRequestError } from '@/services/common/request';
+import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { useResponsive } from '@/hooks/useResponsive';
-import type { ProfileSummary, SecondFactorProviderStatus } from '@/types/api';
+import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 
 const ProfileCenterPage = () => {
-  const { initialState } = useInitialStateModel();
+  const { initialState, setInitialState } = useInitialStateModel();
   const { isMobile } = useResponsive();
+  const location = useLocation();
   const profileQuery = useRequest(async () => ({ data: await profileService.summary({ autoRedirectOnUnauthorized: false }) }) as {
     data: ProfileSummary;
   });
   const secondFactorQuery = useRequest(async () => ({ data: await secondFactorService.providers({ autoRedirectOnUnauthorized: false }) }) as {
     data: SecondFactorProviderStatus[];
   });
+  const [emailBindForm] = Form.useForm();
+  const [bindModalOpen, setBindModalOpen] = useState(false);
+  const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
+  const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [bindingSubmitting, setBindingSubmitting] = useState(false);
+  const [bindingCompleted, setBindingCompleted] = useState(false);
+  const [bindingAlert, setBindingAlert] = useState<{ type: 'info' | 'warning' | 'error'; message: string }>();
+  const [emailBindModalOpen, setEmailBindModalOpen] = useState(false);
+  const [emailBindingProvider, setEmailBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
+  const [emailBindingSubmitting, setEmailBindingSubmitting] = useState(false);
+  const [emailBindingAlert, setEmailBindingAlert] = useState<string | null>(null);
+  const defaultActiveTab = useMemo(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    return tab === 'second-factor' ? 'second-factor' : 'overview';
+  }, [location.search]);
+  const [activeTab, setActiveTab] = useState(defaultActiveTab);
+
+  useEffect(() => {
+    setActiveTab(defaultActiveTab);
+  }, [defaultActiveTab]);
 
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
@@ -27,8 +52,139 @@ const ProfileCenterPage = () => {
   const requiresEmail = providerList.some((provider) => provider.emailRequired);
   const hasEmail = Boolean(currentUser?.email);
 
-  const handleOpenPlugin = (pluginCode: string) => {
-    history.push(`/plugins/${pluginCode}`);
+  useEffect(() => {
+    if (emailBindModalOpen) {
+      emailBindForm.setFieldsValue({
+        email: currentUser?.email || '',
+      });
+    }
+  }, [currentUser?.email, emailBindForm, emailBindModalOpen]);
+
+  const resetBindState = () => {
+    setBindingProvider(null);
+    setBindingChallenge(null);
+    setBindingLoading(false);
+    setBindingSubmitting(false);
+    setBindingCompleted(false);
+    setBindingAlert(undefined);
+  };
+
+  const closeBindModal = () => {
+    if (bindingSubmitting) {
+      return;
+    }
+    setBindModalOpen(false);
+    window.setTimeout(() => {
+      resetBindState();
+    }, 0);
+  };
+
+  const closeEmailBindModal = () => {
+    if (emailBindingSubmitting) {
+      return;
+    }
+    setEmailBindModalOpen(false);
+    setEmailBindingProvider(null);
+    setEmailBindingAlert(null);
+    window.setTimeout(() => {
+      emailBindForm.resetFields();
+    }, 0);
+  };
+
+  const fetchBindChallenge = async (provider: SecondFactorProviderStatus) => {
+    setBindingLoading(true);
+    setBindingAlert(undefined);
+    try {
+      const challenge = await secondFactorService.bind(provider.pluginCode, {
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      });
+      setBindingChallenge(challenge);
+    } catch (error) {
+      const feedback = error instanceof ApiRequestError ? resolveApiErrorFeedback(error, true) : null;
+      setBindingAlert({
+        type: feedback?.type || 'error',
+        message:
+          feedback?.message ||
+          (error instanceof Error ? error.message : '获取绑定信息失败，请稍后重试'),
+      });
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
+  const openEmailBindModal = (provider: SecondFactorProviderStatus) => {
+    setEmailBindingProvider(provider);
+    setEmailBindModalOpen(true);
+    setEmailBindingAlert(null);
+    emailBindForm.setFieldsValue({
+      email: currentUser?.email || '',
+    });
+  };
+
+  const openBindModal = async (provider: SecondFactorProviderStatus, options?: { skipEmailCheck?: boolean }) => {
+    if (!options?.skipEmailCheck && provider.emailRequired && !hasEmail) {
+      openEmailBindModal(provider);
+      return;
+    }
+    setBindingProvider(provider);
+    setBindingChallenge(null);
+    setBindingLoading(true);
+    setBindingSubmitting(false);
+    setBindingCompleted(false);
+    setBindingAlert(undefined);
+    setBindModalOpen(true);
+    await fetchBindChallenge(provider);
+  };
+
+  const handleEmailBind = async () => {
+    if (!emailBindingProvider) {
+      return;
+    }
+
+    try {
+      const values = await emailBindForm.validateFields();
+      setEmailBindingSubmitting(true);
+      setEmailBindingAlert(null);
+      const nextProvider = emailBindingProvider;
+      const updatedUser = await profileService.updateEmail({ email: values.email }, { autoRedirectOnUnauthorized: false });
+      message.success('邮箱已绑定');
+      setInitialState((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentUser: updatedUser,
+            }
+          : prev,
+      );
+      setEmailBindModalOpen(false);
+      setEmailBindingProvider(null);
+      window.setTimeout(() => {
+        emailBindForm.resetFields();
+      }, 0);
+      try {
+        await profileQuery.refresh();
+      } catch {
+        message.warning('邮箱已保存，但账号信息刷新失败，请稍后手动刷新页面');
+      }
+      await openBindModal(nextProvider, { skipEmailCheck: true });
+    } catch (error) {
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        return;
+      }
+      const feedback = error instanceof ApiRequestError ? resolveApiErrorFeedback(error, true) : null;
+      setEmailBindingAlert(feedback?.message || (error instanceof Error ? error.message : '邮箱绑定失败，请稍后重试'));
+    } finally {
+      setEmailBindingSubmitting(false);
+    }
+  };
+
+  const retryBindChallenge = async () => {
+    if (!bindingProvider) {
+      return;
+    }
+    setBindingChallenge(null);
+    await fetchBindChallenge(bindingProvider);
   };
 
   const handleUnbind = (pluginCode: string, pluginName?: string | null) => {
@@ -45,16 +201,77 @@ const ProfileCenterPage = () => {
     });
   };
 
+  const handleVerifyBind = async (values: { verificationCode?: string }) => {
+    if (!bindingProvider || !bindingChallenge) {
+      setBindingAlert({
+        type: 'warning',
+        message: '绑定信息已失效，请重新发起绑定。',
+      });
+      return false;
+    }
+    if (!values.verificationCode) {
+      setBindingAlert({
+        type: 'warning',
+        message: '请输入首个验证码。',
+      });
+      return false;
+    }
+
+    setBindingSubmitting(true);
+    setBindingAlert(undefined);
+    try {
+      const result = await secondFactorService.verify(
+        bindingProvider.pluginCode,
+        {
+          challengeId: bindingChallenge.challengeId,
+          verificationCode: values.verificationCode,
+        },
+        {
+          autoRedirectOnUnauthorized: false,
+          silent: true,
+        },
+      );
+
+      if (!result.verified) {
+        setBindingAlert({
+          type: 'warning',
+          message: result.message || '验证码校验失败，请重试。',
+        });
+        return false;
+      }
+
+      message.success('2FA 绑定已完成');
+      setBindingCompleted(true);
+      await secondFactorQuery.refresh();
+      return true;
+    } catch (error) {
+      const feedback = error instanceof ApiRequestError ? resolveApiErrorFeedback(error, true) : null;
+      setBindingAlert({
+        type: feedback?.type || 'error',
+        message:
+          feedback?.message ||
+          (error instanceof Error ? error.message : '绑定失败，请稍后重试'),
+      });
+      return false;
+    } finally {
+      setBindingSubmitting(false);
+    }
+  };
+
+  const handleFinishBindModal = () => {
+    closeBindModal();
+  };
+
   const providerCards = providerList.length ? (
     <Row gutter={[16, 16]}>
       {providerList.map((provider) => {
         const statusColor = provider.enabled && provider.bound ? 'green' : provider.enabled ? 'gold' : 'default';
+        const actionLabel = provider.bound ? '重新绑定' : '绑定';
         return (
           <Col key={provider.pluginCode} xs={24} lg={12}>
             <Card
               title={
                 <Space wrap>
-                  <SafetyOutlined />
                   <span>{provider.pluginName || provider.pluginCode}</span>
                   <Tag color={statusColor}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
                 </Space>
@@ -64,7 +281,7 @@ const ProfileCenterPage = () => {
             >
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Typography.Paragraph style={{ marginBottom: 0 }}>
-                  {provider.statusMessage || '请前往对应插件页面完成绑定与验证设置。'}
+                  {provider.statusMessage || '请完成绑定与验证码验证后启用该方式。'}
                 </Typography.Paragraph>
                 <Descriptions column={1} size="small" bordered>
                   <Descriptions.Item label="验证方式">{provider.factorName || '-'}</Descriptions.Item>
@@ -72,8 +289,12 @@ const ProfileCenterPage = () => {
                   <Descriptions.Item label="邮箱要求">{provider.emailRequired ? '需要邮箱' : '不需要邮箱'}</Descriptions.Item>
                 </Descriptions>
                 <Space wrap>
-                  <Button type="primary" onClick={() => handleOpenPlugin(provider.pluginCode)}>
-                    打开插件页面
+                  <Button
+                    type="primary"
+                    onClick={() => void openBindModal(provider)}
+                    disabled={bindingLoading || bindingSubmitting || emailBindingSubmitting}
+                  >
+                    {actionLabel}
                   </Button>
                   {provider.bound ? (
                     <Button danger onClick={() => handleUnbind(provider.pluginCode, provider.pluginName)}>
@@ -93,117 +314,291 @@ const ProfileCenterPage = () => {
 
   return (
     <PageContainer
-      className="saas-management-page"
-      ghost
+      className="saas-management-page saas-profile-page"
       title="个人中心"
-      style={{ height: '100%', minHeight: 0 }}
-      content={null}
     >
-      <div className="saas-management-page-body">
-        <Tabs
-          defaultActiveKey="second-factor"
-          items={[
-            {
-              key: 'second-factor',
-              label: '2FA验证',
-              children: (
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'overview',
+            label: '账号概览',
+            children: (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert
+                  showIcon
+                  type="info"
+                  message="账号信息、租户信息和权限摘要会在这里统一展示。"
+                />
+                <Row gutter={[16, 16]} align="stretch">
+                  <Col xs={24} lg={12} style={{ display: 'flex' }}>
+                    <Card title="账号信息" loading={profileQuery.loading} style={{ width: '100%' }}>
+                      <Descriptions className="saas-profile-page__descriptions" column={isMobile ? 1 : 2} size="small" bordered>
+                        <Descriptions.Item label="用户名">{currentUser?.username || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="昵称">{currentUser?.nickname || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="姓名">{currentUser?.realName || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="邮箱">{currentUser?.email || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="手机号">{currentUser?.mobile || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="用户ID">{currentUser?.userId || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="会话ID">{currentUser?.sessionId || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="会话版本">{currentUser?.sessionVersion ?? '-'}</Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+                  </Col>
+                  <Col xs={24} lg={12} style={{ display: 'flex' }}>
+                    <Card title="租户与安全" style={{ width: '100%' }}>
+                      <Descriptions className="saas-profile-page__descriptions" column={isMobile ? 1 : 2} size="small" bordered>
+                        <Descriptions.Item label="当前租户">{currentTenant?.tenantName || '未选择'}</Descriptions.Item>
+                        <Descriptions.Item label="租户编码">{currentTenant?.tenantCode || '-'}</Descriptions.Item>
+                        <Descriptions.Item label="权限数">{summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}</Descriptions.Item>
+                        <Descriptions.Item label="角色摘要">
+                          <Space wrap>
+                            {roleNames.length ? roleNames.map((name) => <Tag key={name}>{name}</Tag>) : <Tag>暂无角色摘要</Tag>}
+                          </Space>
+                        </Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Row gutter={[16, 16]}>
+                  <Col xs={24}>
+                    <Card title="最近登录记录" loading={profileQuery.loading}>
+                      {recentLoginLogs.length ? (
+                        <Timeline
+                          items={recentLoginLogs.map((item) => ({
+                            children: (
+                              <Space direction="vertical" size={0}>
+                                <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>
+                                <Typography.Text type="secondary">
+                                  {item.logResult || item.failReason || '登录记录'} · {item.createdAt}
+                                </Typography.Text>
+                              </Space>
+                            ),
+                            color: item.logResult === 'SUCCESS' ? 'green' : 'red',
+                          }))}
+                        />
+                      ) : (
+                        <Empty description="暂无最近登录记录" />
+                      )}
+                    </Card>
+                  </Col>
+                </Row>
+              </Space>
+            ),
+          },
+          {
+            key: 'second-factor',
+            label: '2FA验证',
+            children: (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert
+                  showIcon
+                  type="info"
+                  message="二次验证入口"
+                  description="短信验证码与 2FA 验证是两个独立插件。若当前未绑定邮箱，系统会先引导你补充邮箱，再继续绑定验证方式。"
+                />
+                {requiresEmail && !hasEmail ? (
                   <Alert
                     showIcon
-                    type="info"
-                    message="二次验证入口"
-                    description="短信验证码与 2FA 验证是两个独立插件。启用任一方式后，建议先完善邮箱信息，避免验证码不可用时无法登录。"
+                    type="warning"
+                    message="请先补充邮箱"
+                    description="当前租户启用了需要邮箱的验证插件。点击绑定时会先要求补充邮箱，然后自动继续。"
                   />
-                  {requiresEmail && !hasEmail ? (
-                    <Alert
-                      showIcon
-                      type="warning"
-                      message="请先补充邮箱"
-                      description="当前租户启用了需要邮箱的验证插件，请先在账号资料中补充邮箱，避免短信或 2FA 不可用时无法登录。"
-                    />
-                  ) : null}
-                  {providerCards}
-                </Space>
-              ),
-            },
-            {
-              key: 'overview',
-              label: '账号概览',
-              children: (
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} lg={12}>
-                      <Card title="账号信息" loading={profileQuery.loading}>
-                        <Descriptions column={isMobile ? 1 : 2} size="small" bordered>
-                          <Descriptions.Item label="用户名">{currentUser?.username || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="昵称">{currentUser?.nickname || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="姓名">{currentUser?.realName || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="邮箱">{currentUser?.email || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="手机号">{currentUser?.mobile || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="用户ID">{currentUser?.userId || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="会话ID">{currentUser?.sessionId || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="会话版本">{currentUser?.sessionVersion ?? '-'}</Descriptions.Item>
-                        </Descriptions>
-                      </Card>
-                    </Col>
-                    <Col xs={24} lg={12}>
-                      <Card title="租户与安全">
-                        <Descriptions column={isMobile ? 1 : 2} size="small" bordered>
-                          <Descriptions.Item label="当前租户">{currentTenant?.tenantName || '未选择'}</Descriptions.Item>
-                          <Descriptions.Item label="租户编码">{currentTenant?.tenantCode || '-'}</Descriptions.Item>
-                          <Descriptions.Item label="权限数">{summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}</Descriptions.Item>
-                          <Descriptions.Item label="角色摘要">
-                            <Space wrap>
-                              {roleNames.length ? roleNames.map((name) => <Tag key={name}>{name}</Tag>) : <Tag>暂无角色摘要</Tag>}
-                            </Space>
-                          </Descriptions.Item>
-                        </Descriptions>
-                      </Card>
-                    </Col>
-                  </Row>
+                ) : null}
+                {providerCards}
+              </Space>
+            ),
+          },
+        ]}
+      />
 
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} lg={14}>
-                      <Card title="最近登录记录" loading={profileQuery.loading}>
-                        {recentLoginLogs.length ? (
-                          <Timeline
-                            items={recentLoginLogs.map((item) => ({
-                              children: (
-                                <Space direction="vertical" size={0}>
-                                  <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>
-                                  <Typography.Text type="secondary">
-                                    {item.logResult || item.failReason || '登录记录'} · {item.createdAt}
-                                  </Typography.Text>
-                                </Space>
-                              ),
-                              color: item.logResult === 'SUCCESS' ? 'green' : 'red',
-                            }))}
-                          />
-                        ) : (
-                          <Empty description="暂无最近登录记录" />
-                        )}
-                      </Card>
-                    </Col>
-                    <Col xs={24} lg={10}>
-                      <Card title="账号安全">
-                        <Typography.Paragraph>
-                          当前会话沿用 JWT、Redis 会话和租户上下文恢复逻辑。退出登录后会同步清理本地 token 与租户缓存。
-                        </Typography.Paragraph>
-                        <Space wrap>
-                          <Tag color="green">JWT</Tag>
-                          <Tag color="blue">Redis 会话</Tag>
-                          <Tag color="purple">租户恢复</Tag>
-                          <Tag color="gold">SMTP 兜底</Tag>
-                        </Space>
-                      </Card>
-                    </Col>
-                  </Row>
+      <Modal
+        title="补充邮箱"
+        open={emailBindModalOpen}
+        onCancel={closeEmailBindModal}
+        onOk={() => void handleEmailBind()}
+        confirmLoading={emailBindingSubmitting}
+        okText="保存并继续"
+        cancelText="取消"
+        destroyOnClose
+        maskClosable={false}
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Alert
+            showIcon
+            type="info"
+            message="先绑定邮箱，再继续验证绑定"
+            description="当前选择的验证方式需要邮箱。补充邮箱后，系统会自动返回继续绑定 2FA 或短信验证码。"
+          />
+          {emailBindingAlert ? <Alert showIcon type="error" message={emailBindingAlert} /> : null}
+          <Form form={emailBindForm} layout="vertical" initialValues={{ email: currentUser?.email || '' }}>
+            <Form.Item
+              name="email"
+              label="邮箱"
+              rules={[
+                { required: true, message: '请输入邮箱' },
+                { type: 'email', message: '请输入有效邮箱地址' },
+              ]}
+            >
+              <Input placeholder="请输入邮箱地址" autoComplete="email" />
+            </Form.Item>
+          </Form>
+        </Space>
+      </Modal>
+
+      <Modal
+        title={bindingProvider ? `${bindingProvider.pluginName || bindingProvider.pluginCode} · 2FA 绑定` : '2FA 绑定'}
+        open={bindModalOpen}
+        onCancel={closeBindModal}
+        footer={null}
+        width={780}
+        destroyOnClose
+        maskClosable={false}
+      >
+        {bindingCompleted && bindingChallenge ? (
+          <Result
+            status="success"
+            title="绑定已完成"
+            subTitle="请妥善保存以下恢复码，用于设备丢失或验证码不可用时找回账号。"
+            extra={[
+              <Button key="close" type="primary" onClick={handleFinishBindModal}>
+                完成
+              </Button>,
+            ]}
+            style={{ padding: 0 }}
+          >
+            <Card size="small" title="恢复码">
+              <Space wrap>
+                {(bindingChallenge.recoveryCodes || []).length ? (
+                  bindingChallenge.recoveryCodes!.map((code) => (
+                    <Tag key={code} color="gold">
+                      {code}
+                    </Tag>
+                  ))
+                ) : (
+                  <Typography.Text type="secondary">暂无恢复码</Typography.Text>
+                )}
+              </Space>
+              <Divider />
+              <Typography.Paragraph style={{ marginBottom: 0 }} type="secondary" copyable={{ text: (bindingChallenge.recoveryCodes || []).join('\n') }}>
+                点击复制全部恢复码
+              </Typography.Paragraph>
+            </Card>
+          </Result>
+        ) : (
+          <StepsForm
+            submitter={{
+              render: (props) => (
+                <Space size={8} wrap>
+                  <Button onClick={closeBindModal} disabled={bindingSubmitting}>
+                    取消
+                  </Button>
+                  {props.step > 0 ? (
+                    <Button onClick={props.onPre} disabled={bindingLoading || bindingSubmitting}>
+                      上一步
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="primary"
+                    loading={bindingLoading || bindingSubmitting}
+                    disabled={bindingLoading || bindingSubmitting || !bindingChallenge}
+                    onClick={props.onSubmit}
+                  >
+                    {props.step === 0 ? '下一步' : '确认绑定'}
+                  </Button>
                 </Space>
               ),
-            },
-          ]}
-        />
-      </div>
+            }}
+            stepsProps={{ responsive: false }}
+            formProps={{ layout: 'vertical' }}
+            onFinish={handleVerifyBind}
+            stepsFormRender={(formDom, submitterDom) => (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {bindingAlert ? <Alert showIcon type={bindingAlert.type} message={bindingAlert.message} /> : null}
+                {formDom}
+                {submitterDom}
+              </Space>
+            )}
+          >
+            <StepsForm.StepForm name="bind-preview" title="扫描二维码">
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert
+                  showIcon
+                  type="info"
+                  message="扫码绑定"
+                  description={
+                    bindingProvider?.bound
+                      ? '当前已绑定，重新绑定会生成新的密钥并覆盖旧绑定，请确认后继续。'
+                      : '请使用支持 TOTP 的认证器扫描二维码。也可以手动输入密钥完成绑定。'
+                  }
+                />
+                {bindingLoading ? (
+                  <Card loading />
+                ) : bindingChallenge ? (
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <div className="saas-profile-2fa-binding__qr">
+                      <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={188} bordered />
+                    </div>
+                    <Descriptions bordered column={1} size="small">
+                      <Descriptions.Item label="插件">{bindingChallenge.pluginName || bindingChallenge.pluginCode || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="手动密钥">
+                        <Typography.Text copyable={{ text: bindingChallenge.setupSecret || '' }}>
+                          {bindingChallenge.setupSecret || '-'}
+                        </Typography.Text>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="绑定地址">
+                        <Typography.Paragraph style={{ marginBottom: 0 }} copyable={{ text: bindingChallenge.setupUri || '' }}>
+                          {bindingChallenge.setupUri || '-'}
+                        </Typography.Paragraph>
+                      </Descriptions.Item>
+                    </Descriptions>
+                    <Typography.Text type="secondary">下一步将要求你输入认证器中的首个 6 位验证码，确认成功后才算绑定完成。</Typography.Text>
+                  </Space>
+                ) : (
+                  <Empty
+                    description={
+                      <Space direction="vertical" size={8}>
+                        <span>绑定信息尚未加载，请重试</span>
+                        <Button type="primary" onClick={() => void retryBindChallenge()} disabled={!bindingProvider}>
+                          重新获取绑定信息
+                        </Button>
+                      </Space>
+                    }
+                  />
+                )}
+              </Space>
+            </StepsForm.StepForm>
+            <StepsForm.StepForm name="bind-verify" title="验证首个验证码">
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert
+                  showIcon
+                  type="info"
+                  message="验证首个验证码"
+                  description="请在认证器中查看当前 6 位验证码并输入，系统会用它确认二维码已经成功绑定。"
+                />
+                <Form.Item
+                  name="verificationCode"
+                  rules={[
+                    { required: true, message: '请输入首个验证码' },
+                    { pattern: /^\d{6}$/, message: '验证码必须为 6 位数字' },
+                  ]}
+                >
+                  <Input
+                    size="large"
+                    maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="请输入 6 位验证码"
+                  />
+                </Form.Item>
+              </Space>
+            </StepsForm.StepForm>
+          </StepsForm>
+        )}
+      </Modal>
     </PageContainer>
   );
 };

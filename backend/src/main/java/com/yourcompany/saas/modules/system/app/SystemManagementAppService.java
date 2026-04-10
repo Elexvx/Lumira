@@ -8,6 +8,7 @@ import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsServ
 import com.yourcompany.saas.modules.audit.app.LoginAuditService;
 import com.yourcompany.saas.modules.audit.app.OperationAuditService;
 import com.yourcompany.saas.modules.auth.app.AuthAppService;
+import com.yourcompany.saas.modules.auth.vo.CurrentUserVO;
 import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import com.yourcompany.saas.modules.plugin.app.PluginManagementAppService;
 import com.yourcompany.saas.modules.system.app.OnlineSessionManagementAppService;
@@ -193,6 +194,24 @@ public class SystemManagementAppService {
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
         summary.setRecentLoginLogs(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 10).getRecords());
         return summary;
+    }
+
+    @Transactional
+    public CurrentUserVO updateCurrentUserEmail(CurrentUser currentUser, String email) {
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        jdbcTemplate.update(
+                """
+                        update sys_user
+                        set email = ?, updated_by = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                email,
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                user.getId()
+        );
+        return authAppService.currentUser(currentUser);
     }
 
     public PageResponse<SystemVO.UserVO> listUsers(CurrentUser currentUser, String username, String mobile, String status, long pageNo, long pageSize) {

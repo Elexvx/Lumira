@@ -14,6 +14,8 @@ export interface TenantSummary {
   tenantName: string;
   tenantShortName?: string;
   status: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MyTenant extends TenantSummary {

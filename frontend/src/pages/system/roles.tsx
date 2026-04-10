@@ -177,15 +177,6 @@ const RoleManagementPage = () => {
   return (
     <PageContainer
       title="角色管理"
-      extra={
-        <Space>
-          {canAccess('system:role:create') ? (
-            <Button type="primary" onClick={openCreate}>
-              新增角色
-            </Button>
-          ) : null}
-        </Space>
-      }
     >
       <ProTable<RoleRecord>
         actionRef={actionRef}
@@ -228,13 +219,15 @@ const RoleManagementPage = () => {
         onClose={handleEditorClose}
         width={720}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={handleEditorClose}>取消</Button>
-            <Button type="primary" loading={saving} onClick={() => void saveRole()}>
-              保存
-            </Button>
-          </Space>
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={handleEditorClose}>取消</Button>
+              <Button type="primary" loading={saving} onClick={() => void saveRole()}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={editorForm} layout="vertical" initialValues={{ roleType: 'CUSTOM', permissionKeys: [] }}>

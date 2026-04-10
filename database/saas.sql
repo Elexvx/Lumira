@@ -1095,6 +1095,18 @@ SELECT 1001, 'tenant:view', '查看租户中心', 'tenant', 'CORE', NULL, 0, 0, 
 WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'tenant:view');
 
 INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
+SELECT 1001, 'tenant:create', '创建租户', 'tenant', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'tenant:create');
+
+INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
+SELECT 1001, 'tenant:update', '编辑租户', 'tenant', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'tenant:update');
+
+INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
+SELECT 1001, 'tenant:delete', '删除租户', 'tenant', 'CORE', NULL, 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'tenant:delete');
+
+INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
 SELECT 1001, 'audit:view', '查看审计中心', 'audit', 'CORE', NULL, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'audit:view');
 
@@ -1184,6 +1196,9 @@ FROM sys_permission
 WHERE tenant_id = 1001
   AND permission_key IN (
       'tenant:view',
+      'tenant:create',
+      'tenant:update',
+      'tenant:delete',
       'audit:view',
       'audit:login:view',
       'audit:operation:view',
@@ -1217,6 +1232,9 @@ FROM sys_permission
 WHERE tenant_id = 1001
   AND permission_key IN (
       'tenant:view',
+      'tenant:create',
+      'tenant:update',
+      'tenant:delete',
       'audit:view',
       'audit:login:view',
       'audit:operation:view',
@@ -1250,6 +1268,9 @@ FROM sys_permission
 WHERE tenant_id = 1002
   AND permission_key IN (
       'tenant:view',
+      'tenant:create',
+      'tenant:update',
+      'tenant:delete',
       'audit:view',
       'audit:login:view',
       'audit:operation:view',
