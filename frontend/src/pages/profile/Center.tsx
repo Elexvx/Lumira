@@ -51,6 +51,8 @@ const ProfileCenterPage = () => {
   const providerList = secondFactorQuery.data || [];
   const requiresEmail = providerList.some((provider) => provider.emailRequired);
   const hasEmail = Boolean(currentUser?.email);
+  const hasMobile = Boolean(currentUser?.mobile);
+  const bindingIsSms = bindingProvider?.factorCode === 'sms' || bindingChallenge?.factorCode === 'sms';
 
   useEffect(() => {
     if (emailBindModalOpen) {
@@ -125,6 +127,19 @@ const ProfileCenterPage = () => {
   const openBindModal = async (provider: SecondFactorProviderStatus, options?: { skipEmailCheck?: boolean }) => {
     if (!options?.skipEmailCheck && provider.emailRequired && !hasEmail) {
       openEmailBindModal(provider);
+      return;
+    }
+    if ((provider.factorCode === 'sms' || provider.pluginCode === 'sms') && !hasMobile) {
+      setBindingProvider(provider);
+      setBindingChallenge(null);
+      setBindingLoading(false);
+      setBindingSubmitting(false);
+      setBindingCompleted(false);
+      setBindingAlert({
+        type: 'warning',
+        message: '当前账号未绑定手机号，请先补充手机号后再启用短信验证码。',
+      });
+      setBindModalOpen(true);
       return;
     }
     setBindingProvider(provider);
@@ -212,7 +227,7 @@ const ProfileCenterPage = () => {
     if (!values.verificationCode) {
       setBindingAlert({
         type: 'warning',
-        message: '请输入首个验证码。',
+        message: bindingIsSms ? '请输入短信验证码。' : '请输入首个验证码。',
       });
       return false;
     }
@@ -449,7 +464,11 @@ const ProfileCenterPage = () => {
       </Modal>
 
       <Modal
-        title={bindingProvider ? `${bindingProvider.pluginName || bindingProvider.pluginCode} · 2FA 绑定` : '2FA 绑定'}
+        title={
+          bindingProvider
+            ? `${bindingProvider.pluginName || bindingProvider.pluginCode} · ${bindingIsSms ? '短信验证码绑定' : '2FA 绑定'}`
+            : '二次验证绑定'
+        }
         open={bindModalOpen}
         onCancel={closeBindModal}
         footer={null}
@@ -458,35 +477,148 @@ const ProfileCenterPage = () => {
         maskClosable={false}
       >
         {bindingCompleted && bindingChallenge ? (
-          <Result
-            status="success"
-            title="绑定已完成"
-            subTitle="请妥善保存以下恢复码，用于设备丢失或验证码不可用时找回账号。"
-            extra={[
-              <Button key="close" type="primary" onClick={handleFinishBindModal}>
-                完成
-              </Button>,
-            ]}
-            style={{ padding: 0 }}
+          bindingIsSms ? (
+            <Result
+              status="success"
+              title="短信验证码绑定已完成"
+              subTitle="后续登录或验证时会向该手机号发送短信验证码。"
+              extra={[
+                <Button key="close" type="primary" onClick={handleFinishBindModal}>
+                  完成
+                </Button>,
+              ]}
+              style={{ padding: 0 }}
+            />
+          ) : (
+            <Result
+              status="success"
+              title="绑定已完成"
+              subTitle="请妥善保存以下恢复码，用于设备丢失或验证码不可用时找回账号。"
+              extra={[
+                <Button key="close" type="primary" onClick={handleFinishBindModal}>
+                  完成
+                </Button>,
+              ]}
+              style={{ padding: 0 }}
+            >
+              <Card size="small" title="恢复码">
+                <Space wrap>
+                  {(bindingChallenge.recoveryCodes || []).length ? (
+                    bindingChallenge.recoveryCodes!.map((code) => (
+                      <Tag key={code} color="gold">
+                        {code}
+                      </Tag>
+                    ))
+                  ) : (
+                    <Typography.Text type="secondary">暂无恢复码</Typography.Text>
+                  )}
+                </Space>
+                <Divider />
+                <Typography.Paragraph style={{ marginBottom: 0 }} type="secondary" copyable={{ text: (bindingChallenge.recoveryCodes || []).join('\n') }}>
+                  点击复制全部恢复码
+                </Typography.Paragraph>
+              </Card>
+            </Result>
+          )
+        ) : bindingIsSms ? (
+          <StepsForm
+            submitter={{
+              render: (props) => (
+                <Space size={8} wrap>
+                  <Button onClick={closeBindModal} disabled={bindingSubmitting}>
+                    取消
+                  </Button>
+                  {props.step > 0 ? (
+                    <Button onClick={props.onPre} disabled={bindingLoading || bindingSubmitting}>
+                      上一步
+                    </Button>
+                  ) : null}
+                  <Button onClick={() => void retryBindChallenge()} disabled={bindingLoading || bindingSubmitting || !bindingProvider}>
+                    重新发送验证码
+                  </Button>
+                  <Button
+                    type="primary"
+                    loading={bindingLoading || bindingSubmitting}
+                    disabled={bindingLoading || bindingSubmitting || !bindingChallenge}
+                    onClick={props.onSubmit}
+                  >
+                    {props.step === 0 ? '下一步' : '确认绑定'}
+                  </Button>
+                </Space>
+              ),
+            }}
+            stepsProps={{ responsive: false }}
+            formProps={{ layout: 'vertical' }}
+            onFinish={handleVerifyBind}
+            stepsFormRender={(formDom, submitterDom) => (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                {bindingAlert ? <Alert showIcon type={bindingAlert.type} message={bindingAlert.message} /> : null}
+                {formDom}
+                {submitterDom}
+              </Space>
+            )}
           >
-            <Card size="small" title="恢复码">
-              <Space wrap>
-                {(bindingChallenge.recoveryCodes || []).length ? (
-                  bindingChallenge.recoveryCodes!.map((code) => (
-                    <Tag key={code} color="gold">
-                      {code}
-                    </Tag>
-                  ))
+            <StepsForm.StepForm name="sms-verify" title="接收验证码">
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert
+                  showIcon
+                  type="info"
+                  message="短信验证码已发送"
+                  description={
+                    bindingChallenge?.maskedContact
+                      ? `验证码已发送至 ${bindingChallenge.maskedContact}，请输入收到的 6 位短信验证码完成绑定。`
+                      : '验证码已发送至手机号，请输入收到的 6 位短信验证码完成绑定。'
+                  }
+                />
+                {bindingLoading ? (
+                  <Card loading />
+                ) : bindingChallenge ? (
+                  <Descriptions bordered column={1} size="small">
+                    <Descriptions.Item label="插件">{bindingChallenge.pluginName || bindingChallenge.pluginCode || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="验证方式">{bindingChallenge.factorName || '短信验证码'}</Descriptions.Item>
+                    <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="提示信息">{bindingChallenge.promptMessage || '请输入收到的短信验证码'}</Descriptions.Item>
+                  </Descriptions>
                 ) : (
-                  <Typography.Text type="secondary">暂无恢复码</Typography.Text>
+                  <Empty
+                    description={
+                      <Space direction="vertical" size={8}>
+                        <span>绑定信息尚未加载，请重试</span>
+                        <Button type="primary" onClick={() => void retryBindChallenge()} disabled={!bindingProvider}>
+                          重新获取绑定信息
+                        </Button>
+                      </Space>
+                    }
+                  />
                 )}
               </Space>
-              <Divider />
-              <Typography.Paragraph style={{ marginBottom: 0 }} type="secondary" copyable={{ text: (bindingChallenge.recoveryCodes || []).join('\n') }}>
-                点击复制全部恢复码
-              </Typography.Paragraph>
-            </Card>
-          </Result>
+            </StepsForm.StepForm>
+            <StepsForm.StepForm name="sms-input" title="输入短信验证码">
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert
+                  showIcon
+                  type="info"
+                  message="输入短信验证码"
+                  description="请填写手机收到的 6 位短信验证码，校验成功后即完成绑定。"
+                />
+                <Form.Item
+                  name="verificationCode"
+                  rules={[
+                    { required: true, message: '请输入短信验证码' },
+                    { pattern: /^\d{6}$/, message: '验证码必须为 6 位数字' },
+                  ]}
+                >
+                  <Input
+                    size="large"
+                    maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="请输入 6 位短信验证码"
+                  />
+                </Form.Item>
+              </Space>
+            </StepsForm.StepForm>
+          </StepsForm>
         ) : (
           <StepsForm
             submitter={{

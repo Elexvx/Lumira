@@ -110,6 +110,10 @@ export interface BrandingSettings {
   footerCopyright?: string;
 }
 
+export interface HealthResponse {
+  status: string;
+}
+
 export interface AgreementSettings {
   userAgreementMarkdown: string;
   privacyAgreementMarkdown: string;
@@ -545,6 +549,26 @@ export interface PermissionRecord {
   permissionName: string;
   permissionGroup?: string;
   sourceType?: string;
+}
+
+export interface PermissionActionRecord {
+  permissionKey: string;
+  permissionName: string;
+  permissionGroup?: string;
+  sourceType?: string;
+}
+
+export interface PermissionTreeRecord {
+  pageKey: string;
+  pageName: string;
+  routePath?: string;
+  icon?: string;
+  permissionKey?: string;
+  permissionGroup?: string;
+  sourceType?: string;
+  selectable: boolean;
+  children?: PermissionTreeRecord[];
+  actionPermissions?: PermissionActionRecord[];
 }
 
 export interface MenuRecord {

@@ -561,6 +561,138 @@ public final class SystemVO {
         }
     }
 
+    public static class PermissionTreeVO {
+        private String pageKey;
+        private String pageName;
+        private String routePath;
+        private String icon;
+        private String permissionKey;
+        private String permissionGroup;
+        private String sourceType;
+        private boolean selectable;
+        private List<PermissionTreeVO> children;
+        private List<PermissionActionVO> actionPermissions;
+
+        public String getPageKey() {
+            return pageKey;
+        }
+
+        public void setPageKey(String pageKey) {
+            this.pageKey = pageKey;
+        }
+
+        public String getPageName() {
+            return pageName;
+        }
+
+        public void setPageName(String pageName) {
+            this.pageName = pageName;
+        }
+
+        public String getRoutePath() {
+            return routePath;
+        }
+
+        public void setRoutePath(String routePath) {
+            this.routePath = routePath;
+        }
+
+        public String getIcon() {
+            return icon;
+        }
+
+        public void setIcon(String icon) {
+            this.icon = icon;
+        }
+
+        public String getPermissionKey() {
+            return permissionKey;
+        }
+
+        public void setPermissionKey(String permissionKey) {
+            this.permissionKey = permissionKey;
+        }
+
+        public String getPermissionGroup() {
+            return permissionGroup;
+        }
+
+        public void setPermissionGroup(String permissionGroup) {
+            this.permissionGroup = permissionGroup;
+        }
+
+        public String getSourceType() {
+            return sourceType;
+        }
+
+        public void setSourceType(String sourceType) {
+            this.sourceType = sourceType;
+        }
+
+        public boolean isSelectable() {
+            return selectable;
+        }
+
+        public void setSelectable(boolean selectable) {
+            this.selectable = selectable;
+        }
+
+        public List<PermissionTreeVO> getChildren() {
+            return children;
+        }
+
+        public void setChildren(List<PermissionTreeVO> children) {
+            this.children = children;
+        }
+
+        public List<PermissionActionVO> getActionPermissions() {
+            return actionPermissions;
+        }
+
+        public void setActionPermissions(List<PermissionActionVO> actionPermissions) {
+            this.actionPermissions = actionPermissions;
+        }
+    }
+
+    public static class PermissionActionVO {
+        private String permissionKey;
+        private String permissionName;
+        private String permissionGroup;
+        private String sourceType;
+
+        public String getPermissionKey() {
+            return permissionKey;
+        }
+
+        public void setPermissionKey(String permissionKey) {
+            this.permissionKey = permissionKey;
+        }
+
+        public String getPermissionName() {
+            return permissionName;
+        }
+
+        public void setPermissionName(String permissionName) {
+            this.permissionName = permissionName;
+        }
+
+        public String getPermissionGroup() {
+            return permissionGroup;
+        }
+
+        public void setPermissionGroup(String permissionGroup) {
+            this.permissionGroup = permissionGroup;
+        }
+
+        public String getSourceType() {
+            return sourceType;
+        }
+
+        public void setSourceType(String sourceType) {
+            this.sourceType = sourceType;
+        }
+    }
+
     public static class MenuVO {
         private Long id;
         private Long tenantId;

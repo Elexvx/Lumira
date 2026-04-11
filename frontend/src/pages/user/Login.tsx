@@ -5,16 +5,17 @@ import { flushSync } from 'react-dom';
 import { history, useLocation } from 'umi';
 import { Alert, Form, Input, Spin, Typography } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
+import { loadCaptchaChallenge } from '@/auth/captcha';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { ApiRequestError } from '@/services/common/request';
 import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
+import { systemService } from '@/services/system';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { systemService } from '@/services/system';
-import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
+import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import type { CaptchaChallenge, SecuritySettings } from '@/types/api';
 import './Login.less';
 
@@ -33,48 +34,82 @@ interface LoginErrorState {
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<LoginErrorState>();
-  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(DEFAULT_SECURITY_SETTINGS);
-  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);
-  const [captchaLoading, setCaptchaLoading] = useState(false);
   const { initialState, setInitialState } = useInitialStateModel();
+  const loginBootstrap = initialState?.loginBootstrap;
+  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(
+    loginBootstrap?.securitySettings || initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS,
+  );
+  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(loginBootstrap?.captchaChallenge || null);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const location = useLocation();
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
 
   useEffect(() => {
+    if (loginBootstrap) {
+      setSecuritySettings(loginBootstrap.securitySettings);
+      setCaptchaChallenge(loginBootstrap.captchaChallenge);
+      return;
+    }
+
+    setSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS);
+  }, [initialState?.securitySettings, loginBootstrap]);
+
+  useEffect(() => {
+    if (loginBootstrap) {
+      return;
+    }
+
     let active = true;
-    const loadSecuritySettings = async () => {
+    const loadPublicSecuritySettings = async () => {
       try {
-        const result = await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true });
+        const settings = normalizeSecuritySettings(
+          await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true }),
+        );
         if (!active) {
           return;
         }
-        setSecuritySettings(normalizeSecuritySettings(result));
+        persistSecuritySettings(settings);
+        setSecuritySettings(settings);
       } catch {
-        if (active) {
-          setSecuritySettings(DEFAULT_SECURITY_SETTINGS);
+        if (!active) {
+          return;
         }
+        setSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS);
       }
     };
 
-    void loadSecuritySettings();
+    void loadPublicSecuritySettings();
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialState?.securitySettings, loginBootstrap]);
 
   const refreshCaptcha = useCallback(async () => {
+    if (!securitySettings.captchaEnabled) {
+      setCaptchaChallenge(null);
+      return null;
+    }
+
     setCaptchaLoading(true);
     try {
-      const challenge = await systemService.captchaChallenge(securitySettings.captchaType, {
+      const challenge = await loadCaptchaChallenge(securitySettings.captchaType, {
         autoRedirectOnUnauthorized: false,
         silent: true,
+        skipAuth: true,
       });
       setCaptchaChallenge(challenge);
       return challenge;
+    } catch (error) {
+      setCaptchaChallenge(null);
+      setLoginError({
+        type: 'error',
+        message: error instanceof Error ? error.message : '验证码加载失败，请稍后重试',
+      });
+      return null;
     } finally {
       setCaptchaLoading(false);
     }
-  }, [securitySettings.captchaType]);
+  }, [securitySettings.captchaEnabled, securitySettings.captchaType]);
 
   useEffect(() => {
     if (!securitySettings.captchaEnabled) {
@@ -82,8 +117,10 @@ const Login = () => {
       return;
     }
 
-    void refreshCaptcha();
-  }, [refreshCaptcha, securitySettings.captchaEnabled]);
+    if (!captchaChallenge?.captchaId) {
+      void refreshCaptcha();
+    }
+  }, [captchaChallenge?.captchaId, refreshCaptcha, securitySettings.captchaEnabled]);
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {

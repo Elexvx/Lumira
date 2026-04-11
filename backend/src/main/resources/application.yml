@@ -39,7 +39,7 @@ saas:
     idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
     access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
-    captcha-enabled: ${CAPTCHA_ENABLED:false}
+    captcha-enabled: ${CAPTCHA_ENABLED:true}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     permit-paths:
       - /api/v1/auth/login

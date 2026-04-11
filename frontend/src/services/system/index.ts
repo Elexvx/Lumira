@@ -4,6 +4,7 @@ import type {
   CaptchaVerifyResult,
   AgreementSettings,
   BrandingSettings,
+  HealthResponse,
   OnlineSessionRecord,
   PagedResult,
   SecuritySettings,
@@ -24,6 +25,13 @@ export interface OnlineSessionListQuery extends Record<string, unknown> {
 }
 
 export const systemService = {
+  health: (options: RequestOptions = {}) =>
+    request<HealthResponse>('/health', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
   brandingSettings: (options: RequestOptions = {}) =>
     request<BrandingSettings>('/v1/system/branding-settings', {
       method: 'GET',

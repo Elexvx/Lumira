@@ -10,14 +10,6 @@ public class SmsPluginMenuProvider implements PluginMenuProvider {
 
     @Override
     public List<PluginDeclaredMenu> menus(PluginRuntimeContext context) {
-        return List.of(new PluginDeclaredMenu(
-                "plugin.sms",
-                null,
-                "短信验证码",
-                "/plugins/sms",
-                "MessageOutlined",
-                "plugin:sms:view",
-                201
-        ));
+        return List.of();
     }
 }
