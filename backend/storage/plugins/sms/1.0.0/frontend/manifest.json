@@ -6,9 +6,7 @@
     "assets/sms-plugin.js"
   ],
   "styles": [],
-  "routes": [
-    "/plugins/sms"
-  ],
+  "routes": [],
   "sharedDeps": [
     "react"
   ]

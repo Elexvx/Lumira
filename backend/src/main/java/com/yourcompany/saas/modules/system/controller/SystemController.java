@@ -51,6 +51,12 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.listPermissions(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
     }
 
+    @GetMapping("/permissions/tree")
+    public ApiResponse<List<SystemVO.PermissionTreeVO>> permissionTree() {
+        require("system:role:view");
+        return ApiResponse.success(systemManagementAppService.listPermissionTree(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
     @GetMapping("/users")
     public ApiResponse<PageResponse<SystemVO.UserVO>> users(
             @RequestParam(name = "username", required = false) String username,

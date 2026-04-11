@@ -51,6 +51,8 @@ import java.util.stream.Collectors;
 public class SystemManagementAppService {
 
     private static final Long DEFAULT_PUBLIC_TENANT_ID = 1001L;
+    private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
+    private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
     private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
@@ -287,6 +289,9 @@ public class SystemManagementAppService {
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
+        if (isProtectedAdminAccount(userId, null) && "DISABLED".equalsIgnoreCase(status)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
+        }
         jdbcTemplate.update(
                 "update sys_user set status = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 status,
@@ -419,6 +424,13 @@ public class SystemManagementAppService {
         );
     }
 
+    public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
+        List<SystemVO.MenuVO> menus = listMenus(currentUser);
+        List<SystemVO.PermissionVO> permissions = listPermissions(currentUser);
+        Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey = buildActionPermissionsByPageKey(permissions);
+        return buildPermissionTree(menus, actionPermissionsByPageKey);
+    }
+
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
         List<SystemVO.MenuVO> menus = jdbcTemplate.query(
@@ -434,6 +446,132 @@ public class SystemManagementAppService {
                 tenantId
         );
         return buildMenuTree(menus);
+    }
+
+    private List<SystemVO.PermissionTreeVO> buildPermissionTree(
+            List<SystemVO.MenuVO> menus,
+            Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey
+    ) {
+        if (CollectionUtils.isEmpty(menus)) {
+            return List.of();
+        }
+        List<SystemVO.PermissionTreeVO> tree = new ArrayList<>();
+        for (SystemVO.MenuVO menu : menus) {
+            SystemVO.PermissionTreeVO node = buildPermissionTreeNode(menu, actionPermissionsByPageKey);
+            if (node != null) {
+                tree.add(node);
+            }
+        }
+        return tree;
+    }
+
+    private SystemVO.PermissionTreeVO buildPermissionTreeNode(
+            SystemVO.MenuVO menu,
+            Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey
+    ) {
+        if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
+            return null;
+        }
+
+        List<SystemVO.PermissionTreeVO> children = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(menu.getChildren())) {
+            for (SystemVO.MenuVO child : menu.getChildren()) {
+                SystemVO.PermissionTreeVO childNode = buildPermissionTreeNode(child, actionPermissionsByPageKey);
+                if (childNode != null) {
+                    children.add(childNode);
+                }
+            }
+        }
+
+        boolean selectable = StringUtils.hasText(menu.getPermissionKey());
+        if (!selectable && children.isEmpty()) {
+            return null;
+        }
+
+        SystemVO.PermissionTreeVO node = new SystemVO.PermissionTreeVO();
+        node.setPageKey(StringUtils.hasText(menu.getPermissionKey()) ? menu.getPermissionKey() : menu.getPath() != null ? menu.getPath() : menu.getMenuCode());
+        node.setPageName(menu.getMenuName());
+        node.setRoutePath(menu.getPath());
+        node.setIcon(menu.getIcon());
+        node.setPermissionKey(menu.getPermissionKey());
+        node.setSelectable(selectable);
+        node.setChildren(children.isEmpty() ? null : children);
+        if (selectable) {
+            node.setPermissionGroup(resolvePermissionGroup(menu.getPermissionKey()));
+            node.setSourceType(resolvePermissionSourceType(menu.getPermissionKey()));
+            node.setActionPermissions(actionPermissionsByPageKey.getOrDefault(menu.getPermissionKey(), List.of()));
+        }
+        return node;
+    }
+
+    private Map<String, List<SystemVO.PermissionActionVO>> buildActionPermissionsByPageKey(List<SystemVO.PermissionVO> permissions) {
+        if (CollectionUtils.isEmpty(permissions)) {
+            return Map.of();
+        }
+
+        Map<String, List<SystemVO.PermissionActionVO>> result = new LinkedHashMap<>();
+        Map<String, SystemVO.PermissionVO> permissionMap = permissions.stream()
+                .filter(permission -> StringUtils.hasText(permission.getPermissionKey()))
+                .collect(Collectors.toMap(SystemVO.PermissionVO::getPermissionKey, permission -> permission, (left, right) -> left, LinkedHashMap::new));
+
+        for (SystemVO.PermissionVO permission : permissions) {
+            String permissionKey = permission.getPermissionKey();
+            if (!StringUtils.hasText(permissionKey) || permissionKey.chars().filter(ch -> ch == ':').count() < 2) {
+                continue;
+            }
+            String pagePermissionKey = resolvePagePermissionKey(permissionKey);
+            if (!StringUtils.hasText(pagePermissionKey)) {
+                continue;
+            }
+            String actionPrefix = resolveActionPrefix(pagePermissionKey);
+            List<SystemVO.PermissionActionVO> actions = permissionMap.values().stream()
+                    .filter(candidate -> !permissionKey.equals(candidate.getPermissionKey()))
+                    .filter(candidate -> StringUtils.hasText(candidate.getPermissionKey()) && candidate.getPermissionKey().startsWith(actionPrefix))
+                    .map(candidate -> {
+                        SystemVO.PermissionActionVO action = new SystemVO.PermissionActionVO();
+                        action.setPermissionKey(candidate.getPermissionKey());
+                        action.setPermissionName(candidate.getPermissionName());
+                        action.setPermissionGroup(candidate.getPermissionGroup());
+                        action.setSourceType(candidate.getSourceType());
+                        return action;
+                    })
+                    .sorted(Comparator.comparing(SystemVO.PermissionActionVO::getPermissionKey))
+                    .toList();
+            if (!actions.isEmpty()) {
+                result.put(pagePermissionKey, actions);
+            }
+        }
+
+        return result;
+    }
+
+    private String resolvePagePermissionKey(String permissionKey) {
+        if (!StringUtils.hasText(permissionKey) || !permissionKey.endsWith(":view")) {
+            return null;
+        }
+        return permissionKey;
+    }
+
+    private String resolveActionPrefix(String pagePermissionKey) {
+        if (!StringUtils.hasText(pagePermissionKey) || !pagePermissionKey.endsWith(":view")) {
+            return null;
+        }
+        return pagePermissionKey.substring(0, pagePermissionKey.length() - ":view".length()) + ":";
+    }
+
+    private String resolvePermissionGroup(String permissionKey) {
+        if (!StringUtils.hasText(permissionKey)) {
+            return null;
+        }
+        int firstColon = permissionKey.indexOf(':');
+        return firstColon > 0 ? permissionKey.substring(0, firstColon) : permissionKey;
+    }
+
+    private String resolvePermissionSourceType(String permissionKey) {
+        if (!StringUtils.hasText(permissionKey)) {
+            return null;
+        }
+        return permissionKey.startsWith("plugin:") ? "PLUGIN" : "CORE";
     }
 
     @Transactional
@@ -1557,6 +1695,9 @@ public class SystemManagementAppService {
     }
 
     private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId) {
+        if (userId != null && isProtectedAdminAccount(userId, request.getUsername()) && "DISABLED".equalsIgnoreCase(request.getStatus())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
+        }
         if (userId == null) {
             if (!StringUtils.hasText(request.getPassword())) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "初始密码不能为空");
@@ -1612,6 +1753,11 @@ public class SystemManagementAppService {
             );
         }
         return userId;
+    }
+
+    private boolean isProtectedAdminAccount(Long userId, String username) {
+        return DEFAULT_ADMIN_USER_ID.equals(userId)
+                || (StringUtils.hasText(username) && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username));
     }
 
     private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {

@@ -406,7 +406,7 @@
       return [];
     },
     getRoutes: function () {
-      return ['/plugins/sms'];
+      return [];
     },
     getPermissions: function () {
       return ['plugin:sms:view', 'plugin:sms:manage'];

@@ -3,7 +3,7 @@
 // DO NOT CHANGE IT MANUALLY!
 import React from 'react';
 import { useModel } from '@@/plugin-model';
-function Loading() { return <div />; }
+import Loading from '@/loading'
 export default function InitialStateProvider(props: any) {
   const appLoaded = React.useRef(false);
   const { loading = false } = useModel("@@initialState") || {};

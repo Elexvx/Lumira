@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -29,9 +30,13 @@ class AgreementSettingsIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     void agreementSettingsShouldBeSharedBetweenPublicAndSystemEndpoints() throws Exception {
         String baseUrl = "http://localhost:" + port;
+        disableCaptcha();
         LoginResult loginResult = loginAdmin(baseUrl);
         String originalUserAgreement = readAgreement(baseUrl + "/api/v1/public/agreement-settings", null).path("data").path("userAgreementMarkdown").asText("");
         String originalPrivacyAgreement = readAgreement(baseUrl + "/api/v1/public/agreement-settings", null).path("data").path("privacyAgreementMarkdown").asText("");
@@ -106,5 +111,17 @@ class AgreementSettingsIntegrationTest {
     }
 
     private record LoginResult(String accessToken, Long tenantId) {
+    }
+
+    private void disableCaptcha() {
+        jdbcTemplate.update(
+                """
+                        update sys_config
+                        set config_value = '0'
+                        where tenant_id in (1001, 1002)
+                          and config_key = 'security.captcha-enabled'
+                          and deleted = 0
+                        """
+        );
     }
 }

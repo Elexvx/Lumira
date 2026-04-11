@@ -12,7 +12,6 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     isLogin,
     canVisitDashboard: isLogin,
     canVisitTenant: isLogin && hasPermission(permissions, 'tenant:view'),
-    canVisitIam: isLogin && (hasPermission(permissions, 'iam:view') || hasPermission(permissions, 'system:role:view')),
     canVisitAudit: isLogin,
     canVisitProfile: isLogin,
     canVisitUserCenter: isLogin,

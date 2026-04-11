@@ -22,16 +22,7 @@
       "permissionGroup": "sms"
     }
   ],
-  "menuDeclarations": [
-    {
-      "menuCode": "plugin.sms",
-      "menuName": "短信验证码",
-      "routePath": "/plugins/sms",
-      "icon": "MessageOutlined",
-      "permissionKey": "plugin:sms:view",
-      "sortNo": 201
-    }
-  ],
+  "menuDeclarations": [],
   "configSchema": "{}",
   "migrationStrategy": "versioned-sql",
   "checksumAlgorithm": "SHA-256"

@@ -5,7 +5,9 @@ import { createThemePreferenceBootstrapScript } from './src/theme/settings';
 export default defineConfig({
   antd: {},
   access: {},
-  initialState: {},
+  initialState: {
+    loading: '@/loading',
+  },
   model: {},
   request: {},
   layout: {},

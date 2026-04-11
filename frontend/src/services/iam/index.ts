@@ -1,5 +1,5 @@
 import { request, type RequestOptions } from '@/services/common/request';
-import type { MenuRecord, PagedResult, RoleDetail, RoleRecord } from '@/types/api';
+import type { MenuRecord, PagedResult, PermissionTreeRecord, RoleDetail, RoleRecord } from '@/types/api';
 
 export interface RoleListQuery extends Record<string, unknown> {
   keyword?: string;
@@ -78,6 +78,11 @@ export const iamService = {
         ...options,
       },
     ),
+  permissionTree: (options: RequestOptions = {}) =>
+    request<PermissionTreeRecord[]>('/v1/system/permissions/tree', {
+      method: 'GET',
+      ...options,
+    }),
   menus: (options: RequestOptions = {}) =>
     request<MenuRecord[]>('/v1/system/menus', {
       method: 'GET',

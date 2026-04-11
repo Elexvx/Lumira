@@ -8,6 +8,7 @@ import { renderClient } from '/Users/johntao/Documents/GitHub/legendary-inventio
 import { getRoutes } from './core/route';
 import { createPluginManager } from './core/plugin';
 import { createHistory } from './core/history';
+import Loading from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/loading.tsx';
 import { ApplyPluginsType } from 'umi';
 
 
@@ -54,6 +55,7 @@ async function render() {
         pluginManager,
         mountElementId: 'root',
         rootElement: contextOpts.rootElement || document.getElementById('root'),
+        loadingComponent: Loading,
         publicPath,
         runtimePublicPath,
         history,

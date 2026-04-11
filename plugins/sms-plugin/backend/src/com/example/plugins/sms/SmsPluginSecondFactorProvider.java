@@ -54,7 +54,7 @@ public class SmsPluginSecondFactorProvider implements PluginSecondFactorProvider
 
     @Override
     public boolean requiresEmail() {
-        return true;
+        return false;
     }
 
     @Override

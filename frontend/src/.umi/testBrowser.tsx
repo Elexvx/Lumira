@@ -9,6 +9,7 @@ import { createPluginManager } from './core/plugin';
 import { getRoutes } from './core/route';
 import type { Location } from 'history';
 
+import Loading from '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/loading.tsx';
 
 import '/Users/johntao/Documents/GitHub/legendary-invention/frontend/src/global.less';
 import 'antd/dist/reset.css';
@@ -52,6 +53,7 @@ export function TestBrowser(props: TestBrowserProps) {
         routeComponents,
         pluginManager,
         rootElement: contextOpts.rootElement || document.getElementById('root'),
+        loadingComponent: Loading,
         publicPath,
         runtimePublicPath,
         history,

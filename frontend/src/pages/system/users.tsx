@@ -18,6 +18,9 @@ const UserManagementPage = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: number }[]>([]);
+  const isProtectedAdminAccount = (record?: Pick<UserRecord, 'id' | 'username'> | null) =>
+    Boolean(record && (record.id === 1001 || record.username?.toLowerCase() === 'admin'));
+  const protectedAdminSelected = isProtectedAdminAccount(selectedUser);
 
   useEffect(() => {
     let active = true;
@@ -157,10 +160,11 @@ const UserManagementPage = () => {
             </Button>
           ) : null}
           {canAccess('system:user:status') ? (
-            <Button
-              type="link"
-              size="small"
-              danger={record.status === 'ENABLED'}
+            !isProtectedAdminAccount(record) ? (
+              <Button
+                type="link"
+                size="small"
+                danger={record.status === 'ENABLED'}
               onClick={async () => {
                 await userService.changeStatus(
                   record.id,
@@ -170,9 +174,10 @@ const UserManagementPage = () => {
                 message.success('状态已更新');
                 actionRef.current?.reload();
               }}
-            >
-              {record.status === 'ENABLED' ? '禁用' : '启用'}
-            </Button>
+              >
+                {record.status === 'ENABLED' ? '禁用' : '启用'}
+              </Button>
+            ) : null
           ) : null}
         </Space>
       ),
@@ -258,10 +263,15 @@ const UserManagementPage = () => {
           </Form.Item>
           <Form.Item name="status" label="状态">
             <Select
-              options={[
-                { label: '启用', value: 'ENABLED' },
-                { label: '禁用', value: 'DISABLED' },
-              ]}
+              disabled={protectedAdminSelected}
+              options={
+                protectedAdminSelected
+                  ? [{ label: '启用', value: 'ENABLED' }]
+                  : [
+                      { label: '启用', value: 'ENABLED' },
+                      { label: '禁用', value: 'DISABLED' },
+                    ]
+              }
             />
           </Form.Item>
           <Form.Item name="roleIds" label="角色">
