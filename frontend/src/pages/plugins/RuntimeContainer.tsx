@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { history, useLocation, useParams } from '@umijs/max';
 import { Alert, Card, Spin } from 'antd';
-import { history, useLocation, useParams } from 'umi';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { notifyPluginLoadError } from '@/plugins/loader';
 import { PluginErrorBoundary } from '@/plugins/errorBoundary';

@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { Outlet } from 'umi';
+import { Outlet } from '@umijs/max';
 
 const UserLayout = ({ children }: PropsWithChildren) => children ?? <Outlet />;
 

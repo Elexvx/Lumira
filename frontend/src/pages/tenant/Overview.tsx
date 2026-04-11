@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useRequest } from '@umijs/max';
 import {
   PageContainer,
   ProTable,
@@ -6,7 +7,6 @@ import {
   type ProColumns,
 } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Spin, Tag, Typography, message } from 'antd';
-import { useRequest } from 'umi';
 import { auditService } from '@/services/audit';
 import { pluginService } from '@/services/plugin';
 import { tenantService, type TenantMutationPayload } from '@/services/tenant';

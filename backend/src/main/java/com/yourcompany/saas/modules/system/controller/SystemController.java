@@ -265,6 +265,23 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.updateConfig(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }
 
+    @GetMapping("/profile-field-settings")
+    public ApiResponse<List<SystemVO.ProfileFieldSettingVO>> profileFieldSettings() {
+        require("system:config:view");
+        return ApiResponse.success(systemManagementAppService.getProfileFieldSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/profile-field-settings")
+    public ApiResponse<List<SystemVO.ProfileFieldSettingVO>> updateProfileFieldSettings(
+            @Valid @RequestBody SystemDTO.ProfileFieldSettingsRequest request
+    ) {
+        require("system:config:update");
+        return ApiResponse.success(
+                systemManagementAppService.updateProfileFieldSettings(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/smtp-settings")
     public ApiResponse<SystemVO.SmtpSettingsVO> smtpSettings() {
         require("system:config:view");

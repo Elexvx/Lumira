@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useModel } from 'umi';
+import { useModel } from '@umijs/max';
 import type { AppInitialState } from '@/app';
 
 export interface InitialStateModel {

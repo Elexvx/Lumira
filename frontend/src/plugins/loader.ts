@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { history } from '@umijs/max';
 import { message } from 'antd';
-import { history } from 'umi';
 import { clearAuthSession } from '@/auth/session';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';

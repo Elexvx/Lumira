@@ -30,6 +30,11 @@ export interface AuthUser {
   avatarUrl?: string;
   mobile?: string | null;
   email?: string | null;
+  birthMonth?: string | null;
+  gender?: string | null;
+  region?: string | null;
+  availableTime?: string | null;
+  idCardNumber?: string | null;
 }
 
 export interface SecondFactorLoginOption {
@@ -153,6 +158,11 @@ export interface CurrentUser {
   avatarUrl?: string;
   mobile?: string | null;
   email?: string | null;
+  birthMonth?: string | null;
+  gender?: string | null;
+  region?: string | null;
+  availableTime?: string | null;
+  idCardNumber?: string | null;
   currentTenant?: TenantSummary | null;
   sessionId: string;
   permissionsVersion?: string;
@@ -481,6 +491,14 @@ export interface ProfileSummary {
   roleNames: string[];
   permissionCount: number;
   recentLoginLogs: AuditLogRecord[];
+  profileFieldSettings: ProfileFieldSetting[];
+}
+
+export interface ProfileFieldSetting {
+  fieldKey: string;
+  fieldLabel: string;
+  fieldDescription?: string | null;
+  visible: boolean;
 }
 
 export interface UserRecord {

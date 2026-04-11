@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { message } from 'antd';
-import { history, useLocation } from 'umi';
+import { history, useLocation } from '@umijs/max';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
 import { clearAuthSession } from '@/auth/session';
 import {

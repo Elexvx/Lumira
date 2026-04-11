@@ -11,6 +11,7 @@ export default defineConfig({
   model: {},
   request: {},
   layout: {},
+  mfsu: false,
   headScripts: [
     {
       content: createThemePreferenceBootstrapScript(),

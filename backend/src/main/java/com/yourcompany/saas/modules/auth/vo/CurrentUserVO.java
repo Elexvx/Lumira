@@ -13,6 +13,11 @@ public class CurrentUserVO {
     private String avatarUrl;
     private String mobile;
     private String email;
+    private String birthMonth;
+    private String gender;
+    private String region;
+    private String availableTime;
+    private String idCardNumber;
     private TenantSummaryVO currentTenant;
     private String sessionId;
     private String permissionsVersion;
@@ -73,6 +78,46 @@ public class CurrentUserVO {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getBirthMonth() {
+        return birthMonth;
+    }
+
+    public void setBirthMonth(String birthMonth) {
+        this.birthMonth = birthMonth;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public String getAvailableTime() {
+        return availableTime;
+    }
+
+    public void setAvailableTime(String availableTime) {
+        this.availableTime = availableTime;
+    }
+
+    public String getIdCardNumber() {
+        return idCardNumber;
+    }
+
+    public void setIdCardNumber(String idCardNumber) {
+        this.idCardNumber = idCardNumber;
     }
 
     public TenantSummaryVO getCurrentTenant() {

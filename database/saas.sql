@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS sys_user (
     nickname VARCHAR(64) DEFAULT NULL,
     real_name VARCHAR(64) DEFAULT NULL,
     avatar_url VARCHAR(255) DEFAULT NULL,
+    birth_month VARCHAR(16) DEFAULT NULL,
+    gender VARCHAR(16) DEFAULT NULL,
+    region VARCHAR(128) DEFAULT NULL,
+    available_time VARCHAR(255) DEFAULT NULL,
+    id_card_number VARCHAR(64) DEFAULT NULL,
     password_hash VARCHAR(255) NOT NULL,
     mobile VARCHAR(32) DEFAULT NULL,
     email VARCHAR(128) DEFAULT NULL,
@@ -1361,6 +1366,12 @@ WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1001 AND menu_code = 
 INSERT INTO sys_menu (
     id, tenant_id, parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no, permission_key, status, created_by, updated_by, deleted
 )
+SELECT 3025, 1001, 3002, 'system.profile-fields', '字段管理', 'MENU', '/system/profile-fields', '@/pages/system/profile-fields', 'FormOutlined', 29, 'system:config:view', 'ENABLED', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1001 AND menu_code = 'system.profile-fields');
+
+INSERT INTO sys_menu (
+    id, tenant_id, parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no, permission_key, status, created_by, updated_by, deleted
+)
 SELECT 4010, 1002, 0, 'tenant.overview', '租户中心', 'MENU', '/tenant/overview', '@/pages/tenant/Overview', 'ApartmentOutlined', 15, 'tenant:view', 'ENABLED', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1002 AND menu_code = 'tenant.overview');
 
@@ -1375,3 +1386,9 @@ INSERT INTO sys_menu (
 )
 SELECT 4012, 1002, 0, 'audit.overview', '审计中心', 'MENU', '/audit/overview', '@/pages/audit/Overview', 'AuditOutlined', 17, 'audit:view', 'ENABLED', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1002 AND menu_code = 'audit.overview');
+
+INSERT INTO sys_menu (
+    id, tenant_id, parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no, permission_key, status, created_by, updated_by, deleted
+)
+SELECT 4025, 1002, 4002, 'system.profile-fields', '字段管理', 'MENU', '/system/profile-fields', '@/pages/system/profile-fields', 'FormOutlined', 29, 'system:config:view', 'ENABLED', 0, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1002 AND menu_code = 'system.profile-fields');

@@ -1,9 +1,9 @@
 import * as AntdIcons from '@ant-design/icons';
+import { history } from '@umijs/max';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { BreadcrumbProps } from 'antd';
 import { Watermark } from 'antd';
 import { createElement, type ComponentType, type ReactNode } from 'react';
-import { history } from 'umi';
 import {
   DEFAULT_BRANDING_SETTINGS,
   buildCopyrightText,

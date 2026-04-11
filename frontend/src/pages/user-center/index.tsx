@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { history, Outlet, useAccess, useLocation } from 'umi';
+import { history, Outlet, useAccess, useLocation } from '@umijs/max';
 
 export default () => {
   const location = useLocation();

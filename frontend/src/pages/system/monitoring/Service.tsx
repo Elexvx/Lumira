@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
+import { useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';
-import { useRequest } from 'umi';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { ServiceMonitorSnapshot } from '@/types/api';

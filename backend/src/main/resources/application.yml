@@ -52,9 +52,6 @@ saas:
       - /api/uploads/**
       - /actuator/health
       - /api/health
-      - /swagger-ui.html
-      - /swagger-ui/**
-      - /api-docs/**
   tenant:
     header-name: X-Tenant-Id
   plugin:

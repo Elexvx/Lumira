@@ -132,6 +132,7 @@ public final class SystemVO {
         private List<String> roleNames;
         private Integer permissionCount;
         private List<AuditLogVO> recentLoginLogs;
+        private List<ProfileFieldSettingVO> profileFieldSettings;
 
         public CurrentUserVO getCurrentUser() {
             return currentUser;
@@ -171,6 +172,53 @@ public final class SystemVO {
 
         public void setRecentLoginLogs(List<AuditLogVO> recentLoginLogs) {
             this.recentLoginLogs = recentLoginLogs;
+        }
+
+        public List<ProfileFieldSettingVO> getProfileFieldSettings() {
+            return profileFieldSettings;
+        }
+
+        public void setProfileFieldSettings(List<ProfileFieldSettingVO> profileFieldSettings) {
+            this.profileFieldSettings = profileFieldSettings;
+        }
+    }
+
+    public static class ProfileFieldSettingVO {
+        private String fieldKey;
+        private String fieldLabel;
+        private String fieldDescription;
+        private Boolean visible;
+
+        public String getFieldKey() {
+            return fieldKey;
+        }
+
+        public void setFieldKey(String fieldKey) {
+            this.fieldKey = fieldKey;
+        }
+
+        public String getFieldLabel() {
+            return fieldLabel;
+        }
+
+        public void setFieldLabel(String fieldLabel) {
+            this.fieldLabel = fieldLabel;
+        }
+
+        public String getFieldDescription() {
+            return fieldDescription;
+        }
+
+        public void setFieldDescription(String fieldDescription) {
+            this.fieldDescription = fieldDescription;
+        }
+
+        public Boolean getVisible() {
+            return visible;
+        }
+
+        public void setVisible(Boolean visible) {
+            this.visible = visible;
         }
     }
 
