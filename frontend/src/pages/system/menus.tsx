@@ -6,6 +6,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { iamService } from '@/services/iam';
 import type { MenuNode, MenuRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { confirmAction } from '@/utils/confirm';
 
 type MenuDropPosition = 'before' | 'inside' | 'after';
 
@@ -457,6 +458,30 @@ const MenuManagementPage = () => {
     setDragState(null);
   };
 
+  const updateMenuStatus = async (record: MenuRecord, status: 'ENABLED' | 'DISABLED') => {
+    await iamService.changeMenuStatus(record.id, status, { autoRedirectOnUnauthorized: false });
+    message.success('状态已更新');
+    await loadMenus();
+    actionRef.current?.reload();
+  };
+
+  const handleStatusToggle = (record: MenuRecord) => {
+    if (record.status !== 'ENABLED') {
+      void updateMenuStatus(record, 'ENABLED');
+      return;
+    }
+
+    confirmAction({
+      title: '停用菜单',
+      content: `确认停用菜单「${record.menuName}」吗？停用后该菜单将不再在前台展示。`,
+      okText: '确认停用',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await updateMenuStatus(record, 'DISABLED');
+      },
+    });
+  };
+
   const columns: ProColumns<MenuTreeRecord>[] = [
     {
       title: '拖拽',
@@ -572,16 +597,7 @@ const MenuManagementPage = () => {
               type="link"
               size="small"
               danger={record.status === 'ENABLED'}
-              onClick={async () => {
-                await iamService.changeMenuStatus(
-                  record.id,
-                  record.status === 'ENABLED' ? 'DISABLED' : 'ENABLED',
-                  { autoRedirectOnUnauthorized: false },
-                );
-                message.success('状态已更新');
-                await loadMenus();
-                actionRef.current?.reload();
-              }}
+              onClick={() => void handleStatusToggle(record)}
             >
               {record.status === 'ENABLED' ? '停用' : '启用'}
             </Button>

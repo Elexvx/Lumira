@@ -7,6 +7,7 @@ import type {
   HealthResponse,
   OnlineSessionRecord,
   PagedResult,
+  ProfileFieldSetting,
   SecuritySettings,
   SmtpSettings,
   SmtpSettingsPayload,
@@ -19,6 +20,12 @@ export interface SecuritySettingsPayload extends SecuritySettings {}
 export interface BrandingSettingsPayload extends BrandingSettings {}
 export interface AgreementSettingsPayload extends AgreementSettings {}
 export interface WatermarkSettingsPayload extends WatermarkSettings {}
+export interface ProfileFieldSettingsPayload {
+  items: Array<{
+    fieldKey: string;
+    visible: boolean;
+  }>;
+}
 export interface OnlineSessionListQuery extends Record<string, unknown> {
   pageNo?: number;
   pageSize?: number;
@@ -131,6 +138,17 @@ export const systemService = {
     }),
   updateWatermarkSettings: (payload: WatermarkSettingsPayload, options: RequestOptions = {}) =>
     request<WatermarkSettings>('/v1/system/watermark-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  profileFieldSettings: (options: RequestOptions = {}) =>
+    request<ProfileFieldSetting[]>('/v1/system/profile-field-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updateProfileFieldSettings: (payload: ProfileFieldSettingsPayload, options: RequestOptions = {}) =>
+    request<ProfileFieldSetting[]>('/v1/system/profile-field-settings', {
       method: 'PUT',
       data: payload,
       ...options,

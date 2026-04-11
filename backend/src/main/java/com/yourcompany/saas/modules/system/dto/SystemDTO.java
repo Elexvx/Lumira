@@ -468,6 +468,43 @@ public final class SystemDTO {
         }
     }
 
+    public static class ProfileFieldSettingsRequest {
+        @Valid
+        @NotEmpty
+        private List<ProfileFieldSettingItem> items;
+
+        public List<ProfileFieldSettingItem> getItems() {
+            return items;
+        }
+
+        public void setItems(List<ProfileFieldSettingItem> items) {
+            this.items = items;
+        }
+    }
+
+    public static class ProfileFieldSettingItem {
+        @NotBlank
+        private String fieldKey;
+        @NotNull
+        private Boolean visible;
+
+        public String getFieldKey() {
+            return fieldKey;
+        }
+
+        public void setFieldKey(String fieldKey) {
+            this.fieldKey = fieldKey;
+        }
+
+        public Boolean getVisible() {
+            return visible;
+        }
+
+        public void setVisible(Boolean visible) {
+            this.visible = visible;
+        }
+    }
+
     public static class SecuritySettingsRequest {
         @NotNull
         @Positive

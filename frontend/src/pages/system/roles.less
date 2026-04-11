@@ -1,22 +1,31 @@
 .role-editor-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+
+.role-editor-form .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.role-editor-form .ant-form-item-label {
+  padding-bottom: 4px;
 }
 
 .role-editor-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
 }
 
 .role-editor-section {
   border: 1px solid var(--saas-border-color);
   border-radius: 12px;
   background: var(--saas-surface-bg);
-  padding: 16px;
+  padding: 12px;
   min-height: 100%;
+  height: 100%;
 }
 
 .role-editor-section__header {
@@ -24,7 +33,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .role-editor-section__title {
@@ -49,15 +58,6 @@
   background: transparent;
 }
 
-.role-permission-tree .ant-tree-node-content-wrapper,
-.role-permission-tree .ant-tree-checkbox {
-  align-self: center;
-}
-
-.role-permission-tree .ant-tree-treenode {
-  padding-block: 4px;
-}
-
 .role-permission-tree .ant-tree-node-content-wrapper {
   min-height: 38px;
   display: flex;
@@ -65,8 +65,17 @@
   border-radius: 10px;
 }
 
+.role-permission-tree .ant-tree-switcher {
+  align-self: center;
+}
+
 .role-permission-tree .ant-tree-node-content-wrapper:hover {
   background: rgba(22, 119, 255, 0.06);
+}
+
+.role-permission-tree .ant-tree-node-content-wrapper.ant-tree-node-selected,
+.role-permission-tree .ant-tree-node-content-wrapper.ant-tree-node-selected:hover {
+  background: rgba(22, 119, 255, 0.1);
 }
 
 .role-page-row {
@@ -81,22 +90,29 @@
   font-weight: 500;
 }
 
+.role-page-row__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
 .role-page-row__route {
   color: var(--saas-text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
 
+.role-page-row__hint {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
 .role-action-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.role-action-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .role-action-panel__page-name {
@@ -114,7 +130,7 @@
 .role-action-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 18px;
+  gap: 8px 12px;
 }
 
 .role-action-grid .ant-checkbox-wrapper {

@@ -1,5 +1,5 @@
 import { message } from 'antd';
-import { history, request as umiRequest } from 'umi';
+import { history, request as umiRequest } from '@umijs/max';
 import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TENANT_HEADER, TRACE_ID_HEADER } from '@/constants/http';
 import { clearAuthSession } from '@/auth/session';
 import { tokenManager } from '@/auth/token';

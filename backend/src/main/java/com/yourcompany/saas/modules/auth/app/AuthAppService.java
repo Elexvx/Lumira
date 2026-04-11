@@ -304,6 +304,11 @@ public class AuthAppService {
         response.setAvatarUrl(user.getAvatarUrl());
         response.setMobile(user.getMobile());
         response.setEmail(user.getEmail());
+        response.setBirthMonth(user.getBirthMonth());
+        response.setGender(user.getGender());
+        response.setRegion(user.getRegion());
+        response.setAvailableTime(user.getAvailableTime());
+        response.setIdCardNumber(user.getIdCardNumber());
         response.setCurrentTenant(currentTenant);
         response.setSessionId(currentUser.getSessionId());
         response.setPermissionsVersion(snapshot.getVersion());
@@ -411,6 +416,11 @@ public class AuthAppService {
         authUserVO.setAvatarUrl(user.getAvatarUrl());
         authUserVO.setMobile(user.getMobile());
         authUserVO.setEmail(user.getEmail());
+        authUserVO.setBirthMonth(user.getBirthMonth());
+        authUserVO.setGender(user.getGender());
+        authUserVO.setRegion(user.getRegion());
+        authUserVO.setAvailableTime(user.getAvailableTime());
+        authUserVO.setIdCardNumber(user.getIdCardNumber());
         return authUserVO;
     }
 

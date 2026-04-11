@@ -1,18 +1,23 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { history, useLocation } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Watermark, Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Tabs, Typography, Upload, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { history, useLocation } from 'umi';
+import MDEditor from '@uiw/react-md-editor';
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_BRANDING_SETTINGS, applyFavicon, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { usePermission } from '@/hooks/usePermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
+import { confirmAction } from '@/utils/confirm';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { AgreementSettings, BrandingSettings, WatermarkSettings } from '@/types/api';
 
 type PersonalizationTabKey = 'branding' | 'watermark' | 'agreement';
 type UploadTarget = 'favicon' | 'logo' | 'watermark';
+type BrandingClearField = 'websiteFaviconUrl' | 'websiteLogoUrl';
 
 const defaultWatermark: WatermarkSettings = {
   enabled: false,
@@ -185,13 +190,52 @@ const PersonalizationSettingsPage = () => {
     }
   };
 
+  const handleClearBrandingField = (field: BrandingClearField, label: string) => {
+    confirmAction({
+      title: `清除${label}`,
+      content: `确认清除${label}吗？清除后该内容会立即从当前设置中移除。`,
+      okText: '确认清除',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        brandingForm.setFieldValue(field, '');
+        setPreviewState((prev) => ({ ...prev, [field]: '' }));
+      },
+    });
+  };
+
+  const handleClearWatermarkImage = () => {
+    confirmAction({
+      title: '清除水印图片',
+      content: '确认清除水印图片吗？清除后图片模式将不再使用当前图片。',
+      okText: '确认清除',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        watermarkForm.setFieldValue('imageUrl', '');
+        setWatermarkPreview((prev) => ({ ...prev, imageUrl: '' }));
+      },
+    });
+  };
+
   const handleClearAgreementField = (field: keyof AgreementSettings) => {
-    const nextAgreement = {
-      ...agreementPreview,
-      [field]: '',
+    const fieldLabelMap: Record<keyof AgreementSettings, string> = {
+      userAgreementMarkdown: '用户协议',
+      privacyAgreementMarkdown: '隐私协议',
     };
-    agreementForm.setFieldsValue(nextAgreement);
-    setAgreementPreview(nextAgreement);
+
+    confirmAction({
+      title: `清空${fieldLabelMap[field]}`,
+      content: `确认清空${fieldLabelMap[field]}吗？清空后该内容会立即从当前设置中移除。`,
+      okText: '确认清空',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        const nextAgreement = {
+          ...agreementPreview,
+          [field]: '',
+        };
+        agreementForm.setFieldsValue(nextAgreement);
+        setAgreementPreview(nextAgreement);
+      },
+    });
   };
 
   const wm = useMemo(() => ({ ...defaultWatermark, ...watermarkPreview }), [watermarkPreview]);
@@ -262,7 +306,7 @@ const PersonalizationSettingsPage = () => {
                             </Upload>
                             <Button
                               icon={<DeleteOutlined />}
-                              onClick={() => brandingForm.setFieldValue('websiteFaviconUrl', '')}
+                              onClick={() => handleClearBrandingField('websiteFaviconUrl', '网站 Icon')}
                               disabled={!previewState.websiteFaviconUrl}
                             >
                               清除
@@ -306,7 +350,7 @@ const PersonalizationSettingsPage = () => {
                             </Upload>
                             <Button
                               icon={<DeleteOutlined />}
-                              onClick={() => brandingForm.setFieldValue('websiteLogoUrl', '')}
+                              onClick={() => handleClearBrandingField('websiteLogoUrl', 'Logo')}
                               disabled={!previewState.websiteLogoUrl}
                             >
                               清除
@@ -425,7 +469,7 @@ const PersonalizationSettingsPage = () => {
                             </Upload>
                             <Button
                               icon={<DeleteOutlined />}
-                              onClick={() => watermarkForm.setFieldValue('imageUrl', '')}
+                              onClick={handleClearWatermarkImage}
                               disabled={!watermarkPreview.imageUrl}
                             >
                               清除
@@ -479,7 +523,7 @@ const PersonalizationSettingsPage = () => {
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                      使用原生的 Input.TextArea 编写协议内容，保存后会同步到登录页。
+                      使用 Markdown 编辑器编写协议内容，保存后会同步到登录页。
                     </Typography.Paragraph>
                     <Form
                       form={agreementForm}
@@ -487,11 +531,23 @@ const PersonalizationSettingsPage = () => {
                       initialValues={DEFAULT_AGREEMENT_SETTINGS}
                       onValuesChange={(_, values) => setAgreementPreview(normalizeAgreementSettings(values))}
                     >
-                      <Form.Item name="userAgreementMarkdown" label="用户协议">
-                        <Input.TextArea rows={12} placeholder="请输入用户协议 Markdown 内容" />
+                      <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
+                        <MDEditor
+                          preview="edit"
+                          height={320}
+                          style={{ width: '100%' }}
+                          textareaProps={{ placeholder: '请输入用户协议 Markdown 内容' }}
+                          data-color-mode="light"
+                        />
                       </Form.Item>
-                      <Form.Item name="privacyAgreementMarkdown" label="隐私协议">
-                        <Input.TextArea rows={12} placeholder="请输入隐私协议 Markdown 内容" />
+                      <Form.Item name="privacyAgreementMarkdown" label="隐私协议" getValueFromEvent={(value) => value ?? ''}>
+                        <MDEditor
+                          preview="edit"
+                          height={320}
+                          style={{ width: '100%' }}
+                          textareaProps={{ placeholder: '请输入隐私协议 Markdown 内容' }}
+                          data-color-mode="light"
+                        />
                       </Form.Item>
                     </Form>
 
@@ -499,15 +555,15 @@ const PersonalizationSettingsPage = () => {
                       <Space direction="vertical" size={16} style={{ width: '100%' }}>
                         <div>
                           <Typography.Text strong>用户协议</Typography.Text>
-                          <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
-                            {agreementPreview.userAgreementMarkdown || '暂无内容'}
-                          </Typography.Paragraph>
+                          <div style={{ marginTop: 8 }}>
+                            <MDEditor.Markdown source={agreementPreview.userAgreementMarkdown || '暂无内容'} style={{ whiteSpace: 'pre-wrap' }} />
+                          </div>
                         </div>
                         <div>
                           <Typography.Text strong>隐私协议</Typography.Text>
-                          <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
-                            {agreementPreview.privacyAgreementMarkdown || '暂无内容'}
-                          </Typography.Paragraph>
+                          <div style={{ marginTop: 8 }}>
+                            <MDEditor.Markdown source={agreementPreview.privacyAgreementMarkdown || '暂无内容'} style={{ whiteSpace: 'pre-wrap' }} />
+                          </div>
                         </div>
                       </Space>
                     </Card>

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useRequest } from '@umijs/max';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Row, Space, Statistic, Typography } from 'antd';
 import { Area } from '@ant-design/charts';
-import { useRequest } from 'umi';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';

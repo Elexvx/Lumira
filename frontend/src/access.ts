@@ -14,7 +14,11 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitTenant: isLogin && hasPermission(permissions, 'tenant:view'),
     canVisitAudit: isLogin,
     canVisitProfile: isLogin,
-    canVisitUserCenter: isLogin,
+    canVisitUserCenter:
+      isLogin &&
+      ['user:center:view', 'system:user:view', 'system:online-user:view', 'system:role:view', 'profile:view'].some((item) =>
+        hasPermission(permissions, item),
+      ),
     canVisitSystemManagement:
       isLogin &&
       [
@@ -36,6 +40,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
     canVisitSystemMenus: isLogin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemDicts: isLogin && hasPermission(permissions, 'system:dict:view'),
+    canVisitSystemProfileFields: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemPersonalization: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemSecurity: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),

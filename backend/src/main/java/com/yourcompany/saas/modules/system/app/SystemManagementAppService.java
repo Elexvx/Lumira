@@ -100,6 +100,30 @@ public class SystemManagementAppService {
             SMTP_SSL_ENABLED_KEY
     );
 
+    private static final String PROFILE_FIELD_AVATAR_VISIBLE_KEY = "profile.field.avatar.visible";
+    private static final String PROFILE_FIELD_REAL_NAME_VISIBLE_KEY = "profile.field.real-name.visible";
+    private static final String PROFILE_FIELD_MOBILE_VISIBLE_KEY = "profile.field.mobile.visible";
+    private static final String PROFILE_FIELD_EMAIL_VISIBLE_KEY = "profile.field.email.visible";
+    private static final String PROFILE_FIELD_BIRTH_MONTH_VISIBLE_KEY = "profile.field.birth-month.visible";
+    private static final String PROFILE_FIELD_GENDER_VISIBLE_KEY = "profile.field.gender.visible";
+    private static final String PROFILE_FIELD_REGION_VISIBLE_KEY = "profile.field.region.visible";
+    private static final String PROFILE_FIELD_AVAILABLE_TIME_VISIBLE_KEY = "profile.field.available-time.visible";
+    private static final String PROFILE_FIELD_ID_CARD_VISIBLE_KEY = "profile.field.id-card-number.visible";
+    private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS = List.of(
+            new ProfileFieldDefinition("avatarUrl", "头像", "控制个人中心是否展示头像上传与预览区域", PROFILE_FIELD_AVATAR_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("realName", "姓名", "控制个人中心是否展示姓名字段", PROFILE_FIELD_REAL_NAME_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("mobile", "手机号", "控制个人中心是否展示手机号字段", PROFILE_FIELD_MOBILE_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("email", "邮箱", "控制个人中心是否展示邮箱字段", PROFILE_FIELD_EMAIL_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("birthMonth", "出生年月", "控制个人中心是否展示出生年月字段", PROFILE_FIELD_BIRTH_MONTH_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("gender", "性别", "控制个人中心是否展示性别字段", PROFILE_FIELD_GENDER_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_REGION_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("availableTime", "可工作时间", "控制个人中心是否展示可工作时间字段", PROFILE_FIELD_AVAILABLE_TIME_VISIBLE_KEY, true),
+            new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_ID_CARD_VISIBLE_KEY, true)
+    );
+    private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
+            .map(ProfileFieldDefinition::configKey)
+            .toList();
+
 
     private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
     private static final String WATERMARK_MODE_KEY = "watermark.mode";
@@ -195,7 +219,37 @@ public class SystemManagementAppService {
         summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
         summary.setRecentLoginLogs(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 10).getRecords());
+        summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
         return summary;
+    }
+
+    @Transactional
+    public CurrentUserVO updateCurrentUserProfile(CurrentUser currentUser, com.yourcompany.saas.modules.system.dto.ProfileDTO.BasicInfoUpdateRequest request) {
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        jdbcTemplate.update(
+                """
+                        update sys_user
+                        set avatar_url = ?, nickname = ?, real_name = ?, mobile = ?, email = ?, birth_month = ?, gender = ?, region = ?,
+                            available_time = ?, id_card_number = ?, updated_by = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                normalizeNullableText(request.getAvatarUrl()),
+                normalizeNullableText(request.getNickname()),
+                normalizeNullableText(request.getRealName()),
+                normalizeNullableText(request.getMobile()),
+                normalizeNullableText(request.getEmail()),
+                normalizeNullableText(request.getBirthMonth()),
+                normalizeNullableText(request.getGender()),
+                normalizeNullableText(request.getRegion()),
+                normalizeNullableText(request.getAvailableTime()),
+                normalizeNullableText(request.getIdCardNumber()),
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                user.getId()
+        );
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
+        return authAppService.currentUser(currentUser);
     }
 
     @Transactional
@@ -214,6 +268,27 @@ public class SystemManagementAppService {
                 user.getId()
         );
         return authAppService.currentUser(currentUser);
+    }
+
+    public List<SystemVO.ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
+        return loadProfileFieldSettings(currentTenantId(currentUser));
+    }
+
+    @Transactional
+    public List<SystemVO.ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Map<String, Boolean> requestedVisibility = new LinkedHashMap<>();
+        request.getItems().forEach(item -> requestedVisibility.put(item.getFieldKey(), Boolean.TRUE.equals(item.getVisible())));
+        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+                tenantId,
+                definition.configKey(),
+                definition.fieldLabel() + "展示开关",
+                String.valueOf(requestedVisibility.getOrDefault(definition.fieldKey(), definition.defaultVisible())),
+                definition.fieldDescription(),
+                currentUser.getUserId()
+        ));
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
+        return loadProfileFieldSettings(tenantId);
     }
 
     public PageResponse<SystemVO.UserVO> listUsers(CurrentUser currentUser, String username, String mobile, String status, long pageNo, long pageSize) {
@@ -1473,12 +1548,65 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : fallback;
     }
 
+    private List<SystemVO.ProfileFieldSettingVO> loadProfileFieldSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, PROFILE_FIELD_CONFIG_KEYS);
+        return PROFILE_FIELD_DEFINITIONS.stream().map(definition -> {
+            SystemVO.ProfileFieldSettingVO item = new SystemVO.ProfileFieldSettingVO();
+            item.setFieldKey(definition.fieldKey());
+            item.setFieldLabel(definition.fieldLabel());
+            item.setFieldDescription(definition.fieldDescription());
+            item.setVisible(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.configKey()), String.valueOf(definition.defaultVisible()))));
+            return item;
+        }).toList();
+    }
+
+    private String normalizeNullableText(String value) {
+        String normalized = normalizeConfigText(value);
+        return StringUtils.hasText(normalized) ? normalized : null;
+    }
+
     private String buildCopyrightText(String companyName, Integer copyrightStartYear) {
         int currentYear = LocalDate.now().getYear();
         int startYear = copyrightStartYear == null ? currentYear : copyrightStartYear;
         String yearLabel = startYear < currentYear ? startYear + "-" + currentYear : String.valueOf(startYear);
         String owner = StringUtils.hasText(companyName) ? companyName : "宏翔商道";
         return "Copyright © " + yearLabel + " " + owner + " All Rights Reserved";
+    }
+
+    private static final class ProfileFieldDefinition {
+        private final String fieldKey;
+        private final String fieldLabel;
+        private final String fieldDescription;
+        private final String configKey;
+        private final boolean defaultVisible;
+
+        private ProfileFieldDefinition(String fieldKey, String fieldLabel, String fieldDescription, String configKey, boolean defaultVisible) {
+            this.fieldKey = fieldKey;
+            this.fieldLabel = fieldLabel;
+            this.fieldDescription = fieldDescription;
+            this.configKey = configKey;
+            this.defaultVisible = defaultVisible;
+        }
+
+        private String fieldKey() {
+            return fieldKey;
+        }
+
+        private String fieldLabel() {
+            return fieldLabel;
+        }
+
+        private String fieldDescription() {
+            return fieldDescription;
+        }
+
+        private String configKey() {
+            return configKey;
+        }
+
+        private boolean defaultVisible() {
+            return defaultVisible;
+        }
     }
 
     private Integer parseInteger(String value, Integer fallback) {

@@ -5,6 +5,7 @@ import { userService } from '@/services/user';
 import { iamService } from '@/services/iam';
 import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { confirmAction } from '@/utils/confirm';
 
 const UserManagementPage = () => {
   const actionRef = useRef<ActionType>();
@@ -103,6 +104,29 @@ const UserManagementPage = () => {
     }
   };
 
+  const updateUserStatus = async (record: UserRecord, status: 'ENABLED' | 'DISABLED') => {
+    await userService.changeStatus(record.id, { status }, { autoRedirectOnUnauthorized: false });
+    message.success('状态已更新');
+    actionRef.current?.reload();
+  };
+
+  const handleStatusToggle = (record: UserRecord) => {
+    if (record.status !== 'ENABLED') {
+      void updateUserStatus(record, 'ENABLED');
+      return;
+    }
+
+    confirmAction({
+      title: '禁用用户',
+      content: `确认禁用用户「${record.username}」吗？禁用后该账号将无法继续登录。`,
+      okText: '确认禁用',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await updateUserStatus(record, 'DISABLED');
+      },
+    });
+  };
+
   const columns: ProColumns<UserRecord>[] = [
     {
       title: '用户名',
@@ -165,15 +189,7 @@ const UserManagementPage = () => {
                 type="link"
                 size="small"
                 danger={record.status === 'ENABLED'}
-              onClick={async () => {
-                await userService.changeStatus(
-                  record.id,
-                  { status: record.status === 'ENABLED' ? 'DISABLED' : 'ENABLED' },
-                  { autoRedirectOnUnauthorized: false },
-                );
-                message.success('状态已更新');
-                actionRef.current?.reload();
-              }}
+                onClick={() => void handleStatusToggle(record)}
               >
                 {record.status === 'ENABLED' ? '禁用' : '启用'}
               </Button>

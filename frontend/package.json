@@ -17,7 +17,8 @@
     "@umijs/max": "^4.6.36",
     "antd": "^5.29.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "swagger-ui-react": "^5.32.2"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",

@@ -1,8 +1,8 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
+import { history, useLocation } from '@umijs/max';
 import { LoginFormPage, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
 import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { history, useLocation } from 'umi';
 import { Alert, Form, Input, Spin, Typography } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { loadCaptchaChallenge } from '@/auth/captcha';

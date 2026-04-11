@@ -1,8 +1,8 @@
 import { AppstoreOutlined, AuditOutlined, ControlOutlined, RocketOutlined, SettingOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { history, useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Avatar, Button, Card, Col, Empty, List, Row, Space, Statistic, Tag, Typography } from 'antd';
 import { useMemo, type ReactNode } from 'react';
-import { history, useRequest } from 'umi';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { DashboardSummary } from '@/types/api';

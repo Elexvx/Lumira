@@ -1,7 +1,7 @@
-import { AppstoreOutlined, BuildOutlined, DatabaseOutlined, MailOutlined, SafetyOutlined, SkinOutlined, TeamOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, BuildOutlined, DatabaseOutlined, FormOutlined, MailOutlined, SafetyOutlined, SkinOutlined, TeamOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { Avatar, Card, Col, List, Row, Statistic, Typography } from 'antd';
-import { history, useRequest } from 'umi';
+import { history, useRequest } from '@umijs/max';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { DashboardSummary } from '@/types/api';
@@ -10,6 +10,7 @@ const managementEntries = [
   { title: '用户中心', path: '/user-center', icon: <TeamOutlined />, description: '用户、在线会话、角色权限分配和个人中心' },
   { title: '菜单管理', path: '/system/menus', icon: <AppstoreOutlined />, description: '菜单树、路由和权限标识' },
   { title: '字典管理', path: '/system/dicts', icon: <DatabaseOutlined />, description: '字典类型和字典项' },
+  { title: '字段管理', path: '/system/profile-fields', icon: <FormOutlined />, description: '个人中心资料字段展示开关' },
   { title: '个性化设置', path: '/system/personalization', icon: <SkinOutlined />, description: '品牌标识、版权设置和水印' },
   { title: '安全设置', path: '/system/security', icon: <SafetyOutlined />, description: 'Token、验证码、阈值、密码规范' },
   { title: 'SMTP 配置', path: '/system/smtp', icon: <MailOutlined />, description: '平台邮件基础服务与测试发送' },

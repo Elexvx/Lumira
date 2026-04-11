@@ -1,8 +1,9 @@
+import { CameraOutlined, UserOutlined } from '@ant-design/icons';
 import { PageContainer, StepsForm } from '@ant-design/pro-components';
-import { Alert, Button, Card, Col, Descriptions, Divider, Empty, Form, Input, Modal, QRCode, Result, Row, Space, Tag, Tabs, Timeline, Typography, message } from 'antd';
-import { useRequest } from 'umi';
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'umi';
+import { useLocation, useRequest } from '@umijs/max';
+import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Empty, Form, Input, Modal, QRCode, Result, Row, Select, Slider, Space, Tag, Tabs, Timeline, Typography, Upload, message } from 'antd';
+import dayjs from 'dayjs';
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type SyntheticEvent } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
@@ -11,7 +12,55 @@ import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 
+const GENDER_OPTIONS = [
+  { label: '男', value: 'MALE' },
+  { label: '女', value: 'FEMALE' },
+  { label: '其他', value: 'OTHER' },
+];
+
+const AVATAR_CROP_SIZE = 320;
+const AVATAR_CROP_OUTPUT_SIZE = 640;
+const AVATAR_MIN_ZOOM = 1;
+const AVATAR_MAX_ZOOM = 3;
+
+type AvatarCropLayout = {
+  width: number;
+  height: number;
+};
+
+type AvatarCropPosition = {
+  x: number;
+  y: number;
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const getAvatarCropLayout = (layout: AvatarCropLayout, zoom: number) => {
+  const baseScale = Math.max(AVATAR_CROP_SIZE / layout.width, AVATAR_CROP_SIZE / layout.height);
+  const displayScale = baseScale * zoom;
+  const displayWidth = layout.width * displayScale;
+  const displayHeight = layout.height * displayScale;
+
+  return {
+    baseScale,
+    displayScale,
+    displayWidth,
+    displayHeight,
+  };
+};
+
+const centerAvatarCropPosition = (layout: ReturnType<typeof getAvatarCropLayout>): AvatarCropPosition => ({
+  x: (AVATAR_CROP_SIZE - layout.displayWidth) / 2,
+  y: (AVATAR_CROP_SIZE - layout.displayHeight) / 2,
+});
+
+const clampAvatarCropPosition = (position: AvatarCropPosition, layout: ReturnType<typeof getAvatarCropLayout>): AvatarCropPosition => ({
+  x: clamp(position.x, AVATAR_CROP_SIZE - layout.displayWidth, 0),
+  y: clamp(position.y, AVATAR_CROP_SIZE - layout.displayHeight, 0),
+});
+
 const ProfileCenterPage = () => {
+  const [profileForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
   const { isMobile } = useResponsive();
   const location = useLocation();
@@ -22,6 +71,16 @@ const ProfileCenterPage = () => {
     data: SecondFactorProviderStatus[];
   });
   const [emailBindForm] = Form.useForm();
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarCropOpen, setAvatarCropOpen] = useState(false);
+  const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null);
+  const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
+  const [avatarCropZoom, setAvatarCropZoom] = useState(1);
+  const [avatarCropPosition, setAvatarCropPosition] = useState<AvatarCropPosition>({ x: 0, y: 0 });
+  const [avatarCropLayout, setAvatarCropLayout] = useState<AvatarCropLayout | null>(null);
+  const [avatarCropLoaded, setAvatarCropLoaded] = useState(false);
+  const [avatarCropDragging, setAvatarCropDragging] = useState(false);
   const [bindModalOpen, setBindModalOpen] = useState(false);
   const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
   const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
@@ -33,6 +92,14 @@ const ProfileCenterPage = () => {
   const [emailBindingProvider, setEmailBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
   const [emailBindingSubmitting, setEmailBindingSubmitting] = useState(false);
   const [emailBindingAlert, setEmailBindingAlert] = useState<string | null>(null);
+  const avatarCropImageRef = useRef<HTMLImageElement | null>(null);
+  const avatarCropDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
   const defaultActiveTab = useMemo(() => {
     const tab = new URLSearchParams(location.search).get('tab');
     return tab === 'second-factor' ? 'second-factor' : 'overview';
@@ -48,11 +115,46 @@ const ProfileCenterPage = () => {
   const currentTenant = summary?.currentTenant || initialState?.currentTenant || null;
   const roleNames = summary?.roleNames || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
+  const profileFieldSettings = summary?.profileFieldSettings || [];
   const providerList = secondFactorQuery.data || [];
   const requiresEmail = providerList.some((provider) => provider.emailRequired);
   const hasEmail = Boolean(currentUser?.email);
   const hasMobile = Boolean(currentUser?.mobile);
   const bindingIsSms = bindingProvider?.factorCode === 'sms' || bindingChallenge?.factorCode === 'sms';
+  const visibleProfileFields = useMemo(
+    () => new Set(profileFieldSettings.filter((item) => item.visible).map((item) => item.fieldKey)),
+    [profileFieldSettings],
+  );
+  const avatarValue = Form.useWatch('avatarUrl', profileForm);
+  const hasVisibleProfileFields = visibleProfileFields.size > 0;
+  const avatarCropRenderLayout = avatarCropLayout ? getAvatarCropLayout(avatarCropLayout, avatarCropZoom) : null;
+
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+    profileForm.setFieldsValue({
+      avatarUrl: currentUser.avatarUrl || '',
+      nickname: currentUser.nickname || '',
+      realName: currentUser.realName || '',
+      mobile: currentUser.mobile || '',
+      email: currentUser.email || '',
+      birthMonth: currentUser.birthMonth ? dayjs(currentUser.birthMonth, 'YYYY-MM') : null,
+      gender: currentUser.gender || undefined,
+      region: currentUser.region || '',
+      availableTime: currentUser.availableTime || '',
+      idCardNumber: currentUser.idCardNumber || '',
+    });
+  }, [currentUser, profileForm]);
+
+  useEffect(
+    () => () => {
+      if (avatarCropUrl) {
+        URL.revokeObjectURL(avatarCropUrl);
+      }
+    },
+    [avatarCropUrl],
+  );
 
   useEffect(() => {
     if (emailBindModalOpen) {
@@ -91,6 +193,248 @@ const ProfileCenterPage = () => {
     window.setTimeout(() => {
       emailBindForm.resetFields();
     }, 0);
+  };
+
+  const resetAvatarCropState = () => {
+    avatarCropDragRef.current = null;
+    avatarCropImageRef.current = null;
+    if (avatarCropUrl) {
+      URL.revokeObjectURL(avatarCropUrl);
+    }
+    setAvatarCropOpen(false);
+    setAvatarCropFile(null);
+    setAvatarCropUrl(null);
+    setAvatarCropLoaded(false);
+    setAvatarCropLayout(null);
+    setAvatarCropZoom(1);
+    setAvatarCropPosition({ x: 0, y: 0 });
+  };
+
+  const openAvatarCropper = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      message.error('请选择图片文件');
+      return false;
+    }
+
+    if (avatarCropUrl) {
+      URL.revokeObjectURL(avatarCropUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    setAvatarCropFile(file);
+    setAvatarCropUrl(nextUrl);
+    setAvatarCropOpen(true);
+    setAvatarCropLoaded(false);
+    setAvatarCropLayout(null);
+    setAvatarCropZoom(1);
+    setAvatarCropPosition({ x: 0, y: 0 });
+    return false;
+  };
+
+  const handleAvatarBeforeUpload = (file: File) => openAvatarCropper(file);
+
+  const handleAvatarImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget;
+    avatarCropImageRef.current = image;
+    const nextLayout = {
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    };
+    const cropLayout = getAvatarCropLayout(nextLayout, avatarCropZoom);
+    setAvatarCropLayout(nextLayout);
+    setAvatarCropLoaded(true);
+    setAvatarCropPosition(centerAvatarCropPosition(cropLayout));
+  };
+
+  const updateAvatarCropZoom = (nextZoom: number) => {
+    if (!avatarCropLayout) {
+      setAvatarCropZoom(nextZoom);
+      return;
+    }
+
+    const currentLayout = getAvatarCropLayout(avatarCropLayout, avatarCropZoom);
+    const nextLayout = getAvatarCropLayout(avatarCropLayout, nextZoom);
+    const currentCenter = {
+      x: avatarCropPosition.x + currentLayout.displayWidth / 2,
+      y: avatarCropPosition.y + currentLayout.displayHeight / 2,
+    };
+
+    setAvatarCropZoom(nextZoom);
+    setAvatarCropPosition(
+      clampAvatarCropPosition(
+        {
+          x: currentCenter.x - nextLayout.displayWidth / 2,
+          y: currentCenter.y - nextLayout.displayHeight / 2,
+        },
+        nextLayout,
+      ),
+    );
+  };
+
+  const handleAvatarCropReset = () => {
+    if (!avatarCropLayout) {
+      setAvatarCropZoom(1);
+      setAvatarCropPosition({ x: 0, y: 0 });
+      return;
+    }
+
+    const nextLayout = getAvatarCropLayout(avatarCropLayout, 1);
+    setAvatarCropZoom(1);
+    setAvatarCropPosition(centerAvatarCropPosition(nextLayout));
+  };
+
+  const handleAvatarCropPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!avatarCropLayout || !avatarCropLoaded) {
+      return;
+    }
+
+    event.preventDefault();
+    avatarCropDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: avatarCropPosition.x,
+      originY: avatarCropPosition.y,
+    };
+    setAvatarCropDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleAvatarCropPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!avatarCropDragRef.current || avatarCropDragRef.current.pointerId !== event.pointerId || !avatarCropLayout) {
+      return;
+    }
+
+    const nextLayout = getAvatarCropLayout(avatarCropLayout, avatarCropZoom);
+    const deltaX = event.clientX - avatarCropDragRef.current.startX;
+    const deltaY = event.clientY - avatarCropDragRef.current.startY;
+    setAvatarCropPosition(
+      clampAvatarCropPosition(
+        {
+          x: avatarCropDragRef.current.originX + deltaX,
+          y: avatarCropDragRef.current.originY + deltaY,
+        },
+        nextLayout,
+      ),
+    );
+  };
+
+  const handleAvatarCropPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (avatarCropDragRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    avatarCropDragRef.current = null;
+    setAvatarCropDragging(false);
+  };
+
+  const createCroppedAvatarFile = async () => {
+    if (!avatarCropFile || !avatarCropImageRef.current || !avatarCropLayout) {
+      throw new Error('头像裁切信息无效，请重新选择图片');
+    }
+
+    const image = avatarCropImageRef.current;
+    const cropLayout = getAvatarCropLayout(avatarCropLayout, avatarCropZoom);
+    const sourceWidth = Math.min(image.naturalWidth, (AVATAR_CROP_SIZE / cropLayout.displayWidth) * image.naturalWidth);
+    const sourceHeight = Math.min(image.naturalHeight, (AVATAR_CROP_SIZE / cropLayout.displayHeight) * image.naturalHeight);
+    const sourceX = clamp(((0 - avatarCropPosition.x) / cropLayout.displayWidth) * image.naturalWidth, 0, image.naturalWidth - sourceWidth);
+    const sourceY = clamp(((0 - avatarCropPosition.y) / cropLayout.displayHeight) * image.naturalHeight, 0, image.naturalHeight - sourceHeight);
+    const mimeType = avatarCropFile.type.startsWith('image/') ? avatarCropFile.type : 'image/png';
+    const canvas = document.createElement('canvas');
+
+    canvas.width = AVATAR_CROP_OUTPUT_SIZE;
+    canvas.height = AVATAR_CROP_OUTPUT_SIZE;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('当前浏览器不支持图片裁切');
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (nextBlob) => {
+          if (!nextBlob) {
+            reject(new Error('头像裁切失败，请重试'));
+            return;
+          }
+          resolve(nextBlob);
+        },
+        mimeType,
+        mimeType === 'image/png' ? undefined : 0.92,
+      );
+    });
+
+    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/webp' ? 'webp' : 'png';
+    return new File([blob], `avatar.${extension}`, {
+      type: mimeType,
+      lastModified: Date.now(),
+    });
+  };
+
+  const uploadAvatarFile = async (file: File) => {
+    const avatarUrl = await profileService.uploadAvatar(file, { autoRedirectOnUnauthorized: false });
+    profileForm.setFieldValue('avatarUrl', avatarUrl);
+    message.success('头像已上传，请点击保存资料');
+  };
+
+  const handleAvatarCropConfirm = async () => {
+    try {
+      setAvatarUploading(true);
+      const croppedFile = await createCroppedAvatarFile();
+      await uploadAvatarFile(croppedFile);
+      resetAvatarCropState();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '头像上传失败，请稍后重试');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarCropCancel = () => {
+    if (avatarUploading) {
+      return;
+    }
+    resetAvatarCropState();
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const values = await profileForm.validateFields();
+      setProfileSaving(true);
+      const updatedUser = await profileService.updateBasicInfo(
+        {
+          ...values,
+          birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
+      setInitialState((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentUser: updatedUser,
+            }
+          : prev,
+      );
+      message.success('个人资料已更新');
+      await profileQuery.refresh();
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const fetchBindChallenge = async (provider: SecondFactorProviderStatus) => {
@@ -348,17 +692,120 @@ const ProfileCenterPage = () => {
                 />
                 <Row gutter={[16, 16]} align="stretch">
                   <Col xs={24} lg={12} style={{ display: 'flex' }}>
-                    <Card title="账号信息" loading={profileQuery.loading} style={{ width: '100%' }}>
-                      <Descriptions className="saas-profile-page__descriptions" column={isMobile ? 1 : 2} size="small" bordered>
-                        <Descriptions.Item label="用户名">{currentUser?.username || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="昵称">{currentUser?.nickname || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="姓名">{currentUser?.realName || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="邮箱">{currentUser?.email || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="手机号">{currentUser?.mobile || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="用户ID">{currentUser?.userId || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="会话ID">{currentUser?.sessionId || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="会话版本">{currentUser?.sessionVersion ?? '-'}</Descriptions.Item>
-                      </Descriptions>
+                    <Card
+                      title="基础资料"
+                      loading={profileQuery.loading}
+                      style={{ width: '100%' }}
+                      extra={
+                        hasVisibleProfileFields ? (
+                          <Button type="primary" loading={profileSaving} onClick={() => void handleSaveProfile()}>
+                            保存资料
+                          </Button>
+                        ) : null
+                      }
+                    >
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <Space wrap size={[12, 8]}>
+                          <Tag>用户名：{currentUser?.username || '-'}</Tag>
+                          <Tag>用户ID：{currentUser?.userId || '-'}</Tag>
+                        </Space>
+
+                        <Form form={profileForm} layout="vertical">
+                          <Form.Item name="avatarUrl" hidden>
+                            <Input />
+                          </Form.Item>
+
+                          {visibleProfileFields.has('avatarUrl') ? (
+                            <Form.Item label="头像">
+                              <Upload accept="image/*" showUploadList={false} beforeUpload={handleAvatarBeforeUpload}>
+                                <button
+                                  type="button"
+                                  className="saas-profile-avatar-trigger"
+                                  aria-label="点击修改头像"
+                                >
+                                  <Avatar
+                                    size={96}
+                                    src={avatarValue || currentUser?.avatarUrl || undefined}
+                                    icon={<UserOutlined />}
+                                    className="saas-profile-avatar-trigger__avatar"
+                                  />
+                                  <span className="saas-profile-avatar-trigger__overlay">
+                                    <CameraOutlined />
+                                  </span>
+                                </button>
+                              </Upload>
+                            </Form.Item>
+                          ) : null}
+
+                          {hasVisibleProfileFields ? (
+                            <Row gutter={[12, 0]}>
+                              <Col xs={24} md={12}>
+                                <Form.Item name="nickname" label="昵称">
+                                  <Input placeholder="请输入昵称" />
+                                </Form.Item>
+                              </Col>
+                              {visibleProfileFields.has('realName') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="realName" label="姓名">
+                                    <Input placeholder="请输入姓名" />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('mobile') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="mobile" label="手机号">
+                                    <Input placeholder="请输入手机号" />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('email') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]}>
+                                    <Input placeholder="请输入邮箱地址" autoComplete="email" />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('birthMonth') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="birthMonth" label="出生年月">
+                                    <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('gender') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="gender" label="性别">
+                                    <Select allowClear placeholder="请选择性别" options={GENDER_OPTIONS} />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('region') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="region" label="所在地区">
+                                    <Input placeholder="请输入所在地区" />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('idCardNumber') ? (
+                                <Col xs={24} md={12}>
+                                  <Form.Item name="idCardNumber" label="身份证号码">
+                                    <Input placeholder="请输入身份证号码" />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                              {visibleProfileFields.has('availableTime') ? (
+                                <Col xs={24}>
+                                  <Form.Item name="availableTime" label="可工作时间">
+                                    <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
+                                  </Form.Item>
+                                </Col>
+                              ) : null}
+                            </Row>
+                          ) : (
+                            <Empty description="当前租户未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                          )}
+                        </Form>
+                      </Space>
                     </Card>
                   </Col>
                   <Col xs={24} lg={12} style={{ display: 'flex' }}>
@@ -428,6 +875,75 @@ const ProfileCenterPage = () => {
           },
         ]}
       />
+
+      <Modal
+        title="裁切头像"
+        open={avatarCropOpen}
+        onCancel={handleAvatarCropCancel}
+        onOk={() => void handleAvatarCropConfirm()}
+        confirmLoading={avatarUploading}
+        okText="裁切并上传"
+        cancelText="取消"
+        destroyOnClose
+        maskClosable={false}
+        width={720}
+        cancelButtonProps={{ disabled: avatarUploading }}
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            拖动图片调整取景，缩放后再上传。
+          </Typography.Paragraph>
+          <div
+            className={`saas-profile-avatar-crop__viewport${avatarCropDragging ? ' saas-profile-avatar-crop__viewport--dragging' : ''}`}
+            onPointerDown={handleAvatarCropPointerDown}
+            onPointerMove={handleAvatarCropPointerMove}
+            onPointerUp={handleAvatarCropPointerEnd}
+            onPointerCancel={handleAvatarCropPointerEnd}
+            onPointerLeave={handleAvatarCropPointerEnd}
+          >
+            {avatarCropUrl && avatarCropLoaded && avatarCropRenderLayout ? (
+              <img
+                ref={avatarCropImageRef}
+                src={avatarCropUrl}
+                alt="头像裁切预览"
+                className="saas-profile-avatar-crop__image"
+                draggable={false}
+                style={{
+                  width: `${avatarCropRenderLayout.displayWidth}px`,
+                  height: `${avatarCropRenderLayout.displayHeight}px`,
+                  transform: `translate(${avatarCropPosition.x}px, ${avatarCropPosition.y}px)`,
+                }}
+                onLoad={handleAvatarImageLoad}
+              />
+            ) : avatarCropUrl ? (
+              <div className="saas-profile-avatar-crop__loading">
+                <Typography.Text type="secondary">图片加载中...</Typography.Text>
+              </div>
+            ) : (
+              <div className="saas-profile-avatar-crop__loading">
+                <Typography.Text type="secondary">请先选择一张图片</Typography.Text>
+              </div>
+            )}
+            <div className="saas-profile-avatar-crop__frame" />
+          </div>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Space align="center" style={{ justifyContent: 'space-between', width: '100%' }}>
+              <Typography.Text type="secondary">缩放</Typography.Text>
+              <Button type="link" onClick={handleAvatarCropReset} disabled={!avatarCropLoaded}>
+                恢复默认
+              </Button>
+            </Space>
+            <Slider
+              min={AVATAR_MIN_ZOOM}
+              max={AVATAR_MAX_ZOOM}
+              step={0.01}
+              value={avatarCropZoom}
+              disabled={!avatarCropLoaded}
+              onChange={(value) => updateAvatarCropZoom(typeof value === 'number' ? value : value[0])}
+            />
+          </Space>
+        </Space>
+      </Modal>
 
       <Modal
         title="补充邮箱"
