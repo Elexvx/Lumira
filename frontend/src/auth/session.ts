@@ -44,6 +44,18 @@ export const clearAuthSession = () => {
 
 export const performLogout = async () => {
   if (isLoggedIn()) {
+    const tokenState = tokenManager.getTokenState();
+    const accessTokenExpired = Boolean(tokenState && tokenState.expiresAt <= Date.now());
+
+    if (accessTokenExpired) {
+      const refreshed = await tryRefreshToken();
+      if (!refreshed) {
+        clearAuthSession();
+        history.replace('/user/login');
+        return;
+      }
+    }
+
     try {
       await authService.logout({
         autoRedirectOnUnauthorized: false,

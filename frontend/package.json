@@ -16,6 +16,7 @@
     "@uiw/react-md-editor": "^4.1.0",
     "@umijs/max": "^4.6.36",
     "antd": "^5.29.3",
+    "antd-img-crop": "^4.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "swagger-ui-react": "^5.32.2"

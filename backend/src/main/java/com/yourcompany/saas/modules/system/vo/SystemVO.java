@@ -226,10 +226,15 @@ public final class SystemVO {
         private Long id;
         private String username;
         private String mobile;
+        private String idCardNumber;
         private String nickname;
         private String realName;
         private String avatarUrl;
         private String email;
+        private String birthMonth;
+        private String gender;
+        private String region;
+        private String availableTime;
         private String status;
         private List<String> tenantNames;
         private List<String> roleNames;
@@ -258,6 +263,14 @@ public final class SystemVO {
 
         public void setMobile(String mobile) {
             this.mobile = mobile;
+        }
+
+        public String getIdCardNumber() {
+            return idCardNumber;
+        }
+
+        public void setIdCardNumber(String idCardNumber) {
+            this.idCardNumber = idCardNumber;
         }
 
         public String getNickname() {
@@ -290,6 +303,38 @@ public final class SystemVO {
 
         public void setEmail(String email) {
             this.email = email;
+        }
+
+        public String getBirthMonth() {
+            return birthMonth;
+        }
+
+        public void setBirthMonth(String birthMonth) {
+            this.birthMonth = birthMonth;
+        }
+
+        public String getGender() {
+            return gender;
+        }
+
+        public void setGender(String gender) {
+            this.gender = gender;
+        }
+
+        public String getRegion() {
+            return region;
+        }
+
+        public void setRegion(String region) {
+            this.region = region;
+        }
+
+        public String getAvailableTime() {
+            return availableTime;
+        }
+
+        public void setAvailableTime(String availableTime) {
+            this.availableTime = availableTime;
         }
 
         public String getStatus() {

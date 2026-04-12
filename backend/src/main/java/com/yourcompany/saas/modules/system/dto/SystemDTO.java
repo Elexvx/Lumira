@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 import java.util.List;
@@ -17,11 +18,18 @@ public final class SystemDTO {
         @NotBlank
         private String username;
         private String password;
+        @Pattern(regexp = "^(?:$|1[3-9]\\d{9})$", message = "请输入有效手机号")
         private String mobile;
         private String nickname;
         private String realName;
         private String avatarUrl;
         private String email;
+        private String birthMonth;
+        private String gender;
+        private String region;
+        private String availableTime;
+        @Pattern(regexp = "^(?:$|\\d{15}|\\d{17}[\\dXx])$", message = "请输入有效身份证号码")
+        private String idCardNumber;
         @NotBlank
         private String status;
         private List<Long> roleIds;
@@ -47,7 +55,7 @@ public final class SystemDTO {
         }
 
         public void setMobile(String mobile) {
-            this.mobile = mobile;
+            this.mobile = mobile == null ? null : mobile.trim();
         }
 
         public String getNickname() {
@@ -71,7 +79,7 @@ public final class SystemDTO {
         }
 
         public void setAvatarUrl(String avatarUrl) {
-            this.avatarUrl = avatarUrl;
+            this.avatarUrl = avatarUrl == null ? null : avatarUrl.trim();
         }
 
         public String getEmail() {
@@ -79,7 +87,47 @@ public final class SystemDTO {
         }
 
         public void setEmail(String email) {
-            this.email = email;
+            this.email = email == null ? null : email.trim();
+        }
+
+        public String getBirthMonth() {
+            return birthMonth;
+        }
+
+        public void setBirthMonth(String birthMonth) {
+            this.birthMonth = birthMonth == null ? null : birthMonth.trim();
+        }
+
+        public String getGender() {
+            return gender;
+        }
+
+        public void setGender(String gender) {
+            this.gender = gender == null ? null : gender.trim();
+        }
+
+        public String getRegion() {
+            return region;
+        }
+
+        public void setRegion(String region) {
+            this.region = region == null ? null : region.trim();
+        }
+
+        public String getAvailableTime() {
+            return availableTime;
+        }
+
+        public void setAvailableTime(String availableTime) {
+            this.availableTime = availableTime == null ? null : availableTime.trim();
+        }
+
+        public String getIdCardNumber() {
+            return idCardNumber;
+        }
+
+        public void setIdCardNumber(String idCardNumber) {
+            this.idCardNumber = idCardNumber == null ? null : idCardNumber.trim();
         }
 
         public String getStatus() {

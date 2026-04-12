@@ -62,6 +62,10 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
       });
 
       if (response.status === 401 || response.status === 403) {
+        if (!shouldLogoutCurrentSession(accessToken)) {
+          stop();
+          return;
+        }
         options.onUnauthorized?.();
         await performLogout().catch(() => {
           // Ignore logout failures when the server has already revoked the session.
@@ -87,6 +91,14 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
 
   void open();
   return stop;
+};
+
+const shouldLogoutCurrentSession = (requestAccessToken: string) => {
+  if (!requestAccessToken) {
+    return true;
+  }
+
+  return requestAccessToken === tokenManager.getAccessToken();
 };
 
 const readEventStream = async (

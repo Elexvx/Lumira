@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Result, Space, message } from 'antd';
+import { Button, Card, Result, Space } from 'antd';
 import SwaggerUI from 'swagger-ui-react';
 import 'swagger-ui-react/swagger-ui.css';
 import { tokenManager } from '@/auth/token';
@@ -38,38 +37,7 @@ const swaggerRequestInterceptor = (request: SwaggerRequest) => {
 };
 
 export default () => {
-  const [exporting, setExporting] = useState(false);
   const isLoggedIn = tokenManager.hasToken();
-
-  const handleOpenRawSpec = async () => {
-    const previewWindow = window.open('', '_blank', 'noopener,noreferrer');
-    if (!previewWindow) {
-      message.warning('请允许浏览器弹窗后再打开原始文档');
-      return;
-    }
-
-    try {
-      setExporting(true);
-      previewWindow.document.write('<p style="font-family: sans-serif; padding: 16px;">正在加载原始文档...</p>');
-      const response = await fetch(SWAGGER_SPEC_URL, {
-        headers: buildSwaggerHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error(`请求 OpenAPI 失败: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      previewWindow.location.href = objectUrl;
-      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
-    } catch (error) {
-      previewWindow.close();
-      message.error(error instanceof Error ? error.message : '打开原始文档失败');
-    } finally {
-      setExporting(false);
-    }
-  };
 
   if (!isLoggedIn) {
     return (
@@ -89,9 +57,6 @@ export default () => {
       ghost
       extra={
         <Space>
-          <Button icon={<DownloadOutlined />} loading={exporting} onClick={handleOpenRawSpec}>
-            打开原始文档
-          </Button>
           <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()}>
             刷新页面
           </Button>

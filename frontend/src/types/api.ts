@@ -505,9 +505,15 @@ export interface UserRecord {
   id: number;
   username: string;
   mobile?: string | null;
+  idCardNumber?: string | null;
   nickname?: string | null;
   realName?: string | null;
   avatarUrl?: string | null;
+  email?: string | null;
+  birthMonth?: string | null;
+  gender?: string | null;
+  region?: string | null;
+  availableTime?: string | null;
   status: string;
   tenantNames?: string[];
   roleNames?: string[];
@@ -516,7 +522,6 @@ export interface UserRecord {
 }
 
 export interface UserDetail extends UserRecord {
-  email?: string | null;
   currentTenantId?: number | null;
   roleIds?: number[];
   tenantIds?: number[];
