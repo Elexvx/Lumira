@@ -12,6 +12,7 @@ export default defineConfig({
   request: {},
   layout: {},
   mfsu: false,
+  esbuildMinifyIIFE: true,
   headScripts: [
     {
       content: createThemePreferenceBootstrapScript(),

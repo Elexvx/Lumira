@@ -145,6 +145,7 @@ public class SystemManagementAppService {
             WATERMARK_GAP_X_KEY, WATERMARK_GAP_Y_KEY, WATERMARK_OFFSET_X_KEY, WATERMARK_OFFSET_Y_KEY,
             WATERMARK_Z_INDEX_KEY, WATERMARK_OPACITY_KEY
     );
+    private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("系统管理", "用户、角色、菜单、字典", "/system/management", "system:view"),
@@ -218,7 +219,16 @@ public class SystemManagementAppService {
         summary.setCurrentTenant(tenantDomainService.toTenantSummary(tenantInfo));
         summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 10).getRecords());
+        summary.setRecentLoginLogs(listLoginLogs(
+                currentUser,
+                currentUser.getUsername(),
+                currentTenantId(currentUser),
+                null,
+                null,
+                null,
+                1,
+                RECENT_LOGIN_LOG_LIMIT
+        ).getRecords());
         summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
         return summary;
     }
@@ -317,8 +327,9 @@ public class SystemManagementAppService {
             params.add(status);
         }
         String selectSql = """
-                select u.id, u.username, u.mobile, u.nickname, u.real_name as realName,
-                       u.avatar_url as avatarUrl, u.email, u.status, u.created_at as createdAt, u.updated_at as updatedAt
+                select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
+                       u.avatar_url as avatarUrl, u.email, u.birth_month as birthMonth, u.gender, u.region,
+                       u.available_time as availableTime, u.status, u.created_at as createdAt, u.updated_at as updatedAt
                 """ + baseSql + """
                 order by u.id desc
                 """;
@@ -1804,8 +1815,9 @@ public class SystemManagementAppService {
     private SystemVO.UserVO queryUser(Long tenantId, Long userId) {
         SystemVO.UserVO user = queryOne(
                 """
-                        select u.id, u.username, u.mobile, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
-                               u.email, u.status, u.created_at as createdAt, u.updated_at as updatedAt
+                        select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
+                               u.email, u.birth_month as birthMonth, u.gender, u.region, u.available_time as availableTime,
+                               u.status, u.created_at as createdAt, u.updated_at as updatedAt
                         from sys_user u
                         join sys_user_tenant ut on ut.user_id = u.id and ut.tenant_id = ? and ut.deleted = 0
                         where u.id = ? and u.deleted = 0
@@ -1835,17 +1847,23 @@ public class SystemManagementAppService {
             jdbcTemplate.update(
                     """
                             insert into sys_user (
-                                username, password_hash, mobile, nickname, real_name, avatar_url, email, status,
+                                username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                                available_time, id_card_number, status,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     request.getUsername(),
                     passwordEncoder.encode(password),
-                    request.getMobile(),
-                    request.getNickname(),
-                    request.getRealName(),
-                    request.getAvatarUrl(),
-                    request.getEmail(),
+                    normalizeNullableText(request.getMobile()),
+                    normalizeNullableText(request.getNickname()),
+                    normalizeNullableText(request.getRealName()),
+                    normalizeNullableText(request.getAvatarUrl()),
+                    normalizeNullableText(request.getEmail()),
+                    normalizeNullableText(request.getBirthMonth()),
+                    normalizeNullableText(request.getGender()),
+                    normalizeNullableText(request.getRegion()),
+                    normalizeNullableText(request.getAvailableTime()),
+                    normalizeNullableText(request.getIdCardNumber()),
                     request.getStatus(),
                     operatorId,
                     operatorId
@@ -1855,16 +1873,22 @@ public class SystemManagementAppService {
         jdbcTemplate.update(
                 """
                         update sys_user
-                        set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?, status = ?,
+                        set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?,
+                            birth_month = ?, gender = ?, region = ?, available_time = ?, id_card_number = ?, status = ?,
                             updated_by = ?, updated_at = ?
                         where id = ? and deleted = 0
                         """,
                 request.getUsername(),
-                request.getMobile(),
-                request.getNickname(),
-                request.getRealName(),
-                request.getAvatarUrl(),
-                request.getEmail(),
+                normalizeNullableText(request.getMobile()),
+                normalizeNullableText(request.getNickname()),
+                normalizeNullableText(request.getRealName()),
+                normalizeNullableText(request.getAvatarUrl()),
+                normalizeNullableText(request.getEmail()),
+                normalizeNullableText(request.getBirthMonth()),
+                normalizeNullableText(request.getGender()),
+                normalizeNullableText(request.getRegion()),
+                normalizeNullableText(request.getAvailableTime()),
+                normalizeNullableText(request.getIdCardNumber()),
                 request.getStatus(),
                 operatorId,
                 LocalDateTime.now(),
@@ -2188,10 +2212,15 @@ public class SystemManagementAppService {
         target.setId(source.getId());
         target.setUsername(source.getUsername());
         target.setMobile(source.getMobile());
+        target.setIdCardNumber(source.getIdCardNumber());
         target.setNickname(source.getNickname());
         target.setRealName(source.getRealName());
         target.setAvatarUrl(source.getAvatarUrl());
         target.setEmail(source.getEmail());
+        target.setBirthMonth(source.getBirthMonth());
+        target.setGender(source.getGender());
+        target.setRegion(source.getRegion());
+        target.setAvailableTime(source.getAvailableTime());
         target.setStatus(source.getStatus());
         target.setTenantNames(source.getTenantNames());
         target.setRoleNames(source.getRoleNames());

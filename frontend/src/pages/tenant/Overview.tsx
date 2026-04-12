@@ -6,7 +6,7 @@ import {
   type ActionType,
   type ProColumns,
 } from '@ant-design/pro-components';
-import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
 import { auditService } from '@/services/audit';
 import { pluginService } from '@/services/plugin';
 import { tenantService, type TenantMutationPayload } from '@/services/tenant';
@@ -58,7 +58,7 @@ export default () => {
       {
         loginType: 'TENANT_SWITCH',
         pageNo: 1,
-        pageSize: 20,
+        pageSize: 5,
       },
       { autoRedirectOnUnauthorized: false },
     ),
@@ -67,6 +67,39 @@ export default () => {
   const currentTenant = currentTenantQuery.data?.currentTenant || initialState?.currentTenant || null;
   const myTenants = (myTenantsQuery.data || initialState?.myTenants || []) as MyTenant[];
   const tenantPlugins = (pluginQuery.data || initialState?.availablePlugins || []) as TenantPlugin[];
+  const tenantById = useMemo(
+    () => new Map(myTenants.map((tenant) => [tenant.tenantId, tenant] as const)),
+    [myTenants],
+  );
+  const switchHistoryItems = useMemo(() => {
+    return (switchHistoryQuery.data?.records || []).slice(0, 5).map((record) => {
+      const result = record.logResult || record.loginResult || 'UNKNOWN';
+      const isSuccess = result === 'SUCCESS';
+      const tenant = record.tenantId ? tenantById.get(record.tenantId) : undefined;
+      const tenantLabel = tenant
+        ? `${tenant.tenantName}${tenant.tenantCode ? `（${tenant.tenantCode}）` : ''}`
+        : record.tenantId
+          ? `租户 #${record.tenantId}`
+          : '未知租户';
+
+      return {
+        key: record.id,
+        color: isSuccess ? 'green' : 'red',
+        children: (
+          <Space direction="vertical" size={2} style={{ width: '100%' }}>
+            <Space size={8} wrap>
+              <Typography.Text strong>{record.username || '未知用户'}</Typography.Text>
+              <Tag color={isSuccess ? 'green' : 'red'}>{isSuccess ? '成功' : '失败'}</Tag>
+            </Space>
+            <Typography.Text>{`切换至 ${tenantLabel}`}</Typography.Text>
+            <Typography.Text type="secondary">
+              {record.failReason || record.detailMessage || '租户切换操作'} · {formatDateTime(record.createdAt)}
+            </Typography.Text>
+          </Space>
+        ),
+      };
+    });
+  }, [myTenants, switchHistoryQuery.data?.records, tenantById]);
 
   const tenantColumns = useMemo<ProColumns<TenantSummary>[]>(
     () => [
@@ -372,22 +405,11 @@ export default () => {
           />
         </Card>
 
-        <Card title="最近切换记录" loading={switchHistoryQuery.loading}>
-          {switchHistoryQuery.data?.records?.length ? (
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {switchHistoryQuery.data.records.map((record) => (
-                <Card key={record.id} size="small">
-                  <Space direction="vertical" size={0}>
-                    <Typography.Text strong>{record.username}</Typography.Text>
-                    <Typography.Text type="secondary">
-                      {record.failReason || record.detailMessage || '租户切换操作'}
-                    </Typography.Text>
-                  </Space>
-                </Card>
-              ))}
-            </Space>
+        <Card title="最近 5 次切换" loading={switchHistoryQuery.loading}>
+          {switchHistoryItems.length ? (
+            <Timeline items={switchHistoryItems} />
           ) : (
-            <Empty description="暂无租户切换记录" />
+            <Empty description="暂无最近的租户切换记录" />
           )}
         </Card>
       </div>

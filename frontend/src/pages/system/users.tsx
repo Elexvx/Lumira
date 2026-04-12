@@ -1,11 +1,20 @@
+import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Form, Input, Select, Space, Spin, Tag, message } from 'antd';
+import { Button, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Spin, Tag, message } from 'antd';
 import { userService } from '@/services/user';
 import { iamService } from '@/services/iam';
 import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
 import { confirmAction } from '@/utils/confirm';
+import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
+import { maskIdCardNumber, maskMobile } from '@/utils/sensitive';
+
+const GENDER_OPTIONS = [
+  { label: '男', value: 'MALE' },
+  { label: '女', value: 'FEMALE' },
+  { label: '其他', value: 'OTHER' },
+];
 
 const UserManagementPage = () => {
   const actionRef = useRef<ActionType>();
@@ -57,6 +66,7 @@ const UserManagementPage = () => {
       const detail = await userService.detail(record.id, { autoRedirectOnUnauthorized: false });
       editorForm.setFieldsValue({
         ...detail,
+        birthMonth: detail.birthMonth ? dayjs(detail.birthMonth, 'YYYY-MM') : null,
         roleIds: detail.roleIds || [],
       });
     } catch {
@@ -86,6 +96,7 @@ const UserManagementPage = () => {
       const values = await editorForm.validateFields();
       const payload = {
         ...values,
+        birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
         roleIds: values.roleIds || [],
       };
 
@@ -137,6 +148,7 @@ const UserManagementPage = () => {
       title: '手机号',
       dataIndex: 'mobile',
       search: true,
+      render: (_, record) => maskMobile(record.mobile) || '-',
     },
     {
       title: '状态',
@@ -255,44 +267,92 @@ const UserManagementPage = () => {
         }
       >
         <Form form={editorForm} layout="vertical" initialValues={{ status: 'ENABLED', roleIds: [] }}>
-          <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label={editingId ? '重置密码（可选）' : '初始密码'}
-            rules={!editingId ? [{ required: true, message: '请输入密码' }] : undefined}
-          >
-            <Input.Password placeholder="输入密码" />
-          </Form.Item>
-          <Form.Item name="mobile" label="手机号">
-            <Input />
-          </Form.Item>
-          <Form.Item name="nickname" label="昵称">
-            <Input />
-          </Form.Item>
-          <Form.Item name="realName" label="姓名">
-            <Input />
-          </Form.Item>
-          <Form.Item name="email" label="邮箱">
-            <Input />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select
-              disabled={protectedAdminSelected}
-              options={
-                protectedAdminSelected
-                  ? [{ label: '启用', value: 'ENABLED' }]
-                  : [
-                      { label: '启用', value: 'ENABLED' },
-                      { label: '禁用', value: 'DISABLED' },
-                    ]
-              }
-            />
-          </Form.Item>
-          <Form.Item name="roleIds" label="角色">
-            <Select mode="multiple" options={roleOptions} />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]} normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="password"
+                label={editingId ? '重置密码（可选）' : '初始密码'}
+                rules={!editingId ? [{ required: true, message: '请输入密码' }] : undefined}
+              >
+                <Input.Password placeholder="输入密码" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="mobile" label="手机号" rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="idCardNumber" label="身份证号码" rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="nickname" label="昵称" normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="realName" label="姓名" normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]} normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="avatarUrl" label="头像地址" normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="birthMonth" label="出生年月">
+                <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="gender" label="性别">
+                <Select allowClear options={GENDER_OPTIONS} placeholder="请选择性别" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="region" label="所在地区" normalize={trimString}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="status" label="状态">
+                <Select
+                  disabled={protectedAdminSelected}
+                  options={
+                    protectedAdminSelected
+                      ? [{ label: '启用', value: 'ENABLED' }]
+                      : [
+                          { label: '启用', value: 'ENABLED' },
+                          { label: '禁用', value: 'DISABLED' },
+                        ]
+                  }
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="availableTime" label="可工作时间" normalize={trimString}>
+                <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
+              </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <Form.Item name="roleIds" label="角色">
+                <Select mode="multiple" options={roleOptions} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Drawer>
 
@@ -318,8 +378,20 @@ const UserManagementPage = () => {
               { title: '用户名', dataIndex: 'username' },
               { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
               { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
-              { title: '手机号', dataIndex: 'mobile', renderText: (value) => value || '-' },
+              { title: '手机号', dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },
+              {
+                title: '身份证号码',
+                dataIndex: 'idCardNumber',
+                renderText: (value) => maskIdCardNumber(value) || '-',
+              },
+              { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
+              { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
               { title: '邮箱', dataIndex: 'email', renderText: (value) => value || '-' },
+              { title: '头像地址', dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
+              { title: '出生年月', dataIndex: 'birthMonth', renderText: (value) => value || '-' },
+              { title: '性别', dataIndex: 'gender', renderText: (value) => value || '-' },
+              { title: '所在地区', dataIndex: 'region', renderText: (value) => value || '-' },
+              { title: '可工作时间', dataIndex: 'availableTime', renderText: (value) => value || '-' },
               { title: '状态', dataIndex: 'status' },
               {
                 title: '角色',
@@ -331,6 +403,8 @@ const UserManagementPage = () => {
                 dataIndex: 'tenantNames',
                 renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
               },
+              { title: '创建时间', dataIndex: 'createdAt', renderText: (value) => value || '-' },
+              { title: '更新时间', dataIndex: 'updatedAt', renderText: (value) => value || '-' },
             ]}
           />
         ) : null}

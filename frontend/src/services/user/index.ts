@@ -13,8 +13,13 @@ export interface UserListQuery extends Record<string, unknown> {
 export interface UserMutationPayload {
   username: string;
   mobile?: string;
+  idCardNumber?: string;
   nickname?: string;
   realName?: string;
+  birthMonth?: string;
+  gender?: string;
+  region?: string;
+  availableTime?: string;
   email?: string;
   avatarUrl?: string;
   status: string;

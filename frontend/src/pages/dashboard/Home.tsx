@@ -1,53 +1,12 @@
-import { AppstoreOutlined, AuditOutlined, ControlOutlined, RocketOutlined, SettingOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { RocketOutlined, UserOutlined } from '@ant-design/icons';
 import { history, useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Avatar, Button, Card, Col, Empty, List, Row, Space, Statistic, Tag, Typography } from 'antd';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { DashboardSummary } from '@/types/api';
 import './Home.less';
-
-interface QuickEntry {
-  title: string;
-  path: string;
-  description: string;
-  icon: ReactNode;
-  color: string;
-}
-
-const quickEntries: QuickEntry[] = [
-  {
-    title: '系统管理',
-    path: '/system/management',
-    description: '用户、角色、菜单、字典、配置',
-    icon: <SettingOutlined />,
-    color: '#1677ff',
-  },
-  {
-    title: '租户中心',
-    path: '/tenant/overview',
-    description: '当前租户与可访问租户',
-    icon: <TeamOutlined />,
-    color: '#52c41a',
-  },
-  {
-    title: '审计中心',
-    path: '/system/monitoring/audit',
-    description: '登录和操作日志',
-    icon: <AuditOutlined />,
-    color: '#fa8c16',
-  },
-  {
-    title: '插件管理',
-    path: '/system/plugins',
-    description: '插件安装、启用、运行态',
-    icon: <AppstoreOutlined />,
-    color: '#722ed1',
-  },
-];
-
-const quickEntryByPath = new Map(quickEntries.map((item) => [item.path, item]));
 const numberFormatter = new Intl.NumberFormat('zh-CN');
 
 const parseTime = (time?: string) => {
@@ -93,22 +52,6 @@ export default () => {
   const welcomeName = userInfo?.realName || userInfo?.nickname || userInfo?.username || '同学';
   const greeting = `${getGreetingByHour(new Date().getHours())}，${welcomeName}`;
   const greetingNote = tenantInfo?.tenantName || '当前尚未选择租户';
-
-  const projectEntries = useMemo(() => {
-    if (!summary?.shortcuts?.length) {
-      return quickEntries;
-    }
-    return summary.shortcuts.map((item) => {
-      const matched = quickEntryByPath.get(item.path);
-      return {
-        title: item.title,
-        path: item.path,
-        description: item.description || matched?.description || '进入工作台模块',
-        icon: matched?.icon || <ControlOutlined />,
-        color: matched?.color || '#1677ff',
-      };
-    });
-  }, [summary?.shortcuts]);
 
   const heroMetrics = useMemo(
     () => [
@@ -217,30 +160,6 @@ export default () => {
 
         <Row gutter={[16, 16]}>
           <Col xs={24} xl={16}>
-            <Card title="快捷入口">
-              <List
-                grid={{ gutter: 16, xs: 1, sm: 2 }}
-                dataSource={projectEntries}
-                renderItem={(entry) => (
-                  <List.Item>
-                    <Card hoverable onClick={() => history.push(entry.path)} style={{ height: '100%' }}>
-                      <Space align="start">
-                        <Avatar style={{ backgroundColor: entry.color }} icon={entry.icon} />
-                        <div>
-                          <Typography.Title level={5} style={{ marginBottom: 4 }}>
-                            {entry.title}
-                          </Typography.Title>
-                          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                            {entry.description}
-                          </Typography.Paragraph>
-                        </div>
-                      </Space>
-                    </Card>
-                  </List.Item>
-                )}
-              />
-            </Card>
-
             <Card title="最近动态">
               {activityItems.length ? (
                 <List

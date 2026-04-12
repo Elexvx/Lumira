@@ -35,8 +35,13 @@ export interface RequestOptions {
   silent?: boolean;
 }
 
+interface AuthRequestSnapshot {
+  accessToken: string;
+  hasAuthToken: boolean;
+}
+
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
-  const hasAuthToken = tokenManager.hasToken();
+  const authSnapshot = captureAuthRequestSnapshot(options);
   try {
     const response = await umiRequest<ApiResponse<T>>(`${API_PREFIX}${url}`, {
       timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
@@ -48,7 +53,7 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
       errorHandler: undefined,
       headers: {
         ...(options.headers || {}),
-        [AUTHORIZATION_HEADER]: options.skipAuth ? '' : buildAuthorization(),
+        [AUTHORIZATION_HEADER]: buildAuthorization(authSnapshot.accessToken),
         [TENANT_HEADER]: tenantContext.getTenantId(),
         [REQUEST_ID_HEADER]: crypto.randomUUID(),
         [TRACE_ID_HEADER]: '',
@@ -70,20 +75,20 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
         httpStatus,
       });
 
-      handleApiError(apiError, options, hasAuthToken);
+      handleApiError(apiError, options, authSnapshot);
       throw apiError;
     }
 
-    const fallbackError = buildFallbackError(httpStatus, requestId, hasAuthToken);
-    handleApiError(fallbackError, options, hasAuthToken);
+    const fallbackError = buildFallbackError(httpStatus, requestId, authSnapshot.hasAuthToken);
+    handleApiError(fallbackError, options, authSnapshot);
     throw fallbackError;
   } catch (error) {
     if (error instanceof ApiRequestError) {
       throw error;
     }
 
-    const fallbackError = buildUnexpectedError(error, hasAuthToken);
-    handleApiError(fallbackError, options, hasAuthToken);
+    const fallbackError = buildUnexpectedError(error, authSnapshot.hasAuthToken);
+    handleApiError(fallbackError, options, authSnapshot);
     throw fallbackError;
   }
 };
@@ -97,15 +102,19 @@ export const requestFile = async (url: string, options: RequestOptions = {}) => 
   });
 };
 
-const buildAuthorization = () => {
-  const accessToken = tokenManager.getAccessToken();
+const buildAuthorization = (accessToken: string) => {
   return accessToken ? `Bearer ${accessToken}` : '';
 };
 
-const handleApiError = (error: ApiRequestError, options: RequestOptions, hasAuthToken = true) => {
+const handleApiError = (error: ApiRequestError, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
   const bypassUnauthorizedRedirect =
     options.autoRedirectOnUnauthorized === false && options.allowUnauthorizedWithoutRedirect === true;
-  const feedback = resolveApiErrorFeedback(error, hasAuthToken);
+  const feedback = resolveApiErrorFeedback(error, authSnapshot.hasAuthToken);
+  const shouldHandleUnauthorized = shouldHandleUnauthorizedForSnapshot(authSnapshot);
+
+  if (feedback.redirectToLogin && !shouldHandleUnauthorized) {
+    return;
+  }
 
   if (feedback.redirectToLogin && !bypassUnauthorizedRedirect) {
     cleanUnauthorizedState();
@@ -283,4 +292,27 @@ const buildUnexpectedError = (error: unknown, hasAuthToken = true) => {
 
 const cleanUnauthorizedState = () => {
   clearAuthSession();
+};
+
+const captureAuthRequestSnapshot = (options: RequestOptions): AuthRequestSnapshot => {
+  if (options.skipAuth) {
+    return {
+      accessToken: '',
+      hasAuthToken: false,
+    };
+  }
+
+  return {
+    accessToken: tokenManager.getAccessToken(),
+    hasAuthToken: tokenManager.hasToken(),
+  };
+};
+
+const shouldHandleUnauthorizedForSnapshot = (authSnapshot: AuthRequestSnapshot) => {
+  if (!authSnapshot.accessToken) {
+    // Ignore late 401s from guest/no-token requests once a new session is already established.
+    return !tokenManager.hasToken();
+  }
+
+  return authSnapshot.accessToken === tokenManager.getAccessToken();
 };

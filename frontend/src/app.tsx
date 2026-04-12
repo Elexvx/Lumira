@@ -40,6 +40,8 @@ import { ThemePreferenceProvider } from '@/theme/ThemePreferenceProvider';
 const LOGIN_PATH = '/user/login';
 const DEFAULT_HOME_PATH = '/dashboard/home';
 const PUBLIC_PATHS = new Set([LOGIN_PATH, '/403', '/404', '/blank/workflow']);
+const LAYOUT_HEADER_HEIGHT = 64;
+const LAYOUT_SIDER_WIDTH = 224;
 
 const DEFAULT_WATERMARK_SETTINGS: WatermarkSettings = {
   enabled: false,
@@ -276,7 +278,13 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     fixSiderbar: true,
     layout: 'mix',
     navTheme,
+    siderWidth: LAYOUT_SIDER_WIDTH,
     splitMenus: false,
+    token: {
+      header: {
+        heightLayoutHeader: LAYOUT_HEADER_HEIGHT,
+      },
+    },
     breadcrumbRender: (routers = []) => {
       const pathname = history.location.pathname;
       const menuBreadcrumb = buildBreadcrumbItems(initialState?.menuTree, pathname);

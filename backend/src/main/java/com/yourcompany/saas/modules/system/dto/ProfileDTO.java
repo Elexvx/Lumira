@@ -2,6 +2,7 @@ package com.yourcompany.saas.modules.system.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public final class ProfileDTO {
 
@@ -26,12 +27,14 @@ public final class ProfileDTO {
         private String avatarUrl;
         private String nickname;
         private String realName;
+        @Pattern(regexp = "^(?:$|1[3-9]\\d{9})$", message = "请输入有效手机号")
         private String mobile;
         private String email;
         private String birthMonth;
         private String gender;
         private String region;
         private String availableTime;
+        @Pattern(regexp = "^(?:$|\\d{15}|\\d{17}[\\dXx])$", message = "请输入有效身份证号码")
         private String idCardNumber;
 
         public String getAvatarUrl() {
@@ -63,7 +66,7 @@ public final class ProfileDTO {
         }
 
         public void setMobile(String mobile) {
-            this.mobile = mobile;
+            this.mobile = mobile == null ? null : mobile.trim();
         }
 
         public String getEmail() {
@@ -111,7 +114,7 @@ public final class ProfileDTO {
         }
 
         public void setIdCardNumber(String idCardNumber) {
-            this.idCardNumber = idCardNumber;
+            this.idCardNumber = idCardNumber == null ? null : idCardNumber.trim();
         }
     }
 }

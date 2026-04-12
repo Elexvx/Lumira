@@ -22,17 +22,23 @@ export interface PluginLoadFeedback {
   type: FeedbackType;
   message: string;
   redirectToLogin?: boolean;
+  requestAccessToken?: string;
 }
 
 export class PluginLoadError extends Error {
   type: FeedbackType;
   redirectToLogin?: boolean;
+  requestAccessToken?: string;
 
-  constructor(message: string, options: { type: FeedbackType; redirectToLogin?: boolean } = { type: 'error' }) {
+  constructor(
+    message: string,
+    options: { type: FeedbackType; redirectToLogin?: boolean; requestAccessToken?: string } = { type: 'error' },
+  ) {
     super(message);
     this.name = 'PluginLoadError';
     this.type = options.type;
     this.redirectToLogin = options.redirectToLogin;
+    this.requestAccessToken = options.requestAccessToken;
   }
 }
 
@@ -64,32 +70,35 @@ export const loadPlugin = async (pluginCode: string): Promise<PluginLoadResult> 
 };
 
 const fetchJson = async <T>(url: string): Promise<T> => {
+  const requestAccessToken = tokenManager.getAccessToken();
   const response = await fetch(url, {
-    headers: buildHeaders(),
+    headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildLoadError(response, '加载插件资源失败，请稍后重试');
+    throw await buildLoadError(response, '加载插件资源失败，请稍后重试', requestAccessToken);
   }
   return (await response.json()) as T;
 };
 
 const injectScript = async (pluginCode: string, relativePath: string) => {
+  const requestAccessToken = tokenManager.getAccessToken();
   const response = await fetch(ASSET_URL(pluginCode, relativePath), {
-    headers: buildHeaders(),
+    headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildLoadError(response, `插件脚本加载失败: ${relativePath}`);
+    throw await buildLoadError(response, `插件脚本加载失败: ${relativePath}`, requestAccessToken);
   }
   const source = await response.text();
   await executeSource(`${pluginCode}:${relativePath}`, source);
 };
 
 const injectStyle = async (pluginCode: string, relativePath: string) => {
+  const requestAccessToken = tokenManager.getAccessToken();
   const response = await fetch(ASSET_URL(pluginCode, relativePath), {
-    headers: buildHeaders(),
+    headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildLoadError(response, `插件样式加载失败: ${relativePath}`);
+    throw await buildLoadError(response, `插件样式加载失败: ${relativePath}`, requestAccessToken);
   }
   const content = await response.text();
   const styleElement = document.createElement('style');
@@ -118,13 +127,14 @@ const executeSource = async (key: string, source: string) => {
   }
 };
 
-const buildLoadError = async (response: Response, fallbackMessage: string) => {
+const buildLoadError = async (response: Response, fallbackMessage: string, requestAccessToken: string) => {
   const payload = await parseJsonResponse(response);
   if (payload && typeof payload === 'object' && typeof payload.code === 'string' && typeof payload.message === 'string') {
     const feedback = resolveApiErrorFeedback(payload, tokenManager.hasToken());
     return new PluginLoadError(feedback.message, {
       type: feedback.type,
       redirectToLogin: feedback.redirectToLogin,
+      requestAccessToken,
     });
   }
 
@@ -132,6 +142,7 @@ const buildLoadError = async (response: Response, fallbackMessage: string) => {
   return new PluginLoadError(feedback.message, {
     type: feedback.type,
     redirectToLogin: feedback.redirectToLogin,
+    requestAccessToken,
   });
 };
 
@@ -148,11 +159,10 @@ const parseJsonResponse = async (response: Response) => {
   }
 };
 
-const buildHeaders = () => {
+const buildHeaders = (accessToken: string) => {
   const headers: Record<string, string> = {
     'X-Request-Id': crypto.randomUUID(),
   };
-  const accessToken = tokenManager.getAccessToken();
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -165,6 +175,9 @@ const buildHeaders = () => {
 
 export const notifyPluginLoadError = (error: unknown) => {
   const feedback = resolvePluginLoadError(error);
+  if (feedback.redirectToLogin && !shouldHandleUnauthorized(feedback.requestAccessToken)) {
+    return feedback;
+  }
   if (feedback.redirectToLogin) {
     clearAuthSession();
     history.replace('/user/login');
@@ -179,6 +192,7 @@ export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
       type: error.type,
       message: error.message,
       redirectToLogin: error.redirectToLogin,
+      requestAccessToken: error.requestAccessToken,
     };
   }
 
@@ -193,6 +207,15 @@ export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
     type: 'error',
     message: '插件加载失败，请稍后重试',
   };
+};
+
+const shouldHandleUnauthorized = (requestAccessToken?: string) => {
+  if (!requestAccessToken) {
+    // Ignore late 401s from guest/no-token asset fetches after the user has logged back in.
+    return !tokenManager.hasToken();
+  }
+
+  return requestAccessToken === tokenManager.getAccessToken();
 };
 
 export const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>

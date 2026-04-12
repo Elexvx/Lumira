@@ -22,6 +22,7 @@ import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { ThemePreference } from '@/theme/settings';
 
 const THEME_OPTIONS: Array<{
@@ -67,6 +68,7 @@ export const TopActions = () => {
     initialState?.currentUser?.realName ||
     initialState?.currentUser?.username ||
     '用户菜单';
+  const userAvatarUrl = normalizeUploadUrl(initialState?.currentUser?.avatarUrl || '');
 
   const tenantOptions = useMemo(
     () =>
@@ -225,7 +227,16 @@ export const TopActions = () => {
             },
           }}
         >
-          <Button type="text" icon={<Avatar size="small" icon={<UserOutlined />} />}>
+          <Button
+            type="text"
+            icon={
+              <Avatar
+                size="small"
+                src={userAvatarUrl || undefined}
+                icon={<UserOutlined />}
+              />
+            }
+          >
             {!isMobile ? userName : null}
           </Button>
         </Dropdown>
