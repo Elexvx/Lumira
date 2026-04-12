@@ -555,6 +555,8 @@ const MenuManagementPage = () => {
       title: '组件',
       dataIndex: 'component',
       hideInSearch: true,
+      width: 260,
+      ellipsis: true,
     },
     {
       title: '权限标识',

@@ -384,8 +384,6 @@ const UserManagementPage = () => {
                 dataIndex: 'idCardNumber',
                 renderText: (value) => maskIdCardNumber(value) || '-',
               },
-              { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
-              { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
               { title: '邮箱', dataIndex: 'email', renderText: (value) => value || '-' },
               { title: '头像地址', dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
               { title: '出生年月', dataIndex: 'birthMonth', renderText: (value) => value || '-' },

@@ -57,9 +57,9 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     clearSessionActivity();
     clearAuthSession();
     history.replace('/user/login');
-    window.setTimeout(() => {
-      redirectingRef.current = false;
-    }, 0);
+    // redirectingRef is intentionally NOT reset here.
+    // It will be reset once a new valid token is detected (i.e. after a successful
+    // re-login), which happens in the useEffect that watches for token changes.
   };
 
   const scheduleTimeout = (lastActivityAt: number) => {
@@ -127,6 +127,12 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // A valid token exists – the user is (or has just become) authenticated.
+    // Reset the redirecting guard so that future idle/token-expiry logouts can
+    // fire correctly. This handles the same-tab re-login case where the storage
+    // event listener doesn't receive its own tab's writes.
+    redirectingRef.current = false;
+
     scheduleTokenExpiration();
 
     const storedActivityAt = getStoredSessionActivityAt() || Date.now();
@@ -161,12 +167,17 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      if (event.key === STORAGE_TOKEN_KEY && !tokenManager.hasToken()) {
-        forceLogout();
-        return;
-      }
       if (event.key === STORAGE_TOKEN_KEY) {
-        scheduleTokenExpiration();
+        if (tokenManager.hasToken()) {
+          // A new token was stored (e.g. after re-login or token refresh in another tab).
+          // Reset the redirecting guard so the session becomes active again.
+          redirectingRef.current = false;
+          scheduleTokenExpiration();
+          scheduleTimeout(lastActivityRef.current);
+        } else if (!redirectingRef.current) {
+          // Token was removed by another tab while we are not already logging out.
+          forceLogout();
+        }
       }
     };
     window.addEventListener('storage', handleStorage);

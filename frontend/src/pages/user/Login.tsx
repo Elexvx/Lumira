@@ -168,6 +168,9 @@ const Login = () => {
           availablePlugins,
           securitySettings: sessionResult.securitySettings,
           brandingSettings: normalizedBrandingSettings,
+          // Clear stale pre-login bootstrap data so re-logins use fresh captcha
+          // and security settings rather than cached data from the initial load.
+          loginBootstrap: undefined,
         }));
       });
 
