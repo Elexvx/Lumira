@@ -111,48 +111,37 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private void validateSession(TokenClaims claims, AuthSession session) {
         if (!session.getUserId().equals(claims.getUserId())) {
-            throw new BizException(
-                    ErrorCode.SESSION_EXPIRED,
-                    "token与会话不匹配",
-                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-            );
+            invalidateSession(session, "token与会话不匹配");
         }
         if (session.getSessionVersion() == null || !session.getSessionVersion().equals(claims.getSessionVersion())) {
-            throw new BizException(
-                    ErrorCode.SESSION_EXPIRED,
-                    "会话版本已变更，请重新登录",
-                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-            );
+            invalidateSession(session, "会话版本已变更，请重新登录");
         }
         if (!securitySettingsService.isAllowMultiDeviceLogin()) {
             String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId()).orElse(null);
             if (latestSessionId == null || !session.getSessionId().equals(latestSessionId)) {
-                throw new BizException(
-                        ErrorCode.SESSION_EXPIRED,
-                        "当前账号已在其他设备登录，请重新登录",
-                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-                );
+                invalidateSession(session, "当前账号已在其他设备登录，请重新登录");
             }
         }
         if (jwtTokenService.isExpired(session.getExpireTime())) {
-            throw new BizException(
-                    ErrorCode.SESSION_EXPIRED,
-                    "会话已过期，请重新登录",
-                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-            );
+            invalidateSession(session, "会话已过期，请重新登录");
         }
         Instant lastActivityAt = session.getLastActivityAt() != null ? session.getLastActivityAt() : session.getLoginTime();
         long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
         if (lastActivityAt != null && idleTimeoutSeconds > 0) {
             Duration idleDuration = Duration.between(lastActivityAt, Instant.now());
             if (idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) >= 0) {
-                throw new BizException(
-                        ErrorCode.SESSION_EXPIRED,
-                        "会话空闲超时，请重新登录",
-                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-                );
+                invalidateSession(session, "会话空闲超时，请重新登录");
             }
         }
+    }
+
+    private void invalidateSession(AuthSession session, String message) {
+        authSessionStore.remove(session, true);
+        throw new BizException(
+                ErrorCode.SESSION_EXPIRED,
+                message,
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+        );
     }
 
     private void setAuthentication(TokenClaims claims, AuthSession session) {

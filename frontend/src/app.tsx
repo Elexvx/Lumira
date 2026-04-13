@@ -358,7 +358,11 @@ export const rootContainer = (container: ReactNode) => {
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
   const settings = normalizeBrandingSettings(
     authenticated
-      ? await systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true })
+      ? await systemService.brandingSettings({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        })
       : await systemService.publicBrandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),
   );
   persistBrandingSettings(settings);
@@ -369,8 +373,16 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
 const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
   try {
     const [menuTree, availablePlugins] = await Promise.all([
-      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
-      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+      pluginService.currentMenus({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      }),
+      pluginService.currentAvailable({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      }),
     ]);
     return [menuTree, availablePlugins];
   } catch {
@@ -402,7 +414,11 @@ const buildAuthenticatedInitialState = async (
   const [[menuTree, availablePlugins], loadedBrandingSettings, watermarkSettings] = await Promise.all([
     loadPluginBootstrap(),
     loadBrandingSettings(true),
-    systemService.watermarkSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+    systemService.watermarkSettings({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+      silent: true,
+    }),
   ]);
 
   setBootstrapSnapshot({

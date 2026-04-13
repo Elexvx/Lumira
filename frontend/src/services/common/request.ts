@@ -1,12 +1,13 @@
 import { message } from 'antd';
-import { history, request as umiRequest } from '@umijs/max';
+import { request as umiRequest } from '@umijs/max';
 import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TENANT_HEADER, TRACE_ID_HEADER } from '@/constants/http';
 import { performLogout } from '@/auth/session';
-import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import { ErrorCode } from '@/enums/errorCode';
 import { resolveApiErrorFeedback, resolveHttpStatusFeedback } from '@/services/common/errorFeedback';
 import type { ApiResponse } from '@/types/api';
+import { buildUnauthorizedRuntimeState, captureAuthRequestSnapshot } from '@/auth/unauthorized';
+import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 
 export class ApiRequestError extends Error {
   code: string;
@@ -35,13 +36,8 @@ export interface RequestOptions {
   silent?: boolean;
 }
 
-interface AuthRequestSnapshot {
-  accessToken: string;
-  hasAuthToken: boolean;
-}
-
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
-  const authSnapshot = captureAuthRequestSnapshot(options);
+  const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
   try {
     const response = await umiRequest<ApiResponse<T>>(`${API_PREFIX}${url}`, {
       timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
@@ -107,27 +103,27 @@ const buildAuthorization = (accessToken: string) => {
 };
 
 const handleApiError = (error: ApiRequestError, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
-  const bypassUnauthorizedRedirect =
-    options.autoRedirectOnUnauthorized === false && options.allowUnauthorizedWithoutRedirect === true;
   const feedback = resolveApiErrorFeedback(error, authSnapshot.hasAuthToken);
-  const shouldHandleUnauthorized = shouldHandleUnauthorizedForSnapshot(authSnapshot);
 
-  if (feedback.redirectToLogin && !shouldHandleUnauthorized) {
-    return;
-  }
-
-  if (feedback.redirectToLogin && !bypassUnauthorizedRedirect) {
-    cleanUnauthorizedState();
+  if (!feedback.redirectToLogin) {
     if (!options.silent) {
       message[feedback.type](feedback.message);
     }
-    void performLogout();
+    return;
+  }
+
+  if (options.allowUnauthorizedWithoutRedirect === true) {
+    return;
+  }
+
+  if (shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())) {
     return;
   }
 
   if (!options.silent) {
     message[feedback.type](feedback.message);
   }
+  void performLogout({ reason: 'forced_expired' });
 };
 
 const getResponseRequestId = (
@@ -288,31 +284,4 @@ const buildUnexpectedError = (error: unknown, hasAuthToken = true) => {
   }
 
   return buildFallbackError(httpStatus, requestId, hasAuthToken);
-};
-
-const cleanUnauthorizedState = () => {
-  // Rely on performLogout to clear auth session cleanly.
-};
-
-const captureAuthRequestSnapshot = (options: RequestOptions): AuthRequestSnapshot => {
-  if (options.skipAuth) {
-    return {
-      accessToken: '',
-      hasAuthToken: false,
-    };
-  }
-
-  return {
-    accessToken: tokenManager.getAccessToken(),
-    hasAuthToken: tokenManager.hasToken(),
-  };
-};
-
-const shouldHandleUnauthorizedForSnapshot = (authSnapshot: AuthRequestSnapshot) => {
-  if (!authSnapshot.accessToken) {
-    // Ignore late 401s from guest/no-token requests once a new session is already established.
-    return !tokenManager.hasToken();
-  }
-
-  return authSnapshot.accessToken === tokenManager.getAccessToken();
 };

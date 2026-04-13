@@ -1,4 +1,3 @@
-import { history } from '@umijs/max';
 import { authService } from '@/services/auth';
 import { systemService } from '@/services/system';
 import { tokenManager } from '@/auth/token';
@@ -28,6 +27,8 @@ export interface SessionBootstrapResult {
   securitySettings: SecuritySettings;
 }
 
+export type LogoutReason = 'user_initiated' | 'forced_expired';
+
 export const isLoggedIn = () => tokenManager.hasToken();
 
 export const getStoredCurrentUser = (): CurrentUser | null => storage.get<CurrentUser>(USER_PROFILE_KEY);
@@ -42,8 +43,10 @@ export const clearAuthSession = () => {
   tenantContext.clearTenantContext();
 };
 
-export const performLogout = async () => {
-  if (isLoggedIn()) {
+export const performLogout = async (options: { reason?: LogoutReason } = {}) => {
+  const reason = options.reason || 'user_initiated';
+
+  if (reason === 'user_initiated' && isLoggedIn()) {
     const tokenState = tokenManager.getTokenState();
     const accessTokenExpired = Boolean(tokenState && tokenState.expiresAt <= Date.now());
 
@@ -51,7 +54,7 @@ export const performLogout = async () => {
       const refreshed = await tryRefreshToken();
       if (!refreshed) {
         clearAuthSession();
-        window.location.href = '/user/login';
+        window.location.replace('/user/login');
         return;
       }
     }
@@ -66,7 +69,7 @@ export const performLogout = async () => {
     }
   }
   clearAuthSession();
-  window.location.href = '/user/login';
+  window.location.replace('/user/login');
 };
 
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {

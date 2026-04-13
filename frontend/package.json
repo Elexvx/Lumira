@@ -7,7 +7,8 @@
     "dev": "max dev",
     "build": "max build",
     "start": "max preview",
-    "typecheck": "max setup && tsc --noEmit"
+    "typecheck": "max setup && tsc --noEmit",
+    "test:auth-login-flow": "tsx scripts/auth-login-flow-smoke.ts"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.7",

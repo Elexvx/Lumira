@@ -1,9 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { history } from '@umijs/max';
 import { message } from 'antd';
 import { performLogout } from '@/auth/session';
-import { tokenManager } from '@/auth/token';
+import { buildUnauthorizedRuntimeState, captureAuthRequestSnapshot } from '@/auth/unauthorized';
+import {
+  shouldSuppressUnauthorizedSideEffects,
+  type AuthRequestSnapshot,
+} from '@/auth/unauthorizedDecision';
 import { tenantContext } from '@/tenant/context';
 import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
 import { validatePluginManifest } from '@/plugins/manifest';
@@ -23,22 +26,30 @@ export interface PluginLoadFeedback {
   message: string;
   redirectToLogin?: boolean;
   requestAccessToken?: string;
+  authSnapshot?: AuthRequestSnapshot;
 }
 
 export class PluginLoadError extends Error {
   type: FeedbackType;
   redirectToLogin?: boolean;
   requestAccessToken?: string;
+  authSnapshot?: AuthRequestSnapshot;
 
   constructor(
     message: string,
-    options: { type: FeedbackType; redirectToLogin?: boolean; requestAccessToken?: string } = { type: 'error' },
+    options: {
+      type: FeedbackType;
+      redirectToLogin?: boolean;
+      requestAccessToken?: string;
+      authSnapshot?: AuthRequestSnapshot;
+    } = { type: 'error' },
   ) {
     super(message);
     this.name = 'PluginLoadError';
     this.type = options.type;
     this.redirectToLogin = options.redirectToLogin;
     this.requestAccessToken = options.requestAccessToken;
+    this.authSnapshot = options.authSnapshot;
   }
 }
 
@@ -70,35 +81,38 @@ export const loadPlugin = async (pluginCode: string): Promise<PluginLoadResult> 
 };
 
 const fetchJson = async <T>(url: string): Promise<T> => {
-  const requestAccessToken = tokenManager.getAccessToken();
+  const authSnapshot = captureAuthRequestSnapshot();
+  const requestAccessToken = authSnapshot.accessToken;
   const response = await fetch(url, {
     headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildLoadError(response, '加载插件资源失败，请稍后重试', requestAccessToken);
+    throw await buildLoadError(response, '加载插件资源失败，请稍后重试', authSnapshot);
   }
   return (await response.json()) as T;
 };
 
 const injectScript = async (pluginCode: string, relativePath: string) => {
-  const requestAccessToken = tokenManager.getAccessToken();
+  const authSnapshot = captureAuthRequestSnapshot();
+  const requestAccessToken = authSnapshot.accessToken;
   const response = await fetch(ASSET_URL(pluginCode, relativePath), {
     headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildLoadError(response, `插件脚本加载失败: ${relativePath}`, requestAccessToken);
+    throw await buildLoadError(response, `插件脚本加载失败: ${relativePath}`, authSnapshot);
   }
   const source = await response.text();
   await executeSource(`${pluginCode}:${relativePath}`, source);
 };
 
 const injectStyle = async (pluginCode: string, relativePath: string) => {
-  const requestAccessToken = tokenManager.getAccessToken();
+  const authSnapshot = captureAuthRequestSnapshot();
+  const requestAccessToken = authSnapshot.accessToken;
   const response = await fetch(ASSET_URL(pluginCode, relativePath), {
     headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildLoadError(response, `插件样式加载失败: ${relativePath}`, requestAccessToken);
+    throw await buildLoadError(response, `插件样式加载失败: ${relativePath}`, authSnapshot);
   }
   const content = await response.text();
   const styleElement = document.createElement('style');
@@ -127,22 +141,28 @@ const executeSource = async (key: string, source: string) => {
   }
 };
 
-const buildLoadError = async (response: Response, fallbackMessage: string, requestAccessToken: string) => {
+const buildLoadError = async (
+  response: Response,
+  fallbackMessage: string,
+  authSnapshot: AuthRequestSnapshot,
+) => {
   const payload = await parseJsonResponse(response);
   if (payload && typeof payload === 'object' && typeof payload.code === 'string' && typeof payload.message === 'string') {
-    const feedback = resolveApiErrorFeedback(payload, tokenManager.hasToken());
+    const feedback = resolveApiErrorFeedback(payload, authSnapshot.hasAuthToken);
     return new PluginLoadError(feedback.message, {
       type: feedback.type,
       redirectToLogin: feedback.redirectToLogin,
-      requestAccessToken,
+      requestAccessToken: authSnapshot.accessToken,
+      authSnapshot,
     });
   }
 
-  const feedback = resolveHttpStatusFeedback(response.status, tokenManager.hasToken(), fallbackMessage);
+  const feedback = resolveHttpStatusFeedback(response.status, authSnapshot.hasAuthToken, fallbackMessage);
   return new PluginLoadError(feedback.message, {
     type: feedback.type,
     redirectToLogin: feedback.redirectToLogin,
-    requestAccessToken,
+    requestAccessToken: authSnapshot.accessToken,
+    authSnapshot,
   });
 };
 
@@ -175,12 +195,13 @@ const buildHeaders = (accessToken: string) => {
 
 export const notifyPluginLoadError = (error: unknown) => {
   const feedback = resolvePluginLoadError(error);
-  if (feedback.redirectToLogin && !shouldHandleUnauthorized(feedback.requestAccessToken)) {
-    return feedback;
-  }
   if (feedback.redirectToLogin) {
+    const runtime = buildUnauthorizedRuntimeState();
+    if (feedback.authSnapshot && shouldSuppressUnauthorizedSideEffects(feedback.authSnapshot, runtime)) {
+      return feedback;
+    }
     message[feedback.type](feedback.message);
-    void performLogout();
+    void performLogout({ reason: 'forced_expired' });
     return feedback;
   }
   message[feedback.type](feedback.message);
@@ -194,6 +215,7 @@ export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
       message: error.message,
       redirectToLogin: error.redirectToLogin,
       requestAccessToken: error.requestAccessToken,
+      authSnapshot: error.authSnapshot,
     };
   }
 
@@ -208,15 +230,6 @@ export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
     type: 'error',
     message: '插件加载失败，请稍后重试',
   };
-};
-
-const shouldHandleUnauthorized = (requestAccessToken?: string) => {
-  if (!requestAccessToken) {
-    // Ignore late 401s from guest/no-token asset fetches after the user has logged back in.
-    return !tokenManager.hasToken();
-  }
-
-  return requestAccessToken === tokenManager.getAccessToken();
 };
 
 export const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>
