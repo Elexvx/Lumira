@@ -1,6 +1,7 @@
 import { API_PREFIX, AUTHORIZATION_HEADER, TENANT_HEADER } from '@/constants/http';
 import { performLogout } from '@/auth/session';
-import { tokenManager } from '@/auth/token';
+import { buildUnauthorizedRuntimeState, captureAuthRequestSnapshot } from '@/auth/unauthorized';
+import { shouldSuppressUnauthorizedSideEffects } from '@/auth/unauthorizedDecision';
 import { tenantContext } from '@/tenant/context';
 import type { OnlineSessionEventRecord } from '@/types/api';
 
@@ -41,7 +42,8 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
       return;
     }
 
-    const accessToken = tokenManager.getAccessToken();
+    const requestAuthSnapshot = captureAuthRequestSnapshot();
+    const accessToken = requestAuthSnapshot.accessToken;
     const tenantId = tenantContext.getTenantId();
     if (!accessToken || !tenantId) {
       scheduleReconnect();
@@ -62,12 +64,12 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
       });
 
       if (response.status === 401 || response.status === 403) {
-        if (!shouldLogoutCurrentSession(accessToken)) {
+        if (shouldSuppressUnauthorizedSideEffects(requestAuthSnapshot, buildUnauthorizedRuntimeState())) {
           stop();
           return;
         }
         options.onUnauthorized?.();
-        await performLogout().catch(() => {
+        await performLogout({ reason: 'forced_expired' }).catch(() => {
           // Ignore logout failures when the server has already revoked the session.
         });
         stop();
@@ -91,14 +93,6 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
 
   void open();
   return stop;
-};
-
-const shouldLogoutCurrentSession = (requestAccessToken: string) => {
-  if (!requestAccessToken) {
-    return true;
-  }
-
-  return requestAccessToken === tokenManager.getAccessToken();
 };
 
 const readEventStream = async (

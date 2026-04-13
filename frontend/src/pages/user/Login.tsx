@@ -10,6 +10,7 @@ import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { ApiRequestError } from '@/services/common/request';
 import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
+import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import { systemService } from '@/services/system';
@@ -141,6 +142,7 @@ const Login = () => {
 
     setSubmitting(true);
     setLoginError(undefined);
+    beginLoginFlow();
     try {
       const loginResponse = await authService.login({
         username: values.username,
@@ -151,9 +153,21 @@ const Login = () => {
 
       const sessionResult = await initializeAfterLogin(loginResponse);
       const [menuTree, availablePlugins, latestBrandingSettings] = await Promise.all([
-        pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
-        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
-        systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+        pluginService.currentMenus({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+        pluginService.currentAvailable({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+        systemService.brandingSettings({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
       ]);
       const normalizedBrandingSettings = normalizeBrandingSettings(latestBrandingSettings);
       persistBrandingSettings(normalizedBrandingSettings);
@@ -214,6 +228,7 @@ const Login = () => {
       }
       return false;
     } finally {
+      endLoginFlow();
       setSubmitting(false);
     }
   };

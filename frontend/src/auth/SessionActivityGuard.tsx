@@ -55,7 +55,7 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
       message.info('登录状态已过期，请重新登录');
     }
     clearSessionActivity();
-    void performLogout();
+    void performLogout({ reason: 'forced_expired' });
     // redirectingRef is intentionally NOT reset here.
     // It will be reset once a new valid token is detected (i.e. after a successful
     // re-login), which happens in the useEffect that watches for token changes.
