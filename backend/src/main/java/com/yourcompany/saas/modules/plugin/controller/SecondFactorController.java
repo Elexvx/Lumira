@@ -6,6 +6,7 @@ import com.yourcompany.saas.common.exception.BizException;
 import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import com.yourcompany.saas.infrastructure.security.CurrentUser;
 import com.yourcompany.saas.infrastructure.security.SecurityContextFacade;
+import com.yourcompany.saas.modules.iam.service.PermissionGuard;
 import com.yourcompany.saas.modules.plugin.app.PluginManagementAppService;
 import com.yourcompany.saas.modules.plugin.registry.PluginRuntimeDescriptor;
 import com.yourcompany.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginSecondFactorChallenge;
@@ -31,15 +32,18 @@ public class SecondFactorController {
 
     private final PluginManagementAppService pluginManagementAppService;
     private final SecurityContextFacade securityContextFacade;
+    private final PermissionGuard permissionGuard;
     private final UserDomainService userDomainService;
 
     public SecondFactorController(
             PluginManagementAppService pluginManagementAppService,
             SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
             UserDomainService userDomainService
     ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
+        this.permissionGuard = permissionGuard;
         this.userDomainService = userDomainService;
     }
 
@@ -47,6 +51,7 @@ public class SecondFactorController {
     public ApiResponse<List<PluginVO.SecondFactorStatusVO>> providers() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
+        require("plugin:2fa:view");
         return ApiResponse.success(listStatuses(tenantId, currentUser), TraceContext.getRequestId());
     }
 
@@ -54,6 +59,7 @@ public class SecondFactorController {
     public ApiResponse<PluginVO.SecondFactorStatusVO> provider(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
+        require("plugin:2fa:view");
         return ApiResponse.success(resolveStatus(tenantId, currentUser.getUserId(), pluginCode), TraceContext.getRequestId());
     }
 
@@ -61,6 +67,7 @@ public class SecondFactorController {
     public ApiResponse<PluginSecondFactorChallenge> bind(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
+        require("plugin:2fa:manage");
         PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         PluginSecondFactorProvider provider = requireProvider(descriptor);
         SysUserEntity user = requireUser(currentUser);
@@ -82,6 +89,7 @@ public class SecondFactorController {
     public ApiResponse<Boolean> unbind(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
+        require("plugin:2fa:manage");
         PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         requireProvider(descriptor).unbind(descriptor.getRuntimeContext(), tenantId, currentUser.getUserId());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
@@ -91,6 +99,7 @@ public class SecondFactorController {
     public ApiResponse<PluginSecondFactorChallenge> challenge(@PathVariable("pluginCode") String pluginCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
+        require("plugin:2fa:manage");
         PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         return ApiResponse.success(
                 requireProvider(descriptor).prepareChallenge(descriptor.getRuntimeContext(), tenantId, currentUser.getUserId()),
@@ -105,6 +114,7 @@ public class SecondFactorController {
     ) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long tenantId = requireTenantId(currentUser);
+        require("plugin:2fa:manage");
         PluginRuntimeDescriptor descriptor = requireTenantRuntime(tenantId, pluginCode);
         return ApiResponse.success(
                 requireProvider(descriptor).verify(descriptor.getRuntimeContext(), request.getChallengeId(), request.getVerificationCode()),
@@ -199,6 +209,10 @@ public class SecondFactorController {
             throw new BizException(ErrorCode.TENANT_ERROR, "当前未选择租户");
         }
         return currentUser.getCurrentTenantId();
+    }
+
+    private void require(String permissionKey) {
+        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
     }
 
     private SysUserEntity requireUser(CurrentUser currentUser) {

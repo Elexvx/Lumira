@@ -182,8 +182,11 @@ const Login = () => {
       if (error instanceof ApiRequestError) {
         const feedback = resolveApiErrorFeedback(error, false);
         setLoginError({
-          type: feedback.type,
-          message: feedback.message,
+          // redirectToLogin messages (e.g. "请先登录后再继续操作") are meant for
+          // the global 401 auto-redirect flow and make no sense on the login page
+          // itself. Show a generic failure message instead.
+          type: feedback.redirectToLogin ? 'error' : feedback.type,
+          message: feedback.redirectToLogin ? '登录失败，请稍后重试' : feedback.message,
         });
         if (securitySettings.captchaEnabled) {
           void refreshCaptcha();

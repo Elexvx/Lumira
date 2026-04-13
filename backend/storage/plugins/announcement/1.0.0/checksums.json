@@ -1,0 +1,7 @@
+{
+  "plugin.json": "103f15197febec11dd767bbad682bf1d9cadf573102f5abfdf080790d3ae0cc5",
+  "backend/plugin.jar": "abc57add40dfa2faa18a3165489085bb7f84441516faefea3532faae761840e8",
+  "frontend/manifest.json": "0c1c198b5bc3a6499935681bac926df50fbd01a65806e307196aa2880a74593e",
+  "frontend/assets/announcement-plugin.js": "6b888efc44f7a30e7934197a87655b13f6ad39ccba2d6758a1e4551b00a797fb",
+  "migrations/V1__announcement_init.sql": "0fc450fa8e194e030bb0a4d01c398ecb3d1d03a5168f3f6dfbabf9e78e98f190"
+}

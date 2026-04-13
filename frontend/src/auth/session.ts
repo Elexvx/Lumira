@@ -82,7 +82,14 @@ export const initializeAfterLogin = async (loginResponse: LoginResponse): Promis
   persistSessionActivity(Date.now());
 
   try {
-    const currentUser = await authService.currentUser();
+    // Use autoRedirectOnUnauthorized: false to prevent the global 401 handler
+    // from clearing the just-written token and redirecting away during login.
+    // Any failure here is caught below and re-thrown so the login page can
+    // display an appropriate error message.
+    const currentUser = await authService.currentUser({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    });
     persistCurrentUser(currentUser);
     await syncTenantFromServer();
     persistSessionActivity(Date.now());

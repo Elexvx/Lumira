@@ -1,0 +1,38 @@
+{
+  "pluginCode": "announcement",
+  "pluginName": "公告管理插件",
+  "version": "1.0.0",
+  "pluginApiVersion": "1.0.0",
+  "kind": "BUSINESS",
+  "description": "为租户提供公告管理页面与 API",
+  "author": "legendary-invention",
+  "minPlatformVersion": "0.1.0",
+  "frontendEntry": "frontend/assets/announcement-plugin.js",
+  "backendEntry": "backend/plugin.jar",
+  "dependencyPlugins": [],
+  "requiredPermissions": [
+    {
+      "permissionKey": "plugin:announcement:view",
+      "permissionName": "查看公告",
+      "permissionGroup": "announcement"
+    },
+    {
+      "permissionKey": "plugin:announcement:write",
+      "permissionName": "维护公告",
+      "permissionGroup": "announcement"
+    }
+  ],
+  "menuDeclarations": [
+    {
+      "menuCode": "plugin.announcement",
+      "menuName": "公告管理",
+      "routePath": "/plugins/announcement",
+      "icon": "NotificationOutlined",
+      "permissionKey": "plugin:announcement:view",
+      "sortNo": 200
+    }
+  ],
+  "configSchema": "{}",
+  "migrationStrategy": "versioned-sql",
+  "checksumAlgorithm": "SHA-256"
+}

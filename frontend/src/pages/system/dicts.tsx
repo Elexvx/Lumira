@@ -5,6 +5,13 @@ import { dictService } from '@/services/dict';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
 
+const statusLabelMap: Record<string, string> = {
+  ENABLED: '启用',
+  DISABLED: '停用',
+};
+
+const renderStatusLabel = (status?: string | null) => statusLabelMap[status || ''] || status || '-';
+
 const DictManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [typeForm] = Form.useForm();
@@ -130,7 +137,7 @@ const DictManagementPage = () => {
         ENABLED: { text: '启用', status: 'Success' },
         DISABLED: { text: '停用', status: 'Default' },
       },
-      render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
+      render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
     },
     {
       title: '系统内置',
@@ -275,7 +282,7 @@ const DictManagementPage = () => {
               columns={[
                 { title: '字典编码', dataIndex: 'dictCode' },
                 { title: '字典名称', dataIndex: 'dictName' },
-                { title: '状态', dataIndex: 'status' },
+                { title: '状态', dataIndex: 'status', renderText: (value) => renderStatusLabel(String(value)) },
                 {
                   title: '系统内置',
                   dataIndex: 'isSystem',
@@ -295,7 +302,7 @@ const DictManagementPage = () => {
                   title: '状态',
                   dataIndex: 'status',
                   hideInSearch: true,
-                  render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
+                  render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
                 },
                 {
                   title: '操作',
