@@ -8,7 +8,10 @@
     "build": "max build",
     "start": "max preview",
     "typecheck": "max setup && tsc --noEmit",
-    "test:auth-login-flow": "tsx scripts/auth-login-flow-smoke.ts"
+    "test:captcha-load": "tsx scripts/captcha-load-smoke.ts",
+    "test:captcha-refresh": "tsx scripts/captcha-refresh-smoke.ts",
+    "test:auth-login-flow": "tsx scripts/auth-login-flow-smoke.ts",
+    "test:permission-tree": "tsx scripts/permission-tree-normalize-smoke.ts"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.7",

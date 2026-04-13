@@ -8,6 +8,7 @@ import com.yourcompany.saas.infrastructure.security.model.TokenType;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
 import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
 import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
+import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
@@ -16,6 +17,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -57,6 +59,34 @@ class JwtAuthFilterTest {
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, fixture.response.getStatus());
     }
 
+    @Test
+    void shouldThrottleLastActivityWritesForActiveSessions() throws Exception {
+        Fixture fixture = buildFixture();
+        AuthSession session = buildSession("session-3", 1001L, 2001L, Instant.now().minusSeconds(10), Instant.now().plusSeconds(3600));
+        TokenClaims claims = buildClaims(session, "token-3");
+        fixture.jwtTokenService.setTokenClaims(claims);
+        fixture.authSessionStore.put(session);
+
+        executeFilter(fixture, "access-token");
+
+        assertEquals(0, fixture.authSessionStore.saveCount);
+        assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+    }
+
+    @Test
+    void shouldPersistLastActivityWhenThrottleWindowExpires() throws Exception {
+        Fixture fixture = buildFixture();
+        AuthSession session = buildSession("session-4", 1001L, 2001L, Instant.now().minusSeconds(120), Instant.now().plusSeconds(3600));
+        TokenClaims claims = buildClaims(session, "token-4");
+        fixture.jwtTokenService.setTokenClaims(claims);
+        fixture.authSessionStore.put(session);
+
+        executeFilter(fixture, "access-token");
+
+        assertEquals(1, fixture.authSessionStore.saveCount);
+        assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+    }
+
     private void executeFilter(Fixture fixture, String accessToken) throws Exception {
         fixture.request.addHeader(HeaderConstants.AUTHORIZATION, "Bearer " + accessToken);
         fixture.filter.doFilter(fixture.request, fixture.response, new MockFilterChain());
@@ -70,7 +100,7 @@ class JwtAuthFilterTest {
         JwtAuthFilter filter = new JwtAuthFilter(
                 jwtTokenService,
                 authSessionStore,
-                null,
+                new StubPermissionSnapshotService(),
                 securitySettingsService,
                 new ObjectMapper() {
                     @Override
@@ -143,6 +173,7 @@ class JwtAuthFilterTest {
         private final java.util.Map<String, AuthSession> sessions = new java.util.HashMap<>();
         private AuthSession removedSession;
         private boolean removedPublishChange;
+        private int saveCount;
 
         private StubAuthSessionStore() {
             super(null, null, null);
@@ -166,7 +197,19 @@ class JwtAuthFilterTest {
 
         @Override
         public void save(AuthSession session) {
+            saveCount += 1;
             sessions.put(session.getSessionId(), session);
+        }
+    }
+
+    private static final class StubPermissionSnapshotService extends PermissionSnapshotService {
+        private StubPermissionSnapshotService() {
+            super(null, null, null);
+        }
+
+        @Override
+        public PermissionSnapshot loadSnapshot(Long tenantId, Long userId) {
+            return new PermissionSnapshot("test", Set.of());
         }
     }
 

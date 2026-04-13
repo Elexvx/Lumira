@@ -31,7 +31,19 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/404', name: '页面不存在', hideInMenu: true },
 ];
 
-export const backendRoutes = [
+export interface BackendRouteRecord {
+  path: string;
+  name?: string;
+  icon?: string;
+  access?: string;
+  hideInMenu?: boolean;
+  component?: string;
+  redirect?: string;
+  layout?: boolean;
+  routes?: BackendRouteRecord[];
+}
+
+export const backendRoutes: BackendRouteRecord[] = [
   { path: '/', redirect: '/dashboard/home' },
   { path: '/dashboard/home', component: '@/pages/dashboard/Home', name: '控制台', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
   { path: '/tenant/overview', component: '@/pages/tenant/Overview', name: '租户中心', icon: 'ApartmentOutlined', access: 'canVisitTenant' },
@@ -93,3 +105,28 @@ export const backendRoutes = [
   { path: '/404', component: '@/pages/exception/NotFound', layout: false, name: '页面不存在', hideInMenu: true },
   { path: '*', redirect: '/404' },
 ];
+
+const NON_AUTHORIZED_ROUTE_PATHS = new Set(['/user/login', '/403', '/404', '/blank/workflow']);
+
+const collectRealPageRouteMeta = (routes: BackendRouteRecord[], result = new Map<string, BackendRouteMeta>()) => {
+  routes.forEach((route) => {
+    if (route.component && route.path && route.path !== '*' && !route.redirect && !NON_AUTHORIZED_ROUTE_PATHS.has(route.path)) {
+      result.set(route.path, {
+        path: route.path,
+        name: route.name || route.path,
+        icon: route.icon,
+        access: route.access,
+        hideInMenu: route.hideInMenu,
+      });
+    }
+
+    if (route.routes?.length) {
+      collectRealPageRouteMeta(route.routes, result);
+    }
+  });
+  return result;
+};
+
+export const realPageRouteMetaMap = collectRealPageRouteMeta(backendRoutes);
+export const realPageRouteMetaList = Array.from(realPageRouteMetaMap.values());
+export const realPageRoutePaths = new Set(realPageRouteMetaMap.keys());

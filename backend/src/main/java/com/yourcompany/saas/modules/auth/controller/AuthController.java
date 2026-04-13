@@ -2,6 +2,7 @@ package com.yourcompany.saas.modules.auth.controller;
 
 import com.yourcompany.saas.common.api.ApiResponse;
 import com.yourcompany.saas.infrastructure.observability.TraceContext;
+import com.yourcompany.saas.infrastructure.security.ClientIpResolver;
 import com.yourcompany.saas.infrastructure.security.SecurityContextFacade;
 import com.yourcompany.saas.modules.auth.app.AuthAppService;
 import com.yourcompany.saas.modules.auth.dto.LoginRequest;
@@ -12,7 +13,6 @@ import com.yourcompany.saas.modules.auth.vo.LoginResponseVO;
 import com.yourcompany.saas.modules.auth.vo.RefreshTokenResponseVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,15 +25,17 @@ public class AuthController {
 
     private final AuthAppService authAppService;
     private final SecurityContextFacade securityContextFacade;
+    private final ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthAppService authAppService, SecurityContextFacade securityContextFacade) {
+    public AuthController(AuthAppService authAppService, SecurityContextFacade securityContextFacade, ClientIpResolver clientIpResolver) {
         this.authAppService = authAppService;
         this.securityContextFacade = securityContextFacade;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/login")
     public ApiResponse<LoginResponseVO> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
-        LoginResponseVO response = authAppService.login(request, resolveClientIp(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
+        LoginResponseVO response = authAppService.login(request, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
         return ApiResponse.success(response, TraceContext.getRequestId());
     }
 
@@ -44,7 +46,7 @@ public class AuthController {
     ) {
         LoginResponseVO response = authAppService.completeSecondFactorLogin(
                 request,
-                resolveClientIp(httpServletRequest),
+                clientIpResolver.resolve(httpServletRequest),
                 httpServletRequest.getHeader("User-Agent")
         );
         return ApiResponse.success(response, TraceContext.getRequestId());
@@ -52,7 +54,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ApiResponse<Boolean> logout(HttpServletRequest httpServletRequest) {
-        authAppService.logout(securityContextFacade.getCurrentUser(), resolveClientIp(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
+        authAppService.logout(securityContextFacade.getCurrentUser(), clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -66,14 +68,5 @@ public class AuthController {
     public ApiResponse<CurrentUserVO> currentUser() {
         CurrentUserVO response = authAppService.currentUser(securityContextFacade.getCurrentUser());
         return ApiResponse.success(response, TraceContext.getRequestId());
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(xff)) {
-            int commaIndex = xff.indexOf(",");
-            return commaIndex > 0 ? xff.substring(0, commaIndex).trim() : xff.trim();
-        }
-        return request.getRemoteAddr();
     }
 }

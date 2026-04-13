@@ -39,23 +39,11 @@ export interface RequestOptions {
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
   try {
-    const response = await umiRequest<ApiResponse<T>>(`${API_PREFIX}${url}`, {
-      timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
-      method: options.method,
-      params: options.params,
-      data: options.data,
-      getResponse: true,
-      validateStatus: () => true,
-      errorHandler: undefined,
-      headers: {
-        ...(options.headers || {}),
-        [AUTHORIZATION_HEADER]: buildAuthorization(authSnapshot.accessToken),
-        [TENANT_HEADER]: tenantContext.getTenantId(),
-        [REQUEST_ID_HEADER]: crypto.randomUUID(),
-        [TRACE_ID_HEADER]: '',
-      },
-    });
-
+    const response = (await umiRequest(`${API_PREFIX}${url}`, buildRequestConfig(options, authSnapshot))) as {
+      status: number;
+      headers?: { get?: (name: string) => string | null } | Record<string, unknown>;
+      data: unknown;
+    };
     const httpStatus = response.status;
     const requestId = getResponseRequestId(response.headers, response.data);
     const responseData = withRequestId(response.data, requestId);
@@ -90,12 +78,28 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
 };
 
 export const requestFile = async (url: string, options: RequestOptions = {}) => {
-  return umiRequest(`${API_PREFIX}${url}`, {
-    method: options.method,
-    params: options.params,
-    data: options.data,
-    responseType: 'blob',
-  });
+  const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+  try {
+    const response = await fetch(buildRequestUrl(url, options.params), {
+      method: options.method || 'GET',
+      headers: buildRequestHeaders(options, authSnapshot),
+      body: buildRequestBody(options.data, options.method),
+    });
+
+    if (!response.ok) {
+      throw await buildFileRequestError(response, options, authSnapshot);
+    }
+
+    return await response.blob();
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      throw error;
+    }
+
+    const fallbackError = buildUnexpectedError(error, authSnapshot.hasAuthToken);
+    handleApiError(fallbackError, options, authSnapshot);
+    throw fallbackError;
+  }
 };
 
 const buildAuthorization = (accessToken: string) => {
@@ -112,11 +116,11 @@ const handleApiError = (error: ApiRequestError, options: RequestOptions, authSna
     return;
   }
 
-  if (options.allowUnauthorizedWithoutRedirect === true) {
-    return;
-  }
-
-  if (shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())) {
+  if (
+    options.allowUnauthorizedWithoutRedirect === true ||
+    options.autoRedirectOnUnauthorized === false ||
+    shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())
+  ) {
     return;
   }
 
@@ -124,6 +128,83 @@ const handleApiError = (error: ApiRequestError, options: RequestOptions, authSna
     message[feedback.type](feedback.message);
   }
   void performLogout({ reason: 'forced_expired' });
+};
+
+const buildRequestConfig = (options: RequestOptions, authSnapshot: AuthRequestSnapshot) => ({
+  timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
+  method: options.method,
+  params: options.params,
+  data: options.data,
+  getResponse: true,
+  validateStatus: () => true,
+  errorHandler: undefined,
+  headers: buildRequestHeaders(options, authSnapshot),
+});
+
+const buildRequestHeaders = (options: RequestOptions, authSnapshot: AuthRequestSnapshot) => ({
+  ...(options.headers || {}),
+  [AUTHORIZATION_HEADER]: buildAuthorization(authSnapshot.accessToken),
+  [TENANT_HEADER]: tenantContext.getTenantId(),
+  [REQUEST_ID_HEADER]: crypto.randomUUID(),
+  [TRACE_ID_HEADER]: '',
+});
+
+const buildRequestUrl = (url: string, params?: Record<string, unknown>) => {
+  const fullUrl = new URL(`${API_PREFIX}${url}`, window.location.origin);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach((item) => fullUrl.searchParams.append(key, String(item)));
+        return;
+      }
+      fullUrl.searchParams.set(key, String(value));
+    });
+  }
+  return fullUrl.toString();
+};
+
+const buildRequestBody = (data: unknown, method?: RequestOptions['method']) => {
+  if (!method || method === 'GET') {
+    return undefined;
+  }
+  if (data === undefined) {
+    return undefined;
+  }
+  if (data instanceof FormData || data instanceof Blob || data instanceof ArrayBuffer) {
+    return data;
+  }
+  if (typeof data === 'string') {
+    return data;
+  }
+  return JSON.stringify(data);
+};
+
+const buildFileRequestError = async (response: Response, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
+  const requestId = resolveHeaderValue(response.headers, REQUEST_ID_HEADER);
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const payload = await response.clone().json();
+      if (isApiResponse(payload)) {
+        const apiError = new ApiRequestError(payload.code, payload.message, {
+          userMessage: payload.userMessage || payload.message,
+          requestId: payload.requestId || requestId,
+          httpStatus: response.status,
+        });
+        handleApiError(apiError, options, authSnapshot);
+        return apiError;
+      }
+    } catch {
+      // Fall through to status-based error handling.
+    }
+  }
+
+  const fallbackError = buildFallbackError(response.status, requestId, authSnapshot.hasAuthToken);
+  handleApiError(fallbackError, options, authSnapshot);
+  return fallbackError;
 };
 
 const getResponseRequestId = (

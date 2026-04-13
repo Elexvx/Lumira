@@ -11,7 +11,9 @@ import {
   normalizeSecuritySettings,
   persistSecuritySettings,
 } from '@/auth/securitySettings';
+import { beginBootstrapFlow, endBootstrapFlow } from '@/auth/loginFlowState';
 import type { CurrentUser, LoginResponse, SecuritySettings } from '@/types/api';
+import { history } from '@umijs/max';
 
 const USER_PROFILE_KEY = 'current_user_profile';
 const SESSION_META_KEY = 'current_session_meta';
@@ -54,7 +56,7 @@ export const performLogout = async (options: { reason?: LogoutReason } = {}) => 
       const refreshed = await tryRefreshToken();
       if (!refreshed) {
         clearAuthSession();
-        window.location.replace('/user/login');
+        history.replace('/user/login');
         return;
       }
     }
@@ -69,22 +71,23 @@ export const performLogout = async (options: { reason?: LogoutReason } = {}) => 
     }
   }
   clearAuthSession();
-  window.location.replace('/user/login');
+  history.replace('/user/login');
 };
 
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {
-  tokenManager.setTokens({
-    accessToken: loginResponse.accessToken,
-    refreshToken: loginResponse.refreshToken,
-    tokenType: loginResponse.tokenType,
-    expiresIn: loginResponse.expiresIn,
-  });
-
-  tenantContext.setMyTenants(loginResponse.tenants || []);
-  tenantContext.setCurrentTenant(loginResponse.currentTenant || null);
-  persistSessionActivity(Date.now());
-
+  beginBootstrapFlow();
   try {
+    tokenManager.setTokens({
+      accessToken: loginResponse.accessToken,
+      refreshToken: loginResponse.refreshToken,
+      tokenType: loginResponse.tokenType,
+      expiresIn: loginResponse.expiresIn,
+    });
+
+    tenantContext.setMyTenants(loginResponse.tenants || []);
+    tenantContext.setCurrentTenant(loginResponse.currentTenant || null);
+    persistSessionActivity(Date.now());
+
     // Use autoRedirectOnUnauthorized: false to prevent the global 401 handler
     // from clearing the just-written token and redirecting away during login.
     // Any failure here is caught below and re-thrown so the login page can
@@ -94,34 +97,25 @@ export const initializeAfterLogin = async (loginResponse: LoginResponse): Promis
       allowUnauthorizedWithoutRedirect: true,
     });
     persistCurrentUser(currentUser);
-    await syncTenantFromServer();
+    await syncTenantFromServer({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    });
     persistSessionActivity(Date.now());
     const securitySettings = await loadSecuritySettings();
     return { currentUser, securitySettings };
   } catch (error) {
     clearAuthSession();
     throw error;
+  } finally {
+    endBootstrapFlow();
   }
 };
 
 export const restoreSession = async (): Promise<SessionBootstrapResult | null> => {
-  if (!isLoggedIn()) {
-    return null;
-  }
-
+  beginBootstrapFlow();
   try {
-    const currentUser = await authService.currentUser({
-      autoRedirectOnUnauthorized: false,
-      allowUnauthorizedWithoutRedirect: true,
-    });
-    persistCurrentUser(currentUser);
-    await syncTenantFromServer();
-    const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
-    return { currentUser, securitySettings };
-  } catch {
-    const refreshed = await tryRefreshToken();
-    if (!refreshed) {
-      clearAuthSession();
+    if (!isLoggedIn()) {
       return null;
     }
 
@@ -131,14 +125,39 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
         allowUnauthorizedWithoutRedirect: true,
       });
       persistCurrentUser(currentUser);
-      await syncTenantFromServer();
-      persistSessionActivity(Date.now());
+      await syncTenantFromServer({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+      });
       const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
       return { currentUser, securitySettings };
     } catch {
-      clearAuthSession();
-      return null;
+      const refreshed = await tryRefreshToken();
+      if (!refreshed) {
+        clearAuthSession();
+        return null;
+      }
+
+      try {
+        const currentUser = await authService.currentUser({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+        });
+        persistCurrentUser(currentUser);
+        await syncTenantFromServer({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+        });
+        persistSessionActivity(Date.now());
+        const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+        return { currentUser, securitySettings };
+      } catch {
+        clearAuthSession();
+        return null;
+      }
     }
+  } finally {
+    endBootstrapFlow();
   }
 };
 

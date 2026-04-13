@@ -17,8 +17,11 @@ export const loadCaptchaChallenge = async (
 ): Promise<CaptchaChallenge> => {
   const challenge = await systemService.captchaChallenge(captchaType, options);
   if (challenge?.imageUrl) {
-    await preloadImage(challenge.imageUrl);
+    try {
+      await preloadImage(challenge.imageUrl);
+    } catch {
+      // Keep the challenge usable even if the image prefetch fails.
+    }
   }
   return challenge;
 };
-

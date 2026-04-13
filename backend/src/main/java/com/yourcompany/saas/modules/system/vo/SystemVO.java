@@ -694,6 +694,7 @@ public final class SystemVO {
     }
 
     public static class PermissionTreeVO {
+        private String nodeType;
         private String pageKey;
         private String pageName;
         private String routePath;
@@ -704,6 +705,14 @@ public final class SystemVO {
         private boolean selectable;
         private List<PermissionTreeVO> children;
         private List<PermissionActionVO> actionPermissions;
+
+        public String getNodeType() {
+            return nodeType;
+        }
+
+        public void setNodeType(String nodeType) {
+            this.nodeType = nodeType;
+        }
 
         public String getPageKey() {
             return pageKey;

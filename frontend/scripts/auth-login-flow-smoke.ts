@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import {
+  beginBootstrapFlow,
   beginLoginFlow,
   bumpAuthSessionEpoch,
+  endBootstrapFlow,
   endLoginFlow,
   getAuthSessionEpoch,
+  isBootstrapInProgress,
   isLoginInProgress,
 } from '../src/auth/loginFlowState';
 import {
@@ -17,6 +20,7 @@ const makeSnapshot = (overrides: Partial<AuthRequestSnapshot> = {}): AuthRequest
   accessToken: 'token-a',
   hasAuthToken: true,
   authSessionEpoch: 1,
+  tokenGeneration: 1,
   ...overrides,
 });
 
@@ -24,7 +28,9 @@ const makeRuntime = (overrides: Partial<UnauthorizedRuntimeState> = {}): Unautho
   pathname: '/dashboard/home',
   currentAccessToken: 'token-a',
   currentAuthSessionEpoch: 1,
+  currentTokenGeneration: 1,
   loginInProgress: false,
+  bootstrapInProgress: false,
   ...overrides,
 });
 
@@ -34,23 +40,27 @@ const run = () => {
 
   beginLoginFlow();
   assert.equal(isLoginInProgress(), true, 'login flow should be marked in progress');
+  beginBootstrapFlow();
+  assert.equal(isBootstrapInProgress(), true, 'bootstrap flow should be marked in progress');
   assert.equal(
     shouldSuppressUnauthorizedSideEffects(
       makeSnapshot({ authSessionEpoch: startEpoch }),
-      makeRuntime({ pathname: '/user/login', loginInProgress: true }),
+      makeRuntime({ pathname: '/user/login', loginInProgress: true, bootstrapInProgress: true }),
     ),
     true,
     'login page bootstrap 401 should be suppressed',
   );
+  endBootstrapFlow();
   endLoginFlow();
   assert.equal(isLoginInProgress(), false, 'login flow should clear after bootstrap');
+  assert.equal(isBootstrapInProgress(), false, 'bootstrap flow should clear after bootstrap');
 
   bumpAuthSessionEpoch();
   const nextEpoch = getAuthSessionEpoch();
   assert.equal(
     shouldSuppressUnauthorizedSideEffects(
-      makeSnapshot({ accessToken: 'old-token', authSessionEpoch: startEpoch }),
-      makeRuntime({ currentAccessToken: 'new-token', currentAuthSessionEpoch: nextEpoch }),
+      makeSnapshot({ accessToken: 'old-token', authSessionEpoch: startEpoch, tokenGeneration: 0 }),
+      makeRuntime({ currentAccessToken: 'new-token', currentAuthSessionEpoch: nextEpoch, currentTokenGeneration: 2 }),
     ),
     true,
     'old request 401 should not clear a newer token',

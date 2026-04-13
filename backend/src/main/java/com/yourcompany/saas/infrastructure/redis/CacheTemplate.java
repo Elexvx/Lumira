@@ -1,10 +1,13 @@
 package com.yourcompany.saas.infrastructure.redis;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,8 +41,16 @@ public class CacheTemplate {
         redisTemplate.delete(key);
     }
 
-    public Set<String> keys(String pattern) {
-        return redisTemplate.keys(pattern);
+    public Set<String> scan(String pattern) {
+        Set<String> results = new LinkedHashSet<>();
+        try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(pattern).count(1000).build())) {
+            while (cursor.hasNext()) {
+                results.add(cursor.next());
+            }
+        } catch (Exception ex) {
+            throw new IllegalStateException("Redis SCAN 读取失败", ex);
+        }
+        return results;
     }
 
     public void addToSortedSet(String key, String value, double score) {

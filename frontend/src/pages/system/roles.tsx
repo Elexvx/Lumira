@@ -1,132 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Checkbox, Drawer, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
+import { Button, Checkbox, Drawer, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, message } from 'antd';
 import { iamService } from '@/services/iam';
 import type { PermissionTreeRecord, RoleDetail, RoleRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
+import {
+  buildPermissionTreeData,
+  collectActionPermissionPageMap,
+  collectExpandableKeys,
+  collectPermissionKeyToPageKeyMap,
+  collectSelectablePageNodeMap,
+  collectSelectablePages,
+  normalizePermissionKeysByPages,
+  normalizePermissionTree,
+  type NormalizedPermissionTreeRecord,
+} from './rolesPermissionTree';
 import './roles.less';
-
-const hasRoutePath = (routePath?: string) => Boolean(routePath);
-
-const buildPermissionTreeData = (nodes: PermissionTreeRecord[]): Array<PermissionTreeRecord & { key: string; title: JSX.Element }> =>
-  nodes.map((node) => ({
-    ...node,
-    key: node.pageKey,
-    disableCheckbox: !node.selectable,
-    selectable: node.selectable,
-    title: (
-      <div className="role-page-row">
-        <span className="role-page-row__name">{node.pageName}</span>
-        <span className="role-page-row__meta">
-          {hasRoutePath(node.routePath) ? <span className="role-page-row__route">{node.routePath}</span> : null}
-          {!node.selectable && node.children?.length ? (
-            <Typography.Text type="secondary" className="role-page-row__hint">
-              目录节点，不单独授权
-            </Typography.Text>
-          ) : null}
-        </span>
-      </div>
-    ),
-    children: node.children?.length ? buildPermissionTreeData(node.children) : undefined,
-  }));
-
-const collectSelectablePages = (nodes: PermissionTreeRecord[], result: PermissionTreeRecord[] = []) => {
-  nodes.forEach((node) => {
-    if (node.selectable && node.permissionKey) {
-      result.push(node);
-    }
-    if (node.children?.length) {
-      collectSelectablePages(node.children, result);
-    }
-  });
-  return result;
-};
-
-const collectSelectablePageNodeMap = (nodes: PermissionTreeRecord[], result = new Map<string, PermissionTreeRecord>()) => {
-  nodes.forEach((node) => {
-    if (node.selectable && node.permissionKey) {
-      result.set(node.pageKey, node);
-    }
-    if (node.children?.length) {
-      collectSelectablePageNodeMap(node.children, result);
-    }
-  });
-  return result;
-};
-
-const collectPermissionKeyToPageKeyMap = (nodes: PermissionTreeRecord[], result = new Map<string, string>()) => {
-  nodes.forEach((node) => {
-    if (node.selectable && node.permissionKey) {
-      result.set(node.permissionKey, node.pageKey);
-    }
-    if (node.children?.length) {
-      collectPermissionKeyToPageKeyMap(node.children, result);
-    }
-  });
-  return result;
-};
-
-const collectActionPermissionPageMap = (nodes: PermissionTreeRecord[], result = new Map<string, string>()) => {
-  nodes.forEach((node) => {
-    if (node.selectable && node.permissionKey) {
-      node.actionPermissions?.forEach((action) => {
-        if (action.permissionKey) {
-          result.set(action.permissionKey, node.permissionKey as string);
-        }
-      });
-    }
-    if (node.children?.length) {
-      collectActionPermissionPageMap(node.children, result);
-    }
-  });
-  return result;
-};
-
-const collectExpandableKeys = (nodes: PermissionTreeRecord[], result: string[] = []) => {
-  nodes.forEach((node) => {
-    if (node.children?.length) {
-      result.push(node.pageKey);
-      collectExpandableKeys(node.children, result);
-    }
-  });
-  return result;
-};
-
-const normalizePermissionKeysByPages = (
-  currentPermissionKeys: string[],
-  nextPageKeys: string[],
-  allPageKeys: Set<string>,
-  actionPermissionPageMap: Map<string, string>,
-) => {
-  const nextPageKeySet = new Set(nextPageKeys);
-  const nextPermissionKeys = new Set<string>();
-
-  currentPermissionKeys.forEach((permissionKey) => {
-    if (nextPageKeySet.has(permissionKey)) {
-      nextPermissionKeys.add(permissionKey);
-      return;
-    }
-
-    const pageKey = actionPermissionPageMap.get(permissionKey);
-    if (pageKey) {
-      if (nextPageKeySet.has(pageKey)) {
-        nextPermissionKeys.add(permissionKey);
-      }
-      return;
-    }
-
-    if (!allPageKeys.has(permissionKey)) {
-      nextPermissionKeys.add(permissionKey);
-    }
-  });
-
-  nextPageKeys.forEach((permissionKey) => {
-    nextPermissionKeys.add(permissionKey);
-  });
-
-  return Array.from(nextPermissionKeys);
-};
 
 const RoleManagementPage = () => {
   const actionRef = useRef<ActionType>();
@@ -177,12 +67,13 @@ const RoleManagementPage = () => {
     };
   }, []);
 
-  const selectablePages = useMemo(() => collectSelectablePages(permissionTree), [permissionTree]);
-  const selectablePageNodeMap = useMemo(() => collectSelectablePageNodeMap(permissionTree), [permissionTree]);
-  const permissionKeyToPageKeyMap = useMemo(() => collectPermissionKeyToPageKeyMap(permissionTree), [permissionTree]);
-  const actionPermissionPageMap = useMemo(() => collectActionPermissionPageMap(permissionTree), [permissionTree]);
+  const normalizedPermissionTree = useMemo(() => normalizePermissionTree(permissionTree), [permissionTree]);
+  const selectablePages = useMemo(() => collectSelectablePages(normalizedPermissionTree), [normalizedPermissionTree]);
+  const selectablePageNodeMap = useMemo(() => collectSelectablePageNodeMap(normalizedPermissionTree), [normalizedPermissionTree]);
+  const permissionKeyToPageKeyMap = useMemo(() => collectPermissionKeyToPageKeyMap(normalizedPermissionTree), [normalizedPermissionTree]);
+  const actionPermissionPageMap = useMemo(() => collectActionPermissionPageMap(normalizedPermissionTree), [normalizedPermissionTree]);
   const selectablePermissionKeys = useMemo(() => new Set(selectablePages.map((item) => item.permissionKey).filter(Boolean) as string[]), [selectablePages]);
-  const pageTreeData = useMemo(() => buildPermissionTreeData(permissionTree), [permissionTree]);
+  const pageTreeData = useMemo(() => buildPermissionTreeData(normalizedPermissionTree), [normalizedPermissionTree]);
 
   const selectedPagePermissionKeys = useMemo(
     () => watchedPermissionKeys.filter((permissionKey) => selectablePermissionKeys.has(permissionKey)),
@@ -191,9 +82,11 @@ const RoleManagementPage = () => {
 
   const selectedPageNodeKeys = useMemo(
     () =>
-      selectedPagePermissionKeys
-        .map((permissionKey) => permissionKeyToPageKeyMap.get(permissionKey))
-        .filter((pageKey): pageKey is string => Boolean(pageKey)),
+      Array.from(
+        new Set(
+          selectedPagePermissionKeys.flatMap((permissionKey) => permissionKeyToPageKeyMap.get(permissionKey) || []),
+        ),
+      ),
     [permissionKeyToPageKeyMap, selectedPagePermissionKeys],
   );
 
@@ -271,7 +164,7 @@ const RoleManagementPage = () => {
       });
 
       const initialPermissionKey = detail.permissionKeys?.find((permissionKey) => selectablePermissionKeys.has(permissionKey)) || null;
-      setActivePageKey(initialPermissionKey ? permissionKeyToPageKeyMap.get(initialPermissionKey) || null : null);
+      setActivePageKey(initialPermissionKey ? permissionKeyToPageKeyMap.get(initialPermissionKey)?.[0] || null : null);
     } catch (error) {
       if (editorRequestSeq.current === requestSeq) {
         message.error('加载角色信息失败，请稍后重试');
@@ -368,12 +261,12 @@ const RoleManagementPage = () => {
       actionPermissionPageMap,
     );
     applyPermissionKeys(nextPermissionKeys);
-    setActivePageKey(nextPagePermissionKeys[0] ? permissionKeyToPageKeyMap.get(nextPagePermissionKeys[0]) || null : null);
+    setActivePageKey(nextPagePermissionKeys[0] ? permissionKeyToPageKeyMap.get(nextPagePermissionKeys[0])?.[0] || null : null);
   };
 
   const handleExpandToggle = () => {
     if (expandedKeys.length === 0) {
-      setExpandedKeys(collectExpandableKeys(permissionTree));
+      setExpandedKeys(collectExpandableKeys(normalizedPermissionTree));
       return;
     }
     setExpandedKeys([]);
@@ -544,14 +437,14 @@ const RoleManagementPage = () => {
                 <div className="role-editor-section__header">
                   <div>
                     <div className="role-editor-section__title">页面路由权限</div>
-                    <div className="role-editor-section__meta">先勾选可访问的页面，再配置该页面下的按钮权限</div>
+                    <div className="role-editor-section__meta">先勾选可访问的页面，目录节点仅用于分组，再配置该页面下的按钮权限</div>
                   </div>
                   <Space>
                     <Button size="small" onClick={handleExpandToggle}>
                       {expandedKeys.length ? '折叠全部' : '展开全部'}
                     </Button>
                     <Button size="small" onClick={handleSelectAllPages}>
-                      {selectedPagePermissionKeys.length === selectablePages.length ? '全不选' : '全选'}
+                      {selectedPageNodeKeys.length === selectablePages.length ? '全不选' : '全选'}
                     </Button>
                   </Space>
                 </div>
@@ -575,13 +468,13 @@ const RoleManagementPage = () => {
                       onCheck={(checkedKeys, info) => {
                         const nextCheckedKeys = Array.isArray(checkedKeys) ? checkedKeys.map(String) : [];
                         handlePageTreeCheck(nextCheckedKeys);
-                        if ((info.node as PermissionTreeRecord).selectable && (info.node as PermissionTreeRecord).pageKey) {
-                          setActivePageKey((info.node as PermissionTreeRecord).pageKey);
+                        if ((info.node as NormalizedPermissionTreeRecord).selectable && (info.node as NormalizedPermissionTreeRecord).pageKey) {
+                          setActivePageKey((info.node as NormalizedPermissionTreeRecord).pageKey);
                         }
                       }}
                       onSelect={(_, info) => {
-                        if ((info.node as PermissionTreeRecord).selectable && (info.node as PermissionTreeRecord).pageKey) {
-                          setActivePageKey((info.node as PermissionTreeRecord).pageKey);
+                        if ((info.node as NormalizedPermissionTreeRecord).selectable && (info.node as NormalizedPermissionTreeRecord).pageKey) {
+                          setActivePageKey((info.node as NormalizedPermissionTreeRecord).pageKey);
                         }
                       }}
                     />
@@ -603,9 +496,13 @@ const RoleManagementPage = () => {
                   <>
                     <div className="role-action-panel__page-name">
                       {activePageNode?.pageName || '请从左侧选择页面'}
-                      {hasRoutePath(activePageNode?.routePath) ? (
+                      {activePageNode?.routeMatched && activePageNode?.routePath ? (
                         <Tag style={{ marginInlineStart: 8 }} color="blue">
                           {activePageNode?.routePath}
+                        </Tag>
+                      ) : activePageNode?.nodeType === 'PAGE' ? (
+                        <Tag style={{ marginInlineStart: 8 }} color="red">
+                          路由失配
                         </Tag>
                       ) : null}
                     </div>

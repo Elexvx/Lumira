@@ -152,13 +152,15 @@ public class AuthSessionStore {
         for (String sessionId : listActiveUserSessionIds(userId)) {
             findBySessionId(sessionId).ifPresentOrElse(
                     session -> remove(session, publishChange),
-                    () -> cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId), sessionId)
+                    () -> removeSessionReferences(sessionId)
             );
         }
     }
 
     public void retainLatestSessionForEachUser() {
-        Set<String> keys = cacheTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*");
+        // Use SCAN instead of KEYS so the cleanup job stays non-blocking as the
+        // session population grows.
+        Set<String> keys = cacheTemplate.scan(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*");
         if (CollectionUtils.isEmpty(keys)) {
             return;
         }
@@ -183,10 +185,39 @@ public class AuthSessionStore {
                 String sessionId = sessionIds.get(index);
                 findBySessionId(sessionId).ifPresentOrElse(
                         session -> remove(session, true),
-                        () -> cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId), sessionId)
+                        () -> removeSessionReferences(sessionId)
                 );
             }
         }
+    }
+
+    public void removeSessionReferences(String sessionId) {
+        cacheTemplate.remove(CacheKeyConstants.sessionKey(sessionId));
+        Set<String> userSessionKeys = cacheTemplate.scan(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*:" + sessionId);
+        if (CollectionUtils.isEmpty(userSessionKeys)) {
+            return;
+        }
+
+        for (String key : userSessionKeys) {
+            String[] parts = key.split(":");
+            if (parts.length >= 4) {
+                try {
+                    Long userId = Long.parseLong(parts[2]);
+                    removeUserSessionReference(userId, sessionId);
+                } catch (NumberFormatException ignored) {
+                    cacheTemplate.remove(key);
+                }
+            } else {
+                cacheTemplate.remove(key);
+            }
+        }
+    }
+
+    public void removeTenantSessionReference(Long tenantId, String sessionId) {
+        if (tenantId == null || !org.springframework.util.StringUtils.hasText(sessionId)) {
+            return;
+        }
+        cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(tenantId), sessionId);
     }
 
     private void cleanupExpiredTenantIndex(Long tenantId) {
@@ -209,5 +240,13 @@ public class AuthSessionStore {
         event.setSessionId(session.getSessionId());
         event.setOccurredAt(Instant.now());
         onlineSessionEventPublisher.publish(event);
+    }
+
+    private void removeUserSessionReference(Long userId, String sessionId) {
+        if (userId == null || !org.springframework.util.StringUtils.hasText(sessionId)) {
+            return;
+        }
+        cacheTemplate.remove(CacheKeyConstants.userSessionKey(userId, sessionId));
+        cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId), sessionId);
     }
 }

@@ -164,7 +164,8 @@ public class OnlineSessionManagementAppService {
                     authSessionStore.remove(session, true);
                 }
             }, () -> {
-                // 会话实体已不在缓存中，后续分页会自然忽略该索引项。
+                authSessionStore.removeSessionReferences(sessionId);
+                authSessionStore.removeTenantSessionReference(tenantId, sessionId);
             });
         }
         if (securitySettingsService.isAllowMultiDeviceLogin()) {

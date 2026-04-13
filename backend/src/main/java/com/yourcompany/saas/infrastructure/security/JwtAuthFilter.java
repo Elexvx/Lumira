@@ -33,6 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     public static final String AUTH_BIZ_EXCEPTION_ATTR = "auth.bizException";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
 
     private final JwtTokenService jwtTokenService;
     private final AuthSessionStore authSessionStore;
@@ -87,10 +88,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                     ));
 
-            validateSession(claims, session);
+            Instant now = Instant.now();
+            long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
+            validateSession(claims, session, now, idleTimeoutSeconds);
             setAuthentication(claims, session);
-            session.setLastActivityAt(Instant.now());
-            authSessionStore.save(session);
+            if (shouldPersistActivity(session, now, idleTimeoutSeconds)) {
+                session.setLastActivityAt(now);
+                authSessionStore.save(session);
+            }
         } catch (BizException ex) {
             SecurityContextHolder.clearContext();
             writeUnauthorizedResponse(request, response, ex);
@@ -109,7 +114,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void validateSession(TokenClaims claims, AuthSession session) {
+    private void validateSession(TokenClaims claims, AuthSession session, Instant now, long idleTimeoutSeconds) {
         if (!session.getUserId().equals(claims.getUserId())) {
             invalidateSession(session, "token与会话不匹配");
         }
@@ -126,13 +131,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             invalidateSession(session, "会话已过期，请重新登录");
         }
         Instant lastActivityAt = session.getLastActivityAt() != null ? session.getLastActivityAt() : session.getLoginTime();
-        long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
         if (lastActivityAt != null && idleTimeoutSeconds > 0) {
-            Duration idleDuration = Duration.between(lastActivityAt, Instant.now());
+            Duration idleDuration = Duration.between(lastActivityAt, now);
             if (idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) >= 0) {
                 invalidateSession(session, "会话空闲超时，请重新登录");
             }
         }
+    }
+
+    private boolean shouldPersistActivity(AuthSession session, Instant now, long idleTimeoutSeconds) {
+        Instant lastActivityAt = session.getLastActivityAt();
+        if (lastActivityAt == null) {
+            return true;
+        }
+        Duration elapsed = Duration.between(lastActivityAt, now);
+        long throttleSeconds = idleTimeoutSeconds > 0
+                ? Math.min(LAST_ACTIVITY_WRITE_THROTTLE_SECONDS, Math.max(5L, idleTimeoutSeconds / 2))
+                : LAST_ACTIVITY_WRITE_THROTTLE_SECONDS;
+        return elapsed.compareTo(Duration.ofSeconds(throttleSeconds)) >= 0;
     }
 
     private void invalidateSession(AuthSession session, String message) {

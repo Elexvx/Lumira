@@ -86,6 +86,12 @@
   gap: 12px;
 }
 
+.role-page-row--mismatch .role-page-row__name,
+.role-page-row--mismatch .role-page-row__route,
+.role-page-row--mismatch .role-page-row__hint--mismatch {
+  color: #cf1322;
+}
+
 .role-page-row__name {
   font-weight: 500;
 }
@@ -98,15 +104,40 @@
   min-width: 0;
 }
 
+.role-page-row__kind {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(22, 119, 255, 0.1);
+  color: var(--saas-primary-color);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
 .role-page-row__route {
   color: var(--saas-text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
 
+.role-page-row__route--mismatch {
+  color: #cf1322;
+  font-weight: 500;
+}
+
 .role-page-row__hint {
   white-space: nowrap;
   font-size: 12px;
+}
+
+.role-page-row__hint--catalog {
+  color: var(--saas-text-secondary);
+}
+
+.role-page-row__hint--mismatch {
+  color: #cf1322;
 }
 
 .role-action-panel {

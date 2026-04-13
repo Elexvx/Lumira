@@ -43,7 +43,6 @@ const NotificationsPage = () => {
       const records = await systemService.notifications({ autoRedirectOnUnauthorized: false });
       setNotifications(records);
     } catch (error) {
-      console.error(error);
       message.error('加载通知失败');
     } finally {
       setLoading(false);

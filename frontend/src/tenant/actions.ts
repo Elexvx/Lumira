@@ -3,11 +3,14 @@ import { tenantService } from '@/services/tenant';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import type { CurrentTenantResponse, MyTenant, SwitchTenantResponse, TenantSummary } from '@/types/api';
+import type { RequestOptions } from '@/services/common/request';
 
-export const syncTenantFromServer = async (): Promise<{ currentTenant: TenantSummary | null; myTenants: MyTenant[] }> => {
+export const syncTenantFromServer = async (
+  options: RequestOptions = {},
+): Promise<{ currentTenant: TenantSummary | null; myTenants: MyTenant[] }> => {
   const [myTenants, currentTenantResp] = await Promise.all([
-    tenantService.myTenants(),
-    tenantService.currentTenant(),
+    tenantService.myTenants(options),
+    tenantService.currentTenant(options),
   ]);
 
   const currentTenant = normalizeCurrentTenant(currentTenantResp, myTenants);
