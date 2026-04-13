@@ -11,6 +11,7 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { history } from '@umijs/max';
 import { Avatar, Button, Dropdown, Select, Space, type MenuProps } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { performLogout } from '@/auth/session';
@@ -216,7 +217,7 @@ export const TopActions = () => {
           disabled={!githubLink}
           onClick={() => openExternalLink(githubLink)}
         />
-        <Button type="text" icon={<BellOutlined />} aria-label="通知中心" />
+        <Button type="text" icon={<BellOutlined />} aria-label="通知中心" onClick={() => history.push('/system/notifications')} />
         <Dropdown
           menu={{
             items: userMenuItems,

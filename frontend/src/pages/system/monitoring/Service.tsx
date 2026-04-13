@@ -1,13 +1,51 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
-import { Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag } from 'antd';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { ServiceMonitorSnapshot } from '@/types/api';
 import { formatBytes, formatDateTime, formatDuration, formatNumber, formatPercent } from './shared';
 
 const valueStyle = { fontSize: 24, fontWeight: 700 };
+const stableNumericStyle = { fontVariantNumeric: 'tabular-nums' as const };
+
+const BreakableValue = ({ value }: { value?: string | null }) => (
+  <span className="saas-monitor-break-value">{value || '-'}</span>
+);
+
+const NumericValue = ({ value }: { value: string }) => (
+  <span className="saas-monitor-numeric-value" style={stableNumericStyle}>
+    {value}
+  </span>
+);
+
+const ExpandableClampText = ({ value, lines = 2 }: { value?: string | null; lines?: number }) => {
+  const [expanded, setExpanded] = useState(false);
+  const normalizedValue = value?.trim();
+
+  if (!normalizedValue) {
+    return '-';
+  }
+
+  const expandable = normalizedValue.length > 72;
+
+  return (
+    <div className="saas-monitor-expandable-text">
+      <div
+        className={expanded ? 'saas-monitor-expandable-text__content is-expanded' : 'saas-monitor-expandable-text__content'}
+        style={expanded ? undefined : ({ WebkitLineClamp: lines } as CSSProperties)}
+      >
+        {normalizedValue}
+      </div>
+      {expandable ? (
+        <Button type="link" size="small" className="saas-monitor-expandable-text__trigger" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? '收起' : '展开'}
+        </Button>
+      ) : null}
+    </div>
+  );
+};
 
 const ServiceMonitorPage = () => {
   const { isDesktop } = useResponsive();
@@ -35,6 +73,7 @@ const ServiceMonitorPage = () => {
 
   return (
     <PageContainer
+      className="saas-service-monitor-page"
       title="服务监控"
       ghost
     >
@@ -85,36 +124,74 @@ const ServiceMonitorPage = () => {
         </Row>
 
         <Card title="服务器信息" loading={query.loading && !service}>
-          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: isDesktop ? 3 : 2, xxl: 4 }} size="small">
-            <Descriptions.Item label="服务器名称">{service?.server?.serverName || '-'}</Descriptions.Item>
-            <Descriptions.Item label="服务器IP">{service?.server?.serverIp || '-'}</Descriptions.Item>
-            <Descriptions.Item label="操作系统">{service?.server?.osName || '-'}</Descriptions.Item>
-            <Descriptions.Item label="系统架构">{service?.server?.osArch || '-'}</Descriptions.Item>
-            <Descriptions.Item label="系统版本">{service?.server?.osVersion || '-'}</Descriptions.Item>
-            <Descriptions.Item label="项目路径">{service?.server?.projectPath || '-'}</Descriptions.Item>
-            <Descriptions.Item label="安装路径">{service?.server?.installPath || '-'}</Descriptions.Item>
-            <Descriptions.Item label="用户目录">{service?.server?.userHome || '-'}</Descriptions.Item>
-            <Descriptions.Item label="临时目录">{service?.server?.tempDir || '-'}</Descriptions.Item>
+          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }} size="small">
+            <Descriptions.Item label="服务器名称">
+              <BreakableValue value={service?.server?.serverName} />
+            </Descriptions.Item>
+            <Descriptions.Item label="服务器IP">
+              <NumericValue value={service?.server?.serverIp || '-'} />
+            </Descriptions.Item>
+            <Descriptions.Item label="操作系统">
+              <BreakableValue value={service?.server?.osName} />
+            </Descriptions.Item>
+            <Descriptions.Item label="系统架构">
+              <BreakableValue value={service?.server?.osArch} />
+            </Descriptions.Item>
+            <Descriptions.Item label="系统版本">
+              <NumericValue value={service?.server?.osVersion || '-'} />
+            </Descriptions.Item>
+            <Descriptions.Item label="项目路径">
+              <BreakableValue value={service?.server?.projectPath} />
+            </Descriptions.Item>
+            <Descriptions.Item label="安装路径">
+              <BreakableValue value={service?.server?.installPath} />
+            </Descriptions.Item>
+            <Descriptions.Item label="用户目录">
+              <BreakableValue value={service?.server?.userHome} />
+            </Descriptions.Item>
+            <Descriptions.Item label="临时目录">
+              <BreakableValue value={service?.server?.tempDir} />
+            </Descriptions.Item>
           </Descriptions>
         </Card>
 
         <Card title="Java虚拟机信息" loading={query.loading && !service}>
-          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: isDesktop ? 3 : 2, xxl: 4 }} size="small">
-            <Descriptions.Item label="Java名称">{service?.jvm?.vmName || '-'}</Descriptions.Item>
-            <Descriptions.Item label="Java版本">{service?.jvm?.javaVersion || '-'}</Descriptions.Item>
-            <Descriptions.Item label="虚拟机版本">{service?.jvm?.vmVersion || '-'}</Descriptions.Item>
-            <Descriptions.Item label="虚拟机厂商">{service?.jvm?.vmVendor || '-'}</Descriptions.Item>
-            <Descriptions.Item label="启动时间">{formatDateTime(service?.jvm?.startTime)}</Descriptions.Item>
-            <Descriptions.Item label="运行时长">{formatDuration(service?.jvm?.uptimeSeconds)}</Descriptions.Item>
-            <Descriptions.Item label="进程ID">{formatNumber(service?.jvm?.pid)}</Descriptions.Item>
-            <Descriptions.Item label="线程数">{formatNumber(service?.jvm?.threadCount)}</Descriptions.Item>
-            <Descriptions.Item label="守护线程">{formatNumber(service?.jvm?.daemonThreadCount)}</Descriptions.Item>
-            <Descriptions.Item label="峰值线程数">{formatNumber(service?.jvm?.peakThreadCount)}</Descriptions.Item>
-            <Descriptions.Item label="Java Home">{service?.jvm?.javaHome || '-'}</Descriptions.Item>
-            <Descriptions.Item label="启动参数">
-              <Typography.Paragraph style={{ marginBottom: 0 }} ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>
-                {service?.jvm?.inputArguments?.join(' ') || '-'}
-              </Typography.Paragraph>
+          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }} size="small">
+            <Descriptions.Item label="Java名称">
+              <BreakableValue value={service?.jvm?.vmName} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Java版本">
+              <NumericValue value={service?.jvm?.javaVersion || '-'} />
+            </Descriptions.Item>
+            <Descriptions.Item label="虚拟机版本">
+              <NumericValue value={service?.jvm?.vmVersion || '-'} />
+            </Descriptions.Item>
+            <Descriptions.Item label="虚拟机厂商">
+              <BreakableValue value={service?.jvm?.vmVendor} />
+            </Descriptions.Item>
+            <Descriptions.Item label="启动时间">
+              <NumericValue value={formatDateTime(service?.jvm?.startTime)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="运行时长">
+              <NumericValue value={formatDuration(service?.jvm?.uptimeSeconds)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="进程ID">
+              <NumericValue value={formatNumber(service?.jvm?.pid)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="线程数">
+              <NumericValue value={formatNumber(service?.jvm?.threadCount)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="守护线程">
+              <NumericValue value={formatNumber(service?.jvm?.daemonThreadCount)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="峰值线程数">
+              <NumericValue value={formatNumber(service?.jvm?.peakThreadCount)} />
+            </Descriptions.Item>
+            <Descriptions.Item label="Java Home" span={isDesktop ? 2 : 1}>
+              <BreakableValue value={service?.jvm?.javaHome} />
+            </Descriptions.Item>
+            <Descriptions.Item label="启动参数" span={isDesktop ? 2 : 1}>
+              <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
             </Descriptions.Item>
           </Descriptions>
         </Card>

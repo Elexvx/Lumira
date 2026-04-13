@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { message } from 'antd';
 import { history, useLocation } from '@umijs/max';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
-import { clearAuthSession } from '@/auth/session';
+import { performLogout } from '@/auth/session';
 import {
   DEFAULT_SECURITY_SETTINGS,
   getStoredSecuritySettings,
@@ -55,8 +55,7 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
       message.info('登录状态已过期，请重新登录');
     }
     clearSessionActivity();
-    clearAuthSession();
-    history.replace('/user/login');
+    void performLogout();
     // redirectingRef is intentionally NOT reset here.
     // It will be reset once a new valid token is detected (i.e. after a successful
     // re-login), which happens in the useEffect that watches for token changes.

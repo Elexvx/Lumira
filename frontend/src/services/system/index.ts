@@ -5,6 +5,7 @@ import type {
   AgreementSettings,
   BrandingSettings,
   HealthResponse,
+  NotificationRecord,
   OnlineSessionRecord,
   PagedResult,
   ProfileFieldSetting,
@@ -25,6 +26,10 @@ export interface ProfileFieldSettingsPayload {
     fieldKey: string;
     visible: boolean;
   }>;
+}
+export interface NotificationPayload {
+  title: string;
+  content: string;
 }
 export interface OnlineSessionListQuery extends Record<string, unknown> {
   pageNo?: number;
@@ -128,6 +133,17 @@ export const systemService = {
       method: 'POST',
       skipAuth: true,
       silent: true,
+      data: payload,
+      ...options,
+    }),
+  notifications: (options: RequestOptions = {}) =>
+    request<NotificationRecord[]>('/v1/system/notifications', {
+      method: 'GET',
+      ...options,
+    }),
+  createNotification: (payload: NotificationPayload, options: RequestOptions = {}) =>
+    request<boolean>('/v1/system/notifications', {
+      method: 'POST',
       data: payload,
       ...options,
     }),

@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/v1/second-factor")
@@ -125,7 +126,7 @@ public class SecondFactorController {
     private List<PluginVO.SecondFactorStatusVO> listStatuses(Long tenantId, CurrentUser currentUser) {
         return pluginManagementAppService.availablePlugins(tenantId).stream()
                 .map(plugin -> resolveStatus(tenantId, currentUser.getUserId(), plugin.getPluginCode()))
-                .filter(status -> status.getPluginCode() != null)
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -140,9 +141,7 @@ public class SecondFactorController {
             return empty;
         }
         if (descriptor == null || descriptor.getSecondFactorProvider() == null) {
-            PluginVO.SecondFactorStatusVO empty = new PluginVO.SecondFactorStatusVO();
-            empty.setPluginCode(pluginCode);
-            return empty;
+            return null;
         }
         PluginSecondFactorProvider provider = descriptor.getSecondFactorProvider();
         PluginSecondFactorProfile profile = provider.profile(descriptor.getRuntimeContext(), tenantId, userId);

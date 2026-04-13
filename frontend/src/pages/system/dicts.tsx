@@ -174,18 +174,7 @@ const DictManagementPage = () => {
   ];
 
   return (
-    <PageContainer
-      title="字典管理"
-      extra={
-        <Space>
-          {canAccess('system:dict:create') ? (
-            <Button type="primary" onClick={openCreateType}>
-              新增字典类型
-            </Button>
-          ) : null}
-        </Space>
-      }
-    >
+    <PageContainer title="字典管理">
       <ProTable<DictTypeRecord>
         actionRef={actionRef}
         rowKey="id"

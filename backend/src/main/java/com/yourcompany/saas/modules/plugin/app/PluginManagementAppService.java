@@ -37,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PluginManagementAppService {
@@ -44,6 +45,7 @@ public class PluginManagementAppService {
     private static final Logger log = LoggerFactory.getLogger(PluginManagementAppService.class);
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
     };
+    private static final Set<String> SYSTEM_BUILTIN_PLUGIN_CODES = Set.of("announcement");
 
     private final PluginArtifactLoader pluginArtifactLoader;
     private final PluginPersistenceService pluginPersistenceService;
@@ -215,7 +217,9 @@ public class PluginManagementAppService {
     }
 
     public List<PluginVO.PluginDefinitionVO> listDefinitions() {
-        return pluginPersistenceService.listDefinitions();
+        return pluginPersistenceService.listDefinitions().stream()
+                .filter(plugin -> !isSystemBuiltinPlugin(plugin.getPluginCode()))
+                .toList();
     }
 
     public List<PluginVO.PluginVersionVO> listVersions(String pluginCode) {
@@ -232,7 +236,10 @@ public class PluginManagementAppService {
 
     public List<PluginVO.TenantPluginVO> availablePlugins(Long tenantId) {
         List<PluginVO.TenantPluginVO> result = pluginPersistenceService.listTenantPlugins(tenantId);
-        for (PluginVO.TenantPluginVO plugin : result) {
+        List<PluginVO.TenantPluginVO> filtered = result.stream()
+                .filter(plugin -> !isSystemBuiltinPlugin(plugin.getPluginCode()))
+                .toList();
+        for (PluginVO.TenantPluginVO plugin : filtered) {
             try {
                 PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(Path.of(plugin.getManifestPath()).toFile(), PluginDTO.FrontendPluginManifest.class);
                 plugin.setSharedDeps(manifest.getSharedDeps());
@@ -244,7 +251,7 @@ public class PluginManagementAppService {
                 plugin.setMenus(List.of());
             }
         }
-        return result;
+        return filtered;
     }
 
     @Transactional
@@ -399,6 +406,10 @@ public class PluginManagementAppService {
             menus.add(item);
         }
         return menus;
+    }
+
+    private boolean isSystemBuiltinPlugin(String pluginCode) {
+        return pluginCode != null && SYSTEM_BUILTIN_PLUGIN_CODES.contains(pluginCode);
     }
 
     private PluginVersionEntity requireVersion(String pluginCode, String version) {

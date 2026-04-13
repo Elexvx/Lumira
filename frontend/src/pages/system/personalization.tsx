@@ -58,7 +58,6 @@ const PersonalizationSettingsPage = () => {
     ...(initialState?.watermarkSettings || defaultWatermark),
     imageUrl: normalizeUploadUrl(initialState?.watermarkSettings?.imageUrl),
   }));
-  const [agreementPreview, setAgreementPreview] = useState<AgreementSettings>(DEFAULT_AGREEMENT_SETTINGS);
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
 
   const updateTabInUrl = useCallback(
@@ -102,7 +101,6 @@ const PersonalizationSettingsPage = () => {
       agreementForm.setFieldsValue(normalizedAgreement);
       setPreviewState(normalizedBranding);
       setWatermarkPreview(normalizedWatermark);
-      setAgreementPreview(normalizedAgreement);
       persistBrandingSettings(normalizedBranding);
       setInitialState((prev) => (prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: normalizedWatermark } : prev));
     } finally {
@@ -183,7 +181,6 @@ const PersonalizationSettingsPage = () => {
         autoRedirectOnUnauthorized: false,
       });
       agreementForm.setFieldsValue(updatedAgreement);
-      setAgreementPreview(updatedAgreement);
       message.success('协议设置已保存并即时生效');
     } finally {
       setAgreementSaving(false);
@@ -228,12 +225,7 @@ const PersonalizationSettingsPage = () => {
       okText: '确认清空',
       okButtonProps: { danger: true },
       onOk: () => {
-        const nextAgreement = {
-          ...agreementPreview,
-          [field]: '',
-        };
-        agreementForm.setFieldsValue(nextAgreement);
-        setAgreementPreview(nextAgreement);
+        agreementForm.setFieldValue(field, '');
       },
     });
   };
@@ -529,7 +521,6 @@ const PersonalizationSettingsPage = () => {
                       form={agreementForm}
                       layout="vertical"
                       initialValues={DEFAULT_AGREEMENT_SETTINGS}
-                      onValuesChange={(_, values) => setAgreementPreview(normalizeAgreementSettings(values))}
                     >
                       <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
                         <MDEditor
@@ -550,23 +541,6 @@ const PersonalizationSettingsPage = () => {
                         />
                       </Form.Item>
                     </Form>
-
-                    <Card title="内容预览">
-                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                        <div>
-                          <Typography.Text strong>用户协议</Typography.Text>
-                          <div style={{ marginTop: 8 }}>
-                            <MDEditor.Markdown source={agreementPreview.userAgreementMarkdown || '暂无内容'} style={{ whiteSpace: 'pre-wrap' }} />
-                          </div>
-                        </div>
-                        <div>
-                          <Typography.Text strong>隐私协议</Typography.Text>
-                          <div style={{ marginTop: 8 }}>
-                            <MDEditor.Markdown source={agreementPreview.privacyAgreementMarkdown || '暂无内容'} style={{ whiteSpace: 'pre-wrap' }} />
-                          </div>
-                        </div>
-                      </Space>
-                    </Card>
 
                     <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
                       <Button danger onClick={() => handleClearAgreementField('userAgreementMarkdown')}>

@@ -1,7 +1,7 @@
 import { message } from 'antd';
 import { history, request as umiRequest } from '@umijs/max';
 import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TENANT_HEADER, TRACE_ID_HEADER } from '@/constants/http';
-import { clearAuthSession } from '@/auth/session';
+import { performLogout } from '@/auth/session';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import { ErrorCode } from '@/enums/errorCode';
@@ -121,7 +121,7 @@ const handleApiError = (error: ApiRequestError, options: RequestOptions, authSna
     if (!options.silent) {
       message[feedback.type](feedback.message);
     }
-    history.replace('/user/login');
+    void performLogout();
     return;
   }
 
@@ -291,7 +291,7 @@ const buildUnexpectedError = (error: unknown, hasAuthToken = true) => {
 };
 
 const cleanUnauthorizedState = () => {
-  clearAuthSession();
+  // Rely on performLogout to clear auth session cleanly.
 };
 
 const captureAuthRequestSnapshot = (options: RequestOptions): AuthRequestSnapshot => {

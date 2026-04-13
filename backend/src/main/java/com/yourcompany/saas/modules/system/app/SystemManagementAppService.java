@@ -33,6 +33,7 @@ import org.springframework.util.StringUtils;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -154,6 +155,7 @@ public class SystemManagementAppService {
             shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
             shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
             shortcut("审计中心", "登录和操作日志", "/system/monitoring/audit", "audit:view"),
+            shortcut("通知中心", "系统公告与通知管理", "/system/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
     );
 
@@ -231,6 +233,62 @@ public class SystemManagementAppService {
         ).getRecords());
         summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
         return summary;
+    }
+
+    public List<SystemVO.NotificationVO> listNotifications(CurrentUser currentUser) {
+        Long tenantId = currentTenantId(currentUser);
+        return jdbcTemplate.query(
+                """
+                        select id, title, content, created_at
+                        from plugin_announcement_notice
+                        where tenant_id = ?
+                          and published_flag = 1
+                          and deleted = 0
+                        order by id desc
+                        limit 200
+                        """,
+                (rs, rowNum) -> {
+                    SystemVO.NotificationVO vo = new SystemVO.NotificationVO();
+                    vo.setId(rs.getLong("id"));
+                    vo.setTitle(rs.getString("title"));
+                    vo.setContent(rs.getString("content"));
+                    vo.setCreatedAt(toLocalDateTime(rs.getTimestamp("created_at")));
+                    return vo;
+                },
+                tenantId
+        );
+    }
+
+    @Transactional
+    public void createNotification(CurrentUser currentUser, SystemDTO.NotificationCreateRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        String title = request.getTitle() == null ? null : request.getTitle().trim();
+        String content = request.getContent() == null ? null : request.getContent().trim();
+        if (!StringUtils.hasText(title) || !StringUtils.hasText(content)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "通知标题和内容不能为空");
+        }
+        jdbcTemplate.update(
+                """
+                        insert into plugin_announcement_notice (
+                            tenant_id, title, content, published_flag, created_by, updated_by, deleted
+                        ) values (?, ?, ?, 1, ?, ?, 0)
+                        """,
+                tenantId,
+                title,
+                content,
+                currentUser.getUserId(),
+                currentUser.getUserId()
+        );
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "notification",
+                "create",
+                "CREATE",
+                "SUCCESS",
+                "发布通知: " + title
+        );
     }
 
     @Transactional
@@ -1697,6 +1755,10 @@ public class SystemManagementAppService {
                 .findFirst()
                 .map(access -> access.getTenant().getId())
                 .orElseThrow(() -> new BizException(ErrorCode.TENANT_NOT_BOUND, "当前账号没有可用租户"));
+    }
+
+    private LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
     private List<String> listCurrentTenantRoleNames(Long userId, Long tenantId) {

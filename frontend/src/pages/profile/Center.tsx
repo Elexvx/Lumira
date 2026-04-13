@@ -1,7 +1,7 @@
 import { CameraOutlined, UserOutlined } from '@ant-design/icons';
 import { PageContainer, StepsForm } from '@ant-design/pro-components';
-import { useLocation, useRequest } from '@umijs/max';
-import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Empty, Form, Input, List, Modal, QRCode, Result, Row, Select, Space, Tag, Tabs, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
+import { useRequest } from '@umijs/max';
+import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Empty, Form, Input, List, Modal, QRCode, Result, Row, Select, Space, Tag, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import ImgCrop from 'antd-img-crop';
 import { useEffect, useMemo, useState } from 'react';
@@ -30,7 +30,6 @@ const ProfileCenterPage = () => {
   const { initialState, setInitialState } = useInitialStateModel();
   const { isMobile } = useResponsive();
   const { canAccess } = usePermission();
-  const location = useLocation();
   const profileQuery = useRequest(async () => ({ data: await profileService.summary({ autoRedirectOnUnauthorized: false }) }) as {
     data: ProfileSummary;
   });
@@ -60,21 +59,6 @@ const ProfileCenterPage = () => {
   const [emailBindingProvider, setEmailBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
   const [emailBindingSubmitting, setEmailBindingSubmitting] = useState(false);
   const [emailBindingAlert, setEmailBindingAlert] = useState<string | null>(null);
-  const defaultActiveTab = useMemo(() => {
-    const tab = new URLSearchParams(location.search).get('tab');
-    return tab === 'second-factor' ? 'second-factor' : 'overview';
-  }, [location.search]);
-  const [activeTab, setActiveTab] = useState(defaultActiveTab);
-
-  useEffect(() => {
-    setActiveTab(defaultActiveTab);
-  }, [defaultActiveTab]);
-
-  useEffect(() => {
-    if (!canAccessSecondFactor && activeTab === 'second-factor') {
-      setActiveTab('overview');
-    }
-  }, [activeTab, canAccessSecondFactor]);
 
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
@@ -83,7 +67,6 @@ const ProfileCenterPage = () => {
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const profileFieldSettings = summary?.profileFieldSettings || [];
   const providerList = secondFactorQuery.data || [];
-  const boundProviders = useMemo(() => providerList.filter((provider) => provider.bound), [providerList]);
   const requiresEmail = providerList.some((provider) => provider.emailRequired);
   const hasEmail = Boolean(currentUser?.email);
   const hasMobile = Boolean(currentUser?.mobile);
@@ -399,28 +382,35 @@ const ProfileCenterPage = () => {
     closeBindModal();
   };
 
-  const providerCards = providerList.length ? (
-    <Row gutter={[16, 16]}>
-      {providerList.map((provider) => {
-        const statusColor = provider.enabled && provider.bound ? 'green' : provider.enabled ? 'gold' : 'default';
-        return (
-          <Col key={provider.pluginCode} xs={24} lg={12}>
-            <Card
-              title={
-                <Space wrap>
-                  <span>{provider.pluginName || provider.pluginCode}</span>
-                  <Tag color={statusColor}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
-                </Space>
-              }
-              loading={secondFactorQuery.loading}
-              extra={<Tag color={provider.emailRequired ? 'blue' : 'default'}>{provider.factorName || '二次验证'}</Tag>}
-            >
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <Typography.Paragraph style={{ marginBottom: 0 }}>
-                  {provider.statusMessage || '请完成绑定与验证码验证后启用该方式。'}
-                </Typography.Paragraph>
-                {canManageSecondFactor ? (
+  const boundProviderCard = canAccessSecondFactor ? (
+    <Card title="已绑定登录方式" loading={secondFactorQuery.loading}>
+      {providerList.length ? (
+        <List
+          dataSource={providerList}
+          split={false}
+          renderItem={(provider) => (
+            <List.Item style={{ paddingInline: 0 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  width: '100%',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
                   <Space wrap>
+                    <Typography.Text strong>{provider.pluginName || provider.pluginCode}</Typography.Text>
+                    <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>
+                      {provider.bound ? '已绑定' : '未绑定'}
+                    </Tag>
+                    <Tag>{provider.factorName || '登录方式'}</Tag>
+                  </Space>
+                  <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || '暂无绑定标识'}</Typography.Text>
+                </Space>
+                {canManageSecondFactor ? (
+                  <Space wrap style={{ flexShrink: 0, justifyContent: 'flex-end' }}>
                     <Button
                       type="primary"
                       onClick={() => void openBindModal(provider)}
@@ -435,271 +425,214 @@ const ProfileCenterPage = () => {
                     ) : null}
                   </Space>
                 ) : null}
-              </Space>
-            </Card>
-          </Col>
-        );
-      })}
-    </Row>
-  ) : (
-    <Empty description="当前租户未启用任何二次验证插件" />
-  );
+              </div>
+            </List.Item>
+          )}
+        />
+      ) : (
+        <Empty description="当前租户未启用 2FA / 短信验证码插件，暂无可绑定登录方式" />
+      )}
+    </Card>
+  ) : null;
 
   return (
     <PageContainer
       className="saas-management-page saas-profile-page"
       title="个人中心"
     >
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          {
-            key: 'overview',
-            label: '账号概览',
-            children: (
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Row gutter={[16, 16]} align="stretch">
+          <Col xs={24} lg={12} style={{ display: 'flex' }}>
+            <Card
+              title="基础资料"
+              loading={profileQuery.loading}
+              style={{ width: '100%' }}
+              extra={
+                hasVisibleProfileFields ? (
+                  <Button type="primary" loading={profileSaving} onClick={() => void handleSaveProfile()}>
+                    保存资料
+                  </Button>
+                ) : null
+              }
+            >
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Row gutter={[16, 16]} align="stretch">
-                  <Col xs={24} lg={12} style={{ display: 'flex' }}>
-                    <Card
-                      title="基础资料"
-                      loading={profileQuery.loading}
-                      style={{ width: '100%' }}
-                      extra={
-                        hasVisibleProfileFields ? (
-                          <Button type="primary" loading={profileSaving} onClick={() => void handleSaveProfile()}>
-                            保存资料
-                          </Button>
-                        ) : null
-                      }
-                    >
-                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                        <Form form={profileForm} layout="vertical">
-                          <Form.Item name="avatarUrl" hidden>
-                            <Input />
+                <Form form={profileForm} layout="vertical">
+                  <Form.Item name="avatarUrl" hidden>
+                    <Input />
+                  </Form.Item>
+
+                  {visibleProfileFields.has('avatarUrl') ? (
+                    <div className="saas-profile-avatar-field">
+                      <ImgCrop
+                        rotationSlider
+                        aspect={1}
+                        modalTitle="裁切头像"
+                        beforeCrop={handleAvatarBeforeCrop}
+                      >
+                        <Upload
+                          accept="image/*"
+                          showUploadList={false}
+                          customRequest={handleAvatarUploadRequest}
+                          disabled={avatarUploading}
+                        >
+                          <button
+                            type="button"
+                            className="saas-profile-avatar-trigger"
+                            aria-label="点击修改头像"
+                            disabled={avatarUploading}
+                          >
+                            <Avatar
+                              size={96}
+                              src={avatarValue || currentUser?.avatarUrl || undefined}
+                              icon={<UserOutlined />}
+                              className="saas-profile-avatar-trigger__avatar"
+                            />
+                            <span className="saas-profile-avatar-trigger__overlay">
+                              {avatarUploading ? '上传中' : <CameraOutlined />}
+                            </span>
+                          </button>
+                        </Upload>
+                      </ImgCrop>
+                    </div>
+                  ) : null}
+
+                  <Row gutter={[12, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="用户名">
+                        <Input value={currentUser?.username || '-'} disabled />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="用户ID">
+                        <Input value={currentUser?.userId ? String(currentUser.userId) : '-'} disabled />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  {hasVisibleProfileFields ? (
+                    <Row gutter={[12, 0]}>
+                      <Col xs={24} md={12}>
+                        <Form.Item name="nickname" label="昵称">
+                          <Input placeholder="请输入昵称" />
+                        </Form.Item>
+                      </Col>
+                      {visibleProfileFields.has('realName') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item name="realName" label="姓名">
+                            <Input placeholder="请输入姓名" />
                           </Form.Item>
-
-                          {visibleProfileFields.has('avatarUrl') ? (
-                            <div className="saas-profile-avatar-field">
-                              <ImgCrop
-                                rotationSlider
-                                aspect={1}
-                                modalTitle="裁切头像"
-                                beforeCrop={handleAvatarBeforeCrop}
-                              >
-                                <Upload
-                                  accept="image/*"
-                                  showUploadList={false}
-                                  customRequest={handleAvatarUploadRequest}
-                                  disabled={avatarUploading}
-                                >
-                                  <button
-                                    type="button"
-                                    className="saas-profile-avatar-trigger"
-                                    aria-label="点击修改头像"
-                                    disabled={avatarUploading}
-                                  >
-                                    <Avatar
-                                      size={96}
-                                      src={avatarValue || currentUser?.avatarUrl || undefined}
-                                      icon={<UserOutlined />}
-                                      className="saas-profile-avatar-trigger__avatar"
-                                    />
-                                    <span className="saas-profile-avatar-trigger__overlay">
-                                      {avatarUploading ? '上传中' : <CameraOutlined />}
-                                    </span>
-                                  </button>
-                                </Upload>
-                              </ImgCrop>
-                            </div>
-                          ) : null}
-
-                          <Row gutter={[12, 0]}>
-                            <Col xs={24} md={12}>
-                              <Form.Item label="用户名">
-                                <Input value={currentUser?.username || '-'} disabled />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                              <Form.Item label="用户ID">
-                                <Input value={currentUser?.userId ? String(currentUser.userId) : '-'} disabled />
-                              </Form.Item>
-                            </Col>
-                          </Row>
-
-                          {hasVisibleProfileFields ? (
-                            <Row gutter={[12, 0]}>
-                              <Col xs={24} md={12}>
-                                <Form.Item name="nickname" label="昵称">
-                                  <Input placeholder="请输入昵称" />
-                                </Form.Item>
-                              </Col>
-                              {visibleProfileFields.has('realName') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item name="realName" label="姓名">
-                                    <Input placeholder="请输入姓名" />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('mobile') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item
-                                    name="mobile"
-                                    label="手机号"
-                                    rules={[{ validator: validateOptionalChinaMobile }]}
-                                    normalize={trimString}
-                                  >
-                                    <Input placeholder="请输入手机号" />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('email') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]}>
-                                    <Input placeholder="请输入邮箱地址" autoComplete="email" />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('birthMonth') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item name="birthMonth" label="出生年月">
-                                    <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('gender') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item name="gender" label="性别">
-                                    <Select allowClear placeholder="请选择性别" options={GENDER_OPTIONS} />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('region') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item name="region" label="所在地区">
-                                    <Input placeholder="请输入所在地区" />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('idCardNumber') ? (
-                                <Col xs={24} md={12}>
-                                  <Form.Item
-                                    name="idCardNumber"
-                                    label="身份证号码"
-                                    rules={[{ validator: validateOptionalChinaIdCard }]}
-                                    normalize={trimString}
-                                  >
-                                    <Input placeholder="请输入身份证号码" />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                              {visibleProfileFields.has('availableTime') ? (
-                                <Col xs={24}>
-                                  <Form.Item name="availableTime" label="可工作时间">
-                                    <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
-                                  </Form.Item>
-                                </Col>
-                              ) : null}
-                            </Row>
-                          ) : (
-                            <Empty description="当前租户未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                          )}
-                        </Form>
-                      </Space>
-                    </Card>
-                  </Col>
-                  <Col xs={24} lg={12} style={{ display: 'flex' }}>
-                    <Card title="租户与安全" style={{ width: '100%' }}>
-                      <Descriptions className="saas-profile-page__descriptions" column={isMobile ? 1 : 2} size="small" bordered>
-                        <Descriptions.Item label="当前租户">{currentTenant?.tenantName || '未选择'}</Descriptions.Item>
-                        <Descriptions.Item label="租户编码">{currentTenant?.tenantCode || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="权限数">{summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}</Descriptions.Item>
-                        <Descriptions.Item label="角色摘要">
-                          <Space wrap>
-                            {roleNames.length ? roleNames.map((name) => <Tag key={name}>{name}</Tag>) : <Tag>暂无角色摘要</Tag>}
-                          </Space>
-                        </Descriptions.Item>
-                      </Descriptions>
-                    </Card>
-                  </Col>
-                </Row>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24}>
-                    <Card title="最近登录记录" loading={profileQuery.loading}>
-                      {recentLoginLogs.length ? (
-                        <Timeline
-                          items={recentLoginLogs.map((item) => ({
-                            children: (
-                              <Space direction="vertical" size={0}>
-                                <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>
-                                <Typography.Text type="secondary">
-                                  {item.logResult || item.failReason || '登录记录'} · {item.createdAt}
-                                </Typography.Text>
-                              </Space>
-                            ),
-                            color: item.logResult === 'SUCCESS' ? 'green' : 'red',
-                          }))}
-                        />
-                      ) : (
-                        <Empty description="暂无最近登录记录" />
-                      )}
-                    </Card>
-                  </Col>
-                </Row>
-              </Space>
-            ),
-          },
-          ...(canAccessSecondFactor
-            ? [
-                {
-                  key: 'second-factor',
-                  label: '2FA验证',
-                  children: (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                      {requiresEmail && !hasEmail ? (
-                        <Alert
-                          showIcon
-                          type="warning"
-                          message="请先补充邮箱"
-                          description="当前租户启用了需要邮箱的验证插件。点击绑定时会先要求补充邮箱，然后自动继续。"
-                        />
+                        </Col>
                       ) : null}
-                      {providerCards}
-                      <Card title="已绑定登录方式">
-                        {boundProviders.length ? (
-                          <List
-                            dataSource={boundProviders}
-                            split={false}
-                            renderItem={(provider) => (
-                              <List.Item style={{ paddingInline: 0 }}>
-                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                  <Space wrap>
-                                    <Typography.Text strong>{provider.pluginName || provider.pluginCode}</Typography.Text>
-                                    <Tag color="green">已绑定</Tag>
-                                    <Tag>{provider.factorName || '登录方式'}</Tag>
-                                  </Space>
-                                  <Typography.Text type="secondary">
-                                    {provider.maskedContact || '暂无绑定标识'}
-                                  </Typography.Text>
-                                  {provider.statusMessage ? (
-                                    <Typography.Text type="secondary">{provider.statusMessage}</Typography.Text>
-                                  ) : null}
-                                </Space>
-                              </List.Item>
-                            )}
-                          />
-                        ) : (
-                          <Empty description="暂无已绑定登录方式" />
-                        )}
-                      </Card>
+                      {visibleProfileFields.has('mobile') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="mobile"
+                            label="手机号"
+                            rules={[{ validator: validateOptionalChinaMobile }]}
+                            normalize={trimString}
+                          >
+                            <Input placeholder="请输入手机号" />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {visibleProfileFields.has('email') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]}>
+                            <Input placeholder="请输入邮箱地址" autoComplete="email" />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {visibleProfileFields.has('birthMonth') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item name="birthMonth" label="出生年月">
+                            <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {visibleProfileFields.has('gender') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item name="gender" label="性别">
+                            <Select allowClear placeholder="请选择性别" options={GENDER_OPTIONS} />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {visibleProfileFields.has('region') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item name="region" label="所在地区">
+                            <Input placeholder="请输入所在地区" />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {visibleProfileFields.has('idCardNumber') ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="idCardNumber"
+                            label="身份证号码"
+                            rules={[{ validator: validateOptionalChinaIdCard }]}
+                            normalize={trimString}
+                          >
+                            <Input placeholder="请输入身份证号码" />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {visibleProfileFields.has('availableTime') ? (
+                        <Col xs={24}>
+                          <Form.Item name="availableTime" label="可工作时间">
+                            <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                    </Row>
+                  ) : (
+                    <Empty description="当前租户未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  )}
+                </Form>
+              </Space>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12} style={{ display: 'flex' }}>
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <Card title="租户与安全" style={{ width: '100%' }}>
+                <Descriptions className="saas-profile-page__descriptions" column={isMobile ? 1 : 2} size="small" bordered>
+                  <Descriptions.Item label="当前租户">{currentTenant?.tenantName || '未选择'}</Descriptions.Item>
+                  <Descriptions.Item label="租户编码">{currentTenant?.tenantCode || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="权限数">{summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}</Descriptions.Item>
+                  <Descriptions.Item label="角色摘要">
+                    <Space wrap>
+                      {roleNames.length ? roleNames.map((name) => <Tag key={name}>{name}</Tag>) : <Tag>暂无角色摘要</Tag>}
                     </Space>
-                  ),
-                },
-              ]
-            : []),
-        ]}
-      />
+                  </Descriptions.Item>
+                </Descriptions>
+              </Card>
+              {boundProviderCard}
+            </Space>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24}>
+            <Card title="最近登录记录" loading={profileQuery.loading}>
+              {recentLoginLogs.length ? (
+                <Timeline
+                  items={recentLoginLogs.map((item) => ({
+                    children: (
+                      <Space direction="vertical" size={0}>
+                        <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          {item.logResult || item.failReason || '登录记录'} · {item.createdAt}
+                        </Typography.Text>
+                      </Space>
+                    ),
+                    color: item.logResult === 'SUCCESS' ? 'green' : 'red',
+                  }))}
+                />
+              ) : (
+                <Empty description="暂无最近登录记录" />
+              )}
+            </Card>
+          </Col>
+        </Row>
+      </Space>
 
       <Modal
         title="补充邮箱"
