@@ -336,12 +336,6 @@ const PluginsPage = () => {
                     <Typography.Paragraph style={{ marginBottom: 0 }}>
                       {plugin.description || '暂无插件描述'}
                     </Typography.Paragraph>
-                    <Descriptions column={1} size="small" bordered>
-                      <Descriptions.Item label="插件编码">{plugin.pluginCode}</Descriptions.Item>
-                      <Descriptions.Item label="API 版本">{plugin.pluginApiVersion}</Descriptions.Item>
-                      <Descriptions.Item label="当前版本">{versionLabel || '-'}</Descriptions.Item>
-                      <Descriptions.Item label="作者">{plugin.author || '-'}</Descriptions.Item>
-                    </Descriptions>
                     <Space wrap>
                       <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
                       <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>

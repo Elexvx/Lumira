@@ -37,7 +37,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BizException.class)
     public ResponseEntity<ApiResponse<Void>> handleBizException(BizException exception, HttpServletRequest request) {
-        log.warn("Business error requestId={} traceId={} msg={}", TraceContext.getRequestId(), TraceContext.getTraceId(), exception.getMessage());
+        log.warn(
+                "Business error requestId={} traceId={} code={}",
+                TraceContext.getRequestId(),
+                TraceContext.getTraceId(),
+                exception.getErrorCode().getCode()
+        );
         ApiResponse<Void> response = ApiResponse.fail(
                 exception.getErrorCode(),
                 exception.getErrorMessage(),
