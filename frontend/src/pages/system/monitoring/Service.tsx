@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from 'antd';
@@ -13,14 +13,23 @@ const ServiceMonitorPage = () => {
   const { isDesktop } = useResponsive();
   const query = useRequest(async () => ({ data: await monitorService.service({ autoRedirectOnUnauthorized: false }) }) as { data: ServiceMonitorSnapshot });
 
+  // Keep a stable ref to the latest refresh function so the interval effect
+  // does not depend on query.refresh directly. query.refresh changes identity
+  // on every render, which would cause the interval to be torn down and
+  // recreated after every data update, producing a visible "twitching" effect.
+  const refreshRef = useRef(query.refresh);
+  useEffect(() => {
+    refreshRef.current = query.refresh;
+  });
+
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void query.refresh();
+      void refreshRef.current();
     }, 10000);
     return () => {
       window.clearInterval(timer);
     };
-  }, [query.refresh]);
+  }, []);
 
   const service = query.data;
 

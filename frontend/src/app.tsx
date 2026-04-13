@@ -2,8 +2,7 @@ import * as AntdIcons from '@ant-design/icons';
 import { history } from '@umijs/max';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { BreadcrumbProps } from 'antd';
-import { Watermark } from 'antd';
-import { createElement, type ComponentType, type ReactNode } from 'react';
+import React, { createElement, type ComponentType, type ReactNode } from 'react';
 import {
   DEFAULT_BRANDING_SETTINGS,
   buildCopyrightText,
@@ -23,6 +22,7 @@ import { backendRouteMeta } from '@/routes/meta';
 import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
 import { tenantContext } from '@/tenant/context';
+import StaticWatermark from '@/layouts/components/StaticWatermark';
 import type {
   BrandingSettings,
   CaptchaChallenge,
@@ -34,7 +34,6 @@ import type {
   TenantSummary,
   WatermarkSettings,
 } from '@/types/api';
-import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { ThemePreferenceProvider } from '@/theme/ThemePreferenceProvider';
 
 const LOGIN_PATH = '/user/login';
@@ -303,19 +302,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       if (!watermark.enabled) {
         return content;
       }
-      return (
-        <Watermark
-          content={watermark.mode === 'TEXT' ? watermark.textLines : undefined}
-          image={watermark.mode === 'IMAGE' ? normalizeUploadUrl(watermark.imageUrl) : undefined}
-          gap={[watermark.gapX, watermark.gapY]}
-          offset={[watermark.offsetX, watermark.offsetY]}
-          zIndex={watermark.zIndex}
-          rotate={watermark.rotate}
-          font={{ color: watermark.fontColor, fontSize: watermark.fontSize, fontWeight: watermark.fontWeight as never }}
-        >
-          {content}
-        </Watermark>
-      );
+      return <StaticWatermark settings={watermark}>{content}</StaticWatermark>;
     },
     headerContentRender: () => null,
     rightContentRender: () => <TopActions />,
