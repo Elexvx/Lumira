@@ -7,7 +7,7 @@ export interface BackendRouteMeta {
 }
 
 export const backendRouteMeta: BackendRouteMeta[] = [
-  { path: '/dashboard/home', name: '控制台', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+  { path: '/dashboard/home', name: '工作台', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
   { path: '/tenant/overview', name: '租户中心', icon: 'ApartmentOutlined', access: 'canVisitTenant' },
   { path: '/system/monitoring/audit', name: '审计中心', icon: 'AuditOutlined', access: 'canVisitAudit' },
   { path: '/user-center', name: '用户中心', icon: 'TeamOutlined', access: 'canVisitUserCenter' },
@@ -45,7 +45,7 @@ export interface BackendRouteRecord {
 
 export const backendRoutes: BackendRouteRecord[] = [
   { path: '/', redirect: '/dashboard/home' },
-  { path: '/dashboard/home', component: '@/pages/dashboard/Home', name: '控制台', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+  { path: '/dashboard/home', component: '@/pages/dashboard/Home', name: '工作台', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
   { path: '/tenant/overview', component: '@/pages/tenant/Overview', name: '租户中心', icon: 'ApartmentOutlined', access: 'canVisitTenant' },
   { path: '/audit/overview', redirect: '/system/monitoring/audit' },
   { path: '/system/users', redirect: '/user-center/users' },
