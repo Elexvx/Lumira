@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { history } from '@umijs/max';
 import { message } from 'antd';
-import { clearAuthSession } from '@/auth/session';
+import { performLogout } from '@/auth/session';
 import { tokenManager } from '@/auth/token';
 import { tenantContext } from '@/tenant/context';
 import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
@@ -179,8 +179,9 @@ export const notifyPluginLoadError = (error: unknown) => {
     return feedback;
   }
   if (feedback.redirectToLogin) {
-    clearAuthSession();
-    history.replace('/user/login');
+    message[feedback.type](feedback.message);
+    void performLogout();
+    return feedback;
   }
   message[feedback.type](feedback.message);
   return feedback;

@@ -103,6 +103,64 @@ body,
   pointer-events: none;
 }
 
+.saas-service-monitor-page {
+  .ant-descriptions {
+    width: 100%;
+  }
+
+  .ant-descriptions-view,
+  .ant-descriptions-view table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content {
+    min-width: 0;
+    vertical-align: top;
+  }
+
+  .ant-descriptions-item-content > * {
+    min-width: 0;
+  }
+
+  .saas-monitor-break-value,
+  .saas-monitor-numeric-value,
+  .saas-monitor-expandable-text__content {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .saas-monitor-numeric-value {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .saas-monitor-expandable-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .saas-monitor-expandable-text__content {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+  }
+
+  .saas-monitor-expandable-text__content.is-expanded {
+    display: block;
+    overflow: visible;
+  }
+
+  .saas-monitor-expandable-text__trigger {
+    padding: 0;
+    height: auto;
+  }
+}
+
 .saas-management-page-body {
   width: 100%;
   margin: 0 auto;

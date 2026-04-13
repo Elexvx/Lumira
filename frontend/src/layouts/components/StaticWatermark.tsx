@@ -1,4 +1,4 @@
-import { memo, type CSSProperties, type ReactNode } from 'react';
+import { memo, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { WatermarkSettings } from '@/types/api';
 
@@ -88,18 +88,31 @@ const StaticWatermark = memo(({ settings, children }: StaticWatermarkProps) => {
   const gapY = Number.isFinite(settings.gapY) && settings.gapY > 0 ? settings.gapY : DEFAULT_GAP_Y;
   const offsetX = Number.isFinite(settings.offsetX) ? settings.offsetX : 0;
   const offsetY = Number.isFinite(settings.offsetY) ? settings.offsetY : 0;
-  const backgroundImage = buildWatermarkImage(settings);
+  const backgroundImage = useMemo(() => buildWatermarkImage(settings), [
+    settings.mode,
+    settings.imageUrl,
+    settings.textLines.join('\u0001'),
+    settings.fontColor,
+    settings.fontSize,
+    settings.fontWeight,
+    settings.rotate,
+    settings.gapX,
+    settings.gapY,
+  ]);
 
-  const overlayStyle: CSSProperties = {
-    position: 'fixed',
-    inset: 0,
-    zIndex: settings.zIndex,
-    pointerEvents: 'none',
-    backgroundImage: `url("${backgroundImage}")`,
-    backgroundRepeat: 'repeat',
-    backgroundSize: `${gapX}px ${gapY}px`,
-    backgroundPosition: `${offsetX - gapX / 2}px ${offsetY - gapY / 2}px`,
-  };
+  const overlayStyle = useMemo<CSSProperties>(
+    () => ({
+      position: 'fixed',
+      inset: 0,
+      zIndex: settings.zIndex,
+      pointerEvents: 'none',
+      backgroundImage: `url("${backgroundImage}")`,
+      backgroundRepeat: 'repeat',
+      backgroundSize: `${gapX}px ${gapY}px`,
+      backgroundPosition: `${offsetX - gapX / 2}px ${offsetY - gapY / 2}px`,
+    }),
+    [backgroundImage, gapX, gapY, offsetX, offsetY, settings.zIndex],
+  );
 
   return (
     <>

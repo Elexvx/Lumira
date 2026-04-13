@@ -51,7 +51,7 @@ export const performLogout = async () => {
       const refreshed = await tryRefreshToken();
       if (!refreshed) {
         clearAuthSession();
-        history.replace('/user/login');
+        window.location.href = '/user/login';
         return;
       }
     }
@@ -66,7 +66,7 @@ export const performLogout = async () => {
     }
   }
   clearAuthSession();
-  history.replace('/user/login');
+  window.location.href = '/user/login';
 };
 
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {

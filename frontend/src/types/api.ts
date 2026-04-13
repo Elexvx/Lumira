@@ -258,6 +258,13 @@ export interface TenantPlugin {
   menus?: MenuNode[];
 }
 
+export interface NotificationRecord {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface PagedResult<T> {
   records: T[];
   total: number;
