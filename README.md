@@ -161,6 +161,14 @@ cd legendary-invention
 - `REDIS_PASSWORD`
 - `JWT_SECRET`
 
+常用安全相关配置：
+
+- `CORS_ALLOWED_ORIGINS`：生产/测试环境允许的前端 origin 列表，逗号分隔。
+- `TRUSTED_PROXY_CIDRS`：受信代理网段，逗号分隔。
+- `TRUST_FORWARDED_HEADERS`：是否允许解析代理头，生产环境建议仅在受信代理后开启。
+- `DEFAULT_ADMIN_INIT_ENABLED`：仅 `dev` 环境建议开启默认管理员初始化。
+- `DEFAULT_ADMIN_PASSWORD_HASH`：默认管理员密码哈希，生产环境不应依赖自动重置。
+
 如果项目提供了 `.env.example`，建议先复制一份再修改本地配置。
 
 ```bash
@@ -176,6 +184,9 @@ mvn spring-boot:run
 ### 3. 启动前端
 
 前端在 `frontend/package.json` 中使用 `pnpm` 管理依赖。
+
+- 仓库只保留 `pnpm-lock.yaml`，不会提交 `package-lock.json`。
+- `frontend/src/.umi` 和 `frontend/src/.umi-production` 都是 Umi 生成产物，构建时自动重建，不需要手工维护。
 
 ```bash
 cd frontend

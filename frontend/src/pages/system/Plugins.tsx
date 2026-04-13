@@ -30,7 +30,6 @@ const PluginsPage = () => {
     if (error instanceof ApiRequestError) {
       return;
     }
-    console.error(error);
     message.error(error instanceof Error && error.message ? error.message : fallbackMessage);
   };
 

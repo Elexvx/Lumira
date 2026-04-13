@@ -3,13 +3,16 @@ export interface AuthRequestSnapshot {
   accessToken: string;
   hasAuthToken: boolean;
   authSessionEpoch: number;
+  tokenGeneration: number;
 }
 
 export interface UnauthorizedRuntimeState {
   pathname: string;
   currentAccessToken: string;
   currentAuthSessionEpoch: number;
+  currentTokenGeneration: number;
   loginInProgress: boolean;
+  bootstrapInProgress: boolean;
 }
 
 export const shouldSuppressUnauthorizedSideEffects = (
@@ -20,11 +23,15 @@ export const shouldSuppressUnauthorizedSideEffects = (
     return true;
   }
 
-  if (runtime.loginInProgress || runtime.pathname === '/user/login') {
+  if (runtime.loginInProgress || runtime.bootstrapInProgress || runtime.pathname === '/user/login') {
     return true;
   }
 
   if (snapshot.authSessionEpoch !== runtime.currentAuthSessionEpoch) {
+    return true;
+  }
+
+  if (snapshot.tokenGeneration !== runtime.currentTokenGeneration) {
     return true;
   }
 

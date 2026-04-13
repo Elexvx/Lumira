@@ -15,6 +15,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class RoleDetailIntegrationTest {
 
@@ -109,8 +112,43 @@ class RoleDetailIntegrationTest {
         Assertions.assertEquals("0", treeBody.path("code").asText(), treeResponse.getBody());
         Assertions.assertTrue(treeBody.path("data").isArray(), treeResponse.getBody());
         Assertions.assertTrue(treeBody.path("data").size() > 0, treeResponse.getBody());
-        Assertions.assertTrue(treeBody.path("data").get(0).path("pageKey").isTextual(), treeResponse.getBody());
-        Assertions.assertTrue(treeBody.path("data").get(0).path("pageName").isTextual(), treeResponse.getBody());
+
+        JsonNode systemRootNode = findNodeByPageName(treeBody.path("data"), "系统管理");
+        Assertions.assertNotNull(systemRootNode, treeResponse.getBody());
+        Assertions.assertEquals("CATALOG", systemRootNode.path("nodeType").asText(), treeResponse.getBody());
+        Assertions.assertTrue(systemRootNode.path("routePath").isNull() || systemRootNode.path("routePath").asText().isBlank(), treeResponse.getBody());
+
+        JsonNode userCenterNode = findNodeByPageName(treeBody.path("data"), "用户中心");
+        Assertions.assertNotNull(userCenterNode, treeResponse.getBody());
+        Assertions.assertEquals("CATALOG", userCenterNode.path("nodeType").asText(), treeResponse.getBody());
+        Assertions.assertTrue(userCenterNode.path("routePath").isNull() || userCenterNode.path("routePath").asText().isBlank(), treeResponse.getBody());
+
+        JsonNode monitoringNode = findNodeByPageName(treeBody.path("data"), "系统监控");
+        Assertions.assertNotNull(monitoringNode, treeResponse.getBody());
+        Assertions.assertEquals("CATALOG", monitoringNode.path("nodeType").asText(), treeResponse.getBody());
+        Assertions.assertTrue(monitoringNode.path("children").isArray(), treeResponse.getBody());
+
+        Set<String> childNames = new LinkedHashSet<>();
+        Set<String> childTypes = new LinkedHashSet<>();
+        for (JsonNode child : monitoringNode.path("children")) {
+            childNames.add(child.path("pageName").asText());
+            childTypes.add(child.path("nodeType").asText());
+        }
+
+        Assertions.assertTrue(childNames.contains("服务监控"), treeResponse.getBody());
+        Assertions.assertTrue(childNames.contains("Redis监控"), treeResponse.getBody());
+        Assertions.assertTrue(childNames.contains("接口文档"), treeResponse.getBody());
+        Assertions.assertTrue(childNames.contains("审计中心"), treeResponse.getBody());
+        Assertions.assertTrue(childTypes.stream().allMatch("PAGE"::equals), treeResponse.getBody());
+    }
+
+    private JsonNode findNodeByPageName(JsonNode nodes, String pageName) {
+        for (JsonNode node : nodes) {
+            if (pageName.equals(node.path("pageName").asText())) {
+                return node;
+            }
+        }
+        return null;
     }
 
     private void disableCaptcha() {

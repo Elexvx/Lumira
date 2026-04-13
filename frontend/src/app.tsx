@@ -12,7 +12,6 @@ import {
   persistBrandingSettings,
 } from '@/branding/settings';
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
-import { loadCaptchaChallenge } from '@/auth/captcha';
 import { normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { getStoredCurrentUser, isLoggedIn, restoreSession } from '@/auth/session';
 import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
@@ -25,7 +24,6 @@ import { tenantContext } from '@/tenant/context';
 import StaticWatermark from '@/layouts/components/StaticWatermark';
 import type {
   BrandingSettings,
-  CaptchaChallenge,
   CurrentUser,
   MenuNode,
   MyTenant,
@@ -81,12 +79,6 @@ export interface AppInitialState {
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;
   watermarkSettings?: WatermarkSettings;
-  loginBootstrap?: LoginBootstrapState;
-}
-
-export interface LoginBootstrapState {
-  securitySettings: SecuritySettings;
-  captchaChallenge: CaptchaChallenge | null;
 }
 
 interface RuntimeMenuDataItem {
@@ -450,7 +442,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     phase: 'security',
     progress: 58,
     title: '加载安全配置',
-    description: '正在同步验证码和登录策略',
+    description: '正在同步登录策略',
     brandName: storedBrandingSettings.websiteName,
     retryInMs: undefined,
     errorMessage: undefined,
@@ -458,23 +450,6 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
 
   const brandingSettings = await loadBrandingSettings(false);
   const securitySettings = await loadPublicSecuritySettings();
-  let captchaChallenge: CaptchaChallenge | null = null;
-
-  if (securitySettings.captchaEnabled) {
-    setBootstrapSnapshot({
-      phase: 'captcha',
-      progress: 80,
-      title: '准备验证码组件',
-      description: '正在加载验证码图片，完成后才展示登录页',
-      brandName: brandingSettings.websiteName,
-    });
-    captchaChallenge = await loadCaptchaChallenge(securitySettings.captchaType, {
-      autoRedirectOnUnauthorized: false,
-      silent: true,
-      skipAuth: true,
-    });
-  }
-
   setBootstrapSnapshot({
     phase: 'ready',
     progress: 100,
@@ -496,10 +471,6 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     securitySettings,
     brandingSettings,
     watermarkSettings: DEFAULT_WATERMARK_SETTINGS,
-    loginBootstrap: {
-      securitySettings,
-      captchaChallenge,
-    },
   };
 };
 

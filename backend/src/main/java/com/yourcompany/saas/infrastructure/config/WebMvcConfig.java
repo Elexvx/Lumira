@@ -1,6 +1,7 @@
 package com.yourcompany.saas.infrastructure.config;
 
 import com.yourcompany.saas.infrastructure.upload.UploadProperties;
+import com.yourcompany.saas.infrastructure.config.WebProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -10,22 +11,29 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Path;
 
 @Configuration
-@EnableConfigurationProperties(UploadProperties.class)
+@EnableConfigurationProperties({UploadProperties.class, WebProperties.class})
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final UploadProperties uploadProperties;
+    private final WebProperties webProperties;
 
-    public WebMvcConfig(UploadProperties uploadProperties) {
+    public WebMvcConfig(UploadProperties uploadProperties, WebProperties webProperties) {
         this.uploadProperties = uploadProperties;
+        this.webProperties = webProperties;
     }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
+        var registration = registry.addMapping("/**")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
-                .exposedHeaders("X-Request-Id", "X-Trace-Id")
-                .allowedOrigins("*");
+                .exposedHeaders("X-Request-Id", "X-Trace-Id");
+
+        if (!webProperties.getCorsAllowedOrigins().isEmpty()) {
+            registration.allowedOrigins(webProperties.getCorsAllowedOrigins().toArray(new String[0]));
+        } else if (!webProperties.getCorsAllowedOriginPatterns().isEmpty()) {
+            registration.allowedOriginPatterns(webProperties.getCorsAllowedOriginPatterns().toArray(new String[0]));
+        }
     }
 
     @Override

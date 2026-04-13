@@ -588,7 +588,10 @@ export interface PermissionActionRecord {
   sourceType?: string;
 }
 
+export type PermissionTreeNodeType = 'CATALOG' | 'PAGE' | 'ALIAS';
+
 export interface PermissionTreeRecord {
+  nodeType: PermissionTreeNodeType;
   pageKey: string;
   pageName: string;
   routePath?: string;

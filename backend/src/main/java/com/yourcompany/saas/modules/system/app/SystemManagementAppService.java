@@ -158,6 +158,21 @@ public class SystemManagementAppService {
             shortcut("通知中心", "系统公告与通知管理", "/system/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
     );
+    private static final String NODE_TYPE_CATALOG = "CATALOG";
+    private static final String NODE_TYPE_PAGE = "PAGE";
+    private static final String NODE_TYPE_ALIAS = "ALIAS";
+    private static final Set<String> LEGACY_PERMISSION_TREE_ALIAS_PATHS = Set.of(
+            "/audit/overview",
+            "/system/users",
+            "/system/online-users",
+            "/system/roles",
+            "/profile/center",
+            "/user-center/permissions",
+            "/iam/overview",
+            "/plugins/announcement",
+            "/plugins/2fa",
+            "/plugins/sms"
+    );
 
     private final JdbcTemplate jdbcTemplate;
     private final AuthAppService authAppService;
@@ -627,15 +642,17 @@ public class SystemManagementAppService {
             }
         }
 
-        boolean selectable = StringUtils.hasText(menu.getPermissionKey());
-        if (!selectable && children.isEmpty()) {
+        String nodeType = resolvePermissionTreeNodeType(menu);
+        boolean selectable = NODE_TYPE_PAGE.equals(nodeType) && StringUtils.hasText(menu.getPermissionKey());
+        if (!selectable && children.isEmpty() && !NODE_TYPE_CATALOG.equals(nodeType)) {
             return null;
         }
 
         SystemVO.PermissionTreeVO node = new SystemVO.PermissionTreeVO();
-        node.setPageKey(StringUtils.hasText(menu.getPermissionKey()) ? menu.getPermissionKey() : menu.getPath() != null ? menu.getPath() : menu.getMenuCode());
+        node.setPageKey(menu.getId() != null ? String.valueOf(menu.getId()) : StringUtils.hasText(menu.getPath()) ? menu.getPath() : menu.getMenuCode());
         node.setPageName(menu.getMenuName());
-        node.setRoutePath(menu.getPath());
+        node.setNodeType(nodeType);
+        node.setRoutePath(NODE_TYPE_PAGE.equals(nodeType) ? menu.getPath() : null);
         node.setIcon(menu.getIcon());
         node.setPermissionKey(menu.getPermissionKey());
         node.setSelectable(selectable);
@@ -646,6 +663,27 @@ public class SystemManagementAppService {
             node.setActionPermissions(actionPermissionsByPageKey.getOrDefault(menu.getPermissionKey(), List.of()));
         }
         return node;
+    }
+
+    private String resolvePermissionTreeNodeType(SystemVO.MenuVO menu) {
+        if (menu == null) {
+            return NODE_TYPE_ALIAS;
+        }
+        if ("CATALOG".equalsIgnoreCase(menu.getMenuType())) {
+            return NODE_TYPE_CATALOG;
+        }
+        if (isLegacyPermissionTreeAliasPath(menu.getPath()) || isRedirectComponent(menu.getComponent())) {
+            return NODE_TYPE_ALIAS;
+        }
+        return NODE_TYPE_PAGE;
+    }
+
+    private boolean isLegacyPermissionTreeAliasPath(String path) {
+        return StringUtils.hasText(path) && LEGACY_PERMISSION_TREE_ALIAS_PATHS.contains(path);
+    }
+
+    private boolean isRedirectComponent(String component) {
+        return StringUtils.hasText(component) && component.startsWith("redirect:");
     }
 
     private Map<String, List<SystemVO.PermissionActionVO>> buildActionPermissionsByPageKey(List<SystemVO.PermissionVO> permissions) {

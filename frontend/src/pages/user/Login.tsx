@@ -1,19 +1,20 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { history, useLocation } from '@umijs/max';
 import { LoginFormPage, ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Alert, Form, Input, Spin, Typography } from 'antd';
+import { Alert, Form, Input, Spin, Typography, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { loadCaptchaChallenge } from '@/auth/captcha';
+import { createCaptchaRefreshController } from '@/auth/captchaRefreshController';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
+import { systemService } from '@/services/system';
 import { ApiRequestError } from '@/services/common/request';
 import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
-import { systemService } from '@/services/system';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
@@ -36,92 +37,57 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<LoginErrorState>();
   const { initialState, setInitialState } = useInitialStateModel();
-  const loginBootstrap = initialState?.loginBootstrap;
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(
-    loginBootstrap?.securitySettings || initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS,
+    normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS),
   );
-  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(loginBootstrap?.captchaChallenge || null);
+  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [captchaImageLoadFailed, setCaptchaImageLoadFailed] = useState(false);
   const location = useLocation();
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
+  const securitySettingsRef = useRef(securitySettings);
+  const captchaRefreshControllerRef = useRef(
+    createCaptchaRefreshController({
+      getCaptchaEnabled: () => securitySettingsRef.current.captchaEnabled,
+      getCaptchaType: () => securitySettingsRef.current.captchaType,
+      loadChallenge: (captchaType) =>
+        loadCaptchaChallenge(captchaType, {
+          autoRedirectOnUnauthorized: false,
+          silent: true,
+          skipAuth: true,
+        }),
+      setCaptchaChallenge,
+      setCaptchaLoading,
+      setCaptchaImageLoadFailed,
+      onRefreshFailure: () => message.warning('验证码刷新失败，请稍后重试'),
+    }),
+  );
 
   useEffect(() => {
-    if (loginBootstrap) {
-      setSecuritySettings(loginBootstrap.securitySettings);
-      setCaptchaChallenge(loginBootstrap.captchaChallenge);
-      return;
-    }
-
-    setSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS);
-  }, [initialState?.securitySettings, loginBootstrap]);
+    const normalizedSecuritySettings = normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS);
+    persistSecuritySettings(normalizedSecuritySettings);
+    setSecuritySettings(normalizedSecuritySettings);
+  }, [initialState?.securitySettings]);
 
   useEffect(() => {
-    if (loginBootstrap) {
-      return;
-    }
+    securitySettingsRef.current = securitySettings;
+  }, [securitySettings]);
 
-    let active = true;
-    const loadPublicSecuritySettings = async () => {
-      try {
-        const settings = normalizeSecuritySettings(
-          await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true }),
-        );
-        if (!active) {
-          return;
-        }
-        persistSecuritySettings(settings);
-        setSecuritySettings(settings);
-      } catch {
-        if (!active) {
-          return;
-        }
-        setSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS);
-      }
-    };
+  const refreshCaptcha = useCallback(async () => captchaRefreshControllerRef.current.refresh(), []);
 
-    void loadPublicSecuritySettings();
-    return () => {
-      active = false;
-    };
-  }, [initialState?.securitySettings, loginBootstrap]);
-
-  const refreshCaptcha = useCallback(async () => {
+  useEffect(() => {
     if (!securitySettings.captchaEnabled) {
       setCaptchaChallenge(null);
-      return null;
-    }
-
-    setCaptchaLoading(true);
-    try {
-      const challenge = await loadCaptchaChallenge(securitySettings.captchaType, {
-        autoRedirectOnUnauthorized: false,
-        silent: true,
-        skipAuth: true,
-      });
-      setCaptchaChallenge(challenge);
-      return challenge;
-    } catch (error) {
-      setCaptchaChallenge(null);
-      setLoginError({
-        type: 'error',
-        message: error instanceof Error ? error.message : '验证码加载失败，请稍后重试',
-      });
-      return null;
-    } finally {
+      setCaptchaImageLoadFailed(false);
       setCaptchaLoading(false);
-    }
-  }, [securitySettings.captchaEnabled, securitySettings.captchaType]);
-
-  useEffect(() => {
-    if (!securitySettings.captchaEnabled) {
-      setCaptchaChallenge(null);
+      captchaRefreshControllerRef.current.invalidate();
       return;
     }
 
-    if (!captchaChallenge?.captchaId) {
+    if (!captchaChallenge?.captchaId || captchaChallenge.captchaType !== securitySettings.captchaType) {
       void refreshCaptcha();
     }
-  }, [captchaChallenge?.captchaId, refreshCaptcha, securitySettings.captchaEnabled]);
+  }, [captchaChallenge?.captchaId, captchaChallenge?.captchaType, refreshCaptcha, securitySettings.captchaEnabled, securitySettings.captchaType]);
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
@@ -152,7 +118,7 @@ const Login = () => {
       });
 
       const sessionResult = await initializeAfterLogin(loginResponse);
-      const [menuTree, availablePlugins, latestBrandingSettings] = await Promise.all([
+      const [menuResult, pluginResult, brandingResult] = await Promise.allSettled([
         pluginService.currentMenus({
           autoRedirectOnUnauthorized: false,
           allowUnauthorizedWithoutRedirect: true,
@@ -169,7 +135,13 @@ const Login = () => {
           silent: true,
         }),
       ]);
-      const normalizedBrandingSettings = normalizeBrandingSettings(latestBrandingSettings);
+      const menuTree = menuResult.status === 'fulfilled' ? menuResult.value : [];
+      const availablePlugins = pluginResult.status === 'fulfilled' ? pluginResult.value : [];
+      const normalizedBrandingSettings = normalizeBrandingSettings(
+        brandingResult.status === 'fulfilled'
+          ? brandingResult.value
+          : initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
+      );
       persistBrandingSettings(normalizedBrandingSettings);
       flushSync(() => {
         setInitialState((prev: AppInitialState | undefined) => ({
@@ -182,9 +154,6 @@ const Login = () => {
           availablePlugins,
           securitySettings: sessionResult.securitySettings,
           brandingSettings: normalizedBrandingSettings,
-          // Clear stale pre-login bootstrap data so re-logins use fresh captcha
-          // and security settings rather than cached data from the initial load.
-          loginBootstrap: undefined,
         }));
       });
 
@@ -309,8 +278,16 @@ const Login = () => {
                   <span className="saas-login-page__captcha-loading">
                     <Spin size="small" />
                   </span>
+                ) : captchaImageLoadFailed ? (
+                  <Typography.Text className="saas-login-page__captcha-placeholder">
+                    图片加载失败，点击重试
+                  </Typography.Text>
                 ) : captchaChallenge?.imageUrl ? (
-                  <img src={captchaChallenge.imageUrl} alt="验证码" />
+                  <img
+                    src={captchaChallenge.imageUrl}
+                    alt="验证码"
+                    onError={() => setCaptchaImageLoadFailed(true)}
+                  />
                 ) : (
                   <Typography.Text className="saas-login-page__captcha-placeholder">点击刷新验证码</Typography.Text>
                 )}
