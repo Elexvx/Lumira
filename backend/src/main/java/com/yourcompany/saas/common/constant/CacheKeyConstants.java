@@ -15,6 +15,7 @@ public final class CacheKeyConstants {
     public static final String LOGIN_CAPTCHA = "login_captcha";
     public static final String LOGIN_ATTEMPT = "login_attempt";
     public static final String LOGIN_FAILURE = "login_failure";
+    public static final String REPEAT_SUBMIT = "repeat_submit";
 
     public static String tenantKey(String tenantId, String suffix) {
         return String.join(":", PREFIX, "tenant", tenantId, suffix);
@@ -50,5 +51,9 @@ public final class CacheKeyConstants {
 
     public static String captchaKey(String captchaId) {
         return loginCaptchaKey(captchaId);
+    }
+
+    public static String repeatSubmitKey(String scope, String method, String path, String fingerprint) {
+        return String.join(":", PREFIX, REPEAT_SUBMIT, scope, method, path, fingerprint);
     }
 }

@@ -157,7 +157,7 @@ const composeMenuItem = (
   return {
     ...localMeta,
     path: backendNode.path || localMeta?.path,
-    name: backendNode.name || localMeta?.name || mergedMeta?.name,
+    name: localMeta?.name || mergedMeta?.name || backendNode.name,
     icon,
     hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
     children: children.length ? children : undefined,
@@ -202,7 +202,7 @@ const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname: strin
 
   return trail.map((node, index) => ({
     key: node.path || String(node.id),
-    title: node.name || routeMetaMap.get(node.path || '')?.name || node.path,
+    title: routeMetaMap.get(node.path || '')?.name || node.name || node.path,
     path: index === trail.length - 1 ? undefined : node.path,
   }));
 };
@@ -417,7 +417,7 @@ const buildAuthenticatedInitialState = async (
     phase: 'ready',
     progress: 100,
     title: '系统已就绪',
-    description: '正在进入控制台',
+    description: '正在进入工作台',
     ready: true,
     retryInMs: undefined,
     errorMessage: undefined,
