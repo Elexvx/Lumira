@@ -1,0 +1,15 @@
+{
+  "pluginCode": "announcement",
+  "version": "1.0.0",
+  "entry": "assets/announcement-plugin.js",
+  "assets": [
+    "assets/announcement-plugin.js"
+  ],
+  "styles": [],
+  "routes": [
+    "/plugins/announcement"
+  ],
+  "sharedDeps": [
+    "react"
+  ]
+}

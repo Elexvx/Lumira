@@ -3,6 +3,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { ApiRequestError } from '@/services/common/request';
 import { usePermission } from '@/hooks/usePermission';
 import { pluginService } from '@/services/plugin';
 import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
@@ -24,6 +25,14 @@ const PluginsPage = () => {
   const [runtimeLogs, setRuntimeLogs] = useState<PluginRuntimeLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [mutationLoading, setMutationLoading] = useState(false);
+
+  const handlePluginPageError = (error: unknown, fallbackMessage: string) => {
+    if (error instanceof ApiRequestError) {
+      return;
+    }
+    console.error(error);
+    message.error(error instanceof Error && error.message ? error.message : fallbackMessage);
+  };
 
   const loadOverview = async () => {
     setLoading(true);
@@ -61,8 +70,10 @@ const PluginsPage = () => {
               ...prev,
               availablePlugins: tenantPlugins,
             }
-          : prev,
+        : prev,
       );
+    } catch (error) {
+      handlePluginPageError(error, '加载插件信息失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -96,7 +107,13 @@ const PluginsPage = () => {
       content,
       okText: '确认',
       cancelText: '取消',
-      onOk: async () => action(),
+      onOk: async () => {
+        try {
+          await action();
+        } catch (error) {
+          handlePluginPageError(error, '操作失败，请稍后重试');
+        }
+      },
     });
 
   const getActiveVersion = (pluginCode: string) => {
@@ -124,6 +141,8 @@ const PluginsPage = () => {
         await pluginService.install({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
         message.success('插件安装完成');
         await refreshAfterMutation();
+      } catch (error) {
+        handlePluginPageError(error, '安装插件失败，请稍后重试');
       } finally {
         setMutationLoading(false);
       }
@@ -137,6 +156,8 @@ const PluginsPage = () => {
         await pluginService.upgrade({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
         message.success('插件激活版本已切换');
         await refreshAfterMutation();
+      } catch (error) {
+        handlePluginPageError(error, '激活插件失败，请稍后重试');
       } finally {
         setMutationLoading(false);
       }
@@ -162,6 +183,8 @@ const PluginsPage = () => {
         await pluginService.enable({ tenantId, pluginCode, version: versionToUse }, { autoRedirectOnUnauthorized: false });
         message.success('插件已启用');
         await refreshAfterMutation();
+      } catch (error) {
+        handlePluginPageError(error, '启用插件失败，请稍后重试');
       } finally {
         setMutationLoading(false);
       }
@@ -180,6 +203,8 @@ const PluginsPage = () => {
         await pluginService.disable({ tenantId, pluginCode }, { autoRedirectOnUnauthorized: false });
         message.success('插件已停用');
         await refreshAfterMutation();
+      } catch (error) {
+        handlePluginPageError(error, '停用插件失败，请稍后重试');
       } finally {
         setMutationLoading(false);
       }
@@ -193,6 +218,8 @@ const PluginsPage = () => {
         await pluginService.rollback({ pluginCode, targetVersion: version }, { autoRedirectOnUnauthorized: false });
         message.success('插件已回滚');
         await refreshAfterMutation();
+      } catch (error) {
+        handlePluginPageError(error, '回滚插件失败，请稍后重试');
       } finally {
         setMutationLoading(false);
       }
@@ -206,6 +233,8 @@ const PluginsPage = () => {
         await pluginService.uninstall(pluginCode, { autoRedirectOnUnauthorized: false });
         message.success('插件已卸载');
         await refreshAfterMutation();
+      } catch (error) {
+        handlePluginPageError(error, '卸载插件失败，请稍后重试');
       } finally {
         setMutationLoading(false);
       }
@@ -232,6 +261,8 @@ const PluginsPage = () => {
       setUploadFile(null);
       message.success('插件上传并完成校验');
       await loadOverview();
+    } catch (error) {
+      handlePluginPageError(error, '上传插件失败，请稍后重试');
     } finally {
       setMutationLoading(false);
     }
@@ -253,6 +284,8 @@ const PluginsPage = () => {
     setLogsLoading(true);
     try {
       setRuntimeLogs(await pluginService.runtimeLogs(plugin.pluginCode, { autoRedirectOnUnauthorized: false }));
+    } catch (error) {
+      handlePluginPageError(error, '加载插件日志失败，请稍后重试');
     } finally {
       setLogsLoading(false);
     }

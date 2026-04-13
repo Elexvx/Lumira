@@ -550,12 +550,14 @@ const MenuManagementPage = () => {
       title: '路由',
       dataIndex: 'path',
       hideInSearch: true,
+      width: 220,
+      ellipsis: true,
     },
     {
       title: '组件',
       dataIndex: 'component',
       hideInSearch: true,
-      width: 260,
+      width: 300,
       ellipsis: true,
     },
     {

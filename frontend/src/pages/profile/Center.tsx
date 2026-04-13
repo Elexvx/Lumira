@@ -1,11 +1,12 @@
 import { CameraOutlined, UserOutlined } from '@ant-design/icons';
 import { PageContainer, StepsForm } from '@ant-design/pro-components';
 import { useLocation, useRequest } from '@umijs/max';
-import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Empty, Form, Input, Modal, QRCode, Result, Row, Select, Space, Tag, Tabs, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
+import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Empty, Form, Input, List, Modal, QRCode, Result, Row, Select, Space, Tag, Tabs, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import ImgCrop from 'antd-img-crop';
 import { useEffect, useMemo, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { usePermission } from '@/hooks/usePermission';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
 import { ApiRequestError } from '@/services/common/request';
@@ -28,13 +29,23 @@ const ProfileCenterPage = () => {
   const [profileForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
   const { isMobile } = useResponsive();
+  const { canAccess } = usePermission();
   const location = useLocation();
   const profileQuery = useRequest(async () => ({ data: await profileService.summary({ autoRedirectOnUnauthorized: false }) }) as {
     data: ProfileSummary;
   });
-  const secondFactorQuery = useRequest(async () => ({ data: await secondFactorService.providers({ autoRedirectOnUnauthorized: false }) }) as {
-    data: SecondFactorProviderStatus[];
-  });
+  const canViewSecondFactor = canAccess('plugin:2fa:view');
+  const canManageSecondFactor = canAccess('plugin:2fa:manage');
+  const canAccessSecondFactor = canViewSecondFactor || canManageSecondFactor;
+  const secondFactorQuery = useRequest(
+    async () =>
+      ({ data: await secondFactorService.providers({ autoRedirectOnUnauthorized: false }) }) as {
+        data: SecondFactorProviderStatus[];
+      },
+    {
+      ready: canAccessSecondFactor,
+    },
+  );
   const [emailBindForm] = Form.useForm();
   const [profileSaving, setProfileSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -59,6 +70,12 @@ const ProfileCenterPage = () => {
     setActiveTab(defaultActiveTab);
   }, [defaultActiveTab]);
 
+  useEffect(() => {
+    if (!canAccessSecondFactor && activeTab === 'second-factor') {
+      setActiveTab('overview');
+    }
+  }, [activeTab, canAccessSecondFactor]);
+
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
   const currentTenant = summary?.currentTenant || initialState?.currentTenant || null;
@@ -66,6 +83,7 @@ const ProfileCenterPage = () => {
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const profileFieldSettings = summary?.profileFieldSettings || [];
   const providerList = secondFactorQuery.data || [];
+  const boundProviders = useMemo(() => providerList.filter((provider) => provider.bound), [providerList]);
   const requiresEmail = providerList.some((provider) => provider.emailRequired);
   const hasEmail = Boolean(currentUser?.email);
   const hasMobile = Boolean(currentUser?.mobile);
@@ -385,7 +403,6 @@ const ProfileCenterPage = () => {
     <Row gutter={[16, 16]}>
       {providerList.map((provider) => {
         const statusColor = provider.enabled && provider.bound ? 'green' : provider.enabled ? 'gold' : 'default';
-        const actionLabel = provider.bound ? '重新绑定' : '绑定';
         return (
           <Col key={provider.pluginCode} xs={24} lg={12}>
             <Card
@@ -402,25 +419,22 @@ const ProfileCenterPage = () => {
                 <Typography.Paragraph style={{ marginBottom: 0 }}>
                   {provider.statusMessage || '请完成绑定与验证码验证后启用该方式。'}
                 </Typography.Paragraph>
-                <Descriptions column={1} size="small" bordered>
-                  <Descriptions.Item label="验证方式">{provider.factorName || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="绑定标识">{provider.maskedContact || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="邮箱要求">{provider.emailRequired ? '需要邮箱' : '不需要邮箱'}</Descriptions.Item>
-                </Descriptions>
-                <Space wrap>
-                  <Button
-                    type="primary"
-                    onClick={() => void openBindModal(provider)}
-                    disabled={bindingLoading || bindingSubmitting || emailBindingSubmitting}
-                  >
-                    {actionLabel}
-                  </Button>
-                  {provider.bound ? (
-                    <Button danger onClick={() => handleUnbind(provider.pluginCode, provider.pluginName)}>
-                      解绑
+                {canManageSecondFactor ? (
+                  <Space wrap>
+                    <Button
+                      type="primary"
+                      onClick={() => void openBindModal(provider)}
+                      disabled={bindingLoading || bindingSubmitting || emailBindingSubmitting}
+                    >
+                      {provider.bound ? '重新绑定' : '绑定'}
                     </Button>
-                  ) : null}
-                </Space>
+                    {provider.bound ? (
+                      <Button danger onClick={() => handleUnbind(provider.pluginCode, provider.pluginName)}>
+                        解绑
+                      </Button>
+                    ) : null}
+                  </Space>
+                ) : null}
               </Space>
             </Card>
           </Col>
@@ -636,23 +650,54 @@ const ProfileCenterPage = () => {
               </Space>
             ),
           },
-          {
-            key: 'second-factor',
-            label: '2FA验证',
-            children: (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {requiresEmail && !hasEmail ? (
-                  <Alert
-                    showIcon
-                    type="warning"
-                    message="请先补充邮箱"
-                    description="当前租户启用了需要邮箱的验证插件。点击绑定时会先要求补充邮箱，然后自动继续。"
-                  />
-                ) : null}
-                {providerCards}
-              </Space>
-            ),
-          },
+          ...(canAccessSecondFactor
+            ? [
+                {
+                  key: 'second-factor',
+                  label: '2FA验证',
+                  children: (
+                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                      {requiresEmail && !hasEmail ? (
+                        <Alert
+                          showIcon
+                          type="warning"
+                          message="请先补充邮箱"
+                          description="当前租户启用了需要邮箱的验证插件。点击绑定时会先要求补充邮箱，然后自动继续。"
+                        />
+                      ) : null}
+                      {providerCards}
+                      <Card title="已绑定登录方式">
+                        {boundProviders.length ? (
+                          <List
+                            dataSource={boundProviders}
+                            split={false}
+                            renderItem={(provider) => (
+                              <List.Item style={{ paddingInline: 0 }}>
+                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                  <Space wrap>
+                                    <Typography.Text strong>{provider.pluginName || provider.pluginCode}</Typography.Text>
+                                    <Tag color="green">已绑定</Tag>
+                                    <Tag>{provider.factorName || '登录方式'}</Tag>
+                                  </Space>
+                                  <Typography.Text type="secondary">
+                                    {provider.maskedContact || '暂无绑定标识'}
+                                  </Typography.Text>
+                                  {provider.statusMessage ? (
+                                    <Typography.Text type="secondary">{provider.statusMessage}</Typography.Text>
+                                  ) : null}
+                                </Space>
+                              </List.Item>
+                            )}
+                          />
+                        ) : (
+                          <Empty description="暂无已绑定登录方式" />
+                        )}
+                      </Card>
+                    </Space>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
 
