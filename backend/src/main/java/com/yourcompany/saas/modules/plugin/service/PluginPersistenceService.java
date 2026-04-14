@@ -512,6 +512,17 @@ public class PluginPersistenceService {
         );
     }
 
+    @Transactional
+    public void purgePluginData(String pluginCode, Long operatorId) {
+        jdbcTemplate.update("delete from sys_plugin_runtime_log where plugin_code = ?", pluginCode);
+        jdbcTemplate.update("delete from sys_plugin_tenant where plugin_code = ?", pluginCode);
+        jdbcTemplate.update("delete from sys_plugin_version where plugin_code = ?", pluginCode);
+        jdbcTemplate.update("delete from sys_plugin_menu_rel where plugin_code = ?", pluginCode);
+        jdbcTemplate.update("delete from sys_plugin_permission_rel where plugin_code = ?", pluginCode);
+        jdbcTemplate.update("delete from sys_plugin_dependency where plugin_code = ?", pluginCode);
+        jdbcTemplate.update("delete from sys_plugin_definition where plugin_code = ?", pluginCode);
+    }
+
     public Optional<PluginTenantEntity> findTenantPlugin(Long tenantId, String pluginCode) {
         List<PluginTenantEntity> result = jdbcTemplate.query(
                 """

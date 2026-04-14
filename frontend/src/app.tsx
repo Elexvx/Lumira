@@ -22,6 +22,12 @@ import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
 import { tenantContext } from '@/tenant/context';
 import StaticWatermark from '@/layouts/components/StaticWatermark';
+import {
+  DEFAULT_WATERMARK_SETTINGS,
+  getWatermarkSettingsSnapshot,
+  persistWatermarkSettings,
+  subscribeWatermarkSettings,
+} from '@/watermark/settings';
 import type {
   BrandingSettings,
   CurrentUser,
@@ -33,29 +39,13 @@ import type {
   WatermarkSettings,
 } from '@/types/api';
 import { ThemePreferenceProvider } from '@/theme/ThemePreferenceProvider';
+import { useSyncExternalStore } from 'react';
 
 const LOGIN_PATH = '/user/login';
 const DEFAULT_HOME_PATH = '/dashboard/home';
 const PUBLIC_PATHS = new Set([LOGIN_PATH, '/403', '/404', '/blank/workflow']);
 const LAYOUT_HEADER_HEIGHT = 64;
 const LAYOUT_SIDER_WIDTH = 224;
-
-const DEFAULT_WATERMARK_SETTINGS: WatermarkSettings = {
-  enabled: false,
-  mode: 'TEXT',
-  textLines: ['宏翔商道', '后台管理系统'],
-  imageUrl: '',
-  fontColor: 'rgba(0,0,0,0.15)',
-  fontSize: 14,
-  fontWeight: 'normal',
-  rotate: -22,
-  gapX: 100,
-  gapY: 100,
-  offsetX: 0,
-  offsetY: 0,
-  zIndex: 9,
-  opacity: 0.15,
-};
 
 const resolveLayoutNavTheme = (): 'light' | 'realDark' => {
   if (typeof document !== 'undefined') {
@@ -96,6 +86,20 @@ const OUTLINED_ICON_SUFFIX = 'Outlined';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
+
+const WatermarkLayer = ({ children }: { children: ReactNode }) => {
+  const watermark = useSyncExternalStore(
+    subscribeWatermarkSettings,
+    getWatermarkSettingsSnapshot,
+    () => DEFAULT_WATERMARK_SETTINGS,
+  );
+
+  if (!watermark.enabled) {
+    return <>{children}</>;
+  }
+
+  return <StaticWatermark settings={watermark}>{children}</StaticWatermark>;
+};
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 
@@ -289,12 +293,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     menuFooterRender: false,
     menuExtraRender: false,
     childrenRender: (dom) => {
-      const watermark = initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
-      const content = <SessionActivityGuard>{dom}</SessionActivityGuard>;
-      if (!watermark.enabled) {
-        return content;
-      }
-      return <StaticWatermark settings={watermark}>{content}</StaticWatermark>;
+      return <SessionActivityGuard>{dom}</SessionActivityGuard>;
     },
     headerContentRender: () => null,
     rightContentRender: () => <TopActions />,
@@ -344,7 +343,11 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
 };
 
 export const rootContainer = (container: ReactNode) => {
-  return <ThemePreferenceProvider>{container}</ThemePreferenceProvider>;
+  return (
+    <ThemePreferenceProvider>
+      <WatermarkLayer>{container}</WatermarkLayer>
+    </ThemePreferenceProvider>
+  );
 };
 
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
@@ -423,6 +426,7 @@ const buildAuthenticatedInitialState = async (
     errorMessage: undefined,
     brandName: loadedBrandingSettings.websiteName,
   });
+  persistWatermarkSettings(watermarkSettings);
 
   return {
     currentUser,
@@ -450,6 +454,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
 
   const brandingSettings = await loadBrandingSettings(false);
   const securitySettings = await loadPublicSecuritySettings();
+  persistWatermarkSettings(DEFAULT_WATERMARK_SETTINGS);
   setBootstrapSnapshot({
     phase: 'ready',
     progress: 100,

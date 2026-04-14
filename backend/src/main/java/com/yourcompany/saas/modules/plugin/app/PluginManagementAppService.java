@@ -255,8 +255,9 @@ public class PluginManagementAppService {
     }
 
     @Transactional
-    public void uninstall(String pluginCode, CurrentUser currentUser) {
+    public void uninstall(String pluginCode, boolean removeData, CurrentUser currentUser) {
         List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
+        List<Long> tenantIds = pluginPersistenceService.listTenantIdsForPlugin(pluginCode);
         for (PluginVersionEntity versionEntity : versions) {
             if (versionEntity.getArtifactPath() != null) {
                 pluginArtifactLoader.removeVersionHome(Path.of(versionEntity.getArtifactPath()));
@@ -267,11 +268,25 @@ public class PluginManagementAppService {
                 throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时卸载失败: " + exception.getMessage());
             }
         }
-        pluginPersistenceService.uninstallPlugin(pluginCode, currentUser.getUserId());
-        for (Long tenantId : pluginPersistenceService.listTenantIdsForPlugin(pluginCode)) {
+        if (removeData) {
+            pluginPersistenceService.purgePluginData(pluginCode, currentUser.getUserId());
+        } else {
+            pluginPersistenceService.uninstallPlugin(pluginCode, currentUser.getUserId());
+        }
+        for (Long tenantId : tenantIds) {
             permissionSnapshotService.invalidateTenant(tenantId);
         }
-        safeLog(null, pluginCode, versions.isEmpty() ? null : versions.get(0).getVersion(), "UNINSTALL", "REMOVED", "SUCCESS", "插件已卸载", null, currentUser.getUserId());
+        safeLog(
+                null,
+                pluginCode,
+                versions.isEmpty() ? null : versions.get(0).getVersion(),
+                "UNINSTALL",
+                "REMOVED",
+                "SUCCESS",
+                removeData ? "插件已卸载并删除数据库数据" : "插件已卸载",
+                null,
+                currentUser.getUserId()
+        );
     }
 
     public Optional<PluginRuntimeDescriptor> findTenantRuntimeDescriptor(Long tenantId, String pluginCode) {

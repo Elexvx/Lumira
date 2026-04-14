@@ -5,11 +5,13 @@ import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import com.yourcompany.saas.infrastructure.security.ClientIpResolver;
 import com.yourcompany.saas.infrastructure.security.SecurityContextFacade;
 import com.yourcompany.saas.modules.auth.app.AuthAppService;
+import com.yourcompany.saas.modules.auth.app.LoginEncryptionService;
 import com.yourcompany.saas.modules.auth.dto.LoginRequest;
 import com.yourcompany.saas.modules.auth.dto.RefreshTokenRequest;
 import com.yourcompany.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.yourcompany.saas.modules.auth.vo.CurrentUserVO;
 import com.yourcompany.saas.modules.auth.vo.LoginResponseVO;
+import com.yourcompany.saas.modules.auth.vo.LoginEncryptionKeyVO;
 import com.yourcompany.saas.modules.auth.vo.RefreshTokenResponseVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -24,13 +26,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthAppService authAppService;
+    private final LoginEncryptionService loginEncryptionService;
     private final SecurityContextFacade securityContextFacade;
     private final ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthAppService authAppService, SecurityContextFacade securityContextFacade, ClientIpResolver clientIpResolver) {
+    public AuthController(
+            AuthAppService authAppService,
+            LoginEncryptionService loginEncryptionService,
+            SecurityContextFacade securityContextFacade,
+            ClientIpResolver clientIpResolver
+    ) {
         this.authAppService = authAppService;
+        this.loginEncryptionService = loginEncryptionService;
         this.securityContextFacade = securityContextFacade;
         this.clientIpResolver = clientIpResolver;
+    }
+
+    @GetMapping("/login-encryption-key")
+    public ApiResponse<LoginEncryptionKeyVO> loginEncryptionKey() {
+        return ApiResponse.success(loginEncryptionService.getPublicKeyInfo(), TraceContext.getRequestId());
     }
 
     @PostMapping("/login")

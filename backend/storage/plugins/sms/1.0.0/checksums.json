@@ -1,7 +1,0 @@
-{
-  "plugin.json": "4a30fdb676e3a5960c3c6b7be864eec8b77b852faf528fbaa4578d7fb74fe750",
-  "backend/plugin.jar": "82e039897d519c1933448b22af8532627e36d25aeec63ff32c3b561f6b0b2c1f",
-  "frontend/manifest.json": "b431836fb520d5700f799cfcbed7913ae3fae4f75797a86ee8a1cab2709c52c7",
-  "frontend/assets/sms-plugin.js": "0a3a20b93ef29b196b28758f884d0c3de6548a6dfbf300e7c68630c2286e6fc9",
-  "migrations/V1__sms_init.sql": "1f4efef07ae06b0a8cc05c23144632c6ba21ef3dfbc5eb1fdcaa78e628beb6e8"
-}

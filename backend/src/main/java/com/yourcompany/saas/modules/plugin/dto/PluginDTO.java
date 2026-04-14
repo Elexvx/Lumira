@@ -98,6 +98,18 @@ public final class PluginDTO {
         }
     }
 
+    public static class UninstallRequest {
+        private boolean removeData;
+
+        public boolean isRemoveData() {
+            return removeData;
+        }
+
+        public void setRemoveData(boolean removeData) {
+            this.removeData = removeData;
+        }
+    }
+
     public static class RollbackRequest {
         @NotBlank
         private String pluginCode;

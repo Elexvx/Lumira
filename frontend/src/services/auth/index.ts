@@ -1,4 +1,4 @@
-import type { CurrentUser, LoginResponse, RefreshTokenResponse } from '@/types/api';
+import type { CurrentUser, LoginEncryptionKey, LoginResponse, RefreshTokenResponse } from '@/types/api';
 import { request, type RequestOptions } from '@/services/common/request';
 
 export interface LoginPayload {
@@ -25,6 +25,13 @@ export const authService = {
     request<LoginResponse>('/v1/auth/login', {
       method: 'POST',
       data: payload,
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  loginEncryptionKey: (options: RequestOptions = {}) =>
+    request<LoginEncryptionKey>('/v1/auth/login-encryption-key', {
+      method: 'GET',
       skipAuth: true,
       silent: true,
       ...options,

@@ -42,6 +42,7 @@ class AuthAppServiceSessionInvalidationTest {
                 null,
                 null,
                 null,
+                null,
                 securitySettingsService,
                 null,
                 null,
