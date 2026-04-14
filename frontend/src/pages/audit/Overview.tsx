@@ -3,6 +3,7 @@ import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColu
 import { Button, Drawer, InputNumber, Space, Tag, DatePicker } from 'antd';
 import { auditService } from '@/services/audit';
 import type { AuditLogRecord } from '@/types/api';
+import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 
 type AuditLogType = 'login' | 'operation';
 type AuditRecord = AuditLogRecord;
@@ -27,6 +28,7 @@ const renderStatusTag = (label?: string | null) => {
 
 const AuditOverviewPage = () => {
   const actionRef = useRef<ActionType>();
+  const responsive = useResponsiveTable();
   const [logType, setLogType] = useState<AuditLogType>('login');
   const [selectedRecord, setSelectedRecord] = useState<AuditRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -34,11 +36,13 @@ const AuditOverviewPage = () => {
   const columns = useMemo<ProColumns<AuditRecord>[]>(() => {
     return logType === 'login'
       ? [
-          { title: '用户名', dataIndex: 'username', hideInSearch: false },
+          { title: '用户名', dataIndex: 'username', hideInSearch: false, importance: 1 },
           {
             title: '租户 ID',
             dataIndex: 'tenantId',
             hideInSearch: false,
+            importance: 2,
+            responsiveLevel: ['tablet', 'desktop'],
             renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
           },
           {
@@ -62,6 +66,7 @@ const AuditOverviewPage = () => {
           {
             title: '结果',
             dataIndex: 'logResult',
+            importance: 1,
             valueEnum: {
               SUCCESS: { text: '成功' },
               FAIL: { text: '失败' },
@@ -70,33 +75,39 @@ const AuditOverviewPage = () => {
             },
             render: (_, record) => renderStatusTag(record.logResult),
           },
-          { title: '原因', dataIndex: 'failReason', hideInSearch: true },
-          { title: '时间', dataIndex: 'createdAt', hideInSearch: true },
+          { title: '原因', dataIndex: 'failReason', hideInSearch: true, importance: 3, responsiveLevel: 'desktop', ellipsisText: true, render: (_, record) => <ResponsiveText value={record.failReason || '-'} copyable={Boolean(record.failReason)} /> },
+          { title: '时间', dataIndex: 'createdAt', hideInSearch: true, importance: 1 },
           {
             title: '操作',
             valueType: 'option',
-            fixed: 'right',
+            importance: 0,
+            desktopFixed: 'right',
             width: 100,
             render: (_, record) => (
-              <Button
-                type="link"
-                size="small"
-                onClick={() => {
-                  setSelectedRecord(record);
-                  setDrawerOpen(true);
-                }}
-              >
-                详情
-              </Button>
+              <ResponsiveActions
+                level={responsive.level}
+                items={[
+                  {
+                    key: 'detail',
+                    label: '详情',
+                    onClick: () => {
+                      setSelectedRecord(record);
+                      setDrawerOpen(true);
+                    },
+                  },
+                ]}
+              />
             ),
           },
         ]
       : [
-          { title: '用户名', dataIndex: 'username', hideInSearch: false },
+          { title: '用户名', dataIndex: 'username', hideInSearch: false, importance: 1 },
           {
             title: '租户 ID',
             dataIndex: 'tenantId',
             hideInSearch: false,
+            importance: 2,
+            responsiveLevel: ['tablet', 'desktop'],
             renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
           },
           {
@@ -117,31 +128,37 @@ const AuditOverviewPage = () => {
               },
             },
           },
-          { title: '模块', dataIndex: 'moduleName', hideInSearch: true },
-          { title: '操作', dataIndex: 'actionName', hideInSearch: true },
-          { title: '类型', dataIndex: 'operationType', hideInSearch: true },
-          { title: '详情', dataIndex: 'detailMessage', hideInSearch: true },
-          { title: '时间', dataIndex: 'createdAt', hideInSearch: true },
+          { title: '模块', dataIndex: 'moduleName', hideInSearch: true, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+          { title: '操作', dataIndex: 'actionName', hideInSearch: true, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+          { title: '类型', dataIndex: 'operationType', hideInSearch: true, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+          { title: '详情', dataIndex: 'detailMessage', hideInSearch: true, importance: 3, responsiveLevel: 'desktop', ellipsisText: true, render: (_, record) => <ResponsiveText value={record.detailMessage || record.failReason || '-'} copyable={Boolean(record.detailMessage || record.failReason)} /> },
+          { title: '时间', dataIndex: 'createdAt', hideInSearch: true, importance: 1 },
           {
             title: '操作',
             valueType: 'option',
-            fixed: 'right',
+            importance: 0,
+            desktopFixed: 'right',
             width: 100,
             render: (_, record) => (
-              <Button
-                type="link"
-                size="small"
-                onClick={() => {
-                  setSelectedRecord(record);
-                  setDrawerOpen(true);
-                }}
-              >
-                详情
-              </Button>
+              <ResponsiveActions
+                level={responsive.level}
+                items={[
+                  {
+                    key: 'detail',
+                    label: '详情',
+                    onClick: () => {
+                      setSelectedRecord(record);
+                      setDrawerOpen(true);
+                    },
+                  },
+                ]}
+              />
             ),
           },
         ];
-  }, [logType]);
+  }, [logType, responsive.level]);
+
+  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer
@@ -162,11 +179,11 @@ const AuditOverviewPage = () => {
           key={logType}
           actionRef={actionRef}
           rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto' }}
+          columns={responsiveColumns}
+          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
-          pagination={{ showSizeChanger: true, pageSize: 10 }}
-          scroll={{ x: 'max-content' }}
+          pagination={buildResponsivePagination({ showSizeChanger: true, pageSize: 10 }, responsive)}
+          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
           request={async (params) => {
             const { current, pageSize, ...rest } = params;
             const payload = {
@@ -185,7 +202,7 @@ const AuditOverviewPage = () => {
             };
           }}
           toolBarRender={() => [
-            <Button key="refresh" type="primary" onClick={() => actionRef.current?.reload()}>
+            <Button key="refresh" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               刷新
             </Button>,
           ]}
@@ -205,7 +222,7 @@ const AuditOverviewPage = () => {
         {selectedRecord ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <ProDescriptions<AuditRecord>
-              column={2}
+              column={responsive.isMobile ? 1 : 2}
               dataSource={selectedRecord}
               columns={[
                 { title: '用户名', dataIndex: 'username', renderText: (value) => value || '-' },

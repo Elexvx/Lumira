@@ -4,6 +4,7 @@ import { Button, Checkbox, Drawer, Empty, Form, Input, Modal, Select, Space, Spi
 import { iamService } from '@/services/iam';
 import type { PermissionTreeRecord, RoleDetail, RoleRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, useResponsiveTable } from '@/components/ResponsiveTable';
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
 import {
   buildPermissionTreeData,
@@ -22,6 +23,7 @@ const RoleManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm();
   const { canAccess } = usePermission();
+  const responsive = useResponsiveTable();
   const [selectedRole, setSelectedRole] = useState<RoleRecord | null>(null);
   const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -292,66 +294,84 @@ const RoleManagementPage = () => {
     applyPermissionKeys(Array.from(nextPermissionKeys));
   };
 
-  const columns: ProColumns<RoleRecord>[] = [
-    {
-      title: '角色编码',
-      dataIndex: 'roleCode',
-      search: true,
-    },
-    {
-      title: '角色名称',
-      dataIndex: 'roleName',
-      search: true,
-    },
-    {
-      title: '角色类型',
-      dataIndex: 'roleType',
-      valueEnum: ROLE_TYPE_OPTIONS.reduce<Record<string, { text: string }>>((acc, item) => {
-        acc[String(item.value)] = { text: item.label };
-        return acc;
-      }, {}),
-      search: {
-        transform: (value) => ({ roleType: value }),
+  const columns: ProColumns<RoleRecord>[] = useMemo(
+    () => [
+      {
+        title: '角色编码',
+        dataIndex: 'roleCode',
+        search: true,
+        importance: 1,
       },
-    },
-    {
-      title: '权限数',
-      dataIndex: 'permissionCount',
-      hideInSearch: true,
-      render: (_, record) => record.permissionCount ?? 0,
-    },
-    {
-      title: '用户数',
-      dataIndex: 'userCount',
-      hideInSearch: true,
-      render: (_, record) => record.userCount ?? 0,
-    },
-    {
-      title: '操作',
-      valueType: 'option',
-      fixed: 'right',
-      width: 180,
-      render: (_, record) => (
-        <Space size={0}>
-          {canAccess('system:role:view') ? (
-            <Button type="link" size="small" onClick={() => void openDetail(record)}>
-              详情
-            </Button>
-          ) : null}
-          {canAccess('system:role:update') ? (
-            <Button type="link" size="small" onClick={() => void openEdit(record)}>
-              编辑
-            </Button>
-          ) : null}
-          {canAccess('system:role:permissions') ? (
-            <Button type="link" size="small" onClick={() => void openEdit(record)}>
-              权限分配
-            </Button>
-          ) : null}
-        </Space>
-      ),
-    },
-  ];
+      {
+        title: '角色名称',
+        dataIndex: 'roleName',
+        search: true,
+        importance: 1,
+      },
+      {
+        title: '角色类型',
+        dataIndex: 'roleType',
+        importance: 1,
+        valueEnum: ROLE_TYPE_OPTIONS.reduce<Record<string, { text: string }>>((acc, item) => {
+          acc[String(item.value)] = { text: item.label };
+          return acc;
+        }, {}),
+        search: {
+          transform: (value) => ({ roleType: value }),
+        },
+      },
+      {
+        title: '权限数',
+        dataIndex: 'permissionCount',
+        hideInSearch: true,
+        importance: 2,
+        responsiveLevel: ['tablet', 'desktop'],
+        render: (_, record) => record.permissionCount ?? 0,
+      },
+      {
+        title: '用户数',
+        dataIndex: 'userCount',
+        hideInSearch: true,
+        importance: 2,
+        responsiveLevel: ['tablet', 'desktop'],
+        render: (_, record) => record.userCount ?? 0,
+      },
+      {
+        title: '操作',
+        valueType: 'option',
+        importance: 0,
+        desktopFixed: 'right',
+        width: 180,
+        render: (_, record) => (
+          <ResponsiveActions
+            level={responsive.level}
+            items={[
+              {
+                key: 'detail',
+                label: '详情',
+                hidden: !canAccess('system:role:view'),
+                onClick: () => void openDetail(record),
+              },
+              {
+                key: 'edit',
+                label: '编辑',
+                hidden: !canAccess('system:role:update'),
+                onClick: () => void openEdit(record),
+              },
+              {
+                key: 'permission',
+                label: '权限分配',
+                hidden: !canAccess('system:role:permissions'),
+                onClick: () => void openEdit(record),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [canAccess, responsive.level],
+  );
+  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer title="角色管理" className="saas-management-page">
@@ -359,11 +379,11 @@ const RoleManagementPage = () => {
         <ProTable<RoleRecord>
           actionRef={actionRef}
           rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto' }}
+          columns={responsiveColumns}
+          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
-          pagination={{ showSizeChanger: true }}
-          scroll={{ x: 'max-content' }}
+          pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
+          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
           request={async (params) => {
             const { current, pageSize, ...rest } = params;
             const result = await iamService.roles(
@@ -382,11 +402,11 @@ const RoleManagementPage = () => {
           }}
           toolBarRender={() => [
             canAccess('system:role:create') ? (
-              <Button key="create" type="primary" onClick={openCreate}>
+              <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
                 新增角色
               </Button>
             ) : null,
-            <Button key="refresh" onClick={() => actionRef.current?.reload()}>
+            <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               刷新
             </Button>,
           ]}
@@ -560,7 +580,7 @@ const RoleManagementPage = () => {
         ) : selectedRoleDetail ? (
           <>
             <ProDescriptions<RoleDetail>
-              column={2}
+              column={responsive.isMobile ? 1 : 2}
               dataSource={selectedRoleDetail}
               columns={[
                 { title: '角色编码', dataIndex: 'roleCode' },

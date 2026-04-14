@@ -1,11 +1,11 @@
-import { Grid } from 'antd';
+import { useResponsiveTable } from '@/components/ResponsiveTable';
 
 export const useResponsive = () => {
-  const screens = Grid.useBreakpoint();
+  const responsive = useResponsiveTable();
   return {
-    screens,
-    isMobile: !screens.md,
-    isTablet: Boolean(screens.md && !screens.lg),
-    isDesktop: Boolean(screens.lg),
+    screens: responsive.screens,
+    isMobile: responsive.isMobile,
+    isTablet: responsive.isTablet,
+    isDesktop: responsive.isDesktop,
   };
 };

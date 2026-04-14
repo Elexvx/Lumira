@@ -144,8 +144,24 @@ body,
 }
 
 .saas-table-wrap .ant-table {
+  width: 100%;
+  min-width: 0;
+}
+
+.saas-wide-table .ant-table {
   width: max-content;
   min-width: 100%;
+}
+
+.saas-table-wrap .ant-table-cell,
+.saas-table-wrap .ant-table-cell .ant-typography,
+.saas-table-wrap .ant-table-cell .ant-tag {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.saas-table-wrap .ant-table-cell .ant-typography {
+  vertical-align: middle;
 }
 
 .saas-service-monitor-page {

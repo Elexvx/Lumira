@@ -1,7 +1,9 @@
 import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, PoweroffOutlined, SyncOutlined } from '@ant-design/icons';
-import { PageContainer } from '@ant-design/pro-components';
+import { PageContainer, type ProColumns } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
+import { buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
 import { usePermission } from '@/hooks/usePermission';
@@ -11,6 +13,7 @@ import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } 
 const PluginsPage = () => {
   const { initialState, setInitialState } = useInitialStateModel();
   const { canAccess } = usePermission();
+  const responsive = useResponsiveTable();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
   const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
   const [versionMap, setVersionMap] = useState<Record<string, PluginVersion[]>>({});
@@ -331,6 +334,56 @@ const PluginsPage = () => {
   const selectedPluginVersions = selectedPlugin ? versionMap[selectedPlugin.pluginCode] || [] : [];
   const selectedTenantPlugin = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
   const selectedActiveVersion = selectedPluginVersions.find((item) => item.isActive === 1) || selectedPluginVersions[0];
+  const versionColumns = useMemo<ProColumns<PluginVersion>[]>(
+    () => [
+      { title: '版本', dataIndex: 'version', importance: 1 },
+      { title: '安装状态', dataIndex: 'installStatus', importance: 1 },
+      { title: '加载状态', dataIndex: 'loadStatus', importance: 1 },
+      { title: '健康状态', dataIndex: 'healthStatus', importance: 1 },
+      {
+        title: '激活',
+        dataIndex: 'isActive',
+        importance: 1,
+        render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
+      },
+      {
+        title: '操作',
+        importance: 0,
+        desktopFixed: 'right',
+        render: (_, record) => (
+          <ResponsiveActions
+            level={responsive.level}
+            items={[
+              { key: 'install', label: '安装', onClick: () => void handleInstall(record.pluginCode, record.version) },
+              { key: 'activate', label: '激活', onClick: () => void handleActivate(record.pluginCode, record.version) },
+              { key: 'disable', label: '停用', onClick: () => void handleDisable(record.pluginCode), danger: true },
+              { key: 'rollback', label: '回滚', onClick: () => void handleRollback(record.pluginCode, record.version) },
+            ]}
+          />
+        ),
+      },
+    ],
+    [handleActivate, handleDisable, handleInstall, handleRollback, responsive.level],
+  );
+  const logColumns = useMemo<ProColumns<PluginRuntimeLog>[]>(
+    () => [
+      { title: '时间', dataIndex: 'createdAt', width: 180, importance: 1 },
+      { title: '操作类型', dataIndex: 'operationType', width: 120, importance: 1 },
+      { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120, importance: 1 },
+      { title: '结果', dataIndex: 'resultStatus', width: 120, importance: 1 },
+      {
+        title: '详情',
+        dataIndex: 'detailMessage',
+        importance: 3,
+        responsiveLevel: 'desktop',
+        ellipsisText: true,
+        render: (_, record) => <ResponsiveText value={record.detailMessage || '-'} copyable={Boolean(record.detailMessage)} />,
+      },
+    ],
+    [],
+  );
+  const responsiveVersionColumns = useMemo(() => normalizeResponsiveColumns(versionColumns, responsive.level) as ColumnsType<PluginVersion>, [versionColumns, responsive.level]);
+  const responsiveLogColumns = useMemo(() => normalizeResponsiveColumns(logColumns, responsive.level) as ColumnsType<PluginRuntimeLog>, [logColumns, responsive.level]);
 
   return (
     <PageContainer
@@ -423,7 +476,7 @@ const PluginsPage = () => {
         destroyOnClose
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Descriptions bordered column={2} size="small">
+          <Descriptions bordered column={responsive.isMobile ? 1 : 2} size="small">
             <Descriptions.Item label="插件编码">{selectedPlugin?.pluginCode || '-'}</Descriptions.Item>
             <Descriptions.Item label="当前启用版本">{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
             <Descriptions.Item label="版本数量">{selectedPluginVersions.length}</Descriptions.Item>
@@ -434,29 +487,8 @@ const PluginsPage = () => {
               loading={loading}
               dataSource={selectedPluginVersions}
               pagination={false}
-              scroll={{ x: 'max-content' }}
-              columns={[
-                { title: '版本', dataIndex: 'version' },
-                { title: '安装状态', dataIndex: 'installStatus' },
-                { title: '加载状态', dataIndex: 'loadStatus' },
-                { title: '健康状态', dataIndex: 'healthStatus' },
-                {
-                  title: '激活',
-                  dataIndex: 'isActive',
-                  render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
-                },
-                {
-                  title: '操作',
-                  render: (_, record) => (
-                    <Space wrap>
-                      <Button onClick={() => void handleInstall(record.pluginCode, record.version)}>安装</Button>
-                      <Button onClick={() => void handleActivate(record.pluginCode, record.version)}>激活</Button>
-                      <Button onClick={() => void handleDisable(record.pluginCode)}>停用</Button>
-                      <Button onClick={() => void handleRollback(record.pluginCode, record.version)}>回滚</Button>
-                    </Space>
-                  ),
-                },
-              ]}
+              scroll={buildResponsiveScroll(versionColumns, responsive)}
+              columns={responsiveVersionColumns}
             />
           </div>
         </Space>
@@ -470,7 +502,7 @@ const PluginsPage = () => {
         destroyOnClose
       >
         {selectedPlugin ? (
-          <Descriptions bordered column={2} size="small">
+          <Descriptions bordered column={responsive.isMobile ? 1 : 2} size="small">
             <Descriptions.Item label="插件编码">{selectedPlugin.pluginCode}</Descriptions.Item>
             <Descriptions.Item label="插件名称">{selectedPlugin.pluginName}</Descriptions.Item>
             <Descriptions.Item label="描述">{selectedPlugin.description || '-'}</Descriptions.Item>
@@ -493,22 +525,16 @@ const PluginsPage = () => {
         destroyOnClose
       >
         <div className="saas-table-wrap">
-          <Table<PluginRuntimeLog>
-            rowKey="id"
-            loading={logsLoading}
-            dataSource={runtimeLogs}
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-            columns={[
-              { title: '时间', dataIndex: 'createdAt', width: 180 },
-              { title: '操作类型', dataIndex: 'operationType', width: 120 },
-              { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
-              { title: '结果', dataIndex: 'resultStatus', width: 120 },
-              { title: '详情', dataIndex: 'detailMessage' },
-            ]}
-          />
-        </div>
-      </Drawer>
+            <Table<PluginRuntimeLog>
+              rowKey="id"
+              loading={logsLoading}
+              dataSource={runtimeLogs}
+              pagination={false}
+              scroll={buildResponsiveScroll(logColumns, responsive)}
+              columns={responsiveLogColumns}
+            />
+          </div>
+        </Drawer>
 
       <Modal
         title={uninstallTarget ? `卸载 ${uninstallTarget.pluginName}` : '卸载插件'}
