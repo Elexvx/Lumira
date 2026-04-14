@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Checkbox, Drawer, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, message } from 'antd';
+import { DetailForm } from '@/components/DetailForm';
+import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
 import { iamService } from '@/services/iam';
 import type { PermissionTreeRecord, RoleDetail, RoleRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
@@ -435,9 +437,8 @@ const RoleManagementPage = () => {
             <Spin size="large" />
           </div>
         ) : (
-          <Form
+          <DetailForm
             form={editorForm}
-            layout="vertical"
             initialValues={{ roleType: 'CUSTOM', permissionKeys: [] }}
             onValuesChange={() => setEditorDirty(true)}
             className="role-editor-form"
@@ -559,7 +560,7 @@ const RoleManagementPage = () => {
                 )}
               </section>
             </div>
-          </Form>
+          </DetailForm>
         )}
       </Drawer>
 
@@ -579,7 +580,7 @@ const RoleManagementPage = () => {
           </div>
         ) : selectedRoleDetail ? (
           <>
-            <ProDescriptions<RoleDetail>
+            <PageDetailProDescriptions<RoleDetail>
               column={responsive.isMobile ? 1 : 2}
               dataSource={selectedRoleDetail}
               columns={[

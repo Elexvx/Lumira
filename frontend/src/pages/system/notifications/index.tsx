@@ -2,6 +2,7 @@ import { NotificationOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/
 import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Col, Empty, Form, Input, List, Row, Space, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DetailForm } from '@/components/DetailForm';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { usePermission } from '@/hooks/usePermission';
 import { systemService } from '@/services/system';
@@ -95,7 +96,7 @@ const NotificationsPage = () => {
         {canCreate ? (
           <Col xs={24} xl={8}>
             <Card title={<Space><PlusOutlined />发布通知</Space>}>
-              <Form form={form} layout="vertical" initialValues={{ title: '', content: '' }}>
+              <DetailForm form={form} initialValues={{ title: '', content: '' }}>
                 <Form.Item
                   name="title"
                   label="通知标题"
@@ -113,7 +114,7 @@ const NotificationsPage = () => {
                 <Button type="primary" block loading={publishing} onClick={() => void handlePublish()}>
                   发布通知
                 </Button>
-              </Form>
+              </DetailForm>
             </Card>
           </Col>
         ) : null}

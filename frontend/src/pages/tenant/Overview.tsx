@@ -7,6 +7,8 @@ import {
   type ProColumns,
 } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
+import { DetailForm } from '@/components/DetailForm';
+import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
 import { auditService } from '@/services/audit';
 import { pluginService } from '@/services/plugin';
 import { tenantService, type TenantMutationPayload } from '@/services/tenant';
@@ -350,7 +352,7 @@ export default () => {
           <Col xs={24}>
         <Card title="当前租户" loading={currentTenantQuery.loading}>
           {currentTenant ? (
-                <Descriptions column={isMobile ? 1 : 2} size="small" bordered>
+                <PageDetailDescriptions column={isMobile ? 1 : 2}>
                   <Descriptions.Item label="租户编码">{currentTenant.tenantCode}</Descriptions.Item>
                   <Descriptions.Item label="租户名称">{currentTenant.tenantName}</Descriptions.Item>
                   <Descriptions.Item label="租户简称">{currentTenant.tenantShortName || '-'}</Descriptions.Item>
@@ -359,7 +361,7 @@ export default () => {
                   </Descriptions.Item>
                   <Descriptions.Item label="创建时间">{formatDateTime(currentTenant.createdAt)}</Descriptions.Item>
                   <Descriptions.Item label="更新时间">{formatDateTime(currentTenant.updatedAt)}</Descriptions.Item>
-                </Descriptions>
+                </PageDetailDescriptions>
               ) : (
                 <Empty description="当前尚未选择租户" />
               )}
@@ -465,7 +467,7 @@ export default () => {
           </div>
         }
       >
-        <Form form={editorForm} layout="vertical" initialValues={{ status: 'ENABLED' }}>
+        <DetailForm form={editorForm} initialValues={{ status: 'ENABLED' }}>
           <Form.Item name="tenantCode" label="租户编码" rules={[{ required: true, message: '请输入租户编码' }]}>
             <Input maxLength={64} placeholder="例如：acme" />
           </Form.Item>
@@ -483,7 +485,7 @@ export default () => {
               ]}
             />
           </Form.Item>
-        </Form>
+        </DetailForm>
       </Drawer>
 
       <Drawer
@@ -501,7 +503,7 @@ export default () => {
             <Spin />
           </div>
         ) : selectedTenant ? (
-          <Descriptions column={isMobile ? 1 : 2} bordered size="small">
+          <PageDetailDescriptions column={isMobile ? 1 : 2}>
             <Descriptions.Item label="租户编码">{selectedTenant.tenantCode}</Descriptions.Item>
             <Descriptions.Item label="租户名称">{selectedTenant.tenantName}</Descriptions.Item>
             <Descriptions.Item label="租户简称">{selectedTenant.tenantShortName || '-'}</Descriptions.Item>
@@ -510,7 +512,7 @@ export default () => {
             </Descriptions.Item>
             <Descriptions.Item label="创建时间">{formatDateTime(selectedTenant.createdAt)}</Descriptions.Item>
             <Descriptions.Item label="更新时间">{formatDateTime(selectedTenant.updatedAt)}</Descriptions.Item>
-          </Descriptions>
+          </PageDetailDescriptions>
         ) : (
           <Empty description="暂无租户详情" />
         )}

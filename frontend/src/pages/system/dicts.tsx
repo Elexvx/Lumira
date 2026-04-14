@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, Form, Input, InputNumber, Select, Space, Spin, Tag, message } from 'antd';
+import { DetailForm } from '@/components/DetailForm';
+import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
 import { dictService } from '@/services/dict';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
@@ -294,7 +296,7 @@ const DictManagementPage = () => {
           </div>
         }
       >
-        <Form form={typeForm} layout="vertical" initialValues={{ status: 'ENABLED' }}>
+        <DetailForm form={typeForm} initialValues={{ status: 'ENABLED' }}>
           <Form.Item name="dictCode" label="字典编码" rules={[{ required: true, message: '请输入字典编码' }]}>
             <Input />
           </Form.Item>
@@ -312,7 +314,7 @@ const DictManagementPage = () => {
           <Form.Item name="remark" label="备注">
             <Input.TextArea rows={3} />
           </Form.Item>
-        </Form>
+        </DetailForm>
       </Drawer>
 
       <Drawer
@@ -332,7 +334,7 @@ const DictManagementPage = () => {
           </div>
         ) : typeDetail ? (
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
-            <ProDescriptions<DictTypeRecord>
+            <PageDetailProDescriptions<DictTypeRecord>
               column={responsive.isMobile ? 1 : 2}
               dataSource={typeDetail}
               columns={[
@@ -387,7 +389,7 @@ const DictManagementPage = () => {
           </div>
         }
       >
-        <Form form={itemForm} layout="vertical" initialValues={{ sortNo: 0, status: 'ENABLED' }}>
+        <DetailForm form={itemForm} initialValues={{ sortNo: 0, status: 'ENABLED' }}>
           <Form.Item name="itemLabel" label="标签" rules={[{ required: true, message: '请输入标签' }]}>
             <Input />
           </Form.Item>
@@ -408,7 +410,7 @@ const DictManagementPage = () => {
           <Form.Item name="remark" label="备注">
             <Input.TextArea rows={3} />
           </Form.Item>
-        </Form>
+        </DetailForm>
       </Drawer>
     </PageContainer>
   );

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, InputNumber, Space, Tag, DatePicker } from 'antd';
+import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
 import { auditService } from '@/services/audit';
 import type { AuditLogRecord } from '@/types/api';
 import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
@@ -221,7 +222,7 @@ const AuditOverviewPage = () => {
       >
         {selectedRecord ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <ProDescriptions<AuditRecord>
+            <PageDetailProDescriptions<AuditRecord>
               column={responsive.isMobile ? 1 : 2}
               dataSource={selectedRecord}
               columns={[
@@ -234,7 +235,7 @@ const AuditOverviewPage = () => {
                 { title: '时间', dataIndex: 'createdAt' },
               ]}
             />
-            <ProDescriptions<AuditRecord>
+            <PageDetailProDescriptions<AuditRecord>
               column={1}
               dataSource={selectedRecord}
               columns={[

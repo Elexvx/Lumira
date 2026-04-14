@@ -271,6 +271,63 @@ body,
   }
 }
 
+.saas-detail-section {
+  .ant-card-head-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.saas-detail-descriptions {
+  width: 100%;
+}
+
+.saas-detail-descriptions .ant-descriptions-view,
+.saas-detail-descriptions .ant-descriptions-view table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.saas-detail-descriptions .ant-descriptions-item-label {
+  vertical-align: top;
+  text-align: right;
+}
+
+.saas-detail-descriptions .ant-descriptions-item-content {
+  min-width: 0;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.saas-detail-descriptions .ant-descriptions-item-content > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.saas-detail-form {
+  width: 100%;
+}
+
+.saas-detail-form.ant-form-horizontal .ant-form-item {
+  margin-bottom: var(--saas-form-item-gap);
+}
+
+.saas-detail-form.ant-form-horizontal .ant-form-item-label {
+  flex-shrink: 0;
+}
+
+.saas-detail-form.ant-form-horizontal .ant-form-item-label > label {
+  width: 100%;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.saas-detail-form.ant-form-horizontal .ant-form-item-label > label::after {
+  margin-inline-start: 2px;
+}
+
 .saas-profile-page {
   .ant-tabs-content-holder,
   .ant-tabs-tabpane {
@@ -285,23 +342,6 @@ body,
 
   .saas-profile-page__descriptions {
     width: 100%;
-  }
-
-  .saas-profile-page__descriptions .ant-descriptions-view,
-  .saas-profile-page__descriptions .ant-descriptions-view table {
-    width: 100%;
-    table-layout: fixed;
-  }
-
-  .saas-profile-page__descriptions .ant-descriptions-item-label,
-  .saas-profile-page__descriptions .ant-descriptions-item-content {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  .saas-profile-page__descriptions .ant-descriptions-item-content > * {
-    min-width: 0;
   }
 }
 
