@@ -131,10 +131,11 @@ class RoleDetailIntegrationTest {
         Assertions.assertTrue(treeBody.path("data").isArray(), treeResponse.getBody());
         Assertions.assertTrue(treeBody.path("data").size() > 0, treeResponse.getBody());
 
-        JsonNode systemRootNode = findNodeByPageName(treeBody.path("data"), "系统管理");
+        JsonNode systemRootNode = findNodeByPageName(treeBody.path("data"), "系统总览");
         Assertions.assertNotNull(systemRootNode, treeResponse.getBody());
         Assertions.assertEquals("CATALOG", systemRootNode.path("nodeType").asText(), treeResponse.getBody());
         Assertions.assertTrue(systemRootNode.path("routePath").isNull() || systemRootNode.path("routePath").asText().isBlank(), treeResponse.getBody());
+        Assertions.assertNull(findNodeByPageName(treeBody.path("data"), "系统管理"), treeResponse.getBody());
 
         JsonNode userCenterNode = findNodeByPageName(treeBody.path("data"), "用户中心");
         Assertions.assertNotNull(userCenterNode, treeResponse.getBody());

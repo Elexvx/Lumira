@@ -612,71 +612,71 @@ const MenuManagementPage = () => {
   ];
 
   return (
-    <PageContainer
-      title="菜单管理"
-    >
-      <ProTable<MenuRecord & { level?: number }>
-        actionRef={actionRef}
-        rowKey="id"
-        columns={columns}
-        search={{ labelWidth: 'auto' }}
-        options={false}
-        pagination={false}
-        scroll={{ x: 1500 }}
-        onRow={(record) => ({
-          draggable: canAccess('system:menu:update') && !reordering,
-          onDragStart: handleRowDragStart(record),
-          onDragOver: handleRowDragOver(record),
-          onDrop: handleRowDrop(record),
-          onDragEnd: handleRowDragEnd,
-          style: {
-            cursor: canAccess('system:menu:update') && !reordering ? 'grab' : undefined,
-            userSelect: 'none',
-            opacity: dragState?.draggedId === record.id ? 0.35 : 1,
-            backgroundColor:
-              dragState?.targetId === record.id && dragState.position === 'inside'
-                ? 'rgba(22, 119, 255, 0.08)'
-                : undefined,
-            boxShadow:
-              dragState?.targetId === record.id && dragState.position === 'before'
-                ? 'inset 0 2px 0 #1677ff'
-                : dragState?.targetId === record.id && dragState.position === 'after'
-                  ? 'inset 0 -2px 0 #1677ff'
+    <PageContainer title="菜单管理" className="saas-management-page">
+      <div className="saas-table-wrap">
+        <ProTable<MenuRecord & { level?: number }>
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          search={{ labelWidth: 'auto' }}
+          options={false}
+          pagination={false}
+          scroll={{ x: 1500 }}
+          onRow={(record) => ({
+            draggable: canAccess('system:menu:update') && !reordering,
+            onDragStart: handleRowDragStart(record),
+            onDragOver: handleRowDragOver(record),
+            onDrop: handleRowDrop(record),
+            onDragEnd: handleRowDragEnd,
+            style: {
+              cursor: canAccess('system:menu:update') && !reordering ? 'grab' : undefined,
+              userSelect: 'none',
+              opacity: dragState?.draggedId === record.id ? 0.35 : 1,
+              backgroundColor:
+                dragState?.targetId === record.id && dragState.position === 'inside'
+                  ? 'rgba(22, 119, 255, 0.08)'
                   : undefined,
-          },
-        })}
-        request={async (params) => {
-          const keyword = String(params.menuName || params.keyword || '');
-          const menuCode = String(params.menuCode || '');
-          const permissionKey = String(params.permissionKey || '');
-          const filtered = filterMenus(menuTree, keyword, menuCode, permissionKey);
-          const hasSearch = Boolean(keyword.trim() || menuCode.trim() || permissionKey.trim());
-          const visibleMenus = hasSearch
-            ? flattenMenus(filtered)
-            : flattenVisibleMenus(filtered, expandedRowKeys);
-          return {
-            data: visibleMenus,
-            success: true,
-            total: visibleMenus.length,
-          };
-        }}
-        toolBarRender={() => [
-          canAccess('system:menu:create') ? (
-            <Button key="create" type="primary" onClick={openCreate}>
-              新增菜单
-            </Button>
-          ) : null,
-          <Button
-            key="refresh"
-            onClick={async () => {
-              await loadMenus();
-              actionRef.current?.reload();
-            }}
-          >
-            刷新
-          </Button>,
-        ]}
-      />
+              boxShadow:
+                dragState?.targetId === record.id && dragState.position === 'before'
+                  ? 'inset 0 2px 0 #1677ff'
+                  : dragState?.targetId === record.id && dragState.position === 'after'
+                    ? 'inset 0 -2px 0 #1677ff'
+                    : undefined,
+            },
+          })}
+          request={async (params) => {
+            const keyword = String(params.menuName || params.keyword || '');
+            const menuCode = String(params.menuCode || '');
+            const permissionKey = String(params.permissionKey || '');
+            const filtered = filterMenus(menuTree, keyword, menuCode, permissionKey);
+            const hasSearch = Boolean(keyword.trim() || menuCode.trim() || permissionKey.trim());
+            const visibleMenus = hasSearch
+              ? flattenMenus(filtered)
+              : flattenVisibleMenus(filtered, expandedRowKeys);
+            return {
+              data: visibleMenus,
+              success: true,
+              total: visibleMenus.length,
+            };
+          }}
+          toolBarRender={() => [
+            canAccess('system:menu:create') ? (
+              <Button key="create" type="primary" onClick={openCreate}>
+                新增菜单
+              </Button>
+            ) : null,
+            <Button
+              key="refresh"
+              onClick={async () => {
+                await loadMenus();
+                actionRef.current?.reload();
+              }}
+            >
+              刷新
+            </Button>,
+          ]}
+        />
+      </div>
 
       <Drawer
         title={editingId ? '编辑菜单' : '新增菜单'}

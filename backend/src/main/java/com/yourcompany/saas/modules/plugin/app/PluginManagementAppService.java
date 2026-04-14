@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
@@ -37,7 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class PluginManagementAppService {
@@ -45,7 +45,6 @@ public class PluginManagementAppService {
     private static final Logger log = LoggerFactory.getLogger(PluginManagementAppService.class);
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
     };
-    private static final Set<String> SYSTEM_BUILTIN_PLUGIN_CODES = Set.of("announcement");
 
     private final PluginArtifactLoader pluginArtifactLoader;
     private final PluginPersistenceService pluginPersistenceService;
@@ -217,9 +216,7 @@ public class PluginManagementAppService {
     }
 
     public List<PluginVO.PluginDefinitionVO> listDefinitions() {
-        return pluginPersistenceService.listDefinitions().stream()
-                .filter(plugin -> !isSystemBuiltinPlugin(plugin.getPluginCode()))
-                .toList();
+        return pluginPersistenceService.listDefinitions();
     }
 
     public List<PluginVO.PluginVersionVO> listVersions(String pluginCode) {
@@ -236,10 +233,7 @@ public class PluginManagementAppService {
 
     public List<PluginVO.TenantPluginVO> availablePlugins(Long tenantId) {
         List<PluginVO.TenantPluginVO> result = pluginPersistenceService.listTenantPlugins(tenantId);
-        List<PluginVO.TenantPluginVO> filtered = result.stream()
-                .filter(plugin -> !isSystemBuiltinPlugin(plugin.getPluginCode()))
-                .toList();
-        for (PluginVO.TenantPluginVO plugin : filtered) {
+        for (PluginVO.TenantPluginVO plugin : result) {
             try {
                 PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(Path.of(plugin.getManifestPath()).toFile(), PluginDTO.FrontendPluginManifest.class);
                 plugin.setSharedDeps(manifest.getSharedDeps());
@@ -251,7 +245,7 @@ public class PluginManagementAppService {
                 plugin.setMenus(List.of());
             }
         }
-        return filtered;
+        return result;
     }
 
     @Transactional
@@ -259,9 +253,7 @@ public class PluginManagementAppService {
         List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
         List<Long> tenantIds = pluginPersistenceService.listTenantIdsForPlugin(pluginCode);
         for (PluginVersionEntity versionEntity : versions) {
-            if (versionEntity.getArtifactPath() != null) {
-                pluginArtifactLoader.removeVersionHome(Path.of(versionEntity.getArtifactPath()));
-            }
+            removePluginVersionArtifacts(versionEntity);
             try {
                 pluginRegistry.unload(pluginCode, versionEntity.getVersion());
             } catch (Exception exception) {
@@ -287,6 +279,28 @@ public class PluginManagementAppService {
                 null,
                 currentUser.getUserId()
         );
+    }
+
+    private void removePluginVersionArtifacts(PluginVersionEntity versionEntity) {
+        if (versionEntity == null) {
+            return;
+        }
+        if (StringUtils.hasText(versionEntity.getArtifactPath())) {
+            pluginArtifactLoader.removePath(Path.of(versionEntity.getArtifactPath()));
+        }
+        if (StringUtils.hasText(versionEntity.getPackagePath())) {
+            Path stagedRoot = Path.of(versionEntity.getPackagePath()).getParent();
+            if (stagedRoot != null) {
+                pluginArtifactLoader.removePath(stagedRoot);
+                return;
+            }
+        }
+        if (StringUtils.hasText(versionEntity.getStagedPath())) {
+            Path stagedRoot = Path.of(versionEntity.getStagedPath()).getParent();
+            if (stagedRoot != null) {
+                pluginArtifactLoader.removePath(stagedRoot);
+            }
+        }
     }
 
     public Optional<PluginRuntimeDescriptor> findTenantRuntimeDescriptor(Long tenantId, String pluginCode) {
@@ -421,10 +435,6 @@ public class PluginManagementAppService {
             menus.add(item);
         }
         return menus;
-    }
-
-    private boolean isSystemBuiltinPlugin(String pluginCode) {
-        return pluginCode != null && SYSTEM_BUILTIN_PLUGIN_CODES.contains(pluginCode);
     }
 
     private PluginVersionEntity requireVersion(String pluginCode, String version) {

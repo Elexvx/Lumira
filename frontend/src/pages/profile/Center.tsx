@@ -430,7 +430,7 @@ const ProfileCenterPage = () => {
           )}
         />
       ) : (
-        <Empty description="当前租户未启用 2FA / 短信验证码插件，暂无可绑定登录方式" />
+        <Empty description="当前租户暂无可绑定登录方式" />
       )}
     </Card>
   ) : null;

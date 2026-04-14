@@ -354,41 +354,44 @@ const RoleManagementPage = () => {
   ];
 
   return (
-    <PageContainer title="角色管理">
-      <ProTable<RoleRecord>
-        actionRef={actionRef}
-        rowKey="id"
-        columns={columns}
-        search={{ labelWidth: 'auto' }}
-        options={false}
-        pagination={{ showSizeChanger: true }}
-        request={async (params) => {
-          const { current, pageSize, ...rest } = params;
-          const result = await iamService.roles(
-            {
-              pageNo: current,
-              pageSize,
-              ...rest,
-            },
-            { autoRedirectOnUnauthorized: false },
-          );
-          return {
-            data: result.records,
-            success: true,
-            total: result.total,
-          };
-        }}
-        toolBarRender={() => [
-          canAccess('system:role:create') ? (
-            <Button key="create" type="primary" onClick={openCreate}>
-              新增角色
-            </Button>
-          ) : null,
-          <Button key="refresh" onClick={() => actionRef.current?.reload()}>
-            刷新
-          </Button>,
-        ]}
-      />
+    <PageContainer title="角色管理" className="saas-management-page">
+      <div className="saas-table-wrap">
+        <ProTable<RoleRecord>
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          search={{ labelWidth: 'auto' }}
+          options={false}
+          pagination={{ showSizeChanger: true }}
+          scroll={{ x: 'max-content' }}
+          request={async (params) => {
+            const { current, pageSize, ...rest } = params;
+            const result = await iamService.roles(
+              {
+                pageNo: current,
+                pageSize,
+                ...rest,
+              },
+              { autoRedirectOnUnauthorized: false },
+            );
+            return {
+              data: result.records,
+              success: true,
+              total: result.total,
+            };
+          }}
+          toolBarRender={() => [
+            canAccess('system:role:create') ? (
+              <Button key="create" type="primary" onClick={openCreate}>
+                新增角色
+              </Button>
+            ) : null,
+            <Button key="refresh" onClick={() => actionRef.current?.reload()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </div>
 
       <Drawer
         title={editingId ? '编辑角色 / 分配权限' : '新增角色'}

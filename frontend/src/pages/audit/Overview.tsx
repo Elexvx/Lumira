@@ -146,6 +146,7 @@ const AuditOverviewPage = () => {
   return (
     <PageContainer
       title="审计中心"
+      className="saas-management-page"
       tabList={[
         { tab: '登录日志', key: 'login' },
         { tab: '操作日志', key: 'operation' },
@@ -156,37 +157,40 @@ const AuditOverviewPage = () => {
         actionRef.current?.reload();
       }}
     >
-      <ProTable<AuditRecord>
-        key={logType}
-        actionRef={actionRef}
-        rowKey="id"
-        columns={columns}
-        search={{ labelWidth: 'auto' }}
-        options={false}
-        pagination={{ showSizeChanger: true, pageSize: 10 }}
-        request={async (params) => {
-          const { current, pageSize, ...rest } = params;
-          const payload = {
-            pageNo: current,
-            pageSize,
-            ...rest,
-          };
-          const result =
-            logType === 'login'
-              ? await auditService.loginLogs(payload, { autoRedirectOnUnauthorized: false })
-              : await auditService.operationLogs(payload, { autoRedirectOnUnauthorized: false });
-          return {
-            data: result.records,
-            success: true,
-            total: result.total,
-          };
-        }}
-        toolBarRender={() => [
-          <Button key="refresh" type="primary" onClick={() => actionRef.current?.reload()}>
-            刷新
-          </Button>,
-        ]}
-      />
+      <div className="saas-table-wrap">
+        <ProTable<AuditRecord>
+          key={logType}
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          search={{ labelWidth: 'auto' }}
+          options={false}
+          pagination={{ showSizeChanger: true, pageSize: 10 }}
+          scroll={{ x: 'max-content' }}
+          request={async (params) => {
+            const { current, pageSize, ...rest } = params;
+            const payload = {
+              pageNo: current,
+              pageSize,
+              ...rest,
+            };
+            const result =
+              logType === 'login'
+                ? await auditService.loginLogs(payload, { autoRedirectOnUnauthorized: false })
+                : await auditService.operationLogs(payload, { autoRedirectOnUnauthorized: false });
+            return {
+              data: result.records,
+              success: true,
+              total: result.total,
+            };
+          }}
+          toolBarRender={() => [
+            <Button key="refresh" type="primary" onClick={() => actionRef.current?.reload()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </div>
 
       <Drawer
         title={selectedRecord ? `日志详情 · ${selectedRecord.username || selectedRecord.moduleName || selectedRecord.id}` : '日志详情'}

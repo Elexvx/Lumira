@@ -220,38 +220,40 @@ const OnlineUsersPage = () => {
   return (
     <PageContainer
       title="在线用户"
-      className="saas-online-users-page"
+      className="saas-online-users-page saas-management-page"
       ghost
     >
-      <ProTable<OnlineSessionRecord>
-        actionRef={actionRef}
-        rowKey="sessionId"
-        search={false}
-        options={false}
-        columns={columns}
-        pagination={{ showSizeChanger: true }}
-        scroll={{ x: 1500 }}
-        request={async (params) => {
-          const { current, pageSize } = params;
-          const result = await systemService.onlineUsers(
-            {
-              pageNo: current,
-              pageSize,
-            },
-            { autoRedirectOnUnauthorized: false },
-          );
-          return {
-            data: result.records,
-            success: true,
-            total: result.total,
-          };
-        }}
-        toolBarRender={() => [
-          <Button key="refresh" onClick={() => actionRef.current?.reload()}>
-            刷新
-          </Button>,
-        ]}
-      />
+      <div className="saas-table-wrap">
+        <ProTable<OnlineSessionRecord>
+          actionRef={actionRef}
+          rowKey="sessionId"
+          search={false}
+          options={false}
+          columns={columns}
+          pagination={{ showSizeChanger: true }}
+          scroll={{ x: 1500 }}
+          request={async (params) => {
+            const { current, pageSize } = params;
+            const result = await systemService.onlineUsers(
+              {
+                pageNo: current,
+                pageSize,
+              },
+              { autoRedirectOnUnauthorized: false },
+            );
+            return {
+              data: result.records,
+              success: true,
+              total: result.total,
+            };
+          }}
+          toolBarRender={() => [
+            <Button key="refresh" onClick={() => actionRef.current?.reload()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </div>
     </PageContainer>
   );
 };

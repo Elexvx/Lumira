@@ -343,66 +343,75 @@ export default () => {
         </Row>
 
         <Card title="租户管理">
-          <ProTable<TenantSummary>
-            actionRef={actionRef}
-            rowKey="tenantId"
-            columns={tenantColumns}
-            search={{ labelWidth: 'auto' }}
-            options={false}
-            pagination={{ showSizeChanger: true }}
-            request={async (params) => {
-              const { current, pageSize, ...rest } = params;
-              const result = await tenantService.list(
-                {
-                  pageNo: current,
-                  pageSize,
-                  ...rest,
-                },
-                { autoRedirectOnUnauthorized: false },
-              );
-              return {
-                data: result.records,
-                success: true,
-                total: result.total,
-              };
-            }}
-            toolBarRender={() => [
-              canAccess('tenant:create') ? (
-                <Button key="create" type="primary" onClick={openCreateTenant}>
-                  新增租户
-                </Button>
-              ) : null,
-              <Button key="refresh" onClick={() => actionRef.current?.reload()}>
-                刷新
-              </Button>,
-            ]}
-          />
+          <div className="saas-table-wrap">
+            <ProTable<TenantSummary>
+              actionRef={actionRef}
+              rowKey="tenantId"
+              columns={tenantColumns}
+              search={{ labelWidth: 'auto' }}
+              options={false}
+              pagination={{ showSizeChanger: true }}
+              scroll={{ x: 'max-content' }}
+              request={async (params) => {
+                const { current, pageSize, ...rest } = params;
+                const result = await tenantService.list(
+                  {
+                    pageNo: current,
+                    pageSize,
+                    ...rest,
+                  },
+                  { autoRedirectOnUnauthorized: false },
+                );
+                return {
+                  data: result.records,
+                  success: true,
+                  total: result.total,
+                };
+              }}
+              toolBarRender={() => [
+                canAccess('tenant:create') ? (
+                  <Button key="create" type="primary" onClick={openCreateTenant}>
+                    新增租户
+                  </Button>
+                ) : null,
+                <Button key="refresh" onClick={() => actionRef.current?.reload()}>
+                  刷新
+                </Button>,
+              ]}
+            />
+          </div>
         </Card>
 
         <Card title="我可访问的租户" bodyStyle={{ height: 320, minHeight: 0 }}>
-          <ProTable<MyTenant>
-            rowKey="tenantId"
-            columns={myTenantColumns}
-            dataSource={myTenants}
-            loading={myTenantsQuery.loading}
-            search={false}
-            options={false}
-            toolBarRender={false}
-            pagination={false}
-          />
+          <div className="saas-table-wrap">
+            <ProTable<MyTenant>
+              rowKey="tenantId"
+              columns={myTenantColumns}
+              dataSource={myTenants}
+              loading={myTenantsQuery.loading}
+              search={false}
+              options={false}
+              toolBarRender={false}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         </Card>
 
         <Card title="当前租户启用插件" bodyStyle={{ height: 360, minHeight: 0 }}>
-          <ProTable<TenantPlugin>
-            rowKey="pluginCode"
-            columns={pluginColumns}
-            dataSource={tenantPlugins}
-            loading={pluginQuery.loading}
-            search={false}
-            options={false}
-            toolBarRender={false}
-            pagination={false}
-          />
+          <div className="saas-table-wrap">
+            <ProTable<TenantPlugin>
+              rowKey="pluginCode"
+              columns={pluginColumns}
+              dataSource={tenantPlugins}
+              loading={pluginQuery.loading}
+              search={false}
+              options={false}
+              toolBarRender={false}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         </Card>
 
         <Card title="最近 5 次切换" loading={switchHistoryQuery.loading}>

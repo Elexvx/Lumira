@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import type { PermissionTreeRecord } from '../src/types/api';
+import { realPageRouteMetaMap, realPageRoutePaths } from '../src/routes/meta';
 import {
   collectActionPermissionPageMap,
   collectExpandableKeys,
@@ -13,7 +14,7 @@ const sampleTree: PermissionTreeRecord[] = [
   {
     nodeType: 'CATALOG',
     pageKey: 'system',
-    pageName: '系统管理',
+    pageName: '系统总览',
     selectable: false,
     children: [
       {
@@ -88,5 +89,8 @@ assert.equal(selectablePages.length, 2, 'only valid PAGE nodes should be selecta
 assert.deepEqual(collectExpandableKeys(normalized), ['system'], 'catalog root should still be expandable');
 assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:config:view')?.length, 1, 'duplicate route path should be deduplicated');
 assert.equal(collectActionPermissionPageMap(normalized).size, 0, 'no action permissions are present in the smoke tree');
+assert.ok(realPageRoutePaths.has('/system/overview'), 'system overview route should be registered');
+assert.equal(realPageRouteMetaMap.get('/system/overview')?.name, '系统总览', 'system overview route should be named correctly');
+assert.ok(!realPageRoutePaths.has('/system/management'), 'legacy management route should not be registered');
 
 console.log('permission-tree-normalize-smoke: ok');

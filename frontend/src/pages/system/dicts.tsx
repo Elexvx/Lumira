@@ -174,41 +174,44 @@ const DictManagementPage = () => {
   ];
 
   return (
-    <PageContainer title="字典管理">
-      <ProTable<DictTypeRecord>
-        actionRef={actionRef}
-        rowKey="id"
-        columns={columns}
-        search={{ labelWidth: 'auto' }}
-        options={false}
-        pagination={{ showSizeChanger: true }}
-        request={async (params) => {
-          const { current, pageSize, ...rest } = params;
-          const result = await dictService.types(
-            {
-              pageNo: current,
-              pageSize,
-              ...rest,
-            },
-            { autoRedirectOnUnauthorized: false },
-          );
-          return {
-            data: result.records,
-            success: true,
-            total: result.total,
-          };
-        }}
-        toolBarRender={() => [
-          canAccess('system:dict:create') ? (
-            <Button key="create" type="primary" onClick={openCreateType}>
-              新增字典类型
-            </Button>
-          ) : null,
-          <Button key="refresh" onClick={() => actionRef.current?.reload?.()}>
-            刷新
-          </Button>,
-        ]}
-      />
+    <PageContainer title="字典管理" className="saas-management-page">
+      <div className="saas-table-wrap">
+        <ProTable<DictTypeRecord>
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          search={{ labelWidth: 'auto' }}
+          options={false}
+          pagination={{ showSizeChanger: true }}
+          scroll={{ x: 'max-content' }}
+          request={async (params) => {
+            const { current, pageSize, ...rest } = params;
+            const result = await dictService.types(
+              {
+                pageNo: current,
+                pageSize,
+                ...rest,
+              },
+              { autoRedirectOnUnauthorized: false },
+            );
+            return {
+              data: result.records,
+              success: true,
+              total: result.total,
+            };
+          }}
+          toolBarRender={() => [
+            canAccess('system:dict:create') ? (
+              <Button key="create" type="primary" onClick={openCreateType}>
+                新增字典类型
+              </Button>
+            ) : null,
+            <Button key="refresh" onClick={() => actionRef.current?.reload?.()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </div>
 
       <Drawer
         title={editingTypeId ? '编辑字典类型' : '新增字典类型'}
@@ -281,44 +284,47 @@ const DictManagementPage = () => {
               ]}
             />
 
-            <ProTable<DictItemRecord>
-              rowKey="id"
-              columns={[
-                { title: '标签', dataIndex: 'itemLabel' },
-                { title: '值', dataIndex: 'itemValue' },
-                { title: '排序', dataIndex: 'sortNo', hideInSearch: true },
-                {
-                  title: '状态',
-                  dataIndex: 'status',
-                  hideInSearch: true,
-                  render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
-                },
-                {
-                  title: '操作',
-                  valueType: 'option',
-                  render: (_, record) => (
-                    <Space size={0}>
-                      {canAccess('system:dict:update') ? (
-                        <Button type="link" size="small" onClick={() => openEditItem(record)}>
-                          编辑
-                        </Button>
-                      ) : null}
-                    </Space>
-                  ),
-                },
-              ]}
-              dataSource={items}
-              search={false}
-              options={false}
-              pagination={false}
-              toolBarRender={() => [
-                canAccess('system:dict:update') ? (
-                  <Button key="create" type="primary" onClick={openCreateItem}>
-                    新增项
-                  </Button>
-                ) : null,
-              ]}
-            />
+            <div className="saas-table-wrap">
+              <ProTable<DictItemRecord>
+                rowKey="id"
+                columns={[
+                  { title: '标签', dataIndex: 'itemLabel' },
+                  { title: '值', dataIndex: 'itemValue' },
+                  { title: '排序', dataIndex: 'sortNo', hideInSearch: true },
+                  {
+                    title: '状态',
+                    dataIndex: 'status',
+                    hideInSearch: true,
+                    render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
+                  },
+                  {
+                    title: '操作',
+                    valueType: 'option',
+                    render: (_, record) => (
+                      <Space size={0}>
+                        {canAccess('system:dict:update') ? (
+                          <Button type="link" size="small" onClick={() => openEditItem(record)}>
+                            编辑
+                          </Button>
+                        ) : null}
+                      </Space>
+                    ),
+                  },
+                ]}
+                dataSource={items}
+                search={false}
+                options={false}
+                pagination={false}
+                scroll={{ x: 'max-content' }}
+                toolBarRender={() => [
+                  canAccess('system:dict:update') ? (
+                    <Button key="create" type="primary" onClick={openCreateItem}>
+                      新增项
+                    </Button>
+                  ) : null,
+                ]}
+              />
+            </div>
           </Space>
         ) : null}
       </Drawer>

@@ -139,8 +139,12 @@ public class PluginArtifactLoader {
     }
 
     public void removeVersionHome(Path versionHome) {
+        removePath(versionHome);
+    }
+
+    public void removePath(Path path) {
         try {
-            deleteRecursively(versionHome);
+            deleteRecursively(path);
         } catch (IOException exception) {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件目录清理失败: " + exception.getMessage());
         }
