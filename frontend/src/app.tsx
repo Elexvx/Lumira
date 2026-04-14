@@ -13,7 +13,7 @@ import {
 } from '@/branding/settings';
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
-import { getStoredCurrentUser, isLoggedIn, restoreSession } from '@/auth/session';
+import { isLoggedIn, restoreSession } from '@/auth/session';
 import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
 import { TopActions } from '@/layouts/components/TopActions';
 import NoPermission from '@/pages/exception/NoPermission';
@@ -467,9 +467,9 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
   });
 
   return {
-    currentUser: getStoredCurrentUser() || undefined,
-    currentTenant: tenantContext.getCurrentTenant(),
-    myTenants: tenantContext.getMyTenants(),
+    currentUser: undefined,
+    currentTenant: null,
+    myTenants: [],
     menuTree: [],
     menuVersion: 0,
     availablePlugins: [],

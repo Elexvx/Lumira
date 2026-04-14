@@ -125,16 +125,8 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
 
       const refreshedCurrentUser = await loadCurrentUserOrFallback();
       if (!refreshedCurrentUser) {
-        const storedCurrentUser = getStoredCurrentUser();
-        if (!storedCurrentUser) {
-          clearAuthSession();
-          return null;
-        }
-
-        const persistedStoredCurrentUser = persistCurrentUser(storedCurrentUser);
-        persistSessionActivity(Date.now());
-        const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
-        return { currentUser: persistedStoredCurrentUser, securitySettings };
+        clearAuthSession();
+        return null;
       }
 
       const persistedCurrentUser = persistCurrentUser(refreshedCurrentUser);
@@ -244,11 +236,7 @@ async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise
     });
     return currentUser;
   } catch {
-    if (!loginResponse) {
-      return getStoredCurrentUser();
-    }
-
-    return buildFallbackCurrentUser(loginResponse);
+    return loginResponse ? buildFallbackCurrentUser(loginResponse) : null;
   }
 }
 
