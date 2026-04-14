@@ -1,11 +1,12 @@
 import dayjs from 'dayjs';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Spin, Tag, message } from 'antd';
 import { userService } from '@/services/user';
 import { iamService } from '@/services/iam';
 import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 import { confirmAction } from '@/utils/confirm';
 import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
 import { maskIdCardNumber, maskMobile } from '@/utils/sensitive';
@@ -20,6 +21,7 @@ const UserManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm();
   const { canAccess } = usePermission();
+  const responsive = useResponsiveTable();
   const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
@@ -138,21 +140,26 @@ const UserManagementPage = () => {
     });
   };
 
-  const columns: ProColumns<UserRecord>[] = [
+  const columns: ProColumns<UserRecord>[] = useMemo(
+    () => [
     {
       title: '用户名',
       dataIndex: 'username',
       search: true,
+      importance: 1,
     },
     {
       title: '手机号',
       dataIndex: 'mobile',
       search: true,
-      render: (_, record) => maskMobile(record.mobile) || '-',
+      importance: 1,
+      ellipsisText: true,
+      render: (_, record) => <ResponsiveText value={maskMobile(record.mobile) || '-'} copyable={Boolean(record.mobile)} />,
     },
     {
       title: '状态',
       dataIndex: 'status',
+      importance: 1,
       valueEnum: {
         ENABLED: { text: '启用', status: 'Success' },
         DISABLED: { text: '禁用', status: 'Default' },
@@ -166,51 +173,63 @@ const UserManagementPage = () => {
       title: '昵称',
       dataIndex: 'nickname',
       hideInSearch: true,
+      importance: 2,
+      responsiveLevel: ['tablet', 'desktop'],
     },
     {
       title: '姓名',
       dataIndex: 'realName',
       hideInSearch: true,
+      importance: 2,
+      responsiveLevel: ['tablet', 'desktop'],
     },
     {
       title: '角色',
       dataIndex: 'roleNames',
       hideInSearch: true,
-      render: (_, record) => (record.roleNames?.length ? record.roleNames.join(', ') : '-'),
+      importance: 3,
+      responsiveLevel: 'desktop',
+      ellipsisText: true,
+      render: (_, record) => <ResponsiveText value={record.roleNames?.length ? record.roleNames.join(', ') : '-'} />,
     },
     {
       title: '操作',
       valueType: 'option',
-      fixed: 'right',
+      importance: 0,
+      desktopFixed: 'right',
       width: 180,
       render: (_, record) => (
-        <Space size={0}>
-          {canAccess('system:user:view') ? (
-            <Button type="link" size="small" onClick={() => void openDetail(record)}>
-              详情
-            </Button>
-          ) : null}
-          {canAccess('system:user:update') ? (
-            <Button type="link" size="small" onClick={() => void openEdit(record)}>
-              编辑
-            </Button>
-          ) : null}
-          {canAccess('system:user:status') ? (
-            !isProtectedAdminAccount(record) ? (
-              <Button
-                type="link"
-                size="small"
-                danger={record.status === 'ENABLED'}
-                onClick={() => void handleStatusToggle(record)}
-              >
-                {record.status === 'ENABLED' ? '禁用' : '启用'}
-              </Button>
-            ) : null
-          ) : null}
-        </Space>
+        <ResponsiveActions
+          level={responsive.level}
+          items={[
+            {
+              key: 'view',
+              label: '详情',
+              hidden: !canAccess('system:user:view'),
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'edit',
+              label: '编辑',
+              hidden: !canAccess('system:user:update'),
+              onClick: () => void openEdit(record),
+            },
+            {
+              key: 'toggle',
+              label: record.status === 'ENABLED' ? '禁用' : '启用',
+              hidden: !canAccess('system:user:status') || isProtectedAdminAccount(record),
+              danger: record.status === 'ENABLED',
+              onClick: () => void handleStatusToggle(record),
+            },
+          ]}
+        />
       ),
     },
-  ];
+    ],
+    [canAccess, responsive.level],
+  );
+
+  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer title="用户管理" className="saas-management-page">
@@ -218,11 +237,11 @@ const UserManagementPage = () => {
         <ProTable<UserRecord>
           actionRef={actionRef}
           rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto' }}
+          columns={responsiveColumns}
+          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
-          pagination={{ showSizeChanger: true }}
-          scroll={{ x: 'max-content' }}
+          pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
+          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
           request={async (params) => {
             const { current, pageSize, ...rest } = params;
             const result = await userService.list(
@@ -241,11 +260,11 @@ const UserManagementPage = () => {
           }}
           toolBarRender={() => [
             canAccess('system:user:create') ? (
-              <Button key="create" type="primary" onClick={openCreate}>
+              <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
                 新增用户
               </Button>
             ) : null,
-            <Button key="refresh" onClick={() => actionRef.current?.reload()}>
+            <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               刷新
             </Button>,
           ]}
@@ -374,11 +393,11 @@ const UserManagementPage = () => {
             <Spin />
           </div>
         ) : selectedUserDetail ? (
-          <ProDescriptions<UserDetail>
-            column={2}
-            dataSource={selectedUserDetail}
-            columns={[
-              { title: '用户名', dataIndex: 'username' },
+              <ProDescriptions<UserDetail>
+              column={responsive.isMobile ? 1 : 2}
+              dataSource={selectedUserDetail}
+              columns={[
+                { title: '用户名', dataIndex: 'username' },
               { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
               { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
               { title: '手机号', dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },

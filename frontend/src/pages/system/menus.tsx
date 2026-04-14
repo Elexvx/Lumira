@@ -6,6 +6,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { iamService } from '@/services/iam';
 import type { MenuNode, MenuRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, useResponsiveTable } from '@/components/ResponsiveTable';
 import { confirmAction } from '@/utils/confirm';
 
 type MenuDropPosition = 'before' | 'inside' | 'after';
@@ -237,6 +238,7 @@ const MenuManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm();
   const { canAccess } = usePermission();
+  const responsive = useResponsiveTable();
   const { setInitialState } = useInitialStateModel();
   const [selectedMenu, setSelectedMenu] = useState<MenuRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -482,146 +484,168 @@ const MenuManagementPage = () => {
     });
   };
 
-  const columns: ProColumns<MenuTreeRecord>[] = [
-    {
-      title: '拖拽',
-      dataIndex: 'dragHandle',
-      width: 88,
-      hideInSearch: true,
-      render: (_, record) => {
-        const hasChildren = expandableMenuIds.has(record.id);
-        const expanded = expandedRowKeys.includes(record.id);
+  const columns: ProColumns<MenuTreeRecord>[] = useMemo(
+    () => [
+      {
+        title: '拖拽',
+        dataIndex: 'dragHandle',
+        width: 88,
+        hideInSearch: true,
+        importance: 0,
+        responsiveLevel: ['tablet', 'desktop'],
+        render: (_, record) => {
+          const hasChildren = expandableMenuIds.has(record.id);
+          const expanded = expandedRowKeys.includes(record.id);
 
-        return (
-          <Space size={8}>
-            <Button
-              type="text"
-              size="small"
-              aria-label={hasChildren ? (expanded ? '折叠行' : '展开行') : undefined}
-              icon={hasChildren ? (expanded ? <MinusOutlined /> : <PlusOutlined />) : null}
-              disabled={!hasChildren}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (!hasChildren) {
-                  return;
-                }
-                setExpandedRowKeys((currentKeys) =>
-                  expanded ? currentKeys.filter((key) => key !== record.id) : [...currentKeys, record.id],
-                );
-              }}
-              style={{
-                width: 24,
-                height: 24,
-                padding: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            />
-            <HolderOutlined style={{ color: '#8c8c8c', cursor: 'grab' }} />
-          </Space>
-        );
+          return (
+            <Space size={8}>
+              <Button
+                type="text"
+                size="small"
+                aria-label={hasChildren ? (expanded ? '折叠行' : '展开行') : undefined}
+                icon={hasChildren ? (expanded ? <MinusOutlined /> : <PlusOutlined />) : null}
+                disabled={!hasChildren}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!hasChildren) {
+                    return;
+                  }
+                  setExpandedRowKeys((currentKeys) =>
+                    expanded ? currentKeys.filter((key) => key !== record.id) : [...currentKeys, record.id],
+                  );
+                }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              />
+              <HolderOutlined style={{ color: '#8c8c8c', cursor: 'grab' }} />
+            </Space>
+          );
+        },
       },
-    },
-    {
-      title: '菜单编码',
-      dataIndex: 'menuCode',
-      hideInSearch: true,
-      hideInTable: true,
-    },
-    {
-      title: '菜单名称',
-      dataIndex: 'menuName',
-      search: true,
-      render: (_, record) => (
-        <span style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}>{record.menuName}</span>
-      ),
-    },
-    {
-      title: '菜单类型',
-      dataIndex: 'menuType',
-      valueEnum: {
-        CATALOG: { text: '目录' },
-        MENU: { text: '菜单' },
-        BUTTON: { text: '按钮' },
+      {
+        title: '菜单编码',
+        dataIndex: 'menuCode',
+        hideInSearch: true,
+        importance: 3,
+        responsiveLevel: 'desktop',
       },
-    },
-    {
-      title: '路由',
-      dataIndex: 'path',
-      hideInSearch: true,
-      width: 220,
-      ellipsis: true,
-    },
-    {
-      title: '组件',
-      dataIndex: 'component',
-      hideInSearch: true,
-      width: 300,
-      ellipsis: true,
-    },
-    {
-      title: '权限标识',
-      dataIndex: 'permissionKey',
-      search: true,
-      render: (_, record) => record.permissionKey || '-',
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortNo',
-      hideInSearch: true,
-      width: 88,
-      render: (_, record) => record.sortNo ?? 0,
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      hideInSearch: true,
-      render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
-    },
-    {
-      title: '操作',
-      valueType: 'option',
-      fixed: 'right',
-      width: 180,
-      render: (_, record) => (
-        <Space size={0}>
-          {canAccess('system:menu:view') ? (
-            <Button type="link" size="small" onClick={() => void openDetail(record)}>
-              详情
-            </Button>
-          ) : null}
-          {canAccess('system:menu:update') ? (
-            <Button type="link" size="small" onClick={() => void openEdit(record)}>
-              编辑
-            </Button>
-          ) : null}
-          {canAccess('system:menu:status') ? (
-            <Button
-              type="link"
-              size="small"
-              danger={record.status === 'ENABLED'}
-              onClick={() => void handleStatusToggle(record)}
-            >
-              {record.status === 'ENABLED' ? '停用' : '启用'}
-            </Button>
-          ) : null}
-        </Space>
-      ),
-    },
-  ];
+      {
+        title: '菜单名称',
+        dataIndex: 'menuName',
+        search: true,
+        importance: 1,
+        render: (_, record) => (
+          <span style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}>{record.menuName}</span>
+        ),
+      },
+      {
+        title: '菜单类型',
+        dataIndex: 'menuType',
+        importance: 1,
+        valueEnum: {
+          CATALOG: { text: '目录' },
+          MENU: { text: '菜单' },
+          BUTTON: { text: '按钮' },
+        },
+      },
+      {
+        title: '路由',
+        dataIndex: 'path',
+        hideInSearch: true,
+        width: 220,
+        importance: 2,
+        responsiveLevel: ['tablet', 'desktop'],
+        ellipsisText: true,
+      },
+      {
+        title: '组件',
+        dataIndex: 'component',
+        hideInSearch: true,
+        width: 300,
+        importance: 3,
+        responsiveLevel: 'desktop',
+        ellipsisText: true,
+      },
+      {
+        title: '权限标识',
+        dataIndex: 'permissionKey',
+        search: true,
+        importance: 2,
+        responsiveLevel: ['tablet', 'desktop'],
+        ellipsisText: true,
+        render: (_, record) => record.permissionKey || '-',
+      },
+      {
+        title: '排序',
+        dataIndex: 'sortNo',
+        hideInSearch: true,
+        width: 88,
+        importance: 2,
+        responsiveLevel: ['tablet', 'desktop'],
+        render: (_, record) => record.sortNo ?? 0,
+      },
+      {
+        title: '状态',
+        dataIndex: 'status',
+        hideInSearch: true,
+        importance: 1,
+        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
+      },
+      {
+        title: '操作',
+        valueType: 'option',
+        importance: 0,
+        desktopFixed: 'right',
+        width: 180,
+        render: (_, record) => (
+          <ResponsiveActions
+            level={responsive.level}
+            items={[
+              {
+                key: 'detail',
+                label: '详情',
+                hidden: !canAccess('system:menu:view'),
+                onClick: () => void openDetail(record),
+              },
+              {
+                key: 'edit',
+                label: '编辑',
+                hidden: !canAccess('system:menu:update'),
+                onClick: () => void openEdit(record),
+              },
+              {
+                key: 'status',
+                label: record.status === 'ENABLED' ? '停用' : '启用',
+                hidden: !canAccess('system:menu:status'),
+                danger: record.status === 'ENABLED',
+                onClick: () => void handleStatusToggle(record),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [canAccess, expandableMenuIds, expandedRowKeys, handleStatusToggle, openDetail, openEdit, responsive.level],
+  );
+  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer title="菜单管理" className="saas-management-page">
-      <div className="saas-table-wrap">
+      <div className="saas-table-wrap saas-wide-table">
         <ProTable<MenuRecord & { level?: number }>
           actionRef={actionRef}
           rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto' }}
+          columns={responsiveColumns}
+          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
           pagination={false}
-          scroll={{ x: 1500 }}
+          scroll={buildResponsiveScroll(responsiveColumns, responsive, { wide: true })}
           onRow={(record) => ({
             draggable: canAccess('system:menu:update') && !reordering,
             onDragStart: handleRowDragStart(record),
@@ -661,12 +685,13 @@ const MenuManagementPage = () => {
           }}
           toolBarRender={() => [
             canAccess('system:menu:create') ? (
-              <Button key="create" type="primary" onClick={openCreate}>
+              <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
                 新增菜单
               </Button>
             ) : null,
             <Button
               key="refresh"
+              size={responsive.isMobile ? 'small' : 'middle'}
               onClick={async () => {
                 await loadMenus();
                 actionRef.current?.reload();
@@ -761,8 +786,8 @@ const MenuManagementPage = () => {
             <Spin />
           </div>
         ) : selectedMenu ? (
-          <ProDescriptions<MenuRecord>
-            column={2}
+            <ProDescriptions<MenuRecord>
+              column={responsive.isMobile ? 1 : 2}
             dataSource={selectedMenu}
             columns={[
               { title: '菜单名称', dataIndex: 'menuName' },

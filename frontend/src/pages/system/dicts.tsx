@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, Form, Input, InputNumber, Select, Space, Spin, Tag, message } from 'antd';
 import { dictService } from '@/services/dict';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
+import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 
 const statusLabelMap: Record<string, string> = {
   ENABLED: '启用',
@@ -17,6 +18,7 @@ const DictManagementPage = () => {
   const [typeForm] = Form.useForm();
   const [itemForm] = Form.useForm();
   const { canAccess } = usePermission();
+  const responsive = useResponsiveTable();
   const [selectedType, setSelectedType] = useState<DictTypeRecord | null>(null);
   const [selectedItem, setSelectedItem] = useState<DictItemRecord | null>(null);
   const [typeEditorOpen, setTypeEditorOpen] = useState(false);
@@ -119,20 +121,24 @@ const DictManagementPage = () => {
     }
   };
 
-  const columns: ProColumns<DictTypeRecord>[] = [
+  const columns: ProColumns<DictTypeRecord>[] = useMemo(
+    () => [
     {
       title: '字典编码',
       dataIndex: 'dictCode',
       search: true,
+      importance: 1,
     },
     {
       title: '字典名称',
       dataIndex: 'dictName',
       search: true,
+      importance: 1,
     },
     {
       title: '状态',
       dataIndex: 'status',
+      importance: 1,
       valueEnum: {
         ENABLED: { text: '启用', status: 'Success' },
         DISABLED: { text: '停用', status: 'Default' },
@@ -143,35 +149,93 @@ const DictManagementPage = () => {
       title: '系统内置',
       dataIndex: 'isSystem',
       hideInSearch: true,
+      importance: 2,
+      responsiveLevel: ['tablet', 'desktop'],
       render: (_, record) => <Tag color={record.isSystem ? 'green' : 'default'}>{record.isSystem ? '是' : '否'}</Tag>,
     },
     {
       title: '备注',
       dataIndex: 'remark',
       hideInSearch: true,
-      render: (_, record) => record.remark || '-',
+      importance: 3,
+      responsiveLevel: 'desktop',
+      ellipsisText: true,
+      render: (_, record) => <ResponsiveText value={record.remark || '-'} copyable={Boolean(record.remark)} />,
     },
     {
       title: '操作',
       valueType: 'option',
-      fixed: 'right',
+      importance: 0,
+      desktopFixed: 'right',
       width: 180,
       render: (_, record) => (
-        <Space size={0}>
-          {canAccess('system:dict:view') ? (
-            <Button type="link" size="small" onClick={() => void openDetail(record)}>
-              详情
-            </Button>
-          ) : null}
-          {canAccess('system:dict:update') ? (
-            <Button type="link" size="small" onClick={() => void openEditType(record)}>
-              编辑
-            </Button>
-          ) : null}
-        </Space>
+        <ResponsiveActions
+          level={responsive.level}
+          items={[
+            {
+              key: 'view',
+              label: '详情',
+              hidden: !canAccess('system:dict:view'),
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'edit',
+              label: '编辑',
+              hidden: !canAccess('system:dict:update'),
+              onClick: () => void openEditType(record),
+            },
+          ]}
+        />
       ),
     },
-  ];
+    ],
+    [canAccess, responsive.level],
+  );
+
+  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
+  const dictItemColumns = useMemo<ProColumns<DictItemRecord>[]>(
+    () => [
+      { title: '标签', dataIndex: 'itemLabel', importance: 1 },
+      { title: '值', dataIndex: 'itemValue', importance: 1 },
+      { title: '排序', dataIndex: 'sortNo', hideInSearch: true, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+      {
+        title: '状态',
+        dataIndex: 'status',
+        hideInSearch: true,
+        importance: 1,
+        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
+      },
+      {
+        title: '备注',
+        dataIndex: 'remark',
+        hideInSearch: true,
+        importance: 3,
+        responsiveLevel: 'desktop',
+        ellipsisText: true,
+        render: (_, record) => <ResponsiveText value={record.remark || '-'} copyable={Boolean(record.remark)} />,
+      },
+      {
+        title: '操作',
+        valueType: 'option',
+        importance: 0,
+        desktopFixed: 'right',
+        render: (_, record) => (
+          <ResponsiveActions
+            level={responsive.level}
+            items={[
+              {
+                key: 'edit',
+                label: '编辑',
+                hidden: !canAccess('system:dict:update'),
+                onClick: () => openEditItem(record),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [canAccess, responsive.level],
+  );
 
   return (
     <PageContainer title="字典管理" className="saas-management-page">
@@ -179,11 +243,11 @@ const DictManagementPage = () => {
         <ProTable<DictTypeRecord>
           actionRef={actionRef}
           rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto' }}
+          columns={responsiveColumns}
+          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
-          pagination={{ showSizeChanger: true }}
-          scroll={{ x: 'max-content' }}
+          pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
+          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
           request={async (params) => {
             const { current, pageSize, ...rest } = params;
             const result = await dictService.types(
@@ -202,11 +266,11 @@ const DictManagementPage = () => {
           }}
           toolBarRender={() => [
             canAccess('system:dict:create') ? (
-              <Button key="create" type="primary" onClick={openCreateType}>
+            <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateType}>
                 新增字典类型
               </Button>
             ) : null,
-            <Button key="refresh" onClick={() => actionRef.current?.reload?.()}>
+            <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload?.()}>
               刷新
             </Button>,
           ]}
@@ -269,7 +333,7 @@ const DictManagementPage = () => {
         ) : typeDetail ? (
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <ProDescriptions<DictTypeRecord>
-              column={2}
+              column={responsive.isMobile ? 1 : 2}
               dataSource={typeDetail}
               columns={[
                 { title: '字典编码', dataIndex: 'dictCode' },
@@ -287,38 +351,15 @@ const DictManagementPage = () => {
             <div className="saas-table-wrap">
               <ProTable<DictItemRecord>
                 rowKey="id"
-                columns={[
-                  { title: '标签', dataIndex: 'itemLabel' },
-                  { title: '值', dataIndex: 'itemValue' },
-                  { title: '排序', dataIndex: 'sortNo', hideInSearch: true },
-                  {
-                    title: '状态',
-                    dataIndex: 'status',
-                    hideInSearch: true,
-                    render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
-                  },
-                  {
-                    title: '操作',
-                    valueType: 'option',
-                    render: (_, record) => (
-                      <Space size={0}>
-                        {canAccess('system:dict:update') ? (
-                          <Button type="link" size="small" onClick={() => openEditItem(record)}>
-                            编辑
-                          </Button>
-                        ) : null}
-                      </Space>
-                    ),
-                  },
-                ]}
+                columns={normalizeResponsiveColumns(dictItemColumns, responsive.level)}
                 dataSource={items}
                 search={false}
                 options={false}
                 pagination={false}
-                scroll={{ x: 'max-content' }}
+                scroll={buildResponsiveScroll(dictItemColumns, responsive)}
                 toolBarRender={() => [
                   canAccess('system:dict:update') ? (
-                    <Button key="create" type="primary" onClick={openCreateItem}>
+                    <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateItem}>
                       新增项
                     </Button>
                   ) : null,

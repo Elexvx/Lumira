@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRequest } from '@umijs/max';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { Button, Card, Col, Descriptions, Row, Space, Statistic, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Statistic, Typography } from 'antd';
 import { Area } from '@ant-design/charts';
-import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';
+import { buildResponsiveScroll, normalizeResponsiveColumns, useResponsiveTable } from '@/components/ResponsiveTable';
 import { formatBytes, formatDateTime, formatNumber, formatPercent } from './shared';
 
 type TrendPoint = {
@@ -18,7 +18,7 @@ const MAX_TREND_SAMPLES = 5;
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 
 const RedisMonitorPage = () => {
-  const { isDesktop } = useResponsive();
+  const responsive = useResponsiveTable();
   const query = useRequest(async () => ({ data: await monitorService.redis({ autoRedirectOnUnauthorized: false }) }) as { data: RedisMonitorSnapshot });
   const [samples, setSamples] = useState<TrendPoint[]>([]);
 
@@ -75,22 +75,35 @@ const RedisMonitorPage = () => {
 
   const commandColumns = useMemo<ProColumns<RedisMonitorCommandStat>[]>(
     () => [
-      { title: '命令', dataIndex: 'command', width: 180, fixed: 'left' },
-      { title: '调用次数', dataIndex: 'calls', width: 140, render: (_, record) => formatNumber(record.calls) },
-      { title: '耗时(ms)', dataIndex: 'totalUsec', width: 160, render: (_, record) => formatNumber(record.totalUsec) },
-      { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 160, render: (_, record) => record.avgUsec.toFixed(2) },
-      { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 120, render: (_, record) => formatNumber(record.rejectedCalls) },
-      { title: '失败次数', dataIndex: 'failedCalls', width: 120, render: (_, record) => formatNumber(record.failedCalls) },
+      { title: '命令', dataIndex: 'command', width: 180, importance: 1, desktopFixed: 'left' },
+      { title: '调用次数', dataIndex: 'calls', width: 140, importance: 1, render: (_, record) => formatNumber(record.calls) },
+      { title: '耗时(ms)', dataIndex: 'totalUsec', width: 160, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => formatNumber(record.totalUsec) },
+      { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 160, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => record.avgUsec.toFixed(2) },
+      { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 120, importance: 3, responsiveLevel: 'desktop', render: (_, record) => formatNumber(record.rejectedCalls) },
+      { title: '失败次数', dataIndex: 'failedCalls', width: 120, importance: 3, responsiveLevel: 'desktop', render: (_, record) => formatNumber(record.failedCalls) },
     ],
     [],
   );
 
   const keyspaceColumns = useMemo<ProColumns<RedisMonitorKeyspace>[]>(
     () => [
-      { title: '数据库', dataIndex: 'database', width: 120 },
-      { title: '键数量', dataIndex: 'keys', width: 120, render: (_, record) => formatNumber(record.keys) },
-      { title: '过期键数量', dataIndex: 'expires', width: 140, render: (_, record) => formatNumber(record.expires) },
-      { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 160, render: (_, record) => formatNumber(record.avgTtl) },
+      { title: '数据库', dataIndex: 'database', width: 120, importance: 1 },
+      { title: '键数量', dataIndex: 'keys', width: 120, importance: 1, render: (_, record) => formatNumber(record.keys) },
+      { title: '过期键数量', dataIndex: 'expires', width: 140, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => formatNumber(record.expires) },
+      { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 160, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => formatNumber(record.avgTtl) },
+    ],
+    [],
+  );
+
+  const clientColumns = useMemo<ProColumns<RedisMonitorClient>[]>(
+    () => [
+      { title: '地址', dataIndex: 'addressPort', width: 180, importance: 1 },
+      { title: '名称', dataIndex: 'name', width: 160, importance: 1 },
+      { title: '空闲(s)', dataIndex: 'idle', width: 100, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+      { title: '年龄(s)', dataIndex: 'age', width: 100, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+      { title: '数据库', dataIndex: 'databaseId', width: 100, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+      { title: '标记', dataIndex: 'flags', width: 140, importance: 3, responsiveLevel: 'desktop', ellipsisText: true },
+      { title: '最后命令', dataIndex: 'lastCommand', width: 140, importance: 3, responsiveLevel: 'desktop', ellipsisText: true },
     ],
     [],
   );
@@ -147,12 +160,20 @@ const RedisMonitorPage = () => {
             </Col>
           </Row>
 
-          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: isDesktop ? 2 : 1, xxl: 4 }} size="small" style={{ marginTop: 16 }}>
-            <Descriptions.Item label="总命中">{formatNumber(redis?.overview.hits)}</Descriptions.Item>
-            <Descriptions.Item label="总未命中">{formatNumber(redis?.overview.misses)}</Descriptions.Item>
-            <Descriptions.Item label="总命令数">{formatNumber(redis?.overview.totalCommandsProcessed)}</Descriptions.Item>
-            <Descriptions.Item label="采样时间">{formatDateTime(redis?.sampleTime)}</Descriptions.Item>
-          </Descriptions>
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col xs={12} sm={6} xl={4}>
+              <Statistic title="总命中" value={formatNumber(redis?.overview.hits)} valueStyle={valueStyle} />
+            </Col>
+            <Col xs={12} sm={6} xl={4}>
+              <Statistic title="总未命中" value={formatNumber(redis?.overview.misses)} valueStyle={valueStyle} />
+            </Col>
+            <Col xs={12} sm={6} xl={4}>
+              <Statistic title="总命令数" value={formatNumber(redis?.overview.totalCommandsProcessed)} valueStyle={valueStyle} />
+            </Col>
+            <Col xs={12} sm={6} xl={4}>
+              <Statistic title="采样时间" value={formatDateTime(redis?.sampleTime)} valueStyle={{ ...valueStyle, fontSize: 18 }} />
+            </Col>
+          </Row>
         </Card>
 
         <Row gutter={[16, 16]}>
@@ -211,9 +232,9 @@ const RedisMonitorPage = () => {
               search={false}
               options={false}
               pagination={false}
-              columns={commandColumns}
+              columns={normalizeResponsiveColumns(commandColumns, responsive.level)}
               dataSource={redis?.commandStats || []}
-              scroll={{ x: 900 }}
+              scroll={buildResponsiveScroll(normalizeResponsiveColumns(commandColumns, responsive.level), responsive)}
               toolBarRender={false}
             />
           </div>
@@ -226,9 +247,9 @@ const RedisMonitorPage = () => {
               search={false}
               options={false}
               pagination={false}
-              columns={keyspaceColumns}
+              columns={normalizeResponsiveColumns(keyspaceColumns, responsive.level)}
               dataSource={redis?.keyspaces || []}
-              scroll={{ x: 600 }}
+              scroll={buildResponsiveScroll(normalizeResponsiveColumns(keyspaceColumns, responsive.level), responsive)}
               toolBarRender={false}
             />
           </div>
@@ -245,16 +266,8 @@ const RedisMonitorPage = () => {
               options={false}
               pagination={false}
               dataSource={redis?.clients || []}
-              columns={[
-                { title: '地址', dataIndex: 'addressPort', width: 180 },
-                { title: '名称', dataIndex: 'name', width: 160 },
-                { title: '空闲(s)', dataIndex: 'idle', width: 100 },
-                { title: '年龄(s)', dataIndex: 'age', width: 100 },
-                { title: '数据库', dataIndex: 'databaseId', width: 100 },
-                { title: '标记', dataIndex: 'flags', width: 140 },
-                { title: '最后命令', dataIndex: 'lastCommand', width: 140 },
-              ]}
-              scroll={{ x: 900 }}
+              columns={normalizeResponsiveColumns(clientColumns, responsive.level)}
+              scroll={buildResponsiveScroll(normalizeResponsiveColumns(clientColumns, responsive.level), responsive)}
               toolBarRender={false}
             />
           </div>
