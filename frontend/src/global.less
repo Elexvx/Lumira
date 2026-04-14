@@ -106,11 +106,46 @@ body,
 .saas-management-page {
   min-height: 100%;
   overflow-x: hidden;
+
+  .ant-card,
+  .ant-pro-card,
+  .ant-card-body,
+  .ant-pro-card-body,
+  .ant-pro-card-content,
+  .ant-pro-table,
+  .ant-pro-table-search,
+  .ant-pro-table-list,
+  .ant-table-wrapper,
+  .ant-table-container {
+    min-width: 0;
+  }
 }
 
 .saas-static-watermark {
   background-repeat: repeat;
   pointer-events: none;
+}
+
+.saas-table-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.saas-table-wrap .ant-pro-table,
+.saas-table-wrap .ant-pro-card,
+.saas-table-wrap .ant-pro-card-body,
+.saas-table-wrap .ant-pro-table-search,
+.saas-table-wrap .ant-pro-table-list,
+.saas-table-wrap .ant-table-wrapper,
+.saas-table-wrap .ant-table-container {
+  min-width: 0;
+}
+
+.saas-table-wrap .ant-table {
+  width: max-content;
+  min-width: 100%;
 }
 
 .saas-service-monitor-page {

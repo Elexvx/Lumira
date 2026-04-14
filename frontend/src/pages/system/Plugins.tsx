@@ -416,7 +416,7 @@ const PluginsPage = () => {
       </div>
 
       <Drawer
-              title={selectedPlugin ? `${selectedPlugin.pluginName} · 版本管理` : '版本管理'}
+        title={selectedPlugin ? `${selectedPlugin.pluginName} · 版本管理` : '版本管理'}
         open={versionDrawerOpen}
         onClose={() => setVersionDrawerOpen(false)}
         width={920}
@@ -428,34 +428,37 @@ const PluginsPage = () => {
             <Descriptions.Item label="当前启用版本">{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
             <Descriptions.Item label="版本数量">{selectedPluginVersions.length}</Descriptions.Item>
           </Descriptions>
-          <Table<PluginVersion>
-            rowKey={(record) => `${record.pluginCode}-${record.version}`}
-            loading={loading}
-            dataSource={selectedPluginVersions}
-            pagination={false}
-            columns={[
-              { title: '版本', dataIndex: 'version' },
-              { title: '安装状态', dataIndex: 'installStatus' },
-              { title: '加载状态', dataIndex: 'loadStatus' },
-              { title: '健康状态', dataIndex: 'healthStatus' },
-              {
-                title: '激活',
-                dataIndex: 'isActive',
-                render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
-              },
-              {
-                title: '操作',
-                render: (_, record) => (
-                  <Space wrap>
-                    <Button onClick={() => void handleInstall(record.pluginCode, record.version)}>安装</Button>
-                    <Button onClick={() => void handleActivate(record.pluginCode, record.version)}>激活</Button>
-                    <Button onClick={() => void handleDisable(record.pluginCode)}>停用</Button>
-                    <Button onClick={() => void handleRollback(record.pluginCode, record.version)}>回滚</Button>
-                  </Space>
-                ),
-              },
-            ]}
-          />
+          <div className="saas-table-wrap">
+            <Table<PluginVersion>
+              rowKey={(record) => `${record.pluginCode}-${record.version}`}
+              loading={loading}
+              dataSource={selectedPluginVersions}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+              columns={[
+                { title: '版本', dataIndex: 'version' },
+                { title: '安装状态', dataIndex: 'installStatus' },
+                { title: '加载状态', dataIndex: 'loadStatus' },
+                { title: '健康状态', dataIndex: 'healthStatus' },
+                {
+                  title: '激活',
+                  dataIndex: 'isActive',
+                  render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
+                },
+                {
+                  title: '操作',
+                  render: (_, record) => (
+                    <Space wrap>
+                      <Button onClick={() => void handleInstall(record.pluginCode, record.version)}>安装</Button>
+                      <Button onClick={() => void handleActivate(record.pluginCode, record.version)}>激活</Button>
+                      <Button onClick={() => void handleDisable(record.pluginCode)}>停用</Button>
+                      <Button onClick={() => void handleRollback(record.pluginCode, record.version)}>回滚</Button>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </div>
         </Space>
       </Drawer>
 
@@ -489,19 +492,22 @@ const PluginsPage = () => {
         width={920}
         destroyOnClose
       >
-        <Table<PluginRuntimeLog>
-          rowKey="id"
-          loading={logsLoading}
-          dataSource={runtimeLogs}
-          pagination={false}
-          columns={[
-            { title: '时间', dataIndex: 'createdAt', width: 180 },
-            { title: '操作类型', dataIndex: 'operationType', width: 120 },
-            { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
-            { title: '结果', dataIndex: 'resultStatus', width: 120 },
-            { title: '详情', dataIndex: 'detailMessage' },
-          ]}
-        />
+        <div className="saas-table-wrap">
+          <Table<PluginRuntimeLog>
+            rowKey="id"
+            loading={logsLoading}
+            dataSource={runtimeLogs}
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            columns={[
+              { title: '时间', dataIndex: 'createdAt', width: 180 },
+              { title: '操作类型', dataIndex: 'operationType', width: 120 },
+              { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
+              { title: '结果', dataIndex: 'resultStatus', width: 120 },
+              { title: '详情', dataIndex: 'detailMessage' },
+            ]}
+          />
+        </div>
       </Drawer>
 
       <Modal

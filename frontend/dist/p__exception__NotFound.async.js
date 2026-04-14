@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunksaas_frontend=self.webpackChunksaas_frontend||[]).push([[2751],{35035:function(a,t,n){n.r(t);var s=n(24815),u=n(52676);t.default=function(){return(0,u.jsx)(s.ZP,{status:"404",title:"404"})}}}]);

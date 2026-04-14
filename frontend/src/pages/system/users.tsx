@@ -213,41 +213,44 @@ const UserManagementPage = () => {
   ];
 
   return (
-    <PageContainer title="用户管理">
-      <ProTable<UserRecord>
-        actionRef={actionRef}
-        rowKey="id"
-        columns={columns}
-        search={{ labelWidth: 'auto' }}
-        options={false}
-        pagination={{ showSizeChanger: true }}
-        request={async (params) => {
-          const { current, pageSize, ...rest } = params;
-          const result = await userService.list(
-            {
-              pageNo: current,
-              pageSize,
-              ...rest,
-            },
-            { autoRedirectOnUnauthorized: false },
-          );
-          return {
-            data: result.records,
-            success: true,
-            total: result.total,
-          };
-        }}
-        toolBarRender={() => [
-          canAccess('system:user:create') ? (
-            <Button key="create" type="primary" onClick={openCreate}>
-              新增用户
-            </Button>
-          ) : null,
-          <Button key="refresh" onClick={() => actionRef.current?.reload()}>
-            刷新
-          </Button>,
-        ]}
-      />
+    <PageContainer title="用户管理" className="saas-management-page">
+      <div className="saas-table-wrap">
+        <ProTable<UserRecord>
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          search={{ labelWidth: 'auto' }}
+          options={false}
+          pagination={{ showSizeChanger: true }}
+          scroll={{ x: 'max-content' }}
+          request={async (params) => {
+            const { current, pageSize, ...rest } = params;
+            const result = await userService.list(
+              {
+                pageNo: current,
+                pageSize,
+                ...rest,
+              },
+              { autoRedirectOnUnauthorized: false },
+            );
+            return {
+              data: result.records,
+              success: true,
+              total: result.total,
+            };
+          }}
+          toolBarRender={() => [
+            canAccess('system:user:create') ? (
+              <Button key="create" type="primary" onClick={openCreate}>
+                新增用户
+              </Button>
+            ) : null,
+            <Button key="refresh" onClick={() => actionRef.current?.reload()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </div>
 
       <Drawer
         title={editingId ? '编辑用户' : '新增用户'}

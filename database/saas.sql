@@ -684,7 +684,7 @@ INSERT INTO sys_menu (
     updated_by,
     deleted
 )
-SELECT 3002, 1001, 0, 'system.root', '系统管理', 'CATALOG', '/system/plugins', '@/pages/system/Management', 'AppstoreOutlined', 20, 'system:view', 0, 0, 0
+SELECT 3002, 1001, 0, 'system.root', '系统总览', 'CATALOG', '/system/overview', '@/pages/system/Overview', 'AppstoreOutlined', 20, 'system:view', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 3002);
 
 INSERT INTO sys_menu (
@@ -760,7 +760,7 @@ INSERT INTO sys_menu (
     updated_by,
     deleted
 )
-SELECT 4002, 1002, 0, 'system.root', '系统管理', 'CATALOG', '/system/plugins', '@/pages/system/Management', 'AppstoreOutlined', 20, 'system:view', 0, 0, 0
+SELECT 4002, 1002, 0, 'system.root', '系统总览', 'CATALOG', '/system/overview', '@/pages/system/Overview', 'AppstoreOutlined', 20, 'system:view', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 4002);
 
 INSERT INTO sys_menu (
@@ -1304,8 +1304,8 @@ WHERE tenant_id = 1002
   );
 
 UPDATE sys_menu
-SET path = '/system/management',
-    component = '@/pages/system/Management',
+SET path = '/system/overview',
+    component = '@/pages/system/Overview',
     status = 'ENABLED'
 WHERE menu_code = 'system.root';
 

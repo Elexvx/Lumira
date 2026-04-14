@@ -149,7 +149,7 @@ public class SystemManagementAppService {
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
-            shortcut("系统管理", "用户、角色、菜单、字典", "/system/management", "system:view"),
+            shortcut("系统总览", "菜单、字典、配置与插件入口", "/system/overview", "system:view"),
             shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
             shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),

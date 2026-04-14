@@ -16,7 +16,7 @@ import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { DashboardSummary } from '@/types/api';
 
-const managementEntries = [
+const overviewEntries = [
   { title: '用户中心', path: '/user-center', icon: <TeamOutlined />, description: '用户、在线会话、角色权限分配和个人中心' },
   { title: '菜单管理', path: '/system/menus', icon: <AppstoreOutlined />, description: '菜单树、路由和权限标识' },
   { title: '字典管理', path: '/system/dicts', icon: <DatabaseOutlined />, description: '字典类型和字典项' },
@@ -37,7 +37,7 @@ export default () => {
   const summary = summaryQuery.data;
 
   return (
-    <PageContainer className="saas-management-page" ghost title="系统管理" style={{ height: '100%', minHeight: 0 }} content={null}>
+    <PageContainer className="saas-management-page" ghost title="系统总览" style={{ height: '100%', minHeight: 0 }} content={null}>
       <div className="saas-management-page-body">
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
@@ -60,7 +60,7 @@ export default () => {
         <Card title="模块入口">
           <List
             grid={{ gutter: 16, xs: 1, sm: 2, xl: 3 }}
-            dataSource={managementEntries}
+            dataSource={overviewEntries}
             renderItem={(item) => (
               <List.Item>
                 <Card hoverable onClick={() => history.push(item.path)} style={{ height: '100%' }}>

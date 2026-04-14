@@ -98,6 +98,7 @@ const RedisMonitorPage = () => {
   return (
     <PageContainer
       title="Redis监控"
+      className="saas-management-page"
       ghost
       extra={
         <Space wrap>
@@ -204,53 +205,59 @@ const RedisMonitorPage = () => {
         </Row>
 
         <Card title="命令统计" loading={query.loading && !redis}>
-          <ProTable<RedisMonitorCommandStat>
-            rowKey="command"
-            search={false}
-            options={false}
-            pagination={false}
-            columns={commandColumns}
-            dataSource={redis?.commandStats || []}
-            scroll={{ x: 900 }}
-            toolBarRender={false}
-          />
+          <div className="saas-table-wrap">
+            <ProTable<RedisMonitorCommandStat>
+              rowKey="command"
+              search={false}
+              options={false}
+              pagination={false}
+              columns={commandColumns}
+              dataSource={redis?.commandStats || []}
+              scroll={{ x: 900 }}
+              toolBarRender={false}
+            />
+          </div>
         </Card>
 
         <Card title="Key信息" loading={query.loading && !redis}>
-          <ProTable<RedisMonitorKeyspace>
-            rowKey="database"
-            search={false}
-            options={false}
-            pagination={false}
-            columns={keyspaceColumns}
-            dataSource={redis?.keyspaces || []}
-            scroll={{ x: 600 }}
-            toolBarRender={false}
-          />
+          <div className="saas-table-wrap">
+            <ProTable<RedisMonitorKeyspace>
+              rowKey="database"
+              search={false}
+              options={false}
+              pagination={false}
+              columns={keyspaceColumns}
+              dataSource={redis?.keyspaces || []}
+              scroll={{ x: 600 }}
+              toolBarRender={false}
+            />
+          </div>
         </Card>
 
         <Card title="连接客户端" loading={query.loading && !redis}>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
             当前实例已连接的客户端会话列表，取自 Redis `CLIENT LIST`。
           </Typography.Paragraph>
-          <ProTable
-            rowKey={(record: RedisMonitorClient) => `${record.addressPort || ''}-${record.name || ''}-${record.databaseId || ''}`}
-            search={false}
-            options={false}
-            pagination={false}
-            dataSource={redis?.clients || []}
-            columns={[
-              { title: '地址', dataIndex: 'addressPort', width: 180 },
-              { title: '名称', dataIndex: 'name', width: 160 },
-              { title: '空闲(s)', dataIndex: 'idle', width: 100 },
-              { title: '年龄(s)', dataIndex: 'age', width: 100 },
-              { title: '数据库', dataIndex: 'databaseId', width: 100 },
-              { title: '标记', dataIndex: 'flags', width: 140 },
-              { title: '最后命令', dataIndex: 'lastCommand', width: 140 },
-            ]}
-            scroll={{ x: 900 }}
-            toolBarRender={false}
-          />
+          <div className="saas-table-wrap">
+            <ProTable
+              rowKey={(record: RedisMonitorClient) => `${record.addressPort || ''}-${record.name || ''}-${record.databaseId || ''}`}
+              search={false}
+              options={false}
+              pagination={false}
+              dataSource={redis?.clients || []}
+              columns={[
+                { title: '地址', dataIndex: 'addressPort', width: 180 },
+                { title: '名称', dataIndex: 'name', width: 160 },
+                { title: '空闲(s)', dataIndex: 'idle', width: 100 },
+                { title: '年龄(s)', dataIndex: 'age', width: 100 },
+                { title: '数据库', dataIndex: 'databaseId', width: 100 },
+                { title: '标记', dataIndex: 'flags', width: 140 },
+                { title: '最后命令', dataIndex: 'lastCommand', width: 140 },
+              ]}
+              scroll={{ x: 900 }}
+              toolBarRender={false}
+            />
+          </div>
         </Card>
       </Space>
     </PageContainer>

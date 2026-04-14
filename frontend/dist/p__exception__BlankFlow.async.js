@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunksaas_frontend=self.webpackChunksaas_frontend||[]).push([[6869],{1885:function(a,n,u){u.r(n);var t=u(24815),s=u(52676);n.default=function(){return(0,s.jsx)(t.ZP,{status:"info",title:"\u7A7A\u767D\u6D41\u7A0B\u9875"})}}}]);
