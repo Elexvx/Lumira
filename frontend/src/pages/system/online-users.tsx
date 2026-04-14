@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, Modal, Space, Tag, Typography, message } from 'antd';
+import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
 import { usePermission } from '@/hooks/usePermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
@@ -294,7 +295,7 @@ const OnlineUsersPage = () => {
         destroyOnClose
       >
         {selectedRecord ? (
-          <ProDescriptions<OnlineSessionRecord>
+          <PageDetailProDescriptions<OnlineSessionRecord>
             column={responsive.isMobile ? 1 : 2}
             dataSource={selectedRecord}
             columns={[

@@ -1,7 +1,9 @@
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Spin, Tag, message } from 'antd';
+import { DetailForm } from '@/components/DetailForm';
+import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
 import { userService } from '@/services/user';
 import { iamService } from '@/services/iam';
 import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
@@ -288,7 +290,7 @@ const UserManagementPage = () => {
           </div>
         }
       >
-        <Form form={editorForm} layout="vertical" initialValues={{ status: 'ENABLED', roleIds: [] }}>
+        <DetailForm form={editorForm} initialValues={{ status: 'ENABLED', roleIds: [] }}>
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]} normalize={trimString}>
@@ -375,7 +377,7 @@ const UserManagementPage = () => {
               </Form.Item>
             </Col>
           </Row>
-        </Form>
+        </DetailForm>
       </Drawer>
 
       <Drawer
@@ -393,7 +395,7 @@ const UserManagementPage = () => {
             <Spin />
           </div>
         ) : selectedUserDetail ? (
-              <ProDescriptions<UserDetail>
+              <PageDetailProDescriptions<UserDetail>
               column={responsive.isMobile ? 1 : 2}
               dataSource={selectedUserDetail}
               columns={[

@@ -1,7 +1,9 @@
 import { HolderOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, Form, Input, InputNumber, Select, Space, Spin, Tag, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { DetailForm } from '@/components/DetailForm';
+import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { iamService } from '@/services/iam';
 import type { MenuNode, MenuRecord } from '@/types/api';
@@ -720,7 +722,7 @@ const MenuManagementPage = () => {
           </div>
         }
       >
-        <Form form={editorForm} layout="vertical" initialValues={{ menuType: 'MENU', status: 'ENABLED', sortNo: 0 }}>
+        <DetailForm form={editorForm} initialValues={{ menuType: 'MENU', status: 'ENABLED', sortNo: 0 }}>
           <Form.Item name="parentId" label="上级菜单">
             <Select
               allowClear
@@ -768,7 +770,7 @@ const MenuManagementPage = () => {
               ]}
             />
           </Form.Item>
-        </Form>
+        </DetailForm>
       </Drawer>
 
       <Drawer
@@ -786,7 +788,7 @@ const MenuManagementPage = () => {
             <Spin />
           </div>
         ) : selectedMenu ? (
-            <ProDescriptions<MenuRecord>
+            <PageDetailProDescriptions<MenuRecord>
               column={responsive.isMobile ? 1 : 2}
             dataSource={selectedMenu}
             columns={[

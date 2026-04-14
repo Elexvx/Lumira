@@ -3,6 +3,7 @@ import { PageContainer, type ProColumns } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
+import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
 import { buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
@@ -498,11 +499,11 @@ const PluginsPage = () => {
         title={selectedPlugin ? `${selectedPlugin.pluginName} · 详情` : '插件详情'}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
-        width={760}
-        destroyOnClose
+      width={760}
+      destroyOnClose
       >
         {selectedPlugin ? (
-          <Descriptions bordered column={responsive.isMobile ? 1 : 2} size="small">
+          <PageDetailDescriptions column={responsive.isMobile ? 1 : 2}>
             <Descriptions.Item label="插件编码">{selectedPlugin.pluginCode}</Descriptions.Item>
             <Descriptions.Item label="插件名称">{selectedPlugin.pluginName}</Descriptions.Item>
             <Descriptions.Item label="描述">{selectedPlugin.description || '-'}</Descriptions.Item>
@@ -513,7 +514,7 @@ const PluginsPage = () => {
             <Descriptions.Item label="是否启用">{selectedTenantPlugin ? '已启用' : '未启用'}</Descriptions.Item>
             <Descriptions.Item label="菜单数">{selectedTenantPlugin?.menus?.length || 0}</Descriptions.Item>
             <Descriptions.Item label="路由数">{selectedTenantPlugin?.routes?.length || 0}</Descriptions.Item>
-          </Descriptions>
+          </PageDetailDescriptions>
         ) : null}
       </Drawer>
 

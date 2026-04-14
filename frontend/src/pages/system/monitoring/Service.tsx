@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag } from 'antd';
+import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { ServiceMonitorSnapshot } from '@/types/api';
@@ -124,7 +125,7 @@ const ServiceMonitorPage = () => {
         </Row>
 
         <Card title="服务器信息" loading={query.loading && !service}>
-          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }} size="small">
+          <PageDetailDescriptions column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }}>
             <Descriptions.Item label="服务器名称">
               <BreakableValue value={service?.server?.serverName} />
             </Descriptions.Item>
@@ -152,11 +153,11 @@ const ServiceMonitorPage = () => {
             <Descriptions.Item label="临时目录">
               <BreakableValue value={service?.server?.tempDir} />
             </Descriptions.Item>
-          </Descriptions>
+          </PageDetailDescriptions>
         </Card>
 
         <Card title="Java虚拟机信息" loading={query.loading && !service}>
-          <Descriptions bordered column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }} size="small">
+          <PageDetailDescriptions column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }}>
             <Descriptions.Item label="Java名称">
               <BreakableValue value={service?.jvm?.vmName} />
             </Descriptions.Item>
@@ -193,7 +194,7 @@ const ServiceMonitorPage = () => {
             <Descriptions.Item label="启动参数" span={isDesktop ? 2 : 1}>
               <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
             </Descriptions.Item>
-          </Descriptions>
+          </PageDetailDescriptions>
         </Card>
       </Space>
     </PageContainer>

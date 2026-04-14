@@ -4,6 +4,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Watermark, Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Tabs, Typography, Upload, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import MDEditor from '@uiw/react-md-editor';
+import { DetailForm } from '@/components/DetailForm';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
@@ -240,9 +241,8 @@ const PersonalizationSettingsPage = () => {
                 label: '品牌设置',
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Form
+                    <DetailForm
                       form={brandingForm}
-                      layout="vertical"
                       onValuesChange={(_, allValues) => setPreviewState(normalizeBrandingSettings(allValues))}
                     >
                       <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
@@ -357,7 +357,7 @@ const PersonalizationSettingsPage = () => {
                       <Form.Item name="footerCopyright" label="Footer 版权声明">
                         <Input.TextArea rows={3} />
                       </Form.Item>
-                    </Form>
+                    </DetailForm>
 
                     <Card title="预览">
                       <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -381,9 +381,8 @@ const PersonalizationSettingsPage = () => {
                 label: '全局水印',
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Form
+                    <DetailForm
                       form={watermarkForm}
-                      layout="vertical"
                       onValuesChange={(_, allValues) =>
                         setWatermarkPreview({
                           ...DEFAULT_WATERMARK_SETTINGS,
@@ -474,7 +473,7 @@ const PersonalizationSettingsPage = () => {
                       <Form.Item name="opacity" label="透明度">
                         <InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} />
                       </Form.Item>
-                    </Form>
+                    </DetailForm>
 
                     <Card title="预览">
                       <Watermark
@@ -503,9 +502,8 @@ const PersonalizationSettingsPage = () => {
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
                       使用 Markdown 编辑器编写协议内容，保存后会同步到登录页。
                     </Typography.Paragraph>
-                    <Form
+                    <DetailForm
                       form={agreementForm}
-                      layout="vertical"
                       initialValues={DEFAULT_AGREEMENT_SETTINGS}
                     >
                       <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
@@ -526,7 +524,7 @@ const PersonalizationSettingsPage = () => {
                           data-color-mode="light"
                         />
                       </Form.Item>
-                    </Form>
+                    </DetailForm>
 
                     <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
                       <Button danger onClick={() => handleClearAgreementField('userAgreementMarkdown')}>
