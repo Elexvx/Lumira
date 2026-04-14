@@ -54,6 +54,7 @@ saas:
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     permit-paths:
       - /api/v1/auth/login
+      - /api/v1/auth/login-encryption-key
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
       - /api/v1/public/branding-settings

@@ -17,6 +17,7 @@ import { history } from '@umijs/max';
 
 const USER_PROFILE_KEY = 'current_user_profile';
 const SESSION_META_KEY = 'current_session_meta';
+const LOCAL_SESSION_ID_PREFIX = 'local-session';
 
 export interface SessionMetaState {
   sessionId?: string;
@@ -88,22 +89,17 @@ export const initializeAfterLogin = async (loginResponse: LoginResponse): Promis
     tenantContext.setCurrentTenant(loginResponse.currentTenant || null);
     persistSessionActivity(Date.now());
 
-    // Use autoRedirectOnUnauthorized: false to prevent the global 401 handler
-    // from clearing the just-written token and redirecting away during login.
-    // Any failure here is caught below and re-thrown so the login page can
-    // display an appropriate error message.
-    const currentUser = await authService.currentUser({
-      autoRedirectOnUnauthorized: false,
-      allowUnauthorizedWithoutRedirect: true,
-    });
-    persistCurrentUser(currentUser);
+    const currentUser = await loadCurrentUserOrFallback(loginResponse);
+    const persistedCurrentUser = persistCurrentUser(currentUser);
     await syncTenantFromServer({
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+    }).catch(() => {
+      // If the tenant sync endpoint is unavailable, keep the login result
+      // from the login response so authentication can continue.
     });
-    persistSessionActivity(Date.now());
     const securitySettings = await loadSecuritySettings();
-    return { currentUser, securitySettings };
+    return { currentUser: persistedCurrentUser, securitySettings };
   } catch (error) {
     clearAuthSession();
     throw error;
@@ -119,43 +115,50 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
       return null;
     }
 
-    try {
-      const currentUser = await authService.currentUser({
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-      });
-      persistCurrentUser(currentUser);
-      await syncTenantFromServer({
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-      });
-      const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
-      return { currentUser, securitySettings };
-    } catch {
+    const currentUser = await loadCurrentUserOrFallback();
+    if (!currentUser) {
       const refreshed = await tryRefreshToken();
       if (!refreshed) {
         clearAuthSession();
         return null;
       }
 
-      try {
-        const currentUser = await authService.currentUser({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-        });
-        persistCurrentUser(currentUser);
-        await syncTenantFromServer({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-        });
+      const refreshedCurrentUser = await loadCurrentUserOrFallback();
+      if (!refreshedCurrentUser) {
+        const storedCurrentUser = getStoredCurrentUser();
+        if (!storedCurrentUser) {
+          clearAuthSession();
+          return null;
+        }
+
+        const persistedStoredCurrentUser = persistCurrentUser(storedCurrentUser);
         persistSessionActivity(Date.now());
         const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
-        return { currentUser, securitySettings };
-      } catch {
-        clearAuthSession();
-        return null;
+        return { currentUser: persistedStoredCurrentUser, securitySettings };
       }
+
+      const persistedCurrentUser = persistCurrentUser(refreshedCurrentUser);
+      await syncTenantFromServer({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+      }).catch(() => {
+        // Keep the current tenant stored from the previous session if the sync endpoint is down.
+      });
+      persistSessionActivity(Date.now());
+      const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+      return { currentUser: persistedCurrentUser, securitySettings };
     }
+
+    const persistedCurrentUser = persistCurrentUser(currentUser);
+    await syncTenantFromServer({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    }).catch(() => {
+      // Keep the current tenant stored from the previous session if the sync endpoint is down.
+    });
+    persistSessionActivity(Date.now());
+    const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+    return { currentUser: persistedCurrentUser, securitySettings };
   } finally {
     endBootstrapFlow();
   }
@@ -220,13 +223,79 @@ export const saveSecuritySettings = async (securitySettings: SecuritySettings): 
   return normalized;
 };
 
-const persistCurrentUser = (currentUser: CurrentUser) => {
-  storage.set(USER_PROFILE_KEY, currentUser);
+const persistCurrentUser = (currentUser: CurrentUser): CurrentUser => {
+  const normalizedCurrentUser = normalizeCurrentUserSession(currentUser);
+  storage.set(USER_PROFILE_KEY, normalizedCurrentUser);
   persistSessionMeta({
-    sessionId: currentUser.sessionId,
-    sessionVersion: currentUser.sessionVersion,
-    permissionsVersion: currentUser.permissionsVersion,
+    sessionId: normalizedCurrentUser.sessionId,
+    sessionVersion: normalizedCurrentUser.sessionVersion,
+    permissionsVersion: normalizedCurrentUser.permissionsVersion,
   });
+  return normalizedCurrentUser;
+};
+
+function loadCurrentUserOrFallback(loginResponse: LoginResponse): Promise<CurrentUser>;
+function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise<CurrentUser | null>;
+async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise<CurrentUser | null> {
+  try {
+    const currentUser = await authService.currentUser({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    });
+    return currentUser;
+  } catch {
+    if (!loginResponse) {
+      return getStoredCurrentUser();
+    }
+
+    return buildFallbackCurrentUser(loginResponse);
+  }
+}
+
+const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => {
+  const storedCurrentUser = getStoredCurrentUser();
+  const storedSessionMeta = getStoredSessionMeta();
+  const currentTenant = tenantContext.getCurrentTenant() || loginResponse.currentTenant || null;
+  const sessionId = storedSessionMeta?.sessionId?.trim() || createLocalSessionId();
+  return {
+    userId: loginResponse.user.userId,
+    username: loginResponse.user.username,
+    nickname: loginResponse.user.nickname,
+    realName: loginResponse.user.realName,
+    avatarUrl: loginResponse.user.avatarUrl,
+    mobile: loginResponse.user.mobile ?? null,
+    email: loginResponse.user.email ?? null,
+    birthMonth: loginResponse.user.birthMonth ?? null,
+    gender: loginResponse.user.gender ?? null,
+    region: loginResponse.user.region ?? null,
+    availableTime: loginResponse.user.availableTime ?? null,
+    idCardNumber: loginResponse.user.idCardNumber ?? null,
+    currentTenant,
+    sessionId,
+    permissionsVersion: storedSessionMeta?.permissionsVersion,
+    sessionVersion: storedSessionMeta?.sessionVersion,
+    permissions: storedCurrentUser?.permissions || [],
+  };
+};
+
+const normalizeCurrentUserSession = (currentUser: CurrentUser): CurrentUser => {
+  if (currentUser.sessionId?.trim()) {
+    return currentUser;
+  }
+
+  const storedSessionMeta = getStoredSessionMeta();
+  return {
+    ...currentUser,
+    sessionId: storedSessionMeta?.sessionId?.trim() || createLocalSessionId(),
+  };
+};
+
+const createLocalSessionId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${LOCAL_SESSION_ID_PREFIX}-${crypto.randomUUID()}`;
+  }
+
+  return `${LOCAL_SESSION_ID_PREFIX}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
 const persistSessionMeta = (meta: SessionMetaState) => {

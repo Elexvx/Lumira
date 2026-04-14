@@ -13,28 +13,12 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
 import { confirmAction } from '@/utils/confirm';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
 import type { AgreementSettings, BrandingSettings, WatermarkSettings } from '@/types/api';
 
 type PersonalizationTabKey = 'branding' | 'watermark' | 'agreement';
 type UploadTarget = 'favicon' | 'logo' | 'watermark';
 type BrandingClearField = 'websiteFaviconUrl' | 'websiteLogoUrl';
-
-const defaultWatermark: WatermarkSettings = {
-  enabled: false,
-  mode: 'TEXT',
-  textLines: ['宏翔商道', '后台管理系统'],
-  imageUrl: '',
-  fontColor: 'rgba(0,0,0,0.15)',
-  fontSize: 14,
-  fontWeight: 'normal',
-  rotate: -22,
-  gapX: 100,
-  gapY: 100,
-  offsetX: 0,
-  offsetY: 0,
-  zIndex: 9,
-  opacity: 0.15,
-};
 
 const normalizeTabKey = (value?: string | null): PersonalizationTabKey =>
   value === 'watermark' ? 'watermark' : value === 'agreement' ? 'agreement' : 'branding';
@@ -54,8 +38,8 @@ const PersonalizationSettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [previewState, setPreviewState] = useState<BrandingSettings>(normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS));
   const [watermarkPreview, setWatermarkPreview] = useState<WatermarkSettings>(() => ({
-    ...defaultWatermark,
-    ...(initialState?.watermarkSettings || defaultWatermark),
+    ...DEFAULT_WATERMARK_SETTINGS,
+    ...(initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
     imageUrl: normalizeUploadUrl(initialState?.watermarkSettings?.imageUrl),
   }));
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
@@ -91,7 +75,7 @@ const PersonalizationSettingsPage = () => {
       ]);
       const normalizedBranding = normalizeBrandingSettings(brandingResult);
       const normalizedWatermark = {
-        ...defaultWatermark,
+        ...DEFAULT_WATERMARK_SETTINGS,
         ...watermarkResult,
         imageUrl: normalizeUploadUrl(watermarkResult.imageUrl),
       };
@@ -102,6 +86,7 @@ const PersonalizationSettingsPage = () => {
       setPreviewState(normalizedBranding);
       setWatermarkPreview(normalizedWatermark);
       persistBrandingSettings(normalizedBranding);
+      persistWatermarkSettings(normalizedWatermark);
       setInitialState((prev) => (prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: normalizedWatermark } : prev));
     } finally {
       setLoading(false);
@@ -157,7 +142,7 @@ const PersonalizationSettingsPage = () => {
       const watermarkValues = await watermarkForm.validateFields();
       const updatedWatermark = await systemService.updateWatermarkSettings(
         {
-          ...defaultWatermark,
+          ...DEFAULT_WATERMARK_SETTINGS,
           ...watermarkValues,
           imageUrl: normalizeUploadUrl(watermarkValues.imageUrl),
         },
@@ -166,6 +151,7 @@ const PersonalizationSettingsPage = () => {
       watermarkForm.setFieldsValue(updatedWatermark);
       setInitialState((prev) => (prev ? { ...prev, watermarkSettings: updatedWatermark } : prev));
       setWatermarkPreview(updatedWatermark);
+      persistWatermarkSettings(updatedWatermark);
       message.success('水印设置已保存并即时生效');
     } finally {
       setWatermarkSaving(false);
@@ -230,7 +216,7 @@ const PersonalizationSettingsPage = () => {
     });
   };
 
-  const wm = useMemo(() => ({ ...defaultWatermark, ...watermarkPreview }), [watermarkPreview]);
+  const wm = useMemo(() => ({ ...DEFAULT_WATERMARK_SETTINGS, ...watermarkPreview }), [watermarkPreview]);
 
   useEffect(() => {
     applyFavicon(previewState.websiteFaviconUrl);
@@ -400,7 +386,7 @@ const PersonalizationSettingsPage = () => {
                       layout="vertical"
                       onValuesChange={(_, allValues) =>
                         setWatermarkPreview({
-                          ...defaultWatermark,
+                          ...DEFAULT_WATERMARK_SETTINGS,
                           ...allValues,
                           imageUrl: normalizeUploadUrl(allValues.imageUrl),
                         })

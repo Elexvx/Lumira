@@ -116,9 +116,12 @@ public class PluginManagementController {
     }
 
     @PostMapping("/{pluginCode}/uninstall")
-    public ApiResponse<Boolean> uninstall(@PathVariable("pluginCode") String pluginCode) {
+    public ApiResponse<Boolean> uninstall(
+            @PathVariable("pluginCode") String pluginCode,
+            @RequestBody(required = false) PluginDTO.UninstallRequest request
+    ) {
         require("plugin:management:disable");
-        pluginManagementAppService.uninstall(pluginCode, currentUser());
+        pluginManagementAppService.uninstall(pluginCode, request != null && request.isRemoveData(), currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 

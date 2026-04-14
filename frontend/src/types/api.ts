@@ -63,6 +63,12 @@ export interface LoginResponse {
   requiresCaptcha?: boolean | null;
 }
 
+export interface LoginEncryptionKey {
+  algorithm: string;
+  keyId: string;
+  publicKey: string;
+}
+
 export type CaptchaType = 'IMAGE';
 
 export interface SecuritySettings {

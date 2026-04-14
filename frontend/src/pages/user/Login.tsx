@@ -13,12 +13,13 @@ import { systemService } from '@/services/system';
 import { ApiRequestError } from '@/services/common/request';
 import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
+import { encryptLoginPassword } from '@/auth/loginEncryption';
 import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
-import type { CaptchaChallenge, SecuritySettings } from '@/types/api';
+import type { CaptchaChallenge, LoginEncryptionKey, SecuritySettings } from '@/types/api';
 import './Login.less';
 
 interface LoginFormValues {
@@ -43,9 +44,12 @@ const Login = () => {
   const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captchaImageLoadFailed, setCaptchaImageLoadFailed] = useState(false);
+  const [loginEncryptionKey, setLoginEncryptionKey] = useState<LoginEncryptionKey | null>(null);
+  const [loginEncryptionLoading, setLoginEncryptionLoading] = useState(false);
   const location = useLocation();
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const securitySettingsRef = useRef(securitySettings);
+  const loginEncryptionLoadPromiseRef = useRef<Promise<LoginEncryptionKey | null> | null>(null);
   const captchaRefreshControllerRef = useRef(
     createCaptchaRefreshController({
       getCaptchaEnabled: () => securitySettingsRef.current.captchaEnabled,
@@ -73,7 +77,44 @@ const Login = () => {
     securitySettingsRef.current = securitySettings;
   }, [securitySettings]);
 
+  const loadLoginEncryptionKey = useCallback(async () => {
+    if (loginEncryptionKey) {
+      return loginEncryptionKey;
+    }
+
+    if (!loginEncryptionLoadPromiseRef.current) {
+      setLoginEncryptionLoading(true);
+      loginEncryptionLoadPromiseRef.current = authService
+        .loginEncryptionKey({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        })
+        .then((key) => {
+          setLoginEncryptionKey(key);
+          return key;
+        })
+        .catch((error) => {
+          setLoginError({
+            type: 'error',
+            message: error instanceof Error ? error.message : '登录加密信息加载失败，请刷新后重试',
+          });
+          return null;
+        })
+        .finally(() => {
+          setLoginEncryptionLoading(false);
+          loginEncryptionLoadPromiseRef.current = null;
+        });
+    }
+
+    return loginEncryptionLoadPromiseRef.current;
+  }, [loginEncryptionKey]);
+
   const refreshCaptcha = useCallback(async () => captchaRefreshControllerRef.current.refresh(), []);
+
+  useEffect(() => {
+    void loadLoginEncryptionKey();
+  }, [loadLoginEncryptionKey]);
 
   useEffect(() => {
     if (!securitySettings.captchaEnabled) {
@@ -110,9 +151,14 @@ const Login = () => {
     setLoginError(undefined);
     beginLoginFlow();
     try {
+      const encryptionKey = loginEncryptionKey || (await loadLoginEncryptionKey());
+      if (!encryptionKey) {
+        throw new Error('登录加密信息加载失败，请刷新后重试');
+      }
+
       const loginResponse = await authService.login({
         username: values.username,
-        password: values.password || '',
+        password: await encryptLoginPassword(values.password || '', encryptionKey),
         captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
         captchaCode: securitySettings.captchaEnabled ? values.captchaCode : undefined,
       });
@@ -248,6 +294,7 @@ const Login = () => {
             { min: 6, message: '密码长度不能少于 6 位' },
           ]}
         />
+        {loginEncryptionLoading ? <Typography.Text type="secondary">正在加载登录加密信息...</Typography.Text> : null}
         {securitySettings.captchaEnabled ? (
           <div className="saas-login-page__captcha-section">
             <div className="saas-login-page__captcha-input">

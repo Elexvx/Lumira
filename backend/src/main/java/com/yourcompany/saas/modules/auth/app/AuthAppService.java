@@ -51,6 +51,7 @@ public class AuthAppService {
     private final AuthSessionStore authSessionStore;
     private final CaptchaService captchaService;
     private final LoginProtectionService loginProtectionService;
+    private final LoginEncryptionService loginEncryptionService;
     private final JwtTokenService jwtTokenService;
     private final SecuritySettingsService securitySettingsService;
     private final PasswordEncoder passwordEncoder;
@@ -64,6 +65,7 @@ public class AuthAppService {
             AuthSessionStore authSessionStore,
             CaptchaService captchaService,
             LoginProtectionService loginProtectionService,
+            LoginEncryptionService loginEncryptionService,
             JwtTokenService jwtTokenService,
             SecuritySettingsService securitySettingsService,
             PasswordEncoder passwordEncoder,
@@ -76,6 +78,7 @@ public class AuthAppService {
         this.authSessionStore = authSessionStore;
         this.captchaService = captchaService;
         this.loginProtectionService = loginProtectionService;
+        this.loginEncryptionService = loginEncryptionService;
         this.jwtTokenService = jwtTokenService;
         this.securitySettingsService = securitySettingsService;
         this.passwordEncoder = passwordEncoder;
@@ -110,7 +113,8 @@ public class AuthAppService {
             );
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        String loginPassword = loginEncryptionService.decryptPassword(request.getPassword());
+        if (!passwordEncoder.matches(loginPassword, user.getPasswordHash())) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
             throw new BizException(

@@ -15,11 +15,27 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.MGF1ParameterSpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class AgreementSettingsIntegrationTest {
+
+    private static final OAEPParameterSpec OAEP_SPEC = new OAEPParameterSpec(
+            "SHA-256",
+            "MGF1",
+            MGF1ParameterSpec.SHA256,
+            PSource.PSpecified.DEFAULT
+    );
 
     @LocalServerPort
     private int port;
@@ -66,11 +82,12 @@ class AgreementSettingsIntegrationTest {
     }
 
     private LoginResult loginAdmin(String baseUrl) throws Exception {
+        String encryptedPassword = encryptPassword(baseUrl, "123456");
         HttpHeaders loginHeaders = new HttpHeaders();
         loginHeaders.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<String> loginResponse = restTemplate.postForEntity(
                 baseUrl + "/api/v1/auth/login",
-                new HttpEntity<>("{\"username\":\"admin\",\"password\":\"123456\"}", loginHeaders),
+                new HttpEntity<>("{\"username\":\"admin\",\"password\":\"" + encryptedPassword + "\"}", loginHeaders),
                 String.class
         );
         Assertions.assertEquals(200, loginResponse.getStatusCode().value(), loginResponse.getBody());
@@ -123,5 +140,28 @@ class AgreementSettingsIntegrationTest {
                           and deleted = 0
                         """
         );
+    }
+
+    private String encryptPassword(String baseUrl, String password) throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl + "/api/v1/auth/login-encryption-key",
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                String.class
+        );
+        Assertions.assertTrue(response.getStatusCode().is2xxSuccessful(), response.getBody());
+        JsonNode body = objectMapper.readTree(response.getBody());
+        Assertions.assertEquals("0", body.path("code").asText(), response.getBody());
+
+        String publicKeyBase64 = body.path("data").path("publicKey").asText();
+        PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(
+                new X509EncodedKeySpec(Base64.getDecoder().decode(publicKeyBase64))
+        );
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey, OAEP_SPEC);
+        return Base64.getEncoder().encodeToString(cipher.doFinal(password.getBytes(StandardCharsets.UTF_8)));
     }
 }

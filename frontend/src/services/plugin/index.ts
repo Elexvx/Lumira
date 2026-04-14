@@ -30,6 +30,10 @@ export interface PluginRollbackPayload {
   targetVersion: string;
 }
 
+export interface PluginUninstallPayload {
+  removeData: boolean;
+}
+
 export const pluginService = {
   definitions: (options: RequestOptions = {}) =>
     request<PluginDefinition[]>('/v1/plugins/definitions', {
@@ -86,9 +90,10 @@ export const pluginService = {
       data: payload,
       ...options,
     }),
-  uninstall: (pluginCode: string, options: RequestOptions = {}) =>
+  uninstall: (pluginCode: string, payload: PluginUninstallPayload, options: RequestOptions = {}) =>
     request<boolean>(`/v1/plugins/${pluginCode}/uninstall`, {
       method: 'POST',
+      data: payload,
       ...options,
     }),
   runtimeLogs: (pluginCode: string, options: RequestOptions = {}) =>

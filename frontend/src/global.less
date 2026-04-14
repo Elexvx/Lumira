@@ -12,6 +12,9 @@
   --saas-page-content-width-compact: 1120px;
   --saas-page-gutter: clamp(16px, 2.4vw, 28px);
   --saas-page-section-gap: clamp(16px, 2vw, 24px);
+  --saas-form-item-gap: 8px;
+  --saas-form-label-gap: 8px;
+  --saas-form-control-max-width: 720px;
   --saas-card-radius: 8px;
   --saas-card-padding: clamp(18px, 2.2vw, 24px);
   --saas-control-height: 56px;
@@ -56,6 +59,13 @@ body {
   background: var(--saas-page-bg);
   color: var(--saas-action-icon-color);
   overflow-x: hidden;
+}
+
+/* Keep modal open/close from shrinking the layout when Ant Design locks body scroll. */
+body.ant-scrolling-effect {
+  width: 100% !important;
+  padding-right: 0 !important;
+  overflow: hidden !important;
 }
 
 body,
@@ -183,20 +193,31 @@ body,
 }
 
 .saas-management-page .ant-form-item {
-  margin-bottom: 0;
+  margin-bottom: var(--saas-form-item-gap);
 }
 
 .saas-management-page .ant-form-vertical .ant-form-item-label {
-  padding-bottom: 4px;
+  padding-bottom: var(--saas-form-label-gap);
 }
 
 .saas-management-page .ant-form-item .ant-form-item-extra,
 .saas-management-page .ant-form-item .ant-form-item-explain {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .saas-management-page .ant-form-item-control-input {
-  min-height: 36px;
+  min-height: 40px;
+}
+
+@media (min-width: 992px) {
+  .saas-management-page .ant-form-vertical .ant-form-item-control {
+    max-width: var(--saas-form-control-max-width);
+  }
+
+  .saas-management-page .ant-form-vertical .ant-form-item-control-input,
+  .saas-management-page .ant-form-vertical .ant-form-item-control-input-content {
+    width: 100%;
+  }
 }
 
 .saas-profile-page {

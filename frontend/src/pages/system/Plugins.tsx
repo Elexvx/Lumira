@@ -1,6 +1,6 @@
 import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, PoweroffOutlined, SyncOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
+import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
@@ -25,6 +25,9 @@ const PluginsPage = () => {
   const [runtimeLogs, setRuntimeLogs] = useState<PluginRuntimeLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [mutationLoading, setMutationLoading] = useState(false);
+  const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
+  const [uninstallTarget, setUninstallTarget] = useState<PluginDefinition | null>(null);
+  const [removePluginData, setRemovePluginData] = useState(false);
 
   const handlePluginPageError = (error: unknown, fallbackMessage: string) => {
     if (error instanceof ApiRequestError) {
@@ -115,9 +118,15 @@ const PluginsPage = () => {
       },
     });
 
-  const getActiveVersion = (pluginCode: string) => {
+  const isInstalledVersion = (installStatus?: string) => (installStatus || '').toUpperCase() === 'INSTALLED';
+
+  const getPreferredEnableVersion = (pluginCode: string) => {
     const versions = versionMap[pluginCode] || [];
-    return versions.find((item) => item.isActive === 1) || versions[0];
+    return (
+      versions.find((item) => isInstalledVersion(item.installStatus) && item.isActive === 1) ||
+      versions.find((item) => isInstalledVersion(item.installStatus)) ||
+      versions.find((item) => item.isActive === 1)
+    );
   };
 
   const refreshAfterMutation = async () => {
@@ -169,7 +178,7 @@ const PluginsPage = () => {
       message.warning('当前未选择租户');
       return;
     }
-    const versionToUse = version || getActiveVersion(pluginCode)?.version;
+    const versionToUse = version || getPreferredEnableVersion(pluginCode)?.version;
     if (!versionToUse) {
       message.warning('请先安装可用版本');
       setSelectedPlugin(definitions.find((item) => item.pluginCode === pluginCode) || null);
@@ -225,19 +234,33 @@ const PluginsPage = () => {
     });
   };
 
-  const handleUninstall = async (pluginCode: string) => {
-    showConfirm('卸载插件', `${pluginCode} 将从系统中移除，确认继续吗？`, async () => {
-      setMutationLoading(true);
-      try {
-        await pluginService.uninstall(pluginCode, { autoRedirectOnUnauthorized: false });
-        message.success('插件已卸载');
-        await refreshAfterMutation();
-      } catch (error) {
-        handlePluginPageError(error, '卸载插件失败，请稍后重试');
-      } finally {
-        setMutationLoading(false);
-      }
-    });
+  const handleUninstall = (plugin: PluginDefinition) => {
+    setUninstallTarget(plugin);
+    setRemovePluginData(false);
+    setUninstallDialogOpen(true);
+  };
+
+  const confirmUninstall = async () => {
+    if (!uninstallTarget) {
+      return;
+    }
+
+    setMutationLoading(true);
+    try {
+      await pluginService.uninstall(
+        uninstallTarget.pluginCode,
+        { removeData: removePluginData },
+        { autoRedirectOnUnauthorized: false },
+      );
+      message.success(removePluginData ? '插件已卸载，并已删除数据库数据' : '插件已卸载');
+      setUninstallDialogOpen(false);
+      setUninstallTarget(null);
+      await refreshAfterMutation();
+    } catch (error) {
+      handlePluginPageError(error, '卸载插件失败，请稍后重试');
+    } finally {
+      setMutationLoading(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -319,7 +342,7 @@ const PluginsPage = () => {
       extra={null}
     >
       <div className="saas-management-page-body">
-        <Card style={{ marginBottom: 16 }}>
+        <Card>
           <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
             <Input.Search
               allowClear
@@ -339,61 +362,61 @@ const PluginsPage = () => {
           </Space>
         </Card>
 
-        <Row gutter={[16, 16]}>
-          {filteredDefinitions.map((plugin) => {
-            const activeVersion = getActiveVersion(plugin.pluginCode);
-            const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
-            const enabled = Boolean(enabledPlugin);
-            const versionLabel = enabledPlugin?.version || activeVersion?.version;
-            return (
-              <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
-                <Card
-                  loading={loading}
-                  title={
-                    <Space wrap>
-                      <BuildOutlined />
-                      <span>{plugin.pluginName}</span>
-                      <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
-                    </Space>
-                  }
-                  extra={
-                    <Switch
-                      checked={enabled}
-                      disabled={mutationLoading || !versionLabel}
-                      onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
-                    />
-                  }
-                >
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                    <Typography.Paragraph style={{ marginBottom: 0 }}>
-                      {plugin.description || '暂无插件描述'}
-                    </Typography.Paragraph>
-                    <Space wrap>
-                      <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
-                      <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>
-                      <Button onClick={() => handleOpenLogs(plugin)} icon={<FileSearchOutlined />}>
-                        日志
-                      </Button>
-                      <Button danger icon={<DeleteOutlined />} onClick={() => void handleUninstall(plugin.pluginCode)}>
-                        卸载
-                      </Button>
-                    </Space>
-                  </Space>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-
         {!loading && filteredDefinitions.length === 0 ? (
-          <Card style={{ marginTop: 16 }}>
+          <Card>
             <Empty description="暂无插件定义" />
           </Card>
-        ) : null}
+        ) : (
+          <Row gutter={[16, 16]}>
+            {filteredDefinitions.map((plugin) => {
+              const preferredEnableVersion = getPreferredEnableVersion(plugin.pluginCode);
+              const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
+              const enabled = Boolean(enabledPlugin);
+              const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
+              return (
+                <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
+                  <Card
+                    loading={loading}
+                    title={
+                      <Space wrap>
+                        <BuildOutlined />
+                        <span>{plugin.pluginName}</span>
+                        <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
+                      </Space>
+                    }
+                    extra={
+                      <Switch
+                        checked={enabled}
+                        disabled={mutationLoading || !versionLabel}
+                        onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
+                      />
+                    }
+                  >
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                      <Typography.Paragraph style={{ marginBottom: 0 }}>
+                        {plugin.description || '暂无插件描述'}
+                      </Typography.Paragraph>
+                      <Space wrap>
+                        <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
+                        <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>
+                        <Button onClick={() => handleOpenLogs(plugin)} icon={<FileSearchOutlined />}>
+                          日志
+                        </Button>
+                        <Button danger icon={<DeleteOutlined />} onClick={() => handleUninstall(plugin)}>
+                          卸载
+                        </Button>
+                      </Space>
+                    </Space>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+        )}
       </div>
 
       <Drawer
-        title={selectedPlugin ? `${selectedPlugin.pluginName} · 版本管理` : '版本管理'}
+              title={selectedPlugin ? `${selectedPlugin.pluginName} · 版本管理` : '版本管理'}
         open={versionDrawerOpen}
         onClose={() => setVersionDrawerOpen(false)}
         width={920}
@@ -426,7 +449,6 @@ const PluginsPage = () => {
                   <Space wrap>
                     <Button onClick={() => void handleInstall(record.pluginCode, record.version)}>安装</Button>
                     <Button onClick={() => void handleActivate(record.pluginCode, record.version)}>激活</Button>
-                    <Button onClick={() => void handleEnable(record.pluginCode, record.version)}>启用</Button>
                     <Button onClick={() => void handleDisable(record.pluginCode)}>停用</Button>
                     <Button onClick={() => void handleRollback(record.pluginCode, record.version)}>回滚</Button>
                   </Space>
@@ -481,6 +503,70 @@ const PluginsPage = () => {
           ]}
         />
       </Drawer>
+
+      <Modal
+        title={uninstallTarget ? `卸载 ${uninstallTarget.pluginName}` : '卸载插件'}
+        open={uninstallDialogOpen}
+        onCancel={() => {
+          if (mutationLoading) {
+            return;
+          }
+          setUninstallDialogOpen(false);
+          setUninstallTarget(null);
+        }}
+        okText="确认卸载"
+        cancelText="取消"
+        confirmLoading={mutationLoading}
+        onOk={() => void confirmUninstall()}
+        destroyOnClose
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            确认后将卸载插件 <Typography.Text strong>{uninstallTarget?.pluginName || uninstallTarget?.pluginCode || '-'}</Typography.Text>。
+          </Typography.Paragraph>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            你可以选择是否同时删除插件相关数据库数据。选择删除后，会清理插件运行日志、租户关联、版本记录和插件定义等数据。
+          </Typography.Paragraph>
+          <Radio.Group
+            value={removePluginData}
+            onChange={(event) => setRemovePluginData(event.target.value)}
+            style={{ width: '100%' }}
+          >
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Radio
+                value={false}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  marginInlineStart: 0,
+                  padding: '16px 20px',
+                  borderRadius: 10,
+                  border: `1px solid ${removePluginData ? '#f0f0f0' : '#1677ff'}`,
+                  background: removePluginData ? '#fff' : '#f5faff',
+                }}
+              >
+                仅卸载插件，不删除数据库数据
+              </Radio>
+              <Radio
+                value={true}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  marginInlineStart: 0,
+                  padding: '16px 20px',
+                  borderRadius: 10,
+                  border: `1px solid ${removePluginData ? '#ff4d4f' : '#f0f0f0'}`,
+                  background: removePluginData ? '#fff2f0' : '#fff',
+                }}
+              >
+                卸载并删除数据库数据
+              </Radio>
+            </Space>
+          </Radio.Group>
+        </Space>
+      </Modal>
 
       <Modal
         open={uploadVisible}
