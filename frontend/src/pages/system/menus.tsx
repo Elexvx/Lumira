@@ -1,14 +1,16 @@
 import { HolderOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
-import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Form, Input, InputNumber, Select, Space, Spin, Tag, message } from 'antd';
+import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Drawer, Form, Input, InputNumber, Select, Space, Spin, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { DetailForm } from '@/components/DetailForm';
-import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
+import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { usePermissionActions } from '@/features/permissions/usePermissionActions';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildTableScroll } from '@/features/table/proTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { iamService } from '@/services/iam';
 import type { MenuNode, MenuRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
-import { buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, useResponsiveTable } from '@/components/ResponsiveTable';
 import { confirmAction } from '@/utils/confirm';
 
 type MenuDropPosition = 'before' | 'inside' | 'after';
@@ -240,7 +242,8 @@ const MenuManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm();
   const { canAccess } = usePermission();
-  const responsive = useResponsiveTable();
+  const { buildActions } = usePermissionActions();
+  const responsive = useResponsive();
   const { setInitialState } = useInitialStateModel();
   const [selectedMenu, setSelectedMenu] = useState<MenuRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -252,6 +255,14 @@ const MenuManagementPage = () => {
   const [dragState, setDragState] = useState<MenuDragState | null>(null);
   const [reordering, setReordering] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([]);
+  const editorFormProps = useDetailFormProps({
+    form: editorForm,
+    initialValues: { menuType: 'MENU', status: 'ENABLED', sortNo: 0 },
+  });
+  const detailProps = useDetailProDescriptionsProps<MenuRecord>({
+    column: responsive.isMobile ? 1 : 2,
+    dataSource: selectedMenu || undefined,
+  });
   const expandableMenuIds = useMemo(() => {
     const ids = new Set<number>();
     const collectIds = (menus: MenuRecord[]) => {
@@ -493,8 +504,7 @@ const MenuManagementPage = () => {
         dataIndex: 'dragHandle',
         width: 88,
         hideInSearch: true,
-        importance: 0,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => {
           const hasChildren = expandableMenuIds.has(record.id);
           const expanded = expandedRowKeys.includes(record.id);
@@ -534,14 +544,12 @@ const MenuManagementPage = () => {
         title: '菜单编码',
         dataIndex: 'menuCode',
         hideInSearch: true,
-        importance: 3,
-        responsiveLevel: 'desktop',
+        responsive: ['lg', 'xl', 'xxl'],
       },
       {
         title: '菜单名称',
         dataIndex: 'menuName',
         search: true,
-        importance: 1,
         render: (_, record) => (
           <span style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}>{record.menuName}</span>
         ),
@@ -549,7 +557,6 @@ const MenuManagementPage = () => {
       {
         title: '菜单类型',
         dataIndex: 'menuType',
-        importance: 1,
         valueEnum: {
           CATALOG: { text: '目录' },
           MENU: { text: '菜单' },
@@ -561,81 +568,79 @@ const MenuManagementPage = () => {
         dataIndex: 'path',
         hideInSearch: true,
         width: 220,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
-        ellipsisText: true,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+        ellipsis: true,
       },
       {
         title: '组件',
         dataIndex: 'component',
         hideInSearch: true,
         width: 300,
-        importance: 3,
-        responsiveLevel: 'desktop',
-        ellipsisText: true,
+        responsive: ['lg', 'xl', 'xxl'],
+        ellipsis: true,
       },
       {
         title: '权限标识',
         dataIndex: 'permissionKey',
         search: true,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
-        ellipsisText: true,
-        render: (_, record) => record.permissionKey || '-',
+        responsive: ['md', 'lg', 'xl', 'xxl'],
+        ellipsis: true,
+        render: (_, record) =>
+          record.permissionKey ? (
+            <Typography.Text ellipsis={{ tooltip: record.permissionKey }}>{record.permissionKey}</Typography.Text>
+          ) : (
+            '-'
+          ),
       },
       {
         title: '排序',
         dataIndex: 'sortNo',
         hideInSearch: true,
         width: 88,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => record.sortNo ?? 0,
       },
       {
         title: '状态',
         dataIndex: 'status',
         hideInSearch: true,
-        importance: 1,
         render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
       },
       {
         title: '操作',
         valueType: 'option',
-        importance: 0,
-        desktopFixed: 'right',
+        fixed: responsive.isDesktop ? 'right' : undefined,
         width: 180,
         render: (_, record) => (
-          <ResponsiveActions
-            level={responsive.level}
-            items={[
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={buildActions([
               {
                 key: 'detail',
                 label: '详情',
-                hidden: !canAccess('system:menu:view'),
+                permission: 'system:menu:view',
                 onClick: () => void openDetail(record),
               },
               {
                 key: 'edit',
                 label: '编辑',
-                hidden: !canAccess('system:menu:update'),
+                permission: 'system:menu:update',
                 onClick: () => void openEdit(record),
               },
               {
                 key: 'status',
                 label: record.status === 'ENABLED' ? '停用' : '启用',
-                hidden: !canAccess('system:menu:status'),
+                permission: 'system:menu:status',
                 danger: record.status === 'ENABLED',
                 onClick: () => void handleStatusToggle(record),
               },
-            ]}
+            ])}
           />
         ),
       },
     ],
-    [canAccess, expandableMenuIds, expandedRowKeys, handleStatusToggle, openDetail, openEdit, responsive.level],
+    [buildActions, expandableMenuIds, expandedRowKeys, handleStatusToggle, openDetail, openEdit, responsive.isDesktop, responsive.isMobile],
   );
-  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer title="菜单管理" className="saas-management-page">
@@ -643,11 +648,11 @@ const MenuManagementPage = () => {
         <ProTable<MenuRecord & { level?: number }>
           actionRef={actionRef}
           rowKey="id"
-          columns={responsiveColumns}
+          columns={columns}
           search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
           pagination={false}
-          scroll={buildResponsiveScroll(responsiveColumns, responsive, { wide: true })}
+          scroll={buildTableScroll(columns, responsive.isMobile, { wide: true })}
           onRow={(record) => ({
             draggable: canAccess('system:menu:update') && !reordering,
             onDragStart: handleRowDragStart(record),
@@ -722,7 +727,7 @@ const MenuManagementPage = () => {
           </div>
         }
       >
-        <DetailForm form={editorForm} initialValues={{ menuType: 'MENU', status: 'ENABLED', sortNo: 0 }}>
+        <Form {...editorFormProps}>
           <Form.Item name="parentId" label="上级菜单">
             <Select
               allowClear
@@ -770,7 +775,7 @@ const MenuManagementPage = () => {
               ]}
             />
           </Form.Item>
-        </DetailForm>
+        </Form>
       </Drawer>
 
       <Drawer
@@ -788,9 +793,8 @@ const MenuManagementPage = () => {
             <Spin />
           </div>
         ) : selectedMenu ? (
-            <PageDetailProDescriptions<MenuRecord>
-              column={responsive.isMobile ? 1 : 2}
-            dataSource={selectedMenu}
+            <ProDescriptions<MenuRecord>
+              {...detailProps}
             columns={[
               { title: '菜单名称', dataIndex: 'menuName' },
               { title: '菜单类型', dataIndex: 'menuType' },

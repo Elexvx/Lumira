@@ -2,7 +2,7 @@ import { MailOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Col, Form, Input, InputNumber, Row, Space, Switch, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
-import { DetailForm } from '@/components/DetailForm';
+import { useDetailFormProps } from '@/features/detail/config';
 import { systemService } from '@/services/system';
 import type { SmtpSettings, SmtpTestPayload } from '@/types/api';
 
@@ -12,6 +12,14 @@ const SmtpSettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const settingsFormProps = useDetailFormProps({
+    form: settingsForm,
+    initialValues: { port: 25, authEnabled: true, startTlsEnabled: true, sslEnabled: false },
+  });
+  const testFormProps = useDetailFormProps({
+    form: testForm,
+    initialValues: { subject: 'SMTP 测试邮件', content: '这是一封来自系统的 SMTP 测试邮件。' },
+  });
 
   const loadSettings = async () => {
     setLoading(true);
@@ -79,7 +87,7 @@ const SmtpSettingsPage = () => {
               </Space>
             }
           >
-            <DetailForm form={settingsForm} initialValues={{ port: 25, authEnabled: true, startTlsEnabled: true, sslEnabled: false }}>
+            <Form {...settingsFormProps}>
               <Row gutter={16}>
                 <Col xs={24} md={12}>
                   <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
@@ -124,12 +132,12 @@ const SmtpSettingsPage = () => {
                   </Form.Item>
                 </Col>
               </Row>
-            </DetailForm>
+            </Form>
           </Card>
         </Col>
         <Col xs={24} xl={8}>
           <Card title="SMTP 测试发送" loading={loading}>
-            <DetailForm form={testForm} initialValues={{ subject: 'SMTP 测试邮件', content: '这是一封来自系统的 SMTP 测试邮件。' }}>
+            <Form {...testFormProps}>
               <Form.Item name="toEmail" label="收件人邮箱" rules={[{ required: true, message: '请输入收件人邮箱' }, { type: 'email', message: '请输入有效邮箱地址' }]}>
                 <Input placeholder="recipient@example.com" />
               </Form.Item>
@@ -142,7 +150,7 @@ const SmtpSettingsPage = () => {
               <Button type="primary" block loading={testing} onClick={() => void handleTest()}>
                 发送测试邮件
               </Button>
-            </DetailForm>
+            </Form>
           </Card>
           <Card style={{ marginTop: 16 }} title="说明">
             <Typography.Paragraph style={{ marginBottom: 0 }}>

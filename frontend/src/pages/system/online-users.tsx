@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, Modal, Space, Tag, Typography, message } from 'antd';
-import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
+import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { usePermissionActions } from '@/features/permissions/usePermissionActions';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
 import { usePermission } from '@/hooks/usePermission';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
 import { connectOnlineSessionStream } from '@/services/system/onlineUsers';
 import type { OnlineSessionRecord } from '@/types/api';
-import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -26,13 +29,18 @@ const OnlineUsersPage = () => {
   const pollingTimerRef = useRef<number | null>(null);
   const { initialState } = useInitialStateModel();
   const { canAccess } = usePermission();
-  const responsive = useResponsiveTable();
+  const { buildActions } = usePermissionActions();
+  const responsive = useResponsive();
   const currentUser = initialState?.currentUser;
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<OnlineSessionRecord | null>(null);
   const canViewOnlineUsers = canAccess('system:online-user:view');
   const canKickOnlineUser = canAccess('system:online-user:kick');
   const canBanOnlineUser = canAccess('system:online-user:ban');
+  const detailProps = useDetailProDescriptionsProps<OnlineSessionRecord>({
+    column: responsive.isMobile ? 1 : 2,
+    dataSource: selectedRecord || undefined,
+  });
 
   useEffect(() => {
     if (!currentUser?.sessionId || !canViewOnlineUsers) {
@@ -93,7 +101,6 @@ const OnlineUsersPage = () => {
       title: '用户',
       dataIndex: 'username',
       width: 220,
-      importance: 1,
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Space size={6} wrap>
@@ -109,8 +116,7 @@ const OnlineUsersPage = () => {
       title: '租户ID',
       dataIndex: 'currentTenantId',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) =>
         record.currentTenantId === initialState?.currentTenant?.tenantId ? <Tag color="green">当前租户</Tag> : record.currentTenantId || '-',
     },
@@ -118,40 +124,35 @@ const OnlineUsersPage = () => {
       title: '终端',
       dataIndex: 'clientType',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) => record.clientType || '-',
     },
     {
       title: '登录 IP',
       dataIndex: 'loginIp',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) => record.loginIp || '-',
     },
     {
       title: '登录时间',
       dataIndex: 'loginTime',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) => formatDateTime(record.loginTime),
     },
     {
       title: '最近活跃',
       dataIndex: 'lastActivityAt',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) => formatDateTime(record.lastActivityAt),
     },
     {
       title: '过期时间',
       dataIndex: 'expireTime',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) => formatDateTime(record.expireTime),
     },
     {
@@ -159,32 +160,40 @@ const OnlineUsersPage = () => {
       dataIndex: 'sessionId',
       hideInSearch: true,
       width: 260,
-      importance: 3,
-      responsiveLevel: 'desktop',
-      ellipsisText: true,
-      render: (_, record) => <ResponsiveText value={record.sessionId} copyable />,
+      responsive: ['lg', 'xl', 'xxl'],
+      ellipsis: true,
+      render: (_, record) => (
+        <Typography.Text copyable={{ text: record.sessionId }} ellipsis={{ tooltip: record.sessionId }}>
+          {record.sessionId}
+        </Typography.Text>
+      ),
     },
     {
       title: 'User-Agent',
       dataIndex: 'userAgent',
       hideInSearch: true,
-      importance: 3,
-      responsiveLevel: 'desktop',
-      ellipsisText: true,
-      render: (_, record) => <ResponsiveText value={record.userAgent || '-'} copyable={Boolean(record.userAgent)} />,
+      responsive: ['lg', 'xl', 'xxl'],
+      ellipsis: true,
+      render: (_, record) =>
+        record.userAgent ? (
+          <Typography.Text copyable={{ text: record.userAgent }} ellipsis={{ tooltip: record.userAgent }}>
+            {record.userAgent}
+          </Typography.Text>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '操作',
       valueType: 'option',
-      importance: 0,
-      desktopFixed: 'right',
+      fixed: responsive.isDesktop ? 'right' : undefined,
       width: 180,
       render: (_, record) => {
         const isSelfUser = record.userId === currentUser?.userId;
         return (
-          <ResponsiveActions
-            level={responsive.level}
-            items={[
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={buildActions([
               {
                 key: 'detail',
                 label: '详情',
@@ -196,7 +205,7 @@ const OnlineUsersPage = () => {
               {
                 key: 'kick',
                 label: '踢出',
-                hidden: !canKickOnlineUser,
+                permission: 'system:online-user:kick',
                 danger: true,
                 disabled: isSelfUser,
                 onClick: () => {
@@ -217,7 +226,7 @@ const OnlineUsersPage = () => {
               {
                 key: 'ban',
                 label: '封禁',
-                hidden: !canBanOnlineUser,
+                permission: 'system:online-user:ban',
                 danger: true,
                 disabled: isSelfUser,
                 onClick: () => {
@@ -235,16 +244,14 @@ const OnlineUsersPage = () => {
                   });
                 },
               },
-            ]}
+            ])}
           />
         );
       },
     },
     ],
-    [canBanOnlineUser, canKickOnlineUser, currentUser?.sessionId, currentUser?.userId, initialState?.currentTenant?.tenantId, responsive.level],
+    [buildActions, currentUser?.sessionId, currentUser?.userId, initialState?.currentTenant?.tenantId, responsive.isDesktop, responsive.isMobile],
   );
-
-  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer
@@ -258,24 +265,10 @@ const OnlineUsersPage = () => {
           rowKey="sessionId"
           search={false}
           options={false}
-          columns={responsiveColumns}
-          pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
-          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
-          request={async (params) => {
-            const { current, pageSize } = params;
-            const result = await systemService.onlineUsers(
-              {
-                pageNo: current,
-                pageSize,
-              },
-              { autoRedirectOnUnauthorized: false },
-            );
-            return {
-              data: result.records,
-              success: true,
-              total: result.total,
-            };
-          }}
+          columns={columns}
+          pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
+          scroll={buildTableScroll(columns, responsive.isMobile)}
+          request={buildTableRequest((params) => systemService.onlineUsers(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               刷新
@@ -295,9 +288,8 @@ const OnlineUsersPage = () => {
         destroyOnClose
       >
         {selectedRecord ? (
-          <PageDetailProDescriptions<OnlineSessionRecord>
-            column={responsive.isMobile ? 1 : 2}
-            dataSource={selectedRecord}
+          <ProDescriptions<OnlineSessionRecord>
+            {...detailProps}
             columns={[
               { title: '用户名', dataIndex: 'username' },
               { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },

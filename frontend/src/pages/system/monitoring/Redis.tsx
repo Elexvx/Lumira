@@ -3,9 +3,10 @@ import { useRequest } from '@umijs/max';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
 import { Button, Card, Col, Row, Space, Statistic, Typography } from 'antd';
 import { Area } from '@ant-design/charts';
+import { buildTableScroll } from '@/features/table/proTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';
-import { buildResponsiveScroll, normalizeResponsiveColumns, useResponsiveTable } from '@/components/ResponsiveTable';
 import { formatBytes, formatDateTime, formatNumber, formatPercent } from './shared';
 
 type TrendPoint = {
@@ -18,7 +19,7 @@ const MAX_TREND_SAMPLES = 5;
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 
 const RedisMonitorPage = () => {
-  const responsive = useResponsiveTable();
+  const responsive = useResponsive();
   const query = useRequest(async () => ({ data: await monitorService.redis({ autoRedirectOnUnauthorized: false }) }) as { data: RedisMonitorSnapshot });
   const [samples, setSamples] = useState<TrendPoint[]>([]);
 
@@ -75,22 +76,22 @@ const RedisMonitorPage = () => {
 
   const commandColumns = useMemo<ProColumns<RedisMonitorCommandStat>[]>(
     () => [
-      { title: '命令', dataIndex: 'command', width: 180, importance: 1, desktopFixed: 'left' },
-      { title: '调用次数', dataIndex: 'calls', width: 140, importance: 1, render: (_, record) => formatNumber(record.calls) },
-      { title: '耗时(ms)', dataIndex: 'totalUsec', width: 160, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => formatNumber(record.totalUsec) },
-      { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 160, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => record.avgUsec.toFixed(2) },
-      { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 120, importance: 3, responsiveLevel: 'desktop', render: (_, record) => formatNumber(record.rejectedCalls) },
-      { title: '失败次数', dataIndex: 'failedCalls', width: 120, importance: 3, responsiveLevel: 'desktop', render: (_, record) => formatNumber(record.failedCalls) },
+      { title: '命令', dataIndex: 'command', width: 180, fixed: responsive.isDesktop ? 'left' : undefined },
+      { title: '调用次数', dataIndex: 'calls', width: 140, render: (_, record) => formatNumber(record.calls) },
+      { title: '耗时(ms)', dataIndex: 'totalUsec', width: 160, responsive: ['md', 'lg', 'xl', 'xxl'], render: (_, record) => formatNumber(record.totalUsec) },
+      { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 160, responsive: ['md', 'lg', 'xl', 'xxl'], render: (_, record) => record.avgUsec.toFixed(2) },
+      { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 120, responsive: ['lg', 'xl', 'xxl'], render: (_, record) => formatNumber(record.rejectedCalls) },
+      { title: '失败次数', dataIndex: 'failedCalls', width: 120, responsive: ['lg', 'xl', 'xxl'], render: (_, record) => formatNumber(record.failedCalls) },
     ],
-    [],
+    [responsive.isDesktop],
   );
 
   const keyspaceColumns = useMemo<ProColumns<RedisMonitorKeyspace>[]>(
     () => [
       { title: '数据库', dataIndex: 'database', width: 120, importance: 1 },
       { title: '键数量', dataIndex: 'keys', width: 120, importance: 1, render: (_, record) => formatNumber(record.keys) },
-      { title: '过期键数量', dataIndex: 'expires', width: 140, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => formatNumber(record.expires) },
-      { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 160, importance: 2, responsiveLevel: ['tablet', 'desktop'], render: (_, record) => formatNumber(record.avgTtl) },
+      { title: '过期键数量', dataIndex: 'expires', width: 140, responsive: ['md', 'lg', 'xl', 'xxl'], render: (_, record) => formatNumber(record.expires) },
+      { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 160, responsive: ['md', 'lg', 'xl', 'xxl'], render: (_, record) => formatNumber(record.avgTtl) },
     ],
     [],
   );
@@ -99,11 +100,11 @@ const RedisMonitorPage = () => {
     () => [
       { title: '地址', dataIndex: 'addressPort', width: 180, importance: 1 },
       { title: '名称', dataIndex: 'name', width: 160, importance: 1 },
-      { title: '空闲(s)', dataIndex: 'idle', width: 100, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
-      { title: '年龄(s)', dataIndex: 'age', width: 100, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
-      { title: '数据库', dataIndex: 'databaseId', width: 100, importance: 2, responsiveLevel: ['tablet', 'desktop'] },
-      { title: '标记', dataIndex: 'flags', width: 140, importance: 3, responsiveLevel: 'desktop', ellipsisText: true },
-      { title: '最后命令', dataIndex: 'lastCommand', width: 140, importance: 3, responsiveLevel: 'desktop', ellipsisText: true },
+      { title: '空闲(s)', dataIndex: 'idle', width: 100, responsive: ['md', 'lg', 'xl', 'xxl'] },
+      { title: '年龄(s)', dataIndex: 'age', width: 100, responsive: ['md', 'lg', 'xl', 'xxl'] },
+      { title: '数据库', dataIndex: 'databaseId', width: 100, responsive: ['md', 'lg', 'xl', 'xxl'] },
+      { title: '标记', dataIndex: 'flags', width: 140, responsive: ['lg', 'xl', 'xxl'], ellipsis: true },
+      { title: '最后命令', dataIndex: 'lastCommand', width: 140, responsive: ['lg', 'xl', 'xxl'], ellipsis: true },
     ],
     [],
   );
@@ -232,9 +233,9 @@ const RedisMonitorPage = () => {
               search={false}
               options={false}
               pagination={false}
-              columns={normalizeResponsiveColumns(commandColumns, responsive.level)}
+              columns={commandColumns}
               dataSource={redis?.commandStats || []}
-              scroll={buildResponsiveScroll(normalizeResponsiveColumns(commandColumns, responsive.level), responsive)}
+              scroll={buildTableScroll(commandColumns, responsive.isMobile)}
               toolBarRender={false}
             />
           </div>
@@ -247,9 +248,9 @@ const RedisMonitorPage = () => {
               search={false}
               options={false}
               pagination={false}
-              columns={normalizeResponsiveColumns(keyspaceColumns, responsive.level)}
+              columns={keyspaceColumns}
               dataSource={redis?.keyspaces || []}
-              scroll={buildResponsiveScroll(normalizeResponsiveColumns(keyspaceColumns, responsive.level), responsive)}
+              scroll={buildTableScroll(keyspaceColumns, responsive.isMobile)}
               toolBarRender={false}
             />
           </div>
@@ -266,8 +267,8 @@ const RedisMonitorPage = () => {
               options={false}
               pagination={false}
               dataSource={redis?.clients || []}
-              columns={normalizeResponsiveColumns(clientColumns, responsive.level)}
-              scroll={buildResponsiveScroll(normalizeResponsiveColumns(clientColumns, responsive.level), responsive)}
+              columns={clientColumns}
+              scroll={buildTableScroll(clientColumns, responsive.isMobile)}
               toolBarRender={false}
             />
           </div>

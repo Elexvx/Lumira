@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Checkbox, Drawer, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, message } from 'antd';
-import { DetailForm } from '@/components/DetailForm';
-import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
+import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { usePermissionActions } from '@/features/permissions/usePermissionActions';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { iamService } from '@/services/iam';
 import type { PermissionTreeRecord, RoleDetail, RoleRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
-import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, useResponsiveTable } from '@/components/ResponsiveTable';
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
 import {
   buildPermissionTreeData,
@@ -25,7 +27,8 @@ const RoleManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm();
   const { canAccess } = usePermission();
-  const responsive = useResponsiveTable();
+  const { buildActions } = usePermissionActions();
+  const responsive = useResponsive();
   const [selectedRole, setSelectedRole] = useState<RoleRecord | null>(null);
   const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -40,6 +43,16 @@ const RoleManagementPage = () => {
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
   const [activePageKey, setActivePageKey] = useState<string | null>(null);
   const editorRequestSeq = useRef(0);
+  const editorFormProps = useDetailFormProps({
+    form: editorForm,
+    initialValues: { roleType: 'CUSTOM', permissionKeys: [] },
+    onValuesChange: () => setEditorDirty(true),
+    className: 'role-editor-form',
+  });
+  const detailProps = useDetailProDescriptionsProps<RoleDetail>({
+    column: responsive.isMobile ? 1 : 2,
+    dataSource: selectedRoleDetail || undefined,
+  });
 
   const watchedPermissionKeys = Form.useWatch<string[]>('permissionKeys', editorForm) ?? [];
 
@@ -302,18 +315,15 @@ const RoleManagementPage = () => {
         title: '角色编码',
         dataIndex: 'roleCode',
         search: true,
-        importance: 1,
       },
       {
         title: '角色名称',
         dataIndex: 'roleName',
         search: true,
-        importance: 1,
       },
       {
         title: '角色类型',
         dataIndex: 'roleType',
-        importance: 1,
         valueEnum: ROLE_TYPE_OPTIONS.reduce<Record<string, { text: string }>>((acc, item) => {
           acc[String(item.value)] = { text: item.label };
           return acc;
@@ -326,54 +336,50 @@ const RoleManagementPage = () => {
         title: '权限数',
         dataIndex: 'permissionCount',
         hideInSearch: true,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => record.permissionCount ?? 0,
       },
       {
         title: '用户数',
         dataIndex: 'userCount',
         hideInSearch: true,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => record.userCount ?? 0,
       },
       {
         title: '操作',
         valueType: 'option',
-        importance: 0,
-        desktopFixed: 'right',
+        fixed: responsive.isDesktop ? 'right' : undefined,
         width: 180,
         render: (_, record) => (
-          <ResponsiveActions
-            level={responsive.level}
-            items={[
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={buildActions([
               {
                 key: 'detail',
                 label: '详情',
-                hidden: !canAccess('system:role:view'),
+                permission: 'system:role:view',
                 onClick: () => void openDetail(record),
               },
               {
                 key: 'edit',
                 label: '编辑',
-                hidden: !canAccess('system:role:update'),
+                permission: 'system:role:update',
                 onClick: () => void openEdit(record),
               },
               {
                 key: 'permission',
                 label: '权限分配',
-                hidden: !canAccess('system:role:permissions'),
+                permission: 'system:role:permissions',
                 onClick: () => void openEdit(record),
               },
-            ]}
+            ])}
           />
         ),
       },
     ],
-    [canAccess, responsive.level],
+    [buildActions, responsive.isDesktop, responsive.isMobile],
   );
-  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer title="角色管理" className="saas-management-page">
@@ -381,27 +387,12 @@ const RoleManagementPage = () => {
         <ProTable<RoleRecord>
           actionRef={actionRef}
           rowKey="id"
-          columns={responsiveColumns}
+          columns={columns}
           search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
-          pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
-          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
-          request={async (params) => {
-            const { current, pageSize, ...rest } = params;
-            const result = await iamService.roles(
-              {
-                pageNo: current,
-                pageSize,
-                ...rest,
-              },
-              { autoRedirectOnUnauthorized: false },
-            );
-            return {
-              data: result.records,
-              success: true,
-              total: result.total,
-            };
-          }}
+          pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
+          scroll={buildTableScroll(columns, responsive.isMobile)}
+          request={buildTableRequest((params) => iamService.roles(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() => [
             canAccess('system:role:create') ? (
               <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
@@ -437,12 +428,7 @@ const RoleManagementPage = () => {
             <Spin size="large" />
           </div>
         ) : (
-          <DetailForm
-            form={editorForm}
-            initialValues={{ roleType: 'CUSTOM', permissionKeys: [] }}
-            onValuesChange={() => setEditorDirty(true)}
-            className="role-editor-form"
-          >
+          <Form {...editorFormProps}>
             <Form.Item name="roleCode" label="角色编码" rules={[{ required: true, message: '请输入角色编码' }]}>
               <Input />
             </Form.Item>
@@ -560,7 +546,7 @@ const RoleManagementPage = () => {
                 )}
               </section>
             </div>
-          </DetailForm>
+          </Form>
         )}
       </Drawer>
 
@@ -580,9 +566,8 @@ const RoleManagementPage = () => {
           </div>
         ) : selectedRoleDetail ? (
           <>
-            <PageDetailProDescriptions<RoleDetail>
-              column={responsive.isMobile ? 1 : 2}
-              dataSource={selectedRoleDetail}
+            <ProDescriptions<RoleDetail>
+              {...detailProps}
               columns={[
                 { title: '角色编码', dataIndex: 'roleCode' },
                 { title: '角色名称', dataIndex: 'roleName' },

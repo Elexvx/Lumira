@@ -3,8 +3,10 @@ import { PageContainer, type ProColumns } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
-import { buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
+import { useDetailDescriptionsProps } from '@/features/detail/config';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildTableScroll } from '@/features/table/proTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
 import { usePermission } from '@/hooks/usePermission';
@@ -14,7 +16,7 @@ import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } 
 const PluginsPage = () => {
   const { initialState, setInitialState } = useInitialStateModel();
   const { canAccess } = usePermission();
-  const responsive = useResponsiveTable();
+  const responsive = useResponsive();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
   const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
   const [versionMap, setVersionMap] = useState<Record<string, PluginVersion[]>>({});
@@ -32,6 +34,7 @@ const PluginsPage = () => {
   const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
   const [uninstallTarget, setUninstallTarget] = useState<PluginDefinition | null>(null);
   const [removePluginData, setRemovePluginData] = useState(false);
+  const detailDescriptionsProps = useDetailDescriptionsProps({ column: responsive.isMobile ? 1 : 2 });
 
   const handlePluginPageError = (error: unknown, fallbackMessage: string) => {
     if (error instanceof ApiRequestError) {
@@ -337,23 +340,21 @@ const PluginsPage = () => {
   const selectedActiveVersion = selectedPluginVersions.find((item) => item.isActive === 1) || selectedPluginVersions[0];
   const versionColumns = useMemo<ProColumns<PluginVersion>[]>(
     () => [
-      { title: '版本', dataIndex: 'version', importance: 1 },
-      { title: '安装状态', dataIndex: 'installStatus', importance: 1 },
-      { title: '加载状态', dataIndex: 'loadStatus', importance: 1 },
-      { title: '健康状态', dataIndex: 'healthStatus', importance: 1 },
+      { title: '版本', dataIndex: 'version' },
+      { title: '安装状态', dataIndex: 'installStatus' },
+      { title: '加载状态', dataIndex: 'loadStatus' },
+      { title: '健康状态', dataIndex: 'healthStatus' },
       {
         title: '激活',
         dataIndex: 'isActive',
-        importance: 1,
         render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
       },
       {
         title: '操作',
-        importance: 0,
-        desktopFixed: 'right',
+        fixed: responsive.isDesktop ? 'right' : undefined,
         render: (_, record) => (
-          <ResponsiveActions
-            level={responsive.level}
+          <TableActionBar
+            isMobile={responsive.isMobile}
             items={[
               { key: 'install', label: '安装', onClick: () => void handleInstall(record.pluginCode, record.version) },
               { key: 'activate', label: '激活', onClick: () => void handleActivate(record.pluginCode, record.version) },
@@ -364,27 +365,33 @@ const PluginsPage = () => {
         ),
       },
     ],
-    [handleActivate, handleDisable, handleInstall, handleRollback, responsive.level],
+    [handleActivate, handleDisable, handleInstall, handleRollback, responsive.isDesktop, responsive.isMobile],
   );
   const logColumns = useMemo<ProColumns<PluginRuntimeLog>[]>(
     () => [
-      { title: '时间', dataIndex: 'createdAt', width: 180, importance: 1 },
-      { title: '操作类型', dataIndex: 'operationType', width: 120, importance: 1 },
-      { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120, importance: 1 },
-      { title: '结果', dataIndex: 'resultStatus', width: 120, importance: 1 },
+      { title: '时间', dataIndex: 'createdAt', width: 180 },
+      { title: '操作类型', dataIndex: 'operationType', width: 120 },
+      { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
+      { title: '结果', dataIndex: 'resultStatus', width: 120 },
       {
         title: '详情',
         dataIndex: 'detailMessage',
-        importance: 3,
-        responsiveLevel: 'desktop',
-        ellipsisText: true,
-        render: (_, record) => <ResponsiveText value={record.detailMessage || '-'} copyable={Boolean(record.detailMessage)} />,
+        responsive: ['lg', 'xl', 'xxl'],
+        ellipsis: true,
+        render: (_, record) =>
+          record.detailMessage ? (
+            <Typography.Text copyable={{ text: record.detailMessage }} ellipsis={{ tooltip: record.detailMessage }}>
+              {record.detailMessage}
+            </Typography.Text>
+          ) : (
+            '-'
+          ),
       },
     ],
     [],
   );
-  const responsiveVersionColumns = useMemo(() => normalizeResponsiveColumns(versionColumns, responsive.level) as ColumnsType<PluginVersion>, [versionColumns, responsive.level]);
-  const responsiveLogColumns = useMemo(() => normalizeResponsiveColumns(logColumns, responsive.level) as ColumnsType<PluginRuntimeLog>, [logColumns, responsive.level]);
+  const responsiveVersionColumns = versionColumns as ColumnsType<PluginVersion>;
+  const responsiveLogColumns = logColumns as ColumnsType<PluginRuntimeLog>;
 
   return (
     <PageContainer
@@ -396,7 +403,7 @@ const PluginsPage = () => {
       extra={null}
     >
       <div className="saas-management-page-body">
-        <Card>
+        <Card bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
             <Input.Search
               allowClear
@@ -414,59 +421,59 @@ const PluginsPage = () => {
               </Button>
             </Space>
           </Space>
-        </Card>
 
-        {!loading && filteredDefinitions.length === 0 ? (
-          <Card>
-            <Empty description="暂无插件定义" />
-          </Card>
-        ) : (
-          <Row gutter={[16, 16]}>
-            {filteredDefinitions.map((plugin) => {
-              const preferredEnableVersion = getPreferredEnableVersion(plugin.pluginCode);
-              const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
-              const enabled = Boolean(enabledPlugin);
-              const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
-              return (
-                <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
-                  <Card
-                    loading={loading}
-                    title={
-                      <Space wrap>
-                        <BuildOutlined />
-                        <span>{plugin.pluginName}</span>
-                        <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
+          {!loading && filteredDefinitions.length === 0 ? (
+            <div style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}>
+              <Empty description="暂无插件定义" />
+            </div>
+          ) : (
+            <Row gutter={[16, 16]}>
+              {filteredDefinitions.map((plugin) => {
+                const preferredEnableVersion = getPreferredEnableVersion(plugin.pluginCode);
+                const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
+                const enabled = Boolean(enabledPlugin);
+                const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
+                return (
+                  <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
+                    <Card
+                      loading={loading}
+                      title={
+                        <Space wrap>
+                          <BuildOutlined />
+                          <span>{plugin.pluginName}</span>
+                          <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
+                        </Space>
+                      }
+                      extra={
+                        <Switch
+                          checked={enabled}
+                          disabled={mutationLoading || !versionLabel}
+                          onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
+                        />
+                      }
+                    >
+                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        <Typography.Paragraph style={{ marginBottom: 0 }}>
+                          {plugin.description || '暂无插件描述'}
+                        </Typography.Paragraph>
+                        <Space wrap>
+                          <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
+                          <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>
+                          <Button onClick={() => handleOpenLogs(plugin)} icon={<FileSearchOutlined />}>
+                            日志
+                          </Button>
+                          <Button danger icon={<DeleteOutlined />} onClick={() => handleUninstall(plugin)}>
+                            卸载
+                          </Button>
+                        </Space>
                       </Space>
-                    }
-                    extra={
-                      <Switch
-                        checked={enabled}
-                        disabled={mutationLoading || !versionLabel}
-                        onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
-                      />
-                    }
-                  >
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      <Typography.Paragraph style={{ marginBottom: 0 }}>
-                        {plugin.description || '暂无插件描述'}
-                      </Typography.Paragraph>
-                      <Space wrap>
-                        <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
-                        <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>
-                        <Button onClick={() => handleOpenLogs(plugin)} icon={<FileSearchOutlined />}>
-                          日志
-                        </Button>
-                        <Button danger icon={<DeleteOutlined />} onClick={() => handleUninstall(plugin)}>
-                          卸载
-                        </Button>
-                      </Space>
-                    </Space>
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
-        )}
+                    </Card>
+                  </Col>
+                );
+              })}
+            </Row>
+          )}
+        </Card>
       </div>
 
       <Drawer
@@ -488,7 +495,7 @@ const PluginsPage = () => {
               loading={loading}
               dataSource={selectedPluginVersions}
               pagination={false}
-              scroll={buildResponsiveScroll(versionColumns, responsive)}
+              scroll={buildTableScroll(versionColumns, responsive.isMobile)}
               columns={responsiveVersionColumns}
             />
           </div>
@@ -503,7 +510,7 @@ const PluginsPage = () => {
       destroyOnClose
       >
         {selectedPlugin ? (
-          <PageDetailDescriptions column={responsive.isMobile ? 1 : 2}>
+          <Descriptions {...detailDescriptionsProps}>
             <Descriptions.Item label="插件编码">{selectedPlugin.pluginCode}</Descriptions.Item>
             <Descriptions.Item label="插件名称">{selectedPlugin.pluginName}</Descriptions.Item>
             <Descriptions.Item label="描述">{selectedPlugin.description || '-'}</Descriptions.Item>
@@ -514,7 +521,7 @@ const PluginsPage = () => {
             <Descriptions.Item label="是否启用">{selectedTenantPlugin ? '已启用' : '未启用'}</Descriptions.Item>
             <Descriptions.Item label="菜单数">{selectedTenantPlugin?.menus?.length || 0}</Descriptions.Item>
             <Descriptions.Item label="路由数">{selectedTenantPlugin?.routes?.length || 0}</Descriptions.Item>
-          </PageDetailDescriptions>
+          </Descriptions>
         ) : null}
       </Drawer>
 
@@ -531,7 +538,7 @@ const PluginsPage = () => {
               loading={logsLoading}
               dataSource={runtimeLogs}
               pagination={false}
-              scroll={buildResponsiveScroll(logColumns, responsive)}
+              scroll={buildTableScroll(logColumns, responsive.isMobile)}
               columns={responsiveLogColumns}
             />
           </div>

@@ -1,14 +1,16 @@
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Spin, Tag, message } from 'antd';
-import { DetailForm } from '@/components/DetailForm';
-import { PageDetailProDescriptions } from '@/components/PageDetailDescriptions';
+import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { usePermissionActions } from '@/features/permissions/usePermissionActions';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { userService } from '@/services/user';
 import { iamService } from '@/services/iam';
 import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { usePermission } from '@/hooks/usePermission';
-import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 import { confirmAction } from '@/utils/confirm';
 import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
 import { maskIdCardNumber, maskMobile } from '@/utils/sensitive';
@@ -23,7 +25,8 @@ const UserManagementPage = () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm();
   const { canAccess } = usePermission();
-  const responsive = useResponsiveTable();
+  const { buildActions } = usePermissionActions();
+  const responsive = useResponsive();
   const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
@@ -35,6 +38,14 @@ const UserManagementPage = () => {
   const isProtectedAdminAccount = (record?: Pick<UserRecord, 'id' | 'username'> | null) =>
     Boolean(record && (record.id === 1001 || record.username?.toLowerCase() === 'admin'));
   const protectedAdminSelected = isProtectedAdminAccount(selectedUser);
+  const editorFormProps = useDetailFormProps({
+    form: editorForm,
+    initialValues: { status: 'ENABLED', roleIds: [] },
+  });
+  const detailProps = useDetailProDescriptionsProps<UserDetail>({
+    column: responsive.isMobile ? 1 : 2,
+    dataSource: selectedUserDetail || undefined,
+  });
 
   useEffect(() => {
     let active = true;
@@ -148,20 +159,26 @@ const UserManagementPage = () => {
       title: '用户名',
       dataIndex: 'username',
       search: true,
-      importance: 1,
     },
     {
       title: '手机号',
       dataIndex: 'mobile',
       search: true,
-      importance: 1,
-      ellipsisText: true,
-      render: (_, record) => <ResponsiveText value={maskMobile(record.mobile) || '-'} copyable={Boolean(record.mobile)} />,
+      ellipsis: true,
+      render: (_, record) => {
+        const content = maskMobile(record.mobile) || '';
+        return content ? (
+          <Typography.Text copyable={{ text: content }} ellipsis={{ tooltip: content }}>
+            {content}
+          </Typography.Text>
+        ) : (
+          '-'
+        );
+      },
     },
     {
       title: '状态',
       dataIndex: 'status',
-      importance: 1,
       valueEnum: {
         ENABLED: { text: '启用', status: 'Success' },
         DISABLED: { text: '禁用', status: 'Default' },
@@ -175,63 +192,65 @@ const UserManagementPage = () => {
       title: '昵称',
       dataIndex: 'nickname',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
     },
     {
       title: '姓名',
       dataIndex: 'realName',
       hideInSearch: true,
-      importance: 2,
-      responsiveLevel: ['tablet', 'desktop'],
+      responsive: ['md', 'lg', 'xl', 'xxl'],
     },
     {
       title: '角色',
       dataIndex: 'roleNames',
       hideInSearch: true,
-      importance: 3,
-      responsiveLevel: 'desktop',
-      ellipsisText: true,
-      render: (_, record) => <ResponsiveText value={record.roleNames?.length ? record.roleNames.join(', ') : '-'} />,
+      responsive: ['lg', 'xl', 'xxl'],
+      ellipsis: true,
+      render: (_, record) => {
+        const content = record.roleNames?.length ? record.roleNames.join(', ') : '';
+        return content ? (
+          <Typography.Text ellipsis={{ tooltip: content }}>{content}</Typography.Text>
+        ) : (
+          '-'
+        );
+      },
     },
     {
       title: '操作',
       valueType: 'option',
-      importance: 0,
-      desktopFixed: 'right',
+      fixed: responsive.isDesktop ? 'right' : undefined,
       width: 180,
       render: (_, record) => (
-        <ResponsiveActions
-          level={responsive.level}
-          items={[
+        <TableActionBar
+          isMobile={responsive.isMobile}
+          items={buildActions([
             {
               key: 'view',
               label: '详情',
-              hidden: !canAccess('system:user:view'),
+              permission: 'system:user:view',
               onClick: () => void openDetail(record),
             },
             {
               key: 'edit',
               label: '编辑',
-              hidden: !canAccess('system:user:update'),
+              permission: 'system:user:update',
               onClick: () => void openEdit(record),
             },
             {
               key: 'toggle',
               label: record.status === 'ENABLED' ? '禁用' : '启用',
-              hidden: !canAccess('system:user:status') || isProtectedAdminAccount(record),
+              permission: 'system:user:status',
+              hidden: isProtectedAdminAccount(record),
               danger: record.status === 'ENABLED',
               onClick: () => void handleStatusToggle(record),
             },
-          ]}
+          ])}
         />
       ),
     },
     ],
-    [canAccess, responsive.level],
+    [buildActions, responsive.isDesktop, responsive.isMobile],
   );
-
-  const responsiveColumns = useMemo(() => normalizeResponsiveColumns(columns, responsive.level), [columns, responsive.level]);
 
   return (
     <PageContainer title="用户管理" className="saas-management-page">
@@ -239,27 +258,12 @@ const UserManagementPage = () => {
         <ProTable<UserRecord>
           actionRef={actionRef}
           rowKey="id"
-          columns={responsiveColumns}
+          columns={columns}
           search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
-          pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
-          scroll={buildResponsiveScroll(responsiveColumns, responsive)}
-          request={async (params) => {
-            const { current, pageSize, ...rest } = params;
-            const result = await userService.list(
-              {
-                pageNo: current,
-                pageSize,
-                ...rest,
-              },
-              { autoRedirectOnUnauthorized: false },
-            );
-            return {
-              data: result.records,
-              success: true,
-              total: result.total,
-            };
-          }}
+          pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
+          scroll={buildTableScroll(columns, responsive.isMobile)}
+          request={buildTableRequest((params) => userService.list(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() => [
             canAccess('system:user:create') ? (
               <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
@@ -290,7 +294,7 @@ const UserManagementPage = () => {
           </div>
         }
       >
-        <DetailForm form={editorForm} initialValues={{ status: 'ENABLED', roleIds: [] }}>
+        <Form {...editorFormProps}>
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]} normalize={trimString}>
@@ -377,7 +381,7 @@ const UserManagementPage = () => {
               </Form.Item>
             </Col>
           </Row>
-        </DetailForm>
+        </Form>
       </Drawer>
 
       <Drawer
@@ -395,9 +399,8 @@ const UserManagementPage = () => {
             <Spin />
           </div>
         ) : selectedUserDetail ? (
-              <PageDetailProDescriptions<UserDetail>
-              column={responsive.isMobile ? 1 : 2}
-              dataSource={selectedUserDetail}
+              <ProDescriptions<UserDetail>
+              {...detailProps}
               columns={[
                 { title: '用户名', dataIndex: 'username' },
               { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
