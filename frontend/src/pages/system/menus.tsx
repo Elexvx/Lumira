@@ -1,19 +1,29 @@
-import { HolderOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Form, Input, InputNumber, Select, Space, Spin, Tag, Typography, message } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { PageContainer, ProDescriptions, ProTable } from '@ant-design/pro-components';
+import { Button, Drawer, Form, Space, Spin, message } from 'antd';
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
+import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
-import { usePermissionActions } from '@/features/permissions/usePermissionActions';
-import { TableActionBar } from '@/features/table/TableActionBar';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { buildMenuColumns, menuDetailColumns } from '@/pages/system/menus/columns';
+import { MenuEditorForm, buildParentMenuOptions } from '@/pages/system/menus/components/MenuEditorForm';
+import {
+  filterMenus,
+  flattenMenuOrder,
+  flattenMenus,
+  flattenVisibleMenus,
+  getDropPosition,
+  moveMenuNode,
+  normalizeMenuTreeOrder,
+  sortMenuTree,
+  toRuntimeMenuNodes,
+  type MenuDropPosition,
+} from '@/pages/system/menus/treeUtils';
 import { iamService } from '@/services/iam';
-import type { MenuNode, MenuRecord } from '@/types/api';
-import { usePermission } from '@/hooks/usePermission';
+import type { MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
-
-type MenuDropPosition = 'before' | 'inside' | 'after';
 
 interface MenuDragState {
   draggedId: number;
@@ -21,236 +31,13 @@ interface MenuDragState {
   position: MenuDropPosition;
 }
 
-type MenuTreeRecord = MenuRecord & { level?: number };
-
-const toRuntimeMenuNodes = (menus: MenuRecord[]): MenuNode[] =>
-  menus.map((menu) => ({
-    id: menu.id,
-    tenantId: menu.tenantId,
-    parentId: menu.parentId ?? undefined,
-    menuCode: menu.menuCode,
-    name: menu.menuName,
-    path: menu.path ?? '',
-    component: menu.component ?? undefined,
-    icon: menu.icon ?? undefined,
-    permissionKey: menu.permissionKey ?? undefined,
-    sortNo: menu.sortNo,
-    children: menu.children?.length ? toRuntimeMenuNodes(menu.children) : undefined,
-  }));
-
-const filterMenus = (menus: MenuRecord[], keyword: string, menuCode: string, permissionKey: string, level = 0): MenuTreeRecord[] => {
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  const normalizedMenuCode = menuCode.trim().toLowerCase();
-  const normalizedPermissionKey = permissionKey.trim().toLowerCase();
-
-  return menus
-    .map((menu) => {
-      const matched =
-        (!normalizedKeyword || menu.menuName.toLowerCase().includes(normalizedKeyword)) &&
-        (!normalizedMenuCode || menu.menuCode.toLowerCase().includes(normalizedMenuCode)) &&
-        (!normalizedPermissionKey || (menu.permissionKey || '').toLowerCase().includes(normalizedPermissionKey));
-      const children = menu.children ? filterMenus(menu.children, keyword, menuCode, permissionKey, level + 1) : [];
-      if (matched || children.length) {
-        return {
-          ...menu,
-          level,
-          children: children.length ? children : undefined,
-        };
-      }
-      return null;
-    })
-    .filter(Boolean) as MenuRecord[];
-};
-
-const flattenMenus = (menus: MenuRecord[], level = 0, result: Array<MenuRecord & { level: number }> = []) => {
-  menus.forEach((menu) => {
-    const { children: _children, ...rest } = menu;
-    result.push({ ...rest, level });
-    if (menu.children?.length) {
-      flattenMenus(menu.children, level + 1, result);
-    }
-  });
-  return result;
-};
-
-const flattenVisibleMenus = (
-  menus: MenuTreeRecord[],
-  expandedRowKeys: number[],
-  includeAllChildren = false,
-  level = 0,
-  result: MenuTreeRecord[] = [],
-) => {
-  menus.forEach((menu) => {
-    const { children: _children, ...rest } = menu;
-    const currentMenu = { ...rest, level };
-    result.push(currentMenu);
-
-    if (menu.children?.length && (includeAllChildren || expandedRowKeys.includes(menu.id))) {
-      flattenVisibleMenus(menu.children as MenuTreeRecord[], expandedRowKeys, includeAllChildren, level + 1, result);
-    }
-  });
-
-  return result;
-};
-
-const sortMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
-  [...menus]
-    .sort((left, right) => (left.sortNo ?? 0) - (right.sortNo ?? 0) || left.id - right.id)
-    .map((menu) => ({
-      ...menu,
-      children: menu.children?.length ? sortMenuTree(menu.children) : undefined,
-    }));
-
-const normalizeMenuTreeOrder = (menus: MenuRecord[], parentId = 0): MenuRecord[] =>
-  menus.map((menu, index) => ({
-    ...menu,
-    parentId,
-    sortNo: index,
-    children: menu.children?.length ? normalizeMenuTreeOrder(menu.children, menu.id) : undefined,
-  }));
-
-const flattenMenuOrder = (menus: MenuRecord[], parentId = 0, result: Array<{ id: number; parentId?: number | null; sortNo: number }> = []) => {
-  menus.forEach((menu, index) => {
-    result.push({
-      id: menu.id,
-      parentId,
-      sortNo: index,
-    });
-    if (menu.children?.length) {
-      flattenMenuOrder(menu.children, menu.id, result);
-    }
-  });
-  return result;
-};
-
-const extractMenuNode = (menus: MenuRecord[], menuId: number): { menus: MenuRecord[]; node?: MenuRecord } => {
-  const nextMenus: MenuRecord[] = [];
-  let extractedNode: MenuRecord | undefined;
-
-  for (const menu of menus) {
-    if (menu.id === menuId) {
-      extractedNode = menu;
-      continue;
-    }
-
-    if (menu.children?.length) {
-      const childResult = extractMenuNode(menu.children, menuId);
-      if (childResult.node) {
-        extractedNode = childResult.node;
-        nextMenus.push({
-          ...menu,
-          children: childResult.menus.length ? childResult.menus : undefined,
-        });
-        continue;
-      }
-    }
-
-    nextMenus.push(menu);
-  }
-
-  return { menus: nextMenus, node: extractedNode };
-};
-
-const insertMenuNode = (
-  menus: MenuRecord[],
-  targetId: number,
-  node: MenuRecord,
-  position: MenuDropPosition,
-): { menus: MenuRecord[]; inserted: boolean } => {
-  const nextMenus: MenuRecord[] = [];
-  let inserted = false;
-
-  for (const menu of menus) {
-    if (position === 'before' && menu.id === targetId) {
-      nextMenus.push(node, menu);
-      inserted = true;
-      continue;
-    }
-
-    if (position === 'after' && menu.id === targetId) {
-      nextMenus.push(menu, node);
-      inserted = true;
-      continue;
-    }
-
-    if (position === 'inside' && menu.id === targetId) {
-      if (menu.menuType === 'BUTTON') {
-        nextMenus.push(menu);
-        continue;
-      }
-      nextMenus.push({
-        ...menu,
-        children: [...(menu.children || []), node],
-      });
-      inserted = true;
-      continue;
-    }
-
-    if (menu.children?.length) {
-      const childResult = insertMenuNode(menu.children, targetId, node, position);
-      if (childResult.inserted) {
-        nextMenus.push({
-          ...menu,
-          children: childResult.menus,
-        });
-        inserted = true;
-        continue;
-      }
-    }
-
-    nextMenus.push(menu);
-  }
-
-  return { menus: nextMenus, inserted };
-};
-
-const moveMenuNode = (menus: MenuRecord[], draggedId: number, targetId: number, position: MenuDropPosition) => {
-  if (draggedId === targetId) {
-    return null;
-  }
-
-  const extracted = extractMenuNode(menus, draggedId);
-  if (!extracted.node) {
-    return null;
-  }
-
-  const inserted = insertMenuNode(extracted.menus, targetId, extracted.node, position);
-  if (!inserted.inserted) {
-    return null;
-  }
-
-  return normalizeMenuTreeOrder(inserted.menus);
-};
-
-const getDropPosition = (event: DragEvent<HTMLTableRowElement>, record: MenuRecord): MenuDropPosition => {
-  const row = event.currentTarget;
-  const bounds = row.getBoundingClientRect();
-  const offsetY = event.clientY - bounds.top;
-  const ratio = bounds.height <= 0 ? 0.5 : offsetY / bounds.height;
-
-  if (ratio <= 0.25) {
-    return 'before';
-  }
-  if (ratio >= 0.75) {
-    return 'after';
-  }
-
-  return record.menuType === 'BUTTON' ? 'after' : 'inside';
-};
-
 const MenuManagementPage = () => {
-  const actionRef = useRef<ActionType>();
+  const menuCrud = useCrudPageState<MenuRecord>();
   const [editorForm] = Form.useForm();
-  const { canAccess } = usePermission();
-  const { buildActions } = usePermissionActions();
+  const actionPermission = useActionPermission();
   const responsive = useResponsive();
   const { setInitialState } = useInitialStateModel();
-  const [selectedMenu, setSelectedMenu] = useState<MenuRecord | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [menuTree, setMenuTree] = useState<MenuRecord[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragState, setDragState] = useState<MenuDragState | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -261,8 +48,9 @@ const MenuManagementPage = () => {
   });
   const detailProps = useDetailProDescriptionsProps<MenuRecord>({
     column: responsive.isMobile ? 1 : 2,
-    dataSource: selectedMenu || undefined,
+    dataSource: menuCrud.detail.currentRecord || undefined,
   });
+  const canReorderMenus = actionPermission.can('system:menu:update') && !reordering;
   const expandableMenuIds = useMemo(() => {
     const ids = new Set<number>();
     const collectIds = (menus: MenuRecord[]) => {
@@ -309,14 +97,15 @@ const MenuManagementPage = () => {
     void (async () => {
       try {
         await loadMenus();
-        actionRef.current?.reload();
+        menuCrud.reloadTable();
       } catch {
+        // keep silent: global request interceptor already handles feedback
       }
     })();
   }, [loadMenus]);
 
   useEffect(() => {
-    actionRef.current?.reload();
+    menuCrud.reloadTable();
   }, [expandedRowKeys]);
 
   const flatMenus = useMemo(() => flattenMenus(menuTree), [menuTree]);
@@ -344,7 +133,7 @@ const MenuManagementPage = () => {
           { autoRedirectOnUnauthorized: false },
         );
         message.success('菜单顺序已更新');
-        actionRef.current?.reload();
+        menuCrud.reloadTable();
       } catch (error) {
         setMenuTree(previousTree);
         setInitialState((prev) =>
@@ -366,17 +155,13 @@ const MenuManagementPage = () => {
   );
 
   const openCreate = () => {
-    setSelectedMenu(null);
-    setEditingId(null);
+    menuCrud.drawer.openCreate();
     editorForm.resetFields();
     editorForm.setFieldsValue({ menuType: 'MENU', status: 'ENABLED', sortNo: 0 });
-    setEditorOpen(true);
   };
 
   const openEdit = async (record: MenuRecord) => {
-    setSelectedMenu(record);
-    setEditingId(record.id);
-    setEditorOpen(true);
+    menuCrud.drawer.openEdit(record, record.id);
     const detail = await iamService.menuDetail(record.id, { autoRedirectOnUnauthorized: false });
     editorForm.setFieldsValue({
       ...detail,
@@ -385,14 +170,13 @@ const MenuManagementPage = () => {
   };
 
   const openDetail = async (record: MenuRecord) => {
-    setSelectedMenu(record);
-    setDetailOpen(true);
-    setDetailLoading(true);
+    menuCrud.detail.openDetail(record);
+    menuCrud.detail.setLoading(true);
     try {
       const detail = await iamService.menuDetail(record.id, { autoRedirectOnUnauthorized: false });
-      setSelectedMenu(detail);
+      menuCrud.detail.setCurrentRecord(detail);
     } finally {
-      setDetailLoading(false);
+      menuCrud.detail.setLoading(false);
     }
   };
 
@@ -400,23 +184,23 @@ const MenuManagementPage = () => {
     setSaving(true);
     try {
       const values = await editorForm.validateFields();
-      if (editingId) {
-        await iamService.updateMenu(editingId, values, { autoRedirectOnUnauthorized: false });
+      if (menuCrud.drawer.editingId) {
+        await iamService.updateMenu(menuCrud.drawer.editingId, values, { autoRedirectOnUnauthorized: false });
         message.success('菜单已更新');
       } else {
         await iamService.createMenu(values, { autoRedirectOnUnauthorized: false });
         message.success('菜单已创建');
       }
-      setEditorOpen(false);
+      menuCrud.drawer.close();
       await loadMenus();
-      actionRef.current?.reload();
+      menuCrud.reloadTable();
     } finally {
       setSaving(false);
     }
   };
 
   const handleRowDragStart = (record: MenuRecord) => (event: DragEvent<HTMLTableRowElement>) => {
-    if (!canAccess('system:menu:update') || reordering) {
+    if (!canReorderMenus) {
       event.preventDefault();
       return;
     }
@@ -430,13 +214,13 @@ const MenuManagementPage = () => {
   };
 
   const handleRowDragOver = (record: MenuRecord) => (event: DragEvent<HTMLTableRowElement>) => {
-    if (!dragState || dragState.draggedId === record.id || !canAccess('system:menu:update') || reordering) {
+    if (!dragState || dragState.draggedId === record.id || !canReorderMenus) {
       return;
     }
     event.preventDefault();
     const position = getDropPosition(event, record);
     setDragState((current) => {
-      if (!current || current.draggedId !== dragState.draggedId || current.targetId === record.id && current.position === position) {
+      if (!current || current.draggedId !== dragState.draggedId || (current.targetId === record.id && current.position === position)) {
         return current;
       }
       return {
@@ -449,7 +233,7 @@ const MenuManagementPage = () => {
 
   const handleRowDrop = (record: MenuRecord) => async (event: DragEvent<HTMLTableRowElement>) => {
     event.preventDefault();
-    if (!dragState || dragState.draggedId === record.id || !canAccess('system:menu:update') || reordering) {
+    if (!dragState || dragState.draggedId === record.id || !canReorderMenus) {
       setDragState(null);
       return;
     }
@@ -477,7 +261,7 @@ const MenuManagementPage = () => {
     await iamService.changeMenuStatus(record.id, status, { autoRedirectOnUnauthorized: false });
     message.success('状态已更新');
     await loadMenus();
-    actionRef.current?.reload();
+    menuCrud.reloadTable();
   };
 
   const handleStatusToggle = (record: MenuRecord) => {
@@ -497,156 +281,38 @@ const MenuManagementPage = () => {
     });
   };
 
-  const columns: ProColumns<MenuTreeRecord>[] = useMemo(
-    () => [
-      {
-        title: '拖拽',
-        dataIndex: 'dragHandle',
-        width: 88,
-        hideInSearch: true,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        render: (_, record) => {
-          const hasChildren = expandableMenuIds.has(record.id);
-          const expanded = expandedRowKeys.includes(record.id);
-
-          return (
-            <Space size={8}>
-              <Button
-                type="text"
-                size="small"
-                aria-label={hasChildren ? (expanded ? '折叠行' : '展开行') : undefined}
-                icon={hasChildren ? (expanded ? <MinusOutlined /> : <PlusOutlined />) : null}
-                disabled={!hasChildren}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (!hasChildren) {
-                    return;
-                  }
-                  setExpandedRowKeys((currentKeys) =>
-                    expanded ? currentKeys.filter((key) => key !== record.id) : [...currentKeys, record.id],
-                  );
-                }}
-                style={{
-                  width: 24,
-                  height: 24,
-                  padding: 0,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              />
-              <HolderOutlined style={{ color: '#8c8c8c', cursor: 'grab' }} />
-            </Space>
-          );
-        },
-      },
-      {
-        title: '菜单编码',
-        dataIndex: 'menuCode',
-        hideInSearch: true,
-        responsive: ['lg', 'xl', 'xxl'],
-      },
-      {
-        title: '菜单名称',
-        dataIndex: 'menuName',
-        search: true,
-        render: (_, record) => (
-          <span style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}>{record.menuName}</span>
-        ),
-      },
-      {
-        title: '菜单类型',
-        dataIndex: 'menuType',
-        valueEnum: {
-          CATALOG: { text: '目录' },
-          MENU: { text: '菜单' },
-          BUTTON: { text: '按钮' },
-        },
-      },
-      {
-        title: '路由',
-        dataIndex: 'path',
-        hideInSearch: true,
-        width: 220,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        ellipsis: true,
-      },
-      {
-        title: '组件',
-        dataIndex: 'component',
-        hideInSearch: true,
-        width: 300,
-        responsive: ['lg', 'xl', 'xxl'],
-        ellipsis: true,
-      },
-      {
-        title: '权限标识',
-        dataIndex: 'permissionKey',
-        search: true,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        ellipsis: true,
-        render: (_, record) =>
-          record.permissionKey ? (
-            <Typography.Text ellipsis={{ tooltip: record.permissionKey }}>{record.permissionKey}</Typography.Text>
-          ) : (
-            '-'
+  const columns = useMemo(
+    () =>
+      buildMenuColumns({
+        isDesktop: responsive.isDesktop,
+        isMobile: responsive.isMobile,
+        canReorderMenus,
+        expandedRowKeys,
+        expandableMenuIds,
+        buildRowActions: actionPermission.buildTableActions,
+        onToggleExpand: (menuId) =>
+          setExpandedRowKeys((currentKeys) =>
+            currentKeys.includes(menuId) ? currentKeys.filter((key) => key !== menuId) : [...currentKeys, menuId],
           ),
-      },
-      {
-        title: '排序',
-        dataIndex: 'sortNo',
-        hideInSearch: true,
-        width: 88,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        render: (_, record) => record.sortNo ?? 0,
-      },
-      {
-        title: '状态',
-        dataIndex: 'status',
-        hideInSearch: true,
-        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
-      },
-      {
-        title: '操作',
-        valueType: 'option',
-        fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 180,
-        render: (_, record) => (
-          <TableActionBar
-            isMobile={responsive.isMobile}
-            items={buildActions([
-              {
-                key: 'detail',
-                label: '详情',
-                permission: 'system:menu:view',
-                onClick: () => void openDetail(record),
-              },
-              {
-                key: 'edit',
-                label: '编辑',
-                permission: 'system:menu:update',
-                onClick: () => void openEdit(record),
-              },
-              {
-                key: 'status',
-                label: record.status === 'ENABLED' ? '停用' : '启用',
-                permission: 'system:menu:status',
-                danger: record.status === 'ENABLED',
-                onClick: () => void handleStatusToggle(record),
-              },
-            ])}
-          />
-        ),
-      },
+        onOpenDetail: (record) => void openDetail(record),
+        onOpenEdit: (record) => void openEdit(record),
+        onToggleStatus: (record) => void handleStatusToggle(record),
+      }),
+    [
+      actionPermission.buildTableActions,
+      canReorderMenus,
+      expandedRowKeys,
+      expandableMenuIds,
+      responsive.isDesktop,
+      responsive.isMobile,
     ],
-    [buildActions, expandableMenuIds, expandedRowKeys, handleStatusToggle, openDetail, openEdit, responsive.isDesktop, responsive.isMobile],
   );
 
   return (
     <PageContainer title="菜单管理" className="saas-management-page">
       <div className="saas-table-wrap saas-wide-table">
         <ProTable<MenuRecord & { level?: number }>
-          actionRef={actionRef}
+          actionRef={menuCrud.actionRef}
           rowKey="id"
           columns={columns}
           search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
@@ -654,13 +320,13 @@ const MenuManagementPage = () => {
           pagination={false}
           scroll={buildTableScroll(columns, responsive.isMobile, { wide: true })}
           onRow={(record) => ({
-            draggable: canAccess('system:menu:update') && !reordering,
+            draggable: canReorderMenus,
             onDragStart: handleRowDragStart(record),
             onDragOver: handleRowDragOver(record),
             onDrop: handleRowDrop(record),
             onDragEnd: handleRowDragEnd,
             style: {
-              cursor: canAccess('system:menu:update') && !reordering ? 'grab' : undefined,
+              cursor: canReorderMenus ? 'grab' : undefined,
               userSelect: 'none',
               opacity: dragState?.draggedId === record.id ? 0.35 : 1,
               backgroundColor:
@@ -681,45 +347,52 @@ const MenuManagementPage = () => {
             const permissionKey = String(params.permissionKey || '');
             const filtered = filterMenus(menuTree, keyword, menuCode, permissionKey);
             const hasSearch = Boolean(keyword.trim() || menuCode.trim() || permissionKey.trim());
-            const visibleMenus = hasSearch
-              ? flattenMenus(filtered)
-              : flattenVisibleMenus(filtered, expandedRowKeys);
+            const visibleMenus = hasSearch ? flattenMenus(filtered) : flattenVisibleMenus(filtered, expandedRowKeys);
             return {
               data: visibleMenus,
               success: true,
               total: visibleMenus.length,
             };
           }}
-          toolBarRender={() => [
-            canAccess('system:menu:create') ? (
-              <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
-                新增菜单
-              </Button>
-            ) : null,
-            <Button
-              key="refresh"
-              size={responsive.isMobile ? 'small' : 'middle'}
-              onClick={async () => {
-                await loadMenus();
-                actionRef.current?.reload();
-              }}
-            >
-              刷新
-            </Button>,
-          ]}
+          toolBarRender={() =>
+            actionPermission.buildToolbarActions([
+              {
+                permission: 'system:menu:create',
+                value: (
+                  <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
+                    新增菜单
+                  </Button>
+                ),
+              },
+              {
+                value: (
+                  <Button
+                    key="refresh"
+                    size={responsive.isMobile ? 'small' : 'middle'}
+                    onClick={async () => {
+                      await loadMenus();
+                      menuCrud.reloadTable();
+                    }}
+                  >
+                    刷新
+                  </Button>
+                ),
+              },
+            ])
+          }
         />
       </div>
 
       <Drawer
-        title={editingId ? '编辑菜单' : '新增菜单'}
-        open={editorOpen}
-        onClose={() => setEditorOpen(false)}
+        title={menuCrud.drawer.editingId ? '编辑菜单' : '新增菜单'}
+        open={menuCrud.drawer.open}
+        onClose={menuCrud.drawer.close}
         width={720}
         destroyOnClose
         footer={
           <div className="saas-drawer-footer">
             <Space>
-              <Button onClick={() => setEditorOpen(false)}>取消</Button>
+              <Button onClick={menuCrud.drawer.close}>取消</Button>
               <Button type="primary" loading={saving} onClick={() => void saveMenu()}>
                 保存
               </Button>
@@ -727,83 +400,22 @@ const MenuManagementPage = () => {
           </div>
         }
       >
-        <Form {...editorFormProps}>
-          <Form.Item name="parentId" label="上级菜单">
-            <Select
-              allowClear
-              options={flatMenus.map((menu) => ({
-                label: `${'　'.repeat(menu.level || 0)}${menu.menuName}`,
-                value: menu.id,
-              }))}
-            />
-          </Form.Item>
-          <Form.Item name="menuCode" label="菜单编码" rules={[{ required: true, message: '请输入菜单编码' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="menuName" label="菜单名称" rules={[{ required: true, message: '请输入菜单名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="menuType" label="菜单类型" rules={[{ required: true, message: '请选择菜单类型' }]}>
-            <Select
-              options={[
-                { label: '目录', value: 'CATALOG' },
-                { label: '菜单', value: 'MENU' },
-                { label: '按钮', value: 'BUTTON' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="path" label="路由">
-            <Input />
-          </Form.Item>
-          <Form.Item name="component" label="组件">
-            <Input />
-          </Form.Item>
-          <Form.Item name="icon" label="图标">
-            <Input />
-          </Form.Item>
-          <Form.Item name="sortNo" label="排序">
-            <InputNumber style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="permissionKey" label="权限标识">
-            <Input />
-          </Form.Item>
-          <Form.Item name="status" label="状态">
-            <Select
-              options={[
-                { label: '启用', value: 'ENABLED' },
-                { label: '停用', value: 'DISABLED' },
-              ]}
-            />
-          </Form.Item>
-        </Form>
+        <MenuEditorForm formProps={editorFormProps} parentOptions={buildParentMenuOptions(flatMenus)} />
       </Drawer>
 
       <Drawer
-        title={selectedMenu ? `菜单详情 · ${selectedMenu.menuName}` : '菜单详情'}
-        open={detailOpen}
-        onClose={() => {
-          setDetailOpen(false);
-          setSelectedMenu(null);
-        }}
+        title={menuCrud.detail.currentRecord ? `菜单详情 · ${menuCrud.detail.currentRecord.menuName}` : '菜单详情'}
+        open={menuCrud.detail.open}
+        onClose={menuCrud.detail.close}
         width={720}
         destroyOnClose
       >
-        {detailLoading ? (
+        {menuCrud.detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
             <Spin />
           </div>
-        ) : selectedMenu ? (
-            <ProDescriptions<MenuRecord>
-              {...detailProps}
-            columns={[
-              { title: '菜单名称', dataIndex: 'menuName' },
-              { title: '菜单类型', dataIndex: 'menuType' },
-              { title: '路由', dataIndex: 'path', renderText: (value) => value || '-' },
-              { title: '组件', dataIndex: 'component', renderText: (value) => value || '-' },
-              { title: '权限标识', dataIndex: 'permissionKey', renderText: (value) => value || '-' },
-              { title: '状态', dataIndex: 'status' },
-            ]}
-          />
+        ) : menuCrud.detail.currentRecord ? (
+          <ProDescriptions<MenuRecord> {...detailProps} columns={menuDetailColumns} />
         ) : null}
       </Drawer>
     </PageContainer>

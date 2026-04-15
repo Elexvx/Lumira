@@ -1,49 +1,29 @@
-import { useMemo, useRef, useState } from 'react';
 import { useRequest } from '@umijs/max';
-import {
-  PageContainer,
-  ProTable,
-  type ActionType,
-  type ProColumns,
-} from '@ant-design/pro-components';
-import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
+import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Modal, Row, Space, Spin, Tag, Timeline, message } from 'antd';
+import { useMemo, useState } from 'react';
+import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailDescriptionsProps, useDetailFormProps } from '@/features/detail/config';
-import { usePermissionActions } from '@/features/permissions/usePermissionActions';
-import { TableActionBar } from '@/features/table/TableActionBar';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { buildTenantColumns, myTenantColumns, pluginColumns } from '@/pages/tenant/overview/columns';
+import { TenantEditorForm } from '@/pages/tenant/overview/components/TenantEditorForm';
+import { buildSwitchHistoryItems, formatDateTime } from '@/pages/tenant/overview/utils';
 import { auditService } from '@/services/audit';
 import { pluginService } from '@/services/plugin';
 import { tenantService, type TenantMutationPayload } from '@/services/tenant';
-import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { usePermission } from '@/hooks/usePermission';
 import type { AuditLogRecord, CurrentTenantResponse, MyTenant, PagedResult, TenantPlugin, TenantSummary } from '@/types/api';
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) {
-    return '-';
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString('zh-CN', { hour12: false });
-};
-
-export default () => {
-  const actionRef = useRef<ActionType>();
-  const [editorForm] = Form.useForm<TenantMutationPayload>();
+const TenantOverviewPage = () => {
   const { initialState } = useInitialStateModel();
+  const tenantCrud = useCrudPageState<TenantSummary>();
+  const [editorForm] = Form.useForm<TenantMutationPayload>();
   const responsive = useResponsive();
   const { isMobile } = responsive;
-  const { canAccess } = usePermission();
-  const { buildActions } = usePermissionActions();
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const actionPermission = useActionPermission();
   const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedTenant, setSelectedTenant] = useState<TenantSummary | null>(null);
   const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
   const editorFormProps = useDetailFormProps({
     form: editorForm,
@@ -82,169 +62,13 @@ export default () => {
     () => new Map(myTenants.map((tenant) => [tenant.tenantId, tenant] as const)),
     [myTenants],
   );
-  const switchHistoryItems = useMemo(() => {
-    return (switchHistoryQuery.data?.records || []).slice(0, 5).map((record) => {
-      const result = record.logResult || record.loginResult || 'UNKNOWN';
-      const isSuccess = result === 'SUCCESS';
-      const tenant = record.tenantId ? tenantById.get(record.tenantId) : undefined;
-      const tenantLabel = tenant
-        ? `${tenant.tenantName}${tenant.tenantCode ? `（${tenant.tenantCode}）` : ''}`
-        : record.tenantId
-          ? `租户 #${record.tenantId}`
-          : '未知租户';
-
-      return {
-        key: record.id,
-        color: isSuccess ? 'green' : 'red',
-        children: (
-          <Space direction="vertical" size={2} style={{ width: '100%' }}>
-            <Space size={8} wrap>
-              <Typography.Text strong>{record.username || '未知用户'}</Typography.Text>
-              <Tag color={isSuccess ? 'green' : 'red'}>{isSuccess ? '成功' : '失败'}</Tag>
-            </Space>
-            <Typography.Text>{`切换至 ${tenantLabel}`}</Typography.Text>
-            <Typography.Text type="secondary">
-              {record.failReason || record.detailMessage || '租户切换操作'} · {formatDateTime(record.createdAt)}
-            </Typography.Text>
-          </Space>
-        ),
-      };
-    });
-  }, [myTenants, switchHistoryQuery.data?.records, tenantById]);
-
-  const tenantColumns = useMemo<ProColumns<TenantSummary>[]>(
-    () => [
-      {
-        title: '租户编码',
-        dataIndex: 'tenantCode',
-        search: true,
-      },
-      {
-        title: '租户名称',
-        dataIndex: 'tenantName',
-        search: true,
-      },
-      {
-        title: '简称',
-        dataIndex: 'tenantShortName',
-        search: false,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-      },
-      {
-        title: '状态',
-        dataIndex: 'status',
-        valueEnum: {
-          ENABLED: { text: '启用', status: 'Success' },
-          DISABLED: { text: '停用', status: 'Default' },
-        },
-        search: {
-          transform: (value) => ({ status: value }),
-        },
-        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
-      },
-      {
-        title: '创建时间',
-        dataIndex: 'createdAt',
-        hideInSearch: true,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        render: (_, record) => formatDateTime(record.createdAt),
-      },
-      {
-        title: '更新时间',
-        dataIndex: 'updatedAt',
-        hideInSearch: true,
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        render: (_, record) => formatDateTime(record.updatedAt),
-      },
-      {
-        title: '操作',
-        valueType: 'option',
-        fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 200,
-        render: (_, record) => (
-          <TableActionBar
-            isMobile={responsive.isMobile}
-            items={buildActions([
-              {
-                key: 'detail',
-                label: '详情',
-                permission: 'tenant:view',
-                onClick: () => void openTenantDetail(record),
-              },
-              {
-                key: 'edit',
-                label: '编辑',
-                permission: 'tenant:update',
-                onClick: () => void openTenantEditor(record),
-              },
-              {
-                key: 'delete',
-                label: '删除',
-                permission: 'tenant:delete',
-                danger: true,
-                onClick: () => void confirmDeleteTenant(record),
-              },
-            ])}
-          />
-        ),
-      },
-    ],
-    [buildActions, responsive.isDesktop, responsive.isMobile],
+  const switchHistoryItems = useMemo(
+    () => buildSwitchHistoryItems(switchHistoryQuery.data?.records || [], tenantById),
+    [switchHistoryQuery.data?.records, tenantById],
   );
 
-  const pluginColumns = useMemo<ProColumns<TenantPlugin>[]>(
-    () => [
-      { title: '插件编码', dataIndex: 'pluginCode' },
-      { title: '插件名称', dataIndex: 'pluginName' },
-      { title: '版本', dataIndex: 'version' },
-      {
-        title: '共享依赖',
-        dataIndex: 'sharedDeps',
-        responsive: ['lg', 'xl', 'xxl'],
-        ellipsis: true,
-        render: (_, record) => {
-          const content = record.sharedDeps?.length ? record.sharedDeps.join(', ') : '';
-          return content ? (
-            <Typography.Text copyable={{ text: content }} ellipsis={{ tooltip: content }}>
-              {content}
-            </Typography.Text>
-          ) : (
-            '-'
-          );
-        },
-      },
-      {
-        title: '菜单数',
-        dataIndex: 'menus',
-        responsive: ['md', 'lg', 'xl', 'xxl'],
-        render: (_, record) => record.menus?.length ?? 0,
-      },
-    ],
-    [],
-  );
-
-  const myTenantColumns = useMemo<ProColumns<MyTenant>[]>(
-    () => [
-      { title: '租户编码', dataIndex: 'tenantCode' },
-      { title: '租户名称', dataIndex: 'tenantName' },
-      { title: '简称', dataIndex: 'tenantShortName', responsive: ['md', 'lg', 'xl', 'xxl'] },
-      {
-        title: '默认',
-        dataIndex: 'isDefault',
-        render: (_, record) => <Tag color={record.isDefault ? 'green' : 'default'}>{record.isDefault ? '是' : '否'}</Tag>,
-      },
-      {
-        title: '状态',
-        dataIndex: 'status',
-        render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
-      },
-    ],
-    [],
-  );
-
-  function openCreateTenant() {
-    setSelectedTenant(null);
-    setEditingId(null);
+  const openCreateTenant = () => {
+    tenantCrud.drawer.openCreate();
     editorForm.resetFields();
     editorForm.setFieldsValue({
       tenantCode: '',
@@ -252,13 +76,10 @@ export default () => {
       tenantShortName: '',
       status: 'ENABLED',
     });
-    setEditorOpen(true);
-  }
+  };
 
-  async function openTenantEditor(record: TenantSummary) {
-    setSelectedTenant(record);
-    setEditingId(record.tenantId);
-    setEditorOpen(true);
+  const openTenantEditor = async (record: TenantSummary) => {
+    tenantCrud.drawer.openEdit(record, record.tenantId);
     try {
       const detail = await tenantService.detail(record.tenantId, { autoRedirectOnUnauthorized: false });
       editorForm.setFieldsValue({
@@ -268,30 +89,27 @@ export default () => {
         status: detail.status,
       });
     } catch {
-      setEditorOpen(false);
-      setEditingId(null);
-      setSelectedTenant(null);
+      tenantCrud.drawer.reset();
     }
-  }
+  };
 
-  async function openTenantDetail(record: TenantSummary) {
-    setSelectedTenant(record);
-    setDetailOpen(true);
-    setDetailLoading(true);
+  const openTenantDetail = async (record: TenantSummary) => {
+    tenantCrud.detail.openDetail(record);
+    tenantCrud.detail.setLoading(true);
     try {
       const detail = await tenantService.detail(record.tenantId, { autoRedirectOnUnauthorized: false });
-      setSelectedTenant(detail);
+      tenantCrud.detail.setCurrentRecord(detail);
     } catch {
-      setDetailOpen(false);
-      setSelectedTenant(null);
+      tenantCrud.detail.setOpen(false);
+      tenantCrud.detail.setCurrentRecord(null);
     } finally {
-      setDetailLoading(false);
+      tenantCrud.detail.setLoading(false);
     }
-  }
+  };
 
-  function closeTenantEditor() {
+  const closeTenantEditor = () => {
     if (!editorForm.isFieldsTouched(true)) {
-      setEditorOpen(false);
+      tenantCrud.drawer.close();
       return;
     }
 
@@ -302,13 +120,11 @@ export default () => {
       cancelText: '确认关闭',
       centered: true,
       onOk: () => Promise.resolve(),
-      onCancel: () => {
-        setEditorOpen(false);
-      },
+      onCancel: tenantCrud.drawer.close,
     });
-  }
+  };
 
-  async function saveTenant() {
+  const saveTenant = async () => {
     setSaving(true);
     try {
       const values = await editorForm.validateFields();
@@ -319,23 +135,22 @@ export default () => {
         status: values.status,
       };
 
-      if (editingId) {
-        await tenantService.update(editingId, payload, { autoRedirectOnUnauthorized: false });
+      if (tenantCrud.drawer.editingId) {
+        await tenantService.update(tenantCrud.drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
         message.success('租户已更新');
       } else {
         await tenantService.create(payload, { autoRedirectOnUnauthorized: false });
         message.success('租户已创建');
       }
 
-      setEditorOpen(false);
-      setSelectedTenant(null);
-      actionRef.current?.reload();
+      tenantCrud.drawer.close();
+      tenantCrud.reloadTable();
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  function confirmDeleteTenant(record: TenantSummary) {
+  const confirmDeleteTenant = (record: TenantSummary) => {
     Modal.confirm({
       title: '删除租户',
       content: `确认删除租户「${record.tenantName}」吗？删除后仅做软删除，不会同步清理该租户下的业务数据。`,
@@ -346,10 +161,23 @@ export default () => {
       onOk: async () => {
         await tenantService.delete(record.tenantId, { autoRedirectOnUnauthorized: false });
         message.success('租户已删除');
-        actionRef.current?.reload();
+        tenantCrud.reloadTable();
       },
     });
-  }
+  };
+
+  const tenantColumns = useMemo(
+    () =>
+      buildTenantColumns({
+        isDesktop: responsive.isDesktop,
+        isMobile: responsive.isMobile,
+        buildRowActions: actionPermission.buildTableActions,
+        onOpenDetail: (record) => void openTenantDetail(record),
+        onOpenEdit: (record) => void openTenantEditor(record),
+        onDelete: (record) => void confirmDeleteTenant(record),
+      }),
+    [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
+  );
 
   return (
     <PageContainer className="saas-management-page" ghost title="租户中心" style={{ height: '100%', minHeight: 0 }} content={null}>
@@ -378,7 +206,7 @@ export default () => {
         <Card title="租户管理">
           <div className="saas-table-wrap">
             <ProTable<TenantSummary>
-              actionRef={actionRef}
+              actionRef={tenantCrud.actionRef}
               rowKey="tenantId"
               columns={tenantColumns}
               search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
@@ -386,16 +214,25 @@ export default () => {
               pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
               scroll={buildTableScroll(tenantColumns, responsive.isMobile)}
               request={buildTableRequest((params) => tenantService.list(params, { autoRedirectOnUnauthorized: false }))}
-              toolBarRender={() => [
-                canAccess('tenant:create') ? (
-                  <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateTenant}>
-                    新增租户
-                  </Button>
-                ) : null,
-                <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
-                  刷新
-                </Button>,
-              ]}
+              toolBarRender={() =>
+                actionPermission.buildToolbarActions([
+                  {
+                    permission: 'tenant:create',
+                    value: (
+                      <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateTenant}>
+                        新增租户
+                      </Button>
+                    ),
+                  },
+                  {
+                    value: (
+                      <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={tenantCrud.reloadTable}>
+                        刷新
+                      </Button>
+                    ),
+                  },
+                ])
+              }
             />
           </div>
         </Card>
@@ -433,17 +270,13 @@ export default () => {
         </Card>
 
         <Card title="最近 5 次切换" loading={switchHistoryQuery.loading}>
-          {switchHistoryItems.length ? (
-            <Timeline items={switchHistoryItems} />
-          ) : (
-            <Empty description="暂无最近的租户切换记录" />
-          )}
+          {switchHistoryItems.length ? <Timeline items={switchHistoryItems} /> : <Empty description="暂无最近的租户切换记录" />}
         </Card>
       </div>
 
       <Drawer
-        title={editingId ? '编辑租户' : '新增租户'}
-        open={editorOpen}
+        title={tenantCrud.drawer.editingId ? '编辑租户' : '新增租户'}
+        open={tenantCrud.drawer.open}
         onClose={closeTenantEditor}
         width={720}
         destroyOnClose
@@ -458,51 +291,32 @@ export default () => {
           </div>
         }
       >
-        <Form {...editorFormProps}>
-          <Form.Item name="tenantCode" label="租户编码" rules={[{ required: true, message: '请输入租户编码' }]}>
-            <Input maxLength={64} placeholder="例如：acme" />
-          </Form.Item>
-          <Form.Item name="tenantName" label="租户名称" rules={[{ required: true, message: '请输入租户名称' }]}>
-            <Input maxLength={128} placeholder="租户显示名称" />
-          </Form.Item>
-          <Form.Item name="tenantShortName" label="租户简称">
-            <Input maxLength={64} placeholder="可选，用于顶部切换器展示" />
-          </Form.Item>
-          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
-            <Select
-              options={[
-                { label: '启用', value: 'ENABLED' },
-                { label: '停用', value: 'DISABLED' },
-              ]}
-            />
-          </Form.Item>
-        </Form>
+        <TenantEditorForm formProps={editorFormProps} />
       </Drawer>
 
       <Drawer
-        title={selectedTenant ? `租户详情 · ${selectedTenant.tenantName}` : '租户详情'}
-        open={detailOpen}
-        onClose={() => {
-          setDetailOpen(false);
-          setSelectedTenant(null);
-        }}
+        title={tenantCrud.detail.currentRecord ? `租户详情 · ${tenantCrud.detail.currentRecord.tenantName}` : '租户详情'}
+        open={tenantCrud.detail.open}
+        onClose={tenantCrud.detail.close}
         width={720}
         destroyOnClose
       >
-        {detailLoading ? (
+        {tenantCrud.detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
             <Spin />
           </div>
-        ) : selectedTenant ? (
+        ) : tenantCrud.detail.currentRecord ? (
           <Descriptions {...detailDescriptionsProps}>
-            <Descriptions.Item label="租户编码">{selectedTenant.tenantCode}</Descriptions.Item>
-            <Descriptions.Item label="租户名称">{selectedTenant.tenantName}</Descriptions.Item>
-            <Descriptions.Item label="租户简称">{selectedTenant.tenantShortName || '-'}</Descriptions.Item>
+            <Descriptions.Item label="租户编码">{tenantCrud.detail.currentRecord.tenantCode}</Descriptions.Item>
+            <Descriptions.Item label="租户名称">{tenantCrud.detail.currentRecord.tenantName}</Descriptions.Item>
+            <Descriptions.Item label="租户简称">{tenantCrud.detail.currentRecord.tenantShortName || '-'}</Descriptions.Item>
             <Descriptions.Item label="状态">
-              <Tag color={selectedTenant.status === 'ENABLED' ? 'green' : 'default'}>{selectedTenant.status}</Tag>
+              <Tag color={tenantCrud.detail.currentRecord.status === 'ENABLED' ? 'green' : 'default'}>
+                {tenantCrud.detail.currentRecord.status}
+              </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="创建时间">{formatDateTime(selectedTenant.createdAt)}</Descriptions.Item>
-            <Descriptions.Item label="更新时间">{formatDateTime(selectedTenant.updatedAt)}</Descriptions.Item>
+            <Descriptions.Item label="创建时间">{formatDateTime(tenantCrud.detail.currentRecord.createdAt)}</Descriptions.Item>
+            <Descriptions.Item label="更新时间">{formatDateTime(tenantCrud.detail.currentRecord.updatedAt)}</Descriptions.Item>
           </Descriptions>
         ) : (
           <Empty description="暂无租户详情" />
@@ -511,3 +325,5 @@ export default () => {
     </PageContainer>
   );
 };
+
+export default TenantOverviewPage;

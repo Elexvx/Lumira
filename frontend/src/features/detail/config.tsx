@@ -1,66 +1,82 @@
-import { Descriptions, Typography } from 'antd';
 import type { DescriptionsProps } from 'antd';
 import type { ProDescriptionsProps } from '@ant-design/pro-components';
 import type { FormProps } from 'antd';
 import type { ReactNode } from 'react';
-import { DETAIL_EMPTY_TEXT } from '@/constants/ui';
-import { useDetailLayout } from '@/hooks/useDetailLayout';
+import { DETAIL_EMPTY_TEXT, DETAIL_LAYOUT_COLUMNS, DETAIL_LAYOUT_LABEL_WIDTHS, FORM_LAYOUT_LABEL_WIDTHS } from '@/constants/ui';
+import { useResponsive } from '@/hooks/useResponsive';
 
-const isPrimitiveNode = (value: unknown): value is ReactNode =>
-  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null || value === undefined;
+interface DetailLayoutSnapshot {
+  detailColumn: number;
+  detailLabelWidth: number;
+  formLabelWidth: number;
+  isMobile: boolean;
+}
 
-export const renderDetailValue = (value: unknown, emptyText: ReactNode = DETAIL_EMPTY_TEXT): ReactNode => {
-  if (value === null || value === undefined || value === '') {
-    return emptyText;
-  }
-
-  if (Array.isArray(value)) {
-    const normalized = value
-      .map((item) => renderDetailValue(item, emptyText))
-      .filter((item) => item !== emptyText)
-      .join(', ');
-    return normalized || emptyText;
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? '是' : '否';
-  }
-
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') {
-    return String(value);
-  }
-
-  if (value instanceof Date) {
-    return value.toLocaleString('zh-CN', { hour12: false });
-  }
-
-  if (isPrimitiveNode(value)) {
-    return value;
-  }
-
-  try {
-    return (
-      <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
-        {JSON.stringify(value, null, 2)}
-      </Typography.Paragraph>
-    );
-  } catch {
-    return String(value);
-  }
-};
-
-export const useDetailFormProps = (overrides: FormProps = {}): FormProps => {
-  const detailLayout = useDetailLayout();
-  const layout = overrides.layout ?? detailLayout.formLayout;
-  const isHorizontal = layout === 'horizontal';
+const resolveDetailLayoutSnapshot = (isMobile: boolean, isTablet: boolean): DetailLayoutSnapshot => {
+  const detailColumn = isMobile ? DETAIL_LAYOUT_COLUMNS.mobile : isTablet ? DETAIL_LAYOUT_COLUMNS.tablet : DETAIL_LAYOUT_COLUMNS.desktop;
+  const detailLabelWidth = isMobile
+    ? DETAIL_LAYOUT_LABEL_WIDTHS.mobile
+    : isTablet
+      ? DETAIL_LAYOUT_LABEL_WIDTHS.tablet
+      : DETAIL_LAYOUT_LABEL_WIDTHS.desktop;
+  const formLabelWidth = isMobile ? FORM_LAYOUT_LABEL_WIDTHS.mobile : isTablet ? FORM_LAYOUT_LABEL_WIDTHS.tablet : FORM_LAYOUT_LABEL_WIDTHS.desktop;
 
   return {
-    layout,
+    detailColumn,
+    detailLabelWidth,
+    formLabelWidth,
+    isMobile,
+  };
+};
+
+export const buildDetailFormProps = (layout: DetailLayoutSnapshot, overrides: FormProps = {}): FormProps => {
+  const normalizedLayout = overrides.layout ?? (layout.isMobile ? 'vertical' : 'horizontal');
+  const isHorizontal = normalizedLayout === 'horizontal';
+
+  return {
+    layout: normalizedLayout,
     labelAlign: overrides.labelAlign ?? 'right',
     colon: overrides.colon ?? true,
     labelWrap: overrides.labelWrap ?? true,
-    labelCol: isHorizontal ? overrides.labelCol ?? detailLayout.formLabelCol : overrides.labelCol,
-    wrapperCol: isHorizontal ? overrides.wrapperCol ?? detailLayout.formWrapperCol : overrides.wrapperCol,
+    labelCol: isHorizontal ? overrides.labelCol ?? { flex: `${layout.formLabelWidth}px` } : overrides.labelCol,
+    wrapperCol: isHorizontal ? overrides.wrapperCol ?? { flex: 1 } : overrides.wrapperCol,
+    ...overrides,
+  };
+};
+
+export const useDetailFormProps = (overrides: FormProps = {}): FormProps => {
+  const responsive = useResponsive();
+  const layout = resolveDetailLayoutSnapshot(responsive.isMobile, responsive.isTablet);
+
+  return buildDetailFormProps(layout, overrides);
+};
+
+export const buildDetailDescriptionsProps = (
+  layout: DetailLayoutSnapshot,
+  overrides: DescriptionsProps = {},
+  options: { detailLabelWidth?: number } = {},
+): DescriptionsProps => {
+  const resolvedLabelWidth = options.detailLabelWidth ?? layout.detailLabelWidth;
+
+  return {
+    bordered: true,
+    size: 'small',
+    colon: true,
+    column: overrides.column ?? layout.detailColumn,
+    className: ['saas-detail-descriptions', overrides.className].filter(Boolean).join(' '),
+    labelStyle: {
+      ...overrides.labelStyle,
+      width: overrides.labelStyle?.width ?? `${resolvedLabelWidth}px`,
+      minWidth: overrides.labelStyle?.minWidth ?? `${resolvedLabelWidth}px`,
+      maxWidth: overrides.labelStyle?.maxWidth ?? `${resolvedLabelWidth}px`,
+      textAlign: overrides.labelStyle?.textAlign ?? 'right',
+      whiteSpace: overrides.labelStyle?.whiteSpace ?? 'normal',
+    },
+    contentStyle: {
+      ...overrides.contentStyle,
+      textAlign: overrides.contentStyle?.textAlign ?? 'left',
+      minWidth: overrides.contentStyle?.minWidth ?? 0,
+    },
     ...overrides,
   };
 };
@@ -69,30 +85,10 @@ export const useDetailDescriptionsProps = (
   overrides: DescriptionsProps = {},
   options: { detailLabelWidth?: number } = {},
 ): DescriptionsProps => {
-  const detailLayout = useDetailLayout({
-    mobileLabelWidth: options.detailLabelWidth,
-  });
-  const resolvedLabelWidth = options.detailLabelWidth ?? detailLayout.detailLabelWidth;
+  const responsive = useResponsive();
+  const layout = resolveDetailLayoutSnapshot(responsive.isMobile, responsive.isTablet);
 
-  return {
-    bordered: true,
-    size: 'small',
-    colon: true,
-    column: detailLayout.detailColumn,
-    className: ['saas-detail-descriptions', overrides.className].filter(Boolean).join(' '),
-    labelStyle: {
-      ...detailLayout.detailLabelStyle,
-      ...overrides.labelStyle,
-      width: overrides.labelStyle?.width ?? `${resolvedLabelWidth}px`,
-      minWidth: overrides.labelStyle?.minWidth ?? `${resolvedLabelWidth}px`,
-      maxWidth: overrides.labelStyle?.maxWidth ?? `${resolvedLabelWidth}px`,
-    },
-    contentStyle: {
-      ...detailLayout.detailContentStyle,
-      ...overrides.contentStyle,
-    },
-    ...overrides,
-  };
+  return buildDetailDescriptionsProps(layout, overrides, options);
 };
 
 export const useDetailProDescriptionsProps = <
@@ -102,13 +98,7 @@ export const useDetailProDescriptionsProps = <
   overrides: ProDescriptionsProps<RecordType, ValueType>,
   options: { detailLabelWidth?: number; emptyText?: ReactNode } = {},
 ): ProDescriptionsProps<RecordType, ValueType> => {
-  const descriptionsProps = useDetailDescriptionsProps(
-    {
-      ...overrides,
-      column: overrides.column,
-    },
-    { detailLabelWidth: options.detailLabelWidth },
-  );
+  const descriptionsProps = useDetailDescriptionsProps(overrides, { detailLabelWidth: options.detailLabelWidth });
   const emptyText = options.emptyText ?? DETAIL_EMPTY_TEXT;
 
   return {
@@ -121,11 +111,5 @@ export const useDetailProDescriptionsProps = <
     contentStyle: descriptionsProps.contentStyle,
     column: descriptionsProps.column,
     emptyText,
-    columns: overrides.columns?.map((item) => ({
-      ...item,
-      renderText: item.renderText ?? ((value: unknown) => renderDetailValue(value, emptyText)),
-    })),
   };
 };
-
-export const DetailDescriptions = Descriptions;

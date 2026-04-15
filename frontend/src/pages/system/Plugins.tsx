@@ -1,21 +1,20 @@
-import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, PoweroffOutlined, SyncOutlined } from '@ant-design/icons';
-import { PageContainer, type ProColumns } from '@ant-design/pro-components';
-import { Button, Card, Col, Descriptions, Drawer, Empty, Input, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, Upload, message } from 'antd';
+import { CloudUploadOutlined, SyncOutlined } from '@ant-design/icons';
+import { PageContainer } from '@ant-design/pro-components';
+import { Button, Card, Descriptions, Drawer, Input, Modal, Radio, Space, Table, Typography, Upload, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
-import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
-import { usePermission } from '@/hooks/usePermission';
+import { buildVersionColumns, logColumns } from '@/pages/system/plugins/columns';
+import { PluginCardsGrid } from '@/pages/system/plugins/components/PluginCardsGrid';
 import { pluginService } from '@/services/plugin';
 import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 
 const PluginsPage = () => {
   const { initialState, setInitialState } = useInitialStateModel();
-  const { canAccess } = usePermission();
   const responsive = useResponsive();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
   const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
@@ -338,57 +337,17 @@ const PluginsPage = () => {
   const selectedPluginVersions = selectedPlugin ? versionMap[selectedPlugin.pluginCode] || [] : [];
   const selectedTenantPlugin = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
   const selectedActiveVersion = selectedPluginVersions.find((item) => item.isActive === 1) || selectedPluginVersions[0];
-  const versionColumns = useMemo<ProColumns<PluginVersion>[]>(
-    () => [
-      { title: '版本', dataIndex: 'version' },
-      { title: '安装状态', dataIndex: 'installStatus' },
-      { title: '加载状态', dataIndex: 'loadStatus' },
-      { title: '健康状态', dataIndex: 'healthStatus' },
-      {
-        title: '激活',
-        dataIndex: 'isActive',
-        render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
-      },
-      {
-        title: '操作',
-        fixed: responsive.isDesktop ? 'right' : undefined,
-        render: (_, record) => (
-          <TableActionBar
-            isMobile={responsive.isMobile}
-            items={[
-              { key: 'install', label: '安装', onClick: () => void handleInstall(record.pluginCode, record.version) },
-              { key: 'activate', label: '激活', onClick: () => void handleActivate(record.pluginCode, record.version) },
-              { key: 'disable', label: '停用', onClick: () => void handleDisable(record.pluginCode), danger: true },
-              { key: 'rollback', label: '回滚', onClick: () => void handleRollback(record.pluginCode, record.version) },
-            ]}
-          />
-        ),
-      },
-    ],
+  const versionColumns = useMemo(
+    () =>
+      buildVersionColumns({
+        isDesktop: responsive.isDesktop,
+        isMobile: responsive.isMobile,
+        onInstall: (pluginCode, version) => void handleInstall(pluginCode, version),
+        onActivate: (pluginCode, version) => void handleActivate(pluginCode, version),
+        onDisable: (pluginCode) => void handleDisable(pluginCode),
+        onRollback: (pluginCode, version) => void handleRollback(pluginCode, version),
+      }),
     [handleActivate, handleDisable, handleInstall, handleRollback, responsive.isDesktop, responsive.isMobile],
-  );
-  const logColumns = useMemo<ProColumns<PluginRuntimeLog>[]>(
-    () => [
-      { title: '时间', dataIndex: 'createdAt', width: 180 },
-      { title: '操作类型', dataIndex: 'operationType', width: 120 },
-      { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
-      { title: '结果', dataIndex: 'resultStatus', width: 120 },
-      {
-        title: '详情',
-        dataIndex: 'detailMessage',
-        responsive: ['lg', 'xl', 'xxl'],
-        ellipsis: true,
-        render: (_, record) =>
-          record.detailMessage ? (
-            <Typography.Text copyable={{ text: record.detailMessage }} ellipsis={{ tooltip: record.detailMessage }}>
-              {record.detailMessage}
-            </Typography.Text>
-          ) : (
-            '-'
-          ),
-      },
-    ],
-    [],
   );
   const responsiveVersionColumns = versionColumns as ColumnsType<PluginVersion>;
   const responsiveLogColumns = logColumns as ColumnsType<PluginRuntimeLog>;
@@ -422,57 +381,20 @@ const PluginsPage = () => {
             </Space>
           </Space>
 
-          {!loading && filteredDefinitions.length === 0 ? (
-            <div style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}>
-              <Empty description="暂无插件定义" />
-            </div>
-          ) : (
-            <Row gutter={[16, 16]}>
-              {filteredDefinitions.map((plugin) => {
-                const preferredEnableVersion = getPreferredEnableVersion(plugin.pluginCode);
-                const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
-                const enabled = Boolean(enabledPlugin);
-                const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
-                return (
-                  <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
-                    <Card
-                      loading={loading}
-                      title={
-                        <Space wrap>
-                          <BuildOutlined />
-                          <span>{plugin.pluginName}</span>
-                          <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
-                        </Space>
-                      }
-                      extra={
-                        <Switch
-                          checked={enabled}
-                          disabled={mutationLoading || !versionLabel}
-                          onChange={(checked) => void (checked ? handleEnable(plugin.pluginCode, versionLabel) : handleDisable(plugin.pluginCode))}
-                        />
-                      }
-                    >
-                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        <Typography.Paragraph style={{ marginBottom: 0 }}>
-                          {plugin.description || '暂无插件描述'}
-                        </Typography.Paragraph>
-                        <Space wrap>
-                          <Button onClick={() => handleOpenDetails(plugin)}>详情</Button>
-                          <Button onClick={() => handleOpenVersions(plugin)}>版本</Button>
-                          <Button onClick={() => handleOpenLogs(plugin)} icon={<FileSearchOutlined />}>
-                            日志
-                          </Button>
-                          <Button danger icon={<DeleteOutlined />} onClick={() => handleUninstall(plugin)}>
-                            卸载
-                          </Button>
-                        </Space>
-                      </Space>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
-          )}
+          <PluginCardsGrid
+            loading={loading}
+            definitions={filteredDefinitions}
+            currentAvailableMap={currentAvailableMap}
+            getPreferredEnableVersion={getPreferredEnableVersion}
+            mutationLoading={mutationLoading}
+            onToggleEnable={(pluginCode, enabled, versionLabel) =>
+              void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
+            }
+            onOpenDetails={handleOpenDetails}
+            onOpenVersions={handleOpenVersions}
+            onOpenLogs={(plugin) => void handleOpenLogs(plugin)}
+            onUninstall={handleUninstall}
+          />
         </Card>
       </div>
 
