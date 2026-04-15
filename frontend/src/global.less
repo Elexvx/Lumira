@@ -69,24 +69,22 @@ body.ant-scrolling-effect {
 }
 
 body,
-#root,
-.ant-layout,
-.ant-pro-layout,
-.ant-pro-layout-content,
-.ant-pro-layout-bg-list,
-.ant-layout-header,
-.ant-layout-sider,
-.ant-pro-layout-header {
+#root {
   background-color: var(--saas-page-bg);
-  background-image: none !important;
 }
 
-.ant-pro-layout-bg-list {
+/*
+ * The default ProLayout background decoration conflicts with the custom page background.
+ * Keep this override scoped to ProLayout instead of globally patching all `.ant-*` containers.
+ */
+.ant-pro-layout .ant-pro-layout-bg-list {
+  background-color: var(--saas-page-bg);
+  background-image: none !important;
   opacity: 1 !important;
 }
 
-.ant-pro-layout-bg-list::before,
-.ant-pro-layout-bg-list::after {
+.ant-pro-layout .ant-pro-layout-bg-list::before,
+.ant-pro-layout .ant-pro-layout-bg-list::after {
   content: none !important;
   display: none !important;
 }
@@ -438,56 +436,11 @@ body,
 }
 
 .ant-pro-layout {
-  .ant-layout-header.ant-pro-layout-header.ant-pro-layout-header-fixed-header {
-    height: var(--saas-layout-header-height) !important;
-    line-height: var(--saas-layout-header-height) !important;
-    padding-inline: 0;
-    border-block-end: 1px solid var(--saas-border-color);
-  }
-
   .ant-pro-global-header,
   .ant-pro-top-nav-header {
-    height: 100%;
-    margin-inline: 0;
     padding-inline: clamp(16px, 2.2vw, 28px);
     box-sizing: border-box;
     gap: 16px;
-  }
-
-  .ant-pro-global-header-logo {
-    min-width: 0;
-    margin-inline-end: 20px;
-  }
-
-  .ant-pro-global-header-logo a {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .ant-pro-global-header-logo img {
-    max-height: 32px;
-    width: auto;
-  }
-
-  .ant-pro-layout-sider,
-  .ant-layout-sider.ant-pro-layout-sider {
-    width: var(--saas-layout-sider-width) !important;
-    min-width: var(--saas-layout-sider-width) !important;
-    max-width: var(--saas-layout-sider-width) !important;
-    border-inline-end: 1px solid var(--saas-border-color);
-  }
-
-  .ant-pro-layout-sider.ant-pro-layout-sider-collapsed,
-  .ant-layout-sider.ant-pro-layout-sider.ant-pro-layout-sider-collapsed {
-    width: auto !important;
-    min-width: auto !important;
-    max-width: none !important;
-  }
-
-  .ant-pro-layout-sider.ant-pro-layout-sider-fixed.ant-pro-layout-sider-fixed-mix {
-    inset-block-start: var(--saas-layout-header-height) !important;
-    height: calc(100% - var(--saas-layout-header-height)) !important;
   }
 
   .ant-layout-sider-children {
@@ -516,78 +469,71 @@ body,
 }
 
 html[data-theme='light'] {
-  .ant-pro-global-header,
-  .ant-pro-top-nav-header,
-  .ant-pro-layout-header.ant-pro-layout-header-fixed-header {
-    background: var(--saas-surface-bg) !important;
+  .ant-pro-layout .ant-pro-global-header,
+  .ant-pro-layout .ant-pro-top-nav-header,
+  .ant-pro-layout .ant-pro-layout-header.ant-pro-layout-header-fixed-header {
+    background: var(--saas-surface-bg);
     color: var(--saas-action-icon-color);
-  }
-
-  .ant-pro-layout-header.ant-pro-layout-header-fixed-header {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    border-block-end: 1px solid var(--saas-border-color);
   }
 
-  .ant-pro-sider,
-  .ant-layout-sider,
-  .ant-pro-layout-sider {
-    background: var(--saas-surface-bg) !important;
+  .ant-pro-layout .ant-pro-sider,
+  .ant-pro-layout .ant-layout-sider,
+  .ant-pro-layout .ant-pro-layout-sider {
+    background: var(--saas-surface-bg);
+    border-inline-end: 1px solid var(--saas-border-color);
   }
 
-  .ant-pro-global-header-collapsed-button,
-  .ant-pro-sider-collapsed-button {
-    color: var(--saas-action-icon-color) !important;
-    background: var(--saas-surface-bg) !important;
+  .ant-pro-layout .ant-pro-global-header-collapsed-button,
+  .ant-pro-layout .ant-pro-sider-collapsed-button {
+    color: var(--saas-action-icon-color);
+    background: var(--saas-surface-bg);
     border: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 
-  .ant-pro-global-header-collapsed-button:hover,
-  .ant-pro-sider-collapsed-button:hover {
-    background: #ffffff !important;
+  .ant-pro-layout .ant-pro-global-header-collapsed-button:hover,
+  .ant-pro-layout .ant-pro-sider-collapsed-button:hover {
+    background: #ffffff;
   }
 }
 
 html[data-theme='dark'] {
-  .ant-pro-global-header,
-  .ant-pro-top-nav-header,
-  .ant-pro-layout-header.ant-pro-layout-header-fixed-header {
-    background: #111111 !important;
+  .ant-pro-layout .ant-pro-global-header,
+  .ant-pro-layout .ant-pro-top-nav-header,
+  .ant-pro-layout .ant-pro-layout-header.ant-pro-layout-header-fixed-header {
+    background: #111111;
     color: var(--saas-action-icon-color);
-  }
-
-  .ant-pro-layout-header.ant-pro-layout-header-fixed-header {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    border-block-end: 1px solid var(--saas-border-color);
   }
 
-  .ant-pro-sider,
-  .ant-layout-sider,
-  .ant-pro-layout-sider {
-    background: #0c0c0c !important;
+  .ant-pro-layout .ant-pro-sider,
+  .ant-pro-layout .ant-layout-sider,
+  .ant-pro-layout .ant-pro-layout-sider {
+    background: #0c0c0c;
+    border-inline-end: 1px solid var(--saas-border-color);
   }
 
-  .ant-pro-global-header-collapsed-button,
-  .ant-pro-sider-collapsed-button {
-    color: rgba(255, 255, 255, 0.88) !important;
-    background: rgba(255, 255, 255, 0.08) !important;
+  .ant-pro-layout .ant-pro-global-header-collapsed-button,
+  .ant-pro-layout .ant-pro-sider-collapsed-button {
+    color: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
   }
 
-  .ant-pro-global-header-collapsed-button:hover,
-  .ant-pro-sider-collapsed-button:hover {
-    background: rgba(255, 255, 255, 0.14) !important;
+  .ant-pro-layout .ant-pro-global-header-collapsed-button:hover,
+  .ant-pro-layout .ant-pro-sider-collapsed-button:hover {
+    background: rgba(255, 255, 255, 0.14);
   }
 }
 
 @media (max-width: 767px) {
   .ant-pro-layout {
-    .ant-layout-header.ant-pro-layout-header.ant-pro-layout-header-fixed-header {
-      height: 56px !important;
-      line-height: 56px !important;
-    }
-
     .ant-pro-global-header,
     .ant-pro-top-nav-header {
       padding-inline: 12px 16px;
@@ -602,16 +548,16 @@ html[data-theme='dark'] {
       min-width: 40px;
       height: 40px;
       margin-inline-end: 4px;
-      border: none !important;
+      border: none;
       border-radius: 12px;
-      box-shadow: none !important;
-      background: transparent !important;
+      box-shadow: none;
+      background: transparent;
       line-height: 1;
       transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .ant-pro-global-header-collapsed-button:hover {
-      background: var(--saas-action-bg) !important;
+      background: var(--saas-action-bg);
     }
 
     .ant-pro-global-header-collapsed-button .anticon {

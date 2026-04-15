@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button, Drawer, Modal, Space, Tag, Typography, message } from 'antd';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { usePermissionActions } from '@/features/permissions/usePermissionActions';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
-import { usePermission } from '@/hooks/usePermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
@@ -28,15 +28,13 @@ const OnlineUsersPage = () => {
   const reloadTimerRef = useRef<number | null>(null);
   const pollingTimerRef = useRef<number | null>(null);
   const { initialState } = useInitialStateModel();
-  const { canAccess } = usePermission();
+  const actionPermission = useActionPermission();
   const { buildActions } = usePermissionActions();
   const responsive = useResponsive();
   const currentUser = initialState?.currentUser;
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<OnlineSessionRecord | null>(null);
-  const canViewOnlineUsers = canAccess('system:online-user:view');
-  const canKickOnlineUser = canAccess('system:online-user:kick');
-  const canBanOnlineUser = canAccess('system:online-user:ban');
+  const canViewOnlineUsers = actionPermission.can('system:online-user:view');
   const detailProps = useDetailProDescriptionsProps<OnlineSessionRecord>({
     column: responsive.isMobile ? 1 : 2,
     dataSource: selectedRecord || undefined,

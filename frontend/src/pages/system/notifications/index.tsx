@@ -3,8 +3,8 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Col, Empty, Form, Input, List, Row, Space, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDetailFormProps } from '@/features/detail/config';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { usePermission } from '@/hooks/usePermission';
 import { systemService } from '@/services/system';
 import type { NotificationRecord } from '@/types/api';
 
@@ -30,8 +30,8 @@ const formatCreatedAt = (value?: string) => {
 const NotificationsPage = () => {
   const [form] = Form.useForm<{ title: string; content: string }>();
   const { initialState } = useInitialStateModel();
-  const { canAccess } = usePermission();
-  const canCreate = canAccess('system:notification:write');
+  const actionPermission = useActionPermission();
+  const canCreate = actionPermission.can('system:notification:write');
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);

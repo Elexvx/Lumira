@@ -11,6 +11,18 @@ export interface PagedResponse<RecordType> {
   total: number;
 }
 
+export interface ProTableResponse<RecordType> {
+  data: RecordType[];
+  success: boolean;
+  total: number;
+}
+
+export const adaptPageResult = <RecordType>(result: PagedResponse<RecordType>): ProTableResponse<RecordType> => ({
+  data: result.records,
+  success: true,
+  total: result.total,
+});
+
 export const buildMobilePagination = <T extends { simple?: boolean; showSizeChanger?: boolean } | boolean | undefined>(
   pagination: T,
   isMobile: boolean,
@@ -74,10 +86,6 @@ export const buildTableRequest = <RecordType, Params extends PageRequestPayload 
       ...(rest as Omit<Params, 'pageNo' | 'pageSize'>),
     } as Params);
 
-    return {
-      data: result.records,
-      success: true,
-      total: result.total,
-    };
+    return adaptPageResult(result);
   };
 };

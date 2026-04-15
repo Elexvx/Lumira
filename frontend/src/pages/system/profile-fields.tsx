@@ -1,13 +1,13 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Empty, List, Space, Spin, Switch, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { systemService } from '@/services/system';
 import type { ProfileFieldSetting } from '@/types/api';
-import { usePermission } from '@/hooks/usePermission';
 
 const ProfileFieldManagementPage = () => {
-  const { canAccess } = usePermission();
-  const canUpdate = canAccess('system:config:update');
+  const actionPermission = useActionPermission();
+  const canUpdate = actionPermission.can('system:config:update');
   const [items, setItems] = useState<ProfileFieldSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
