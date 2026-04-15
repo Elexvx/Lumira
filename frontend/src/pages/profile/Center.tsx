@@ -5,8 +5,7 @@ import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Em
 import dayjs from 'dayjs';
 import ImgCrop from 'antd-img-crop';
 import { useEffect, useMemo, useState } from 'react';
-import { DetailForm } from '@/components/DetailForm';
-import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
+import { useDetailDescriptionsProps, useDetailFormProps } from '@/features/detail/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { usePermission } from '@/hooks/usePermission';
 import { profileService } from '@/services/profile';
@@ -79,6 +78,16 @@ const ProfileCenterPage = () => {
   );
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;
+  const profileFormProps = useDetailFormProps({ form: profileForm });
+  const emailBindFormProps = useDetailFormProps({
+    form: emailBindForm,
+    initialValues: { email: currentUser?.email || '' },
+  });
+  const summaryDescriptionsProps = useDetailDescriptionsProps({
+    className: 'saas-profile-page__descriptions',
+    column: isMobile ? 1 : 2,
+  });
+  const singleColumnDescriptionsProps = useDetailDescriptionsProps({ column: 1 });
 
   useEffect(() => {
     if (!currentUser) {
@@ -458,7 +467,7 @@ const ProfileCenterPage = () => {
               }
             >
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <DetailForm form={profileForm}>
+                <Form {...profileFormProps}>
                   <Form.Item name="avatarUrl" hidden>
                     <Input />
                   </Form.Item>
@@ -588,14 +597,14 @@ const ProfileCenterPage = () => {
                   ) : (
                     <Empty description="当前租户未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                   )}
-                </DetailForm>
+                </Form>
               </Space>
             </Card>
           </Col>
           <Col xs={24} lg={12} style={{ display: 'flex' }}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
               <Card title="租户与安全" style={{ width: '100%' }}>
-                <PageDetailDescriptions className="saas-profile-page__descriptions" column={isMobile ? 1 : 2}>
+                <Descriptions {...summaryDescriptionsProps}>
                   <Descriptions.Item label="当前租户">{currentTenant?.tenantName || '未选择'}</Descriptions.Item>
                   <Descriptions.Item label="租户编码">{currentTenant?.tenantCode || '-'}</Descriptions.Item>
                   <Descriptions.Item label="权限数">{summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}</Descriptions.Item>
@@ -604,7 +613,7 @@ const ProfileCenterPage = () => {
                       {roleNames.length ? roleNames.map((name) => <Tag key={name}>{name}</Tag>) : <Tag>暂无角色摘要</Tag>}
                     </Space>
                   </Descriptions.Item>
-                </PageDetailDescriptions>
+                </Descriptions>
               </Card>
               {boundProviderCard}
             </Space>
@@ -655,7 +664,7 @@ const ProfileCenterPage = () => {
             description="当前选择的验证方式需要邮箱。补充邮箱后，系统会自动返回继续绑定 2FA 或短信验证码。"
           />
           {emailBindingAlert ? <Alert showIcon type="error" message={emailBindingAlert} /> : null}
-          <DetailForm form={emailBindForm} initialValues={{ email: currentUser?.email || '' }}>
+          <Form {...emailBindFormProps}>
             <Form.Item
               name="email"
               label="邮箱"
@@ -666,7 +675,7 @@ const ProfileCenterPage = () => {
             >
               <Input placeholder="请输入邮箱地址" autoComplete="email" />
             </Form.Item>
-          </DetailForm>
+          </Form>
         </Space>
       </Modal>
 
@@ -780,12 +789,12 @@ const ProfileCenterPage = () => {
                 {bindingLoading ? (
                   <Card loading />
                 ) : bindingChallenge ? (
-                  <PageDetailDescriptions column={1}>
+                  <Descriptions {...singleColumnDescriptionsProps}>
                     <Descriptions.Item label="插件">{bindingChallenge.pluginName || bindingChallenge.pluginCode || '-'}</Descriptions.Item>
                     <Descriptions.Item label="验证方式">{bindingChallenge.factorName || '短信验证码'}</Descriptions.Item>
                     <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
                     <Descriptions.Item label="提示信息">{bindingChallenge.promptMessage || '请输入收到的短信验证码'}</Descriptions.Item>
-                  </PageDetailDescriptions>
+                  </Descriptions>
                 ) : (
                   <Empty
                     description={
@@ -880,7 +889,7 @@ const ProfileCenterPage = () => {
                     <div className="saas-profile-2fa-binding__qr">
                       <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={188} bordered />
                     </div>
-                    <PageDetailDescriptions column={1}>
+                    <Descriptions {...singleColumnDescriptionsProps}>
                       <Descriptions.Item label="插件">{bindingChallenge.pluginName || bindingChallenge.pluginCode || '-'}</Descriptions.Item>
                       <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
                       <Descriptions.Item label="手动密钥">
@@ -893,7 +902,7 @@ const ProfileCenterPage = () => {
                           {bindingChallenge.setupUri || '-'}
                         </Typography.Paragraph>
                       </Descriptions.Item>
-                    </PageDetailDescriptions>
+                    </Descriptions>
                     <Typography.Text type="secondary">下一步将要求你输入认证器中的首个 6 位验证码，确认成功后才算绑定完成。</Typography.Text>
                   </Space>
                 ) : (

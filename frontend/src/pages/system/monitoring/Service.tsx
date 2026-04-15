@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag } from 'antd';
-import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
+import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { ServiceMonitorSnapshot } from '@/types/api';
@@ -51,6 +51,7 @@ const ExpandableClampText = ({ value, lines = 2 }: { value?: string | null; line
 const ServiceMonitorPage = () => {
   const { isDesktop } = useResponsive();
   const query = useRequest(async () => ({ data: await monitorService.service({ autoRedirectOnUnauthorized: false }) }) as { data: ServiceMonitorSnapshot });
+  const detailDescriptionsProps = useDetailDescriptionsProps({ column: { xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 } });
 
   // Keep a stable ref to the latest refresh function so the interval effect
   // does not depend on query.refresh directly. query.refresh changes identity
@@ -125,7 +126,7 @@ const ServiceMonitorPage = () => {
         </Row>
 
         <Card title="服务器信息" loading={query.loading && !service}>
-          <PageDetailDescriptions column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }}>
+          <Descriptions {...detailDescriptionsProps}>
             <Descriptions.Item label="服务器名称">
               <BreakableValue value={service?.server?.serverName} />
             </Descriptions.Item>
@@ -153,11 +154,11 @@ const ServiceMonitorPage = () => {
             <Descriptions.Item label="临时目录">
               <BreakableValue value={service?.server?.tempDir} />
             </Descriptions.Item>
-          </PageDetailDescriptions>
+          </Descriptions>
         </Card>
 
         <Card title="Java虚拟机信息" loading={query.loading && !service}>
-          <PageDetailDescriptions column={{ xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 }}>
+          <Descriptions {...detailDescriptionsProps}>
             <Descriptions.Item label="Java名称">
               <BreakableValue value={service?.jvm?.vmName} />
             </Descriptions.Item>
@@ -194,7 +195,7 @@ const ServiceMonitorPage = () => {
             <Descriptions.Item label="启动参数" span={isDesktop ? 2 : 1}>
               <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
             </Descriptions.Item>
-          </PageDetailDescriptions>
+          </Descriptions>
         </Card>
       </Space>
     </PageContainer>

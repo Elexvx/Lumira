@@ -4,7 +4,7 @@ import { PageContainer } from '@ant-design/pro-components';
 import { Watermark, Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Tabs, Typography, Upload, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import MDEditor from '@uiw/react-md-editor';
-import { DetailForm } from '@/components/DetailForm';
+import { useDetailFormProps } from '@/features/detail/config';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
@@ -218,6 +218,23 @@ const PersonalizationSettingsPage = () => {
   };
 
   const wm = useMemo(() => ({ ...DEFAULT_WATERMARK_SETTINGS, ...watermarkPreview }), [watermarkPreview]);
+  const brandingFormProps = useDetailFormProps({
+    form: brandingForm,
+    onValuesChange: (_, allValues) => setPreviewState(normalizeBrandingSettings(allValues)),
+  });
+  const watermarkFormProps = useDetailFormProps({
+    form: watermarkForm,
+    onValuesChange: (_, allValues) =>
+      setWatermarkPreview({
+        ...DEFAULT_WATERMARK_SETTINGS,
+        ...allValues,
+        imageUrl: normalizeUploadUrl(allValues.imageUrl),
+      }),
+  });
+  const agreementFormProps = useDetailFormProps({
+    form: agreementForm,
+    initialValues: DEFAULT_AGREEMENT_SETTINGS,
+  });
 
   useEffect(() => {
     applyFavicon(previewState.websiteFaviconUrl);
@@ -241,10 +258,7 @@ const PersonalizationSettingsPage = () => {
                 label: '品牌设置',
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <DetailForm
-                      form={brandingForm}
-                      onValuesChange={(_, allValues) => setPreviewState(normalizeBrandingSettings(allValues))}
-                    >
+                    <Form {...brandingFormProps}>
                       <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
                         <Input />
                       </Form.Item>
@@ -357,7 +371,7 @@ const PersonalizationSettingsPage = () => {
                       <Form.Item name="footerCopyright" label="Footer 版权声明">
                         <Input.TextArea rows={3} />
                       </Form.Item>
-                    </DetailForm>
+                    </Form>
 
                     <Card title="预览">
                       <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -381,16 +395,7 @@ const PersonalizationSettingsPage = () => {
                 label: '全局水印',
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <DetailForm
-                      form={watermarkForm}
-                      onValuesChange={(_, allValues) =>
-                        setWatermarkPreview({
-                          ...DEFAULT_WATERMARK_SETTINGS,
-                          ...allValues,
-                          imageUrl: normalizeUploadUrl(allValues.imageUrl),
-                        })
-                      }
-                    >
+                    <Form {...watermarkFormProps}>
                       <Form.Item name="enabled" label="启用水印" valuePropName="checked">
                         <Switch />
                       </Form.Item>
@@ -473,7 +478,7 @@ const PersonalizationSettingsPage = () => {
                       <Form.Item name="opacity" label="透明度">
                         <InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} />
                       </Form.Item>
-                    </DetailForm>
+                    </Form>
 
                     <Card title="预览">
                       <Watermark
@@ -502,10 +507,7 @@ const PersonalizationSettingsPage = () => {
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
                       使用 Markdown 编辑器编写协议内容，保存后会同步到登录页。
                     </Typography.Paragraph>
-                    <DetailForm
-                      form={agreementForm}
-                      initialValues={DEFAULT_AGREEMENT_SETTINGS}
-                    >
+                    <Form {...agreementFormProps}>
                       <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
                         <MDEditor
                           preview="edit"
@@ -524,7 +526,7 @@ const PersonalizationSettingsPage = () => {
                           data-color-mode="light"
                         />
                       </Form.Item>
-                    </DetailForm>
+                    </Form>
 
                     <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
                       <Button danger onClick={() => handleClearAgreementField('userAgreementMarkdown')}>

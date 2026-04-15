@@ -7,15 +7,17 @@ import {
   type ProColumns,
 } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
-import { DetailForm } from '@/components/DetailForm';
-import { PageDetailDescriptions } from '@/components/PageDetailDescriptions';
+import { useDetailDescriptionsProps, useDetailFormProps } from '@/features/detail/config';
+import { usePermissionActions } from '@/features/permissions/usePermissionActions';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
+import { useResponsive } from '@/hooks/useResponsive';
 import { auditService } from '@/services/audit';
 import { pluginService } from '@/services/plugin';
 import { tenantService, type TenantMutationPayload } from '@/services/tenant';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { usePermission } from '@/hooks/usePermission';
 import type { AuditLogRecord, CurrentTenantResponse, MyTenant, PagedResult, TenantPlugin, TenantSummary } from '@/types/api';
-import { buildResponsivePagination, buildResponsiveScroll, normalizeResponsiveColumns, ResponsiveActions, ResponsiveText, useResponsiveTable } from '@/components/ResponsiveTable';
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -32,15 +34,21 @@ export default () => {
   const actionRef = useRef<ActionType>();
   const [editorForm] = Form.useForm<TenantMutationPayload>();
   const { initialState } = useInitialStateModel();
-  const responsive = useResponsiveTable();
+  const responsive = useResponsive();
   const { isMobile } = responsive;
   const { canAccess } = usePermission();
+  const { buildActions } = usePermissionActions();
   const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedTenant, setSelectedTenant] = useState<TenantSummary | null>(null);
+  const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
+  const editorFormProps = useDetailFormProps({
+    form: editorForm,
+    initialValues: { status: 'ENABLED' },
+  });
 
   const currentTenantQuery = useRequest(async () => ({ data: await tenantService.currentTenant({ autoRedirectOnUnauthorized: false }) }) as {
     data: CurrentTenantResponse;
@@ -110,25 +118,21 @@ export default () => {
         title: '租户编码',
         dataIndex: 'tenantCode',
         search: true,
-        importance: 1,
       },
       {
         title: '租户名称',
         dataIndex: 'tenantName',
         search: true,
-        importance: 1,
       },
       {
         title: '简称',
         dataIndex: 'tenantShortName',
         search: false,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
       },
       {
         title: '状态',
         dataIndex: 'status',
-        importance: 1,
         valueEnum: {
           ENABLED: { text: '启用', status: 'Success' },
           DISABLED: { text: '停用', status: 'Default' },
@@ -142,73 +146,77 @@ export default () => {
         title: '创建时间',
         dataIndex: 'createdAt',
         hideInSearch: true,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => formatDateTime(record.createdAt),
       },
       {
         title: '更新时间',
         dataIndex: 'updatedAt',
         hideInSearch: true,
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => formatDateTime(record.updatedAt),
       },
       {
         title: '操作',
         valueType: 'option',
-        importance: 0,
-        desktopFixed: 'right',
+        fixed: responsive.isDesktop ? 'right' : undefined,
         width: 200,
         render: (_, record) => (
-          <ResponsiveActions
-            level={responsive.level}
-            items={[
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={buildActions([
               {
                 key: 'detail',
                 label: '详情',
-                hidden: !canAccess('tenant:view'),
+                permission: 'tenant:view',
                 onClick: () => void openTenantDetail(record),
               },
               {
                 key: 'edit',
                 label: '编辑',
-                hidden: !canAccess('tenant:update'),
+                permission: 'tenant:update',
                 onClick: () => void openTenantEditor(record),
               },
               {
                 key: 'delete',
                 label: '删除',
-                hidden: !canAccess('tenant:delete'),
+                permission: 'tenant:delete',
                 danger: true,
                 onClick: () => void confirmDeleteTenant(record),
               },
-            ]}
+            ])}
           />
         ),
       },
     ],
-    [canAccess, responsive.level],
+    [buildActions, responsive.isDesktop, responsive.isMobile],
   );
 
   const pluginColumns = useMemo<ProColumns<TenantPlugin>[]>(
     () => [
-      { title: '插件编码', dataIndex: 'pluginCode', importance: 1 },
-      { title: '插件名称', dataIndex: 'pluginName', importance: 1 },
-      { title: '版本', dataIndex: 'version', importance: 1 },
+      { title: '插件编码', dataIndex: 'pluginCode' },
+      { title: '插件名称', dataIndex: 'pluginName' },
+      { title: '版本', dataIndex: 'version' },
       {
         title: '共享依赖',
         dataIndex: 'sharedDeps',
-        importance: 3,
-        responsiveLevel: 'desktop',
-        ellipsisText: true,
-        render: (_, record) => <ResponsiveText value={record.sharedDeps?.length ? record.sharedDeps.join(', ') : '-'} copyable={Boolean(record.sharedDeps?.length)} />,
+        responsive: ['lg', 'xl', 'xxl'],
+        ellipsis: true,
+        render: (_, record) => {
+          const content = record.sharedDeps?.length ? record.sharedDeps.join(', ') : '';
+          return content ? (
+            <Typography.Text copyable={{ text: content }} ellipsis={{ tooltip: content }}>
+              {content}
+            </Typography.Text>
+          ) : (
+            '-'
+          );
+        },
       },
       {
         title: '菜单数',
         dataIndex: 'menus',
-        importance: 2,
-        responsiveLevel: ['tablet', 'desktop'],
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => record.menus?.length ?? 0,
       },
     ],
@@ -217,19 +225,17 @@ export default () => {
 
   const myTenantColumns = useMemo<ProColumns<MyTenant>[]>(
     () => [
-      { title: '租户编码', dataIndex: 'tenantCode', importance: 1 },
-      { title: '租户名称', dataIndex: 'tenantName', importance: 1 },
-      { title: '简称', dataIndex: 'tenantShortName', importance: 2, responsiveLevel: ['tablet', 'desktop'] },
+      { title: '租户编码', dataIndex: 'tenantCode' },
+      { title: '租户名称', dataIndex: 'tenantName' },
+      { title: '简称', dataIndex: 'tenantShortName', responsive: ['md', 'lg', 'xl', 'xxl'] },
       {
         title: '默认',
         dataIndex: 'isDefault',
-        importance: 1,
         render: (_, record) => <Tag color={record.isDefault ? 'green' : 'default'}>{record.isDefault ? '是' : '否'}</Tag>,
       },
       {
         title: '状态',
         dataIndex: 'status',
-        importance: 1,
         render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
       },
     ],
@@ -350,9 +356,9 @@ export default () => {
       <div className="saas-management-page-body">
         <Row gutter={[16, 16]}>
           <Col xs={24}>
-        <Card title="当前租户" loading={currentTenantQuery.loading}>
-          {currentTenant ? (
-                <PageDetailDescriptions column={isMobile ? 1 : 2}>
+            <Card title="当前租户" loading={currentTenantQuery.loading}>
+              {currentTenant ? (
+                <Descriptions {...detailDescriptionsProps}>
                   <Descriptions.Item label="租户编码">{currentTenant.tenantCode}</Descriptions.Item>
                   <Descriptions.Item label="租户名称">{currentTenant.tenantName}</Descriptions.Item>
                   <Descriptions.Item label="租户简称">{currentTenant.tenantShortName || '-'}</Descriptions.Item>
@@ -361,7 +367,7 @@ export default () => {
                   </Descriptions.Item>
                   <Descriptions.Item label="创建时间">{formatDateTime(currentTenant.createdAt)}</Descriptions.Item>
                   <Descriptions.Item label="更新时间">{formatDateTime(currentTenant.updatedAt)}</Descriptions.Item>
-                </PageDetailDescriptions>
+                </Descriptions>
               ) : (
                 <Empty description="当前尚未选择租户" />
               )}
@@ -374,27 +380,12 @@ export default () => {
             <ProTable<TenantSummary>
               actionRef={actionRef}
               rowKey="tenantId"
-              columns={normalizeResponsiveColumns(tenantColumns, responsive.level)}
+              columns={tenantColumns}
               search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
               options={false}
-              pagination={buildResponsivePagination({ showSizeChanger: true }, responsive)}
-              scroll={buildResponsiveScroll(normalizeResponsiveColumns(tenantColumns, responsive.level), responsive)}
-              request={async (params) => {
-                const { current, pageSize, ...rest } = params;
-                const result = await tenantService.list(
-                  {
-                    pageNo: current,
-                    pageSize,
-                    ...rest,
-                  },
-                  { autoRedirectOnUnauthorized: false },
-                );
-                return {
-                  data: result.records,
-                  success: true,
-                  total: result.total,
-                };
-              }}
+              pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
+              scroll={buildTableScroll(tenantColumns, responsive.isMobile)}
+              request={buildTableRequest((params) => tenantService.list(params, { autoRedirectOnUnauthorized: false }))}
               toolBarRender={() => [
                 canAccess('tenant:create') ? (
                   <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateTenant}>
@@ -413,14 +404,14 @@ export default () => {
           <div className="saas-table-wrap">
             <ProTable<MyTenant>
               rowKey="tenantId"
-              columns={normalizeResponsiveColumns(myTenantColumns, responsive.level)}
+              columns={myTenantColumns}
               dataSource={myTenants}
               loading={myTenantsQuery.loading}
               search={false}
               options={false}
               toolBarRender={false}
               pagination={false}
-              scroll={buildResponsiveScroll(normalizeResponsiveColumns(myTenantColumns, responsive.level), responsive)}
+              scroll={buildTableScroll(myTenantColumns, responsive.isMobile)}
             />
           </div>
         </Card>
@@ -429,14 +420,14 @@ export default () => {
           <div className="saas-table-wrap">
             <ProTable<TenantPlugin>
               rowKey="pluginCode"
-              columns={normalizeResponsiveColumns(pluginColumns, responsive.level)}
+              columns={pluginColumns}
               dataSource={tenantPlugins}
               loading={pluginQuery.loading}
               search={false}
               options={false}
               toolBarRender={false}
               pagination={false}
-              scroll={buildResponsiveScroll(normalizeResponsiveColumns(pluginColumns, responsive.level), responsive)}
+              scroll={buildTableScroll(pluginColumns, responsive.isMobile)}
             />
           </div>
         </Card>
@@ -467,7 +458,7 @@ export default () => {
           </div>
         }
       >
-        <DetailForm form={editorForm} initialValues={{ status: 'ENABLED' }}>
+        <Form {...editorFormProps}>
           <Form.Item name="tenantCode" label="租户编码" rules={[{ required: true, message: '请输入租户编码' }]}>
             <Input maxLength={64} placeholder="例如：acme" />
           </Form.Item>
@@ -485,7 +476,7 @@ export default () => {
               ]}
             />
           </Form.Item>
-        </DetailForm>
+        </Form>
       </Drawer>
 
       <Drawer
@@ -503,7 +494,7 @@ export default () => {
             <Spin />
           </div>
         ) : selectedTenant ? (
-          <PageDetailDescriptions column={isMobile ? 1 : 2}>
+          <Descriptions {...detailDescriptionsProps}>
             <Descriptions.Item label="租户编码">{selectedTenant.tenantCode}</Descriptions.Item>
             <Descriptions.Item label="租户名称">{selectedTenant.tenantName}</Descriptions.Item>
             <Descriptions.Item label="租户简称">{selectedTenant.tenantShortName || '-'}</Descriptions.Item>
@@ -512,7 +503,7 @@ export default () => {
             </Descriptions.Item>
             <Descriptions.Item label="创建时间">{formatDateTime(selectedTenant.createdAt)}</Descriptions.Item>
             <Descriptions.Item label="更新时间">{formatDateTime(selectedTenant.updatedAt)}</Descriptions.Item>
-          </PageDetailDescriptions>
+          </Descriptions>
         ) : (
           <Empty description="暂无租户详情" />
         )}

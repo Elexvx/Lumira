@@ -2,7 +2,7 @@ import { NotificationOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/
 import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Col, Empty, Form, Input, List, Row, Space, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DetailForm } from '@/components/DetailForm';
+import { useDetailFormProps } from '@/features/detail/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { usePermission } from '@/hooks/usePermission';
 import { systemService } from '@/services/system';
@@ -35,6 +35,10 @@ const NotificationsPage = () => {
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const publishFormProps = useDetailFormProps({
+    form,
+    initialValues: { title: '', content: '' },
+  });
 
   const tenantId = initialState?.currentTenant?.tenantId;
 
@@ -96,7 +100,7 @@ const NotificationsPage = () => {
         {canCreate ? (
           <Col xs={24} xl={8}>
             <Card title={<Space><PlusOutlined />发布通知</Space>}>
-              <DetailForm form={form} initialValues={{ title: '', content: '' }}>
+              <Form {...publishFormProps}>
                 <Form.Item
                   name="title"
                   label="通知标题"
@@ -114,7 +118,7 @@ const NotificationsPage = () => {
                 <Button type="primary" block loading={publishing} onClick={() => void handlePublish()}>
                   发布通知
                 </Button>
-              </DetailForm>
+              </Form>
             </Card>
           </Col>
         ) : null}

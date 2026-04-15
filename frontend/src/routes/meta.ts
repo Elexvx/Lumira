@@ -75,7 +75,7 @@ export const backendRoutes: BackendRouteRecord[] = [
       { path: '/system/menus', component: '@/pages/system/menus', name: '菜单管理', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
       { path: '/system/dicts', component: '@/pages/system/dicts', name: '字典管理', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
       { path: '/system/profile-fields', component: '@/pages/system/profile-fields', name: '字段管理', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },
-      { path: '/system/personalization', component: '@/pages/system/personalization.tsx', name: '个性化设置', icon: 'SkinOutlined', access: 'canVisitSystemPersonalization' },
+      { path: '/system/personalization', component: '@/pages/system/personalization', name: '个性化设置', icon: 'SkinOutlined', access: 'canVisitSystemPersonalization' },
       { path: '/system/security', component: '@/pages/system/security', name: '安全设置', icon: 'SafetyOutlined', access: 'canVisitSystemSecurity' },
       { path: '/system/smtp', component: '@/pages/system/smtp', name: 'SMTP 配置', icon: 'MailOutlined', access: 'canVisitSystemSecurity' },
       { path: '/system/notifications', component: '@/pages/system/notifications/index', name: '通知中心', icon: 'NotificationOutlined', access: 'canVisitSystemNotifications' },

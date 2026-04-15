@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs, Typography, message } from 'antd';
-import { DetailForm } from '@/components/DetailForm';
+import { useDetailFormProps } from '@/features/detail/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
 import { loadSecuritySettings, saveSecuritySettings } from '@/auth/session';
@@ -31,6 +31,10 @@ const SecuritySettingsPage = () => {
   const { setInitialState } = useInitialStateModel();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const formProps = useDetailFormProps({
+    form,
+    initialValues: DEFAULT_SECURITY_SETTINGS,
+  });
 
   useEffect(() => {
     let active = true;
@@ -107,7 +111,7 @@ const SecuritySettingsPage = () => {
     >
       <div className="saas-management-page-body">
         <Card className="saas-crud-form-card" loading={loading} bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <DetailForm form={form} initialValues={DEFAULT_SECURITY_SETTINGS}>
+          <Form {...formProps}>
             <Tabs
               defaultActiveKey="token"
               items={[
@@ -276,7 +280,7 @@ const SecuritySettingsPage = () => {
               },
               ]}
             />
-          </DetailForm>
+          </Form>
         </Card>
       </div>
     </PageContainer>

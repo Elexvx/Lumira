@@ -19,6 +19,7 @@ import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
+import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
 import type { CaptchaChallenge, LoginEncryptionKey, LoginResponse, SecuritySettings } from '@/types/api';
 import './Login.less';
 
@@ -151,6 +152,12 @@ const Login = () => {
     }
   }, [captchaChallenge?.captchaId, captchaChallenge?.captchaType, refreshCaptcha, securitySettings.captchaEnabled, securitySettings.captchaType]);
 
+  useEffect(() => {
+    if (securitySettings.captchaEnabled) {
+      loginForm.setFieldValue('captchaCode', undefined);
+    }
+  }, [captchaChallenge?.captchaId, loginForm, securitySettings.captchaEnabled]);
+
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
       if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
@@ -210,7 +217,7 @@ const Login = () => {
       }
 
       const sessionResult = await initializeAfterLogin(loginResponse);
-      const [menuResult, pluginResult, brandingResult] = await Promise.allSettled([
+      const [menuResult, pluginResult, brandingResult, watermarkResult] = await Promise.allSettled([
         pluginService.currentMenus({
           autoRedirectOnUnauthorized: false,
           allowUnauthorizedWithoutRedirect: true,
@@ -226,6 +233,11 @@ const Login = () => {
           allowUnauthorizedWithoutRedirect: true,
           silent: true,
         }),
+        systemService.watermarkSettings({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
       ]);
       const menuTree = menuResult.status === 'fulfilled' ? menuResult.value : [];
       const availablePlugins = pluginResult.status === 'fulfilled' ? pluginResult.value : [];
@@ -234,7 +246,9 @@ const Login = () => {
           ? brandingResult.value
           : initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
       );
+      const watermarkSettings = watermarkResult.status === 'fulfilled' ? watermarkResult.value : initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
       persistBrandingSettings(normalizedBrandingSettings);
+      persistWatermarkSettings(watermarkSettings);
       flushSync(() => {
         setInitialState((prev: AppInitialState | undefined) => ({
           ...prev,
@@ -246,6 +260,7 @@ const Login = () => {
           availablePlugins,
           securitySettings: sessionResult.securitySettings,
           brandingSettings: normalizedBrandingSettings,
+          watermarkSettings,
         }));
       });
 
