@@ -3,7 +3,8 @@ import { useRequest } from '@umijs/max';
 import { Alert, Button, Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, Modal, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import { useDetailDescriptionsProps, useDetailFormProps } from '@/features/detail/config';
+import { useDetailDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -16,6 +17,7 @@ import { BoundProviderCard } from '@/pages/profile/center/components/BoundProvid
 import { EmailBindModal } from '@/pages/profile/center/components/EmailBindModal';
 import { ProfileBasicCard } from '@/pages/profile/center/components/ProfileBasicCard';
 import { SecuritySummaryCard } from '@/pages/profile/center/components/SecuritySummaryCard';
+import { buildVisibleProfileFields } from '@/pages/profile/center/utils';
 import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 
 const ProfileCenterPage = () => {
@@ -63,14 +65,11 @@ const ProfileCenterPage = () => {
   const hasEmail = Boolean(currentUser?.email);
   const hasMobile = Boolean(currentUser?.mobile);
   const bindingIsSms = bindingProvider?.factorCode === 'sms' || bindingChallenge?.factorCode === 'sms';
-  const visibleProfileFields = useMemo(
-    () => new Set(profileFieldSettings.filter((item) => item.visible).map((item) => item.fieldKey)),
-    [profileFieldSettings],
-  );
+  const visibleProfileFields = useMemo(() => buildVisibleProfileFields(profileFieldSettings), [profileFieldSettings]);
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;
-  const profileFormProps = useDetailFormProps({ form: profileForm });
-  const emailBindFormProps = useDetailFormProps({
+  const profileFormProps = useStandardFormProps({ form: profileForm });
+  const emailBindFormProps = useStandardFormProps({
     form: emailBindForm,
     initialValues: { email: currentUser?.email || '' },
   });

@@ -3,7 +3,8 @@ import { Button, Drawer, Form, Space, Spin, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
-import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -23,11 +24,11 @@ const DictManagementPage = () => {
   const [typeDetail, setTypeDetail] = useState<DictTypeRecord | null>(null);
   const [items, setItems] = useState<DictItemRecord[]>([]);
   const [saving, setSaving] = useState(false);
-  const typeFormProps = useDetailFormProps({
+  const typeFormProps = useStandardFormProps({
     form: typeForm,
     initialValues: { status: 'ENABLED' },
   });
-  const itemFormProps = useDetailFormProps({
+  const itemFormProps = useStandardFormProps({
     form: itemForm,
     initialValues: { sortNo: 0, status: 'ENABLED' },
   });

@@ -2,7 +2,8 @@ import { PageContainer, ProDescriptions, ProTable } from '@ant-design/pro-compon
 import { Button, Drawer, Form, Input, Modal, Select, Space, Spin, Tag, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
-import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
 import { ROLE_TYPE_OPTIONS } from '@/constants/role';
@@ -22,7 +23,7 @@ const RoleManagementPage = () => {
   const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const editorFormProps = useDetailFormProps({
+  const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { roleType: 'CUSTOM', permissionKeys: [] },
     onValuesChange: () => setEditorDirty(true),
