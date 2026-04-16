@@ -2,7 +2,8 @@ import { PageContainer, ProDescriptions, ProTable } from '@ant-design/pro-compon
 import { Button, Drawer, Form, Space, Spin, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
-import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -10,10 +11,8 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/system/menus/columns';
 import { MenuEditorForm, buildParentMenuOptions } from '@/pages/system/menus/components/MenuEditorForm';
 import {
-  filterMenus,
   flattenMenuOrder,
   flattenMenus,
-  flattenVisibleMenus,
   getDropPosition,
   moveMenuNode,
   normalizeMenuTreeOrder,
@@ -21,6 +20,7 @@ import {
   toRuntimeMenuNodes,
   type MenuDropPosition,
 } from '@/pages/system/menus/treeUtils';
+import { buildMenuTableData } from '@/pages/system/menus/tableData';
 import { iamService } from '@/services/iam';
 import type { MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
@@ -42,7 +42,7 @@ const MenuManagementPage = () => {
   const [dragState, setDragState] = useState<MenuDragState | null>(null);
   const [reordering, setReordering] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([]);
-  const editorFormProps = useDetailFormProps({
+  const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { menuType: 'MENU', status: 'ENABLED', sortNo: 0 },
   });
@@ -342,12 +342,7 @@ const MenuManagementPage = () => {
             },
           })}
           request={async (params) => {
-            const keyword = String(params.menuName || params.keyword || '');
-            const menuCode = String(params.menuCode || '');
-            const permissionKey = String(params.permissionKey || '');
-            const filtered = filterMenus(menuTree, keyword, menuCode, permissionKey);
-            const hasSearch = Boolean(keyword.trim() || menuCode.trim() || permissionKey.trim());
-            const visibleMenus = hasSearch ? flattenMenus(filtered) : flattenVisibleMenus(filtered, expandedRowKeys);
+            const visibleMenus = buildMenuTableData(menuTree, expandedRowKeys, params);
             return {
               data: visibleMenus,
               success: true,

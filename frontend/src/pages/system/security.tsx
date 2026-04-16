@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs, Typography, message } from 'antd';
-import { useDetailFormProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
 import { loadSecuritySettings, saveSecuritySettings } from '@/auth/session';
@@ -31,7 +31,7 @@ const SecuritySettingsPage = () => {
   const { setInitialState } = useInitialStateModel();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const formProps = useDetailFormProps({
+  const formProps = useStandardFormProps({
     form,
     initialValues: DEFAULT_SECURITY_SETTINGS,
   });

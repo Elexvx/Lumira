@@ -3,7 +3,8 @@ import dayjs from 'dayjs';
 import { Button, Drawer, Form, Space, Spin, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
-import { useDetailFormProps, useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -24,7 +25,7 @@ const UserManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: number }[]>([]);
   const protectedAdminSelected = isProtectedAdminAccount(drawer.currentRecord);
-  const editorFormProps = useDetailFormProps({
+  const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { status: 'ENABLED', roleIds: [] },
   });

@@ -2,7 +2,7 @@ import { NotificationOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/
 import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Col, Empty, Form, Input, List, Row, Space, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDetailFormProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
@@ -35,7 +35,7 @@ const NotificationsPage = () => {
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
-  const publishFormProps = useDetailFormProps({
+  const publishFormProps = useStandardFormProps({
     form,
     initialValues: { title: '', content: '' },
   });
