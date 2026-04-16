@@ -2,7 +2,7 @@ import { history, useLocation } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
 import { Card, Form, Tabs, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { useDetailFormProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
@@ -218,11 +218,11 @@ const PersonalizationSettingsPage = () => {
     });
   };
 
-  const brandingFormProps = useDetailFormProps({
+  const brandingFormProps = useStandardFormProps({
     form: brandingForm,
     onValuesChange: (_, allValues) => setPreviewState(normalizeBrandingSettings(allValues)),
   });
-  const watermarkFormProps = useDetailFormProps({
+  const watermarkFormProps = useStandardFormProps({
     form: watermarkForm,
     onValuesChange: (_, allValues) =>
       setWatermarkPreview({
@@ -231,7 +231,7 @@ const PersonalizationSettingsPage = () => {
         imageUrl: normalizeUploadUrl(allValues.imageUrl),
       }),
   });
-  const agreementFormProps = useDetailFormProps({
+  const agreementFormProps = useStandardFormProps({
     form: agreementForm,
     initialValues: DEFAULT_AGREEMENT_SETTINGS,
   });

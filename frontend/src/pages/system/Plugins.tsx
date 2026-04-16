@@ -10,6 +10,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
 import { buildVersionColumns, logColumns } from '@/pages/system/plugins/columns';
 import { PluginCardsGrid } from '@/pages/system/plugins/components/PluginCardsGrid';
+import { buildAvailablePluginMap, filterPluginDefinitions, getPreferredEnableVersion } from '@/pages/system/plugins/utils';
 import { pluginService } from '@/services/plugin';
 import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 
@@ -124,17 +125,6 @@ const PluginsPage = () => {
       },
     });
 
-  const isInstalledVersion = (installStatus?: string) => (installStatus || '').toUpperCase() === 'INSTALLED';
-
-  const getPreferredEnableVersion = (pluginCode: string) => {
-    const versions = versionMap[pluginCode] || [];
-    return (
-      versions.find((item) => isInstalledVersion(item.installStatus) && item.isActive === 1) ||
-      versions.find((item) => isInstalledVersion(item.installStatus)) ||
-      versions.find((item) => item.isActive === 1)
-    );
-  };
-
   const refreshAfterMutation = async () => {
     try {
       await loadOverview();
@@ -184,7 +174,7 @@ const PluginsPage = () => {
       message.warning('当前未选择租户');
       return;
     }
-    const versionToUse = version || getPreferredEnableVersion(pluginCode)?.version;
+    const versionToUse = version || getPreferredEnableVersion(pluginCode, versionMap)?.version;
     if (!versionToUse) {
       message.warning('请先安装可用版本');
       setSelectedPlugin(definitions.find((item) => item.pluginCode === pluginCode) || null);
@@ -319,20 +309,9 @@ const PluginsPage = () => {
     }
   };
 
-  const currentAvailableMap = useMemo(
-    () => new Map(availablePlugins.map((item) => [item.pluginCode, item])),
-    [availablePlugins],
-  );
+  const currentAvailableMap = useMemo(() => buildAvailablePluginMap(availablePlugins), [availablePlugins]);
 
-  const filteredDefinitions = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    return definitions.filter((item) => {
-      if (!keyword) {
-        return true;
-      }
-      return item.pluginName.toLowerCase().includes(keyword) || item.pluginCode.toLowerCase().includes(keyword);
-    });
-  }, [definitions, searchKeyword]);
+  const filteredDefinitions = useMemo(() => filterPluginDefinitions(definitions, searchKeyword), [definitions, searchKeyword]);
 
   const selectedPluginVersions = selectedPlugin ? versionMap[selectedPlugin.pluginCode] || [] : [];
   const selectedTenantPlugin = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
@@ -385,7 +364,7 @@ const PluginsPage = () => {
             loading={loading}
             definitions={filteredDefinitions}
             currentAvailableMap={currentAvailableMap}
-            getPreferredEnableVersion={getPreferredEnableVersion}
+            getPreferredEnableVersion={(pluginCode) => getPreferredEnableVersion(pluginCode, versionMap)}
             mutationLoading={mutationLoading}
             onToggleEnable={(pluginCode, enabled, versionLabel) =>
               void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
