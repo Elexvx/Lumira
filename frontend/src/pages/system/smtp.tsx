@@ -2,7 +2,7 @@ import { MailOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Col, Form, Input, InputNumber, Row, Space, Switch, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
-import { useDetailFormProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { systemService } from '@/services/system';
 import type { SmtpSettings, SmtpTestPayload } from '@/types/api';
 
@@ -12,11 +12,11 @@ const SmtpSettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const settingsFormProps = useDetailFormProps({
+  const settingsFormProps = useStandardFormProps({
     form: settingsForm,
     initialValues: { port: 25, authEnabled: true, startTlsEnabled: true, sslEnabled: false },
   });
-  const testFormProps = useDetailFormProps({
+  const testFormProps = useStandardFormProps({
     form: testForm,
     initialValues: { subject: 'SMTP 测试邮件', content: '这是一封来自系统的 SMTP 测试邮件。' },
   });

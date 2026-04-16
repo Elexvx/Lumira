@@ -3,7 +3,8 @@ import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Modal, Row, Space, Spin, Tag, Timeline, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
-import { useDetailDescriptionsProps, useDetailFormProps } from '@/features/detail/config';
+import { useDetailDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -25,7 +26,7 @@ const TenantOverviewPage = () => {
   const actionPermission = useActionPermission();
   const [saving, setSaving] = useState(false);
   const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
-  const editorFormProps = useDetailFormProps({
+  const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { status: 'ENABLED' },
   });
