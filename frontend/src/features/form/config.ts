@@ -1,12 +1,10 @@
 import type { FormProps } from 'antd';
-import { useResponsive } from '@/hooks/useResponsive';
 
-export const buildStandardFormProps = (isMobile: boolean, overrides: FormProps = {}): FormProps => ({
-  layout: overrides.layout ?? (isMobile ? 'vertical' : 'horizontal'),
+export const buildStandardFormProps = (overrides: FormProps = {}): FormProps => ({
+  layout: overrides.layout ?? 'vertical',
   ...overrides,
 });
 
 export const useStandardFormProps = (overrides: FormProps = {}): FormProps => {
-  const responsive = useResponsive();
-  return buildStandardFormProps(responsive.isMobile, overrides);
+  return buildStandardFormProps(overrides);
 };

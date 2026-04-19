@@ -115,43 +115,75 @@ const OnlineUsersPage = () => {
       dataIndex: 'currentTenantId',
       hideInSearch: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
+      width: 140,
       render: (_, record) =>
-        record.currentTenantId === initialState?.currentTenant?.tenantId ? <Tag color="green">当前租户</Tag> : record.currentTenantId || '-',
+        record.currentTenantId === initialState?.currentTenant?.tenantId ? (
+          <Tag color="green">当前租户</Tag>
+        ) : (
+          <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: record.currentTenantId?.toString() || '-' }}>
+            {record.currentTenantId ?? '-'}
+          </Typography.Text>
+        ),
     },
     {
       title: '终端',
       dataIndex: 'clientType',
       hideInSearch: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: (_, record) => record.clientType || '-',
+      width: 120,
+      render: (_, record) => (
+        <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: record.clientType || '-' }}>
+          {record.clientType || '-'}
+        </Typography.Text>
+      ),
     },
     {
       title: '登录 IP',
       dataIndex: 'loginIp',
       hideInSearch: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: (_, record) => record.loginIp || '-',
+      width: 160,
+      render: (_, record) => (
+        <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: record.loginIp || '-' }}>
+          {record.loginIp || '-'}
+        </Typography.Text>
+      ),
     },
     {
       title: '登录时间',
       dataIndex: 'loginTime',
       hideInSearch: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: (_, record) => formatDateTime(record.loginTime),
+      width: 180,
+      render: (_, record) => (
+        <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: formatDateTime(record.loginTime) }}>
+          {formatDateTime(record.loginTime)}
+        </Typography.Text>
+      ),
     },
     {
       title: '最近活跃',
       dataIndex: 'lastActivityAt',
       hideInSearch: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: (_, record) => formatDateTime(record.lastActivityAt),
+      width: 180,
+      render: (_, record) => (
+        <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: formatDateTime(record.lastActivityAt) }}>
+          {formatDateTime(record.lastActivityAt)}
+        </Typography.Text>
+      ),
     },
     {
       title: '过期时间',
       dataIndex: 'expireTime',
       hideInSearch: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: (_, record) => formatDateTime(record.expireTime),
+      width: 180,
+      render: (_, record) => (
+        <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: formatDateTime(record.expireTime) }}>
+          {formatDateTime(record.expireTime)}
+        </Typography.Text>
+      ),
     },
     {
       title: '会话 ID',
@@ -171,6 +203,7 @@ const OnlineUsersPage = () => {
       dataIndex: 'userAgent',
       hideInSearch: true,
       responsive: ['lg', 'xl', 'xxl'],
+      width: 360,
       ellipsis: true,
       render: (_, record) =>
         record.userAgent ? (
