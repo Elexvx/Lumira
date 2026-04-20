@@ -1,6 +1,7 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Image, Input, Space, Typography, Upload } from 'antd';
 import type { FormProps } from 'antd';
+import ImgCrop from 'antd-img-crop';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { BrandingSettings } from '@/types/api';
 
@@ -44,18 +45,31 @@ export const BrandingTab = ({
             </div>
           </Card>
           <Space direction="vertical" size={8}>
-            <Upload
-              accept="image/*,.ico"
-              showUploadList={false}
-              beforeUpload={async (file) => {
-                await onUpload('favicon', file);
-                return Upload.LIST_IGNORE;
+            <ImgCrop
+              modalTitle="裁切网站 Icon"
+              rotationSlider
+              aspect={1}
+              beforeCrop={(file) => {
+                const lowerName = file.name.toLowerCase();
+                if (lowerName.endsWith('.ico') || file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon') {
+                  return false;
+                }
+                return true;
               }}
             >
-              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'}>
-                上传 Icon
-              </Button>
-            </Upload>
+              <Upload
+                accept="image/*,.ico"
+                showUploadList={false}
+                beforeUpload={async (file) => {
+                  await onUpload('favicon', file);
+                  return Upload.LIST_IGNORE;
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'}>
+                  上传 Icon
+                </Button>
+              </Upload>
+            </ImgCrop>
             <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteFaviconUrl', '网站 Icon')} disabled={!previewState.websiteFaviconUrl}>
               清除
             </Button>
@@ -84,18 +98,20 @@ export const BrandingTab = ({
             </div>
           </Card>
           <Space direction="vertical" size={8}>
-            <Upload
-              accept="image/*"
-              showUploadList={false}
-              beforeUpload={async (file) => {
-                await onUpload('logo', file);
-                return Upload.LIST_IGNORE;
-              }}
-            >
-              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'}>
-                上传 Logo
-              </Button>
-            </Upload>
+            <ImgCrop modalTitle="裁切 Logo" rotationSlider aspect={25 / 9}>
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                beforeUpload={async (file) => {
+                  await onUpload('logo', file);
+                  return Upload.LIST_IGNORE;
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'}>
+                  上传 Logo
+                </Button>
+              </Upload>
+            </ImgCrop>
             <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteLogoUrl', 'Logo')} disabled={!previewState.websiteLogoUrl}>
               清除
             </Button>

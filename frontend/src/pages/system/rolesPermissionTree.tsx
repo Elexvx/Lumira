@@ -1,9 +1,28 @@
 import { realPageRouteMetaMap, realPageRoutePaths } from '@/routes/meta';
-import type { PermissionActionRecord, PermissionTreeRecord } from '@/types/api';
+import type { PermissionActionRecord, PermissionRecord, PermissionTreeRecord } from '@/types/api';
 
 export interface NormalizedPermissionTreeRecord extends Omit<PermissionTreeRecord, 'children'> {
   children?: NormalizedPermissionTreeRecord[];
   routeMatched?: boolean;
+}
+
+export interface RolePermissionDisplayItem {
+  permissionKey: string;
+  permissionName: string;
+  isPagePermission: boolean;
+}
+
+export interface RolePermissionDisplayPage {
+  pageKey: string;
+  pageName: string;
+  permissionGroup: string;
+  routePath?: string;
+  permissions: RolePermissionDisplayItem[];
+}
+
+export interface RolePermissionDisplayGroup {
+  permissionGroup: string;
+  pages: RolePermissionDisplayPage[];
 }
 
 const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType'] => node.nodeType || 'PAGE';
@@ -66,7 +85,7 @@ export const buildPermissionTreeData = (
   nodes.map((node) => ({
     ...node,
     key: node.pageKey,
-    disableCheckbox: !node.selectable,
+    disableCheckbox: node.nodeType === 'PAGE' ? !node.selectable : !node.children?.length,
     selectable: node.selectable,
     title: (
       <div className={`role-page-row${node.routeMatched ? '' : ' role-page-row--mismatch'}`}>
@@ -201,4 +220,135 @@ export const normalizePermissionKeysByPages = (
   });
 
   return Array.from(nextPermissionKeys);
+};
+
+const resolvePermissionGroup = (
+  nodePermissionGroup: string | undefined,
+  permissionKey: string | undefined,
+  permissionCatalogMap: Map<string, PermissionRecord>,
+) => {
+  if (nodePermissionGroup?.trim()) {
+    return nodePermissionGroup.trim();
+  }
+  if (permissionKey && permissionCatalogMap.has(permissionKey)) {
+    const catalogGroup = permissionCatalogMap.get(permissionKey)?.permissionGroup?.trim();
+    if (catalogGroup) {
+      return catalogGroup;
+    }
+  }
+  return permissionKey?.split(':')[0] || 'other';
+};
+
+const resolvePermissionName = (
+  permissionKey: string,
+  fallbackName: string,
+  permissionCatalogMap: Map<string, PermissionRecord>,
+) => permissionCatalogMap.get(permissionKey)?.permissionName || fallbackName || permissionKey;
+
+export const buildRolePermissionDisplayGroups = (
+  nodes: NormalizedPermissionTreeRecord[],
+  selectedPermissionKeys: string[],
+  permissionCatalogMap: Map<string, PermissionRecord> = new Map(),
+) => {
+  const selectedPermissionKeySet = new Set(selectedPermissionKeys);
+  const groupMap = new Map<
+    string,
+    Map<string, RolePermissionDisplayPage>
+  >();
+  const seenPermissionKeys = new Set<string>();
+
+  const addPermission = (
+    permissionGroup: string,
+    pageKey: string,
+    pageName: string,
+    routePath: string | undefined,
+    permissionKey: string,
+    permissionName: string,
+    isPagePermission: boolean,
+  ) => {
+    seenPermissionKeys.add(permissionKey);
+    const pageMap = groupMap.get(permissionGroup) ?? new Map();
+    const page: RolePermissionDisplayPage = pageMap.get(pageKey) ?? {
+      pageKey,
+      pageName,
+      permissionGroup,
+      routePath,
+      permissions: [],
+    };
+
+    if (!page.routePath && routePath) {
+      page.routePath = routePath;
+    }
+
+    if (!page.permissions.some((item) => item.permissionKey === permissionKey)) {
+      page.permissions.push({
+        permissionKey,
+        permissionName,
+        isPagePermission,
+      });
+    }
+
+    pageMap.set(pageKey, page);
+    groupMap.set(permissionGroup, pageMap);
+  };
+
+  const visit = (items: NormalizedPermissionTreeRecord[]) => {
+    items.forEach((node) => {
+      if (node.nodeType === 'PAGE' && node.selectable && node.permissionKey) {
+        const groupKey = resolvePermissionGroup(node.permissionGroup, node.permissionKey, permissionCatalogMap);
+        const pageName = node.pageName || resolvePermissionName(node.permissionKey, node.pageName || node.permissionKey, permissionCatalogMap);
+
+        if (selectedPermissionKeySet.has(node.permissionKey)) {
+          addPermission(
+            groupKey,
+            node.pageKey,
+            pageName,
+            node.routePath,
+            node.permissionKey,
+            resolvePermissionName(node.permissionKey, pageName, permissionCatalogMap),
+            true,
+          );
+        }
+
+        node.actionPermissions?.forEach((action: PermissionActionRecord) => {
+          if (!action.permissionKey || !selectedPermissionKeySet.has(action.permissionKey)) {
+            return;
+          }
+          addPermission(
+            groupKey,
+            node.pageKey,
+            pageName,
+            node.routePath,
+            action.permissionKey,
+            resolvePermissionName(action.permissionKey, action.permissionName, permissionCatalogMap),
+            false,
+          );
+        });
+      }
+
+      if (node.children?.length) {
+        visit(node.children);
+      }
+    });
+  };
+
+  visit(nodes);
+
+  selectedPermissionKeys.forEach((permissionKey) => {
+    if (seenPermissionKeys.has(permissionKey)) {
+      return;
+    }
+
+    const catalog = permissionCatalogMap.get(permissionKey);
+    const groupKey = resolvePermissionGroup(catalog?.permissionGroup, permissionKey, permissionCatalogMap);
+    const permissionName = resolvePermissionName(permissionKey, catalog?.permissionName || permissionKey, permissionCatalogMap);
+    addPermission(groupKey, permissionKey, permissionName, undefined, permissionKey, permissionName, true);
+  });
+
+  return Array.from(groupMap.entries())
+    .map(([permissionGroup, pageMap]) => ({
+      permissionGroup,
+      pages: Array.from(pageMap.values()).sort((left, right) => left.pageName.localeCompare(right.pageName, 'zh-Hans-CN')),
+    }))
+    .sort((left, right) => left.permissionGroup.localeCompare(right.permissionGroup, 'zh-Hans-CN'));
 };

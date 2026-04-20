@@ -7,6 +7,7 @@ import com.yourcompany.saas.common.exception.BizException;
 import com.yourcompany.saas.infrastructure.observability.TraceContext;
 import com.yourcompany.saas.infrastructure.observability.TraceIdFilter;
 import com.yourcompany.saas.infrastructure.tenant.TenantFilter;
+import com.yourcompany.saas.modules.message.service.OpenApiSignatureFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -30,6 +31,7 @@ public class SecurityConfig {
 
     private final TraceIdFilter traceIdFilter;
     private final TenantFilter tenantFilter;
+    private final OpenApiSignatureFilter openApiSignatureFilter;
     private final JwtAuthFilter jwtAuthFilter;
     private final SecurityProperties securityProperties;
     private final ObjectMapper objectMapper;
@@ -37,12 +39,14 @@ public class SecurityConfig {
     public SecurityConfig(
             TraceIdFilter traceIdFilter,
             TenantFilter tenantFilter,
+            OpenApiSignatureFilter openApiSignatureFilter,
             JwtAuthFilter jwtAuthFilter,
             SecurityProperties securityProperties,
             ObjectMapper objectMapper
     ) {
         this.traceIdFilter = traceIdFilter;
         this.tenantFilter = tenantFilter;
+        this.openApiSignatureFilter = openApiSignatureFilter;
         this.jwtAuthFilter = jwtAuthFilter;
         this.securityProperties = securityProperties;
         this.objectMapper = objectMapper;
@@ -67,7 +71,8 @@ public class SecurityConfig {
                                 writeForbiddenResponse(request, response)))
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .addFilterBefore(traceIdFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtAuthFilter, TraceIdFilter.class)
+                .addFilterAfter(openApiSignatureFilter, TraceIdFilter.class)
+                .addFilterAfter(jwtAuthFilter, OpenApiSignatureFilter.class)
                 .addFilterAfter(tenantFilter, JwtAuthFilter.class);
         return http.build();
     }

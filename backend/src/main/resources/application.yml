@@ -57,6 +57,8 @@ saas:
       - /api/v1/auth/login-encryption-key
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
+      - /openapi/v1/**
+      - /ws/message
       - /api/v1/public/branding-settings
       - /api/v1/public/agreement-settings
       - /api/v1/public/security-settings
@@ -77,6 +79,13 @@ saas:
     storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
     public-path: /api/uploads
     max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
+  message:
+    openapi:
+      enabled: ${MESSAGE_OPENAPI_ENABLED:true}
+      app-id: ${MESSAGE_OPENAPI_APP_ID:message-bot}
+      app-secret: ${MESSAGE_OPENAPI_APP_SECRET:change-me-message-openapi-secret}
+      timestamp-skew-seconds: ${MESSAGE_OPENAPI_TIMESTAMP_SKEW_SECONDS:300}
+      nonce-ttl-seconds: ${MESSAGE_OPENAPI_NONCE_TTL_SECONDS:600}
 
 logging:
   config: classpath:logback-spring.xml

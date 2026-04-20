@@ -271,6 +271,32 @@ export interface NotificationRecord {
   createdAt: string;
 }
 
+export type MessageNoticeType = 'ANNOUNCEMENT' | 'MESSAGE';
+export type MessageTargetScope = 'TENANT' | 'USER';
+export type MessagePublishStatus = 'PUBLISHED' | 'RETRACTED';
+export type MessageSourceType = 'MANUAL' | 'OPENAPI';
+
+export interface MessageNoticeRecord {
+  id: number;
+  tenantId: number;
+  messageType: MessageNoticeType;
+  targetScope: MessageTargetScope;
+  targetUserId?: number | null;
+  title: string;
+  content: string;
+  sourceType: MessageSourceType;
+  publishStatus: MessagePublishStatus;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  readFlag?: boolean;
+  readAt?: string | null;
+}
+
+export interface MessageUnreadCount {
+  unreadCount: number;
+}
+
 export interface PagedResult<T> {
   records: T[];
   total: number;

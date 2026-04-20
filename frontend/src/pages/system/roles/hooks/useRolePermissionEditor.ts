@@ -2,7 +2,7 @@ import { Form, message } from 'antd';
 import type { FormInstance } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { iamService } from '@/services/iam';
-import type { PermissionTreeRecord } from '@/types/api';
+import type { PermissionRecord, PermissionTreeRecord } from '@/types/api';
 import {
   buildPermissionTreeData,
   collectActionPermissionPageMap,
@@ -22,6 +22,7 @@ interface UseRolePermissionEditorOptions {
 
 export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissionEditorOptions) => {
   const [permissionTree, setPermissionTree] = useState<PermissionTreeRecord[]>([]);
+  const [permissionCatalog, setPermissionCatalog] = useState<PermissionRecord[]>([]);
   const [permissionTreeLoading, setPermissionTreeLoading] = useState(true);
   const [editorLoading, setEditorLoading] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
@@ -56,7 +57,32 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    void iamService
+      .permissions({ autoRedirectOnUnauthorized: false })
+      .then((result: PermissionRecord[]) => {
+        if (active) {
+          setPermissionCatalog(result);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          message.error('加载权限信息失败，请稍后重试');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const normalizedPermissionTree = useMemo(() => normalizePermissionTree(permissionTree), [permissionTree]);
+  const permissionCatalogMap = useMemo(
+    () => new Map(permissionCatalog.map((item) => [item.permissionKey, item] as const)),
+    [permissionCatalog],
+  );
   const selectablePages = useMemo(() => collectSelectablePages(normalizedPermissionTree), [normalizedPermissionTree]);
   const selectablePageNodeMap = useMemo(() => collectSelectablePageNodeMap(normalizedPermissionTree), [normalizedPermissionTree]);
   const permissionKeyToPageKeyMap = useMemo(() => collectPermissionKeyToPageKeyMap(normalizedPermissionTree), [normalizedPermissionTree]);
@@ -183,6 +209,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
 
   return {
     permissionTree,
+    permissionCatalogMap,
     permissionTreeLoading,
     editorLoading,
     setEditorLoading,

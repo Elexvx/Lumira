@@ -138,9 +138,13 @@ export const ProfileBasicCard = ({
               </Col>
             ) : null}
             {visibleProfileFields.has('availableTime') ? (
-              <Col xs={24}>
+              <Col xs={24} md={12}>
                 <Form.Item name="availableTime" label="可工作时间">
-                  <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
+                  <Input.TextArea
+                    rows={2}
+                    placeholder="请输入可工作时间，如：周一至周五 09:00-18:00"
+                    style={{ width: '100%', display: 'block' }}
+                  />
                 </Form.Item>
               </Col>
             ) : null}

@@ -1,5 +1,6 @@
 import { PageContainer, ProDescriptions, ProTable } from '@ant-design/pro-components';
-import { Button, Drawer, Form, Input, Modal, Select, Space, Spin, Tag, message } from 'antd';
+import { Button, Drawer, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
+import type { TreeProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
@@ -11,9 +12,24 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { buildRoleColumns, roleDetailColumns } from '@/pages/system/roles/columns';
 import { RolePermissionEditor } from '@/pages/system/roles/components/RolePermissionEditor';
 import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermissionEditor';
+import { buildRolePermissionDisplayGroups } from '@/pages/system/rolesPermissionTree';
 import { iamService } from '@/services/iam';
 import type { RoleDetail, RoleRecord } from '@/types/api';
 import './roles.less';
+
+const formatPermissionGroupLabel = (permissionGroup: string) =>
+  (
+    {
+      audit: '审计',
+      dashboard: '首页',
+      iam: 'IAM',
+      message: '消息',
+      plugin: '插件',
+      profile: '个人中心',
+      system: '系统',
+      tenant: '租户',
+    } as Record<string, string>
+  )[permissionGroup] || permissionGroup;
 
 const RoleManagementPage = () => {
   const roleCrud = useCrudPageState<RoleRecord>();
@@ -38,6 +54,49 @@ const RoleManagementPage = () => {
     editorOpen: roleCrud.drawer.open,
     onDirty: () => setEditorDirty(true),
   });
+  const permissionDetailGroups = useMemo(
+    () =>
+      buildRolePermissionDisplayGroups(
+        permissionEditor.pageTreeData,
+        selectedRoleDetail?.permissionKeys || [],
+        permissionEditor.permissionCatalogMap,
+      ),
+    [permissionEditor.pageTreeData, permissionEditor.permissionCatalogMap, selectedRoleDetail?.permissionKeys],
+  );
+
+  const permissionDetailTreeData = useMemo<TreeProps['treeData']>(
+    () =>
+      permissionDetailGroups.map((group) => ({
+        key: `group:${group.permissionGroup}`,
+        title: (
+          <div className="role-page-row role-permission-detail__group-row">
+            <span className="role-page-row__name">分类：{formatPermissionGroupLabel(group.permissionGroup)}</span>
+          </div>
+        ),
+        children: group.pages.map((page) => ({
+          key: `page:${group.permissionGroup}:${page.pageKey}`,
+          title: (
+            <div className="role-permission-detail__page-tree-row">
+              <div className="role-page-row">
+                <span className="role-page-row__name">{page.pageName}</span>
+                <span className="role-page-row__meta">
+                  {page.routePath ? <span className="role-page-row__route">{page.routePath}</span> : null}
+                  <Tag color="blue">{page.permissions.some((item) => item.isPagePermission) ? '页面' : '权限'}</Tag>
+                </span>
+              </div>
+              <Space wrap size={[8, 8]} className="role-permission-detail__tags">
+                {page.permissions.map((item) => (
+                  <Tag key={item.permissionKey} color="green">
+                    {item.permissionName}
+                  </Tag>
+                ))}
+              </Space>
+            </div>
+          ),
+        })),
+      })),
+    [permissionDetailGroups],
+  );
 
   const closeEditorDrawer = () => {
     roleCrud.drawer.close();
@@ -242,15 +301,17 @@ const RoleManagementPage = () => {
             <ProDescriptions<RoleDetail> {...detailProps} columns={roleDetailColumns} />
             <div style={{ marginTop: 16 }}>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <div>当前权限</div>
-                {selectedRoleDetail.permissionKeys?.length ? (
-                  <Space wrap>
-                    {selectedRoleDetail.permissionKeys.map((item) => (
-                      <Tag key={item} color="geekblue">
-                        {item}
-                      </Tag>
-                    ))}
-                  </Space>
+                <Typography.Text strong>当前权限</Typography.Text>
+                {permissionDetailTreeData?.length ? (
+                  <div className="role-permission-tree role-permission-detail-tree">
+                    <Tree
+                      blockNode
+                      defaultExpandAll
+                      selectable={false}
+                      showIcon={false}
+                      treeData={permissionDetailTreeData}
+                    />
+                  </div>
                 ) : (
                   <Tag>暂无权限</Tag>
                 )}
