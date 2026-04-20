@@ -389,6 +389,42 @@ body,
   width: 100%;
 }
 
+.saas-message-center {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.saas-message-center__toolbar {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.saas-message-center__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.saas-message-center__list-card .ant-card-body,
+.saas-message-center__detail-card .ant-card-body {
+  min-width: 0;
+}
+
+.saas-message-center__list-card .ant-list-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+.saas-message-center__list-card .ant-list-item-meta {
+  align-items: flex-start;
+}
+
+.saas-message-center__detail-content {
+  margin-bottom: 0;
+}
+
 .saas-brand-logo {
   width: 20px;
   height: 20px;
@@ -459,6 +495,16 @@ body,
 
   .ant-pro-page-container .ant-page-header {
     margin-block-start: 0;
+  }
+}
+
+@media (max-width: 991px) {
+  .saas-message-center__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .saas-message-center__toolbar {
+    width: 100%;
   }
 }
 

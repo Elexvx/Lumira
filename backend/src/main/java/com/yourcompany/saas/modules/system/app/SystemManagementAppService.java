@@ -149,13 +149,13 @@ public class SystemManagementAppService {
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
-            shortcut("系统总览", "菜单、字典、配置与插件入口", "/system/overview", "system:view"),
+            shortcut("系统管理", "菜单、字典、配置与插件入口", "/system/menus", "system:menu:view"),
             shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
             shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
             shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
             shortcut("审计中心", "登录和操作日志", "/system/monitoring/audit", "audit:view"),
-            shortcut("通知中心", "系统公告与通知管理", "/system/notifications", "system:notification:view"),
+            shortcut("消息中心", "站内信发布与消息调试", "/system/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
     );
     private static final String NODE_TYPE_CATALOG = "CATALOG";
@@ -163,6 +163,7 @@ public class SystemManagementAppService {
     private static final String NODE_TYPE_ALIAS = "ALIAS";
     private static final Set<String> LEGACY_PERMISSION_TREE_ALIAS_PATHS = Set.of(
             "/audit/overview",
+            "/system/overview",
             "/system/users",
             "/system/online-users",
             "/system/roles",
@@ -248,62 +249,6 @@ public class SystemManagementAppService {
         ).getRecords());
         summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
         return summary;
-    }
-
-    public List<SystemVO.NotificationVO> listNotifications(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
-        return jdbcTemplate.query(
-                """
-                        select id, title, content, created_at
-                        from plugin_announcement_notice
-                        where tenant_id = ?
-                          and published_flag = 1
-                          and deleted = 0
-                        order by id desc
-                        limit 200
-                        """,
-                (rs, rowNum) -> {
-                    SystemVO.NotificationVO vo = new SystemVO.NotificationVO();
-                    vo.setId(rs.getLong("id"));
-                    vo.setTitle(rs.getString("title"));
-                    vo.setContent(rs.getString("content"));
-                    vo.setCreatedAt(toLocalDateTime(rs.getTimestamp("created_at")));
-                    return vo;
-                },
-                tenantId
-        );
-    }
-
-    @Transactional
-    public void createNotification(CurrentUser currentUser, SystemDTO.NotificationCreateRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        String title = request.getTitle() == null ? null : request.getTitle().trim();
-        String content = request.getContent() == null ? null : request.getContent().trim();
-        if (!StringUtils.hasText(title) || !StringUtils.hasText(content)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "通知标题和内容不能为空");
-        }
-        jdbcTemplate.update(
-                """
-                        insert into plugin_announcement_notice (
-                            tenant_id, title, content, published_flag, created_by, updated_by, deleted
-                        ) values (?, ?, ?, 1, ?, ?, 0)
-                        """,
-                tenantId,
-                title,
-                content,
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
-                currentUser.getUsername(),
-                "notification",
-                "create",
-                "CREATE",
-                "SUCCESS",
-                "发布通知: " + title
-        );
     }
 
     @Transactional

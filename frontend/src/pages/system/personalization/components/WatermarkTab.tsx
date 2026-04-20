@@ -1,5 +1,5 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Typography, Upload, Watermark } from 'antd';
+import { Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Typography, Upload, Watermark, theme } from 'antd';
 import type { FormProps } from 'antd';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { BrandingSettings, WatermarkSettings } from '@/types/api';
@@ -26,6 +26,7 @@ export const WatermarkTab = ({
   onSave,
 }: WatermarkTabProps) => {
   const wm = watermarkPreview;
+  const { token } = theme.useToken();
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -106,7 +107,14 @@ export const WatermarkTab = ({
 
       <Card title="预览">
         <Watermark content={wm.mode === 'TEXT' ? wm.textLines : undefined} image={wm.mode === 'IMAGE' ? normalizeUploadUrl(wm.imageUrl) : undefined}>
-          <div style={{ height: 180, display: 'grid', placeItems: 'center', background: '#fafafa' }}>
+          <div
+            style={{
+              height: 180,
+              display: 'grid',
+              placeItems: 'center',
+              background: token.colorFillAlter,
+            }}
+          >
             <Typography.Text>{previewState.websiteName}</Typography.Text>
           </div>
         </Watermark>

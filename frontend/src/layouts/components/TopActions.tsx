@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  BellOutlined,
   CheckOutlined,
   CompressOutlined,
   GithubOutlined,
@@ -11,7 +10,6 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { history } from '@umijs/max';
 import { Avatar, Button, Dropdown, Select, Space, type MenuProps } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { performLogout } from '@/auth/session';
@@ -25,6 +23,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { ThemePreference } from '@/theme/settings';
+import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
 
 const THEME_OPTIONS: Array<{
   key: ThemePreference;
@@ -217,7 +216,7 @@ export const TopActions = () => {
           disabled={!githubLink}
           onClick={() => openExternalLink(githubLink)}
         />
-        <Button type="text" icon={<BellOutlined />} aria-label="通知中心" onClick={() => history.push('/system/notifications')} />
+        <MessageCenterDrawer />
         <Dropdown
           menu={{
             items: userMenuItems,

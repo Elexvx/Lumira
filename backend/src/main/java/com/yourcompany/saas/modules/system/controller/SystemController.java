@@ -51,19 +51,6 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.listPermissions(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
     }
 
-    @GetMapping("/notifications")
-    public ApiResponse<List<SystemVO.NotificationVO>> notifications() {
-        require("system:notification:view");
-        return ApiResponse.success(systemManagementAppService.listNotifications(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
-    }
-
-    @PostMapping("/notifications")
-    public ApiResponse<Boolean> createNotification(@Valid @RequestBody SystemDTO.NotificationCreateRequest request) {
-        require("system:notification:write");
-        systemManagementAppService.createNotification(securityContextFacade.getCurrentUser(), request);
-        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
-    }
-
     @GetMapping("/permissions/tree")
     public ApiResponse<List<SystemVO.PermissionTreeVO>> permissionTree() {
         require("system:role:view");

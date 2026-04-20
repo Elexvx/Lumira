@@ -107,12 +107,17 @@ const PersonalizationSettingsPage = () => {
         const normalizedUrl = normalizeUploadUrl(uploadedUrl);
         if (target === 'favicon') {
           brandingForm.setFieldValue('websiteFaviconUrl', normalizedUrl);
+          setPreviewState((prev) => ({ ...prev, websiteFaviconUrl: normalizedUrl }));
         } else if (target === 'logo') {
           brandingForm.setFieldValue('websiteLogoUrl', normalizedUrl);
+          setPreviewState((prev) => ({ ...prev, websiteLogoUrl: normalizedUrl }));
         } else {
           watermarkForm.setFieldValue('imageUrl', normalizedUrl);
+          setWatermarkPreview((prev) => ({ ...prev, imageUrl: normalizedUrl }));
         }
         message.success('图片已上传');
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : '图片上传失败，请稍后重试');
       } finally {
         setUploadingTarget(null);
       }

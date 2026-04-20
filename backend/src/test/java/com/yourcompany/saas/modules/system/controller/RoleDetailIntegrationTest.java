@@ -137,6 +137,25 @@ class RoleDetailIntegrationTest {
         Assertions.assertTrue(systemRootNode.path("routePath").isNull() || systemRootNode.path("routePath").asText().isBlank(), treeResponse.getBody());
         Assertions.assertNull(findNodeByPageName(treeBody.path("data"), "系统管理"), treeResponse.getBody());
 
+        ResponseEntity<String> menusResponse = restTemplate.exchange(
+                baseUrl + "/api/v1/system/menus",
+                HttpMethod.GET,
+                new HttpEntity<>(detailHeaders),
+                String.class
+        );
+        if (!menusResponse.getStatusCode().is2xxSuccessful()) {
+            System.out.println("Menus failed response body: " + menusResponse.getBody());
+        }
+        Assertions.assertTrue(menusResponse.getStatusCode().is2xxSuccessful(), menusResponse.getBody());
+
+        JsonNode menusBody = objectMapper.readTree(menusResponse.getBody());
+        Assertions.assertEquals("0", menusBody.path("code").asText(), menusResponse.getBody());
+        JsonNode systemRootMenu = findNodeByMenuCode(menusBody.path("data"), "system.root");
+        Assertions.assertNotNull(systemRootMenu, menusResponse.getBody());
+        Assertions.assertEquals("CATALOG", systemRootMenu.path("menuType").asText(), menusResponse.getBody());
+        Assertions.assertEquals("/system", systemRootMenu.path("path").asText(), menusResponse.getBody());
+        Assertions.assertTrue(systemRootMenu.path("component").isNull() || systemRootMenu.path("component").asText().isBlank(), menusResponse.getBody());
+
         JsonNode userCenterNode = findNodeByPageName(treeBody.path("data"), "用户中心");
         Assertions.assertNotNull(userCenterNode, treeResponse.getBody());
         Assertions.assertEquals("CATALOG", userCenterNode.path("nodeType").asText(), treeResponse.getBody());
@@ -183,6 +202,22 @@ class RoleDetailIntegrationTest {
         for (JsonNode node : nodes) {
             if (pageName.equals(node.path("pageName").asText())) {
                 return node;
+            }
+        }
+        return null;
+    }
+
+    private JsonNode findNodeByMenuCode(JsonNode nodes, String menuCode) {
+        for (JsonNode node : nodes) {
+            if (menuCode.equals(node.path("menuCode").asText())) {
+                return node;
+            }
+            JsonNode children = node.path("children");
+            if (children.isArray()) {
+                JsonNode childMatch = findNodeByMenuCode(children, menuCode);
+                if (childMatch != null) {
+                    return childMatch;
+                }
             }
         }
         return null;

@@ -58,11 +58,11 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
-SELECT 1001, 'system:notification:view', '查看通知中心', 'system', 'CORE', NULL, 0, 0, 0
+SELECT 1001, 'system:notification:view', '查看消息中心', 'system', 'CORE', NULL, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'system:notification:view');
 
 INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
-SELECT 1001, 'system:notification:write', '发布通知', 'system', 'CORE', NULL, 0, 0, 0
+SELECT 1001, 'system:notification:write', '发布站内信', 'system', 'CORE', NULL, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permission WHERE tenant_id = 1001 AND permission_key = 'system:notification:write');
 
 INSERT INTO sys_permission (tenant_id, permission_key, permission_name, permission_group, source_type, plugin_code, created_by, updated_by, deleted)
@@ -99,7 +99,7 @@ INSERT INTO sys_menu (
     id, tenant_id, parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no, permission_key,
     status, created_by, updated_by, deleted
 )
-SELECT 3026, 1001, 3002, 'system.notifications', '通知中心', 'MENU', '/system/notifications', '@/pages/system/notifications/index', 'NotificationOutlined', 22, 'system:notification:view',
+SELECT 3026, 1001, 3002, 'system.notifications', '消息中心', 'MENU', '/system/notifications', '@/pages/system/notifications/index', 'NotificationOutlined', 22, 'system:notification:view',
        'ENABLED', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1001 AND menu_code = 'system.notifications');
 
@@ -107,6 +107,6 @@ INSERT INTO sys_menu (
     id, tenant_id, parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no, permission_key,
     status, created_by, updated_by, deleted
 )
-SELECT 4026, 1002, 4002, 'system.notifications', '通知中心', 'MENU', '/system/notifications', '@/pages/system/notifications/index', 'NotificationOutlined', 22, 'system:notification:view',
+SELECT 4026, 1002, 4002, 'system.notifications', '消息中心', 'MENU', '/system/notifications', '@/pages/system/notifications/index', 'NotificationOutlined', 22, 'system:notification:view',
        'ENABLED', 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE tenant_id = 1002 AND menu_code = 'system.notifications');

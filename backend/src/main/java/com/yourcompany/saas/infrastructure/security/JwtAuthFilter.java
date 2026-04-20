@@ -3,14 +3,11 @@ package com.yourcompany.saas.infrastructure.security;
 import com.yourcompany.saas.common.constant.HeaderConstants;
 import com.yourcompany.saas.common.enums.ErrorCode;
 import com.yourcompany.saas.common.exception.BizException;
+import com.yourcompany.saas.infrastructure.security.CurrentUser;
 import com.yourcompany.saas.infrastructure.security.model.AuthSession;
-import com.yourcompany.saas.infrastructure.security.model.TokenClaims;
-import com.yourcompany.saas.infrastructure.security.model.TokenType;
-import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
-import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
-import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
 import com.yourcompany.saas.infrastructure.observability.TraceContext;
-import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
+import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
+import com.yourcompany.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,7 +21,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 
@@ -33,25 +29,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     public static final String AUTH_BIZ_EXCEPTION_ATTR = "auth.bizException";
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
 
-    private final JwtTokenService jwtTokenService;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final AuthSessionStore authSessionStore;
-    private final PermissionSnapshotService permissionSnapshotService;
-    private final SecuritySettingsService securitySettingsService;
     private final ObjectMapper objectMapper;
 
     public JwtAuthFilter(
-            JwtTokenService jwtTokenService,
+            SessionAuthenticationService sessionAuthenticationService,
             AuthSessionStore authSessionStore,
-            PermissionSnapshotService permissionSnapshotService,
-            SecuritySettingsService securitySettingsService,
             ObjectMapper objectMapper
     ) {
-        this.jwtTokenService = jwtTokenService;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.authSessionStore = authSessionStore;
-        this.permissionSnapshotService = permissionSnapshotService;
-        this.securitySettingsService = securitySettingsService;
         this.objectMapper = objectMapper;
     }
 
@@ -71,28 +60,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            TokenClaims claims = jwtTokenService.parseToken(token);
-            if (claims.getTokenType() != TokenType.ACCESS) {
-                writeUnauthorizedResponse(request, response, new BizException(
-                        ErrorCode.SESSION_EXPIRED,
-                        "accessToken类型非法",
-                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-                ));
-                return;
-            }
-
-            AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())
-                    .orElseThrow(() -> new BizException(
-                            ErrorCode.SESSION_EXPIRED,
-                            "会话不存在或已失效",
-                            ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-                    ));
-
+            SessionAuthenticationService.AuthenticatedAccess authenticatedAccess = sessionAuthenticationService.authenticateAccessToken(token);
+            AuthSession session = authenticatedAccess.session();
             Instant now = Instant.now();
-            long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
-            validateSession(claims, session, now, idleTimeoutSeconds);
-            setAuthentication(claims, session);
-            if (shouldPersistActivity(session, now, idleTimeoutSeconds)) {
+            setAuthentication(authenticatedAccess.currentUser());
+            if (sessionAuthenticationService.shouldPersistActivity(session, now)) {
                 session.setLastActivityAt(now);
                 authSessionStore.save(session);
             }
@@ -114,68 +86,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void validateSession(TokenClaims claims, AuthSession session, Instant now, long idleTimeoutSeconds) {
-        if (!session.getUserId().equals(claims.getUserId())) {
-            invalidateSession(session, "token与会话不匹配");
-        }
-        if (session.getSessionVersion() == null || !session.getSessionVersion().equals(claims.getSessionVersion())) {
-            invalidateSession(session, "会话版本已变更，请重新登录");
-        }
-        if (!securitySettingsService.isAllowMultiDeviceLogin()) {
-            String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId()).orElse(null);
-            if (latestSessionId == null || !session.getSessionId().equals(latestSessionId)) {
-                invalidateSession(session, "当前账号已在其他设备登录，请重新登录");
-            }
-        }
-        if (jwtTokenService.isExpired(session.getExpireTime())) {
-            invalidateSession(session, "会话已过期，请重新登录");
-        }
-        Instant lastActivityAt = session.getLastActivityAt() != null ? session.getLastActivityAt() : session.getLoginTime();
-        if (lastActivityAt != null && idleTimeoutSeconds > 0) {
-            Duration idleDuration = Duration.between(lastActivityAt, now);
-            if (idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) >= 0) {
-                invalidateSession(session, "会话空闲超时，请重新登录");
-            }
-        }
-    }
-
-    private boolean shouldPersistActivity(AuthSession session, Instant now, long idleTimeoutSeconds) {
-        Instant lastActivityAt = session.getLastActivityAt();
-        if (lastActivityAt == null) {
-            return true;
-        }
-        Duration elapsed = Duration.between(lastActivityAt, now);
-        long throttleSeconds = idleTimeoutSeconds > 0
-                ? Math.min(LAST_ACTIVITY_WRITE_THROTTLE_SECONDS, Math.max(5L, idleTimeoutSeconds / 2))
-                : LAST_ACTIVITY_WRITE_THROTTLE_SECONDS;
-        return elapsed.compareTo(Duration.ofSeconds(throttleSeconds)) >= 0;
-    }
-
-    private void invalidateSession(AuthSession session, String message) {
-        authSessionStore.remove(session, true);
-        throw new BizException(
-                ErrorCode.SESSION_EXPIRED,
-                message,
-                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
-        );
-    }
-
-    private void setAuthentication(TokenClaims claims, AuthSession session) {
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
-                session.getCurrentTenantId(),
-                claims.getUserId()
-        );
-        CurrentUser currentUser = new CurrentUser();
-        currentUser.setUserId(claims.getUserId());
-        currentUser.setUsername(claims.getUsername());
-        currentUser.setCurrentTenantId(session.getCurrentTenantId());
-        currentUser.setSessionId(claims.getSessionId());
-        currentUser.setSessionVersion(session.getSessionVersion());
-        currentUser.setAuthenticated(true);
-        currentUser.setPermissions(snapshot.getPermissions());
-
+    private void setAuthentication(CurrentUser authenticatedUser) {
         UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(currentUser, null, Collections.emptyList());
+                new UsernamePasswordAuthenticationToken(authenticatedUser, null, Collections.emptyList());
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 

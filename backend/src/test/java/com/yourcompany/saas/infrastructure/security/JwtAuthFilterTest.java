@@ -7,6 +7,7 @@ import com.yourcompany.saas.infrastructure.security.model.TokenClaims;
 import com.yourcompany.saas.infrastructure.security.model.TokenType;
 import com.yourcompany.saas.infrastructure.security.service.AuthSessionStore;
 import com.yourcompany.saas.infrastructure.security.service.JwtTokenService;
+import com.yourcompany.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.yourcompany.saas.infrastructure.security.service.SecuritySettingsService;
 import com.yourcompany.saas.modules.iam.service.PermissionSnapshotService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -96,12 +97,16 @@ class JwtAuthFilterTest {
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
         StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
         StubJwtTokenService jwtTokenService = new StubJwtTokenService(securitySettingsService);
-
-        JwtAuthFilter filter = new JwtAuthFilter(
+        SessionAuthenticationService sessionAuthenticationService = new SessionAuthenticationService(
                 jwtTokenService,
                 authSessionStore,
                 new StubPermissionSnapshotService(),
-                securitySettingsService,
+                securitySettingsService
+        );
+
+        JwtAuthFilter filter = new JwtAuthFilter(
+                sessionAuthenticationService,
+                authSessionStore,
                 new ObjectMapper() {
                     @Override
                     public String writeValueAsString(Object value) {

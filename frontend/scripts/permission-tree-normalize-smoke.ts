@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { PermissionTreeRecord } from '../src/types/api';
 import { realPageRouteMetaMap, realPageRoutePaths } from '../src/routes/meta';
 import {
+  buildPermissionTreeData,
   collectActionPermissionPageMap,
   collectExpandableKeys,
   collectPermissionKeyToPageKeyMap,
@@ -86,6 +87,8 @@ assert.equal(mismatchedPage?.routeMatched, false, 'mismatched route should be fl
 
 const selectablePages = collectSelectablePages(normalized);
 assert.equal(selectablePages.length, 2, 'only valid PAGE nodes should be selectable');
+const treeData = buildPermissionTreeData(normalized);
+assert.equal(treeData[0]?.disableCheckbox, false, 'catalog nodes with children should not be forced disabled');
 assert.deepEqual(collectExpandableKeys(normalized), ['system'], 'catalog root should still be expandable');
 assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:config:view')?.length, 1, 'duplicate route path should be deduplicated');
 assert.equal(collectActionPermissionPageMap(normalized).size, 0, 'no action permissions are present in the smoke tree');
