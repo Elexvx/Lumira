@@ -314,7 +314,9 @@ const Login = () => {
       <LoginFormPage<LoginFormValues>
         form={loginForm}
         title={brandingSettings.websiteName}
-        subTitle="后台管理系统登录"
+        subTitle="账号密码登录"
+        logo={brandingSettings.websiteLogoUrl || undefined}
+        actions={null}
         initialValues={{ remember: true }}
         message={loginError ? <Alert showIcon type={loginError.type} message={loginError.message} /> : false}
         onFinish={handleSubmit}
@@ -328,12 +330,13 @@ const Login = () => {
         }}
         containerStyle={{
           width: '100%',
-          maxWidth: 360,
+          maxWidth: 440,
         }}
         style={{
           width: '100%',
-          height: '100%',
+          minHeight: '100%',
         }}
+        mainStyle={{ width: '100%' }}
       >
         <LoginFormFields
           pendingSecondFactorLogin={pendingSecondFactorLogin}

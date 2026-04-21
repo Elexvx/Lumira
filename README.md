@@ -222,9 +222,9 @@ pnpm typecheck
 
 ### 后端
 
-- `src/main/java/com/yourcompany/saas/common/`：统一返回体、错误码、异常和通用工具。
-- `src/main/java/com/yourcompany/saas/infrastructure/`：安全、租户、Redis、Trace、配置等基础设施。
-- `src/main/java/com/yourcompany/saas/modules/`：按业务域拆分的功能模块。
+- `src/main/java/com/legendary/invention/saas/common/`：统一返回体、错误码、异常和通用工具。
+- `src/main/java/com/legendary/invention/saas/infrastructure/`：安全、租户、Redis、Trace、配置等基础设施。
+- `src/main/java/com/legendary/invention/saas/modules/`：按业务域拆分的功能模块。
 - `src/main/resources/db/migration/`：Flyway 数据库脚本。
 
 ## 推荐阅读

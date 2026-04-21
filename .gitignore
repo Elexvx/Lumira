@@ -3,7 +3,20 @@ node_modules/
 frontend/dist/
 frontend/src/.umi/
 frontend/src/.umi-production/
+frontend/.umi/
+frontend/.umi-production/
+frontend/.cache/
+frontend/playwright-report/
+frontend/test-results/
+.umi/
+.umi-production/
+.playwright-cli/
 frontend/package-lock.json
+*.log
+*.tmp
+*.cache
+*.pid
+*.seed
 
 # Java
 **/target/
