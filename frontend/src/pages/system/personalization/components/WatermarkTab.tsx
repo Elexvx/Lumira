@@ -1,5 +1,5 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Image, Input, InputNumber, Segmented, Space, Switch, Typography, Upload, Watermark, theme } from 'antd';
+import { Button, Card, Empty, Form, Image, Input, InputNumber, Segmented, Space, Switch, Typography, Upload, Watermark, theme } from 'antd';
 import type { FormProps } from 'antd';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { BrandingSettings, WatermarkSettings } from '@/types/api';
@@ -61,7 +61,7 @@ export const WatermarkTab = ({
                 {watermarkPreview.imageUrl ? (
                   <Image width={180} height={100} preview={false} src={normalizeUploadUrl(watermarkPreview.imageUrl)} style={{ objectFit: 'contain' }} />
                 ) : (
-                  <Typography.Text type="secondary">未上传</Typography.Text>
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
                 )}
               </div>
             </Card>

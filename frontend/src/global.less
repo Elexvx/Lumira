@@ -326,61 +326,9 @@ body,
     width: 100%;
   }
 
-  .saas-profile-avatar-field {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-  }
-
   .saas-profile-page__descriptions {
     width: 100%;
   }
-}
-
-.saas-profile-avatar-trigger {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.saas-profile-avatar-trigger[disabled] {
-  cursor: wait;
-  opacity: 0.72;
-}
-
-.saas-profile-avatar-trigger:focus-visible {
-  outline: 2px solid #1677ff;
-  outline-offset: 3px;
-}
-
-.saas-profile-avatar-trigger__avatar {
-  pointer-events: none;
-}
-
-.saas-profile-avatar-trigger__overlay {
-  position: absolute;
-  inset: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.28);
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-.saas-profile-avatar-trigger:hover .saas-profile-avatar-trigger__overlay,
-.saas-profile-avatar-trigger:focus-visible .saas-profile-avatar-trigger__overlay {
-  opacity: 1;
 }
 
 .saas-drawer-footer {

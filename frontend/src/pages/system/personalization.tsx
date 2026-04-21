@@ -22,6 +22,20 @@ type PersonalizationTabKey = 'branding' | 'watermark' | 'agreement';
 type UploadTarget = 'favicon' | 'logo' | 'watermark';
 type BrandingClearField = 'websiteFaviconUrl' | 'websiteLogoUrl';
 
+const MAX_IMAGE_UPLOAD_SIZE = 5 * 1024 * 1024;
+
+const isAllowedImageFile = (target: UploadTarget, file: File) => {
+  const lowerName = file.name.toLowerCase();
+  const isIcoFile = lowerName.endsWith('.ico') || file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon';
+  const isImageFile = file.type.startsWith('image/');
+
+  if (target === 'favicon') {
+    return isIcoFile || isImageFile;
+  }
+
+  return isImageFile;
+};
+
 const normalizeTabKey = (value?: string | null): PersonalizationTabKey =>
   value === 'watermark' ? 'watermark' : value === 'agreement' ? 'agreement' : 'branding';
 
@@ -101,6 +115,16 @@ const PersonalizationSettingsPage = () => {
 
   const handleUpload = useCallback(
     async (target: UploadTarget, file: File) => {
+      if (!isAllowedImageFile(target, file)) {
+        message.error(target === 'favicon' ? '请上传图片或 .ico 文件' : '请上传图片文件');
+        return;
+      }
+
+      if (file.size > MAX_IMAGE_UPLOAD_SIZE) {
+        message.error('图片过大，请上传不超过 5MB 的文件');
+        return;
+      }
+
       setUploadingTarget(target);
       try {
         const uploadedUrl = await systemService.uploadImage(file, { autoRedirectOnUnauthorized: false });
@@ -147,10 +171,15 @@ const PersonalizationSettingsPage = () => {
     setWatermarkSaving(true);
     try {
       const watermarkValues = await watermarkForm.validateFields();
+      const resolvedMode = watermarkValues.mode === 'IMAGE' && !watermarkValues.imageUrl ? 'TEXT' : watermarkValues.mode;
+      if (resolvedMode !== watermarkValues.mode) {
+        message.warning('未上传水印图片时，将自动回退为文字水印');
+      }
       const updatedWatermark = await systemService.updateWatermarkSettings(
         {
           ...DEFAULT_WATERMARK_SETTINGS,
           ...watermarkValues,
+          mode: resolvedMode,
           imageUrl: normalizeUploadUrl(watermarkValues.imageUrl),
         },
         { autoRedirectOnUnauthorized: false },

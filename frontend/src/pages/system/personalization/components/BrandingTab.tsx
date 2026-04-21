@@ -1,5 +1,5 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Image, Input, Space, Typography, Upload } from 'antd';
+import { Button, Card, Empty, Form, Image, Input, Space, Typography, Upload } from 'antd';
 import type { FormProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
@@ -40,7 +40,7 @@ export const BrandingTab = ({
               {previewState.websiteFaviconUrl ? (
                 <Image width={72} height={72} preview={false} src={normalizeUploadUrl(previewState.websiteFaviconUrl)} style={{ objectFit: 'contain' }} />
               ) : (
-                <Typography.Text type="secondary">未上传</Typography.Text>
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
               )}
             </div>
           </Card>
@@ -93,7 +93,7 @@ export const BrandingTab = ({
                   style={{ objectFit: 'contain' }}
                 />
               ) : (
-                <Typography.Text type="secondary">未上传</Typography.Text>
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
               )}
             </div>
           </Card>

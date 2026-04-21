@@ -51,20 +51,17 @@ export const ProfileBasicCard = ({
         </Form.Item>
 
         {visibleProfileFields.has('avatarUrl') ? (
-          <div className="saas-profile-avatar-field">
-            <ImgCrop rotationSlider aspect={1} modalTitle="裁切头像" beforeCrop={onAvatarBeforeCrop}>
-              <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
-                <button type="button" className="saas-profile-avatar-trigger" aria-label="点击修改头像" disabled={avatarUploading}>
-                  <Avatar
-                    size={96}
-                    src={avatarValue || currentUser?.avatarUrl || undefined}
-                    icon={<UserOutlined />}
-                    className="saas-profile-avatar-trigger__avatar"
-                  />
-                  <span className="saas-profile-avatar-trigger__overlay">{avatarUploading ? '上传中' : <CameraOutlined />}</span>
-                </button>
-              </Upload>
-            </ImgCrop>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <Space direction="vertical" align="center" size={12}>
+              <Avatar size={96} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+              <ImgCrop rotationSlider aspect={1} modalTitle="裁切头像" beforeCrop={onAvatarBeforeCrop}>
+                <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
+                  <Button icon={<CameraOutlined />} loading={avatarUploading}>
+                    上传头像
+                  </Button>
+                </Upload>
+              </ImgCrop>
+            </Space>
           </div>
         ) : null}
 

@@ -1,6 +1,6 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
-import { Alert, Button, Form, Input, Select, Spin, Typography } from 'antd';
+import { Alert, Button, Form, Image, Input, Select, Skeleton, Space, Typography } from 'antd';
 import type { CaptchaChallenge, LoginResponse } from '@/types/api';
 
 interface LoginFormFieldsProps {
@@ -65,6 +65,7 @@ export const LoginFormFields = ({
         <Alert showIcon type="info" message={pendingSecondFactorPrompt} />
         {pendingSecondFactorOptions.length > 1 ? (
           <Select
+            size="large"
             value={selectedSecondFactorChallengeId || pendingSecondFactorOption?.challengeId}
             onChange={onSecondFactorChange}
             options={pendingSecondFactorOptions.map((option) => ({
@@ -89,30 +90,48 @@ export const LoginFormFields = ({
         </Button>
       </>
     ) : null}
-    {loginEncryptionLoading ? <Typography.Text type="secondary">正在加载登录加密信息...</Typography.Text> : null}
+    {loginEncryptionLoading ? (
+      <Typography.Text type="secondary">
+        <Space size={8}>
+          <Skeleton.Avatar active size="small" shape="circle" />
+          正在加载登录加密信息...
+        </Space>
+      </Typography.Text>
+    ) : null}
     {!pendingSecondFactorLogin && securityCaptchaEnabled ? (
-      <div className="saas-login-page__captcha-section">
-        <div className="saas-login-page__captcha-input">
-          <Form.Item key={captchaChallenge?.captchaId || 'captcha-code'} name="captchaCode" rules={[{ required: true, message: '请输入验证码' }]}>
-            <Input size="large" autoComplete="off" spellCheck={false} maxLength={8} placeholder="请输入验证码" aria-label="验证码" />
-          </Form.Item>
-        </div>
-        <button type="button" className="saas-login-page__captcha-media" title="刷新验证码" aria-label="刷新验证码" onClick={onRefreshCaptcha}>
-          <span className="saas-login-page__captcha-image">
-            {captchaLoading ? (
-              <span className="saas-login-page__captcha-loading">
-                <Spin size="small" />
-              </span>
-            ) : captchaImageLoadFailed ? (
-              <Typography.Text className="saas-login-page__captcha-placeholder">图片加载失败，点击重试</Typography.Text>
-            ) : captchaChallenge?.imageUrl ? (
-              <img src={captchaChallenge.imageUrl} alt="验证码" onError={onCaptchaImageError} />
-            ) : (
-              <Typography.Text className="saas-login-page__captcha-placeholder">点击刷新验证码</Typography.Text>
-            )}
-          </span>
-        </button>
-      </div>
+      <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
+        <Form.Item
+          key={captchaChallenge?.captchaId || 'captcha-code'}
+          name="captchaCode"
+          rules={[{ required: true, message: '请输入验证码' }]}
+          style={{ marginBottom: 0, flex: 1 }}
+        >
+          <Input size="large" autoComplete="off" spellCheck={false} maxLength={8} placeholder="请输入验证码" aria-label="验证码" />
+        </Form.Item>
+        <Button
+          size="large"
+          aria-label="刷新验证码"
+          title="点击刷新验证码"
+          onClick={onRefreshCaptcha}
+          style={{ width: 150, height: 'auto', padding: 0, overflow: 'hidden' }}
+        >
+          {captchaLoading ? (
+            <Skeleton.Image active style={{ width: '100%', height: 38 }} />
+          ) : captchaImageLoadFailed ? (
+            <Typography.Text type="secondary">点击重试</Typography.Text>
+          ) : captchaChallenge?.imageUrl ? (
+            <Image
+              src={captchaChallenge.imageUrl}
+              alt="验证码"
+              preview={false}
+              onError={onCaptchaImageError}
+              style={{ width: '100%', height: 38, objectFit: 'cover' }}
+            />
+          ) : (
+            <Typography.Text type="secondary">点击刷新</Typography.Text>
+          )}
+        </Button>
+      </Space.Compact>
     ) : null}
     <div className="saas-login-page__actions">
       <ProFormCheckbox noStyle name="remember">
