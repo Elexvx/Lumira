@@ -33,14 +33,20 @@ export const BrandingTab = ({
       <Form.Item name="websiteFaviconUrl" hidden>
         <Input />
       </Form.Item>
-      <Form.Item label="网站 Icon（本地上传）" extra="使用 antd Upload 上传后回填地址。">
+      <Form.Item label="网站 Icon（本地上传）">
         <Space align="start" size={16} wrap>
-          <Card size="small" style={{ width: 104 }} bodyStyle={{ padding: 12 }}>
-            <div style={{ width: '100%', height: 72, display: 'grid', placeItems: 'center' }}>
+          <Card size="small" style={{ width: 104, height: 104 }} bodyStyle={{ padding: 12, height: '100%' }}>
+            <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center' }}>
               {previewState.websiteFaviconUrl ? (
                 <Image width={72} height={72} preview={false} src={normalizeUploadUrl(previewState.websiteFaviconUrl)} style={{ objectFit: 'contain' }} />
               ) : (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={false}
+                  styles={{
+                    image: { height: 28, marginBottom: 0 },
+                  }}
+                />
               )}
             </div>
           </Card>
@@ -80,7 +86,7 @@ export const BrandingTab = ({
       <Form.Item name="websiteLogoUrl" hidden>
         <Input />
       </Form.Item>
-      <Form.Item label="Logo（本地上传）" extra="Logo 会显示在顶部导航和登录页。">
+      <Form.Item label="Logo（本地上传）">
         <Space align="start" size={16} wrap>
           <Card size="small" style={{ width: 200 }} bodyStyle={{ padding: 12 }}>
             <div style={{ width: '100%', height: 72, display: 'grid', placeItems: 'center' }}>
@@ -119,18 +125,10 @@ export const BrandingTab = ({
         </Space>
       </Form.Item>
 
-      <Form.Item
-        name="githubLinkUrl"
-        label="GitHub 链接"
-        extra="顶部 GitHub 图标点击后会跳转到这里，支持完整网址或以 / 开头的站内路径。"
-      >
+      <Form.Item name="githubLinkUrl" label="GitHub 链接">
         <Input allowClear placeholder="https://github.com/your-org/your-repo" />
       </Form.Item>
-      <Form.Item
-        name="helpLinkUrl"
-        label="帮助链接"
-        extra="顶部帮助图标点击后会跳转到这里，支持完整网址或以 / 开头的站内路径。"
-      >
+      <Form.Item name="helpLinkUrl" label="帮助链接">
         <Input allowClear placeholder="https://docs.example.com/help" />
       </Form.Item>
       <Form.Item name="footerIcp" label="Footer ICP">

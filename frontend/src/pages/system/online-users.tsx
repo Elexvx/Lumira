@@ -56,6 +56,7 @@ const OnlineUsersPage = () => {
     };
 
     const stop = connectOnlineSessionStream({
+      currentSessionId: currentUser.sessionId,
       onEvent: (event) => {
         if (event.action !== 'HEARTBEAT') {
           scheduleReload();

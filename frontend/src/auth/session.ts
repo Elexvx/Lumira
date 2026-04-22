@@ -1,6 +1,7 @@
 import { authService } from '@/services/auth';
 import { systemService } from '@/services/system';
 import { tokenManager } from '@/auth/token';
+import { LOGIN_PATH } from '@/app.constants';
 import { tenantContext } from '@/tenant/context';
 import { syncTenantFromServer } from '@/tenant/actions';
 import { storage } from '@/cache/storage';
@@ -46,8 +47,16 @@ export const clearAuthSession = () => {
   tenantContext.clearTenantContext();
 };
 
-export const performLogout = async (options: { reason?: LogoutReason } = {}) => {
+export const performLogout = async (options: { reason?: LogoutReason; hardReload?: boolean } = {}) => {
   const reason = options.reason || 'user_initiated';
+  const redirectToLogin = () => {
+    if (options.hardReload) {
+      window.location.replace(LOGIN_PATH);
+      return;
+    }
+
+    history.replace(LOGIN_PATH);
+  };
 
   if (reason === 'user_initiated' && isLoggedIn()) {
     const tokenState = tokenManager.getTokenState();
@@ -57,7 +66,7 @@ export const performLogout = async (options: { reason?: LogoutReason } = {}) => 
       const refreshed = await tryRefreshToken();
       if (!refreshed) {
         clearAuthSession();
-        history.replace('/user/login');
+        redirectToLogin();
         return;
       }
     }
@@ -72,7 +81,7 @@ export const performLogout = async (options: { reason?: LogoutReason } = {}) => 
     }
   }
   clearAuthSession();
-  history.replace('/user/login');
+  redirectToLogin();
 };
 
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Form, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
+import { isLoggedIn } from '@/auth/session';
 import { loadCaptchaChallenge } from '@/auth/captcha';
 import { createCaptchaRefreshController } from '@/auth/captchaRefreshController';
 import { authService } from '@/services/auth';
@@ -16,6 +17,7 @@ import { initializeAfterLogin } from '@/auth/session';
 import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { createLoginStorageHandler, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
 import { LoginFormFields } from '@/pages/user/login/components/LoginFormFields';
@@ -48,6 +50,7 @@ const Login = () => {
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const securitySettingsRef = useRef(securitySettings);
   const loginEncryptionLoadPromiseRef = useRef<Promise<LoginEncryptionKey | null> | null>(null);
+  const redirectTarget = resolveLoginRedirectTarget(location.search);
   const captchaRefreshControllerRef = useRef(
     createCaptchaRefreshController({
       getCaptchaEnabled: () => securitySettingsRef.current.captchaEnabled,
@@ -139,6 +142,24 @@ const Login = () => {
       loginForm.setFieldValue('captchaCode', undefined);
     }
   }, [captchaChallenge?.captchaId, loginForm, securitySettings.captchaEnabled]);
+
+  useEffect(() => {
+    const alreadyAuthenticated = isLoggedIn() || Boolean(initialState?.currentUser?.sessionId);
+    if (!alreadyAuthenticated) {
+      return;
+    }
+
+    window.location.replace(redirectTarget);
+  }, [initialState?.currentUser?.sessionId, redirectTarget]);
+
+  useEffect(() => {
+    const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
+      window.location.replace(target);
+    });
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [redirectTarget]);
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
@@ -238,9 +259,7 @@ const Login = () => {
         }));
       });
 
-      const searchParams = new URLSearchParams(location.search);
-      const redirect = searchParams.get('redirect') || '/dashboard/home';
-      history.replace(redirect);
+      history.replace(redirectTarget);
       return true;
     } catch (error) {
       if (error instanceof ApiRequestError) {

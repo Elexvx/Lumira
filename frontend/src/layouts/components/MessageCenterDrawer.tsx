@@ -81,12 +81,10 @@ export const MessageCenterDrawer = () => {
         title="消息中心"
         open={open}
         onClose={() => handleOpenChange(false)}
-        width={isMobile ? '100vw' : 860}
+        width={isMobile ? '100vw' : 980}
         destroyOnClose={false}
         styles={{
-          body: {
-            padding: isMobile ? 16 : 20,
-          },
+          body: { padding: 0 },
         }}
       >
         <MessageCenterContent onUnreadCountChange={setUnreadCount} />
