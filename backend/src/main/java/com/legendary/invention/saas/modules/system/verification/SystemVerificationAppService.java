@@ -38,6 +38,7 @@ public class SystemVerificationAppService {
     private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {
     };
     private static final String FACTOR_TOTP = "totp";
+    private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
     private static final String FACTOR_SMS = "sms";
     private static final String CHALLENGE_TYPE_BIND = "BIND";
     private static final String CHALLENGE_TYPE_LOGIN = "LOGIN";
@@ -79,8 +80,33 @@ public class SystemVerificationAppService {
         return resolveProvider(tenantId, userId, normalizeFactorCode(factorCode));
     }
 
+    public List<LoginResponseVO.SecondFactorOptionVO> listLoginOptions(SysUserEntity user, Long tenantId) {
+        return collectSecondFactorOptions(user, tenantId);
+    }
+
+    public SystemVO.VerificationChallengeVO bindCurrentUser(CurrentUser currentUser, String factorCode) {
+        return bind(requireTenantId(currentUser), currentUser.getUserId(), factorCode);
+    }
+
+    public boolean unbindCurrentUser(CurrentUser currentUser, String factorCode) {
+        return unbind(requireTenantId(currentUser), currentUser.getUserId(), factorCode);
+    }
+
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
         return loadSmsSettings(tenantId);
+    }
+
+    public SystemVO.VerificationSettingsVO getVerificationSettings(Long tenantId) {
+        return loadVerificationSettings(tenantId);
+    }
+
+    @Transactional
+    public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
+        Long tenantId = requireTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        boolean enabled = request.getEnabled() == null ? isTotpEnabled(tenantId) : request.getEnabled();
+        upsertPlatformConfigValue(tenantId, TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId);
+        return loadVerificationSettings(tenantId);
     }
 
     @Transactional
@@ -160,6 +186,9 @@ public class SystemVerificationAppService {
         String normalizedFactor = normalizeFactorCode(factorCode);
         ensureLoginSupported(normalizedFactor);
         ChallengeRecord challenge = loadChallenge(challengeId, normalizedFactor, CHALLENGE_TYPE_LOGIN);
+        if (FACTOR_TOTP.equals(normalizedFactor) && !isTotpEnabled(tenantId)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先在系统中启用 2FA 功能");
+        }
         if (FACTOR_SMS.equals(normalizedFactor)) {
             verifySmsCode(challenge, verificationCode);
         } else {
@@ -219,6 +248,9 @@ public class SystemVerificationAppService {
                     properties.isExposeDebugCode() ? verificationCode : null
             );
         }
+        if (FACTOR_TOTP.equals(normalizedFactor) && !isTotpEnabled(tenantId)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先在系统中启用 2FA 功能");
+        }
         VerificationBindingRecord binding = loadEnabledBinding(tenantId, userId, normalizedFactor)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "验证方式未启用"));
         ChallengeRecord challenge = createChallenge(tenantId, userId, normalizedFactor, CHALLENGE_TYPE_LOGIN, binding);
@@ -230,18 +262,20 @@ public class SystemVerificationAppService {
             return List.of();
         }
         List<LoginResponseVO.SecondFactorOptionVO> result = new ArrayList<>();
-        loadBinding(tenantId, user.getId(), FACTOR_TOTP)
-                .filter(binding -> binding.enabled() && binding.bound())
-                .ifPresent(binding -> {
-                    SystemVO.VerificationChallengeVO challenge = startLoginChallenge(tenantId, user.getId(), FACTOR_TOTP);
-                    result.add(buildSecondFactorOption(
-                            FACTOR_TOTP,
-                            "2FA",
-                            challenge.getChallengeId(),
-                            binding.maskedContact(),
-                            "请输入认证器中的 6 位验证码完成验证"
-                    ));
-                });
+        if (isTotpEnabled(tenantId)) {
+            loadBinding(tenantId, user.getId(), FACTOR_TOTP)
+                    .filter(binding -> binding.enabled() && binding.bound())
+                    .ifPresent(binding -> {
+                        SystemVO.VerificationChallengeVO challenge = startLoginChallenge(tenantId, user.getId(), FACTOR_TOTP);
+                        result.add(buildSecondFactorOption(
+                                FACTOR_TOTP,
+                                "2FA",
+                                challenge.getChallengeId(),
+                                binding.maskedContact(),
+                                "请输入认证器中的 6 位验证码完成验证"
+                        ));
+                    });
+        }
 
         SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
         if (smsSettings.enabled() && smsSettings.configured() && StringUtils.hasText(user.getMobile())) {
@@ -277,6 +311,9 @@ public class SystemVerificationAppService {
     public SystemVO.VerificationVerificationVO completeSecondFactorLogin(SecondFactorCompleteRequest request, String loginIp, String userAgent) {
         String factorCode = normalizeFactorCode(request.getFactorCode());
         ChallengeRecord challenge = loadChallenge(request.getChallengeId(), factorCode, CHALLENGE_TYPE_LOGIN);
+        if (FACTOR_TOTP.equals(factorCode) && !isTotpEnabled(challenge.tenantId())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先在系统中启用 2FA 功能");
+        }
         if (FACTOR_SMS.equals(factorCode)) {
             verifySmsCode(challenge, request.getVerificationCode());
         } else {
@@ -304,6 +341,7 @@ public class SystemVerificationAppService {
         SystemVO.VerificationProviderVO provider = new SystemVO.VerificationProviderVO();
         provider.setFactorCode(definition.factorCode());
         provider.setFactorName(definition.factorName());
+        provider.setSystemEnabled(isTotpEnabled(tenantId));
         provider.setEnabled(binding.map(VerificationBindingRecord::enabled).orElse(false));
         provider.setBound(binding.map(VerificationBindingRecord::bound).orElse(false));
         provider.setEmailRequired(definition.emailRequired());
@@ -315,6 +353,7 @@ public class SystemVerificationAppService {
 
     private SystemVO.VerificationChallengeVO startBindChallenge(Long tenantId, Long userId, String factorCode) {
         ensureBindSupported(factorCode);
+        ensureTotpEnabled(tenantId);
         VerificationMethodDefinition definition = bindingDefinitionOf(factorCode);
         SysUserEntity user = requireUser(userId);
         validatePrerequisites(definition, user);
@@ -455,6 +494,42 @@ public class SystemVerificationAppService {
     }
 
     private void upsertSmsConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
+        Long existingId = queryConfigId(configKey, tenantId);
+        if (existingId == null) {
+            jdbcTemplate.update(
+                    """
+                            insert into sys_config (
+                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+                                created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                            """,
+                    tenantId,
+                    configKey,
+                    configName,
+                    configValue,
+                    remark,
+                    operatorId,
+                    operatorId
+            );
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        update sys_config
+                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
+                            updated_by = ?, updated_at = ?, deleted = 0
+                        where id = ?
+                        """,
+                configName,
+                configValue,
+                remark,
+                operatorId,
+                LocalDateTime.now(),
+                existingId
+        );
+    }
+
+    private void upsertPlatformConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
         Long existingId = queryConfigId(configKey, tenantId);
         if (existingId == null) {
             jdbcTemplate.update(
@@ -826,6 +901,9 @@ public class SystemVerificationAppService {
 
     private String resolveStatusMessage(VerificationMethodDefinition definition, VerificationBindingRecord binding, Long tenantId, Long userId) {
         SysUserEntity user = requireUser(userId);
+        if (!isTotpEnabled(tenantId)) {
+            return "系统未启用";
+        }
         if (definition.emailRequired() && !StringUtils.hasText(user.getEmail())) {
             return "请先补充邮箱后再启用该验证方式";
         }
@@ -854,6 +932,12 @@ public class SystemVerificationAppService {
     private void ensureBindSupported(String factorCode) {
         if (!FACTOR_TOTP.equals(factorCode)) {
             throw new BizException(ErrorCode.NOT_FOUND, "验证方式不存在");
+        }
+    }
+
+    private void ensureTotpEnabled(Long tenantId) {
+        if (!isTotpEnabled(tenantId)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先在系统中启用 2FA 功能");
         }
     }
 
@@ -916,6 +1000,17 @@ public class SystemVerificationAppService {
 
     private String normalizeConfigText(Object value) {
         return value == null ? "" : value.toString().trim();
+    }
+
+    private boolean isTotpEnabled(Long tenantId) {
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(TOTP_CONFIG_ENABLED_KEY));
+        return Boolean.parseBoolean(defaultIfBlank(values.get(TOTP_CONFIG_ENABLED_KEY), "true"));
+    }
+
+    private SystemVO.VerificationSettingsVO loadVerificationSettings(Long tenantId) {
+        SystemVO.VerificationSettingsVO settings = new SystemVO.VerificationSettingsVO();
+        settings.setEnabled(isTotpEnabled(tenantId));
+        return settings;
     }
 
     private String toJson(List<String> values) {

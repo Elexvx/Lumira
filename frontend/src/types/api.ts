@@ -328,6 +328,7 @@ export interface AuditLogRecord {
 export interface SecondFactorProviderStatus {
   factorCode: string;
   factorName: string;
+  systemEnabled?: boolean | null;
   enabled?: boolean | null;
   bound?: boolean | null;
   emailRequired?: boolean | null;
@@ -400,6 +401,14 @@ export interface SmsVerificationSettingsPayload {
   accessKeySecret?: string;
   endpoint?: string;
   region?: string;
+}
+
+export interface VerificationSettings {
+  enabled: boolean;
+}
+
+export interface VerificationSettingsPayload {
+  enabled?: boolean;
 }
 
 export interface SmtpTestPayload {

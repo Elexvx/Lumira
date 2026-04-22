@@ -70,6 +70,16 @@ public class SystemVerificationController {
         );
     }
 
+    @GetMapping("/settings")
+    public ApiResponse<SystemVO.VerificationSettingsVO> verificationSettings() {
+        CurrentUser currentUser = currentUser();
+        requireView();
+        return ApiResponse.success(
+                verificationAppService.getVerificationSettings(requireTenantId(currentUser)),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping("/providers/{factorCode}/bind")
     public ApiResponse<SystemVO.VerificationChallengeVO> bind(@PathVariable("factorCode") String factorCode) {
         CurrentUser currentUser = currentUser();
@@ -128,6 +138,16 @@ public class SystemVerificationController {
         require("system:verification:manage");
         return ApiResponse.success(
                 verificationAppService.updateSmsSettings(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/settings")
+    public ApiResponse<SystemVO.VerificationSettingsVO> updateVerificationSettings(@Valid @RequestBody SystemDTO.VerificationSettingsRequest request) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.updateVerificationSettings(currentUser, request),
                 TraceContext.getRequestId()
         );
     }

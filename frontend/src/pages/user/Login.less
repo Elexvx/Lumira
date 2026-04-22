@@ -7,6 +7,7 @@
   padding: 24px;
   box-sizing: border-box;
   background: var(--ant-color-bg-layout);
+  color: var(--ant-color-text-base);
 }
 
 .saas-login-page .ant-pro-form-login-page {
@@ -31,10 +32,15 @@
   max-width: 440px;
   margin: 0 auto;
   padding: 28px 32px 30px;
+  background: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
 }
 
 .saas-login-page .ant-pro-form-login-page-main {
   width: 100%;
+  background: transparent;
 }
 
 .saas-login-page .ant-pro-form-login-page-header {
@@ -68,6 +74,45 @@
 
 .saas-login-page .ant-pro-form-login-page-main .ant-form-item:last-child {
   margin-bottom: 0;
+}
+
+.saas-login-page .ant-input,
+.saas-login-page .ant-input-affix-wrapper {
+  background: var(--saas-input-bg);
+  color: var(--ant-color-text-base);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.saas-login-page .ant-input-affix-wrapper {
+  color: var(--ant-color-text-base);
+}
+
+.saas-login-page .ant-input,
+.saas-login-page .ant-input-affix-wrapper input {
+  caret-color: var(--ant-color-text-base);
+  color: var(--ant-color-text-base);
+  -webkit-text-fill-color: var(--ant-color-text-base);
+}
+
+.saas-login-page .ant-input::placeholder,
+.saas-login-page .ant-input-affix-wrapper input::placeholder {
+  color: var(--ant-color-text-quaternary) !important;
+  opacity: 1;
+}
+
+.saas-login-page .ant-input-affix-wrapper-focused,
+.saas-login-page .ant-input:focus,
+.saas-login-page .ant-input-focused,
+.saas-login-page .ant-input:hover {
+  background: var(--saas-input-bg);
+}
+
+.saas-login-page .ant-input-prefix,
+.saas-login-page .ant-input-suffix,
+.saas-login-page .ant-input-prefix .anticon,
+.saas-login-page .ant-input-suffix .anticon,
+.saas-login-page .ant-input-password-icon {
+  color: var(--ant-color-text-quaternary);
 }
 
 .saas-login-page__captcha-row {
@@ -118,6 +163,15 @@
   display: flex;
   align-items: center;
   min-height: 24px;
+  color: var(--ant-color-text-base);
+}
+
+.saas-login-page .ant-checkbox-wrapper {
+  color: inherit;
+}
+
+.saas-login-page .ant-checkbox-wrapper span:last-child {
+  color: inherit;
 }
 
 @media (max-width: 575px) {

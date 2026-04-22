@@ -314,12 +314,16 @@ const Login = () => {
         containerStyle={{
           width: '100%',
           maxWidth: 440,
+          background: 'transparent',
+          boxShadow: 'none',
+          border: 'none',
         }}
         style={{
           width: '100%',
           minHeight: '100%',
+          background: 'transparent',
         }}
-        mainStyle={{ width: '100%' }}
+        mainStyle={{ width: '100%', background: 'transparent' }}
       >
         <LoginFormFields
           pendingSecondFactorLogin={pendingSecondFactorLogin}
