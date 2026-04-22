@@ -1,5 +1,4 @@
 import { MessageOutlined, ReloadOutlined } from '@ant-design/icons';
-import { history } from '@umijs/max';
 import {
   Avatar,
   Badge,
@@ -298,10 +297,6 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
     return null;
   }
 
-  const openArchivePage = () => {
-    history.push('/system/notifications');
-  };
-
   return (
     <div className={className ? `saas-message-center ${className}` : 'saas-message-center'}>
       <Space className="saas-message-center__toolbar" align="center" size={12} wrap>
@@ -311,7 +306,6 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
           onChange={(value) => setFilter(value as MessageCenterFilter)}
         />
         <Space>
-          <Button onClick={openArchivePage}>站内信归档</Button>
           <Button
             icon={<ReloadOutlined />}
             onClick={() => void reloadCenter()}
@@ -333,9 +327,6 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
                 <Space wrap>
                   <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
                     重试
-                  </Button>
-                  <Button type="primary" onClick={openArchivePage}>
-                    打开站内信归档
                   </Button>
                 </Space>
               </Empty>
