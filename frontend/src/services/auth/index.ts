@@ -15,7 +15,7 @@ export interface RefreshTokenPayload {
 }
 
 export interface SecondFactorCompletePayload {
-  pluginCode: string;
+  factorCode: string;
   challengeId: string;
   verificationCode: string;
 }

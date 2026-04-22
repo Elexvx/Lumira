@@ -84,7 +84,7 @@ export const BindSecondFactorModal = ({
   <Modal
     title={
       bindingProvider
-        ? `${bindingProvider.pluginName || bindingProvider.pluginCode} · ${bindingIsSms ? '短信验证码绑定' : '2FA 绑定'}`
+        ? `${bindingProvider.factorName || bindingProvider.factorCode} · ${bindingIsSms ? '短信验证码绑定' : '2FA 绑定'}`
         : '二次验证绑定'
     }
     open={open}
@@ -175,8 +175,8 @@ export const BindSecondFactorModal = ({
               <Card loading />
             ) : bindingChallenge ? (
               <Descriptions {...singleColumnDescriptionsProps}>
-                <Descriptions.Item label="插件">{bindingChallenge.pluginName || bindingChallenge.pluginCode || '-'}</Descriptions.Item>
                 <Descriptions.Item label="验证方式">{bindingChallenge.factorName || '短信验证码'}</Descriptions.Item>
+                <Descriptions.Item label="标识">{bindingChallenge.factorCode || '-'}</Descriptions.Item>
                 <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
                 <Descriptions.Item label="提示信息">{bindingChallenge.promptMessage || '请输入收到的短信验证码'}</Descriptions.Item>
               </Descriptions>
@@ -254,10 +254,11 @@ export const BindSecondFactorModal = ({
                   <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={188} bordered />
                 </div>
                 <Descriptions {...singleColumnDescriptionsProps}>
-                  <Descriptions.Item label="插件">{bindingChallenge.pluginName || bindingChallenge.pluginCode || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="手动密钥">
-                    <Typography.Text copyable={{ text: bindingChallenge.setupSecret || '' }}>
+                <Descriptions.Item label="验证方式">{bindingChallenge.factorName || '2FA'}</Descriptions.Item>
+                <Descriptions.Item label="标识">{bindingChallenge.factorCode || '-'}</Descriptions.Item>
+                <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
+                <Descriptions.Item label="手动密钥">
+                  <Typography.Text copyable={{ text: bindingChallenge.setupSecret || '' }}>
                       {bindingChallenge.setupSecret || '-'}
                     </Typography.Text>
                   </Descriptions.Item>

@@ -11,6 +11,7 @@ import NoPermission from '@/pages/exception/NoPermission';
 import { backendRouteMeta } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
 import { DEFAULT_HOME_PATH, LAYOUT_HEADER_HEIGHT, LAYOUT_SIDER_WIDTH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
+import { resolveLayoutNavTheme } from '@/theme/runtime';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
 
@@ -19,14 +20,6 @@ type AntdIconComponent = ComponentType<Record<string, unknown>>;
 const ANT_DESIGN_ICONS = AntdIcons as unknown as Record<string, AntdIconComponent>;
 const OUTLINED_ICON_SUFFIX = 'Outlined';
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
-
-const resolveLayoutNavTheme = (): 'light' | 'realDark' => {
-  if (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark') {
-    return 'realDark';
-  }
-
-  return 'light';
-};
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 

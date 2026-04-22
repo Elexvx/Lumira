@@ -1,38 +1,29 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { ProFormCheckbox, ProFormText } from '@ant-design/pro-components';
-import { Alert, Button, Form, Image, Input, Select, Skeleton, Space, Typography } from 'antd';
+import { Alert, Button, Form, Image, Input, Skeleton, Space, Typography } from 'antd';
+import { getCaptchaValueFromEvent, shouldBlockCaptchaKey } from '@/pages/user/login/captchaInput';
 import type { CaptchaChallenge, LoginResponse } from '@/types/api';
 
 interface LoginFormFieldsProps {
   pendingSecondFactorLogin: LoginResponse | null;
-  pendingSecondFactorOptions: NonNullable<LoginResponse['secondFactorOptions']>;
-  pendingSecondFactorOption: NonNullable<LoginResponse['secondFactorOptions']>[number] | null;
   pendingSecondFactorPrompt: string;
-  selectedSecondFactorChallengeId: string | null;
   securityCaptchaEnabled: boolean;
   captchaChallenge: CaptchaChallenge | null;
   captchaLoading: boolean;
   captchaImageLoadFailed: boolean;
   loginEncryptionLoading: boolean;
-  onSecondFactorChange: (challengeId: string) => void;
-  onResetSecondFactorFlow: () => void;
   onRefreshCaptcha: () => void;
   onCaptchaImageError: () => void;
 }
 
 export const LoginFormFields = ({
   pendingSecondFactorLogin,
-  pendingSecondFactorOptions,
-  pendingSecondFactorOption,
   pendingSecondFactorPrompt,
-  selectedSecondFactorChallengeId,
   securityCaptchaEnabled,
   captchaChallenge,
   captchaLoading,
   captchaImageLoadFailed,
   loginEncryptionLoading,
-  onSecondFactorChange,
-  onResetSecondFactorFlow,
   onRefreshCaptcha,
   onCaptchaImageError,
 }: LoginFormFieldsProps) => (
@@ -41,6 +32,7 @@ export const LoginFormFields = ({
       name="username"
       fieldProps={{
         prefix: <UserOutlined className="saas-login-page__field-icon" />,
+        size: 'large',
         autoComplete: 'username',
         disabled: Boolean(pendingSecondFactorLogin),
       }}
@@ -51,6 +43,7 @@ export const LoginFormFields = ({
       name="password"
       fieldProps={{
         prefix: <LockOutlined className="saas-login-page__field-icon" />,
+        size: 'large',
         autoComplete: 'current-password',
         disabled: Boolean(pendingSecondFactorLogin),
       }}
@@ -63,31 +56,16 @@ export const LoginFormFields = ({
     {pendingSecondFactorLogin ? (
       <>
         <Alert showIcon type="info" message={pendingSecondFactorPrompt} />
-        {pendingSecondFactorOptions.length > 1 ? (
-          <Select
-            size="large"
-            value={selectedSecondFactorChallengeId || pendingSecondFactorOption?.challengeId}
-            onChange={onSecondFactorChange}
-            options={pendingSecondFactorOptions.map((option) => ({
-              value: option.challengeId,
-              label: option.promptMessage || `${option.factorName} · ${option.pluginName}`,
-            }))}
-            placeholder="请选择二次验证方式"
-            style={{ width: '100%', marginBottom: 12 }}
-          />
-        ) : null}
         <ProFormText
           name="verificationCode"
           fieldProps={{
+            size: 'large',
             autoComplete: 'one-time-code',
             inputMode: 'numeric',
           }}
           placeholder="请输入验证码"
           rules={[{ required: true, message: '请输入验证码' }]}
         />
-        <Button type="link" onClick={onResetSecondFactorFlow} style={{ padding: 0, height: 'auto' }}>
-          返回重新登录
-        </Button>
       </>
     ) : null}
     {loginEncryptionLoading ? (
@@ -99,24 +77,43 @@ export const LoginFormFields = ({
       </Typography.Text>
     ) : null}
     {!pendingSecondFactorLogin && securityCaptchaEnabled ? (
-      <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
+      <div className="saas-login-page__captcha-row">
         <Form.Item
           key={captchaChallenge?.captchaId || 'captcha-code'}
           name="captchaCode"
           rules={[{ required: true, message: '请输入验证码' }]}
-          style={{ marginBottom: 0, flex: 1 }}
+          getValueFromEvent={getCaptchaValueFromEvent}
+          className="saas-login-page__captcha-input"
         >
-          <Input size="large" autoComplete="off" spellCheck={false} maxLength={8} placeholder="请输入验证码" aria-label="验证码" />
+          <Input
+            size="large"
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            lang="en"
+            spellCheck={false}
+            inputMode="text"
+            maxLength={8}
+            placeholder="请输入验证码"
+            aria-label="验证码"
+            className="saas-login-page__captcha-native-input"
+            onCompositionStart={(event) => event.preventDefault()}
+            onKeyDown={(event) => {
+              if (shouldBlockCaptchaKey(event)) {
+                event.preventDefault();
+              }
+            }}
+          />
         </Form.Item>
         <Button
           size="large"
           aria-label="刷新验证码"
           title="点击刷新验证码"
           onClick={onRefreshCaptcha}
-          style={{ width: 150, height: 'auto', padding: 0, overflow: 'hidden' }}
+          className="saas-login-page__captcha-image-button"
         >
           {captchaLoading ? (
-            <Skeleton.Image active style={{ width: '100%', height: 38 }} />
+            <Skeleton.Image active className="saas-login-page__captcha-skeleton" />
           ) : captchaImageLoadFailed ? (
             <Typography.Text type="secondary">点击重试</Typography.Text>
           ) : captchaChallenge?.imageUrl ? (
@@ -125,13 +122,13 @@ export const LoginFormFields = ({
               alt="验证码"
               preview={false}
               onError={onCaptchaImageError}
-              style={{ width: '100%', height: 38, objectFit: 'cover' }}
+              className="saas-login-page__captcha-image"
             />
           ) : (
             <Typography.Text type="secondary">点击刷新</Typography.Text>
           )}
         </Button>
-      </Space.Compact>
+      </div>
     ) : null}
     <div className="saas-login-page__actions">
       <ProFormCheckbox noStyle name="remember">

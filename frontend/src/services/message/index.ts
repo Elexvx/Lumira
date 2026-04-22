@@ -6,6 +6,7 @@ export interface MessagePayload {
   content: string;
   targetScope: MessageTargetScope;
   targetUserId?: number;
+  targetRoleId?: number;
 }
 
 export interface MessageQuery extends Record<string, unknown> {
@@ -13,9 +14,27 @@ export interface MessageQuery extends Record<string, unknown> {
   pageSize?: number;
 }
 
+export interface MessageArchiveQuery extends Record<string, unknown> {
+  pageNo?: number;
+  pageSize?: number;
+  keyword?: string;
+  targetScope?: string;
+  publishStatus?: string;
+  publishedAtStart?: string;
+  publishedAtEnd?: string;
+  sortField?: string;
+  sortOrder?: string;
+}
+
 export const messageService = {
   messages: (params: MessageQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<MessageNoticeRecord>>('/v1/message/messages', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  archiveMessages: (params: MessageArchiveQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<MessageNoticeRecord>>('/v1/message/archive', {
       method: 'GET',
       params,
       ...options,

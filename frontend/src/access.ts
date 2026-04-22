@@ -26,9 +26,10 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
         'system:menu:view',
         'system:dict:view',
         'system:config:view',
+        'system:verification:view',
+        'system:verification:manage',
         'system:notification:view',
         'system:notification:write',
-        'message:announcement:view',
         'message:message:view',
         'plugin:management:view',
       ].some((item) => hasPermission(permissions, item)),
@@ -47,10 +48,11 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemProfileFields: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemPersonalization: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemSecurity: isLogin && hasPermission(permissions, 'system:config:view'),
+    canVisitSystemVerification:
+      isLogin && (hasPermission(permissions, 'system:verification:view') || hasPermission(permissions, 'system:verification:manage')),
     canVisitSystemNotifications:
       isLogin &&
       (hasPermission(permissions, 'system:notification:view') ||
-        hasPermission(permissions, 'message:announcement:view') ||
         hasPermission(permissions, 'message:message:view')),
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && hasPermission(permissions, 'plugin:management:view'),

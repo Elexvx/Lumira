@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 public class SecondFactorCompleteRequest {
 
     @NotBlank
-    private String pluginCode;
+    private String factorCode;
 
     @NotBlank
     private String challengeId;
@@ -13,12 +13,12 @@ public class SecondFactorCompleteRequest {
     @NotBlank
     private String verificationCode;
 
-    public String getPluginCode() {
-        return pluginCode;
+    public String getFactorCode() {
+        return factorCode;
     }
 
-    public void setPluginCode(String pluginCode) {
-        this.pluginCode = pluginCode;
+    public void setFactorCode(String factorCode) {
+        this.factorCode = factorCode;
     }
 
     public String getChallengeId() {

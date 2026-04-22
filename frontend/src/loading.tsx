@@ -1,11 +1,7 @@
-import { Flex, Spin } from 'antd';
+import { PageLoading } from '@ant-design/pro-layout';
 
 const Loading = () => {
-  return (
-    <Flex align="center" justify="center" style={{ minHeight: '100vh', width: '100%' }}>
-      <Spin size="large" />
-    </Flex>
-  );
+  return <PageLoading />;
 };
 
 export default Loading;

@@ -10,6 +10,7 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { history } from '@umijs/max';
 import { Avatar, Button, Dropdown, Select, Space, type MenuProps } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { performLogout } from '@/auth/session';
@@ -163,6 +164,14 @@ export const TopActions = () => {
 
   const userMenuItems: MenuProps['items'] = [
     {
+      key: 'profile',
+      label: '个人中心',
+      disabled: loggingOut,
+    },
+    {
+      type: 'divider',
+    },
+    {
       key: 'logout',
       label: loggingOut ? '退出中...' : '退出登录',
       disabled: loggingOut,
@@ -221,6 +230,10 @@ export const TopActions = () => {
           menu={{
             items: userMenuItems,
             onClick: ({ key }) => {
+              if (key === 'profile' && !loggingOut) {
+                history.push('/user-center/profile');
+                return;
+              }
               if (key === 'logout' && !loggingOut) {
                 handleLogout();
               }
