@@ -14,7 +14,11 @@
     "test:captcha-input": "tsx scripts/captcha-input-smoke.ts",
     "test:theme-nav-sync": "tsx scripts/theme-nav-sync-smoke.ts",
     "test:login-error-feedback": "tsx scripts/login-error-feedback-smoke.ts",
-    "test:permission-tree": "tsx scripts/permission-tree-normalize-smoke.ts"
+    "test:permission-tree": "tsx scripts/permission-tree-normalize-smoke.ts",
+    "test:login-redirect-target": "tsx scripts/login-redirect-target-smoke.ts",
+    "test:login-storage-sync": "tsx scripts/login-storage-sync-smoke.ts",
+    "test:online-users-session-removal": "tsx scripts/online-users-session-removal-smoke.ts",
+    "test:antd-static-theme": "tsx scripts/antd-static-theme-smoke.ts"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.7",

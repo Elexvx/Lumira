@@ -34,7 +34,7 @@ export const buildMenuColumns = ({
   {
     title: '拖拽',
     dataIndex: 'dragHandle',
-    width: 88,
+    width: 96,
     hideInSearch: true,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => {
@@ -71,17 +71,32 @@ export const buildMenuColumns = ({
     title: '菜单编码',
     dataIndex: 'menuCode',
     hideInSearch: true,
+    width: 180,
     responsive: ['lg', 'xl', 'xxl'],
+    ellipsis: true,
+    render: (_, record) =>
+      record.menuCode ? <Typography.Text ellipsis={{ tooltip: record.menuCode }}>{record.menuCode}</Typography.Text> : '-',
   },
   {
     title: '菜单名称',
     dataIndex: 'menuName',
+    width: 260,
     search: true,
-    render: (_, record) => <span style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}>{record.menuName}</span>,
+    ellipsis: true,
+    render: (_, record) => (
+      <Typography.Text
+        className="saas-menu-tree-cell"
+        ellipsis={{ tooltip: record.menuName }}
+        style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}
+      >
+        {record.menuName}
+      </Typography.Text>
+    ),
   },
   {
     title: '菜单类型',
     dataIndex: 'menuType',
+    width: 120,
     valueEnum: {
       CATALOG: { text: '目录' },
       MENU: { text: '菜单' },
@@ -107,6 +122,7 @@ export const buildMenuColumns = ({
   {
     title: '权限标识',
     dataIndex: 'permissionKey',
+    width: 220,
     search: true,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
@@ -124,6 +140,7 @@ export const buildMenuColumns = ({
   {
     title: '状态',
     dataIndex: 'status',
+    width: 120,
     hideInSearch: true,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
   },

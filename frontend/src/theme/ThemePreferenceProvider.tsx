@@ -1,6 +1,7 @@
-import { ConfigProvider, theme as antdTheme } from 'antd';
+import { ConfigProvider } from 'antd';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { buildAntdThemeConfig, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { syncThemeRuntimeSnapshot } from '@/theme/runtime';
 import {
   applyThemePreferenceToDocument,
@@ -38,6 +39,10 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
   }, [themePreference]);
 
   useEffect(() => {
+    syncAntdStaticThemeHolder();
+  }, []);
+
+  useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return;
     }
@@ -60,42 +65,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   const resolvedColorMode = themePreference === 'dark' || (themePreference === 'system' && systemDarkMode) ? 'dark' : 'light';
 
-  const algorithm = useMemo(() => {
-    if (themePreference === 'compact') {
-      return [antdTheme.compactAlgorithm];
-    }
-
-    return resolvedColorMode === 'dark' ? [antdTheme.darkAlgorithm] : [antdTheme.defaultAlgorithm];
-  }, [resolvedColorMode, themePreference]);
-
-  const themeTokens = useMemo(() => {
-    if (resolvedColorMode !== 'dark') {
-      return undefined;
-    }
-
-    return {
-      colorBgBase: '#0f1115',
-      colorBgLayout: '#0f1115',
-      colorBgContainer: '#151515',
-      colorBgElevated: '#1b1b1b',
-      colorBorderSecondary: '#2a2a2a',
-      colorTextBase: '#f5f7fa',
-    };
-  }, [resolvedColorMode]);
-
-  const themeComponents = useMemo(() => {
-    if (resolvedColorMode !== 'dark') {
-      return undefined;
-    }
-
-    return {
-      Layout: {
-        bodyBg: '#0f1115',
-        headerBg: '#111111',
-        siderBg: '#0c0c0c',
-      },
-    };
-  }, [resolvedColorMode]);
+  const themeConfig = useMemo(() => buildAntdThemeConfig(), [resolvedColorMode, themePreference]);
 
   // Keep the non-React layout config in sync with the current theme snapshot.
   syncThemeRuntimeSnapshot(themePreference, systemDarkMode);
@@ -125,7 +95,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
-      <ConfigProvider theme={{ algorithm, token: themeTokens, components: themeComponents }}>{children}</ConfigProvider>
+      <ConfigProvider theme={themeConfig}>{children}</ConfigProvider>
     </ThemePreferenceContext.Provider>
   );
 };

@@ -115,6 +115,7 @@ const SystemVerificationPage = () => {
 
   const [smsSettingsForm] = Form.useForm<SmsVerificationSettings>();
   const currentProvider = Form.useWatch('provider', smsSettingsForm);
+  const smsEnabled = Form.useWatch('enabled', smsSettingsForm) ?? false;
   const [providerDrafts, setProviderDrafts] = useState<Partial<Record<SmsProviderCode, SmsVerificationSettings>>>({});
   const smsFormProps = useStandardFormProps({
     form: smsSettingsForm,
@@ -353,6 +354,7 @@ const SystemVerificationPage = () => {
   const renderSmsTab = () => {
     const activeProvider = normalizeProviderCode(currentProvider);
     const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
+    const smsFieldsLocked = !canManageVerification || !smsEnabled;
 
     return (
       <Card
@@ -360,22 +362,34 @@ const SystemVerificationPage = () => {
         loading={smsSettingsQuery.loading}
         extra={<Button onClick={() => void smsSettingsQuery.refresh()}>刷新</Button>}
       >
-        <Form {...smsFormProps} disabled={!canManageVerification}>
+        <Form {...smsFormProps}>
           <Form.Item name="enabled" label="启用短信验证码" valuePropName="checked">
-            <Switch />
+            <Switch disabled={!canManageVerification} checkedChildren="开启" unCheckedChildren="关闭" />
           </Form.Item>
-          <Form.Item name="provider" label="服务商" rules={[{ required: true, message: '请选择短信服务商' }]}>
-            <Select options={SMS_PROVIDER_OPTIONS} placeholder="请选择短信服务商" onChange={handleSmsProviderChange} />
+          <Form.Item
+            name="provider"
+            label="服务商"
+            rules={smsEnabled ? [{ required: true, message: '请选择短信服务商' }] : undefined}
+          >
+            <Select
+              disabled={smsFieldsLocked}
+              options={SMS_PROVIDER_OPTIONS}
+              placeholder="请选择短信服务商"
+              onChange={handleSmsProviderChange}
+            />
           </Form.Item>
-          <Alert showIcon style={{ marginBottom: 16 }} type="info" message={providerSchema.description} />
           {providerSchema.fields.map((field) => (
             <Form.Item
               key={String(field.name)}
               name={field.name}
               label={field.label}
-              rules={field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
+              rules={smsEnabled && field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
             >
-              {field.password ? <Input.Password placeholder={field.placeholder} /> : <Input placeholder={field.placeholder} />}
+              {field.password ? (
+                <Input.Password readOnly={smsFieldsLocked} disabled={!canManageVerification} placeholder={field.placeholder} />
+              ) : (
+                <Input readOnly={smsFieldsLocked} disabled={!canManageVerification} placeholder={field.placeholder} />
+              )}
             </Form.Item>
           ))}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

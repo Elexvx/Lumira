@@ -310,7 +310,7 @@ const MenuManagementPage = () => {
 
   return (
     <PageContainer title="菜单管理" className="saas-management-page">
-      <div className="saas-table-wrap saas-wide-table">
+      <div className="saas-table-wrap">
         <ProTable<MenuRecord & { level?: number }>
           actionRef={menuCrud.actionRef}
           rowKey="id"
@@ -318,7 +318,8 @@ const MenuManagementPage = () => {
           search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           options={false}
           pagination={false}
-          scroll={buildTableScroll(columns, responsive.isMobile, { wide: true })}
+          scroll={buildTableScroll(columns, responsive.isMobile)}
+          tableLayout="fixed"
           onRow={(record) => ({
             draggable: canReorderMenus,
             onDragStart: handleRowDragStart(record),

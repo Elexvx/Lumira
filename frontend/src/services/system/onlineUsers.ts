@@ -9,7 +9,11 @@ export interface OnlineSessionStreamOptions {
   onEvent: (event: OnlineSessionEventRecord) => void;
   onConnected?: () => void;
   onUnauthorized?: () => void;
+  currentSessionId?: string | null;
 }
+
+export const isCurrentSessionRemovalEvent = (event: OnlineSessionEventRecord, currentSessionId?: string | null) =>
+  Boolean(currentSessionId) && event.action === 'REMOVED' && event.sessionId === currentSessionId;
 
 export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) => {
   const controller = new AbortController();
@@ -69,7 +73,7 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
           return;
         }
         options.onUnauthorized?.();
-        await performLogout({ reason: 'forced_expired' }).catch(() => {
+        await performLogout({ reason: 'forced_expired', hardReload: true }).catch(() => {
           // Ignore logout failures when the server has already revoked the session.
         });
         stop();
@@ -82,7 +86,17 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
       }
 
       options.onConnected?.();
-      await readEventStream(response.body, options.onEvent, controller.signal);
+      await readEventStream(response.body, (event) => {
+        if (isCurrentSessionRemovalEvent(event, options.currentSessionId)) {
+          stop();
+          void performLogout({ reason: 'forced_expired', hardReload: true }).catch(() => {
+            // The browser may already be navigating away after the hard reload.
+          });
+          return;
+        }
+
+        options.onEvent(event);
+      }, controller.signal);
       scheduleReconnect();
     } catch (error) {
       if (!stopped && !(error instanceof DOMException && error.name === 'AbortError')) {

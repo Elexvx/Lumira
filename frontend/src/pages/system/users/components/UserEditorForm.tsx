@@ -15,6 +15,9 @@ export const UserEditorForm = ({ formProps, editingId, roleOptions, protectedAdm
     <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]} normalize={trimString}>
       <Input />
     </Form.Item>
+    <Form.Item name="roleIds" label="角色" extra="可为用户分配一个或多个角色">
+      <Select mode="multiple" allowClear options={roleOptions} placeholder="请选择角色" />
+    </Form.Item>
     <Form.Item
       name="password"
       label={editingId ? '重置密码（可选）' : '初始密码'}
@@ -54,9 +57,6 @@ export const UserEditorForm = ({ formProps, editingId, roleOptions, protectedAdm
     </Form.Item>
     <Form.Item name="availableTime" label="可工作时间" normalize={trimString}>
       <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
-    </Form.Item>
-    <Form.Item name="roleIds" label="角色">
-      <Select mode="multiple" options={roleOptions} />
     </Form.Item>
   </Form>
 );

@@ -6,6 +6,7 @@ import React, { createElement } from 'react';
 import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { isLoggedIn } from '@/auth/session';
+import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
 import NoPermission from '@/pages/exception/NoPermission';
 import { backendRouteMeta } from '@/routes/meta';
@@ -171,9 +172,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       }
 
       if (loggedIn && path === LOGIN_PATH) {
-        const searchParams = new URLSearchParams(location.search || '');
-        const redirect = searchParams.get('redirect') || DEFAULT_HOME_PATH;
-        history.replace(redirect);
+        history.replace(resolveLoginRedirectTarget(location.search || '', DEFAULT_HOME_PATH));
       }
     },
   };
