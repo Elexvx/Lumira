@@ -1,14 +1,14 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
-import { Alert, Button, Card, Form, Input, Modal, Select, Space, Switch, Tabs, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Form, Input, Modal, Select, Space, Switch, Tabs, message } from 'antd';
+import { useEffect, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { systemService } from '@/services/system';
-import { secondFactorService } from '@/services/secondFactor';
 import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSecondFactorModal';
 import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
-import type { SecondFactorChallenge, SecondFactorProviderStatus, SmsVerificationSettings } from '@/types/api';
+import { secondFactorService } from '@/services/secondFactor';
+import { systemService } from '@/services/system';
+import type { SecondFactorChallenge, SecondFactorProviderStatus, SmsVerificationSettings, VerificationSettings } from '@/types/api';
 
 const TAB_ORDER = ['totp', 'sms'] as const;
 
@@ -23,8 +23,6 @@ interface SmsProviderFieldConfig {
 }
 
 interface SmsProviderSchema {
-  title: string;
-  description: string;
   fields: SmsProviderFieldConfig[];
 }
 
@@ -37,8 +35,6 @@ const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
 
 const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
   aliyun: {
-    title: '阿里云短信配置',
-    description: '阿里云短信通常需要签名、模板和 Access Key 相关信息。',
     fields: [
       { name: 'signName', label: '短信签名', placeholder: '例如：宏翔商道', required: true },
       { name: 'templateCode', label: '模板编码', placeholder: '例如：SMS_123456789', required: true },
@@ -49,8 +45,6 @@ const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
     ],
   },
   tencent: {
-    title: '腾讯云短信配置',
-    description: '腾讯云短信更关注 SecretId / SecretKey 与签名模板信息。',
     fields: [
       { name: 'signName', label: '短信签名', placeholder: '例如：宏翔商道', required: true },
       { name: 'templateCode', label: '模板 ID', placeholder: '例如：1234567', required: true },
@@ -61,16 +55,12 @@ const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
     ],
   },
   mock: {
-    title: '本地模拟短信',
-    description: '本地模拟仅用于联调和测试，通常只需要保留基础签名和模板信息。',
     fields: [
       { name: 'signName', label: '模拟签名', placeholder: '例如：测试短信', required: false },
       { name: 'templateCode', label: '模拟模板编码', placeholder: '例如：MOCK_SMS_001', required: false },
     ],
   },
   custom: {
-    title: '自定义网关配置',
-    description: '自定义网关建议补全接口地址与认证信息，再按网关要求填写模板参数。',
     fields: [
       { name: 'endpoint', label: '网关地址', placeholder: '例如：https://sms.example.com/api', required: true },
       { name: 'accessKeyId', label: '网关账号', placeholder: '例如：gateway-user', required: true },
@@ -94,10 +84,10 @@ const SystemVerificationPage = () => {
   const canViewVerification = actionPermission.can('system:verification:view') || actionPermission.can('system:verification:manage');
   const canManageVerification = actionPermission.can('system:verification:manage');
 
-  const providersQuery = useRequest(
+  const verificationSettingsQuery = useRequest(
     async () =>
-      ({ data: await secondFactorService.providers({ autoRedirectOnUnauthorized: false }) }) as {
-        data: SecondFactorProviderStatus[];
+      ({ data: await systemService.verificationSettings({ autoRedirectOnUnauthorized: false }) }) as {
+        data: VerificationSettings;
       },
     {
       ready: canViewVerification,
@@ -112,18 +102,23 @@ const SystemVerificationPage = () => {
       ready: canViewVerification,
     },
   );
+  const providersQuery = useRequest(
+    async () =>
+      ({ data: await secondFactorService.providers({ autoRedirectOnUnauthorized: false }) }) as {
+        data: SecondFactorProviderStatus[];
+      },
+    {
+      ready: canViewVerification,
+    },
+  );
 
+  const [verificationForm] = Form.useForm<VerificationSettings>();
   const [smsSettingsForm] = Form.useForm<SmsVerificationSettings>();
   const currentProvider = Form.useWatch('provider', smsSettingsForm);
   const smsEnabled = Form.useWatch('enabled', smsSettingsForm) ?? false;
   const [providerDrafts, setProviderDrafts] = useState<Partial<Record<SmsProviderCode, SmsVerificationSettings>>>({});
-  const smsFormProps = useStandardFormProps({
-    form: smsSettingsForm,
-    initialValues: {
-      enabled: false,
-      provider: 'aliyun',
-    },
-  });
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [savingSmsSettings, setSavingSmsSettings] = useState(false);
   const [bindModalOpen, setBindModalOpen] = useState(false);
   const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
   const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
@@ -131,17 +126,19 @@ const SystemVerificationPage = () => {
   const [bindingSubmitting, setBindingSubmitting] = useState(false);
   const [bindingCompleted, setBindingCompleted] = useState(false);
   const [bindingAlert, setBindingAlert] = useState<{ type: 'info' | 'warning' | 'error'; message: string }>();
-  const [savingSmsSettings, setSavingSmsSettings] = useState(false);
+  const smsFormProps = useStandardFormProps({
+    form: smsSettingsForm,
+    initialValues: {
+      enabled: false,
+      provider: 'aliyun',
+    },
+  });
 
-  const providerMap = useMemo(() => {
-    const map = new Map<string, SecondFactorProviderStatus>();
-    (providersQuery.data || [])
-      .filter((provider) => provider.factorCode === 'totp')
-      .forEach((provider) => {
-        map.set(provider.factorCode, provider);
-      });
-    return map;
-  }, [providersQuery.data]);
+  useEffect(() => {
+    if (verificationSettingsQuery.data) {
+      verificationForm.setFieldsValue(verificationSettingsQuery.data);
+    }
+  }, [verificationForm, verificationSettingsQuery.data]);
 
   useEffect(() => {
     if (!smsSettingsQuery.data) {
@@ -157,6 +154,38 @@ const SystemVerificationPage = () => {
       accessKeySecret: '',
     });
   }, [smsSettingsForm, smsSettingsQuery.data]);
+
+  const handleSaveVerificationSettings = async () => {
+    if (!canManageVerification) {
+      return;
+    }
+    setVerificationSaving(true);
+    try {
+      const values = await verificationForm.validateFields();
+      const result = await systemService.updateVerificationSettings(values, { autoRedirectOnUnauthorized: false });
+      verificationForm.setFieldsValue(result);
+      message.success('2FA 设置已保存');
+    } finally {
+      setVerificationSaving(false);
+    }
+  };
+
+  const handleSaveSmsSettings = async () => {
+    setSavingSmsSettings(true);
+    try {
+      const values = await smsSettingsForm.validateFields();
+      const providerCode = normalizeProviderCode(values.provider);
+      setProviderDrafts((drafts) => ({
+        ...drafts,
+        [providerCode]: values,
+      }));
+      const result = await systemService.updateSmsVerificationSettings(values, { autoRedirectOnUnauthorized: false });
+      message.success(result.configured ? '短信验证码服务配置已保存' : '短信验证码服务配置已保存，当前仍未完全启用');
+      await smsSettingsQuery.refresh();
+    } finally {
+      setSavingSmsSettings(false);
+    }
+  };
 
   const resetBindState = () => {
     setBindingProvider(null);
@@ -278,23 +307,6 @@ const SystemVerificationPage = () => {
     }
   };
 
-  const handleSaveSmsSettings = async () => {
-    setSavingSmsSettings(true);
-    try {
-      const values = await smsSettingsForm.validateFields();
-      const providerCode = normalizeProviderCode(values.provider);
-      setProviderDrafts((drafts) => ({
-        ...drafts,
-        [providerCode]: values,
-      }));
-      const result = await systemService.updateSmsVerificationSettings(values, { autoRedirectOnUnauthorized: false });
-      message.success(result.configured ? '短信验证码服务配置已保存' : '短信验证码服务配置已保存，当前仍未完全启用');
-      await smsSettingsQuery.refresh();
-    } finally {
-      setSavingSmsSettings(false);
-    }
-  };
-
   const handleSmsProviderChange = (nextProvider: string) => {
     const currentValues = smsSettingsForm.getFieldsValue(true) as Partial<SmsVerificationSettings>;
     const previousProvider = normalizeProviderCode(currentValues.provider);
@@ -331,37 +343,28 @@ const SystemVerificationPage = () => {
     });
   };
 
-  const renderTotpTab = () => {
-    const provider = providerMap.get('totp');
-    if (!provider) {
-      return <Card loading={providersQuery.loading} />;
-    }
-
-    return (
-      <BoundProviderCard
-        canManageSecondFactor={canManageVerification}
-        loading={providersQuery.loading}
-        providers={[provider]}
-        bindingLoading={bindingLoading}
-        bindingSubmitting={bindingSubmitting}
-        emailBindingSubmitting={false}
-        onBind={(nextProvider) => void openBindModal(nextProvider)}
-        onUnbind={(nextProvider) => handleUnbind(nextProvider)}
-      />
-    );
-  };
+  const renderTotpTab = () => (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Form form={verificationForm} layout="vertical" initialValues={{ enabled: true }}>
+        <Form.Item name="enabled" label="启用 2FA" valuePropName="checked">
+          <Switch disabled={!canManageVerification} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+      </Form>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button type="primary" loading={verificationSaving} disabled={!canManageVerification} onClick={() => void handleSaveVerificationSettings()}>
+          保存设置
+        </Button>
+      </div>
+    </Space>
+  );
 
   const renderSmsTab = () => {
     const activeProvider = normalizeProviderCode(currentProvider);
     const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
-    const smsFieldsLocked = !canManageVerification || !smsEnabled;
+    const smsFieldsDisabled = !canManageVerification || !smsEnabled;
 
     return (
-      <Card
-        title={providerSchema.title}
-        loading={smsSettingsQuery.loading}
-        extra={<Button onClick={() => void smsSettingsQuery.refresh()}>刷新</Button>}
-      >
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Form {...smsFormProps}>
           <Form.Item name="enabled" label="启用短信验证码" valuePropName="checked">
             <Switch disabled={!canManageVerification} checkedChildren="开启" unCheckedChildren="关闭" />
@@ -372,7 +375,7 @@ const SystemVerificationPage = () => {
             rules={smsEnabled ? [{ required: true, message: '请选择短信服务商' }] : undefined}
           >
             <Select
-              disabled={smsFieldsLocked}
+              disabled={smsFieldsDisabled}
               options={SMS_PROVIDER_OPTIONS}
               placeholder="请选择短信服务商"
               onChange={handleSmsProviderChange}
@@ -386,37 +389,26 @@ const SystemVerificationPage = () => {
               rules={smsEnabled && field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
             >
               {field.password ? (
-                <Input.Password readOnly={smsFieldsLocked} disabled={!canManageVerification} placeholder={field.placeholder} />
+                <Input.Password disabled={smsFieldsDisabled} placeholder={field.placeholder} />
               ) : (
-                <Input readOnly={smsFieldsLocked} disabled={!canManageVerification} placeholder={field.placeholder} />
+                <Input disabled={smsFieldsDisabled} placeholder={field.placeholder} />
               )}
             </Form.Item>
           ))}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button type="primary" loading={savingSmsSettings} disabled={!canManageVerification} onClick={() => void handleSaveSmsSettings()}>
+            <Button type="primary" loading={savingSmsSettings} disabled={smsFieldsDisabled} onClick={() => void handleSaveSmsSettings()}>
               保存配置
             </Button>
           </div>
         </Form>
-      </Card>
+      </Space>
     );
   };
 
   return (
-    <PageContainer
-      className="saas-management-page"
-      title="验证管理"
-      content={
-        <Alert
-          showIcon
-          type="info"
-          message="系统内建验证"
-          description="2FA 仍然以用户绑定方式管理；短信验证码改为系统服务配置，不再在这里做用户绑定。"
-        />
-      }
-    >
+    <PageContainer className="saas-management-page" title="验证管理">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Card>
+        <Card loading={verificationSettingsQuery.loading || smsSettingsQuery.loading}>
           <Tabs
             defaultActiveKey="totp"
             items={TAB_ORDER.map((factorCode) => ({
@@ -426,8 +418,18 @@ const SystemVerificationPage = () => {
             }))}
           />
         </Card>
+        <BoundProviderCard
+          title="可绑定的验证方式"
+          canManageSecondFactor={canManageVerification}
+          loading={providersQuery.loading}
+          providers={providersQuery.data || []}
+          bindingLoading={bindingLoading}
+          bindingSubmitting={bindingSubmitting}
+          emailBindingSubmitting={false}
+          onBind={(provider) => void openBindModal(provider)}
+          onUnbind={handleUnbind}
+        />
       </Space>
-
       <BindSecondFactorModal
         open={bindModalOpen}
         bindingProvider={bindingProvider}

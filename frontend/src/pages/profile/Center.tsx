@@ -7,10 +7,13 @@ import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { profileService } from '@/services/profile';
+import { secondFactorService } from '@/services/secondFactor';
+import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSecondFactorModal';
+import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
 import { ProfileBasicCard } from '@/pages/profile/center/components/ProfileBasicCard';
 import { SecuritySummaryCard } from '@/pages/profile/center/components/SecuritySummaryCard';
 import { buildVisibleProfileFields } from '@/pages/profile/center/utils';
-import type { ProfileSummary } from '@/types/api';
+import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 
 const ProfileCenterPage = () => {
   const [profileForm] = Form.useForm();
@@ -18,9 +21,6 @@ const ProfileCenterPage = () => {
   const profileQuery = useRequest(async () => ({ data: await profileService.summary({ autoRedirectOnUnauthorized: false }) }) as {
     data: ProfileSummary;
   });
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
   const currentTenant = summary?.currentTenant || initialState?.currentTenant || null;
@@ -35,6 +35,24 @@ const ProfileCenterPage = () => {
     className: 'saas-profile-page__descriptions',
     column: 1,
   });
+  const providersQuery = useRequest(
+    async () =>
+      ({ data: await secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }) }) as {
+        data: SecondFactorProviderStatus[];
+      },
+    {
+      ready: Boolean(currentUser),
+    },
+  );
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bindModalOpen, setBindModalOpen] = useState(false);
+  const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
+  const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [bindingSubmitting, setBindingSubmitting] = useState(false);
+  const [bindingCompleted, setBindingCompleted] = useState(false);
+  const [bindingAlert, setBindingAlert] = useState<{ type: 'info' | 'warning' | 'error'; message: string }>();
 
   useEffect(() => {
     if (!currentUser) {
@@ -91,6 +109,124 @@ const ProfileCenterPage = () => {
     }
   };
 
+  const resetBindState = () => {
+    setBindingProvider(null);
+    setBindingChallenge(null);
+    setBindingLoading(false);
+    setBindingSubmitting(false);
+    setBindingCompleted(false);
+    setBindingAlert(undefined);
+  };
+
+  const closeBindModal = () => {
+    if (bindingSubmitting) {
+      return;
+    }
+    setBindModalOpen(false);
+    window.setTimeout(() => {
+      resetBindState();
+    }, 0);
+  };
+
+  const openBindModal = async (provider: SecondFactorProviderStatus) => {
+    setBindingProvider(provider);
+    setBindingChallenge(null);
+    setBindingLoading(true);
+    setBindingSubmitting(false);
+    setBindingCompleted(false);
+    setBindingAlert(undefined);
+    setBindModalOpen(true);
+    try {
+      const challenge = await secondFactorService.currentBind(provider.factorCode, {
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      });
+      setBindingChallenge(challenge);
+    } catch (error) {
+      setBindingAlert({
+        type: 'error',
+        message: error instanceof Error ? error.message : '获取绑定信息失败，请稍后重试',
+      });
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
+  const retryBindChallenge = async () => {
+    if (!bindingProvider) {
+      return;
+    }
+    setBindingChallenge(null);
+    await openBindModal(bindingProvider);
+  };
+
+  const handleUnbind = (provider: SecondFactorProviderStatus) => {
+    void (async () => {
+      try {
+        await secondFactorService.currentUnbind(provider.factorCode, { autoRedirectOnUnauthorized: false });
+        message.success('已解绑');
+        await providersQuery.refresh();
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : '解绑失败，请稍后重试');
+      }
+    })();
+  };
+
+  const handleVerifyBind = async (values: { verificationCode?: string }) => {
+    if (!bindingProvider || !bindingChallenge) {
+      setBindingAlert({
+        type: 'warning',
+        message: '绑定信息已失效，请重新发起绑定。',
+      });
+      return false;
+    }
+    if (!values.verificationCode) {
+      setBindingAlert({
+        type: 'warning',
+        message: '请输入验证码。',
+      });
+      return false;
+    }
+
+    setBindingSubmitting(true);
+    setBindingAlert(undefined);
+    try {
+      const result = await secondFactorService.currentVerify(
+        bindingProvider.factorCode,
+        {
+          factorCode: bindingProvider.factorCode,
+          challengeId: bindingChallenge.challengeId,
+          verificationCode: values.verificationCode,
+        },
+        {
+          autoRedirectOnUnauthorized: false,
+          silent: true,
+        },
+      );
+
+      if (!result.verified) {
+        setBindingAlert({
+          type: 'warning',
+          message: result.message || '验证码校验失败，请重试。',
+        });
+        return false;
+      }
+
+      message.success('绑定已完成');
+      setBindingCompleted(true);
+      await providersQuery.refresh();
+      return true;
+    } catch (error) {
+      setBindingAlert({
+        type: 'error',
+        message: error instanceof Error ? error.message : '绑定失败，请稍后重试',
+      });
+      return false;
+    } finally {
+      setBindingSubmitting(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     try {
       const values = await profileForm.validateFields();
@@ -141,6 +277,17 @@ const ProfileCenterPage = () => {
           descriptionsProps={summaryDescriptionsProps}
         />
 
+        <BoundProviderCard
+          canManageSecondFactor
+          loading={providersQuery.loading}
+          providers={providersQuery.data || []}
+          bindingLoading={bindingLoading}
+          bindingSubmitting={bindingSubmitting}
+          emailBindingSubmitting={false}
+          onBind={(provider) => void openBindModal(provider)}
+          onUnbind={handleUnbind}
+        />
+
         <Card title="最近登录记录" loading={profileQuery.loading}>
           {recentLoginLogs.length ? (
             <Timeline
@@ -161,6 +308,22 @@ const ProfileCenterPage = () => {
           )}
         </Card>
       </Space>
+
+      <BindSecondFactorModal
+        open={bindModalOpen}
+        bindingProvider={bindingProvider}
+        bindingChallenge={bindingChallenge}
+        bindingCompleted={bindingCompleted}
+        bindingIsSms={false}
+        bindingLoading={bindingLoading}
+        bindingSubmitting={bindingSubmitting}
+        bindingAlert={bindingAlert}
+        singleColumnDescriptionsProps={{ column: 1 }}
+        onCancel={closeBindModal}
+        onRetry={() => void retryBindChallenge()}
+        onFinish={closeBindModal}
+        onVerify={handleVerifyBind}
+      />
     </PageContainer>
   );
 };

@@ -1,7 +1,10 @@
 import { Button, Card, Empty, List, Space, Tag, Typography } from 'antd';
+import type { ReactNode } from 'react';
 import type { SecondFactorProviderStatus } from '@/types/api';
 
 interface BoundProviderCardProps {
+  title?: ReactNode;
+  emptyDescription?: ReactNode;
   canManageSecondFactor: boolean;
   loading: boolean;
   providers: SecondFactorProviderStatus[];
@@ -21,8 +24,10 @@ export const BoundProviderCard = ({
   emailBindingSubmitting,
   onBind,
   onUnbind,
+  title = '已绑定登录方式',
+  emptyDescription = '当前租户暂无可绑定登录方式',
 }: BoundProviderCardProps) => (
-  <Card title="已绑定登录方式" loading={loading}>
+  <Card title={title} loading={loading}>
     {providers.length ? (
       <List
         dataSource={providers}
@@ -41,6 +46,7 @@ export const BoundProviderCard = ({
               <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
                 <Space wrap>
                   <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
+                  {provider.systemEnabled === false ? <Tag color="red">系统已关闭</Tag> : null}
                   <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
                   <Tag>{provider.factorCode}</Tag>
                 </Space>
@@ -51,12 +57,12 @@ export const BoundProviderCard = ({
                   <Button
                     type="primary"
                     onClick={() => onBind(provider)}
-                    disabled={bindingLoading || bindingSubmitting || emailBindingSubmitting}
+                    disabled={bindingLoading || bindingSubmitting || emailBindingSubmitting || provider.systemEnabled === false}
                   >
-                    {provider.bound ? '重新绑定' : '绑定'}
+                    {provider.systemEnabled === false ? '系统未启用' : provider.bound ? '重新绑定' : '绑定'}
                   </Button>
                   {provider.bound ? (
-                    <Button danger onClick={() => onUnbind(provider)}>
+                    <Button danger onClick={() => onUnbind(provider)} disabled={provider.systemEnabled === false}>
                       解绑
                     </Button>
                   ) : null}
@@ -67,7 +73,7 @@ export const BoundProviderCard = ({
         )}
       />
     ) : (
-      <Empty description="当前租户暂无可绑定登录方式" />
+      <Empty description={emptyDescription} />
     )}
   </Card>
 );

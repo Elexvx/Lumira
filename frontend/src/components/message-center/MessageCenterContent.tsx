@@ -1,8 +1,6 @@
-import { MessageOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import {
   Alert,
-  Avatar,
-  Badge,
   Button,
   Card,
   Col,
@@ -408,11 +406,6 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
                       }}
                     >
                       <List.Item.Meta
-                        avatar={
-                          <Badge count={channel.unreadCount} overflowCount={99} offset={[2, 0]}>
-                            <Avatar shape="square" icon={<MessageOutlined />} />
-                          </Badge>
-                        }
                         title={
                           <Space size={8} wrap>
                             <Typography.Text strong>{channel.label}</Typography.Text>
@@ -507,20 +500,15 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
                           >
                             <Space direction="vertical" size={12} style={{ width: '100%' }}>
                               <div className="saas-message-center__notice-head">
-                                <Space align="start" size={12}>
-                                  <Badge dot={isUnread} offset={[-1, 2]}>
-                                    <Avatar shape="square" icon={<MessageOutlined />} />
-                                  </Badge>
-                                  <div className="saas-message-center__notice-head-copy">
-                                    <Space size={8} wrap>
-                                      <Typography.Text strong>{notice.title}</Typography.Text>
-                                      <Tag color={isUnread ? 'red' : 'blue'} bordered={false}>
-                                        {isUnread ? '未读' : '已读'}
-                                      </Tag>
-                                    </Space>
-                                    <Typography.Text type="secondary">{notice.relativeTimeLabel}</Typography.Text>
-                                  </div>
-                                </Space>
+                                <div className="saas-message-center__notice-head-copy">
+                                  <Space size={8} wrap>
+                                    <Typography.Text strong>{notice.title}</Typography.Text>
+                                    <Tag color={isUnread ? 'red' : 'blue'} bordered={false}>
+                                      {isUnread ? '未读' : '已读'}
+                                    </Tag>
+                                  </Space>
+                                  <Typography.Text type="secondary">{notice.relativeTimeLabel}</Typography.Text>
+                                </div>
 
                                 {isUnread ? (
                                   <Button

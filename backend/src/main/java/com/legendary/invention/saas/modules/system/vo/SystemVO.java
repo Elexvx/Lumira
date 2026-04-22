@@ -225,6 +225,7 @@ public final class SystemVO {
     public static class VerificationProviderVO {
         private String factorCode;
         private String factorName;
+        private Boolean systemEnabled;
         private Boolean enabled;
         private Boolean bound;
         private Boolean emailRequired;
@@ -246,6 +247,14 @@ public final class SystemVO {
 
         public void setFactorName(String factorName) {
             this.factorName = factorName;
+        }
+
+        public Boolean getSystemEnabled() {
+            return systemEnabled;
+        }
+
+        public void setSystemEnabled(Boolean systemEnabled) {
+            this.systemEnabled = systemEnabled;
         }
 
         public Boolean getEnabled() {
@@ -1494,6 +1503,18 @@ public final class SystemVO {
 
         public void setConfigured(Boolean configured) {
             this.configured = configured;
+        }
+    }
+
+    public static class VerificationSettingsVO {
+        private Boolean enabled;
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
         }
     }
 

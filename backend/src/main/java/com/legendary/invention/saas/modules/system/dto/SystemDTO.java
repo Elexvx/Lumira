@@ -960,6 +960,18 @@ public final class SystemDTO {
         }
     }
 
+    public static class VerificationSettingsRequest {
+        private Boolean enabled;
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
     public static class SmtpTestRequest {
         @NotBlank
         private String toEmail;

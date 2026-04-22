@@ -16,6 +16,37 @@ export interface SecondFactorBindPayload {
 }
 
 export const secondFactorService = {
+  currentProviders: (options: RequestOptions = {}) =>
+    request<SecondFactorProviderStatus[]>('/v1/auth/verification/providers', {
+      method: 'GET',
+      ...options,
+    }),
+  currentProvider: (factorCode: string, options: RequestOptions = {}) =>
+    request<SecondFactorProviderStatus>(`/v1/auth/verification/providers/${factorCode}`, {
+      method: 'GET',
+      ...options,
+    }),
+  currentBind: (factorCode: string, options: RequestOptions = {}) =>
+    request<SecondFactorChallenge>(`/v1/auth/verification/providers/${factorCode}/bind`, {
+      method: 'POST',
+      ...options,
+    }),
+  currentUnbind: (factorCode: string, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/auth/verification/providers/${factorCode}/unbind`, {
+      method: 'POST',
+      ...options,
+    }),
+  currentChallenge: (factorCode: string, options: RequestOptions = {}) =>
+    request<SecondFactorChallenge>(`/v1/auth/verification/providers/${factorCode}/challenge`, {
+      method: 'POST',
+      ...options,
+    }),
+  currentVerify: (factorCode: string, payload: SecondFactorVerifyPayload, options: RequestOptions = {}) =>
+    request<SecondFactorVerification>(`/v1/auth/verification/providers/${factorCode}/verify`, {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
   providers: (options: RequestOptions = {}) =>
     request<SecondFactorProviderStatus[]>('/v1/system/verification/providers', {
       method: 'GET',
