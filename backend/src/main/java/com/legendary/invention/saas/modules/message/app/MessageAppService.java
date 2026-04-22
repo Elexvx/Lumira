@@ -57,8 +57,7 @@ public class MessageAppService {
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
 
-        StringBuilder where = new StringBuilder("""
-                from msg_notice n
+        StringBuilder whereClause = new StringBuilder("""
                 where n.tenant_id = ?
                   and n.deleted = 0
                 """);
@@ -66,7 +65,7 @@ public class MessageAppService {
         params.add(tenantId);
 
         if (StringUtils.hasText(request.getKeyword())) {
-            where.append("""
+            whereClause.append("""
                       and (
                             n.title like ?
                          or n.content like ?
@@ -77,31 +76,31 @@ public class MessageAppService {
             params.add(keywordLike);
         }
         if (StringUtils.hasText(request.getMessageType())) {
-            where.append(" and n.notice_type = ?");
+            whereClause.append(" and n.notice_type = ?");
             params.add(request.getMessageType());
         }
         if (StringUtils.hasText(request.getTargetScope())) {
-            where.append(" and n.target_scope = ?");
+            whereClause.append(" and n.target_scope = ?");
             params.add(request.getTargetScope());
         }
         if (StringUtils.hasText(request.getSourceType())) {
-            where.append(" and n.source_type = ?");
+            whereClause.append(" and n.source_type = ?");
             params.add(request.getSourceType());
         }
         if (StringUtils.hasText(request.getPublishStatus())) {
-            where.append(" and n.publish_status = ?");
+            whereClause.append(" and n.publish_status = ?");
             params.add(request.getPublishStatus());
         }
         if (request.getPublishedAtStart() != null) {
-            where.append(" and n.published_at >= ?");
+            whereClause.append(" and n.published_at >= ?");
             params.add(Timestamp.valueOf(request.getPublishedAtStart()));
         }
         if (request.getPublishedAtEnd() != null) {
-            where.append(" and n.published_at <= ?");
+            whereClause.append(" and n.published_at <= ?");
             params.add(Timestamp.valueOf(request.getPublishedAtEnd()));
         }
 
-        Long total = jdbcTemplate.queryForObject("select count(*) " + where, Long.class, params.toArray());
+        Long total = jdbcTemplate.queryForObject("select count(*) from msg_notice n " + whereClause, Long.class, params.toArray());
 
         List<Object> listParams = new ArrayList<>();
         listParams.add(currentUser.getUserId());
@@ -153,16 +152,19 @@ public class MessageAppService {
                  and r.notice_id = n.id
                  and r.user_id = ?
                  and r.deleted = 0
+                left join sys_user_tenant ut
+                  on ut.tenant_id = n.tenant_id
+                 and ut.user_id = n.target_user_id
+                 and ut.deleted = 0
                 left join sys_user u
-                  on u.tenant_id = n.tenant_id
-                 and u.id = n.target_user_id
+                  on u.id = ut.user_id
                  and u.deleted = 0
                 left join sys_role role
                   on role.tenant_id = n.tenant_id
                  and role.id = n.target_role_id
                  and role.deleted = 0
                 """
-                + where
+                + whereClause
                 + orderBy
                 + """
                 limit ? offset ?
@@ -366,6 +368,8 @@ public class MessageAppService {
                        n.source_type as sourceType,
                        n.publish_status as publishStatus,
                        n.published_at as publishedAt,
+                       n.created_by as createdBy,
+                       n.updated_by as updatedBy,
                        n.created_at as createdAt,
                        n.updated_at as updatedAt,
                        case when r.id is null then 0 else 1 end as readFlag,
@@ -376,9 +380,12 @@ public class MessageAppService {
                  and r.notice_id = n.id
                  and r.user_id = ?
                  and r.deleted = 0
+                left join sys_user_tenant ut
+                  on ut.tenant_id = n.tenant_id
+                 and ut.user_id = n.target_user_id
+                 and ut.deleted = 0
                 left join sys_user u
-                  on u.tenant_id = n.tenant_id
-                 and u.id = n.target_user_id
+                  on u.id = ut.user_id
                  and u.deleted = 0
                 left join sys_role role
                   on role.tenant_id = n.tenant_id
@@ -562,9 +569,12 @@ public class MessageAppService {
                          and r.notice_id = n.id
                          and r.user_id = ?
                          and r.deleted = 0
+                        left join sys_user_tenant ut
+                          on ut.tenant_id = n.tenant_id
+                         and ut.user_id = n.target_user_id
+                         and ut.deleted = 0
                         left join sys_user u
-                          on u.tenant_id = n.tenant_id
-                         and u.id = n.target_user_id
+                          on u.id = ut.user_id
                          and u.deleted = 0
                         left join sys_role role
                           on role.tenant_id = n.tenant_id
@@ -615,9 +625,12 @@ public class MessageAppService {
                          and r.notice_id = n.id
                          and r.user_id = ?
                          and r.deleted = 0
+                        left join sys_user_tenant ut
+                          on ut.tenant_id = n.tenant_id
+                         and ut.user_id = n.target_user_id
+                         and ut.deleted = 0
                         left join sys_user u
-                          on u.tenant_id = n.tenant_id
-                         and u.id = n.target_user_id
+                          on u.id = ut.user_id
                          and u.deleted = 0
                         left join sys_role role
                           on role.tenant_id = n.tenant_id
