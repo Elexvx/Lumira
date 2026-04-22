@@ -2,7 +2,7 @@ import { history, useLocation } from '@umijs/max';
 import { LoginFormPage } from '@ant-design/pro-components';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Alert, Form, message } from 'antd';
+import { Form, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { loadCaptchaChallenge } from '@/auth/captcha';
 import { createCaptchaRefreshController } from '@/auth/captchaRefreshController';
@@ -10,7 +10,6 @@ import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
 import { ApiRequestError } from '@/services/common/request';
-import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { encryptLoginPassword } from '@/auth/loginEncryption';
 import { initializeAfterLogin } from '@/auth/session';
@@ -20,6 +19,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
 import { LoginFormFields } from '@/pages/user/login/components/LoginFormFields';
+import { resolveLoginErrorFeedback } from '@/pages/user/login/loginErrorFeedback';
 import type { CaptchaChallenge, LoginEncryptionKey, LoginResponse, SecuritySettings } from '@/types/api';
 import './Login.less';
 
@@ -31,16 +31,9 @@ interface LoginFormValues {
   verificationCode?: string;
 }
 
-interface LoginErrorState {
-  type: 'info' | 'warning' | 'error';
-  message: string;
-}
-
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState<LoginErrorState>();
   const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
-  const [selectedSecondFactorChallengeId, setSelectedSecondFactorChallengeId] = useState<string | null>(null);
   const [loginForm] = Form.useForm<LoginFormValues>();
   const { initialState, setInitialState } = useInitialStateModel();
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(
@@ -100,10 +93,7 @@ const Login = () => {
           return key;
         })
         .catch((error) => {
-          setLoginError({
-            type: 'error',
-            message: error instanceof Error ? error.message : '登录加密信息加载失败，请刷新后重试',
-          });
+          message.error(error instanceof Error ? error.message : '登录加密信息加载失败，请刷新后重试');
           return null;
         })
         .finally(() => {
@@ -117,20 +107,12 @@ const Login = () => {
 
   const refreshCaptcha = useCallback(async () => captchaRefreshControllerRef.current.refresh(), []);
   const pendingSecondFactorOptions = pendingSecondFactorLogin?.secondFactorOptions || [];
-  const pendingSecondFactorOption =
-    pendingSecondFactorOptions.find((option) => option.challengeId === selectedSecondFactorChallengeId) ||
-    pendingSecondFactorOptions[0] ||
-    null;
+  const pendingSecondFactorOption = pendingSecondFactorOptions[0] || null;
   const pendingSecondFactorPrompt =
-    pendingSecondFactorOption?.promptMessage ||
-    (pendingSecondFactorLogin?.secondFactorPluginName
-      ? `${pendingSecondFactorLogin.secondFactorPluginName} 需要完成二次验证`
-      : '请输入收到的验证码完成二次验证');
+    pendingSecondFactorOption?.promptMessage || (pendingSecondFactorOption?.factorName ? `${pendingSecondFactorOption.factorName} 需要完成二次验证` : '请输入收到的验证码完成二次验证');
 
   const resetSecondFactorFlow = useCallback(() => {
     setPendingSecondFactorLogin(null);
-    setSelectedSecondFactorChallengeId(null);
-    setLoginError(undefined);
     loginForm.setFieldsValue({ verificationCode: undefined });
   }, [loginForm]);
 
@@ -161,36 +143,29 @@ const Login = () => {
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
       if (securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
-        setLoginError({
-          type: 'warning',
-          message: '验证码已过期，请刷新后重试',
-        });
+        message.warning('验证码已过期，请刷新后重试');
         return false;
       }
 
       if (securitySettings.captchaEnabled && !values.captchaCode) {
-        setLoginError({
-          type: 'warning',
-          message: '请输入验证码',
-        });
+        message.warning('请输入验证码');
         return false;
       }
     }
 
     setSubmitting(true);
-    setLoginError(undefined);
     beginLoginFlow();
     try {
       const loginResponse = pendingSecondFactorLogin
         ? await authService.secondFactorComplete({
-            pluginCode: pendingSecondFactorOption?.pluginCode || pendingSecondFactorLogin.secondFactorPluginCode || '',
-            challengeId: pendingSecondFactorOption?.challengeId || pendingSecondFactorLogin.secondFactorChallengeId || '',
+            factorCode: pendingSecondFactorOption?.factorCode || '',
+            challengeId: pendingSecondFactorOption?.challengeId || '',
             verificationCode: values.verificationCode || '',
           })
         : await (async () => {
             const encryptionKey = loginEncryptionKey || (await loadLoginEncryptionKey());
             if (!encryptionKey) {
-              throw new Error('登录加密信息加载失败，请刷新后重试');
+              return null;
             }
 
             return authService.login({
@@ -201,18 +176,17 @@ const Login = () => {
             });
           })();
 
+      if (!loginResponse) {
+        return false;
+      }
+
       if (pendingSecondFactorLogin) {
         resetSecondFactorFlow();
       }
 
       if (loginResponse.requiresSecondFactor) {
-        const nextOption = loginResponse.secondFactorOptions?.[0] || null;
         setPendingSecondFactorLogin(loginResponse);
-        setSelectedSecondFactorChallengeId(nextOption?.challengeId || null);
-        setLoginError({
-          type: 'info',
-          message: nextOption?.promptMessage || '请输入验证码完成二次验证',
-        });
+        message.info(loginResponse.secondFactorOptions?.[0]?.promptMessage || '请输入验证码完成二次验证');
         return false;
       }
 
@@ -270,13 +244,10 @@ const Login = () => {
       return true;
     } catch (error) {
       if (error instanceof ApiRequestError) {
-        const feedback = resolveApiErrorFeedback(error, false);
-        setLoginError({
-          // redirectToLogin messages (e.g. "请先登录后再继续操作") are meant for
-          // the global 401 auto-redirect flow and make no sense on the login page
-          // itself. Show a generic failure message instead.
-          type: feedback.redirectToLogin ? 'error' : feedback.type,
-          message: feedback.redirectToLogin ? '登录失败，请稍后重试' : feedback.message,
+        const feedback = resolveLoginErrorFeedback(error);
+        message.open({
+          type: feedback.type,
+          content: feedback.message,
         });
         if (securitySettings.captchaEnabled) {
           void refreshCaptcha();
@@ -285,20 +256,14 @@ const Login = () => {
       }
 
       if (error instanceof Error) {
-        setLoginError({
-          type: 'error',
-          message: error.message || '登录失败，请稍后重试',
-        });
+        message.error(error.message || '登录失败，请稍后重试');
         if (securitySettings.captchaEnabled) {
           void refreshCaptcha();
         }
         return false;
       }
 
-      setLoginError({
-        type: 'error',
-        message: '登录失败，请稍后重试',
-      });
+      message.error('登录失败，请稍后重试');
       if (securitySettings.captchaEnabled) {
         void refreshCaptcha();
       }
@@ -315,10 +280,9 @@ const Login = () => {
         form={loginForm}
         title={brandingSettings.websiteName}
         subTitle="账号密码登录"
-        logo={brandingSettings.websiteLogoUrl || undefined}
         actions={null}
         initialValues={{ remember: true }}
-        message={loginError ? <Alert showIcon type={loginError.type} message={loginError.message} /> : false}
+        message={false}
         onFinish={handleSubmit}
         submitter={{
           submitButtonProps: {
@@ -340,17 +304,12 @@ const Login = () => {
       >
         <LoginFormFields
           pendingSecondFactorLogin={pendingSecondFactorLogin}
-          pendingSecondFactorOptions={pendingSecondFactorOptions}
-          pendingSecondFactorOption={pendingSecondFactorOption}
           pendingSecondFactorPrompt={pendingSecondFactorPrompt}
-          selectedSecondFactorChallengeId={selectedSecondFactorChallengeId}
           securityCaptchaEnabled={securitySettings.captchaEnabled}
           captchaChallenge={captchaChallenge}
           captchaLoading={captchaLoading}
           captchaImageLoadFailed={captchaImageLoadFailed}
           loginEncryptionLoading={loginEncryptionLoading}
-          onSecondFactorChange={setSelectedSecondFactorChallengeId}
-          onResetSecondFactorFlow={resetSecondFactorFlow}
           onRefreshCaptcha={() => void refreshCaptcha()}
           onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
         />

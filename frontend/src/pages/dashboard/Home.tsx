@@ -83,7 +83,7 @@ const DashboardHomePage = () => {
   const dashboardQuery = useRequest(
     async () => dashboardService.summary({ autoRedirectOnUnauthorized: false }),
     {
-      refreshDeps: [],
+      refreshDeps: [initialState?.currentTenant?.tenantId, initialState?.menuVersion],
     },
   );
 

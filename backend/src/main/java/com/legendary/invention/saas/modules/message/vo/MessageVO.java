@@ -13,11 +13,16 @@ public final class MessageVO {
         private String messageType;
         private String targetScope;
         private Long targetUserId;
+        private String targetUserName;
+        private Long targetRoleId;
+        private String targetRoleName;
         private String title;
         private String content;
         private String sourceType;
         private String publishStatus;
         private LocalDateTime publishedAt;
+        private Long createdBy;
+        private Long updatedBy;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private Boolean readFlag;
@@ -63,6 +68,30 @@ public final class MessageVO {
             this.targetUserId = targetUserId;
         }
 
+        public String getTargetUserName() {
+            return targetUserName;
+        }
+
+        public void setTargetUserName(String targetUserName) {
+            this.targetUserName = targetUserName;
+        }
+
+        public Long getTargetRoleId() {
+            return targetRoleId;
+        }
+
+        public void setTargetRoleId(Long targetRoleId) {
+            this.targetRoleId = targetRoleId;
+        }
+
+        public String getTargetRoleName() {
+            return targetRoleName;
+        }
+
+        public void setTargetRoleName(String targetRoleName) {
+            this.targetRoleName = targetRoleName;
+        }
+
         public String getTitle() {
             return title;
         }
@@ -101,6 +130,22 @@ public final class MessageVO {
 
         public void setPublishedAt(LocalDateTime publishedAt) {
             this.publishedAt = publishedAt;
+        }
+
+        public Long getCreatedBy() {
+            return createdBy;
+        }
+
+        public void setCreatedBy(Long createdBy) {
+            this.createdBy = createdBy;
+        }
+
+        public Long getUpdatedBy() {
+            return updatedBy;
+        }
+
+        public void setUpdatedBy(Long updatedBy) {
+            this.updatedBy = updatedBy;
         }
 
         public LocalDateTime getCreatedAt() {

@@ -20,12 +20,7 @@ import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
-import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
-import com.legendary.invention.saas.modules.plugin.registry.PluginRuntimeDescriptor;
-import com.legendary.invention.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginSecondFactorChallenge;
-import com.legendary.invention.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginSecondFactorProfile;
-import com.legendary.invention.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginSecondFactorVerification;
-import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
+import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
 import com.legendary.invention.saas.modules.tenant.domain.UserTenantAccess;
 import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
@@ -33,6 +28,7 @@ import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -56,7 +52,7 @@ public class AuthAppService {
     private final SecuritySettingsService securitySettingsService;
     private final PasswordEncoder passwordEncoder;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final PluginManagementAppService pluginManagementAppService;
+    private final SystemVerificationAppService systemVerificationAppService;
 
     public AuthAppService(
             UserDomainService userDomainService,
@@ -70,7 +66,7 @@ public class AuthAppService {
             SecuritySettingsService securitySettingsService,
             PasswordEncoder passwordEncoder,
             PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService
+            SystemVerificationAppService systemVerificationAppService
     ) {
         this.userDomainService = userDomainService;
         this.tenantDomainService = tenantDomainService;
@@ -83,7 +79,7 @@ public class AuthAppService {
         this.securitySettingsService = securitySettingsService;
         this.passwordEncoder = passwordEncoder;
         this.permissionSnapshotService = permissionSnapshotService;
-        this.pluginManagementAppService = pluginManagementAppService;
+        this.systemVerificationAppService = systemVerificationAppService;
     }
 
     public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent) {
@@ -148,9 +144,6 @@ public class AuthAppService {
         if (!secondFactorOptions.isEmpty()) {
             response.setRequiresSecondFactor(Boolean.TRUE);
             response.setSecondFactorOptions(secondFactorOptions);
-            response.setSecondFactorPluginCode(secondFactorOptions.get(0).getPluginCode());
-            response.setSecondFactorPluginName(secondFactorOptions.get(0).getPluginName());
-            response.setSecondFactorChallengeId(secondFactorOptions.get(0).getChallengeId());
             loginAuditService.log(user.getId(), tenantId, user.getUsername(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
             return response;
         }
@@ -190,23 +183,20 @@ public class AuthAppService {
     }
 
     public LoginResponseVO completeSecondFactorLogin(SecondFactorCompleteRequest request, String loginIp, String userAgent) {
-        PluginRuntimeDescriptor runtimeDescriptor = pluginManagementAppService.findActiveRuntimeDescriptor(request.getPluginCode())
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "插件运行时不存在"));
-        PluginSecondFactorProvider provider = runtimeDescriptor.getSecondFactorProvider();
-        if (provider == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件未提供二次验证能力");
+        if (!StringUtils.hasText(request.getFactorCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不能为空");
         }
-        PluginSecondFactorVerification verification = provider.verify(
-                runtimeDescriptor.getRuntimeContext(),
-                request.getChallengeId(),
-                request.getVerificationCode()
+        com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationVerificationVO verification = systemVerificationAppService.completeSecondFactorLogin(
+                request,
+                loginIp,
+                userAgent
         );
-        if (!verification.verified()) {
-            throw new BizException(ErrorCode.BIZ_ERROR, verification.message() == null ? "二次验证失败" : verification.message());
+        if (!Boolean.TRUE.equals(verification.getVerified())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, verification.getMessage() == null ? "二次验证失败" : verification.getMessage());
         }
-        SysUserEntity user = userDomainService.findById(verification.userId())
+        SysUserEntity user = userDomainService.findById(verification.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.tenantId()).orElse(null);
+        TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.getTenantId()).orElse(null);
         List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
                 .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
                 .toList();
@@ -418,30 +408,7 @@ public class AuthAppService {
             return List.of();
         }
         List<LoginResponseVO.SecondFactorOptionVO> result = new ArrayList<>();
-        pluginManagementAppService.availablePlugins(tenantId).forEach(plugin -> {
-            Optional<PluginRuntimeDescriptor> descriptor = pluginManagementAppService.findTenantRuntimeDescriptor(tenantId, plugin.getPluginCode());
-            if (descriptor.isEmpty()) {
-                return;
-            }
-            PluginSecondFactorProvider provider = descriptor.get().getSecondFactorProvider();
-            if (provider == null) {
-                return;
-            }
-            PluginSecondFactorProfile profile = provider.profile(descriptor.get().getRuntimeContext(), tenantId, user.getId());
-            if (!profile.enabled() || !profile.bound()) {
-                return;
-            }
-            PluginSecondFactorChallenge challenge = provider.prepareChallenge(descriptor.get().getRuntimeContext(), tenantId, user.getId());
-            LoginResponseVO.SecondFactorOptionVO option = new LoginResponseVO.SecondFactorOptionVO();
-            option.setPluginCode(plugin.getPluginCode());
-            option.setPluginName(plugin.getPluginName());
-            option.setFactorCode(provider.factorCode());
-            option.setFactorName(provider.factorName());
-            option.setChallengeId(challenge.challengeId());
-            option.setMaskedContact(profile.maskedContact());
-            option.setPromptMessage(profile.statusMessage());
-            result.add(option);
-        });
+        systemVerificationAppService.collectSecondFactorOptions(user, tenantId).forEach(result::add);
         return result;
     }
 }

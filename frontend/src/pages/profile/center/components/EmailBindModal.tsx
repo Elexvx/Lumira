@@ -26,7 +26,7 @@ export const EmailBindModal = ({ open, submitting, alertMessage, formProps, onCa
         showIcon
         type="info"
         message="先绑定邮箱，再继续验证绑定"
-        description="当前选择的验证方式需要邮箱。补充邮箱后，系统会自动返回继续绑定 2FA 或短信验证码。"
+        description="当前选择的验证方式需要邮箱。补充邮箱后，系统会自动返回继续绑定验证方式。"
       />
       {alertMessage ? <Alert showIcon type="error" message={alertMessage} /> : null}
       <Form {...formProps}>

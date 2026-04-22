@@ -1,6 +1,6 @@
 import { MessageOutlined, ReloadOutlined } from '@ant-design/icons';
+import { history } from '@umijs/max';
 import {
-  Alert,
   Avatar,
   Badge,
   Button,
@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { messageService } from '@/services/message';
-import type { MessageNoticeRecord, MessageSourceType } from '@/types/api';
+import type { MessageNoticeRecord } from '@/types/api';
 import { useMessageCenterRealtime } from '@/components/message-center/useMessageCenterRealtime';
 
 type MessageCenterFilter = 'all' | 'unread' | 'read';
@@ -28,14 +28,8 @@ interface MessageCenterNotice extends MessageNoticeRecord {
   effectiveAt: string;
   relativeTimeLabel: string;
   absoluteTimeLabel: string;
-  sourceLabel: string;
   icon: ReactNode;
 }
-
-const NOTICE_SOURCE_LABELS: Record<MessageSourceType, string> = {
-  MANUAL: '人工发布',
-  OPENAPI: '开放接口',
-};
 
 const buildAbsoluteTimeLabel = (value?: string) => {
   if (!value) {
@@ -102,7 +96,6 @@ const normalizeNotice = (notice: MessageNoticeRecord): MessageCenterNotice => {
     effectiveAt,
     relativeTimeLabel: buildRelativeTimeLabel(effectiveAt),
     absoluteTimeLabel: buildAbsoluteTimeLabel(effectiveAt),
-    sourceLabel: NOTICE_SOURCE_LABELS[notice.sourceType],
     icon: <MessageOutlined />,
   };
 };
@@ -129,7 +122,6 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
   const canOpenMessageCenter =
     permissions.has('*') ||
     permissions.has('message:message:view') ||
-    permissions.has('message:announcement:view') ||
     permissions.has('system:notification:view');
 
   const requestOptions = useMemo(
@@ -306,6 +298,10 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
     return null;
   }
 
+  const openArchivePage = () => {
+    history.push('/system/notifications');
+  };
+
   return (
     <div className={className ? `saas-message-center ${className}` : 'saas-message-center'}>
       <Space className="saas-message-center__toolbar" align="center" size={12} wrap>
@@ -315,6 +311,7 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
           onChange={(value) => setFilter(value as MessageCenterFilter)}
         />
         <Space>
+          <Button onClick={openArchivePage}>站内信归档</Button>
           <Button
             icon={<ReloadOutlined />}
             onClick={() => void reloadCenter()}
@@ -328,24 +325,21 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
         </Space>
       </Space>
 
-      {loadError ? (
-        <Alert
-          type="warning"
-          showIcon
-          message="消息加载异常"
-          description={loadError}
-          action={
-            <Button size="small" icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
-              重试
-            </Button>
-          }
-        />
-      ) : null}
-
       <Spin spinning={loading && notices.length === 0} tip="加载消息中">
         <div className="saas-message-center__grid">
           <Card title={`消息列表 ${counts.all > 0 ? `(${counts.all})` : ''}`} className="saas-message-center__list-card">
-            {visibleNotices.length === 0 ? (
+            {loadError && visibleNotices.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError || '消息中心暂时不可用'}>
+                <Space wrap>
+                  <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
+                    重试
+                  </Button>
+                  <Button type="primary" onClick={openArchivePage}>
+                    打开站内信归档
+                  </Button>
+                </Space>
+              </Empty>
+            ) : visibleNotices.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={filter === 'all' ? '暂无消息' : '暂无符合条件的消息'}
@@ -387,9 +381,7 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
                         }
                         description={
                           <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                            <Typography.Text type="secondary">
-                              {notice.sourceLabel} · {notice.relativeTimeLabel}
-                            </Typography.Text>
+                            <Typography.Text type="secondary">{notice.relativeTimeLabel}</Typography.Text>
                             <Typography.Paragraph ellipsis={{ rows: 2, expandable: false }} style={{ marginBottom: 0 }}>
                               {notice.content}
                             </Typography.Paragraph>
@@ -429,8 +421,6 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
               <>
                 <Descriptions bordered column={1} size="small">
                   <Descriptions.Item label="标题">{selectedNotice.title}</Descriptions.Item>
-                  <Descriptions.Item label="类型">站内信</Descriptions.Item>
-                  <Descriptions.Item label="来源">{selectedNotice.sourceLabel}</Descriptions.Item>
                   <Descriptions.Item label="时间">{selectedNotice.absoluteTimeLabel}</Descriptions.Item>
                   <Descriptions.Item label="状态">
                     {selectedNotice.readFlag ? <Tag color="blue">已读</Tag> : <Tag color="red">未读</Tag>}

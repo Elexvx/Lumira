@@ -15,9 +15,6 @@ public class LoginResponseVO {
     private List<MyTenantVO> tenants;
     private TenantSummaryVO currentTenant;
     private Boolean requiresSecondFactor;
-    private String secondFactorPluginCode;
-    private String secondFactorPluginName;
-    private String secondFactorChallengeId;
     private List<SecondFactorOptionVO> secondFactorOptions;
     private Boolean requiresCaptcha;
 
@@ -85,30 +82,6 @@ public class LoginResponseVO {
         this.requiresSecondFactor = requiresSecondFactor;
     }
 
-    public String getSecondFactorPluginCode() {
-        return secondFactorPluginCode;
-    }
-
-    public void setSecondFactorPluginCode(String secondFactorPluginCode) {
-        this.secondFactorPluginCode = secondFactorPluginCode;
-    }
-
-    public String getSecondFactorPluginName() {
-        return secondFactorPluginName;
-    }
-
-    public void setSecondFactorPluginName(String secondFactorPluginName) {
-        this.secondFactorPluginName = secondFactorPluginName;
-    }
-
-    public String getSecondFactorChallengeId() {
-        return secondFactorChallengeId;
-    }
-
-    public void setSecondFactorChallengeId(String secondFactorChallengeId) {
-        this.secondFactorChallengeId = secondFactorChallengeId;
-    }
-
     public List<SecondFactorOptionVO> getSecondFactorOptions() {
         return secondFactorOptions;
     }
@@ -126,29 +99,11 @@ public class LoginResponseVO {
     }
 
     public static class SecondFactorOptionVO {
-        private String pluginCode;
-        private String pluginName;
         private String factorCode;
         private String factorName;
         private String challengeId;
         private String maskedContact;
         private String promptMessage;
-
-        public String getPluginCode() {
-            return pluginCode;
-        }
-
-        public void setPluginCode(String pluginCode) {
-            this.pluginCode = pluginCode;
-        }
-
-        public String getPluginName() {
-            return pluginName;
-        }
-
-        public void setPluginName(String pluginName) {
-            this.pluginName = pluginName;
-        }
 
         public String getFactorCode() {
             return factorCode;

@@ -1,0 +1,158 @@
+package com.legendary.invention.saas.modules.system.controller;
+
+import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.enums.ErrorCode;
+import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
+import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
+import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
+import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.legendary.invention.saas.modules.auth.dto.SecondFactorVerifyRequest;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/system/verification")
+public class SystemVerificationController {
+
+    private final SystemVerificationAppService verificationAppService;
+    private final SecurityContextFacade securityContextFacade;
+    private final PermissionGuard permissionGuard;
+
+    public SystemVerificationController(
+            SystemVerificationAppService verificationAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard
+    ) {
+        this.verificationAppService = verificationAppService;
+        this.securityContextFacade = securityContextFacade;
+        this.permissionGuard = permissionGuard;
+    }
+
+    @GetMapping("/providers")
+    public ApiResponse<List<SystemVO.VerificationProviderVO>> providers() {
+        CurrentUser currentUser = currentUser();
+        requireView();
+        return ApiResponse.success(
+                verificationAppService.listProviders(requireTenantId(currentUser), currentUser.getUserId()),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/providers/{factorCode}")
+    public ApiResponse<SystemVO.VerificationProviderVO> provider(@PathVariable("factorCode") String factorCode) {
+        CurrentUser currentUser = currentUser();
+        requireView();
+        return ApiResponse.success(
+                verificationAppService.provider(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/sms-settings")
+    public ApiResponse<SystemVO.SmsVerificationSettingsVO> smsSettings() {
+        CurrentUser currentUser = currentUser();
+        requireView();
+        return ApiResponse.success(
+                verificationAppService.getSmsSettings(requireTenantId(currentUser)),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/providers/{factorCode}/bind")
+    public ApiResponse<SystemVO.VerificationChallengeVO> bind(@PathVariable("factorCode") String factorCode) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.bind(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/providers/{factorCode}/unbind")
+    public ApiResponse<Boolean> unbind(@PathVariable("factorCode") String factorCode) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.unbind(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/providers/{factorCode}/challenge")
+    public ApiResponse<SystemVO.VerificationChallengeVO> challenge(@PathVariable("factorCode") String factorCode) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.challenge(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/providers/{factorCode}/verify")
+    public ApiResponse<SystemVO.VerificationVerificationVO> verify(
+            @PathVariable("factorCode") String factorCode,
+            @Valid @RequestBody SecondFactorVerifyRequest request
+    ) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        if (!factorCode.equalsIgnoreCase(request.getFactorCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
+        }
+        return ApiResponse.success(
+                verificationAppService.completeBind(
+                        requireTenantId(currentUser),
+                        currentUser.getUserId(),
+                        factorCode,
+                        request.getChallengeId(),
+                        request.getVerificationCode()
+                ),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/sms-settings")
+    public ApiResponse<SystemVO.SmsVerificationSettingsVO> updateSmsSettings(@Valid @RequestBody SystemDTO.SmsVerificationSettingsRequest request) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.updateSmsSettings(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    private CurrentUser currentUser() {
+        return securityContextFacade.getCurrentUser();
+    }
+
+    private Long requireTenantId(CurrentUser currentUser) {
+        if (currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.TENANT_ERROR, "当前未选择租户");
+        }
+        return currentUser.getCurrentTenantId();
+    }
+
+    private void require(String permissionKey) {
+        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    }
+
+    private void requireView() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (currentUser != null && currentUser.getPermissions() != null &&
+                (currentUser.getPermissions().contains("system:verification:view") || currentUser.getPermissions().contains("system:verification:manage"))) {
+            return;
+        }
+        permissionGuard.requirePermission(currentUser, "system:verification:view");
+    }
+}

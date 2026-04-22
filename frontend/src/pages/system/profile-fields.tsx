@@ -55,16 +55,9 @@ const ProfileFieldManagementPage = () => {
         <Card
           title="个人中心字段开关"
           extra={
-            <Space>
-              <Button onClick={() => void loadItems()} disabled={loading || saving}>
-                刷新
-              </Button>
-              {canUpdate ? (
-                <Button type="primary" loading={saving} onClick={() => void handleSave()} disabled={loading}>
-                  保存设置
-                </Button>
-              ) : null}
-            </Space>
+            <Button onClick={() => void loadItems()} disabled={loading || saving}>
+              刷新
+            </Button>
           }
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -98,6 +91,14 @@ const ProfileFieldManagementPage = () => {
             ) : (
               <Empty description="暂无可配置字段" />
             )}
+
+            {canUpdate && items.length ? (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button type="primary" loading={saving} onClick={() => void handleSave()} disabled={loading}>
+                  保存设置
+                </Button>
+              </div>
+            ) : null}
           </Space>
         </Card>
       </div>

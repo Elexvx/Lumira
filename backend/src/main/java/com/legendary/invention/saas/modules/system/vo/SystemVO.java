@@ -222,6 +222,213 @@ public final class SystemVO {
         }
     }
 
+    public static class VerificationProviderVO {
+        private String factorCode;
+        private String factorName;
+        private Boolean enabled;
+        private Boolean bound;
+        private Boolean emailRequired;
+        private Boolean mobileRequired;
+        private String maskedContact;
+        private String statusMessage;
+
+        public String getFactorCode() {
+            return factorCode;
+        }
+
+        public void setFactorCode(String factorCode) {
+            this.factorCode = factorCode;
+        }
+
+        public String getFactorName() {
+            return factorName;
+        }
+
+        public void setFactorName(String factorName) {
+            this.factorName = factorName;
+        }
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public Boolean getBound() {
+            return bound;
+        }
+
+        public void setBound(Boolean bound) {
+            this.bound = bound;
+        }
+
+        public Boolean getEmailRequired() {
+            return emailRequired;
+        }
+
+        public void setEmailRequired(Boolean emailRequired) {
+            this.emailRequired = emailRequired;
+        }
+
+        public Boolean getMobileRequired() {
+            return mobileRequired;
+        }
+
+        public void setMobileRequired(Boolean mobileRequired) {
+            this.mobileRequired = mobileRequired;
+        }
+
+        public String getMaskedContact() {
+            return maskedContact;
+        }
+
+        public void setMaskedContact(String maskedContact) {
+            this.maskedContact = maskedContact;
+        }
+
+        public String getStatusMessage() {
+            return statusMessage;
+        }
+
+        public void setStatusMessage(String statusMessage) {
+            this.statusMessage = statusMessage;
+        }
+    }
+
+    public static class VerificationChallengeVO {
+        private String factorCode;
+        private String factorName;
+        private String challengeId;
+        private String maskedContact;
+        private String promptMessage;
+        private String setupUri;
+        private String setupSecret;
+        private List<String> recoveryCodes;
+        private String debugCode;
+
+        public String getFactorCode() {
+            return factorCode;
+        }
+
+        public void setFactorCode(String factorCode) {
+            this.factorCode = factorCode;
+        }
+
+        public String getFactorName() {
+            return factorName;
+        }
+
+        public void setFactorName(String factorName) {
+            this.factorName = factorName;
+        }
+
+        public String getChallengeId() {
+            return challengeId;
+        }
+
+        public void setChallengeId(String challengeId) {
+            this.challengeId = challengeId;
+        }
+
+        public String getMaskedContact() {
+            return maskedContact;
+        }
+
+        public void setMaskedContact(String maskedContact) {
+            this.maskedContact = maskedContact;
+        }
+
+        public String getPromptMessage() {
+            return promptMessage;
+        }
+
+        public void setPromptMessage(String promptMessage) {
+            this.promptMessage = promptMessage;
+        }
+
+        public String getSetupUri() {
+            return setupUri;
+        }
+
+        public void setSetupUri(String setupUri) {
+            this.setupUri = setupUri;
+        }
+
+        public String getSetupSecret() {
+            return setupSecret;
+        }
+
+        public void setSetupSecret(String setupSecret) {
+            this.setupSecret = setupSecret;
+        }
+
+        public List<String> getRecoveryCodes() {
+            return recoveryCodes;
+        }
+
+        public void setRecoveryCodes(List<String> recoveryCodes) {
+            this.recoveryCodes = recoveryCodes;
+        }
+
+        public String getDebugCode() {
+            return debugCode;
+        }
+
+        public void setDebugCode(String debugCode) {
+            this.debugCode = debugCode;
+        }
+    }
+
+    public static class VerificationVerificationVO {
+        private Boolean verified;
+        private Long tenantId;
+        private Long userId;
+        private String username;
+        private String message;
+
+        public Boolean getVerified() {
+            return verified;
+        }
+
+        public void setVerified(Boolean verified) {
+            this.verified = verified;
+        }
+
+        public Long getTenantId() {
+            return tenantId;
+        }
+
+        public void setTenantId(Long tenantId) {
+            this.tenantId = tenantId;
+        }
+
+        public Long getUserId() {
+            return userId;
+        }
+
+        public void setUserId(Long userId) {
+            this.userId = userId;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+    }
+
     public static class UserVO {
         private Long id;
         private String username;
@@ -1195,6 +1402,90 @@ public final class SystemVO {
 
         public void setSslEnabled(Boolean sslEnabled) {
             this.sslEnabled = sslEnabled;
+        }
+
+        public Boolean getConfigured() {
+            return configured;
+        }
+
+        public void setConfigured(Boolean configured) {
+            this.configured = configured;
+        }
+    }
+
+    public static class SmsVerificationSettingsVO {
+        private Boolean enabled;
+        private String provider;
+        private String signName;
+        private String templateCode;
+        private String accessKeyId;
+        private String accessKeySecret;
+        private String endpoint;
+        private String region;
+        private Boolean configured;
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getProvider() {
+            return provider;
+        }
+
+        public void setProvider(String provider) {
+            this.provider = provider;
+        }
+
+        public String getSignName() {
+            return signName;
+        }
+
+        public void setSignName(String signName) {
+            this.signName = signName;
+        }
+
+        public String getTemplateCode() {
+            return templateCode;
+        }
+
+        public void setTemplateCode(String templateCode) {
+            this.templateCode = templateCode;
+        }
+
+        public String getAccessKeyId() {
+            return accessKeyId;
+        }
+
+        public void setAccessKeyId(String accessKeyId) {
+            this.accessKeyId = accessKeyId;
+        }
+
+        public String getAccessKeySecret() {
+            return accessKeySecret;
+        }
+
+        public void setAccessKeySecret(String accessKeySecret) {
+            this.accessKeySecret = accessKeySecret;
+        }
+
+        public String getEndpoint() {
+            return endpoint;
+        }
+
+        public void setEndpoint(String endpoint) {
+            this.endpoint = endpoint;
+        }
+
+        public String getRegion() {
+            return region;
+        }
+
+        public void setRegion(String region) {
+            this.region = region;
         }
 
         public Boolean getConfigured() {

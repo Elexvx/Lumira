@@ -149,13 +149,14 @@ public class SystemManagementAppService {
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
-            shortcut("系统管理", "菜单、字典、配置与插件入口", "/system/menus", "system:menu:view"),
+            shortcut("系统管理", "菜单、字典、配置与验证入口", "/system/menus", "system:menu:view"),
+            shortcut("验证管理", "2FA 与短信验证码绑定", "/system/verification", "system:verification:view"),
             shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
             shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
             shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
             shortcut("审计中心", "登录和操作日志", "/system/monitoring/audit", "audit:view"),
-            shortcut("消息中心", "站内信发布与消息调试", "/system/notifications", "system:notification:view"),
+            shortcut("站内信归档", "租户站内信归档与手动发布", "/system/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
     );
     private static final String NODE_TYPE_CATALOG = "CATALOG";
@@ -169,10 +170,7 @@ public class SystemManagementAppService {
             "/system/roles",
             "/profile/center",
             "/user-center/permissions",
-            "/iam/overview",
-            "/plugins/announcement",
-            "/plugins/2fa",
-            "/plugins/sms"
+            "/iam/overview"
     );
 
     private final JdbcTemplate jdbcTemplate;

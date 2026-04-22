@@ -38,8 +38,6 @@ export interface AuthUser {
 }
 
 export interface SecondFactorLoginOption {
-  pluginCode: string;
-  pluginName: string;
   factorCode: string;
   factorName: string;
   challengeId: string;
@@ -56,9 +54,6 @@ export interface LoginResponse {
   tenants: MyTenant[];
   currentTenant?: TenantSummary | null;
   requiresSecondFactor?: boolean;
-  secondFactorPluginCode?: string | null;
-  secondFactorPluginName?: string | null;
-  secondFactorChallengeId?: string | null;
   secondFactorOptions?: SecondFactorLoginOption[];
   requiresCaptcha?: boolean | null;
 }
@@ -271,10 +266,10 @@ export interface NotificationRecord {
   createdAt: string;
 }
 
-export type MessageNoticeType = 'ANNOUNCEMENT' | 'MESSAGE';
-export type MessageTargetScope = 'TENANT' | 'USER';
+export type MessageNoticeType = 'MESSAGE';
+export type MessageTargetScope = 'TENANT' | 'USER' | 'ROLE';
 export type MessagePublishStatus = 'PUBLISHED' | 'RETRACTED';
-export type MessageSourceType = 'MANUAL' | 'OPENAPI';
+export type MessageSourceType = 'MANUAL';
 
 export interface MessageNoticeRecord {
   id: number;
@@ -282,11 +277,16 @@ export interface MessageNoticeRecord {
   messageType: MessageNoticeType;
   targetScope: MessageTargetScope;
   targetUserId?: number | null;
+  targetUserName?: string | null;
+  targetRoleId?: number | null;
+  targetRoleName?: string | null;
   title: string;
   content: string;
   sourceType: MessageSourceType;
   publishStatus: MessagePublishStatus;
   publishedAt?: string;
+  createdBy?: number | null;
+  updatedBy?: number | null;
   createdAt: string;
   updatedAt?: string;
   readFlag?: boolean;
@@ -326,20 +326,17 @@ export interface AuditLogRecord {
 }
 
 export interface SecondFactorProviderStatus {
-  pluginCode: string;
-  pluginName?: string | null;
-  factorCode?: string | null;
-  factorName?: string | null;
+  factorCode: string;
+  factorName: string;
   enabled?: boolean | null;
   bound?: boolean | null;
   emailRequired?: boolean | null;
+  mobileRequired?: boolean | null;
   maskedContact?: string | null;
   statusMessage?: string | null;
 }
 
 export interface SecondFactorChallenge {
-  pluginCode: string;
-  pluginName: string;
   factorCode: string;
   factorName: string;
   challengeId: string;
@@ -348,6 +345,7 @@ export interface SecondFactorChallenge {
   setupUri?: string | null;
   setupSecret?: string | null;
   recoveryCodes?: string[];
+  debugCode?: string | null;
 }
 
 export interface SecondFactorVerification {
@@ -379,6 +377,29 @@ export interface SmtpSettingsPayload {
   authEnabled?: boolean;
   startTlsEnabled?: boolean;
   sslEnabled?: boolean;
+}
+
+export interface SmsVerificationSettings {
+  enabled: boolean;
+  provider: string;
+  signName: string;
+  templateCode: string;
+  accessKeyId: string;
+  accessKeySecret?: string;
+  endpoint: string;
+  region: string;
+  configured?: boolean;
+}
+
+export interface SmsVerificationSettingsPayload {
+  enabled?: boolean;
+  provider?: string;
+  signName?: string;
+  templateCode?: string;
+  accessKeyId?: string;
+  accessKeySecret?: string;
+  endpoint?: string;
+  region?: string;
 }
 
 export interface SmtpTestPayload {

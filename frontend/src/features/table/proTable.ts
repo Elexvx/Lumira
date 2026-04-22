@@ -76,15 +76,23 @@ export const buildTableScroll = <RecordType extends object>(
 };
 
 export const buildTableRequest = <RecordType, Params extends PageRequestPayload = PageRequestPayload>(
-  request: (params: Params) => Promise<PagedResponse<RecordType>>,
+  request: (
+    params: Params,
+    sorter?: Record<string, unknown>,
+    filter?: Record<string, unknown>,
+  ) => Promise<PagedResponse<RecordType>>,
 ) => {
-  return async (params: Record<string, unknown>) => {
+  return async (params: Record<string, unknown>, sorter?: Record<string, unknown>, filter?: Record<string, unknown>) => {
     const { current, pageSize, ...rest } = params;
-    const result = await request({
-      pageNo: Number(current) || 1,
-      pageSize: Number(pageSize) || 20,
-      ...(rest as Omit<Params, 'pageNo' | 'pageSize'>),
-    } as Params);
+    const result = await request(
+      {
+        pageNo: Number(current) || 1,
+        pageSize: Number(pageSize) || 20,
+        ...(rest as Omit<Params, 'pageNo' | 'pageSize'>),
+      } as Params,
+      sorter,
+      filter,
+    );
 
     return adaptPageResult(result);
   };

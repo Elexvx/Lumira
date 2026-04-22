@@ -1,6 +1,7 @@
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { syncThemeRuntimeSnapshot } from '@/theme/runtime';
 import {
   applyThemePreferenceToDocument,
   getStoredThemePreference,
@@ -95,6 +96,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       },
     };
   }, [resolvedColorMode]);
+
+  // Keep the non-React layout config in sync with the current theme snapshot.
+  syncThemeRuntimeSnapshot(themePreference, systemDarkMode);
 
   useLayoutEffect(() => {
     if (typeof document === 'undefined') {

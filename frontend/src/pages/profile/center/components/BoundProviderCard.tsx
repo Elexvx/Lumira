@@ -40,9 +40,9 @@ export const BoundProviderCard = ({
             >
               <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
                 <Space wrap>
-                  <Typography.Text strong>{provider.pluginName || provider.pluginCode}</Typography.Text>
+                  <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
                   <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
-                  <Tag>{provider.factorName || '登录方式'}</Tag>
+                  <Tag>{provider.factorCode}</Tag>
                 </Space>
                 <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || '暂无绑定标识'}</Typography.Text>
               </Space>

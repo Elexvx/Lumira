@@ -11,6 +11,8 @@ import type {
   SecuritySettings,
   SmtpSettings,
   SmtpSettingsPayload,
+  SmsVerificationSettings,
+  SmsVerificationSettingsPayload,
   SmtpTestPayload,
   SmtpTestResult,
   WatermarkSettings,
@@ -160,6 +162,17 @@ export const systemService = {
     }),
   updateSmtpSettings: (payload: SmtpSettingsPayload, options: RequestOptions = {}) =>
     request<SmtpSettings>('/v1/system/smtp-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  smsVerificationSettings: (options: RequestOptions = {}) =>
+    request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updateSmsVerificationSettings: (payload: SmsVerificationSettingsPayload, options: RequestOptions = {}) =>
+    request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
       method: 'PUT',
       data: payload,
       ...options,

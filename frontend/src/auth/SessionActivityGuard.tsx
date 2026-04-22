@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { message } from 'antd';
 import { history, useLocation } from '@umijs/max';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
-import { performLogout } from '@/auth/session';
+import { performLogout, tryRefreshToken } from '@/auth/session';
+import { authService } from '@/services/auth';
 import {
   DEFAULT_SECURITY_SETTINGS,
   getStoredSecuritySettings,
@@ -15,6 +16,8 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const STORAGE_TOKEN_KEY = buildStorageKey(TOKEN_STORAGE_KEY);
 const MOUSE_MOVE_THROTTLE_MS = 1000;
+const KEEPALIVE_THROTTLE_MS = 60_000;
+const TOKEN_REFRESH_SKEW_MS = 60_000;
 
 export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
   const { initialState } = useInitialStateModel();
@@ -23,6 +26,8 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
   const tokenExpireTimerRef = useRef<number | null>(null);
   const redirectingRef = useRef(false);
   const lastBroadcastRef = useRef(0);
+  const lastKeepaliveRef = useRef(0);
+  const keepaliveInFlightRef = useRef(false);
   const lastActivityRef = useRef<number>(Date.now());
 
   const securitySettings = useMemo(
@@ -41,6 +46,51 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     if (tokenExpireTimerRef.current !== null) {
       window.clearTimeout(tokenExpireTimerRef.current);
       tokenExpireTimerRef.current = null;
+    }
+  };
+
+  const refreshAccessToken = async () => {
+    if (!tokenManager.hasToken() || keepaliveInFlightRef.current) {
+      return false;
+    }
+
+    keepaliveInFlightRef.current = true;
+    try {
+      const refreshed = await tryRefreshToken();
+      if (!refreshed) {
+        forceLogout('token_expired');
+        return false;
+      }
+      scheduleTokenExpiration();
+      scheduleTimeout(lastActivityRef.current);
+      return true;
+    } finally {
+      keepaliveInFlightRef.current = false;
+    }
+  };
+
+  const pingSession = async () => {
+    if (!tokenManager.hasToken() || keepaliveInFlightRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastKeepaliveRef.current < KEEPALIVE_THROTTLE_MS) {
+      return;
+    }
+
+    keepaliveInFlightRef.current = true;
+    lastKeepaliveRef.current = now;
+    try {
+      await authService.currentUser({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      });
+    } catch {
+      lastKeepaliveRef.current = 0;
+    } finally {
+      keepaliveInFlightRef.current = false;
     }
   };
 
@@ -85,22 +135,16 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     }
 
     const remainingMs = tokenState.expiresAt - Date.now();
-    if (remainingMs <= 0) {
-      forceLogout('token_expired');
+    const refreshDelayMs = Math.max(0, remainingMs - TOKEN_REFRESH_SKEW_MS);
+
+    if (remainingMs <= 0 || refreshDelayMs === 0) {
+      void refreshAccessToken();
       return;
     }
 
     tokenExpireTimerRef.current = window.setTimeout(() => {
-      const latestTokenState = tokenManager.getTokenState();
-      if (!latestTokenState) {
-        return;
-      }
-      if (latestTokenState.expiresAt <= Date.now()) {
-        forceLogout('token_expired');
-        return;
-      }
-      scheduleTokenExpiration();
-    }, remainingMs);
+      void refreshAccessToken();
+    }, refreshDelayMs);
   };
 
   const markActivity = (source: string) => {
@@ -117,6 +161,7 @@ export const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     lastActivityRef.current = now;
     persistSessionActivity(now);
     scheduleTimeout(now);
+    void pingSession();
   };
 
   useEffect(() => {

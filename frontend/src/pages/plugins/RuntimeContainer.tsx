@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { history, useLocation, useParams } from '@umijs/max';
+import { useLocation, useParams } from '@umijs/max';
 import { Alert, Card, Spin } from 'antd';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { notifyPluginLoadError } from '@/plugins/loader';
@@ -24,12 +24,6 @@ const RuntimeContainer = () => {
     () => initialState?.availablePlugins?.find((item) => item.pluginCode === params.pluginCode),
     [initialState?.availablePlugins, params.pluginCode],
   );
-
-  useEffect(() => {
-    if (params.pluginCode === '2fa') {
-      history.replace('/user-center/profile?tab=second-factor');
-    }
-  }, [params.pluginCode]);
 
   useEffect(() => {
     const container = containerRef.current;
