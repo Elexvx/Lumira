@@ -49,7 +49,11 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemPersonalization: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemSecurity: isLogin && hasPermission(permissions, 'system:config:view'),
     canVisitSystemVerification:
-      isLogin && (hasPermission(permissions, 'system:verification:view') || hasPermission(permissions, 'system:verification:manage')),
+      isLogin &&
+      (hasPermission(permissions, 'system:verification:view') ||
+        hasPermission(permissions, 'system:verification:manage') ||
+        hasPermission(permissions, 'system:config:view') ||
+        hasPermission(permissions, 'system:config:update')),
     canVisitSystemNotifications:
       isLogin &&
       (hasPermission(permissions, 'system:notification:view') ||

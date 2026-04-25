@@ -1,5 +1,5 @@
 import { request, type RequestOptions } from '@/services/common/request';
-import type { CurrentUser, ProfileSummary } from '@/types/api';
+import type { CurrentUser, ProfileSummary, SecondFactorChallenge } from '@/types/api';
 
 export interface ProfileEmailPayload {
   email: string;
@@ -18,6 +18,18 @@ export interface ProfileBasicInfoPayload {
   idCardNumber?: string;
 }
 
+export interface ContactBindChallengePayload {
+  contactType: 'mobile' | 'email';
+  value: string;
+}
+
+export interface ContactBindPayload {
+  contactType: 'mobile' | 'email';
+  value: string;
+  challengeId?: string;
+  verificationCode?: string;
+}
+
 export const profileService = {
   summary: (options: RequestOptions = {}) =>
     request<ProfileSummary>('/v1/profile/summary', {
@@ -32,6 +44,18 @@ export const profileService = {
     }),
   updateEmail: (payload: ProfileEmailPayload, options: RequestOptions = {}) =>
     request<CurrentUser>('/v1/profile/email', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  contactBindChallenge: (payload: ContactBindChallengePayload, options: RequestOptions = {}) =>
+    request<SecondFactorChallenge>('/v1/profile/contact-bind/challenge', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  contactBind: (payload: ContactBindPayload, options: RequestOptions = {}) =>
+    request<CurrentUser>('/v1/profile/contact-bind', {
       method: 'PUT',
       data: payload,
       ...options,

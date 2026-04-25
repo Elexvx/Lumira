@@ -5,6 +5,7 @@ import {
   normalizeBrandingSettings,
   persistBrandingSettings,
 } from '@/branding/settings';
+import { normalizeAgreementSettings } from '@/agreement/settings';
 import { normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { isLoggedIn, restoreSession } from '@/auth/session';
 import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
@@ -16,7 +17,7 @@ import {
   persistWatermarkSettings,
 } from '@/watermark/settings';
 import type { AppInitialState } from '@/app.types';
-import type { BrandingSettings, CurrentUser, MenuNode, SecuritySettings, TenantPlugin } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin } from '@/types/api';
 
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
   const settings = normalizeBrandingSettings(
@@ -61,6 +62,14 @@ const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
   persistSecuritySettings(settings);
   return settings;
 };
+
+const loadPublicAgreementSettings = async (): Promise<AgreementSettings> =>
+  normalizeAgreementSettings(
+    await systemService.publicAgreementSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+  );
+
+const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
+  await systemService.publicLoginCapabilities({ autoRedirectOnUnauthorized: false, silent: true });
 
 const buildAuthenticatedInitialState = async (
   currentUser: CurrentUser,
@@ -122,8 +131,12 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     errorMessage: undefined,
   });
 
-  const brandingSettings = await loadBrandingSettings(false);
-  const securitySettings = await loadPublicSecuritySettings();
+  const [brandingSettings, securitySettings, agreementSettings, loginCapabilities] = await Promise.all([
+    loadBrandingSettings(false),
+    loadPublicSecuritySettings(),
+    loadPublicAgreementSettings(),
+    loadPublicLoginCapabilities(),
+  ]);
   persistWatermarkSettings(DEFAULT_WATERMARK_SETTINGS);
 
   setBootstrapSnapshot({
@@ -147,6 +160,8 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     securitySettings,
     brandingSettings,
     watermarkSettings: DEFAULT_WATERMARK_SETTINGS,
+    agreementSettings,
+    loginCapabilities,
   };
 };
 

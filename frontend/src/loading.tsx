@@ -1,7 +1,7 @@
-import { PageLoading } from '@ant-design/pro-layout';
+import { Spin } from 'antd';
 
 const Loading = () => {
-  return <PageLoading />;
+  return <Spin spinning size="large" fullscreen />;
 };
 
 export default Loading;

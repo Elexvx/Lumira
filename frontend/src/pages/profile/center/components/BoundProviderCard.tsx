@@ -1,6 +1,20 @@
-import { Button, Card, Empty, List, Space, Tag, Typography } from 'antd';
+import { Button, Card, Divider, Empty, List, Space, Tag, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import type { SecondFactorProviderStatus } from '@/types/api';
+
+export interface SupplementalBindingItem {
+  key: string;
+  title: string;
+  statusLabel?: string;
+  statusColor?: string;
+  value?: string | null;
+  verificationLabel?: string;
+  verificationColor?: string;
+  actionLabel: string;
+  actionLoading?: boolean;
+  disabled?: boolean;
+  onAction: () => void;
+}
 
 interface BoundProviderCardProps {
   title?: ReactNode;
@@ -10,7 +24,7 @@ interface BoundProviderCardProps {
   providers: SecondFactorProviderStatus[];
   bindingLoading: boolean;
   bindingSubmitting: boolean;
-  emailBindingSubmitting: boolean;
+  supplementalItems?: SupplementalBindingItem[];
   onBind: (provider: SecondFactorProviderStatus) => void;
   onUnbind: (provider: SecondFactorProviderStatus) => void;
 }
@@ -21,57 +35,98 @@ export const BoundProviderCard = ({
   providers,
   bindingLoading,
   bindingSubmitting,
-  emailBindingSubmitting,
+  supplementalItems = [],
   onBind,
   onUnbind,
   title = '已绑定登录方式',
   emptyDescription = '当前租户暂无可绑定登录方式',
 }: BoundProviderCardProps) => (
   <Card title={title} loading={loading}>
-    {providers.length ? (
-      <List
-        dataSource={providers}
-        split={false}
-        renderItem={(provider) => (
-          <List.Item style={{ paddingInline: 0 }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 16,
-                width: '100%',
-                alignItems: 'flex-start',
-              }}
-            >
-              <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
-                <Space wrap>
-                  <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
-                  {provider.systemEnabled === false ? <Tag color="red">系统已关闭</Tag> : null}
-                  <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
-                  <Tag>{provider.factorCode}</Tag>
-                </Space>
-                <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || '暂无绑定标识'}</Typography.Text>
-              </Space>
-              {canManageSecondFactor ? (
-                <Space wrap style={{ flexShrink: 0, justifyContent: 'flex-end' }}>
-                  <Button
-                    type="primary"
-                    onClick={() => onBind(provider)}
-                    disabled={bindingLoading || bindingSubmitting || emailBindingSubmitting || provider.systemEnabled === false}
-                  >
-                    {provider.systemEnabled === false ? '系统未启用' : provider.bound ? '重新绑定' : '绑定'}
-                  </Button>
-                  {provider.bound ? (
-                    <Button danger onClick={() => onUnbind(provider)} disabled={provider.systemEnabled === false}>
-                      解绑
-                    </Button>
+    {providers.length || supplementalItems.length ? (
+      <>
+        {providers.length ? (
+          <List
+            dataSource={providers}
+            split={false}
+            renderItem={(provider) => (
+              <List.Item style={{ paddingInline: 0 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    width: '100%',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
+                    <Space wrap>
+                      <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
+                      {provider.systemEnabled === false ? <Tag color="red">系统已关闭</Tag> : null}
+                      <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
+                      <Tag>{provider.factorCode}</Tag>
+                    </Space>
+                    <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || '暂无绑定标识'}</Typography.Text>
+                  </Space>
+                  {canManageSecondFactor ? (
+                    <Space wrap style={{ flexShrink: 0, justifyContent: 'flex-end' }}>
+                      <Button
+                        type="primary"
+                        onClick={() => onBind(provider)}
+                        disabled={bindingLoading || bindingSubmitting || provider.systemEnabled === false}
+                      >
+                        {provider.systemEnabled === false ? '系统未启用' : provider.bound ? '重新绑定' : '绑定'}
+                      </Button>
+                      {provider.bound ? (
+                        <Button danger onClick={() => onUnbind(provider)} disabled={provider.systemEnabled === false}>
+                          解绑
+                        </Button>
+                      ) : null}
+                    </Space>
                   ) : null}
-                </Space>
-              ) : null}
-            </div>
-          </List.Item>
-        )}
-      />
+                </div>
+              </List.Item>
+            )}
+          />
+        ) : null}
+        {providers.length && supplementalItems.length ? <Divider style={{ margin: '12px 0' }} /> : null}
+        {supplementalItems.length ? (
+          <List
+            dataSource={supplementalItems}
+            split={false}
+            renderItem={(item) => (
+              <List.Item style={{ paddingInline: 0 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    width: '100%',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
+                    <Space wrap>
+                      <Typography.Text strong>{item.title}</Typography.Text>
+                      <Tag color={item.statusColor || (item.value ? 'green' : 'default')}>{item.statusLabel || (item.value ? '已绑定' : '未绑定')}</Tag>
+                      {item.verificationLabel ? <Tag color={item.verificationColor}>{item.verificationLabel}</Tag> : null}
+                      <Tag>{item.key}</Tag>
+                    </Space>
+                    <Typography.Text type="secondary">{item.value || '暂无绑定信息'}</Typography.Text>
+                  </Space>
+                  {canManageSecondFactor ? (
+                    <Space wrap style={{ flexShrink: 0, justifyContent: 'flex-end' }}>
+                      <Button type="primary" onClick={item.onAction} disabled={item.disabled} loading={item.actionLoading}>
+                        {item.actionLabel}
+                      </Button>
+                    </Space>
+                  ) : null}
+                </div>
+              </List.Item>
+            )}
+          />
+        ) : null}
+      </>
     ) : (
       <Empty description={emptyDescription} />
     )}

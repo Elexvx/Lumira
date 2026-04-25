@@ -1,4 +1,15 @@
-import type { BrandingSettings, CurrentUser, MenuNode, MyTenant, SecuritySettings, TenantPlugin, TenantSummary, WatermarkSettings } from '@/types/api';
+import type {
+  AgreementSettings,
+  BrandingSettings,
+  CurrentUser,
+  LoginCapabilities,
+  MenuNode,
+  MyTenant,
+  SecuritySettings,
+  TenantPlugin,
+  TenantSummary,
+  WatermarkSettings,
+} from '@/types/api';
 
 export interface AppInitialState {
   currentUser?: CurrentUser;
@@ -11,6 +22,8 @@ export interface AppInitialState {
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;
   watermarkSettings?: WatermarkSettings;
+  agreementSettings?: AgreementSettings;
+  loginCapabilities?: LoginCapabilities;
 }
 
 export interface RuntimeMenuDataItem {

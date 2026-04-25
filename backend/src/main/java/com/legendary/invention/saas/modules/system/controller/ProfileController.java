@@ -61,6 +61,22 @@ public class ProfileController {
         );
     }
 
+    @PostMapping("/contact-bind/challenge")
+    public ApiResponse<SystemVO.VerificationChallengeVO> contactBindChallenge(@Valid @RequestBody ProfileDTO.ContactBindChallengeRequest request) {
+        return ApiResponse.success(
+                systemManagementAppService.startCurrentUserContactBindChallenge(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/contact-bind")
+    public ApiResponse<CurrentUserVO> contactBind(@Valid @RequestBody ProfileDTO.ContactBindRequest request) {
+        return ApiResponse.success(
+                systemManagementAppService.updateCurrentUserContactBinding(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping(value = "/uploads/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         return ApiResponse.success(imageUploadService.upload(file), TraceContext.getRequestId());

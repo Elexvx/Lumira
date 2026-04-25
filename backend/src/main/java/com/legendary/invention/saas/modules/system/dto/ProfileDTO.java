@@ -13,6 +13,8 @@ public final class ProfileDTO {
         @NotBlank(message = "请输入邮箱")
         @Email(message = "请输入有效邮箱地址")
         private String email;
+        private String challengeId;
+        private String verificationCode;
 
         public String getEmail() {
             return email;
@@ -20,6 +22,22 @@ public final class ProfileDTO {
 
         public void setEmail(String email) {
             this.email = email;
+        }
+
+        public String getChallengeId() {
+            return challengeId;
+        }
+
+        public void setChallengeId(String challengeId) {
+            this.challengeId = challengeId;
+        }
+
+        public String getVerificationCode() {
+            return verificationCode;
+        }
+
+        public void setVerificationCode(String verificationCode) {
+            this.verificationCode = verificationCode;
         }
     }
 
@@ -115,6 +133,70 @@ public final class ProfileDTO {
 
         public void setIdCardNumber(String idCardNumber) {
             this.idCardNumber = idCardNumber == null ? null : idCardNumber.trim();
+        }
+    }
+
+    public static class ContactBindChallengeRequest {
+        @NotBlank(message = "绑定类型不能为空")
+        private String contactType;
+        @NotBlank(message = "请输入绑定信息")
+        private String value;
+
+        public String getContactType() {
+            return contactType;
+        }
+
+        public void setContactType(String contactType) {
+            this.contactType = contactType == null ? null : contactType.trim();
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value == null ? null : value.trim();
+        }
+    }
+
+    public static class ContactBindRequest {
+        @NotBlank(message = "绑定类型不能为空")
+        private String contactType;
+        @NotBlank(message = "请输入绑定信息")
+        private String value;
+        private String challengeId;
+        private String verificationCode;
+
+        public String getContactType() {
+            return contactType;
+        }
+
+        public void setContactType(String contactType) {
+            this.contactType = contactType == null ? null : contactType.trim();
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value == null ? null : value.trim();
+        }
+
+        public String getChallengeId() {
+            return challengeId;
+        }
+
+        public void setChallengeId(String challengeId) {
+            this.challengeId = challengeId;
+        }
+
+        public String getVerificationCode() {
+            return verificationCode;
+        }
+
+        public void setVerificationCode(String verificationCode) {
+            this.verificationCode = verificationCode;
         }
     }
 }

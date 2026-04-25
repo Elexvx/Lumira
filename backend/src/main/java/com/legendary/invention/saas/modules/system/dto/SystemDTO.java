@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -162,6 +163,8 @@ public final class SystemDTO {
 
     public static class RoleUpsertRequest {
         @NotBlank
+        @Size(max = 64, message = "roleCode长度不能超过64个字符")
+        @Pattern(regexp = "^[A-Za-z][A-Za-z0-9_]{0,63}$", message = "roleCode只能由字母、数字和下划线组成，且必须以字母开头")
         private String roleCode;
         @NotBlank
         private String roleName;
@@ -174,7 +177,7 @@ public final class SystemDTO {
         }
 
         public void setRoleCode(String roleCode) {
-            this.roleCode = roleCode;
+            this.roleCode = roleCode == null ? null : roleCode.trim();
         }
 
         public String getRoleName() {
@@ -962,6 +965,7 @@ public final class SystemDTO {
 
     public static class VerificationSettingsRequest {
         private Boolean enabled;
+        private Boolean emailLoginEnabled;
 
         public Boolean getEnabled() {
             return enabled;
@@ -969,6 +973,14 @@ public final class SystemDTO {
 
         public void setEnabled(Boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public Boolean getEmailLoginEnabled() {
+            return emailLoginEnabled;
+        }
+
+        public void setEmailLoginEnabled(Boolean emailLoginEnabled) {
+            this.emailLoginEnabled = emailLoginEnabled;
         }
     }
 

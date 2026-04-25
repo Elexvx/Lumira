@@ -133,6 +133,8 @@ public final class SystemVO {
         private Integer permissionCount;
         private List<AuditLogVO> recentLoginLogs;
         private List<ProfileFieldSettingVO> profileFieldSettings;
+        private Boolean mobileBindVerificationRequired;
+        private Boolean emailBindVerificationRequired;
 
         public CurrentUserVO getCurrentUser() {
             return currentUser;
@@ -180,6 +182,22 @@ public final class SystemVO {
 
         public void setProfileFieldSettings(List<ProfileFieldSettingVO> profileFieldSettings) {
             this.profileFieldSettings = profileFieldSettings;
+        }
+
+        public Boolean getMobileBindVerificationRequired() {
+            return mobileBindVerificationRequired;
+        }
+
+        public void setMobileBindVerificationRequired(Boolean mobileBindVerificationRequired) {
+            this.mobileBindVerificationRequired = mobileBindVerificationRequired;
+        }
+
+        public Boolean getEmailBindVerificationRequired() {
+            return emailBindVerificationRequired;
+        }
+
+        public void setEmailBindVerificationRequired(Boolean emailBindVerificationRequired) {
+            this.emailBindVerificationRequired = emailBindVerificationRequired;
         }
     }
 
@@ -1508,6 +1526,7 @@ public final class SystemVO {
 
     public static class VerificationSettingsVO {
         private Boolean enabled;
+        private Boolean emailLoginEnabled;
 
         public Boolean getEnabled() {
             return enabled;
@@ -1515,6 +1534,110 @@ public final class SystemVO {
 
         public void setEnabled(Boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public Boolean getEmailLoginEnabled() {
+            return emailLoginEnabled;
+        }
+
+        public void setEmailLoginEnabled(Boolean emailLoginEnabled) {
+            this.emailLoginEnabled = emailLoginEnabled;
+        }
+    }
+
+    public static class LoginCapabilitiesVO {
+        private Boolean passwordLoginAvailable;
+        private Boolean smsLoginAvailable;
+        private Boolean emailLoginAvailable;
+
+        public Boolean getPasswordLoginAvailable() {
+            return passwordLoginAvailable;
+        }
+
+        public void setPasswordLoginAvailable(Boolean passwordLoginAvailable) {
+            this.passwordLoginAvailable = passwordLoginAvailable;
+        }
+
+        public Boolean getSmsLoginAvailable() {
+            return smsLoginAvailable;
+        }
+
+        public void setSmsLoginAvailable(Boolean smsLoginAvailable) {
+            this.smsLoginAvailable = smsLoginAvailable;
+        }
+
+        public Boolean getEmailLoginAvailable() {
+            return emailLoginAvailable;
+        }
+
+        public void setEmailLoginAvailable(Boolean emailLoginAvailable) {
+            this.emailLoginAvailable = emailLoginAvailable;
+        }
+    }
+
+    public static class LoginCodeChallengeVO {
+        private String loginType;
+        private String factorName;
+        private String challengeId;
+        private String maskedContact;
+        private String promptMessage;
+        private Long expiresInSeconds;
+        private String debugCode;
+
+        public String getLoginType() {
+            return loginType;
+        }
+
+        public void setLoginType(String loginType) {
+            this.loginType = loginType;
+        }
+
+        public String getFactorName() {
+            return factorName;
+        }
+
+        public void setFactorName(String factorName) {
+            this.factorName = factorName;
+        }
+
+        public String getChallengeId() {
+            return challengeId;
+        }
+
+        public void setChallengeId(String challengeId) {
+            this.challengeId = challengeId;
+        }
+
+        public String getMaskedContact() {
+            return maskedContact;
+        }
+
+        public void setMaskedContact(String maskedContact) {
+            this.maskedContact = maskedContact;
+        }
+
+        public String getPromptMessage() {
+            return promptMessage;
+        }
+
+        public void setPromptMessage(String promptMessage) {
+            this.promptMessage = promptMessage;
+        }
+
+        public Long getExpiresInSeconds() {
+            return expiresInSeconds;
+        }
+
+        public void setExpiresInSeconds(Long expiresInSeconds) {
+            this.expiresInSeconds = expiresInSeconds;
+        }
+
+        public String getDebugCode() {
+            return debugCode;
+        }
+
+        public void setDebugCode(String debugCode) {
+            this.debugCode = debugCode;
         }
     }
 

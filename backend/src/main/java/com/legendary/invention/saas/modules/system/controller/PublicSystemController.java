@@ -4,6 +4,7 @@ import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.tenant.TenantContext;
 import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
+import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicSystemController {
 
     private final SystemManagementAppService systemManagementAppService;
+    private final SystemVerificationAppService systemVerificationAppService;
 
-    public PublicSystemController(SystemManagementAppService systemManagementAppService) {
+    public PublicSystemController(SystemManagementAppService systemManagementAppService, SystemVerificationAppService systemVerificationAppService) {
         this.systemManagementAppService = systemManagementAppService;
+        this.systemVerificationAppService = systemVerificationAppService;
     }
 
     @GetMapping("/branding-settings")
@@ -39,6 +42,15 @@ public class PublicSystemController {
     public ApiResponse<SystemVO.SecuritySettingsVO> securitySettings() {
         return ApiResponse.success(
                 systemManagementAppService.getPublicSecuritySettings(),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/login-capabilities")
+    public ApiResponse<SystemVO.LoginCapabilitiesVO> loginCapabilities() {
+        Long tenantId = resolveTenantId();
+        return ApiResponse.success(
+                systemVerificationAppService.loadLoginCapabilities(tenantId),
                 TraceContext.getRequestId()
         );
     }

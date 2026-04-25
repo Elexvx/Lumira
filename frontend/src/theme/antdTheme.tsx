@@ -1,11 +1,19 @@
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import type { ReactNode } from 'react';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
+import type { ThemePreference } from '@/theme/settings';
 
 type AntdThemeConfig = NonNullable<Parameters<typeof ConfigProvider>[0]>['theme'];
 
-export const buildAntdThemeConfig = (): AntdThemeConfig => {
-  const { themePreference, resolvedColorMode } = getThemeRuntimeSnapshot();
+interface BuildAntdThemeConfigOptions {
+  themePreference?: ThemePreference;
+  resolvedColorMode?: 'light' | 'dark';
+}
+
+export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): AntdThemeConfig => {
+  const runtimeSnapshot = getThemeRuntimeSnapshot();
+  const themePreference = options?.themePreference ?? runtimeSnapshot.themePreference;
+  const resolvedColorMode = options?.resolvedColorMode ?? runtimeSnapshot.resolvedColorMode;
 
   if (themePreference === 'compact') {
     return {
@@ -27,7 +35,7 @@ export const buildAntdThemeConfig = (): AntdThemeConfig => {
       colorBgContainer: '#151515',
       colorBgElevated: '#1b1b1b',
       colorBorderSecondary: '#2a2a2a',
-      colorTextBase: '#f5f7fa',
+      colorText: '#f5f7fa',
     },
     components: {
       Layout: {
