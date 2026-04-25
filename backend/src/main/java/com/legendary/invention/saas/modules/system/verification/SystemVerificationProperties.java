@@ -15,6 +15,7 @@ public class SystemVerificationProperties {
     private int recoveryCodeCount = 8;
     private int recoveryCodeLength = 8;
     private boolean exposeDebugCode = false;
+    private boolean emailLoginEnabled = false;
 
     public String getIssuer() {
         return issuer;
@@ -78,5 +79,13 @@ public class SystemVerificationProperties {
 
     public void setExposeDebugCode(boolean exposeDebugCode) {
         this.exposeDebugCode = exposeDebugCode;
+    }
+
+    public boolean isEmailLoginEnabled() {
+        return emailLoginEnabled;
+    }
+
+    public void setEmailLoginEnabled(boolean emailLoginEnabled) {
+        this.emailLoginEnabled = emailLoginEnabled;
     }
 }

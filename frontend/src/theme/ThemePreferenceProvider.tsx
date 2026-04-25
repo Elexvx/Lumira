@@ -65,7 +65,14 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   const resolvedColorMode = themePreference === 'dark' || (themePreference === 'system' && systemDarkMode) ? 'dark' : 'light';
 
-  const themeConfig = useMemo(() => buildAntdThemeConfig(), [resolvedColorMode, themePreference]);
+  const themeConfig = useMemo(
+    () =>
+      buildAntdThemeConfig({
+        themePreference,
+        resolvedColorMode,
+      }),
+    [resolvedColorMode, themePreference],
+  );
 
   // Keep the non-React layout config in sync with the current theme snapshot.
   syncThemeRuntimeSnapshot(themePreference, systemDarkMode);

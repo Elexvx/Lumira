@@ -11,7 +11,7 @@ import { TopActions } from '@/layouts/components/TopActions';
 import NoPermission from '@/pages/exception/NoPermission';
 import { backendRouteMeta } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
-import { DEFAULT_HOME_PATH, LAYOUT_HEADER_HEIGHT, LAYOUT_SIDER_WIDTH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
+import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
 import { resolveLayoutNavTheme } from '@/theme/runtime';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
@@ -114,17 +114,11 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   return {
     title: brandName,
     logo: hasBrandLogo ? brandingSettings.websiteLogoUrl : false,
-    fixedHeader: true,
+    fixedHeader: false,
     fixSiderbar: true,
     layout: 'mix',
     navTheme,
-    siderWidth: LAYOUT_SIDER_WIDTH,
     splitMenus: false,
-    token: {
-      header: {
-        heightLayoutHeader: LAYOUT_HEADER_HEIGHT,
-      },
-    },
     breadcrumbRender: (routers = []) => {
       const pathname = history.location.pathname;
       const menuBreadcrumb = buildBreadcrumbItems(initialState?.menuTree, pathname);
@@ -133,7 +127,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     breadcrumbProps: {
       minLength: 1,
     },
-    headerTitleRender: (logo, title) => (hasBrandLogo ? logo : title),
+    headerTitleRender: (logo) => logo,
     menuHeaderRender: false,
     menuFooterRender: false,
     menuExtraRender: false,

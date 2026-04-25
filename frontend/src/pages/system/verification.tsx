@@ -1,17 +1,20 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { useRequest } from '@umijs/max';
-import { Button, Card, Form, Input, Modal, Select, Space, Switch, Tabs, message } from 'antd';
-import { useEffect, useState } from 'react';
+import { history, useLocation, useRequest } from '@umijs/max';
+import { Alert, Button, Card, Form, Input, InputNumber, Select, Space, Switch, Tabs, Typography, message } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSecondFactorModal';
-import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
-import { secondFactorService } from '@/services/secondFactor';
 import { systemService } from '@/services/system';
-import type { SecondFactorChallenge, SecondFactorProviderStatus, SmsVerificationSettings, VerificationSettings } from '@/types/api';
+import type {
+  SmsVerificationSettings,
+  SmtpSettings,
+  SmtpTestPayload,
+  VerificationSettings,
+} from '@/types/api';
 
-const TAB_ORDER = ['totp', 'sms'] as const;
+const TAB_KEYS = ['totp', 'sms', 'email'] as const;
 
+type VerificationTabKey = (typeof TAB_KEYS)[number];
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
 
 interface SmsProviderFieldConfig {
@@ -56,8 +59,8 @@ const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
   },
   mock: {
     fields: [
-      { name: 'signName', label: '模拟签名', placeholder: '例如：测试短信', required: false },
-      { name: 'templateCode', label: '模拟模板编码', placeholder: '例如：MOCK_SMS_001', required: false },
+      { name: 'signName', label: '模拟签名', placeholder: '例如：测试短信' },
+      { name: 'templateCode', label: '模拟模板编码', placeholder: '例如：MOCK_SMS_001' },
     ],
   },
   custom: {
@@ -79,10 +82,54 @@ const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
   return 'aliyun';
 };
 
+const normalizeTabKey = (value?: string | null): VerificationTabKey => {
+  if (value === 'sms' || value === 'email') {
+    return value;
+  }
+  return 'totp';
+};
+
+const verificationFormInitialValues: VerificationSettings = {
+  enabled: true,
+  emailLoginEnabled: false,
+};
+
+const smtpFormInitialValues: SmtpSettings = {
+  host: '',
+  port: 25,
+  username: '',
+  password: '',
+  from: '',
+  authEnabled: true,
+  startTlsEnabled: true,
+  sslEnabled: false,
+};
+
+const smtpTestInitialValues: SmtpTestPayload = {
+  subject: 'SMTP 测试邮件',
+  content: '这是一封来自系统的 SMTP 测试邮件。',
+  toEmail: '',
+};
+
 const SystemVerificationPage = () => {
   const actionPermission = useActionPermission();
-  const canViewVerification = actionPermission.can('system:verification:view') || actionPermission.can('system:verification:manage');
-  const canManageVerification = actionPermission.can('system:verification:manage');
+  const canViewVerification =
+    actionPermission.can('system:verification:view') ||
+    actionPermission.can('system:verification:manage') ||
+    actionPermission.can('system:config:view');
+  const canManageSettings = actionPermission.can('system:verification:manage') || actionPermission.can('system:config:update');
+  const location = useLocation();
+
+  const [verificationForm] = Form.useForm<VerificationSettings>();
+  const [smsSettingsForm] = Form.useForm<SmsVerificationSettings>();
+  const [smtpSettingsForm] = Form.useForm<SmtpSettings>();
+  const [smtpTestForm] = Form.useForm<SmtpTestPayload>();
+  const [providerDrafts, setProviderDrafts] = useState<Partial<Record<SmsProviderCode, SmsVerificationSettings>>>({});
+  const [activeTab, setActiveTab] = useState<VerificationTabKey>(() => normalizeTabKey(new URLSearchParams(location.search).get('tab')));
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [savingSmsSettings, setSavingSmsSettings] = useState(false);
+  const [savingSmtpSettings, setSavingSmtpSettings] = useState(false);
+  const [testingSmtpSettings, setTestingSmtpSettings] = useState(false);
 
   const verificationSettingsQuery = useRequest(
     async () =>
@@ -102,30 +149,19 @@ const SystemVerificationPage = () => {
       ready: canViewVerification,
     },
   );
-  const providersQuery = useRequest(
+  const smtpSettingsQuery = useRequest(
     async () =>
-      ({ data: await secondFactorService.providers({ autoRedirectOnUnauthorized: false }) }) as {
-        data: SecondFactorProviderStatus[];
+      ({ data: await systemService.smtpSettings({ autoRedirectOnUnauthorized: false }) }) as {
+        data: SmtpSettings;
       },
     {
       ready: canViewVerification,
     },
   );
-
-  const [verificationForm] = Form.useForm<VerificationSettings>();
-  const [smsSettingsForm] = Form.useForm<SmsVerificationSettings>();
-  const currentProvider = Form.useWatch('provider', smsSettingsForm);
-  const smsEnabled = Form.useWatch('enabled', smsSettingsForm) ?? false;
-  const [providerDrafts, setProviderDrafts] = useState<Partial<Record<SmsProviderCode, SmsVerificationSettings>>>({});
-  const [verificationSaving, setVerificationSaving] = useState(false);
-  const [savingSmsSettings, setSavingSmsSettings] = useState(false);
-  const [bindModalOpen, setBindModalOpen] = useState(false);
-  const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
-  const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
-  const [bindingLoading, setBindingLoading] = useState(false);
-  const [bindingSubmitting, setBindingSubmitting] = useState(false);
-  const [bindingCompleted, setBindingCompleted] = useState(false);
-  const [bindingAlert, setBindingAlert] = useState<{ type: 'info' | 'warning' | 'error'; message: string }>();
+  const verificationFormProps = useStandardFormProps({
+    form: verificationForm,
+    initialValues: verificationFormInitialValues,
+  });
   const smsFormProps = useStandardFormProps({
     form: smsSettingsForm,
     initialValues: {
@@ -133,6 +169,38 @@ const SystemVerificationPage = () => {
       provider: 'aliyun',
     },
   });
+  const smtpFormProps = useStandardFormProps({
+    form: smtpSettingsForm,
+    initialValues: smtpFormInitialValues,
+  });
+  const smtpTestFormProps = useStandardFormProps({
+    form: smtpTestForm,
+    initialValues: smtpTestInitialValues,
+  });
+
+  const currentProvider = Form.useWatch('provider', smsSettingsForm);
+  const smsEnabled = Form.useWatch('enabled', smsSettingsForm) ?? false;
+
+  const updateTabInUrl = useCallback(
+    (nextTab: VerificationTabKey) => {
+      const searchParams = new URLSearchParams(location.search);
+      searchParams.set('tab', nextTab);
+      history.replace({
+        pathname: location.pathname,
+        search: `?${searchParams.toString()}`,
+      });
+    },
+    [location.pathname, location.search],
+  );
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const normalizedTab = normalizeTabKey(searchParams.get('tab'));
+    setActiveTab(normalizedTab);
+    if (searchParams.get('tab') !== normalizedTab) {
+      updateTabInUrl(normalizedTab);
+    }
+  }, [location.search, updateTabInUrl]);
 
   useEffect(() => {
     if (verificationSettingsQuery.data) {
@@ -155,157 +223,14 @@ const SystemVerificationPage = () => {
     });
   }, [smsSettingsForm, smsSettingsQuery.data]);
 
-  const handleSaveVerificationSettings = async () => {
-    if (!canManageVerification) {
-      return;
-    }
-    setVerificationSaving(true);
-    try {
-      const values = await verificationForm.validateFields();
-      const result = await systemService.updateVerificationSettings(values, { autoRedirectOnUnauthorized: false });
-      verificationForm.setFieldsValue(result);
-      message.success('2FA 设置已保存');
-    } finally {
-      setVerificationSaving(false);
-    }
-  };
-
-  const handleSaveSmsSettings = async () => {
-    setSavingSmsSettings(true);
-    try {
-      const values = await smsSettingsForm.validateFields();
-      const providerCode = normalizeProviderCode(values.provider);
-      setProviderDrafts((drafts) => ({
-        ...drafts,
-        [providerCode]: values,
-      }));
-      const result = await systemService.updateSmsVerificationSettings(values, { autoRedirectOnUnauthorized: false });
-      message.success(result.configured ? '短信验证码服务配置已保存' : '短信验证码服务配置已保存，当前仍未完全启用');
-      await smsSettingsQuery.refresh();
-    } finally {
-      setSavingSmsSettings(false);
-    }
-  };
-
-  const resetBindState = () => {
-    setBindingProvider(null);
-    setBindingChallenge(null);
-    setBindingLoading(false);
-    setBindingSubmitting(false);
-    setBindingCompleted(false);
-    setBindingAlert(undefined);
-  };
-
-  const closeBindModal = () => {
-    if (bindingSubmitting) {
-      return;
-    }
-    setBindModalOpen(false);
-    window.setTimeout(() => {
-      resetBindState();
-    }, 0);
-  };
-
-  const openBindModal = async (provider: SecondFactorProviderStatus) => {
-    setBindingProvider(provider);
-    setBindingChallenge(null);
-    setBindingLoading(true);
-    setBindingSubmitting(false);
-    setBindingCompleted(false);
-    setBindingAlert(undefined);
-    setBindModalOpen(true);
-    try {
-      const challenge = await secondFactorService.bind(provider.factorCode, {
-        autoRedirectOnUnauthorized: false,
-        silent: true,
+  useEffect(() => {
+    if (smtpSettingsQuery.data) {
+      smtpSettingsForm.setFieldsValue({
+        ...smtpSettingsQuery.data,
+        password: '',
       });
-      setBindingChallenge(challenge);
-    } catch (error) {
-      setBindingAlert({
-        type: 'error',
-        message: error instanceof Error ? error.message : '获取绑定信息失败，请稍后重试',
-      });
-    } finally {
-      setBindingLoading(false);
     }
-  };
-
-  const retryBindChallenge = async () => {
-    if (!bindingProvider) {
-      return;
-    }
-    setBindingChallenge(null);
-    await openBindModal(bindingProvider);
-  };
-
-  const handleUnbind = (provider: SecondFactorProviderStatus) => {
-    Modal.confirm({
-      title: `解绑 ${provider.factorName || provider.factorCode}`,
-      content: '解绑后该验证方式将立即失效，确认继续吗？',
-      okText: '确认',
-      cancelText: '取消',
-      onOk: async () => {
-        await secondFactorService.unbind(provider.factorCode, { autoRedirectOnUnauthorized: false });
-        message.success('已解绑');
-        await providersQuery.refresh();
-      },
-    });
-  };
-
-  const handleVerifyBind = async (values: { verificationCode?: string }) => {
-    if (!bindingProvider || !bindingChallenge) {
-      setBindingAlert({
-        type: 'warning',
-        message: '绑定信息已失效，请重新发起绑定。',
-      });
-      return false;
-    }
-    if (!values.verificationCode) {
-      setBindingAlert({
-        type: 'warning',
-        message: '请输入验证码。',
-      });
-      return false;
-    }
-
-    setBindingSubmitting(true);
-    setBindingAlert(undefined);
-    try {
-      const result = await secondFactorService.verify(
-        bindingProvider.factorCode,
-        {
-          factorCode: bindingProvider.factorCode,
-          challengeId: bindingChallenge.challengeId,
-          verificationCode: values.verificationCode,
-        },
-        {
-          autoRedirectOnUnauthorized: false,
-          silent: true,
-        },
-      );
-
-      if (!result.verified) {
-        setBindingAlert({
-          type: 'warning',
-          message: result.message || '验证码校验失败，请重试。',
-        });
-        return false;
-      }
-
-      message.success('绑定已完成');
-      setBindingCompleted(true);
-      await providersQuery.refresh();
-      return true;
-    } catch (error) {
-      setBindingAlert({
-        type: 'error',
-        message: error instanceof Error ? error.message : '绑定失败，请稍后重试',
-      });
-      return false;
-    } finally {
-      setBindingSubmitting(false);
-    }
-  };
+  }, [smtpSettingsForm, smtpSettingsQuery.data]);
 
   const handleSmsProviderChange = (nextProvider: string) => {
     const currentValues = smsSettingsForm.getFieldsValue(true) as Partial<SmsVerificationSettings>;
@@ -343,108 +268,240 @@ const SystemVerificationPage = () => {
     });
   };
 
-  const renderTotpTab = () => (
+  const handleSaveVerificationSettings = async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setVerificationSaving(true);
+    try {
+      const values = await verificationForm.validateFields();
+      const result = await systemService.updateVerificationSettings(values, { autoRedirectOnUnauthorized: false });
+      verificationForm.setFieldsValue(result);
+      message.success('验证设置已保存');
+    } finally {
+      setVerificationSaving(false);
+    }
+  };
+
+  const handleSaveSmsSettings = async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setSavingSmsSettings(true);
+    try {
+      const values = await smsSettingsForm.validateFields();
+      const providerCode = normalizeProviderCode(values.provider);
+      setProviderDrafts((drafts) => ({
+        ...drafts,
+        [providerCode]: values,
+      }));
+      const result = await systemService.updateSmsVerificationSettings(values, { autoRedirectOnUnauthorized: false });
+      message.success(result.configured ? '短信验证码配置已保存' : '短信验证码配置已保存，当前仍未完全启用');
+      await smsSettingsQuery.refresh();
+    } finally {
+      setSavingSmsSettings(false);
+    }
+  };
+
+  const handleSaveSmtpSettings = async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setSavingSmtpSettings(true);
+    try {
+      const values = await smtpSettingsForm.validateFields();
+      const result = await systemService.updateSmtpSettings(values, { autoRedirectOnUnauthorized: false });
+      smtpSettingsForm.setFieldsValue({
+        ...result,
+        password: '',
+      });
+      message.success('SMTP 配置已保存');
+      await smtpSettingsQuery.refresh();
+    } finally {
+      setSavingSmtpSettings(false);
+    }
+  };
+
+  const handleTestSmtpSettings = async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setTestingSmtpSettings(true);
+    try {
+      const values = await smtpTestForm.validateFields();
+      const result = await systemService.testSmtpSettings(values, { autoRedirectOnUnauthorized: false });
+      message.success(result.message || '测试邮件已发送');
+    } finally {
+      setTestingSmtpSettings(false);
+    }
+  };
+
+  const activeProvider = normalizeProviderCode(currentProvider);
+  const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
+  const verificationLoading = verificationSettingsQuery.loading || smsSettingsQuery.loading || smtpSettingsQuery.loading;
+  const smtpConfigured = Boolean(smtpSettingsQuery.data?.configured);
+
+  const renderVerificationTab = () => (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form form={verificationForm} layout="vertical" initialValues={{ enabled: true }}>
-        <Form.Item name="enabled" label="启用 2FA" valuePropName="checked">
-          <Switch disabled={!canManageVerification} checkedChildren="开启" unCheckedChildren="关闭" />
+      <Form {...verificationFormProps}>
+        <Form.Item
+          name="enabled"
+          label="启用 2FA"
+          valuePropName="checked"
+          extra="关闭后，系统中的高危操作二次确认将不再要求 2FA。"
+        >
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
         </Form.Item>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button type="primary" loading={verificationSaving} disabled={!canManageSettings} onClick={() => void handleSaveVerificationSettings()}>
+            保存 2FA 设置
+          </Button>
+        </div>
       </Form>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button type="primary" loading={verificationSaving} disabled={!canManageVerification} onClick={() => void handleSaveVerificationSettings()}>
-          保存设置
-        </Button>
-      </div>
     </Space>
   );
 
-  const renderSmsTab = () => {
-    const activeProvider = normalizeProviderCode(currentProvider);
-    const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
-    const smsFieldsDisabled = !canManageVerification || !smsEnabled;
-
-    return (
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Form {...smsFormProps}>
-          <Form.Item name="enabled" label="启用短信验证码" valuePropName="checked">
-            <Switch disabled={!canManageVerification} checkedChildren="开启" unCheckedChildren="关闭" />
-          </Form.Item>
+  const renderSmsTab = () => (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Form {...smsFormProps}>
+        <Form.Item name="enabled" label="启用短信验证码" valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item
+          name="provider"
+          label="服务商"
+          rules={smsEnabled ? [{ required: true, message: '请选择短信服务商' }] : undefined}
+        >
+          <Select
+            disabled={!canManageSettings || !smsEnabled}
+            options={SMS_PROVIDER_OPTIONS}
+            placeholder="请选择短信服务商"
+            onChange={handleSmsProviderChange}
+          />
+        </Form.Item>
+        {providerSchema.fields.map((field) => (
           <Form.Item
-            name="provider"
-            label="服务商"
-            rules={smsEnabled ? [{ required: true, message: '请选择短信服务商' }] : undefined}
+            key={String(field.name)}
+            name={field.name}
+            label={field.label}
+            rules={smsEnabled && field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
           >
-            <Select
-              disabled={smsFieldsDisabled}
-              options={SMS_PROVIDER_OPTIONS}
-              placeholder="请选择短信服务商"
-              onChange={handleSmsProviderChange}
-            />
+            {field.password ? (
+              <Input.Password disabled={!canManageSettings || !smsEnabled} placeholder={field.placeholder} />
+            ) : (
+              <Input disabled={!canManageSettings || !smsEnabled} placeholder={field.placeholder} />
+            )}
           </Form.Item>
-          {providerSchema.fields.map((field) => (
-            <Form.Item
-              key={String(field.name)}
-              name={field.name}
-              label={field.label}
-              rules={smsEnabled && field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
-            >
-              {field.password ? (
-                <Input.Password disabled={smsFieldsDisabled} placeholder={field.placeholder} />
-              ) : (
-                <Input disabled={smsFieldsDisabled} placeholder={field.placeholder} />
-              )}
-            </Form.Item>
-          ))}
+        ))}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button type="primary" loading={savingSmsSettings} disabled={!canManageSettings || !smsEnabled} onClick={() => void handleSaveSmsSettings()}>
+            保存配置
+          </Button>
+        </div>
+      </Form>
+    </Space>
+  );
+
+  const renderEmailTab = () => (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Card title="邮箱验证码登录">
+        <Form {...verificationFormProps}>
+          <Form.Item
+            name="emailLoginEnabled"
+            label="启用邮箱验证码登录"
+            valuePropName="checked"
+            extra="开启后，后台 SMTP 可用时登录页会自动显示邮箱验证码 tab。"
+          >
+            <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+          </Form.Item>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button type="primary" loading={savingSmsSettings} disabled={smsFieldsDisabled} onClick={() => void handleSaveSmsSettings()}>
-              保存配置
+            <Button type="primary" loading={verificationSaving} disabled={!canManageSettings} onClick={() => void handleSaveVerificationSettings()}>
+              保存邮箱登录设置
             </Button>
           </div>
         </Form>
-      </Space>
-    );
-  };
+      </Card>
+
+      <Card title="SMTP 基础配置" loading={smtpSettingsQuery.loading}>
+        <Form {...smtpFormProps}>
+          <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
+            <Input disabled={!canManageSettings} placeholder="smtp.example.com" />
+          </Form.Item>
+          <Form.Item name="port" label="SMTP 端口" rules={[{ required: true, message: '请输入 SMTP 端口' }]}>
+            <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={1} max={65535} />
+          </Form.Item>
+          <Form.Item name="username" label="SMTP 用户名" rules={[{ required: true, message: '请输入 SMTP 用户名' }]}>
+            <Input disabled={!canManageSettings} placeholder="username@example.com" />
+          </Form.Item>
+          <Form.Item name="password" label="SMTP 密码">
+            <Input.Password disabled={!canManageSettings} placeholder="留空则保留现有密码" />
+          </Form.Item>
+          <Form.Item name="from" label="发件人地址" rules={[{ required: true, message: '请输入发件人地址' }]}>
+            <Input disabled={!canManageSettings} placeholder="noreply@example.com" />
+          </Form.Item>
+          <Form.Item name="authEnabled" label="启用认证" valuePropName="checked">
+            <Switch disabled={!canManageSettings} />
+          </Form.Item>
+          <Form.Item name="startTlsEnabled" label="启用 STARTTLS" valuePropName="checked">
+            <Switch disabled={!canManageSettings} />
+          </Form.Item>
+          <Form.Item name="sslEnabled" label="启用 SSL" valuePropName="checked">
+            <Switch disabled={!canManageSettings} />
+          </Form.Item>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button type="primary" loading={savingSmtpSettings} disabled={!canManageSettings} onClick={() => void handleSaveSmtpSettings()}>
+              保存 SMTP 配置
+            </Button>
+          </div>
+        </Form>
+      </Card>
+
+      <Card title="SMTP 测试发送" loading={smtpSettingsQuery.loading}>
+        <Form {...smtpTestFormProps}>
+          <Form.Item
+            name="toEmail"
+            label="收件人邮箱"
+            rules={[{ required: true, message: '请输入收件人邮箱' }, { type: 'email', message: '请输入有效邮箱地址' }]}
+          >
+            <Input disabled={!canManageSettings} placeholder="recipient@example.com" />
+          </Form.Item>
+          <Form.Item name="subject" label="邮件主题">
+            <Input disabled={!canManageSettings} />
+          </Form.Item>
+          <Form.Item name="content" label="邮件内容">
+            <Input.TextArea disabled={!canManageSettings} rows={6} />
+          </Form.Item>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button type="primary" loading={testingSmtpSettings} disabled={!canManageSettings} onClick={() => void handleTestSmtpSettings()}>
+              发送测试邮件
+            </Button>
+          </div>
+        </Form>
+      </Card>
+
+    </Space>
+  );
 
   return (
     <PageContainer className="saas-management-page" title="验证管理">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Card loading={verificationSettingsQuery.loading || smsSettingsQuery.loading}>
+        <Card loading={verificationLoading}>
           <Tabs
-            defaultActiveKey="totp"
-            items={TAB_ORDER.map((factorCode) => ({
-              key: factorCode,
-              label: factorCode === 'totp' ? '2FA' : '短信验证码',
-              children: factorCode === 'totp' ? renderTotpTab() : renderSmsTab(),
-            }))}
+            activeKey={activeTab}
+            items={[
+              { key: 'totp', label: '2FA', children: renderVerificationTab() },
+              { key: 'sms', label: '短信验证码', children: renderSmsTab() },
+              { key: 'email', label: '邮箱与 SMTP', children: renderEmailTab() },
+            ]}
+            onChange={(key) => {
+              const nextTab = normalizeTabKey(key);
+              setActiveTab(nextTab);
+              updateTabInUrl(nextTab);
+            }}
+            destroyInactiveTabPane
           />
         </Card>
-        <BoundProviderCard
-          title="可绑定的验证方式"
-          canManageSecondFactor={canManageVerification}
-          loading={providersQuery.loading}
-          providers={providersQuery.data || []}
-          bindingLoading={bindingLoading}
-          bindingSubmitting={bindingSubmitting}
-          emailBindingSubmitting={false}
-          onBind={(provider) => void openBindModal(provider)}
-          onUnbind={handleUnbind}
-        />
       </Space>
-      <BindSecondFactorModal
-        open={bindModalOpen}
-        bindingProvider={bindingProvider}
-        bindingChallenge={bindingChallenge}
-        bindingCompleted={bindingCompleted}
-        bindingIsSms={false}
-        bindingLoading={bindingLoading}
-        bindingSubmitting={bindingSubmitting}
-        bindingAlert={bindingAlert}
-        singleColumnDescriptionsProps={{ column: 1 }}
-        onCancel={closeBindModal}
-        onRetry={() => void retryBindChallenge()}
-        onFinish={closeBindModal}
-        onVerify={handleVerifyBind}
-      />
     </PageContainer>
   );
 };

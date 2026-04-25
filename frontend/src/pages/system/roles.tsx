@@ -17,6 +17,8 @@ import { iamService } from '@/services/iam';
 import type { RoleDetail, RoleRecord } from '@/types/api';
 import './roles.less';
 
+const ROLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
     {
@@ -98,6 +100,17 @@ const RoleManagementPage = () => {
     [permissionDetailGroups],
   );
 
+  const handleRoleCodeBlur = () => {
+    const currentRoleCode = editorForm.getFieldValue('roleCode');
+    if (typeof currentRoleCode !== 'string') {
+      return;
+    }
+    const trimmedRoleCode = currentRoleCode.trim();
+    if (trimmedRoleCode !== currentRoleCode) {
+      editorForm.setFieldsValue({ roleCode: trimmedRoleCode });
+    }
+  };
+
   const closeEditorDrawer = () => {
     roleCrud.drawer.close();
     permissionEditor.setEditorLoading(false);
@@ -152,6 +165,7 @@ const RoleManagementPage = () => {
       const values = await editorForm.validateFields();
       const payload = {
         ...values,
+        roleCode: typeof values.roleCode === 'string' ? values.roleCode.trim() : values.roleCode,
         permissionKeys: values.permissionKeys || [],
       };
       if (roleCrud.drawer.editingId) {
@@ -249,8 +263,28 @@ const RoleManagementPage = () => {
         }
       >
         <Form {...editorFormProps}>
-          <Form.Item name="roleCode" label="角色编码" rules={[{ required: true, message: '请输入角色编码' }]}>
-            <Input />
+          <Form.Item
+            name="roleCode"
+            label="角色编码"
+            rules={[
+              {
+                validator: (_, value) => {
+                  const roleCode = typeof value === 'string' ? value.trim() : '';
+                  if (!roleCode) {
+                    return Promise.reject(new Error('请输入角色编码'));
+                  }
+                  if (roleCode.length > 64) {
+                    return Promise.reject(new Error('角色编码长度不能超过64个字符'));
+                  }
+                  if (!ROLE_CODE_PATTERN.test(roleCode)) {
+                    return Promise.reject(new Error('角色编码只能由字母、数字和下划线组成，且必须以字母开头'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Input maxLength={64} onBlur={handleRoleCodeBlur} />
           </Form.Item>
           <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
             <Input />

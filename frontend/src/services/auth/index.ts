@@ -1,4 +1,4 @@
-import type { CurrentUser, LoginEncryptionKey, LoginResponse, RefreshTokenResponse } from '@/types/api';
+import type { CurrentUser, LoginCodeChallenge, LoginEncryptionKey, LoginResponse, RefreshTokenResponse } from '@/types/api';
 import { request, type RequestOptions } from '@/services/common/request';
 
 export interface LoginPayload {
@@ -20,6 +20,16 @@ export interface SecondFactorCompletePayload {
   verificationCode: string;
 }
 
+export interface LoginCodeChallengePayload {
+  loginType: 'sms' | 'email';
+  account: string;
+}
+
+export interface LoginCodeCompletePayload {
+  challengeId: string;
+  verificationCode: string;
+}
+
 export const authService = {
   login: (payload: LoginPayload, options: RequestOptions = {}) =>
     request<LoginResponse>('/v1/auth/login', {
@@ -32,6 +42,22 @@ export const authService = {
   loginEncryptionKey: (options: RequestOptions = {}) =>
     request<LoginEncryptionKey>('/v1/auth/login-encryption-key', {
       method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  loginCodeChallenge: (payload: LoginCodeChallengePayload, options: RequestOptions = {}) =>
+    request<LoginCodeChallenge>('/v1/auth/login/code/challenge', {
+      method: 'POST',
+      data: payload,
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  loginCodeComplete: (payload: LoginCodeCompletePayload, options: RequestOptions = {}) =>
+    request<LoginResponse>('/v1/auth/login/code/complete', {
+      method: 'POST',
+      data: payload,
       skipAuth: true,
       silent: true,
       ...options,

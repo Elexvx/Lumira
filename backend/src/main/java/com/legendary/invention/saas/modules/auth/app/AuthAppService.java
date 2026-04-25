@@ -13,10 +13,13 @@ import com.legendary.invention.saas.infrastructure.security.service.LoginProtect
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.auth.dto.LoginRequest;
+import com.legendary.invention.saas.modules.auth.dto.LoginCodeChallengeRequest;
+import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.RefreshTokenRequest;
 import com.legendary.invention.saas.modules.auth.vo.AuthUserVO;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
+import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
@@ -165,6 +168,96 @@ public class AuthAppService {
         response.setRequiresCaptcha(Boolean.FALSE);
 
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
+        return response;
+    }
+
+    public LoginCodeChallengeVO loginCodeChallenge(LoginCodeChallengeRequest request, String loginIp, String userAgent) {
+        String account = request.getAccount();
+        loginProtectionService.ensureCanAttempt(account, loginIp);
+        loginProtectionService.recordAttempt(account, loginIp);
+
+        SysUserEntity user = userDomainService.findLoginUser(account).orElse(null);
+        if (user == null) {
+            loginProtectionService.recordFailure(account, loginIp);
+            loginAuditService.log(null, null, account, request.getLoginType().toUpperCase(), "FAIL", "用户不存在", loginIp, userAgent);
+            throw new BizException(
+                    ErrorCode.ACCOUNT_NOT_FOUND,
+                    "登录失败，账号不存在: " + account,
+                    ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
+            );
+        }
+
+        if (isUserDisabled(user)) {
+            loginProtectionService.recordFailure(account, loginIp);
+            loginAuditService.log(user.getId(), null, user.getUsername(), request.getLoginType().toUpperCase(), "FAIL", "账号已禁用", loginIp, userAgent);
+            throw new BizException(
+                    ErrorCode.ACCOUNT_DISABLED,
+                    "登录失败，账号已禁用: " + user.getUsername(),
+                    ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage()
+            );
+        }
+
+        List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
+                .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
+                .toList();
+        if (enabledTenantAccessList.isEmpty()) {
+            loginProtectionService.recordFailure(account, loginIp);
+            loginAuditService.log(user.getId(), null, user.getUsername(), request.getLoginType().toUpperCase(), "FAIL", "用户未绑定可用租户", loginIp, userAgent);
+            throw new BizException(
+                    ErrorCode.TENANT_NOT_BOUND,
+                    "登录失败，用户未绑定可用租户: " + user.getUsername(),
+                    ErrorCode.TENANT_NOT_BOUND.getDefaultUserMessage()
+            );
+        }
+
+        TenantInfoEntity currentTenant = pickCurrentTenant(enabledTenantAccessList);
+        Long tenantId = currentTenant == null ? null : currentTenant.getId();
+        LoginCodeChallengeVO challenge = systemVerificationAppService.startLoginCodeChallenge(user, tenantId, request.getLoginType());
+        loginAuditService.log(user.getId(), tenantId, user.getUsername(), challenge.getLoginType().toUpperCase(), "PENDING", "LOGIN_CODE_REQUIRED", loginIp, userAgent);
+        return challenge;
+    }
+
+    public LoginResponseVO completeLoginCodeLogin(LoginCodeCompleteRequest request, String loginIp, String userAgent) {
+        com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationVerificationVO verification =
+                systemVerificationAppService.completeLoginCodeLogin(request);
+        if (!Boolean.TRUE.equals(verification.getVerified())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, verification.getMessage() == null ? "验证码校验失败" : verification.getMessage());
+        }
+
+        SysUserEntity user = userDomainService.findById(verification.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.getTenantId()).orElse(null);
+        List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
+                .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
+                .toList();
+        AuthSession session = buildNewSession(user, currentTenant == null ? null : currentTenant.getId(), loginIp, userAgent);
+        String refreshTokenId = UUID.randomUUID().toString();
+        session.setRefreshTokenId(refreshTokenId);
+
+        if (!securitySettingsService.isAllowMultiDeviceLogin()) {
+            authSessionStore.revokeUserSessions(user.getId(), true);
+        }
+        authSessionStore.save(session, true);
+
+        LoginResponseVO response = new LoginResponseVO();
+        response.setAccessToken(jwtTokenService.generateAccessToken(session));
+        response.setRefreshToken(jwtTokenService.generateRefreshToken(session, refreshTokenId));
+        response.setTokenType("Bearer");
+        response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
+        response.setUser(toAuthUser(user));
+        response.setTenants(tenantDomainService.toMyTenantVO(enabledTenantAccessList));
+        response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
+        response.setRequiresCaptcha(Boolean.FALSE);
+        loginAuditService.log(
+                user.getId(),
+                currentTenant == null ? null : currentTenant.getId(),
+                user.getUsername(),
+                "LOGIN_CODE",
+                "SUCCESS",
+                null,
+                loginIp,
+                userAgent
+        );
         return response;
     }
 

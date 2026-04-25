@@ -7,9 +7,12 @@ import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
+import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
+import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.legendary.invention.saas.modules.system.support.SmtpMailService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.slf4j.Logger;
@@ -40,6 +43,7 @@ public class SystemVerificationAppService {
     private static final String FACTOR_TOTP = "totp";
     private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
     private static final String FACTOR_SMS = "sms";
+    private static final String FACTOR_EMAIL = "email";
     private static final String CHALLENGE_TYPE_BIND = "BIND";
     private static final String CHALLENGE_TYPE_LOGIN = "LOGIN";
     private static final String SMS_CONFIG_ENABLED_KEY = "verification.sms.enabled";
@@ -50,23 +54,27 @@ public class SystemVerificationAppService {
     private static final String SMS_CONFIG_ACCESS_KEY_SECRET_KEY = "verification.sms.access-key-secret";
     private static final String SMS_CONFIG_ENDPOINT_KEY = "verification.sms.endpoint";
     private static final String SMS_CONFIG_REGION_KEY = "verification.sms.region";
+    private static final String EMAIL_LOGIN_ENABLED_KEY = "verification.email-login.enabled";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final UserDomainService userDomainService;
     private final SystemVerificationProperties properties;
+    private final SmtpMailService smtpMailService;
     private final TotpService totpService = new TotpService();
 
     public SystemVerificationAppService(
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             UserDomainService userDomainService,
-            SystemVerificationProperties properties
+            SystemVerificationProperties properties,
+            SmtpMailService smtpMailService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.userDomainService = userDomainService;
         this.properties = properties;
+        this.smtpMailService = smtpMailService;
     }
 
     public List<SystemVO.VerificationProviderVO> listProviders(Long tenantId, Long userId) {
@@ -92,6 +100,84 @@ public class SystemVerificationAppService {
         return unbind(requireTenantId(currentUser), currentUser.getUserId(), factorCode);
     }
 
+    public boolean isContactBindVerificationRequired(Long tenantId, String contactType) {
+        String normalizedContactType = normalizeContactType(contactType);
+        if (FACTOR_SMS.equals(normalizedContactType)) {
+            return isSmsLoginAvailable(tenantId);
+        }
+        if (FACTOR_EMAIL.equals(normalizedContactType)) {
+            return isEmailLoginEnabled(tenantId) && smtpMailService.isConfigured(tenantId);
+        }
+        throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+    }
+
+    @Transactional
+    public SystemVO.VerificationChallengeVO startContactBindChallenge(Long tenantId, Long userId, String contactType, String contactValue) {
+        String normalizedContactType = normalizeContactType(contactType);
+        ensureContactBindSupported(normalizedContactType);
+        String normalizedContactValue = normalizeContactValue(contactValue);
+        validateContactBindPrerequisites(tenantId, normalizedContactType, normalizedContactValue);
+
+        String challengeId = generateChallengeId();
+        String verificationCode = generateNumericCode(6);
+        String codeHash = totpService.sha256(challengeId + ":" + verificationCode);
+        String contactHash = hashContactValue(normalizedContactType, normalizedContactValue);
+        String maskedContact = FACTOR_SMS.equals(normalizedContactType)
+                ? maskMobile(normalizedContactValue)
+                : maskEmail(normalizedContactValue);
+
+        persistChallenge(
+                challengeId,
+                tenantId,
+                userId,
+                normalizedContactType,
+                CHALLENGE_TYPE_BIND,
+                contactHash,
+                null,
+                List.of(),
+                codeHash,
+                maskedContact,
+                verificationCode,
+                userId
+        );
+
+        sendContactVerificationCode(tenantId, normalizedContactType, normalizedContactValue, verificationCode);
+        return buildChallengeResponse(
+                normalizedContactType,
+                contactBindFactorName(normalizedContactType),
+                challengeId,
+                maskedContact,
+                FACTOR_SMS.equals(normalizedContactType)
+                        ? "验证码已发送至你填写的手机号，请输入 6 位验证码完成绑定"
+                        : "验证码已发送至你填写的邮箱，请输入 6 位验证码完成绑定",
+                null,
+                null,
+                List.of(),
+                properties.isExposeDebugCode() ? verificationCode : null
+        );
+    }
+
+    @Transactional
+    public SystemVO.VerificationVerificationVO completeContactBind(
+            Long tenantId,
+            Long userId,
+            String contactType,
+            String challengeId,
+            String verificationCode,
+            String contactValue
+    ) {
+        String normalizedContactType = normalizeContactType(contactType);
+        ensureContactBindSupported(normalizedContactType);
+        String normalizedContactValue = normalizeContactValue(contactValue);
+        ChallengeRecord challenge = loadChallenge(challengeId, normalizedContactType, CHALLENGE_TYPE_BIND);
+        if (!Objects.equals(challenge.setupSecret(), hashContactValue(normalizedContactType, normalizedContactValue))) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证码与当前绑定信息不匹配");
+        }
+        verifyChallengeCode(challenge, verificationCode);
+        markChallengeConsumed(challenge.challengeId());
+        return verificationResult(tenantId, userId, normalizedContactType, "验证成功");
+    }
+
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
         return loadSmsSettings(tenantId);
     }
@@ -100,12 +186,22 @@ public class SystemVerificationAppService {
         return loadVerificationSettings(tenantId);
     }
 
+    public SystemVO.LoginCapabilitiesVO loadLoginCapabilities(Long tenantId) {
+        SystemVO.LoginCapabilitiesVO capabilities = new SystemVO.LoginCapabilitiesVO();
+        capabilities.setPasswordLoginAvailable(true);
+        capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
+        capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
+        return capabilities;
+    }
+
     @Transactional
     public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
         Long tenantId = requireTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
         boolean enabled = request.getEnabled() == null ? isTotpEnabled(tenantId) : request.getEnabled();
+        boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled(tenantId) : request.getEmailLoginEnabled();
         upsertPlatformConfigValue(tenantId, TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId);
+        upsertPlatformConfigValue(tenantId, EMAIL_LOGIN_ENABLED_KEY, "邮箱验证码登录", String.valueOf(emailLoginEnabled), "是否启用邮箱验证码登录", operatorId);
         return loadVerificationSettings(tenantId);
     }
 
@@ -144,6 +240,85 @@ public class SystemVerificationAppService {
     @Transactional
     public SystemVO.VerificationChallengeVO challenge(Long tenantId, Long userId, String factorCode) {
         return startLoginChallenge(tenantId, userId, normalizeFactorCode(factorCode));
+    }
+
+    public LoginCodeChallengeVO startLoginCodeChallenge(SysUserEntity user, Long tenantId, String loginType) {
+        String normalizedLoginType = normalizeFactorCode(loginType);
+        ensureLoginSupported(normalizedLoginType);
+        if (FACTOR_SMS.equals(normalizedLoginType)) {
+            SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
+            if (!smsSettings.enabled() || !smsSettings.configured()) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先配置并启用短信验证码登录");
+            }
+            if (!StringUtils.hasText(user.getMobile())) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先补充手机号后再使用短信验证码登录");
+            }
+        } else if (FACTOR_EMAIL.equals(normalizedLoginType)) {
+            if (!isEmailLoginEnabled(tenantId)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先启用邮箱验证码登录");
+            }
+            if (!StringUtils.hasText(user.getEmail())) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先补充邮箱后再使用邮箱验证码登录");
+            }
+            if (!smtpMailService.isConfigured(tenantId)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 后再使用邮箱验证码登录");
+            }
+        }
+
+        String challengeId = generateChallengeId();
+        String verificationCode = generateNumericCode(6);
+        String codeHash = totpService.sha256(challengeId + ":" + verificationCode);
+        String maskedContact = FACTOR_SMS.equals(normalizedLoginType) ? maskMobile(user.getMobile()) : maskEmail(user.getEmail());
+        String promptMessage = FACTOR_SMS.equals(normalizedLoginType)
+                ? "验证码已发送至绑定手机号，请输入 6 位验证码完成登录"
+                : "验证码已发送至绑定邮箱，请输入 6 位验证码完成登录";
+
+        persistChallenge(
+                challengeId,
+                tenantId,
+                user.getId(),
+                normalizedLoginType,
+                CHALLENGE_TYPE_LOGIN,
+                null,
+                null,
+                List.of(),
+                codeHash,
+                maskedContact,
+                verificationCode,
+                user.getId()
+        );
+
+        if (FACTOR_EMAIL.equals(normalizedLoginType)) {
+            smtpMailService.sendVerificationCode(tenantId, user.getEmail(), verificationCode, "邮箱验证码");
+        } else {
+            log.info("SMS login code generated tenantId={} userId={} challengeId={} code={}",
+                    tenantId,
+                    user.getId(),
+                    challengeId,
+                    verificationCode
+            );
+        }
+
+        LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
+        challenge.setLoginType(normalizedLoginType);
+        challenge.setFactorName(loginDefinitionOf(normalizedLoginType).factorName());
+        challenge.setChallengeId(challengeId);
+        challenge.setMaskedContact(maskedContact);
+        challenge.setPromptMessage(promptMessage);
+        challenge.setExpiresInSeconds((long) properties.getLoginChallengeExpireMinutes() * 60L);
+        challenge.setDebugCode(properties.isExposeDebugCode() ? verificationCode : null);
+        return challenge;
+    }
+
+    public SystemVO.VerificationVerificationVO completeLoginCodeLogin(LoginCodeCompleteRequest request) {
+        ChallengeRecord challenge = loadChallengeById(request.getChallengeId(), CHALLENGE_TYPE_LOGIN);
+        String factorCode = normalizeFactorCode(challenge.factorCode());
+        if (!FACTOR_SMS.equals(factorCode) && !FACTOR_EMAIL.equals(factorCode)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "验证码会话不存在或已过期");
+        }
+        verifySmsCode(challenge, request.getVerificationCode());
+        markChallengeConsumed(challenge.challengeId());
+        return verificationResult(challenge.tenantId(), challenge.userId(), factorCode, "验证成功");
     }
 
     @Transactional
@@ -189,7 +364,7 @@ public class SystemVerificationAppService {
         if (FACTOR_TOTP.equals(normalizedFactor) && !isTotpEnabled(tenantId)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "请先在系统中启用 2FA 功能");
         }
-        if (FACTOR_SMS.equals(normalizedFactor)) {
+        if (FACTOR_SMS.equals(normalizedFactor) || FACTOR_EMAIL.equals(normalizedFactor)) {
             verifySmsCode(challenge, verificationCode);
         } else {
             VerificationBindingRecord binding = loadEnabledBinding(tenantId, userId, normalizedFactor)
@@ -248,6 +423,47 @@ public class SystemVerificationAppService {
                     properties.isExposeDebugCode() ? verificationCode : null
             );
         }
+        if (FACTOR_EMAIL.equals(normalizedFactor)) {
+            if (!isEmailLoginEnabled(tenantId)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先启用邮箱验证码登录");
+            }
+            SysUserEntity user = requireUser(userId);
+            if (!StringUtils.hasText(user.getEmail())) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先补充邮箱后再使用邮箱验证码登录");
+            }
+            if (!smtpMailService.isConfigured(tenantId)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 后再使用邮箱验证码登录");
+            }
+            String challengeId = generateChallengeId();
+            String verificationCode = generateNumericCode(6);
+            String codeHash = totpService.sha256(challengeId + ":" + verificationCode);
+            String maskedContact = maskEmail(user.getEmail());
+            persistChallenge(
+                    challengeId,
+                    tenantId,
+                    userId,
+                    normalizedFactor,
+                    CHALLENGE_TYPE_LOGIN,
+                    null,
+                    null,
+                    List.of(),
+                    codeHash,
+                    maskedContact,
+                    verificationCode,
+                    userId
+            );
+            smtpMailService.sendVerificationCode(tenantId, user.getEmail(), verificationCode, "邮箱验证码");
+            return buildChallengeResponse(
+                    normalizedFactor,
+                    challengeId,
+                    maskedContact,
+                    "验证码已发送至绑定邮箱，请输入 6 位邮箱验证码完成验证",
+                    null,
+                    null,
+                    List.of(),
+                    properties.isExposeDebugCode() ? verificationCode : null
+            );
+        }
         if (FACTOR_TOTP.equals(normalizedFactor) && !isTotpEnabled(tenantId)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "请先在系统中启用 2FA 功能");
         }
@@ -275,18 +491,6 @@ public class SystemVerificationAppService {
                                 "请输入认证器中的 6 位验证码完成验证"
                         ));
                     });
-        }
-
-        SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
-        if (smsSettings.enabled() && smsSettings.configured() && StringUtils.hasText(user.getMobile())) {
-            SystemVO.VerificationChallengeVO challenge = startLoginChallenge(tenantId, user.getId(), FACTOR_SMS);
-            result.add(buildSecondFactorOption(
-                    FACTOR_SMS,
-                    "短信验证码",
-                    challenge.getChallengeId(),
-                    challenge.getMaskedContact(),
-                    challenge.getPromptMessage()
-            ));
         }
         return result;
     }
@@ -390,9 +594,33 @@ public class SystemVerificationAppService {
             List<String> recoveryCodes,
             String debugCode
     ) {
+        return buildChallengeResponse(
+                factorCode,
+                loginDefinitionOf(factorCode).factorName(),
+                challengeId,
+                maskedContact,
+                promptMessage,
+                setupUri,
+                setupSecret,
+                recoveryCodes,
+                debugCode
+        );
+    }
+
+    private SystemVO.VerificationChallengeVO buildChallengeResponse(
+            String factorCode,
+            String factorName,
+            String challengeId,
+            String maskedContact,
+            String promptMessage,
+            String setupUri,
+            String setupSecret,
+            List<String> recoveryCodes,
+            String debugCode
+    ) {
         SystemVO.VerificationChallengeVO challenge = new SystemVO.VerificationChallengeVO();
         challenge.setFactorCode(factorCode);
-        challenge.setFactorName(loginDefinitionOf(factorCode).factorName());
+        challenge.setFactorName(factorName);
         challenge.setChallengeId(challengeId);
         challenge.setMaskedContact(maskedContact);
         challenge.setPromptMessage(promptMessage);
@@ -449,6 +677,10 @@ public class SystemVerificationAppService {
     }
 
     private void verifySmsCode(ChallengeRecord challenge, String verificationCode) {
+        verifyChallengeCode(challenge, verificationCode);
+    }
+
+    private void verifyChallengeCode(ChallengeRecord challenge, String verificationCode) {
         if (!StringUtils.hasText(verificationCode)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "验证码不能为空");
         }
@@ -459,6 +691,90 @@ public class SystemVerificationAppService {
         if (!Objects.equals(challenge.codeHash(), actualHash)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "验证码错误，请重试");
         }
+    }
+
+    private String normalizeContactType(String contactType) {
+        if (!StringUtils.hasText(contactType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "绑定类型不能为空");
+        }
+        String normalized = contactType.trim().toLowerCase(Locale.ROOT);
+        if ("mobile".equals(normalized) || FACTOR_SMS.equals(normalized)) {
+            return FACTOR_SMS;
+        }
+        if (FACTOR_EMAIL.equals(normalized)) {
+            return FACTOR_EMAIL;
+        }
+        throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+    }
+
+    private void ensureContactBindSupported(String contactType) {
+        if (!FACTOR_SMS.equals(contactType) && !FACTOR_EMAIL.equals(contactType)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+        }
+    }
+
+    private String normalizeContactValue(String contactValue) {
+        if (!StringUtils.hasText(contactValue)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "绑定信息不能为空");
+        }
+        return contactValue.trim();
+    }
+
+    private String contactBindFactorName(String contactType) {
+        if (FACTOR_SMS.equals(contactType)) {
+            return "手机号";
+        }
+        if (FACTOR_EMAIL.equals(contactType)) {
+            return "邮箱";
+        }
+        return "绑定信息";
+    }
+
+    private void validateContactBindPrerequisites(Long tenantId, String contactType, String contactValue) {
+        if (FACTOR_SMS.equals(contactType)) {
+            SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
+            if (!smsSettings.enabled() || !smsSettings.configured()) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先配置并启用短信验证码服务");
+            }
+            if (!StringUtils.hasText(contactValue)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入手机号");
+            }
+        } else if (FACTOR_EMAIL.equals(contactType)) {
+            if (!isEmailLoginEnabled(tenantId)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先启用邮箱验证码登录");
+            }
+            if (!smtpMailService.isConfigured(tenantId)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 后再绑定邮箱");
+            }
+            if (!StringUtils.hasText(contactValue)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入邮箱");
+            }
+        } else {
+            throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+        }
+        if (FACTOR_EMAIL.equals(contactType) && !contactValue.contains("@")) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效邮箱地址");
+        }
+        if (FACTOR_SMS.equals(contactType) && contactValue.length() < 7) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效手机号");
+        }
+    }
+
+    private String hashContactValue(String contactType, String contactValue) {
+        return totpService.sha256(contactType + ":" + contactValue);
+    }
+
+    private void sendContactVerificationCode(Long tenantId, String contactType, String contactValue, String verificationCode) {
+        if (FACTOR_EMAIL.equals(contactType)) {
+            smtpMailService.sendVerificationCode(tenantId, contactValue, verificationCode, "邮箱验证码");
+            return;
+        }
+        log.info("Contact bind code generated tenantId={} contactType={} contactValue={} code={}",
+                tenantId,
+                contactType,
+                maskMobile(contactValue),
+                verificationCode
+        );
     }
 
     private SystemVO.SmsVerificationSettingsVO loadSmsSettings(Long tenantId) {
@@ -598,19 +914,20 @@ public class SystemVerificationAppService {
     }
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
+        Long effectiveTenantId = tenantId == null ? 1001L : tenantId;
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select tenant_id as tenantId, config_key as configKey, config_value as configValue
                 from sys_config
                 where deleted = 0
                   and config_scope = 'PLATFORM'
-                  and config_key in (%s)
-                  and (tenant_id = ? or tenant_id is null)
+                and config_key in (%s)
+                and (tenant_id = ? or tenant_id is null)
                 order by case when tenant_id = ? then 0 when tenant_id is null then 1 else 2 end, id desc
                 """.formatted(placeholders);
         List<Object> params = new ArrayList<>(keys);
-        params.add(tenantId);
-        params.add(tenantId);
+        params.add(effectiveTenantId);
+        params.add(effectiveTenantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -845,6 +1162,50 @@ public class SystemVerificationAppService {
         return challenge;
     }
 
+    private ChallengeRecord loadChallengeById(String challengeId, String challengeType) {
+        ChallengeRecord challenge = jdbcTemplate.query(
+                """
+                        select challenge_id, tenant_id, user_id, factor_code, challenge_type, expires_at, consumed_flag,
+                               setup_secret, setup_uri, recovery_codes_json, code_hash, masked_contact, debug_code
+                        from sys_verification_challenge
+                        where challenge_id = ? and challenge_type = ? and deleted = 0
+                        limit 1
+                        """,
+                rs -> {
+                    if (!rs.next()) {
+                        return null;
+                    }
+                    return new ChallengeRecord(
+                            rs.getString("challenge_id"),
+                            rs.getLong("tenant_id"),
+                            rs.getLong("user_id"),
+                            rs.getString("factor_code"),
+                            rs.getString("challenge_type"),
+                            rs.getString("setup_secret"),
+                            rs.getString("setup_uri"),
+                            parseStringList(rs.getString("recovery_codes_json")),
+                            rs.getString("code_hash"),
+                            rs.getString("masked_contact"),
+                            rs.getString("debug_code"),
+                            rs.getTimestamp("expires_at").toLocalDateTime(),
+                            rs.getInt("consumed_flag") == 1
+                    );
+                },
+                challengeId,
+                challengeType
+        );
+        if (challenge == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "验证码会话不存在或已过期");
+        }
+        if (challenge.consumedFlag()) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "验证码会话已使用，请重新获取");
+        }
+        if (challenge.expiresAt().isBefore(LocalDateTime.now())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "验证码已过期，请重新获取");
+        }
+        return challenge;
+    }
+
     private Optional<VerificationBindingRecord> loadBinding(Long tenantId, Long userId, String factorCode) {
         return jdbcTemplate.query(
                 """
@@ -942,7 +1303,7 @@ public class SystemVerificationAppService {
     }
 
     private void ensureLoginSupported(String factorCode) {
-        if (!FACTOR_TOTP.equals(factorCode) && !FACTOR_SMS.equals(factorCode)) {
+        if (!FACTOR_TOTP.equals(factorCode) && !FACTOR_SMS.equals(factorCode) && !FACTOR_EMAIL.equals(factorCode)) {
             throw new BizException(ErrorCode.NOT_FOUND, "验证方式不存在");
         }
     }
@@ -968,7 +1329,8 @@ public class SystemVerificationAppService {
     private List<VerificationMethodDefinition> supportedLoginFactors() {
         return List.of(
                 new VerificationMethodDefinition(FACTOR_TOTP, "2FA", true, false, true),
-                new VerificationMethodDefinition(FACTOR_SMS, "短信验证码", false, true, false)
+                new VerificationMethodDefinition(FACTOR_SMS, "短信验证码", false, true, false),
+                new VerificationMethodDefinition(FACTOR_EMAIL, "邮箱验证码", true, false, false)
         );
     }
 
@@ -978,6 +1340,9 @@ public class SystemVerificationAppService {
         }
         if (FACTOR_SMS.equals(factorCode)) {
             return 1;
+        }
+        if (FACTOR_EMAIL.equals(factorCode)) {
+            return 2;
         }
         return Integer.MAX_VALUE;
     }
@@ -1007,9 +1372,24 @@ public class SystemVerificationAppService {
         return Boolean.parseBoolean(defaultIfBlank(values.get(TOTP_CONFIG_ENABLED_KEY), "true"));
     }
 
+    private boolean isEmailLoginEnabled(Long tenantId) {
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(EMAIL_LOGIN_ENABLED_KEY));
+        return Boolean.parseBoolean(defaultIfBlank(values.get(EMAIL_LOGIN_ENABLED_KEY), String.valueOf(properties.isEmailLoginEnabled())));
+    }
+
+    private boolean isEmailLoginAvailable(Long tenantId) {
+        return isEmailLoginEnabled(tenantId) && smtpMailService.isConfigured(tenantId);
+    }
+
+    private boolean isSmsLoginAvailable(Long tenantId) {
+        SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
+        return smsSettings.enabled() && smsSettings.configured();
+    }
+
     private SystemVO.VerificationSettingsVO loadVerificationSettings(Long tenantId) {
         SystemVO.VerificationSettingsVO settings = new SystemVO.VerificationSettingsVO();
         settings.setEnabled(isTotpEnabled(tenantId));
+        settings.setEmailLoginEnabled(isEmailLoginEnabled(tenantId));
         return settings;
     }
 

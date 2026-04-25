@@ -5,6 +5,7 @@ import type {
   AgreementSettings,
   BrandingSettings,
   HealthResponse,
+  LoginCapabilities,
   OnlineSessionRecord,
   PagedResult,
   ProfileFieldSetting,
@@ -69,6 +70,13 @@ export const systemService = {
     }),
   publicSecuritySettings: (options: RequestOptions = {}) =>
     request<SecuritySettings>('/v1/public/security-settings', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  publicLoginCapabilities: (options: RequestOptions = {}) =>
+    request<LoginCapabilities>('/v1/public/login-capabilities', {
       method: 'GET',
       skipAuth: true,
       silent: true,

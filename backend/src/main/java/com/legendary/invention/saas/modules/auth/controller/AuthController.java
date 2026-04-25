@@ -5,10 +5,13 @@ import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.ClientIpResolver;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.auth.app.AuthAppService;
+import com.legendary.invention.saas.modules.auth.dto.LoginCodeChallengeRequest;
+import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.legendary.invention.saas.modules.auth.app.LoginEncryptionService;
 import com.legendary.invention.saas.modules.auth.dto.LoginRequest;
 import com.legendary.invention.saas.modules.auth.dto.RefreshTokenRequest;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
+import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginEncryptionKeyVO;
@@ -54,6 +57,32 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponseVO> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
         LoginResponseVO response = authAppService.login(request, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
+        return ApiResponse.success(response, TraceContext.getRequestId());
+    }
+
+    @PostMapping("/login/code/challenge")
+    public ApiResponse<LoginCodeChallengeVO> loginCodeChallenge(
+            @Valid @RequestBody LoginCodeChallengeRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        LoginCodeChallengeVO response = authAppService.loginCodeChallenge(
+                request,
+                clientIpResolver.resolve(httpServletRequest),
+                httpServletRequest.getHeader("User-Agent")
+        );
+        return ApiResponse.success(response, TraceContext.getRequestId());
+    }
+
+    @PostMapping("/login/code/complete")
+    public ApiResponse<LoginResponseVO> loginCodeComplete(
+            @Valid @RequestBody LoginCodeCompleteRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        LoginResponseVO response = authAppService.completeLoginCodeLogin(
+                request,
+                clientIpResolver.resolve(httpServletRequest),
+                httpServletRequest.getHeader("User-Agent")
+        );
         return ApiResponse.success(response, TraceContext.getRequestId());
     }
 

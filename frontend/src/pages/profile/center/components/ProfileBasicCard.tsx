@@ -14,6 +14,8 @@ interface ProfileBasicCardProps {
   currentUser: CurrentUser | null | undefined;
   avatarValue?: string;
   avatarUploading: boolean;
+  mobileLockedByVerification?: boolean;
+  emailLockedByVerification?: boolean;
   onSave: () => void;
   onAvatarBeforeCrop: (file: File) => boolean;
   onAvatarUploadRequest: UploadProps['customRequest'];
@@ -28,6 +30,8 @@ export const ProfileBasicCard = ({
   currentUser,
   avatarValue,
   avatarUploading,
+  mobileLockedByVerification = false,
+  emailLockedByVerification = false,
   onSave,
   onAvatarBeforeCrop,
   onAvatarUploadRequest,
@@ -87,14 +91,14 @@ export const ProfileBasicCard = ({
             {visibleProfileFields.has('mobile') ? (
               <Col xs={24} md={12}>
                 <Form.Item name="mobile" label="手机号" rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
-                  <Input placeholder="请输入手机号" />
+                  <Input placeholder="请输入手机号" disabled={mobileLockedByVerification} />
                 </Form.Item>
               </Col>
             ) : null}
             {visibleProfileFields.has('email') ? (
               <Col xs={24} md={12}>
                 <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]}>
-                  <Input placeholder="请输入邮箱地址" autoComplete="email" />
+                  <Input placeholder="请输入邮箱地址" autoComplete="email" disabled={emailLockedByVerification} />
                 </Form.Item>
               </Col>
             ) : null}

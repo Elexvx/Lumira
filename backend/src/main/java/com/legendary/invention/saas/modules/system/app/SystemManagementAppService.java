@@ -12,7 +12,9 @@ import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.system.app.OnlineSessionManagementAppService;
+import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
 import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
@@ -44,6 +46,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -180,6 +183,7 @@ public class SystemManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final PluginManagementAppService pluginManagementAppService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
+    private final SystemVerificationAppService systemVerificationAppService;
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
@@ -194,6 +198,7 @@ public class SystemManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             PluginManagementAppService pluginManagementAppService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService,
             OperationAuditService operationAuditService,
@@ -207,6 +212,7 @@ public class SystemManagementAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.pluginManagementAppService = pluginManagementAppService;
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
+        this.systemVerificationAppService = systemVerificationAppService;
         this.passwordEncoder = passwordEncoder;
         this.loginAuditService = loginAuditService;
         this.operationAuditService = operationAuditService;
@@ -246,6 +252,9 @@ public class SystemManagementAppService {
                 RECENT_LOGIN_LOG_LIMIT
         ).getRecords());
         summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
+        Long tenantId = currentTenantId(currentUser);
+        summary.setMobileBindVerificationRequired(systemVerificationAppService.isContactBindVerificationRequired(tenantId, "mobile"));
+        summary.setEmailBindVerificationRequired(systemVerificationAppService.isContactBindVerificationRequired(tenantId, "email"));
         return summary;
     }
 
@@ -253,6 +262,15 @@ public class SystemManagementAppService {
     public CurrentUserVO updateCurrentUserProfile(CurrentUser currentUser, com.legendary.invention.saas.modules.system.dto.ProfileDTO.BasicInfoUpdateRequest request) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        Long tenantId = currentTenantId(currentUser);
+        String nextMobile = normalizeNullableText(request.getMobile());
+        String nextEmail = normalizeNullableText(request.getEmail());
+        if (systemVerificationAppService.isContactBindVerificationRequired(tenantId, "mobile") && contactValueChanged(user.getMobile(), nextMobile)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "手机号绑定需要验证码，请在已绑定登录方式中修改");
+        }
+        if (systemVerificationAppService.isContactBindVerificationRequired(tenantId, "email") && contactValueChanged(user.getEmail(), nextEmail)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱绑定需要验证码，请在已绑定登录方式中修改");
+        }
         jdbcTemplate.update(
                 """
                         update sys_user
@@ -263,8 +281,8 @@ public class SystemManagementAppService {
                 normalizeNullableText(request.getAvatarUrl()),
                 normalizeNullableText(request.getNickname()),
                 normalizeNullableText(request.getRealName()),
-                normalizeNullableText(request.getMobile()),
-                normalizeNullableText(request.getEmail()),
+                nextMobile,
+                nextEmail,
                 normalizeNullableText(request.getBirthMonth()),
                 normalizeNullableText(request.getGender()),
                 normalizeNullableText(request.getRegion()),
@@ -293,6 +311,66 @@ public class SystemManagementAppService {
                 LocalDateTime.now(),
                 user.getId()
         );
+        return authAppService.currentUser(currentUser);
+    }
+
+    public SystemVO.VerificationChallengeVO startCurrentUserContactBindChallenge(CurrentUser currentUser, ProfileDTO.ContactBindChallengeRequest request) {
+        String contactType = normalizeContactType(request.getContactType());
+        String value = normalizeContactValue(contactType, request.getValue());
+        return systemVerificationAppService.startContactBindChallenge(currentTenantId(currentUser), currentUser.getUserId(), contactType, value);
+    }
+
+    @Transactional
+    public CurrentUserVO updateCurrentUserContactBinding(CurrentUser currentUser, ProfileDTO.ContactBindRequest request) {
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        String contactType = normalizeContactType(request.getContactType());
+        String value = normalizeContactValue(contactType, request.getValue());
+        Long tenantId = currentTenantId(currentUser);
+
+        if (systemVerificationAppService.isContactBindVerificationRequired(tenantId, contactType)) {
+            if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
+            }
+            systemVerificationAppService.completeContactBind(
+                    tenantId,
+                    currentUser.getUserId(),
+                    contactType,
+                    request.getChallengeId(),
+                    request.getVerificationCode(),
+                    value
+            );
+        }
+
+        if ("mobile".equals(contactType)) {
+            jdbcTemplate.update(
+                    """
+                            update sys_user
+                            set mobile = ?, updated_by = ?, updated_at = ?
+                            where id = ? and deleted = 0
+                            """,
+                    value,
+                    currentUser.getUserId(),
+                    LocalDateTime.now(),
+                    user.getId()
+            );
+        } else if ("email".equals(contactType)) {
+            jdbcTemplate.update(
+                    """
+                            update sys_user
+                            set email = ?, updated_by = ?, updated_at = ?
+                            where id = ? and deleted = 0
+                            """,
+                    value,
+                    currentUser.getUserId(),
+                    LocalDateTime.now(),
+                    user.getId()
+            );
+        } else {
+            throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+        }
+
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
         return authAppService.currentUser(currentUser);
     }
 
@@ -1615,6 +1693,14 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : null;
     }
 
+    private boolean contactValueChanged(String currentValue, String nextValue) {
+        String current = normalizeNullableText(currentValue);
+        if (current == null) {
+            return nextValue != null;
+        }
+        return !current.equals(nextValue);
+    }
+
     private String buildCopyrightText(String companyName, Integer copyrightStartYear) {
         int currentYear = LocalDate.now().getYear();
         int startYear = copyrightStartYear == null ? currentYear : copyrightStartYear;
@@ -2306,5 +2392,30 @@ public class SystemManagementAppService {
         } catch (EmptyResultDataAccessException exception) {
             return null;
         }
+    }
+
+    private String normalizeContactType(String contactType) {
+        if (!StringUtils.hasText(contactType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "绑定类型不能为空");
+        }
+        String normalized = contactType.trim().toLowerCase(Locale.ROOT);
+        if (!"mobile".equals(normalized) && !"email".equals(normalized)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+        }
+        return normalized;
+    }
+
+    private String normalizeContactValue(String contactType, String value) {
+        if (!StringUtils.hasText(value)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入绑定信息");
+        }
+        String normalized = value.trim();
+        if ("mobile".equals(contactType) && !normalized.matches("^1[3-9]\\d{9}$")) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效手机号");
+        }
+        if ("email".equals(contactType) && !normalized.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效邮箱地址");
+        }
+        return normalized;
     }
 }

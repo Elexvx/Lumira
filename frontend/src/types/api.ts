@@ -58,6 +58,22 @@ export interface LoginResponse {
   requiresCaptcha?: boolean | null;
 }
 
+export interface LoginCapabilities {
+  passwordLoginAvailable: boolean;
+  smsLoginAvailable: boolean;
+  emailLoginAvailable: boolean;
+}
+
+export interface LoginCodeChallenge {
+  loginType: 'sms' | 'email' | 'totp';
+  factorName: string;
+  challengeId: string;
+  maskedContact?: string | null;
+  promptMessage?: string | null;
+  expiresInSeconds?: number | null;
+  debugCode?: string | null;
+}
+
 export interface LoginEncryptionKey {
   algorithm: string;
   keyId: string;
@@ -405,10 +421,12 @@ export interface SmsVerificationSettingsPayload {
 
 export interface VerificationSettings {
   enabled: boolean;
+  emailLoginEnabled: boolean;
 }
 
 export interface VerificationSettingsPayload {
   enabled?: boolean;
+  emailLoginEnabled?: boolean;
 }
 
 export interface SmtpTestPayload {
@@ -561,6 +579,8 @@ export interface ProfileSummary {
   permissionCount: number;
   recentLoginLogs: AuditLogRecord[];
   profileFieldSettings: ProfileFieldSetting[];
+  mobileBindVerificationRequired?: boolean | null;
+  emailBindVerificationRequired?: boolean | null;
 }
 
 export interface ProfileFieldSetting {
