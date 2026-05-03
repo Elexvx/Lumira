@@ -1,4 +1,4 @@
-import { useRequest } from '@umijs/max';
+import { useQuery } from '@tanstack/react-query';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { Button, Card, Col, Descriptions, Drawer, Empty, Form, Modal, Row, Space, Spin, Tag, Timeline, message } from 'antd';
 import { useMemo, useState } from 'react';
@@ -31,30 +31,30 @@ const TenantOverviewPage = () => {
     initialValues: { status: 'ENABLED' },
   });
 
-  const currentTenantQuery = useRequest(async () => ({ data: await tenantService.currentTenant({ autoRedirectOnUnauthorized: false }) }) as {
-    data: CurrentTenantResponse;
+  const currentTenantQuery = useQuery({
+    queryKey: ['tenant-current', initialState?.currentTenant?.tenantId],
+    queryFn: async () => tenantService.currentTenant({ autoRedirectOnUnauthorized: false }),
   });
-  const myTenantsQuery = useRequest(async () => ({ data: await tenantService.myTenants({ autoRedirectOnUnauthorized: false }) }) as {
-    data: MyTenant[];
+  const myTenantsQuery = useQuery({
+    queryKey: ['tenant-my-tenants', initialState?.currentTenant?.tenantId],
+    queryFn: async () => tenantService.myTenants({ autoRedirectOnUnauthorized: false }),
   });
-  const pluginQuery = useRequest(
-    async () => ({ data: await pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }) }) as {
-      data: TenantPlugin[];
-    },
-    {
-      refreshDeps: [initialState?.currentTenant?.tenantId],
-    },
-  );
-  const switchHistoryQuery = useRequest(async () => ({
-    data: await auditService.loginLogs(
-      {
-        loginType: 'TENANT_SWITCH',
-        pageNo: 1,
-        pageSize: 5,
-      },
-      { autoRedirectOnUnauthorized: false },
-    ),
-  }) as { data: PagedResult<AuditLogRecord> });
+  const pluginQuery = useQuery({
+    queryKey: ['tenant-available-plugins', initialState?.currentTenant?.tenantId],
+    queryFn: async () => pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+  });
+  const switchHistoryQuery = useQuery({
+    queryKey: ['tenant-switch-history'],
+    queryFn: async () =>
+      auditService.loginLogs(
+        {
+          loginType: 'TENANT_SWITCH',
+          pageNo: 1,
+          pageSize: 5,
+        },
+        { autoRedirectOnUnauthorized: false },
+      ),
+  });
 
   const currentTenant = currentTenantQuery.data?.currentTenant || initialState?.currentTenant || null;
   const myTenants = (myTenantsQuery.data || initialState?.myTenants || []) as MyTenant[];
@@ -185,7 +185,7 @@ const TenantOverviewPage = () => {
       <div className="saas-management-page-body">
         <Row gutter={[16, 16]}>
           <Col xs={24}>
-            <Card title="当前租户" loading={currentTenantQuery.loading}>
+            <Card title="当前租户" loading={currentTenantQuery.isLoading}>
               {currentTenant ? (
                 <Descriptions {...detailDescriptionsProps}>
                   <Descriptions.Item label="租户编码">{currentTenant.tenantCode}</Descriptions.Item>
@@ -244,7 +244,7 @@ const TenantOverviewPage = () => {
               rowKey="tenantId"
               columns={myTenantColumns}
               dataSource={myTenants}
-              loading={myTenantsQuery.loading}
+              loading={myTenantsQuery.isLoading}
               search={false}
               options={false}
               toolBarRender={false}
@@ -260,7 +260,7 @@ const TenantOverviewPage = () => {
               rowKey="pluginCode"
               columns={pluginColumns}
               dataSource={tenantPlugins}
-              loading={pluginQuery.loading}
+              loading={pluginQuery.isLoading}
               search={false}
               options={false}
               toolBarRender={false}
@@ -270,7 +270,7 @@ const TenantOverviewPage = () => {
           </div>
         </Card>
 
-        <Card title="最近 5 次切换" loading={switchHistoryQuery.loading}>
+        <Card title="最近 5 次切换" loading={switchHistoryQuery.isLoading}>
           {switchHistoryItems.length ? <Timeline items={switchHistoryItems} /> : <Empty description="暂无最近的租户切换记录" />}
         </Card>
       </div>

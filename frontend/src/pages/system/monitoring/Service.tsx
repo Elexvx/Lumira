@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { useRequest } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-components';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Col, Descriptions, Row, Space, Statistic, Tag } from 'antd';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -50,17 +50,20 @@ const ExpandableClampText = ({ value, lines = 2 }: { value?: string | null; line
 
 const ServiceMonitorPage = () => {
   const { isDesktop } = useResponsive();
-  const query = useRequest(async () => ({ data: await monitorService.service({ autoRedirectOnUnauthorized: false }) }) as { data: ServiceMonitorSnapshot });
+  const query = useQuery({
+    queryKey: ['service-monitor'],
+    queryFn: async () => monitorService.service({ autoRedirectOnUnauthorized: false }),
+  });
   const detailDescriptionsProps = useDetailDescriptionsProps({ column: { xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 } });
 
   // Keep a stable ref to the latest refresh function so the interval effect
-  // does not depend on query.refresh directly. query.refresh changes identity
+  // does not depend on query.refetch directly. query.refetch changes identity
   // on every render, which would cause the interval to be torn down and
   // recreated after every data update, producing a visible "twitching" effect.
-  const refreshRef = useRef(query.refresh);
+  const refreshRef = useRef(query.refetch);
   useEffect(() => {
-    refreshRef.current = query.refresh;
-  });
+    refreshRef.current = query.refetch;
+  }, [query.refetch]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -84,7 +87,7 @@ const ServiceMonitorPage = () => {
           <Col xs={24} lg={12}>
             <Card
               title="CPU"
-              loading={query.loading && !service}
+              loading={query.isLoading && !service}
               extra={<Tag color="geekblue">核心数 {service?.cpu?.coreCount ?? '-'}</Tag>}
               style={{ height: '100%' }}
               bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}
@@ -106,7 +109,7 @@ const ServiceMonitorPage = () => {
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title="内存" loading={query.loading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
+            <Card title="内存" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
               <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="总内存" value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
@@ -125,7 +128,7 @@ const ServiceMonitorPage = () => {
           </Col>
         </Row>
 
-        <Card title="服务器信息" loading={query.loading && !service}>
+        <Card title="服务器信息" loading={query.isLoading && !service}>
           <Descriptions {...detailDescriptionsProps}>
             <Descriptions.Item label="服务器名称">
               <BreakableValue value={service?.server?.serverName} />
@@ -157,7 +160,7 @@ const ServiceMonitorPage = () => {
           </Descriptions>
         </Card>
 
-        <Card title="Java虚拟机信息" loading={query.loading && !service}>
+        <Card title="Java虚拟机信息" loading={query.isLoading && !service}>
           <Descriptions {...detailDescriptionsProps}>
             <Descriptions.Item label="Java名称">
               <BreakableValue value={service?.jvm?.vmName} />

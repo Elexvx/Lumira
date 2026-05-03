@@ -42,14 +42,14 @@ export const buildDictTypeColumns = ({
   {
     title: '系统内置',
     dataIndex: 'isSystem',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => <Tag color={record.isSystem ? 'green' : 'default'}>{record.isSystem ? '是' : '否'}</Tag>,
   },
   {
     title: '备注',
     dataIndex: 'remark',
-    hideInSearch: true,
+    search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) =>
@@ -103,17 +103,17 @@ export const buildDictItemColumns = ({
 }: BuildDictItemColumnsOptions): ProColumns<DictItemRecord>[] => [
   { title: '标签', dataIndex: 'itemLabel' },
   { title: '值', dataIndex: 'itemValue' },
-  { title: '排序', dataIndex: 'sortNo', hideInSearch: true, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: '排序', dataIndex: 'sortNo', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
   {
     title: '状态',
     dataIndex: 'status',
-    hideInSearch: true,
+    search: false,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
   },
   {
     title: '备注',
     dataIndex: 'remark',
-    hideInSearch: true,
+    search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) =>

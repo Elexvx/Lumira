@@ -1,13 +1,12 @@
-import * as AntdIcons from '@ant-design/icons';
 import { history } from '@umijs/max';
 import type { RunTimeLayoutConfig } from '@umijs/max';
-import type { ComponentType, ReactNode } from 'react';
-import React, { createElement } from 'react';
+import React from 'react';
 import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { isLoggedIn } from '@/auth/session';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
+import { resolveNavigationIcon } from '@/navigation/settingsNavigation';
 import NoPermission from '@/pages/exception/NoPermission';
 import { backendRouteMeta } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
@@ -16,37 +15,9 @@ import { resolveLayoutNavTheme } from '@/theme/runtime';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
 
-type AntdIconComponent = ComponentType<Record<string, unknown>>;
-
-const ANT_DESIGN_ICONS = AntdIcons as unknown as Record<string, AntdIconComponent>;
-const OUTLINED_ICON_SUFFIX = 'Outlined';
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
-
-const normalizeMenuIconName = (iconName: string) =>
-  iconName
-    .trim()
-    .replace(/(^\w)|-(\w)/g, (_, firstChar: string, hyphenChar: string) => (firstChar || hyphenChar).toUpperCase());
-
-const resolveMenuIcon = (icon?: ReactNode | string) => {
-  if (!icon) {
-    return undefined;
-  }
-
-  if (typeof icon !== 'string') {
-    return icon;
-  }
-
-  const normalizedIconName = normalizeMenuIconName(icon);
-  const IconComponent = ANT_DESIGN_ICONS[normalizedIconName] || ANT_DESIGN_ICONS[`${normalizedIconName}${OUTLINED_ICON_SUFFIX}`];
-
-  if (!IconComponent) {
-    return undefined;
-  }
-
-  return createElement(IconComponent);
-};
 
 const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string, RuntimeMenuDataItem>()) => {
   items.forEach((item) => {
@@ -76,7 +47,7 @@ const composeMenuItem = (
   }
 
   const mergedMeta = routeMetaMap.get(backendNode.path || '');
-  const icon = resolveMenuIcon(backendNode.icon) ?? resolveMenuIcon(localMeta?.icon) ?? resolveMenuIcon(mergedMeta?.icon);
+  const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
 
   return {
     ...localMeta,
@@ -131,9 +102,12 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     menuHeaderRender: false,
     menuFooterRender: false,
     menuExtraRender: false,
+    collapsedButtonRender: (_, defaultDom) => defaultDom,
+    menuRender: (_, defaultDom) => defaultDom,
     childrenRender: (dom) => <SessionActivityGuard>{dom}</SessionActivityGuard>,
     headerContentRender: () => null,
     rightContentRender: () => <TopActions />,
+    actionsRender: () => <TopActions />,
     footerRender: () => renderFooter(brandingSettings),
     unAccessible: <NoPermission />,
     pageTitleRender: (props, defaultTitle) => (!props?.title ? defaultTitle || brandName : `${props.title} - ${brandName}`),
@@ -145,13 +119,15 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     menuDataRender: (menuData) => {
       const backendMenus = initialState?.menuTree || [];
       if (!backendMenus.length) {
-        return menuData;
+        return menuData as RuntimeMenuDataItem[];
       }
 
       const localByPath = flattenLocalMenuMap(menuData as RuntimeMenuDataItem[]);
-      return backendMenus
+      const composedMenus = backendMenus
         .map((node) => composeMenuItem(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
+
+      return composedMenus;
     },
     onPageChange: () => {
       const { location } = history;

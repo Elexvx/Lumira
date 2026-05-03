@@ -1,5 +1,5 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { useRequest } from '@umijs/max';
+import { useQuery } from '@tanstack/react-query';
 import { Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
@@ -8,6 +8,7 @@ import { useStandardFormProps } from '@/features/form/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
+import { systemService } from '@/services/system';
 import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSecondFactorModal';
 import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
 import { ContactBindModal } from '@/pages/profile/center/components/ContactBindModal';
@@ -19,8 +20,9 @@ import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus 
 const ProfileCenterPage = () => {
   const [profileForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
-  const profileQuery = useRequest(async () => ({ data: await profileService.summary({ autoRedirectOnUnauthorized: false }) }) as {
-    data: ProfileSummary;
+  const profileQuery = useQuery({
+    queryKey: ['profile-summary', initialState?.currentUser?.userId],
+    queryFn: async () => profileService.summary({ autoRedirectOnUnauthorized: false }),
   });
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
@@ -28,8 +30,27 @@ const ProfileCenterPage = () => {
   const roleNames = summary?.roleNames || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const profileFieldSettings = summary?.profileFieldSettings || [];
-  const mobileBindVerificationRequired = Boolean(summary?.mobileBindVerificationRequired);
-  const emailBindVerificationRequired = Boolean(summary?.emailBindVerificationRequired);
+  const summaryMobileBindAvailable = Boolean(summary?.mobileBindAvailable ?? summary?.mobileBindVerificationRequired);
+  const summaryEmailBindAvailable = Boolean(summary?.emailBindAvailable ?? summary?.emailBindVerificationRequired);
+  const loginCapabilitiesQuery = useQuery({
+    queryKey: ['profile-login-capabilities', currentTenant?.tenantId],
+    queryFn: async () =>
+      systemService.publicLoginCapabilities({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      }),
+    enabled: Boolean(currentTenant),
+  });
+  const loginCapabilities = loginCapabilitiesQuery.data;
+  const emailLoginAvailable = Boolean(loginCapabilities?.emailLoginAvailable);
+  const smsLoginAvailable = Boolean(loginCapabilities?.smsLoginAvailable);
+  const mobileBindAvailable = summaryMobileBindAvailable || smsLoginAvailable;
+  const emailBindAvailable = summaryEmailBindAvailable || emailLoginAvailable;
+  const mobileBindVerificationRequired = mobileBindAvailable;
+  const emailBindVerificationRequired = emailBindAvailable;
+  const mobileBindingVisible = mobileBindAvailable;
+  const emailBindingVisible = emailBindAvailable;
   const visibleProfileFields = useMemo(() => buildVisibleProfileFields(profileFieldSettings), [profileFieldSettings]);
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;
@@ -38,15 +59,11 @@ const ProfileCenterPage = () => {
     className: 'saas-profile-page__descriptions',
     column: 1,
   });
-  const providersQuery = useRequest(
-    async () =>
-      ({ data: await secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }) }) as {
-        data: SecondFactorProviderStatus[];
-      },
-    {
-      ready: Boolean(currentUser),
-    },
-  );
+  const providersQuery = useQuery({
+    queryKey: ['profile-second-factor-providers', currentUser?.userId],
+    queryFn: async () => secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }),
+    enabled: Boolean(currentUser),
+  });
   const [profileSaving, setProfileSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [bindModalOpen, setBindModalOpen] = useState(false);
@@ -181,7 +198,7 @@ const ProfileCenterPage = () => {
       try {
         await secondFactorService.currentUnbind(provider.factorCode, { autoRedirectOnUnauthorized: false });
         message.success('已解绑');
-        await providersQuery.refresh();
+        await providersQuery.refetch();
       } catch (error) {
         message.error(error instanceof Error ? error.message : '解绑失败，请稍后重试');
       }
@@ -230,7 +247,7 @@ const ProfileCenterPage = () => {
 
       message.success('绑定已完成');
       setBindingCompleted(true);
-      await providersQuery.refresh();
+      await providersQuery.refetch();
       return true;
     } catch (error) {
       setBindingAlert({
@@ -266,12 +283,17 @@ const ProfileCenterPage = () => {
 
   const contactBindVerificationRequired =
     contactBindType === 'mobile' ? mobileBindVerificationRequired : contactBindType === 'email' ? emailBindVerificationRequired : false;
-  const contactBindSettingsLoading = profileQuery.loading || !summary;
+  const contactBindAvailable = contactBindType === 'mobile' ? mobileBindAvailable : contactBindType === 'email' ? emailBindAvailable : false;
+  const contactBindSettingsLoading = profileQuery.isLoading || loginCapabilitiesQuery.isLoading || !summary;
   const contactBindChallengeMatchesValue = Boolean(
     contactBindVerificationRequired && contactBindChallenge && contactBindChallengeTarget === (contactBindValue?.trim() || ''),
   );
 
   const openContactBindModal = (type: 'mobile' | 'email') => {
+    if ((type === 'mobile' && !mobileBindAvailable) || (type === 'email' && !emailBindAvailable)) {
+      message.warning(type === 'mobile' ? '当前租户未启用短信验证码，暂不允许绑定手机号' : '当前租户未启用邮箱验证码，暂不允许绑定邮箱');
+      return;
+    }
     setContactBindType(type);
     setContactBindChallenge(null);
     setContactBindChallengeTarget(null);
@@ -298,6 +320,10 @@ const ProfileCenterPage = () => {
 
   const handleContactBindConfirm = async () => {
     if (!contactBindType) {
+      return;
+    }
+    if (!contactBindAvailable) {
+      setContactBindAlert(contactBindType === 'mobile' ? '当前租户未启用短信验证码，暂不允许绑定手机号' : '当前租户未启用邮箱验证码，暂不允许绑定邮箱');
       return;
     }
 
@@ -366,7 +392,7 @@ const ProfileCenterPage = () => {
         );
         profileForm.setFieldValue(contactBindType, nextValue);
         message.success(contactBindType === 'mobile' ? '手机号已绑定' : '邮箱已绑定');
-        await profileQuery.refresh();
+        await profileQuery.refetch();
         setContactBindType(null);
         setContactBindChallenge(null);
         setContactBindChallengeTarget(null);
@@ -383,32 +409,40 @@ const ProfileCenterPage = () => {
   };
 
   const supplementalItems = [
-    {
-      key: 'mobile',
-      title: '手机号',
-      statusLabel: currentUser?.mobile ? '已绑定' : '未绑定',
-      statusColor: currentUser?.mobile ? 'green' : 'default',
-      value: currentUser?.mobile ? maskMobile(currentUser.mobile) : '未设置手机号',
-      verificationLabel: mobileBindVerificationRequired ? '需验证码' : '直接保存',
-      verificationColor: mobileBindVerificationRequired ? 'blue' : 'default',
-      actionLabel: currentUser?.mobile ? '修改手机号' : '绑定手机号',
-      actionLoading: contactBindType === 'mobile' && (contactBindSubmitting || contactBindChallengeLoading),
-      disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
-      onAction: () => openContactBindModal('mobile'),
-    },
-    {
-      key: 'email',
-      title: '邮箱',
-      statusLabel: currentUser?.email ? '已绑定' : '未绑定',
-      statusColor: currentUser?.email ? 'green' : 'default',
-      value: currentUser?.email ? maskEmail(currentUser.email) : '未设置邮箱',
-      verificationLabel: emailBindVerificationRequired ? '需验证码' : '直接保存',
-      verificationColor: emailBindVerificationRequired ? 'blue' : 'default',
-      actionLabel: currentUser?.email ? '修改邮箱' : '绑定邮箱',
-      actionLoading: contactBindType === 'email' && (contactBindSubmitting || contactBindChallengeLoading),
-      disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
-      onAction: () => openContactBindModal('email'),
-    },
+    ...(mobileBindingVisible
+      ? [
+          {
+            key: 'mobile',
+            title: '手机号',
+            statusLabel: currentUser?.mobile ? '已绑定' : '未绑定',
+            statusColor: currentUser?.mobile ? 'green' : 'default',
+            value: currentUser?.mobile ? maskMobile(currentUser.mobile) : '未设置手机号',
+            verificationLabel: '需验证码',
+            verificationColor: 'blue',
+            actionLabel: currentUser?.mobile ? '修改手机号' : '绑定手机号',
+            actionLoading: contactBindType === 'mobile' && (contactBindSubmitting || contactBindChallengeLoading),
+            disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
+            onAction: () => openContactBindModal('mobile'),
+          },
+        ]
+      : []),
+    ...(emailBindingVisible
+      ? [
+          {
+            key: 'email',
+            title: '邮箱',
+            statusLabel: currentUser?.email ? '已绑定' : '未绑定',
+            statusColor: currentUser?.email ? 'green' : 'default',
+            value: currentUser?.email ? maskEmail(currentUser.email) : '未设置邮箱',
+            verificationLabel: '需验证码',
+            verificationColor: 'blue',
+            actionLabel: currentUser?.email ? '修改邮箱' : '绑定邮箱',
+            actionLoading: contactBindType === 'email' && (contactBindSubmitting || contactBindChallengeLoading),
+            disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
+            onAction: () => openContactBindModal('email'),
+          },
+        ]
+      : []),
   ];
   const contactBindOpen = contactBindType !== null;
   const contactBindTitle = contactBindType === 'mobile' ? '绑定手机号' : '绑定邮箱';
@@ -416,15 +450,19 @@ const ProfileCenterPage = () => {
     contactBindType === 'mobile'
       ? contactBindVerificationRequired
         ? '当前租户已开启短信验证码验证，绑定手机号时需要先获取并输入验证码。'
-        : '绑定手机号后，个人中心和后续登录场景都可以使用该手机号。'
+        : '当前租户未启用短信验证码，暂不允许绑定手机号。'
       : contactBindVerificationRequired
         ? '当前租户已开启邮箱验证码验证，绑定邮箱时需要先获取并输入验证码。'
-        : '绑定邮箱后，个人中心和后续登录场景都可以使用该邮箱。';
+        : '当前租户未启用邮箱验证码，暂不允许绑定邮箱。';
   const contactBindLabel = contactBindType === 'mobile' ? '手机号' : '邮箱';
   const contactBindPlaceholder = contactBindType === 'mobile' ? '请输入手机号' : '请输入邮箱地址';
   const contactBindAutoComplete = contactBindType === 'mobile' ? 'tel' : 'email';
   const contactBindInputMode = contactBindType === 'mobile' ? 'tel' : 'email';
-  const contactBindOkText = !contactBindVerificationRequired ? '保存' : contactBindChallengeMatchesValue ? '确认绑定' : '发送验证码';
+  const contactBindOkText = contactBindVerificationRequired
+    ? contactBindChallengeMatchesValue
+      ? '确认绑定'
+      : '发送验证码'
+    : '保存';
 
   const handleSaveProfile = async () => {
     try {
@@ -433,8 +471,8 @@ const ProfileCenterPage = () => {
       const updatedUser = await profileService.updateBasicInfo(
         {
           ...values,
-          mobile: mobileBindVerificationRequired ? currentUser?.mobile || '' : values.mobile,
-          email: emailBindVerificationRequired ? currentUser?.email || '' : values.email,
+          mobile: currentUser?.mobile || '',
+          email: currentUser?.email || '',
           birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
         },
         { autoRedirectOnUnauthorized: false },
@@ -448,7 +486,7 @@ const ProfileCenterPage = () => {
           : prev,
       );
       message.success('个人资料已更新');
-      await profileQuery.refresh();
+      await profileQuery.refetch();
     } finally {
       setProfileSaving(false);
     }
@@ -460,7 +498,7 @@ const ProfileCenterPage = () => {
         <Row gutter={[16, 16]} align="top">
           <Col xs={24} lg={12}>
             <ProfileBasicCard
-              loading={profileQuery.loading}
+              loading={profileQuery.isLoading}
               hasVisibleProfileFields={hasVisibleProfileFields}
               profileSaving={profileSaving}
               profileFormProps={profileFormProps}
@@ -468,8 +506,8 @@ const ProfileCenterPage = () => {
               currentUser={currentUser}
               avatarValue={avatarValue}
               avatarUploading={avatarUploading}
-              mobileLockedByVerification={mobileBindVerificationRequired}
-              emailLockedByVerification={emailBindVerificationRequired}
+              mobileLockedByVerification
+              emailLockedByVerification
               onSave={() => void handleSaveProfile()}
               onAvatarBeforeCrop={handleAvatarBeforeCrop}
               onAvatarUploadRequest={handleAvatarUploadRequest}
@@ -487,7 +525,7 @@ const ProfileCenterPage = () => {
 
               <BoundProviderCard
                 canManageSecondFactor
-                loading={providersQuery.loading}
+                loading={providersQuery.isLoading}
                 providers={providersQuery.data || []}
                 bindingLoading={bindingLoading}
                 bindingSubmitting={bindingSubmitting}
@@ -499,10 +537,10 @@ const ProfileCenterPage = () => {
           </Col>
         </Row>
 
-        <Card title="最近登录记录" loading={profileQuery.loading}>
+        <Card title="最近登录记录" loading={profileQuery.isLoading}>
           {recentLoginLogs.length ? (
             <Timeline
-              items={recentLoginLogs.map((item) => ({
+              items={recentLoginLogs.map((item: ProfileSummary['recentLoginLogs'][number]) => ({
                 children: (
                   <Space direction="vertical" size={0}>
                     <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>

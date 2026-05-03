@@ -501,7 +501,7 @@ public class MessageAppService {
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或不属于当前租户");
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update msg_notice
                         set publish_status = ?, updated_by = ?, updated_at = ?
@@ -513,8 +513,14 @@ public class MessageAppService {
                 noticeId,
                 currentUser.getCurrentTenantId()
         );
-        notice.setPublishStatus(STATUS_RETRACTED);
-        return notice;
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或不属于当前租户");
+        }
+        MessageVO.NoticeVO retractedNotice = findNoticeById(currentUser.getCurrentTenantId(), noticeId, currentUser.getUserId());
+        if (retractedNotice == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "通知撤回后读取失败");
+        }
+        return retractedNotice;
     }
 
     private MessageVO.NoticeVO markRead(CurrentUser currentUser, Long noticeId) {
@@ -615,6 +621,8 @@ public class MessageAppService {
                                n.source_type as sourceType,
                                n.publish_status as publishStatus,
                                n.published_at as publishedAt,
+                               n.created_by as createdBy,
+                               n.updated_by as updatedBy,
                                n.created_at as createdAt,
                                n.updated_at as updatedAt,
                                case when r.id is null then 0 else 1 end as readFlag,

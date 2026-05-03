@@ -13,6 +13,7 @@ import { userService } from '@/services/user';
 import type { MessageNoticeRecord, RoleRecord, UserRecord } from '@/types/api';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { confirmAction } from '@/utils/confirm';
+import { notifyMessageCenterRefresh } from '@/components/message-center/messageCenterEvents';
 
 const TARGET_SCOPE_LABELS: Record<string, string> = {
   TENANT: '租户全员',
@@ -74,7 +75,7 @@ const renderEnumTag = (value: string | boolean | undefined | null, labels: Recor
 };
 
 const NotificationsPage = () => {
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const [detailRecord, setDetailRecord] = useState<MessageNoticeRecord | null>(null);
@@ -237,6 +238,7 @@ const NotificationsPage = () => {
       );
       message.success('站内信已发布');
       closePublishDrawer();
+      notifyMessageCenterRefresh();
       actionRef.current?.reload();
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
@@ -264,6 +266,7 @@ const NotificationsPage = () => {
           await messageService.retractMessage(record.id, requestOptions);
           message.success('站内信已撤回');
           setDetailRecord((current) => (current && current.id === record.id ? { ...current, publishStatus: 'RETRACTED' } : current));
+          notifyMessageCenterRefresh();
           actionRef.current?.reload();
         } catch (error) {
           message.error(error instanceof Error ? error.message : '站内信撤回失败，请稍后重试');
@@ -285,7 +288,7 @@ const NotificationsPage = () => {
         dataIndex: 'title',
         ellipsis: true,
         copyable: true,
-        hideInSearch: true,
+        search: false,
         render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text>,
       },
       {
@@ -314,7 +317,7 @@ const NotificationsPage = () => {
         title: '目标用户',
         dataIndex: 'targetUserName',
         width: 160,
-        hideInSearch: true,
+        search: false,
         responsive: ['lg', 'xl', 'xxl'],
         render: (_, record) =>
           record.targetScope === 'USER'
@@ -325,7 +328,7 @@ const NotificationsPage = () => {
         title: '目标角色',
         dataIndex: 'targetRoleName',
         width: 160,
-        hideInSearch: true,
+        search: false,
         responsive: ['lg', 'xl', 'xxl'],
         render: (_, record) =>
           record.targetScope === 'ROLE'
@@ -356,7 +359,7 @@ const NotificationsPage = () => {
         title: '阅读状态',
         dataIndex: 'readFlag',
         width: 110,
-        hideInSearch: true,
+        search: false,
         responsive: ['lg', 'xl', 'xxl'],
         render: (_, record) => renderEnumTag(Boolean(record.readFlag), READ_STATUS_LABELS),
       },
@@ -364,7 +367,7 @@ const NotificationsPage = () => {
         title: '发布时间',
         dataIndex: 'publishedAt',
         width: 180,
-        hideInSearch: true,
+        search: false,
         sorter: true,
         render: (_, record) => formatDateTime(record.publishedAt || record.createdAt),
       },

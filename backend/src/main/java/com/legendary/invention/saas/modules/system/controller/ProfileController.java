@@ -56,7 +56,7 @@ public class ProfileController {
     @PutMapping("/email")
     public ApiResponse<CurrentUserVO> updateEmail(@Valid @RequestBody ProfileDTO.EmailUpdateRequest request) {
         return ApiResponse.success(
-                systemManagementAppService.updateCurrentUserEmail(securityContextFacade.getCurrentUser(), request.getEmail()),
+                systemManagementAppService.updateCurrentUserEmail(securityContextFacade.getCurrentUser(), request),
                 TraceContext.getRequestId()
         );
     }

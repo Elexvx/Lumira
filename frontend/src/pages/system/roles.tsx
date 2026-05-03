@@ -15,7 +15,7 @@ import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermi
 import { buildRolePermissionDisplayGroups } from '@/pages/system/rolesPermissionTree';
 import { iamService } from '@/services/iam';
 import type { RoleDetail, RoleRecord } from '@/types/api';
-import './roles.less';
+import './roles.css';
 
 const ROLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 

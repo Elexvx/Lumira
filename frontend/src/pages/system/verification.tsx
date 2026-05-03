@@ -1,5 +1,6 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { history, useLocation, useRequest } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
+import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Form, Input, InputNumber, Select, Space, Switch, Tabs, Typography, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
@@ -131,33 +132,21 @@ const SystemVerificationPage = () => {
   const [savingSmtpSettings, setSavingSmtpSettings] = useState(false);
   const [testingSmtpSettings, setTestingSmtpSettings] = useState(false);
 
-  const verificationSettingsQuery = useRequest(
-    async () =>
-      ({ data: await systemService.verificationSettings({ autoRedirectOnUnauthorized: false }) }) as {
-        data: VerificationSettings;
-      },
-    {
-      ready: canViewVerification,
-    },
-  );
-  const smsSettingsQuery = useRequest(
-    async () =>
-      ({ data: await systemService.smsVerificationSettings({ autoRedirectOnUnauthorized: false }) }) as {
-        data: SmsVerificationSettings;
-      },
-    {
-      ready: canViewVerification,
-    },
-  );
-  const smtpSettingsQuery = useRequest(
-    async () =>
-      ({ data: await systemService.smtpSettings({ autoRedirectOnUnauthorized: false }) }) as {
-        data: SmtpSettings;
-      },
-    {
-      ready: canViewVerification,
-    },
-  );
+  const verificationSettingsQuery = useQuery({
+    queryKey: ['verification-settings'],
+    queryFn: async () => systemService.verificationSettings({ autoRedirectOnUnauthorized: false }),
+    enabled: canViewVerification,
+  });
+  const smsSettingsQuery = useQuery({
+    queryKey: ['sms-verification-settings'],
+    queryFn: async () => systemService.smsVerificationSettings({ autoRedirectOnUnauthorized: false }),
+    enabled: canViewVerification,
+  });
+  const smtpSettingsQuery = useQuery({
+    queryKey: ['smtp-settings'],
+    queryFn: async () => systemService.smtpSettings({ autoRedirectOnUnauthorized: false }),
+    enabled: canViewVerification,
+  });
   const verificationFormProps = useStandardFormProps({
     form: verificationForm,
     initialValues: verificationFormInitialValues,
@@ -278,6 +267,7 @@ const SystemVerificationPage = () => {
       const result = await systemService.updateVerificationSettings(values, { autoRedirectOnUnauthorized: false });
       verificationForm.setFieldsValue(result);
       message.success('验证设置已保存');
+      await verificationSettingsQuery.refetch();
     } finally {
       setVerificationSaving(false);
     }
@@ -297,7 +287,7 @@ const SystemVerificationPage = () => {
       }));
       const result = await systemService.updateSmsVerificationSettings(values, { autoRedirectOnUnauthorized: false });
       message.success(result.configured ? '短信验证码配置已保存' : '短信验证码配置已保存，当前仍未完全启用');
-      await smsSettingsQuery.refresh();
+      await smsSettingsQuery.refetch();
     } finally {
       setSavingSmsSettings(false);
     }
@@ -316,7 +306,7 @@ const SystemVerificationPage = () => {
         password: '',
       });
       message.success('SMTP 配置已保存');
-      await smtpSettingsQuery.refresh();
+      await smtpSettingsQuery.refetch();
     } finally {
       setSavingSmtpSettings(false);
     }
@@ -338,7 +328,7 @@ const SystemVerificationPage = () => {
 
   const activeProvider = normalizeProviderCode(currentProvider);
   const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
-  const verificationLoading = verificationSettingsQuery.loading || smsSettingsQuery.loading || smtpSettingsQuery.loading;
+  const verificationLoading = verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading;
   const smtpConfigured = Boolean(smtpSettingsQuery.data?.configured);
 
   const renderVerificationTab = () => (
@@ -422,7 +412,7 @@ const SystemVerificationPage = () => {
         </Form>
       </Card>
 
-      <Card title="SMTP 基础配置" loading={smtpSettingsQuery.loading}>
+      <Card title="SMTP 基础配置" loading={smtpSettingsQuery.isLoading}>
         <Form {...smtpFormProps}>
           <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
             <Input disabled={!canManageSettings} placeholder="smtp.example.com" />
@@ -456,7 +446,7 @@ const SystemVerificationPage = () => {
         </Form>
       </Card>
 
-      <Card title="SMTP 测试发送" loading={smtpSettingsQuery.loading}>
+      <Card title="SMTP 测试发送" loading={smtpSettingsQuery.isLoading}>
         <Form {...smtpTestFormProps}>
           <Form.Item
             name="toEmail"

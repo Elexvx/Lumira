@@ -4,7 +4,7 @@ import { useCrudDetailState } from '@/features/crud/useCrudDetailState';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 
 export const useCrudPageState = <TRecord,>() => {
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const drawer = useCrudDrawerState<TRecord>();
   const detail = useCrudDetailState<TRecord>();
 

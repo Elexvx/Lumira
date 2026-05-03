@@ -53,14 +53,14 @@ export const buildTenantColumns = ({
   {
     title: '创建时间',
     dataIndex: 'createdAt',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => formatDateTime(record.createdAt),
   },
   {
     title: '更新时间',
     dataIndex: 'updatedAt',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => formatDateTime(record.updatedAt),
   },

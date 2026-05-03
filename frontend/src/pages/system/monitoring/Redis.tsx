@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useRequest } from '@umijs/max';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Col, Row, Space, Statistic, Typography } from 'antd';
 import { Area } from '@ant-design/charts';
 import { buildTableScroll } from '@/features/table/proTable';
@@ -20,17 +20,20 @@ const valueStyle = { fontSize: 24, fontWeight: 700 };
 
 const RedisMonitorPage = () => {
   const responsive = useResponsive();
-  const query = useRequest(async () => ({ data: await monitorService.redis({ autoRedirectOnUnauthorized: false }) }) as { data: RedisMonitorSnapshot });
+  const query = useQuery({
+    queryKey: ['redis-monitor'],
+    queryFn: async () => monitorService.redis({ autoRedirectOnUnauthorized: false }),
+  });
   const [samples, setSamples] = useState<TrendPoint[]>([]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void query.refresh();
+      void query.refetch();
     }, 5000);
     return () => {
       window.clearInterval(timer);
     };
-  }, [query.refresh]);
+  }, [query.refetch]);
 
   useEffect(() => {
     const snapshot = query.data;
@@ -116,12 +119,12 @@ const RedisMonitorPage = () => {
       ghost
       extra={
         <Space wrap>
-          <Button onClick={async () => await query.refresh()}>立即刷新</Button>
+          <Button onClick={async () => await query.refetch()}>立即刷新</Button>
         </Space>
       }
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Card loading={query.loading && !redis} title="Redis信息">
+        <Card loading={query.isLoading && !redis} title="Redis信息">
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={6} xl={4}>
               <Statistic title="Redis版本" value={redis?.overview.version || '-'} valueStyle={valueStyle} />
@@ -226,7 +229,7 @@ const RedisMonitorPage = () => {
           ))}
         </Row>
 
-        <Card title="命令统计" loading={query.loading && !redis}>
+        <Card title="命令统计" loading={query.isLoading && !redis}>
           <div className="saas-table-wrap">
             <ProTable<RedisMonitorCommandStat>
               rowKey="command"
@@ -241,7 +244,7 @@ const RedisMonitorPage = () => {
           </div>
         </Card>
 
-        <Card title="Key信息" loading={query.loading && !redis}>
+        <Card title="Key信息" loading={query.isLoading && !redis}>
           <div className="saas-table-wrap">
             <ProTable<RedisMonitorKeyspace>
               rowKey="database"
@@ -256,7 +259,7 @@ const RedisMonitorPage = () => {
           </div>
         </Card>
 
-        <Card title="连接客户端" loading={query.loading && !redis}>
+        <Card title="连接客户端" loading={query.isLoading && !redis}>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
             当前实例已连接的客户端会话列表，取自 Redis `CLIENT LIST`。
           </Typography.Paragraph>

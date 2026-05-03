@@ -253,8 +253,12 @@ public class SystemManagementAppService {
         ).getRecords());
         summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
         Long tenantId = currentTenantId(currentUser);
-        summary.setMobileBindVerificationRequired(systemVerificationAppService.isContactBindVerificationRequired(tenantId, "mobile"));
-        summary.setEmailBindVerificationRequired(systemVerificationAppService.isContactBindVerificationRequired(tenantId, "email"));
+        boolean mobileBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "mobile");
+        boolean emailBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "email");
+        summary.setMobileBindAvailable(mobileBindAvailable);
+        summary.setEmailBindAvailable(emailBindAvailable);
+        summary.setMobileBindVerificationRequired(mobileBindAvailable);
+        summary.setEmailBindVerificationRequired(emailBindAvailable);
         return summary;
     }
 
@@ -265,10 +269,16 @@ public class SystemManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         String nextMobile = normalizeNullableText(request.getMobile());
         String nextEmail = normalizeNullableText(request.getEmail());
-        if (systemVerificationAppService.isContactBindVerificationRequired(tenantId, "mobile") && contactValueChanged(user.getMobile(), nextMobile)) {
+        if (contactValueChanged(user.getMobile(), nextMobile)) {
+            if (!systemVerificationAppService.isContactBindAvailable(tenantId, "mobile")) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用短信验证码，暂不允许绑定手机号");
+            }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "手机号绑定需要验证码，请在已绑定登录方式中修改");
         }
-        if (systemVerificationAppService.isContactBindVerificationRequired(tenantId, "email") && contactValueChanged(user.getEmail(), nextEmail)) {
+        if (contactValueChanged(user.getEmail(), nextEmail)) {
+            if (!systemVerificationAppService.isContactBindAvailable(tenantId, "email")) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用邮箱验证码，暂不允许绑定邮箱");
+            }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱绑定需要验证码，请在已绑定登录方式中修改");
         }
         jdbcTemplate.update(
@@ -297,9 +307,25 @@ public class SystemManagementAppService {
     }
 
     @Transactional
-    public CurrentUserVO updateCurrentUserEmail(CurrentUser currentUser, String email) {
+    public CurrentUserVO updateCurrentUserEmail(CurrentUser currentUser, ProfileDTO.EmailUpdateRequest request) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        Long tenantId = currentTenantId(currentUser);
+        String email = normalizeContactValue("email", request.getEmail());
+        if (!systemVerificationAppService.isContactBindAvailable(tenantId, "email")) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用邮箱验证码，暂不允许绑定邮箱");
+        }
+        if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
+        }
+        systemVerificationAppService.completeContactBind(
+                tenantId,
+                currentUser.getUserId(),
+                "email",
+                request.getChallengeId(),
+                request.getVerificationCode(),
+                email
+        );
         jdbcTemplate.update(
                 """
                         update sys_user
@@ -328,19 +354,20 @@ public class SystemManagementAppService {
         String value = normalizeContactValue(contactType, request.getValue());
         Long tenantId = currentTenantId(currentUser);
 
-        if (systemVerificationAppService.isContactBindVerificationRequired(tenantId, contactType)) {
-            if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
-            }
-            systemVerificationAppService.completeContactBind(
-                    tenantId,
-                    currentUser.getUserId(),
-                    contactType,
-                    request.getChallengeId(),
-                    request.getVerificationCode(),
-                    value
-            );
+        if (!systemVerificationAppService.isContactBindAvailable(tenantId, contactType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用该绑定方式");
         }
+        if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
+        }
+        systemVerificationAppService.completeContactBind(
+                tenantId,
+                currentUser.getUserId(),
+                contactType,
+                request.getChallengeId(),
+                request.getVerificationCode(),
+                value
+        );
 
         if ("mobile".equals(contactType)) {
             jdbcTemplate.update(

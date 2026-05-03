@@ -579,6 +579,8 @@ export interface ProfileSummary {
   permissionCount: number;
   recentLoginLogs: AuditLogRecord[];
   profileFieldSettings: ProfileFieldSetting[];
+  mobileBindAvailable?: boolean | null;
+  emailBindAvailable?: boolean | null;
   mobileBindVerificationRequired?: boolean | null;
   emailBindVerificationRequired?: boolean | null;
 }

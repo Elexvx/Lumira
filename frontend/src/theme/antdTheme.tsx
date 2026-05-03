@@ -17,17 +17,26 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
 
   if (themePreference === 'compact') {
     return {
+      cssVar: {
+        key: 'saas',
+      },
       algorithm: [antdTheme.compactAlgorithm],
     };
   }
 
   if (resolvedColorMode !== 'dark') {
     return {
+      cssVar: {
+        key: 'saas',
+      },
       algorithm: [antdTheme.defaultAlgorithm],
     };
   }
 
   return {
+    cssVar: {
+      key: 'saas',
+    },
     algorithm: [antdTheme.darkAlgorithm],
     token: {
       colorBgBase: '#0f1115',

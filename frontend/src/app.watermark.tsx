@@ -4,6 +4,20 @@ import { Watermark } from 'antd';
 import { DEFAULT_WATERMARK_SETTINGS, getWatermarkSettingsSnapshot, subscribeWatermarkSettings } from '@/watermark/settings';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
+const normalizeWatermarkFontWeight = (value: string): number | 'normal' | 'bold' | 'lighter' | 'bolder' | undefined => {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    return numeric;
+  }
+  if (value === 'light') {
+    return 'lighter';
+  }
+  if (value === 'weight') {
+    return 'bold';
+  }
+  return ['normal', 'bold', 'lighter', 'bolder'].includes(value) ? (value as 'normal' | 'bold' | 'lighter' | 'bolder') : undefined;
+};
+
 export const AppWatermarkLayer = ({ children }: { children: ReactNode }) => {
   const watermark = useSyncExternalStore(
     subscribeWatermarkSettings,
@@ -26,7 +40,7 @@ export const AppWatermarkLayer = ({ children }: { children: ReactNode }) => {
       font={{
         color: watermark.fontColor,
         fontSize: watermark.fontSize,
-        fontWeight: watermark.fontWeight as number | 'normal' | 'light' | 'weight' | undefined,
+        fontWeight: normalizeWatermarkFontWeight(watermark.fontWeight),
       }}
     >
       {children}

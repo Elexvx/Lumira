@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { realPageRouteMetaMap, realPageRoutePaths } from '@/routes/meta';
 import type { PermissionActionRecord, PermissionRecord, PermissionTreeRecord } from '@/types/api';
 
@@ -81,7 +82,7 @@ export const normalizePermissionTree = (
 
 export const buildPermissionTreeData = (
   nodes: NormalizedPermissionTreeRecord[],
-): Array<NormalizedPermissionTreeRecord & { key: string; title: JSX.Element; disableCheckbox: boolean }> =>
+): Array<NormalizedPermissionTreeRecord & { key: string; title: ReactElement; disableCheckbox: boolean }> =>
   nodes.map((node) => ({
     ...node,
     key: node.pageKey,

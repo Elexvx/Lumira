@@ -101,6 +101,10 @@ public class SystemVerificationAppService {
     }
 
     public boolean isContactBindVerificationRequired(Long tenantId, String contactType) {
+        return isContactBindAvailable(tenantId, contactType);
+    }
+
+    public boolean isContactBindAvailable(Long tenantId, String contactType) {
         String normalizedContactType = normalizeContactType(contactType);
         if (FACTOR_SMS.equals(normalizedContactType)) {
             return isSmsLoginAvailable(tenantId);
@@ -315,6 +319,12 @@ public class SystemVerificationAppService {
         String factorCode = normalizeFactorCode(challenge.factorCode());
         if (!FACTOR_SMS.equals(factorCode) && !FACTOR_EMAIL.equals(factorCode)) {
             throw new BizException(ErrorCode.NOT_FOUND, "验证码会话不存在或已过期");
+        }
+        if (FACTOR_SMS.equals(factorCode) && !isSmsLoginAvailable(challenge.tenantId())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先配置并启用短信验证码登录");
+        }
+        if (FACTOR_EMAIL.equals(factorCode) && !isEmailLoginAvailable(challenge.tenantId())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "请先配置并启用邮箱验证码登录");
         }
         verifySmsCode(challenge, request.getVerificationCode());
         markChallengeConsumed(challenge.challengeId());

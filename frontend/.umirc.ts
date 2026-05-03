@@ -3,7 +3,6 @@ import { backendRoutes } from './src/routes/meta';
 import { createThemePreferenceBootstrapScript } from './src/theme/settings';
 
 export default defineConfig({
-  antd: {},
   access: {},
   initialState: {
     loading: '@/loading',
@@ -11,7 +10,10 @@ export default defineConfig({
   model: {},
   request: {},
   layout: {},
-  mfsu: false,
+  utoopack: {},
+  routePrefetch: {
+    defaultPrefetch: 'intent',
+  },
   esbuildMinifyIIFE: true,
   headScripts: [
     {
