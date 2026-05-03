@@ -45,14 +45,14 @@ export const buildRoleColumns = ({
   {
     title: '权限数',
     dataIndex: 'permissionCount',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => record.permissionCount ?? 0,
   },
   {
     title: '用户数',
     dataIndex: 'userCount',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => record.userCount ?? 0,
   },

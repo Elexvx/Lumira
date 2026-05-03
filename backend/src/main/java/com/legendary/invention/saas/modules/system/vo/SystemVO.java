@@ -133,6 +133,8 @@ public final class SystemVO {
         private Integer permissionCount;
         private List<AuditLogVO> recentLoginLogs;
         private List<ProfileFieldSettingVO> profileFieldSettings;
+        private Boolean mobileBindAvailable;
+        private Boolean emailBindAvailable;
         private Boolean mobileBindVerificationRequired;
         private Boolean emailBindVerificationRequired;
 
@@ -182,6 +184,22 @@ public final class SystemVO {
 
         public void setProfileFieldSettings(List<ProfileFieldSettingVO> profileFieldSettings) {
             this.profileFieldSettings = profileFieldSettings;
+        }
+
+        public Boolean getMobileBindAvailable() {
+            return mobileBindAvailable;
+        }
+
+        public void setMobileBindAvailable(Boolean mobileBindAvailable) {
+            this.mobileBindAvailable = mobileBindAvailable;
+        }
+
+        public Boolean getEmailBindAvailable() {
+            return emailBindAvailable;
+        }
+
+        public void setEmailBindAvailable(Boolean emailBindAvailable) {
+            this.emailBindAvailable = emailBindAvailable;
         }
 
         public Boolean getMobileBindVerificationRequired() {

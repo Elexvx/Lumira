@@ -34,7 +34,7 @@ import type {
   LoginResponse,
   SecuritySettings,
 } from '@/types/api';
-import './Login.less';
+import './Login.css';
 
 const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
   passwordLoginAvailable: true,
@@ -119,6 +119,39 @@ const Login = () => {
   useEffect(() => {
     setActiveLoginMode((current) => (availableLoginModes.includes(current) ? current : defaultLoginMode(loginCapabilities)));
   }, [availableLoginModes, loginCapabilities]);
+
+  useEffect(() => {
+    let disposed = false;
+    void systemService
+      .publicLoginCapabilities({
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      })
+      .then((capabilities) => {
+        if (disposed) {
+          return;
+        }
+        setInitialState((prev: AppInitialState | undefined) =>
+          prev
+            ? {
+                ...prev,
+                loginCapabilities: {
+                  ...DEFAULT_LOGIN_CAPABILITIES,
+                  ...capabilities,
+                },
+              }
+            : prev,
+        );
+      })
+      .catch(() => {
+        // Keep the bootstrap snapshot values when the public capability endpoint is temporarily unavailable.
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [setInitialState]);
 
   const loadLoginEncryptionKey = useCallback(async () => {
     if (loginEncryptionKey) {
@@ -220,6 +253,10 @@ const Login = () => {
 
   const handleSendLoginCode = useCallback(
     async (mode: Exclude<LoginMode, 'password'>) => {
+      if (!availableLoginModes.includes(mode)) {
+        message.warning(mode === 'sms' ? '当前未启用短信验证码登录' : '当前未启用邮箱验证码登录');
+        return;
+      }
       const accountField = mode === 'sms' ? 'smsAccount' : 'emailAccount';
       const account = loginForm.getFieldValue(accountField);
       if (!account) {
@@ -257,11 +294,16 @@ const Login = () => {
         setSendingLoginType(null);
       }
     },
-    [loginForm],
+    [availableLoginModes, loginForm],
   );
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
+      if (!availableLoginModes.includes(activeLoginMode)) {
+        message.warning(activeLoginMode === 'sms' ? '当前未启用短信验证码登录' : activeLoginMode === 'email' ? '当前未启用邮箱验证码登录' : '当前登录方式不可用');
+        return false;
+      }
+
       if (activeLoginMode === 'password' && securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
         message.warning('验证码已过期，请刷新后重试');
         return false;
@@ -479,6 +521,7 @@ const Login = () => {
       </LoginFormPage>
 
       <Modal
+        className="saas-login-page__agreement-modal"
         open={agreementPreviewOpen}
         onCancel={() => setAgreementPreviewOpen(false)}
         footer={null}

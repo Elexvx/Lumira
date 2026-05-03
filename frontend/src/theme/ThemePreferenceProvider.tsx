@@ -102,7 +102,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
-      <ConfigProvider theme={themeConfig}>{children}</ConfigProvider>
+      <ConfigProvider theme={themeConfig} variant="filled">
+        {children}
+      </ConfigProvider>
     </ThemePreferenceContext.Provider>
   );
 };

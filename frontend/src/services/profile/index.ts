@@ -3,6 +3,8 @@ import type { CurrentUser, ProfileSummary, SecondFactorChallenge } from '@/types
 
 export interface ProfileEmailPayload {
   email: string;
+  challengeId?: string;
+  verificationCode?: string;
 }
 
 export interface ProfileBasicInfoPayload {

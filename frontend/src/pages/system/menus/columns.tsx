@@ -35,7 +35,7 @@ export const buildMenuColumns = ({
     title: '拖拽',
     dataIndex: 'dragHandle',
     width: 96,
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => {
       const hasChildren = expandableMenuIds.has(record.id);
@@ -70,7 +70,7 @@ export const buildMenuColumns = ({
   {
     title: '菜单编码',
     dataIndex: 'menuCode',
-    hideInSearch: true,
+    search: false,
     width: 180,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
@@ -106,7 +106,7 @@ export const buildMenuColumns = ({
   {
     title: '路由',
     dataIndex: 'path',
-    hideInSearch: true,
+    search: false,
     width: 220,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
@@ -114,7 +114,7 @@ export const buildMenuColumns = ({
   {
     title: '组件',
     dataIndex: 'component',
-    hideInSearch: true,
+    search: false,
     width: 300,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
@@ -132,7 +132,7 @@ export const buildMenuColumns = ({
   {
     title: '排序',
     dataIndex: 'sortNo',
-    hideInSearch: true,
+    search: false,
     width: 88,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => record.sortNo ?? 0,
@@ -141,7 +141,7 @@ export const buildMenuColumns = ({
     title: '状态',
     dataIndex: 'status',
     width: 120,
-    hideInSearch: true,
+    search: false,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
   },
   {

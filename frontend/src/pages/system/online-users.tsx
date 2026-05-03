@@ -24,7 +24,7 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const OnlineUsersPage = () => {
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const reloadTimerRef = useRef<number | null>(null);
   const pollingTimerRef = useRef<number | null>(null);
   const { initialState } = useInitialStateModel();
@@ -114,7 +114,7 @@ const OnlineUsersPage = () => {
     {
       title: '租户ID',
       dataIndex: 'currentTenantId',
-      hideInSearch: true,
+      search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       width: 140,
       render: (_, record) =>
@@ -129,7 +129,7 @@ const OnlineUsersPage = () => {
     {
       title: '终端',
       dataIndex: 'clientType',
-      hideInSearch: true,
+      search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       width: 120,
       render: (_, record) => (
@@ -141,7 +141,7 @@ const OnlineUsersPage = () => {
     {
       title: '登录 IP',
       dataIndex: 'loginIp',
-      hideInSearch: true,
+      search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       width: 160,
       render: (_, record) => (
@@ -153,7 +153,7 @@ const OnlineUsersPage = () => {
     {
       title: '登录时间',
       dataIndex: 'loginTime',
-      hideInSearch: true,
+      search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       width: 180,
       render: (_, record) => (
@@ -165,7 +165,7 @@ const OnlineUsersPage = () => {
     {
       title: '最近活跃',
       dataIndex: 'lastActivityAt',
-      hideInSearch: true,
+      search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       width: 180,
       render: (_, record) => (
@@ -177,7 +177,7 @@ const OnlineUsersPage = () => {
     {
       title: '过期时间',
       dataIndex: 'expireTime',
-      hideInSearch: true,
+      search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       width: 180,
       render: (_, record) => (
@@ -189,7 +189,7 @@ const OnlineUsersPage = () => {
     {
       title: '会话 ID',
       dataIndex: 'sessionId',
-      hideInSearch: true,
+      search: false,
       width: 260,
       responsive: ['lg', 'xl', 'xxl'],
       ellipsis: true,
@@ -202,7 +202,7 @@ const OnlineUsersPage = () => {
     {
       title: 'User-Agent',
       dataIndex: 'userAgent',
-      hideInSearch: true,
+      search: false,
       responsive: ['lg', 'xl', 'xxl'],
       width: 360,
       ellipsis: true,

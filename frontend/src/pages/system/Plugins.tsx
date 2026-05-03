@@ -334,11 +334,10 @@ const PluginsPage = () => {
   return (
     <PageContainer
       className="saas-management-page"
+      content={null}
       ghost
       title="插件管理"
       style={{ height: '100%', minHeight: 0 }}
-      content={null}
-      extra={null}
     >
       <div className="saas-management-page-body">
         <Card bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -407,8 +406,8 @@ const PluginsPage = () => {
         title={selectedPlugin ? `${selectedPlugin.pluginName} · 详情` : '插件详情'}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
-      width={760}
-      destroyOnClose
+        width={760}
+        destroyOnClose
       >
         {selectedPlugin ? (
           <Descriptions {...detailDescriptionsProps}>
@@ -434,16 +433,16 @@ const PluginsPage = () => {
         destroyOnClose
       >
         <div className="saas-table-wrap">
-            <Table<PluginRuntimeLog>
-              rowKey="id"
-              loading={logsLoading}
-              dataSource={runtimeLogs}
-              pagination={false}
-              scroll={buildTableScroll(logColumns, responsive.isMobile)}
-              columns={responsiveLogColumns}
-            />
-          </div>
-        </Drawer>
+          <Table<PluginRuntimeLog>
+            rowKey="id"
+            loading={logsLoading}
+            dataSource={runtimeLogs}
+            pagination={false}
+            scroll={buildTableScroll(logColumns, responsive.isMobile)}
+            columns={responsiveLogColumns}
+          />
+        </div>
+      </Drawer>
 
       <Modal
         title={uninstallTarget ? `卸载 ${uninstallTarget.pluginName}` : '卸载插件'}

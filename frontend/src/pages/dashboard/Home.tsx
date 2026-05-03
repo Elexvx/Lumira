@@ -1,14 +1,11 @@
-import { history } from '@umijs/max';
 import { PageContainer, ProCard, StatisticCard } from '@ant-design/pro-components';
-import { Avatar, Badge, Button, Col, Descriptions, Empty, List, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { Avatar, Badge, Col, Descriptions, Empty, List, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
 import { dashboardService } from '@/services/dashboard';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { useRequest } from '@umijs/max';
 import type { AuditLogRecord, DashboardSummary, TenantPlugin } from '@/types/api';
-import './Home.less';
+import './Home.css';
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -79,13 +76,10 @@ const renderPluginDescription = (plugin: TenantPlugin) => {
 
 const DashboardHomePage = () => {
   const { initialState } = useInitialStateModel();
-  const actionPermission = useActionPermission();
-  const dashboardQuery = useRequest(
-    async () => dashboardService.summary({ autoRedirectOnUnauthorized: false }),
-    {
-      refreshDeps: [initialState?.currentTenant?.tenantId, initialState?.menuVersion],
-    },
-  );
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard-summary', initialState?.currentTenant?.tenantId, initialState?.menuVersion],
+    queryFn: async () => dashboardService.summary({ autoRedirectOnUnauthorized: false }),
+  });
 
   const summary = dashboardQuery.data as DashboardSummary | undefined;
   const currentUser = summary?.currentUser || initialState?.currentUser;
@@ -93,17 +87,6 @@ const DashboardHomePage = () => {
   const tenantPlugins = summary?.tenantPlugins || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
-  const shortcuts = useMemo(
-    () =>
-      (summary?.shortcuts || [])
-        .filter((item) => actionPermission.can(item.permission))
-        .map((item) => ({
-          ...item,
-          label: item.title,
-          onClick: () => history.push(item.path),
-        })),
-    [actionPermission, summary?.shortcuts],
-  );
   const overviewStats = [
     {
       title: '菜单数',
@@ -134,9 +117,9 @@ const DashboardHomePage = () => {
   return (
     <PageContainer title="工作台" ghost content={null} className="saas-dashboard-home__page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <ProCard bordered={false} className="saas-dashboard-home__hero">
+        <ProCard variant="borderless" className="saas-dashboard-home__hero">
           <Row gutter={[24, 24]} align="middle">
-            <Col xs={24} xl={16}>
+            <Col xs={24}>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 <Space align="center" size={16} wrap>
                   <Avatar size={64} src={currentUser?.avatarUrl || undefined}>
@@ -152,28 +135,12 @@ const DashboardHomePage = () => {
                     </Typography.Text>
                   </Space>
                 </Space>
-                {dashboardQuery.loading && !summary ? (
+                {dashboardQuery.isLoading && !summary ? (
                   <Skeleton active paragraph={{ rows: 2 }} title={false} />
                 ) : (
                   <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
                     这里汇总当前租户的菜单、权限、插件和近期操作，页面全部使用官方组件组织。
                   </Typography.Paragraph>
-                )}
-              </Space>
-            </Col>
-            <Col xs={24} xl={8}>
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Typography.Text type="secondary">快捷入口</Typography.Text>
-                {shortcuts.length ? (
-                  <Space wrap>
-                    {shortcuts.map((item, index) => (
-                      <Button key={item.path} type={index === 0 ? 'primary' : 'default'} onClick={item.onClick}>
-                        {item.title}
-                      </Button>
-                    ))}
-                  </Space>
-                ) : (
-                  <Empty description="暂无可用快捷入口" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                 )}
               </Space>
             </Col>
@@ -184,7 +151,7 @@ const DashboardHomePage = () => {
           {overviewStats.map((stat) => (
             <Col key={stat.title} xs={24} sm={12} xl={6}>
               <StatisticCard
-                bordered
+                variant="outlined"
                 statistic={{
                   title: stat.title,
                   value: stat.value,
@@ -198,7 +165,7 @@ const DashboardHomePage = () => {
 
         <Row gutter={[16, 16]} align="stretch">
           <Col xs={24} xl={16}>
-            <ProCard bordered title="近期动态" className="saas-dashboard-home__panel">
+            <ProCard variant="outlined" title="近期动态" className="saas-dashboard-home__panel">
               <Tabs
                 defaultActiveKey="login"
                 items={[
@@ -210,7 +177,7 @@ const DashboardHomePage = () => {
                         size="small"
                         rowKey="id"
                         pagination={false}
-                        loading={dashboardQuery.loading && !summary}
+                        loading={dashboardQuery.isLoading && !summary}
                         columns={buildLogColumns('登录记录')}
                         dataSource={recentLoginLogs}
                         locale={{
@@ -228,7 +195,7 @@ const DashboardHomePage = () => {
                         size="small"
                         rowKey="id"
                         pagination={false}
-                        loading={dashboardQuery.loading && !summary}
+                        loading={dashboardQuery.isLoading && !summary}
                         columns={buildLogColumns('操作记录')}
                         dataSource={recentOperationLogs}
                         locale={{
@@ -245,7 +212,7 @@ const DashboardHomePage = () => {
 
           <Col xs={24} xl={8}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <ProCard bordered title="当前租户" className="saas-dashboard-home__panel">
+              <ProCard variant="outlined" title="当前租户" className="saas-dashboard-home__panel">
                 {currentTenant ? (
                   <Descriptions column={1} size="small" colon labelStyle={{ width: 88, textAlign: 'right' }}>
                     <Descriptions.Item label="租户名称">{currentTenant.tenantName}</Descriptions.Item>
@@ -260,7 +227,7 @@ const DashboardHomePage = () => {
                 )}
               </ProCard>
 
-              <ProCard bordered title="租户插件" className="saas-dashboard-home__panel">
+              <ProCard variant="outlined" title="租户插件" className="saas-dashboard-home__panel">
                 {tenantPlugins.length ? (
                   <List
                     size="small"

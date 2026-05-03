@@ -61,19 +61,19 @@ export const buildUserColumns = ({
   {
     title: '昵称',
     dataIndex: 'nickname',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
   },
   {
     title: '姓名',
     dataIndex: 'realName',
-    hideInSearch: true,
+    search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
   },
   {
     title: '角色',
     dataIndex: 'roleNames',
-    hideInSearch: true,
+    search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) => {

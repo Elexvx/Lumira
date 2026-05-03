@@ -15,6 +15,7 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/user-center/online-users', name: '在线用户', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
   { path: '/user-center/roles', name: '角色管理', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
   { path: '/user-center/profile', name: '个人中心', icon: 'UserOutlined', access: 'canVisitProfile' },
+  { path: '/system/overview', name: '系统总览', icon: 'AppstoreOutlined', access: 'canVisitSystemManagement', hideInMenu: true },
   { path: '/system/monitoring', name: '系统监控', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
   { path: '/system/menus', name: '菜单管理', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
   { path: '/system/dicts', name: '字典管理', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
@@ -52,7 +53,7 @@ export const backendRoutes: BackendRouteRecord[] = [
   { path: '/profile/center', redirect: '/user-center/profile' },
   {
     path: '/user-center',
-    component: '@/pages/user-center/index',
+    component: '@/layouts/SettingsLayout',
     name: '用户中心',
     icon: 'TeamOutlined',
     access: 'canVisitUserCenter',
@@ -65,10 +66,12 @@ export const backendRoutes: BackendRouteRecord[] = [
   },
   {
     path: '/system',
+    component: '@/layouts/SettingsLayout',
     name: '系统总览',
     icon: 'SettingOutlined',
     access: 'canVisitSystemManagement',
     routes: [
+      { path: '/system/overview', component: '@/pages/exception/BlankFlow', name: '系统总览', icon: 'AppstoreOutlined', access: 'canVisitSystemManagement', hideInMenu: true },
       { path: '/system/menus', component: '@/pages/system/menus', name: '菜单管理', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
       { path: '/system/dicts', component: '@/pages/system/dicts', name: '字典管理', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
       { path: '/system/profile-fields', component: '@/pages/system/profile-fields', name: '字段管理', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },

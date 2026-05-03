@@ -47,6 +47,8 @@ export const PluginCardsGrid = ({
           <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
             <Card
               loading={loading}
+              style={{ height: '100%' }}
+              bodyStyle={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
               title={
                 <Space wrap>
                   <BuildOutlined />

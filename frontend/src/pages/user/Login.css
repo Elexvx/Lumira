@@ -135,6 +135,30 @@
   color: inherit;
 }
 
+.saas-login-page__agreement-modal .ant-modal-body {
+  padding-top: 8px;
+}
+
+.saas-login-page__agreement-modal .wmde-markdown {
+  background: transparent;
+  color: var(--saas-text-primary);
+}
+
+.saas-login-page__agreement-modal .wmde-markdown,
+.saas-login-page__agreement-modal .wmde-markdown h1,
+.saas-login-page__agreement-modal .wmde-markdown h2,
+.saas-login-page__agreement-modal .wmde-markdown h3,
+.saas-login-page__agreement-modal .wmde-markdown h4,
+.saas-login-page__agreement-modal .wmde-markdown h5,
+.saas-login-page__agreement-modal .wmde-markdown h6 {
+  color: inherit;
+}
+
+.saas-login-page__agreement-modal .wmde-markdown h1,
+.saas-login-page__agreement-modal .wmde-markdown h2 {
+  border-bottom-color: var(--saas-border-secondary);
+}
+
 @media (max-width: 575px) {
   .saas-login-page {
     padding: 16px;

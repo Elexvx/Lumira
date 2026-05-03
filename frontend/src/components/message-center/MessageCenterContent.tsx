@@ -2,23 +2,20 @@ import { ReloadOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
-  Card,
-  Col,
   Empty,
   List,
-  Row,
   Spin,
   Tabs,
   Tag,
   Space,
   Typography,
-  theme,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { messageService } from '@/services/message';
 import type { MessageNoticeRecord } from '@/types/api';
 import { useMessageCenterRealtime } from '@/components/message-center/useMessageCenterRealtime';
+import { notifyMessageCenterRefresh } from '@/components/message-center/messageCenterEvents';
 
 type MessageCenterFilter = 'all' | 'unread' | 'read';
 
@@ -133,13 +130,11 @@ const shortenText = (value?: string, fallback = '-') => {
 };
 
 export interface MessageCenterContentProps {
-  className?: string;
   onUnreadCountChange?: (unreadCount: number) => void;
 }
 
-export const MessageCenterContent = ({ className, onUnreadCountChange }: MessageCenterContentProps) => {
+export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterContentProps) => {
   const { initialState } = useInitialStateModel();
-  const { token } = theme.useToken();
   const [filter, setFilter] = useState<MessageCenterFilter>('all');
   const [notices, setNotices] = useState<MessageCenterNotice[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -343,6 +338,7 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
     try {
       await messageService.readMessage(notice.id, requestOptions);
       await reloadCenter();
+      notifyMessageCenterRefresh();
     } finally {
       setActionKey(null);
     }
@@ -357,6 +353,7 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
     try {
       await messageService.readAll(requestOptions);
       await reloadCenter();
+      notifyMessageCenterRefresh();
     } finally {
       setActionKey(null);
     }
@@ -373,178 +370,115 @@ export const MessageCenterContent = ({ className, onUnreadCountChange }: Message
       : '当前没有消息';
 
   return (
-    <div className={className ? `saas-message-center ${className}` : 'saas-message-center'}>
-      <Row gutter={[16, 16]} className="saas-message-center__layout">
-        <Col xs={24} lg={8}>
-          <Card className="saas-message-center__sidebar-card" bordered styles={{ body: { padding: 16 } }}>
-            <Tabs
-              activeKey={filter}
-              items={tabItems.map((item) => ({ key: item.key, label: item.label }))}
-              onChange={(key) => setFilter(key as MessageCenterFilter)}
-              size="large"
-            />
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            {activeChannelLabel}
+          </Typography.Title>
+          <Typography.Text type="secondary">{activeChannelSubtitle}</Typography.Text>
+        </div>
 
-            <div className="saas-message-center__sidebar-section">
-              <Typography.Text type="secondary">消息来源</Typography.Text>
-              <List
-                className="saas-message-center__channel-list"
-                dataSource={channelList}
-                locale={{
-                  emptyText: loadError ? '消息来源加载失败' : '暂无消息来源',
-                }}
-                renderItem={(channel) => {
-                  const isActive = channel.key === activeChannel?.key;
+        <Space wrap>
+          <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()} loading={loading && notices.length === 0}>
+            刷新
+          </Button>
+          <Button type="primary" disabled={counts.unread === 0} loading={actionKey === 'all'} onClick={() => void handleMarkAllRead()}>
+            全部标为已读
+          </Button>
+        </Space>
+      </div>
 
-                  return (
-                    <List.Item
-                      onClick={() => setActiveChannelKey(channel.key)}
-                      className="saas-message-center__channel-item"
-                      style={{
-                        cursor: channelList.length > 1 ? 'pointer' : 'default',
-                        background: isActive ? token.colorFillSecondary : token.colorBgContainer,
-                        borderColor: isActive ? token.colorPrimaryBorder : token.colorBorderSecondary,
-                      }}
-                    >
-                      <List.Item.Meta
-                        title={
-                          <Space size={8} wrap>
-                            <Typography.Text strong>{channel.label}</Typography.Text>
-                            <Tag color={channel.unreadCount > 0 ? 'red' : 'blue'} bordered={false}>
-                              {channel.unreadCount > 0 ? '未读' : '已读'}
-                            </Tag>
-                          </Space>
-                        }
-                        description={
-                          <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                            <Typography.Text type="secondary" ellipsis>
-                              {channel.preview}
-                            </Typography.Text>
-                            <Typography.Text type="secondary">{channel.relativeTimeLabel}</Typography.Text>
-                          </Space>
-                        }
-                      />
-                    </List.Item>
-                  );
-                }}
-              />
-            </div>
-          </Card>
-        </Col>
+      {loadError ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={loadError}
+          action={
+            <Button size="small" icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
+              重试
+            </Button>
+          }
+        />
+      ) : null}
 
-        <Col xs={24} lg={16}>
-          <div className="saas-message-center__main">
-            <div className="saas-message-center__header">
-              <div className="saas-message-center__header-copy">
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {activeChannelLabel}
-                </Typography.Title>
-                <Typography.Text type="secondary">{activeChannelSubtitle}</Typography.Text>
-              </div>
+      <Tabs activeKey={filter} items={tabItems} onChange={(key) => setFilter(key as MessageCenterFilter)} />
 
-              <Space wrap>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => void reloadCenter()}
-                  loading={loading && notices.length === 0}
-                >
-                  刷新
-                </Button>
-                <Button type="primary" disabled={counts.unread === 0} loading={actionKey === 'all'} onClick={() => void handleMarkAllRead()}>
-                  全部标为已读
-                </Button>
+      {channelList.length > 1 ? (
+        <Tabs
+          size="small"
+          activeKey={activeChannel?.key}
+          onChange={(key) => setActiveChannelKey(key)}
+          items={channelList.map((channel) => ({
+            key: channel.key,
+            label: (
+              <Space size={8} wrap>
+                <Typography.Text>{channel.label}</Typography.Text>
+                <Tag color={channel.unreadCount > 0 ? 'red' : 'blue'} bordered={false}>
+                  {channel.unreadCount > 0 ? '未读' : '已读'}
+                </Tag>
               </Space>
-            </div>
+            ),
+          }))}
+        />
+      ) : null}
 
+      <Spin spinning={loading && notices.length === 0} tip="加载消息中">
+        {visibleNotices.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={filter === 'all' ? '暂无消息' : '暂无符合条件的消息'}>
             {loadError ? (
-              <Alert
-                type="warning"
-                showIcon
-                message={loadError}
-                action={
-                  <Button size="small" icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
-                    重试
-                  </Button>
-                }
-              />
+              <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
+                重试
+              </Button>
             ) : null}
+          </Empty>
+        ) : (
+          <List
+            dataSource={visibleNotices}
+            split={false}
+            renderItem={(notice) => {
+              const isUnread = !notice.readFlag;
 
-            <Spin spinning={loading && notices.length === 0} tip="加载消息中">
-              <div className="saas-message-center__notice-list">
-                {visibleNotices.length === 0 ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={filter === 'all' ? '暂无消息' : '暂无符合条件的消息'}
-                  >
-                    {loadError ? (
-                      <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
-                        重试
-                      </Button>
-                    ) : null}
-                  </Empty>
-                ) : (
-                  <List
-                    dataSource={visibleNotices}
-                    split={false}
-                    renderItem={(notice) => {
-                      const isUnread = !notice.readFlag;
-
-                      return (
-                        <List.Item key={notice.key} className="saas-message-center__notice-item">
-                          <Card
-                            hoverable
-                            size="small"
-                            className="saas-message-center__notice-card"
-                            styles={{
-                              body: { padding: 16 },
-                            }}
-                          >
-                            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                              <div className="saas-message-center__notice-head">
-                                <div className="saas-message-center__notice-head-copy">
-                                  <Space size={8} wrap>
-                                    <Typography.Text strong>{notice.title}</Typography.Text>
-                                    <Tag color={isUnread ? 'red' : 'blue'} bordered={false}>
-                                      {isUnread ? '未读' : '已读'}
-                                    </Tag>
-                                  </Space>
-                                  <Typography.Text type="secondary">{notice.relativeTimeLabel}</Typography.Text>
-                                </div>
-
-                                {isUnread ? (
-                                  <Button
-                                    type="link"
-                                    loading={actionKey === notice.key}
-                                    onClick={() => void handleMarkRead(notice)}
-                                  >
-                                    标为已读
-                                  </Button>
-                                ) : (
-                                  <Tag color="blue" bordered={false}>
-                                    已读
-                                  </Tag>
-                                )}
-                              </div>
-
-                              <Typography.Paragraph
-                                style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}
-                                ellipsis={{ rows: 2, expandable: false }}
-                              >
-                                {notice.content}
-                              </Typography.Paragraph>
-
-                              <Typography.Text type="secondary">时间：{notice.absoluteTimeLabel}</Typography.Text>
-                            </Space>
-                          </Card>
-                        </List.Item>
-                      );
+              return (
+                <List.Item key={notice.key} style={{ paddingInline: 0 }}>
+                  <div
+                    style={{
+                      width: '100%',
+                      padding: 16,
+                      border: '1px solid var(--saas-border-color)',
+                      borderRadius: 12,
+                      background: 'transparent',
                     }}
-                  />
-                )}
-              </div>
-            </Spin>
-          </div>
-        </Col>
-      </Row>
-    </div>
+                  >
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                        <Space size={8} wrap>
+                          <Typography.Text strong>{notice.title}</Typography.Text>
+                          <Tag color={isUnread ? 'red' : 'blue'} bordered={false}>
+                            {isUnread ? '未读' : '已读'}
+                          </Tag>
+                        </Space>
+
+                        {isUnread ? (
+                          <Button type="link" loading={actionKey === notice.key} onClick={() => void handleMarkRead(notice)}>
+                            标为已读
+                          </Button>
+                        ) : null}
+                      </div>
+
+                      <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }} ellipsis={{ rows: 2, expandable: false }}>
+                        {notice.content}
+                      </Typography.Paragraph>
+
+                      <Typography.Text type="secondary">时间：{notice.absoluteTimeLabel}</Typography.Text>
+                    </Space>
+                  </div>
+                </List.Item>
+              );
+            }}
+          />
+        )}
+      </Spin>
+    </Space>
   );
 };

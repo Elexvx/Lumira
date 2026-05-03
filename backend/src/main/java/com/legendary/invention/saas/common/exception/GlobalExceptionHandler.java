@@ -15,6 +15,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -71,6 +72,20 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 ApiResponse.fail(ErrorCode.UNAUTHORIZED, TraceContext.getRequestId(), request.getRequestURI()),
                 ErrorCode.UNAUTHORIZED.getHttpStatus()
+        );
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException exception, HttpServletRequest request) {
+        log.warn(
+                "Resource not found requestId={} traceId={} path={}",
+                TraceContext.getRequestId(),
+                TraceContext.getTraceId(),
+                request.getRequestURI()
+        );
+        return buildResponse(
+                ApiResponse.fail(ErrorCode.NOT_FOUND, TraceContext.getRequestId(), request.getRequestURI()),
+                ErrorCode.NOT_FOUND.getHttpStatus()
         );
     }
 

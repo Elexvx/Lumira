@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { MessageCenterContent } from '@/components/message-center/MessageCenterContent';
+import { MESSAGE_CENTER_REFRESH_EVENT } from '@/components/message-center/messageCenterEvents';
 import { messageService } from '@/services/message';
 import { useMessageCenterRealtime } from '@/components/message-center/useMessageCenterRealtime';
 import type { MessageCenterRealtimeEvent } from '@/components/message-center/messageCenterRealtime';
@@ -46,6 +47,17 @@ export const MessageCenterDrawer = () => {
     void reloadUnreadCount();
   }, [reloadUnreadCount]);
 
+  useEffect(() => {
+    const handleRefresh = () => {
+      void reloadUnreadCount();
+    };
+
+    window.addEventListener(MESSAGE_CENTER_REFRESH_EVENT, handleRefresh);
+    return () => {
+      window.removeEventListener(MESSAGE_CENTER_REFRESH_EVENT, handleRefresh);
+    };
+  }, [reloadUnreadCount]);
+
   useMessageCenterRealtime(Boolean(tenantId && canOpenMessageCenter), useCallback((event: MessageCenterRealtimeEvent) => {
     if (typeof event.unreadCount === 'number') {
       setUnreadCount(Math.max(0, event.unreadCount));
@@ -81,10 +93,10 @@ export const MessageCenterDrawer = () => {
         title="消息中心"
         open={open}
         onClose={() => handleOpenChange(false)}
-        width={isMobile ? '100vw' : 980}
+        width={isMobile ? '100vw' : 720}
         destroyOnClose={false}
         styles={{
-          body: { padding: 0 },
+          body: { padding: 16 },
         }}
       >
         <MessageCenterContent onUnreadCountChange={setUnreadCount} />

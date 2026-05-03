@@ -30,7 +30,7 @@ const renderStatusTag = (label?: string | null) => {
 };
 
 const AuditOverviewPage = () => {
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const responsive = useResponsive();
   const [logType, setLogType] = useState<AuditLogType>('login');
   const [selectedRecord, setSelectedRecord] = useState<AuditRecord | null>(null);
@@ -47,11 +47,10 @@ const AuditOverviewPage = () => {
   const columns = useMemo<ProColumns<AuditRecord>[]>(() => {
     return logType === 'login'
       ? [
-          { title: '用户名', dataIndex: 'username', hideInSearch: false, importance: 1 },
+          { title: '用户名', dataIndex: 'username', importance: 1 },
           {
             title: '租户 ID',
             dataIndex: 'tenantId',
-            hideInSearch: false,
             importance: 2,
             responsiveLevel: ['tablet', 'desktop'],
             renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
@@ -90,7 +89,7 @@ const AuditOverviewPage = () => {
           {
             title: '原因',
             dataIndex: 'failReason',
-            hideInSearch: true,
+            search: false,
             responsive: ['lg', 'xl', 'xxl'],
             ellipsis: true,
             render: (_, record) =>
@@ -102,7 +101,7 @@ const AuditOverviewPage = () => {
                 '-'
               ),
           },
-          { title: '时间', dataIndex: 'createdAt', hideInSearch: true, importance: 1 },
+          { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
           {
             title: '操作',
             valueType: 'option',
@@ -126,11 +125,10 @@ const AuditOverviewPage = () => {
           },
         ]
       : [
-          { title: '用户名', dataIndex: 'username', hideInSearch: false, importance: 1 },
+          { title: '用户名', dataIndex: 'username', importance: 1 },
           {
             title: '租户 ID',
             dataIndex: 'tenantId',
-            hideInSearch: false,
             importance: 2,
             responsiveLevel: ['tablet', 'desktop'],
             renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
@@ -153,13 +151,13 @@ const AuditOverviewPage = () => {
               },
             },
           },
-          { title: '模块', dataIndex: 'moduleName', hideInSearch: true, responsive: ['md', 'lg', 'xl', 'xxl'] },
-          { title: '操作', dataIndex: 'actionName', hideInSearch: true, responsive: ['md', 'lg', 'xl', 'xxl'] },
-          { title: '类型', dataIndex: 'operationType', hideInSearch: true, responsive: ['md', 'lg', 'xl', 'xxl'] },
+          { title: '模块', dataIndex: 'moduleName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+          { title: '操作', dataIndex: 'actionName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+          { title: '类型', dataIndex: 'operationType', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
           {
             title: '详情',
             dataIndex: 'detailMessage',
-            hideInSearch: true,
+            search: false,
             responsive: ['lg', 'xl', 'xxl'],
             ellipsis: true,
             render: (_, record) => {
@@ -173,7 +171,7 @@ const AuditOverviewPage = () => {
               );
             },
           },
-          { title: '时间', dataIndex: 'createdAt', hideInSearch: true, importance: 1 },
+          { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
           {
             title: '操作',
             valueType: 'option',
