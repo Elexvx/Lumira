@@ -247,6 +247,43 @@ body,
   }
 }
 
+.saas-redis-trend-chart {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--saas-text-placeholder);
+}
+
+.saas-redis-trend-chart__grid {
+  stroke: var(--saas-border-secondary);
+  stroke-dasharray: 4 4;
+  stroke-width: 1;
+}
+
+.saas-redis-trend-chart__axis {
+  fill: currentColor;
+  font-size: 11px;
+}
+
+.saas-redis-trend-chart__area {
+  fill: var(--ant-color-primary, #1677ff);
+  fill-opacity: 0.2;
+}
+
+.saas-redis-trend-chart__line {
+  fill: none;
+  stroke: var(--ant-color-primary, #1677ff);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.saas-redis-trend-chart__point {
+  fill: var(--saas-surface-bg);
+  stroke: var(--ant-color-primary, #1677ff);
+  stroke-width: 2;
+}
+
 .saas-management-page-body {
   width: 100%;
   margin: 0 auto;
