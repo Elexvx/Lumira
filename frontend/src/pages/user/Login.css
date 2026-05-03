@@ -136,12 +136,25 @@
 }
 
 .saas-login-page__agreement-modal .ant-modal-body {
+  max-height: min(64vh, 560px);
   padding-top: 8px;
+  overflow-y: auto;
+}
+
+.saas-login-page__agreement-modal .ant-modal-content {
+  max-height: calc(100vh - 64px);
 }
 
 .saas-login-page__agreement-modal .wmde-markdown {
   background: transparent;
   color: var(--saas-text-primary);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.saas-login-page__agreement-modal .wmde-markdown h1 {
+  margin-top: 0;
+  font-size: 28px;
 }
 
 .saas-login-page__agreement-modal .wmde-markdown,

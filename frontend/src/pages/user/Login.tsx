@@ -463,7 +463,7 @@ const Login = () => {
     }
   };
 
-  const agreementPreviewTitle = agreementPreviewKind === 'user' ? '用户协议预览' : '隐私政策预览';
+  const agreementPreviewTitle = agreementPreviewKind === 'user' ? '用户协议' : '隐私政策';
   const agreementPreviewMarkdown =
     agreementPreviewKind === 'user' ? agreementSettings.userAgreementMarkdown : agreementSettings.privacyAgreementMarkdown;
 
@@ -525,7 +525,8 @@ const Login = () => {
         open={agreementPreviewOpen}
         onCancel={() => setAgreementPreviewOpen(false)}
         footer={null}
-        width={840}
+        width={720}
+        centered
         title={agreementPreviewTitle}
         destroyOnClose
       >

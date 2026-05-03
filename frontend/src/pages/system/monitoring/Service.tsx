@@ -49,12 +49,13 @@ const ExpandableClampText = ({ value, lines = 2 }: { value?: string | null; line
 };
 
 const ServiceMonitorPage = () => {
-  const { isDesktop } = useResponsive();
+  const { isDesktop, isMobile } = useResponsive();
   const query = useQuery({
     queryKey: ['service-monitor'],
     queryFn: async () => monitorService.service({ autoRedirectOnUnauthorized: false }),
   });
-  const detailDescriptionsProps = useDetailDescriptionsProps({ column: { xs: 1, sm: 1, md: 2, xl: 2, xxl: 2 } });
+  const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
+  const fullRowSpan = isMobile ? 1 : 2;
 
   // Keep a stable ref to the latest refresh function so the interval effect
   // does not depend on query.refetch directly. query.refetch changes identity
@@ -154,7 +155,7 @@ const ServiceMonitorPage = () => {
             <Descriptions.Item label="用户目录">
               <BreakableValue value={service?.server?.userHome} />
             </Descriptions.Item>
-            <Descriptions.Item label="临时目录">
+            <Descriptions.Item label="临时目录" span={fullRowSpan}>
               <BreakableValue value={service?.server?.tempDir} />
             </Descriptions.Item>
           </Descriptions>
@@ -192,10 +193,10 @@ const ServiceMonitorPage = () => {
             <Descriptions.Item label="峰值线程数">
               <NumericValue value={formatNumber(service?.jvm?.peakThreadCount)} />
             </Descriptions.Item>
-            <Descriptions.Item label="Java Home" span={isDesktop ? 2 : 1}>
+            <Descriptions.Item label="Java Home" span={fullRowSpan}>
               <BreakableValue value={service?.jvm?.javaHome} />
             </Descriptions.Item>
-            <Descriptions.Item label="启动参数" span={isDesktop ? 2 : 1}>
+            <Descriptions.Item label="启动参数" span={fullRowSpan}>
               <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
             </Descriptions.Item>
           </Descriptions>

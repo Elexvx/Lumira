@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Col, Row, Space, Statistic, Typography } from 'antd';
-import { Area } from '@ant-design/charts';
 import { buildTableScroll } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
@@ -18,6 +17,59 @@ type TrendPoint = {
 const MAX_TREND_SAMPLES = 5;
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 
+const TrendAreaChart = ({
+  points,
+  valueFormatter,
+}: {
+  points: Array<{ label: string; value: number }>;
+  valueFormatter: (value: number) => string;
+}) => {
+  const width = 360;
+  const height = 180;
+  const padding = { top: 16, right: 16, bottom: 38, left: 48 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const values = points.map((item) => item.value);
+  const maxValue = Math.max(...values, 1);
+  const normalizedPoints = points.length ? points : [{ label: '-', value: 0 }];
+  const coordinates = normalizedPoints.map((item, index) => {
+    const x = normalizedPoints.length === 1
+      ? padding.left + plotWidth / 2
+      : padding.left + (plotWidth * index) / (normalizedPoints.length - 1);
+    const y = padding.top + plotHeight - (Math.max(item.value, 0) / maxValue) * plotHeight;
+    return { ...item, x, y };
+  });
+  const linePath = coordinates.map((item, index) => `${index === 0 ? 'M' : 'L'} ${item.x} ${item.y}`).join(' ');
+  const areaPath = `${linePath} L ${coordinates.at(-1)?.x ?? padding.left} ${padding.top + plotHeight} L ${coordinates[0]?.x ?? padding.left} ${padding.top + plotHeight} Z`;
+  const yTicks = [maxValue, maxValue / 2, 0];
+
+  return (
+    <svg className="saas-redis-trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="趋势图">
+      {yTicks.map((tick) => {
+        const y = padding.top + plotHeight - (tick / maxValue) * plotHeight;
+        return (
+          <g key={tick}>
+            <line className="saas-redis-trend-chart__grid" x1={padding.left} x2={width - padding.right} y1={y} y2={y} />
+            <text className="saas-redis-trend-chart__axis" x={padding.left - 8} y={y + 4} textAnchor="end">
+              {valueFormatter(tick)}
+            </text>
+          </g>
+        );
+      })}
+      <path className="saas-redis-trend-chart__area" d={areaPath} />
+      <path className="saas-redis-trend-chart__line" d={linePath} />
+      {coordinates.map((item) => (
+        <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} />
+      ))}
+      {coordinates.map((item) => (
+        <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - 10} textAnchor="middle">
+          {item.label}
+        </text>
+      ))}
+    </svg>
+  );
+};
+
 const RedisMonitorPage = () => {
   const responsive = useResponsive();
   const query = useQuery({
@@ -25,15 +77,20 @@ const RedisMonitorPage = () => {
     queryFn: async () => monitorService.redis({ autoRedirectOnUnauthorized: false }),
   });
   const [samples, setSamples] = useState<TrendPoint[]>([]);
+  const refreshRef = useRef(query.refetch);
+
+  useEffect(() => {
+    refreshRef.current = query.refetch;
+  }, [query.refetch]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void query.refetch();
+      void refreshRef.current();
     }, 5000);
     return () => {
       window.clearInterval(timer);
     };
-  }, [query.refetch]);
+  }, []);
 
   useEffect(() => {
     const snapshot = query.data;
@@ -45,7 +102,12 @@ const RedisMonitorPage = () => {
       memoryBytes: snapshot.overview.memoryUsedBytes || 0,
       qps: snapshot.overview.instantaneousOpsPerSec || 0,
     };
-    setSamples((current) => [...current.slice(-(MAX_TREND_SAMPLES - 1)), nextPoint]);
+    setSamples((current) => {
+      if (current.at(-1)?.label === nextPoint.label) {
+        return [...current.slice(0, -1), nextPoint];
+      }
+      return [...current.slice(-(MAX_TREND_SAMPLES - 1)), nextPoint];
+    });
   }, [query.data]);
 
   const redis = query.data;
@@ -185,44 +247,7 @@ const RedisMonitorPage = () => {
             <Col key={chart.title} xs={24} lg={12}>
               <Card title={chart.title} extra={<Typography.Text type="secondary">{chart.subtitle}</Typography.Text>}>
                 <div style={{ height: 220 }}>
-                  <Area
-                    data={chart.points.length ? chart.points : [{ label: '-', value: 0 }]}
-                    xField="label"
-                    yField="value"
-                    autoFit
-                    height={220}
-                    tooltip={{ showMarkers: true, shared: true }}
-                    axis={{
-                      x: {
-                        label: {
-                          autoHide: true,
-                          autoRotate: true,
-                        },
-                      },
-                      y: {
-                        label: {
-                          formatter: (value: string | number) => chart.valueFormatter(Number(value)),
-                        },
-                      },
-                    }}
-                    style={{
-                      shape: 'smooth',
-                      fill: '#4f7cff',
-                      fillOpacity: 0.28,
-                      stroke: '#4f7cff',
-                      strokeWidth: 2.5,
-                    }}
-                    point={{
-                      size: 3.5,
-                      style: {
-                        fill: '#fff',
-                        stroke: '#4f7cff',
-                        lineWidth: 2,
-                      },
-                    }}
-                    legend={false}
-                    padding={[8, 0, 20, 24]}
-                  />
+                  <TrendAreaChart points={chart.points} valueFormatter={chart.valueFormatter} />
                 </div>
               </Card>
             </Col>
