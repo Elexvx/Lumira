@@ -79,7 +79,6 @@ public class SentinelGatewayConfig {
         rules.add(routeRule("file-service", 200));
         rules.add(routeRule("message-service", 200));
         rules.add(routeRule("plugin-service", 120));
-        rules.add(routeRule("audit-service", 120));
         rules.add(routeRule("localization-service", 120));
         rules.add(routeRule("system-service", 500));
         rules.add(routeRule("tenant-service", 120));

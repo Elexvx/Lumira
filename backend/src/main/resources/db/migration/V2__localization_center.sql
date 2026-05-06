@@ -139,8 +139,8 @@ VALUES
 INSERT IGNORE INTO `sys_menu`
   (`id`, `tenant_id`, `parent_id`, `menu_code`, `menu_name`, `menu_type`, `path`, `component`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`, `icon`, `sort_no`, `permission_key`, `status`)
 VALUES
-  (3031, 1001, 0, 'localization.root', '本地化中心', 'MENU', '/localization', '@/pages/localization/Overview', 0, NOW(), 0, NOW(), 0, 'TranslationOutlined', 6, 'localization:view', 'ENABLED'),
-  (4031, 1002, 0, 'localization.root', '本地化中心', 'MENU', '/localization', '@/pages/localization/Overview', 0, NOW(), 0, NOW(), 0, 'TranslationOutlined', 6, 'localization:view', 'ENABLED');
+  (3031, 1001, 3002, 'localization.root', '本地化中心', 'MENU', '/settings/localization', '@/pages/settings/localization', 0, NOW(), 0, NOW(), 0, 'TranslationOutlined', 29, 'localization:view', 'ENABLED'),
+  (4031, 1002, 4002, 'localization.root', '本地化中心', 'MENU', '/settings/localization', '@/pages/settings/localization', 0, NOW(), 0, NOW(), 0, 'TranslationOutlined', 29, 'localization:view', 'ENABLED');
 
 INSERT IGNORE INTO `sys_role_permission`
   (`id`, `tenant_id`, `role_id`, `permission_key`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`)

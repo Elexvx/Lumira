@@ -3,17 +3,20 @@ import { formatMessage } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import { backendRouteMeta } from '@/routes/meta';
+import type { RuntimeMenuDataItem } from '@/app.types';
+import type { MenuNode } from '@/types/api';
 
 type AntdIconComponent = ComponentType<Record<string, unknown>>;
 
-interface SettingsNavigationItem {
-  key: string;
-  label: string;
+interface SettingsNavigationSourceItem {
   path: string;
-  icon: string;
-  access: string;
+  name: string;
+  icon?: string;
+  access?: string;
   accessAny?: string[];
   matchPrefixes?: string[];
+  sortNo?: number;
+  children?: SettingsNavigationSourceItem[];
 }
 
 const ANT_DESIGN_ICONS = AntdIcons as unknown as Record<string, AntdIconComponent>;
@@ -21,98 +24,110 @@ const OUTLINED_ICON_SUFFIX = 'Outlined';
 const SETTINGS_ROUTE_PREFIX = '/settings';
 const PROFILE_PATH = '/user-center/profile';
 const LEGACY_SETTING_ROUTE_PREFIXES = ['/system'];
+const LEGACY_PATH_ALIASES: Record<string, string> = {
+  '/localization': '/settings/localization',
+};
 
 export const SETTINGS_PROFILE_PATH = PROFILE_PATH;
 
-export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
+const SETTINGS_FALLBACK_ITEMS: SettingsNavigationSourceItem[] = [
   {
-    key: 'menus',
-    label: '菜单管理',
     path: '/settings/menus',
+    name: 'nav.system.menus',
     icon: 'AppstoreOutlined',
     access: 'canVisitSystemMenus',
   },
   {
-    key: 'dicts',
-    label: '字典管理',
     path: '/settings/dicts',
+    name: 'nav.system.dicts',
     icon: 'DatabaseOutlined',
     access: 'canVisitSystemDicts',
   },
   {
-    key: 'profile-fields',
-    label: '字段管理',
     path: '/settings/profile-fields',
+    name: 'nav.system.profileFields',
     icon: 'FormOutlined',
     access: 'canVisitSystemProfileFields',
   },
   {
-    key: 'personalization',
-    label: '个性化设置',
     path: '/settings/personalization',
+    name: 'nav.system.personalization',
     icon: 'SkinOutlined',
     access: 'canVisitSystemPersonalization',
   },
   {
-    key: 'security',
-    label: '安全设置',
     path: '/settings/security',
+    name: 'nav.system.security',
     icon: 'SafetyOutlined',
     access: 'canVisitSystemSecurity',
   },
   {
-    key: 'verification',
-    label: '验证管理',
     path: '/settings/verification',
+    name: 'nav.system.verification',
     icon: 'SafetyOutlined',
     access: 'canVisitSystemVerification',
   },
   {
-    key: 'notifications',
-    label: '站内信归档',
     path: '/settings/notifications',
+    name: 'nav.system.notifications',
     icon: 'NotificationOutlined',
     access: 'canVisitSystemNotifications',
   },
   {
-    key: 'plugins',
-    label: '插件管理',
     path: '/settings/plugins',
+    name: 'nav.system.plugins',
     icon: 'ApiOutlined',
     access: 'canVisitSystemPlugins',
   },
   {
-    key: 'all-files',
-    label: '全站文件管理',
     path: '/settings/files/all',
+    name: 'nav.files.all',
     icon: 'FolderOpenOutlined',
     access: 'canVisitSystemAllFiles',
   },
   {
-    key: 'monitoring',
-    label: '系统监控',
+    path: '/settings/localization',
+    name: 'nav.localization.root',
+    icon: 'TranslationOutlined',
+    access: 'canVisitLocalization',
+  },
+  {
     path: '/settings/monitoring',
+    name: 'nav.system.monitoring.root',
     icon: 'FundOutlined',
     access: 'canVisitSystemMonitoring',
     matchPrefixes: ['/settings/monitoring/'],
-  },
-  {
-    key: 'api-docs',
-    label: '接口文档',
-    path: '/settings/monitoring/api-docs',
-    icon: 'FileTextOutlined',
-    access: 'canVisitSystemMonitoringDocs',
-  },
-  {
-    key: 'audit',
-    label: '审计中心',
-    path: '/settings/monitoring/audit',
-    icon: 'AuditOutlined',
-    access: 'canVisitAudit',
+    children: [
+      {
+        path: '/settings/monitoring/api-docs',
+        name: 'nav.system.monitoring.apiDocs',
+        icon: 'FileTextOutlined',
+        access: 'canVisitSystemMonitoringDocs',
+      },
+      {
+        path: '/settings/monitoring/audit',
+        name: 'nav.system.monitoring.audit',
+        icon: 'AuditOutlined',
+        access: 'canVisitAudit',
+      },
+    ],
   },
 ];
 
 const routeMetaByPath = new Map(backendRouteMeta.map((item) => [item.path, item]));
+
+const normalizeMenuPath = (path?: string) => {
+  if (!path) {
+    return undefined;
+  }
+
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return LEGACY_PATH_ALIASES[trimmed] || trimmed;
+};
 
 const normalizeMenuIconName = (iconName: string) =>
   iconName
@@ -138,7 +153,190 @@ export const resolveNavigationIcon = (icon?: ReactNode | string) => {
   return createElement(IconComponent);
 };
 
-export const isSettingsNavigationPath = (path?: string) => Boolean(path && (path === SETTINGS_ROUTE_PREFIX || path.startsWith(`${SETTINGS_ROUTE_PREFIX}/`)));
+const getRouteMeta = (path?: string) => {
+  const normalizedPath = normalizeMenuPath(path);
+  return normalizedPath ? routeMetaByPath.get(normalizedPath) : undefined;
+};
+
+const isVisibleSettingsPath = (path?: string) => {
+  const normalizedPath = normalizeMenuPath(path);
+  return Boolean(normalizedPath && normalizedPath.startsWith(`${SETTINGS_ROUTE_PREFIX}/`) && normalizedPath !== '/settings/overview');
+};
+
+const isSettingsRootNode = (path?: string) => {
+  const normalizedPath = normalizeMenuPath(path);
+  return normalizedPath === SETTINGS_ROUTE_PREFIX || LEGACY_SETTING_ROUTE_PREFIXES.some((prefix) => normalizedPath === prefix);
+};
+
+const findMenuNodeByPath = (menuNodes: MenuNode[] | undefined, targetPath: string): MenuNode | undefined => {
+  if (!menuNodes?.length) {
+    return undefined;
+  }
+
+  const normalizedTarget = normalizeMenuPath(targetPath);
+
+  for (const node of menuNodes) {
+    if (normalizeMenuPath(node.path) === normalizedTarget) {
+      return node;
+    }
+
+    const childMatch = findMenuNodeByPath(node.children, targetPath);
+    if (childMatch) {
+      return childMatch;
+    }
+  }
+
+  return undefined;
+};
+
+const sortNavigationItems = (items: SettingsNavigationSourceItem[]) =>
+  items.sort((left, right) => {
+    const leftSort = left.sortNo ?? Number.MAX_SAFE_INTEGER;
+    const rightSort = right.sortNo ?? Number.MAX_SAFE_INTEGER;
+    if (leftSort !== rightSort) {
+      return leftSort - rightSort;
+    }
+
+    return left.path.localeCompare(right.path);
+  });
+
+const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
+  const path = normalizeMenuPath(node.path);
+  if (!path || !isVisibleSettingsPath(path) && !isSettingsRootNode(path)) {
+    return null;
+  }
+
+  const routeMeta = getRouteMeta(path);
+  const children = (node.children || [])
+    .map((child) => toSourceItem(child))
+    .filter(Boolean) as SettingsNavigationSourceItem[];
+
+  return {
+    path,
+    name: routeMeta?.name || node.name || path,
+    icon: routeMeta?.icon || node.icon,
+    access: routeMeta?.access || node.permissionKey,
+    sortNo: node.sortNo,
+    children: children.length ? sortNavigationItems(children) : undefined,
+  };
+};
+
+const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined) => {
+  const rootNode = findMenuNodeByPath(menuTree, SETTINGS_ROUTE_PREFIX);
+  const candidateNodes: MenuNode[] = [];
+  const seenPaths = new Set<string>();
+
+  const pushCandidate = (node: MenuNode | undefined) => {
+    if (!node) {
+      return;
+    }
+
+    const normalizedPath = normalizeMenuPath(node.path);
+    if (!normalizedPath || normalizedPath === SETTINGS_ROUTE_PREFIX || normalizedPath === '/settings/overview' || seenPaths.has(normalizedPath)) {
+      return;
+    }
+
+    candidateNodes.push(node);
+    seenPaths.add(normalizedPath);
+  };
+
+  if (rootNode?.children?.length) {
+    rootNode.children.forEach(pushCandidate);
+  }
+
+  (menuTree || [])
+    .filter((node) => {
+      const normalizedPath = normalizeMenuPath(node.path);
+      return Boolean(normalizedPath && normalizedPath.startsWith(`${SETTINGS_ROUTE_PREFIX}/`) && normalizedPath !== '/settings/overview');
+    })
+    .forEach(pushCandidate);
+
+  if (!candidateNodes.length) {
+    return SETTINGS_FALLBACK_ITEMS;
+  }
+
+  return sortNavigationItems(candidateNodes.map((node) => toSourceItem(node)).filter(Boolean) as SettingsNavigationSourceItem[]);
+};
+
+const mapSourceItemToRuntimeMenuItem = (
+  item: SettingsNavigationSourceItem,
+  canVisitAccessKey: (accessKey: string) => boolean,
+): RuntimeMenuDataItem | null => {
+  if (item.access && !canVisitAccessKey(item.access)) {
+    return null;
+  }
+
+  const children = (item.children || [])
+    .map((child) => mapSourceItemToRuntimeMenuItem(child, canVisitAccessKey))
+    .filter(Boolean) as RuntimeMenuDataItem[];
+
+  return {
+    path: item.path,
+    name: formatMessage({
+      id: item.name,
+      defaultMessage: item.name,
+    }),
+    icon: resolveNavigationIcon(item.icon),
+    hideInMenu: false,
+    children: children.length ? children : undefined,
+  };
+};
+
+const flattenRuntimeMenuItems = (items: RuntimeMenuDataItem[]) => {
+  const result: RuntimeMenuDataItem[] = [];
+
+  const walk = (nodes: RuntimeMenuDataItem[]) => {
+    nodes.forEach((node) => {
+      if (node.path) {
+        result.push(node);
+      }
+
+      if (node.children?.length) {
+        walk(node.children);
+      }
+    });
+  };
+
+  walk(items);
+  return result;
+};
+
+const buildVisibleSettingsNavigationTree = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) =>
+  buildSettingsSourceItems(menuTree)
+    .map((item) => mapSourceItemToRuntimeMenuItem(item, canVisitAccessKey))
+    .filter(Boolean) as RuntimeMenuDataItem[];
+
+export const buildVisibleSettingsNavigationItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) =>
+  buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey);
+
+export const buildSettingsDropdownItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean): MenuProps['items'] =>
+  flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey))
+    .filter((item): item is RuntimeMenuDataItem & { path: string; name: string } => Boolean(item.path && item.name))
+    .map((item) => ({
+      key: item.path,
+      icon: item.icon,
+      label: item.name,
+    }));
+
+export const resolveActiveSettingsNavigationPath = (pathname: string, menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) => {
+  const normalizedPathname = normalizeMenuPath(pathname) || pathname;
+  const visibleItems = flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey));
+  const matchedItem = visibleItems.find(
+    (item) => item.path === normalizedPathname || normalizedPathname.startsWith(`${item.path}/`),
+  );
+
+  return matchedItem?.path || normalizedPathname;
+};
+
+export const resolveFirstSettingsNavigationPath = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) => {
+  const visibleItems = flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey));
+  return visibleItems[0]?.path;
+};
+
+export const isSettingsNavigationPath = (path?: string) => {
+  const normalizedPath = normalizeMenuPath(path);
+  return Boolean(normalizedPath && (normalizedPath === SETTINGS_ROUTE_PREFIX || normalizedPath.startsWith(`${SETTINGS_ROUTE_PREFIX}/`)));
+};
 
 export const isSettingsShellPath = (path?: string) => isSettingsNavigationPath(path);
 
@@ -148,7 +346,8 @@ export const isMainMenuHiddenSettingPath = (path?: string) =>
       (isSettingsNavigationPath(path) ||
         LEGACY_SETTING_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`)) ||
         path === '/files' ||
-        path === '/files/all'),
+        path === '/files/all' ||
+        path === '/localization'),
   );
 
 export const isMainMenuHiddenMonitoringPath = (path?: string) =>
@@ -156,38 +355,3 @@ export const isMainMenuHiddenMonitoringPath = (path?: string) =>
   path === '/settings/monitoring/redis' ||
   path === '/settings/monitoring/api-docs' ||
   path === '/settings/monitoring/audit';
-
-const canVisitSetting = (item: SettingsNavigationItem, canVisitAccessKey: (accessKey: string) => boolean) => {
-  if (item.accessAny?.length) {
-    return item.accessAny.some((accessKey) => canVisitAccessKey(accessKey));
-  }
-
-  const routeMeta = routeMetaByPath.get(item.path);
-  const accessKey = routeMeta?.access || item.access;
-  return canVisitAccessKey(accessKey);
-};
-
-export const buildVisibleSettingsNavigationItems = (canVisitAccessKey: (accessKey: string) => boolean) =>
-  SETTINGS_NAVIGATION_ITEMS.filter((item) => item.path !== PROFILE_PATH).filter((item) => canVisitSetting(item, canVisitAccessKey));
-
-export const buildSettingsDropdownItems = (canVisitAccessKey: (accessKey: string) => boolean): MenuProps['items'] =>
-  buildVisibleSettingsNavigationItems(canVisitAccessKey).map((item) => ({
-    key: item.path,
-    icon: resolveNavigationIcon(item.icon),
-    label: formatMessage({
-      id: routeMetaByPath.get(item.path)?.name || item.key,
-      defaultMessage: item.label,
-    }),
-  }));
-
-export const resolveActiveSettingsNavigationPath = (pathname: string, canVisitAccessKey: (accessKey: string) => boolean) => {
-  const visibleItems = buildVisibleSettingsNavigationItems(canVisitAccessKey);
-  const matchedItem = visibleItems.find(
-    (item) =>
-      pathname === item.path ||
-      item.matchPrefixes?.some((prefix) => pathname.startsWith(prefix)) ||
-      pathname.startsWith(`${item.path}/`),
-  );
-
-  return matchedItem?.path || pathname;
-};

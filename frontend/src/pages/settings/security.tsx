@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatMessage } from '@umijs/max';
-import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs, Typography, message } from 'antd';
+import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs, message } from 'antd';
 import { ManagementPage, ManagementPageBody } from '@/features/management';
 import { useStandardFormProps } from '@/features/form/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -120,9 +120,6 @@ const SecuritySettingsPage = () => {
                 label: formatMessage({ id: 'page.security.tokenStrategy', defaultMessage: 'Token strategy' }),
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                      {formatMessage({ id: 'page.security.tokenDescription', defaultMessage: 'These settings control the lifecycle of login sessions, Access Tokens, and Refresh Tokens.' })}
-                    </Typography.Paragraph>
                     <Form.Item
                       name="idleTimeoutSeconds"
                       label={formatMessage({ id: 'page.security.idleTimeout', defaultMessage: 'Idle timeout (seconds)' })}
@@ -164,9 +161,6 @@ const SecuritySettingsPage = () => {
                 label: formatMessage({ id: 'page.security.captchaSettings', defaultMessage: 'Captcha settings' }),
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                      {formatMessage({ id: 'page.security.captchaDescription', defaultMessage: 'When enabled, the login page requires a human verification captcha.' })}
-                    </Typography.Paragraph>
                     <Form.Item
                       name="captchaEnabled"
                       label={formatMessage({ id: 'page.security.enableCaptcha', defaultMessage: 'Enable captcha' })}

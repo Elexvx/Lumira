@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.api.client.FileInternalApi;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
@@ -80,18 +81,21 @@ public class SystemController {
     }
 
     @PostMapping("/users")
+    @RepeatSubmit
     public ApiResponse<SystemVO.UserDetailVO> createUser(@Valid @RequestBody SystemDTO.UserUpsertRequest request) {
         require("system:user:create");
         return ApiResponse.success(systemManagementAppService.createUser(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/users/{id}")
+    @RepeatSubmit
     public ApiResponse<SystemVO.UserDetailVO> updateUser(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.UserUpsertRequest request) {
         require("system:user:update");
         return ApiResponse.success(systemManagementAppService.updateUser(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }
 
     @PatchMapping("/users/{id}/status")
+    @RepeatSubmit
     public ApiResponse<Boolean> changeUserStatus(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.UserStatusRequest request) {
         require("system:user:status");
         return ApiResponse.success(systemManagementAppService.updateUserStatus(securityContextFacade.getCurrentUser(), id, request.getStatus()), TraceContext.getRequestId());
@@ -125,18 +129,21 @@ public class SystemController {
     }
 
     @PostMapping("/roles")
+    @RepeatSubmit
     public ApiResponse<SystemVO.RoleDetailVO> createRole(@Valid @RequestBody SystemDTO.RoleUpsertRequest request) {
         require("system:role:create");
         return ApiResponse.success(systemManagementAppService.createRole(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/roles/{id}")
+    @RepeatSubmit
     public ApiResponse<SystemVO.RoleDetailVO> updateRole(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.RoleUpsertRequest request) {
         require("system:role:update");
         return ApiResponse.success(systemManagementAppService.updateRole(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/roles/{id}/permissions")
+    @RepeatSubmit
     public ApiResponse<Boolean> updateRolePermissions(@PathVariable("id") Long id, @RequestBody SystemDTO.RolePermissionRequest request) {
         require("system:role:permissions");
         return ApiResponse.success(systemManagementAppService.updateRolePermissions(securityContextFacade.getCurrentUser(), id, request.getPermissionKeys()), TraceContext.getRequestId());
@@ -155,24 +162,28 @@ public class SystemController {
     }
 
     @PostMapping("/menus")
+    @RepeatSubmit
     public ApiResponse<SystemVO.MenuVO> createMenu(@Valid @RequestBody SystemDTO.MenuUpsertRequest request) {
         require("system:menu:create");
         return ApiResponse.success(systemManagementAppService.createMenu(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/menus/{id}")
+    @RepeatSubmit
     public ApiResponse<SystemVO.MenuVO> updateMenu(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.MenuUpsertRequest request) {
         require("system:menu:update");
         return ApiResponse.success(systemManagementAppService.updateMenu(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/menus/reorder")
+    @RepeatSubmit
     public ApiResponse<Boolean> reorderMenus(@Valid @RequestBody SystemDTO.MenuReorderRequest request) {
         require("system:menu:update");
         return ApiResponse.success(systemManagementAppService.reorderMenus(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PatchMapping("/menus/{id}/status")
+    @RepeatSubmit
     public ApiResponse<Boolean> updateMenuStatus(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.MenuStatusRequest request) {
         require("system:menu:status");
         return ApiResponse.success(systemManagementAppService.updateMenuStatus(securityContextFacade.getCurrentUser(), id, request.getStatus()), TraceContext.getRequestId());
@@ -200,12 +211,14 @@ public class SystemController {
     }
 
     @PostMapping("/dict-types")
+    @RepeatSubmit
     public ApiResponse<SystemVO.DictTypeVO> createDictType(@Valid @RequestBody SystemDTO.DictTypeUpsertRequest request) {
         require("system:dict:create");
         return ApiResponse.success(systemManagementAppService.createDictType(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/dict-types/{id}")
+    @RepeatSubmit
     public ApiResponse<SystemVO.DictTypeVO> updateDictType(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.DictTypeUpsertRequest request) {
         require("system:dict:update");
         return ApiResponse.success(systemManagementAppService.updateDictType(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
@@ -218,12 +231,14 @@ public class SystemController {
     }
 
     @PostMapping("/dict-types/{id}/items")
+    @RepeatSubmit
     public ApiResponse<SystemVO.DictItemVO> createDictItem(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.DictItemUpsertRequest request) {
         require("system:dict:create");
         return ApiResponse.success(systemManagementAppService.createDictItem(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/dict-types/{dictTypeId}/items/{itemId}")
+    @RepeatSubmit
     public ApiResponse<SystemVO.DictItemVO> updateDictItem(
             @PathVariable("dictTypeId") Long dictTypeId,
             @PathVariable("itemId") Long itemId,
@@ -255,12 +270,14 @@ public class SystemController {
     }
 
     @PostMapping("/configs")
+    @RepeatSubmit
     public ApiResponse<SystemVO.ConfigVO> createConfig(@Valid @RequestBody SystemDTO.ConfigUpsertRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.createConfig(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/configs/{id}")
+    @RepeatSubmit
     public ApiResponse<SystemVO.ConfigVO> updateConfig(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.ConfigUpsertRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.updateConfig(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
@@ -273,6 +290,7 @@ public class SystemController {
     }
 
     @PutMapping("/profile-field-settings")
+    @RepeatSubmit
     public ApiResponse<List<SystemVO.ProfileFieldSettingVO>> updateProfileFieldSettings(
             @Valid @RequestBody SystemDTO.ProfileFieldSettingsRequest request
     ) {
@@ -290,12 +308,14 @@ public class SystemController {
     }
 
     @PutMapping("/smtp-settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.SmtpSettingsVO> updateSmtpSettings(@Valid @RequestBody SystemDTO.SmtpSettingsRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.updateSmtpSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PostMapping("/smtp-settings/test")
+    @RepeatSubmit
     public ApiResponse<SystemVO.SmtpTestVO> testSmtpSettings(@Valid @RequestBody SystemDTO.SmtpTestRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.testSmtpSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
@@ -307,6 +327,7 @@ public class SystemController {
     }
 
     @PutMapping("/security-settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.SecuritySettingsVO> updateSecuritySettings(@Valid @RequestBody SystemDTO.SecuritySettingsRequest request) {
         require("system:config:update");
         return ApiResponse.success(
@@ -323,6 +344,7 @@ public class SystemController {
     }
 
     @PutMapping("/watermark-settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.WatermarkSettingsVO> updateWatermarkSettings(@RequestBody SystemDTO.WatermarkSettingsRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.updateWatermarkSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
@@ -337,6 +359,7 @@ public class SystemController {
     }
 
     @PutMapping("/branding-settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.BrandingSettingsVO> updateBrandingSettings(@RequestBody SystemDTO.BrandingSettingsRequest request) {
         require("system:config:update");
         return ApiResponse.success(
@@ -351,6 +374,7 @@ public class SystemController {
     }
 
     @PutMapping("/agreement-settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.AgreementSettingsVO> updateAgreementSettings(@RequestBody SystemDTO.AgreementSettingsRequest request) {
         require("system:config:update");
         return ApiResponse.success(
@@ -360,6 +384,7 @@ public class SystemController {
     }
 
     @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
     public ApiResponse<String> uploadImage(@RequestParam("file") MultipartFile file) {
         require("system:config:update");
         FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "系统图片", "系统配置图片上传");

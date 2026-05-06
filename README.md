@@ -9,7 +9,7 @@
 - `frontend/`：基于 `React 18`、`TypeScript`、`Umi Max`、`Ant Design 5` 和 `Ant Design Pro` 的前端工程。
 - `backend/`：当前作为 `system-service` 的后端工程，承载原有核心业务与底层能力。
 - `gateway-service/`：统一入口网关。
-- `auth-service/`、`tenant-service/`、`file-service/`、`message-service/`、`plugin-service/`、`audit-service/`、`localization-service/`、`job-executor/`：服务拆分骨架。
+- `auth-service/`、`tenant-service/`、`file-service/`、`message-service/`、`plugin-service/`、`localization-service/`、`job-executor/`：服务拆分骨架。审计能力目前保留在 `backend/system-service` 内部模块，不再单独拆成独立服务。
 - `common-core/`、`common-web/`、`common-security/`、`common-tenant/`、`legendary-api/`：公共契约和基础能力模块。
 - `docs/`：技术方案、前后端架构、数据库设计、权限模型和初始化说明。
 - `database/`：数据库相关资源。
@@ -70,7 +70,6 @@ flowchart LR
   G --> Fi[file-service]
   G --> M[message-service]
   G --> P[plugin-service]
-  G --> Au[audit-service]
   G --> L[localization-service]
   G --> J[job-executor]
   G --> N[(Nacos)]

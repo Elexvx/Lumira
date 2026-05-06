@@ -353,16 +353,15 @@ const MenuManagementPage = () => {
               {
                 permission: 'system:menu:create',
                 value: (
-                  <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
-                    新增菜单
-                  </Button>
+                <Button key="create" type="primary" onClick={openCreate}>
+                  新增菜单
+                </Button>
                 ),
               },
               {
                 value: (
                   <Button
                     key="refresh"
-                    size={responsive.isMobile ? 'small' : 'middle'}
                     onClick={async () => {
                       await loadMenus();
                       menuCrud.reloadTable();

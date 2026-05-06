@@ -531,6 +531,7 @@ const Login = () => {
         containerStyle={{
           width: '100%',
           maxWidth: 440,
+          boxSizing: 'border-box',
           background: 'transparent',
           boxShadow: 'none',
           border: 'none',

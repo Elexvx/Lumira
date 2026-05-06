@@ -1,6 +1,8 @@
-import { formatMessage, history } from '@umijs/max';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { formatMessage, history, useLocation } from '@umijs/max';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import React from 'react';
+import { Button, Tooltip } from 'antd';
 import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { isLoggedIn } from '@/auth/session';
@@ -17,6 +19,7 @@ import NoPermission from '@/pages/exception/NoPermission';
 import { backendRouteMeta } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
 import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
+import { useResponsive } from '@/hooks/useResponsive';
 import { resolveLayoutNavTheme } from '@/theme/runtime';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
@@ -26,6 +29,9 @@ import type { BreadcrumbProps } from 'antd';
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
+const LAYOUT_HEADER_HEIGHT = 48;
+const LIGHT_SIDER_BACKGROUND = '#ffffff';
+const DARK_SIDER_BACKGROUND = '#0c0c0c';
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 
@@ -56,14 +62,10 @@ const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[
 
 const buildSettingsMenuData = (initialState?: AppInitialState) => {
   const access = buildAccess({ currentUser: initialState?.currentUser });
-  return buildVisibleSettingsNavigationItems((accessKey) => Boolean((access as Record<string, unknown>)[accessKey])).map((item) => ({
-    path: item.path,
-    name: formatMessage({
-      id: routeMetaMap.get(item.path)?.name || item.key,
-      defaultMessage: item.label,
-    }),
-    icon: resolveNavigationIcon(item.icon),
-  }));
+  return buildVisibleSettingsNavigationItems(
+    initialState?.menuTree,
+    (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
+  );
 };
 
 const composeMenuItem = (
@@ -113,11 +115,35 @@ const renderFooter = (brandingSettings: BrandingSettings) => {
   );
 };
 
+const CollapsedButtonWithReturn = ({ defaultDom }: { defaultDom: React.ReactNode }) => {
+  const location = useLocation();
+  const { isMobile } = useResponsive();
+
+  if (!isMobile || !isSettingsShellPath(location.pathname)) {
+    return <>{defaultDom}</>;
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {defaultDom}
+      <Tooltip title="返回主路由">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          aria-label="返回主路由"
+          onClick={() => history.push(DEFAULT_HOME_PATH)}
+        />
+      </Tooltip>
+    </div>
+  );
+};
+
 export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const brandName = brandingSettings.websiteName;
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const navTheme = resolveLayoutNavTheme();
+  const siderBackground = navTheme === 'realDark' ? DARK_SIDER_BACKGROUND : LIGHT_SIDER_BACKGROUND;
 
   applyFavicon(brandingSettings.websiteFaviconUrl);
 
@@ -126,7 +152,16 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     logo: hasBrandLogo ? brandingSettings.websiteLogoUrl : false,
     fixedHeader: false,
     fixSiderbar: true,
+    siderWidth: 200,
     layout: 'mix',
+    token: {
+      header: {
+        heightLayoutHeader: LAYOUT_HEADER_HEIGHT,
+      },
+      sider: {
+        colorMenuBackground: siderBackground,
+      },
+    },
     navTheme,
     splitMenus: false,
     breadcrumbRender: (routers = []) => {
@@ -144,7 +179,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     menuHeaderRender: false,
     menuFooterRender: false,
     menuExtraRender: false,
-    collapsedButtonRender: (_, defaultDom) => defaultDom,
+    collapsedButtonRender: (_, defaultDom) => <CollapsedButtonWithReturn defaultDom={defaultDom} />,
     menuRender: (_, defaultDom) => defaultDom,
     childrenRender: (dom) => <SessionActivityGuard>{dom}</SessionActivityGuard>,
     headerContentRender: () => null,

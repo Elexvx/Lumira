@@ -31,6 +31,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { adaptPageResult } from '@/features/table/proTable';
+import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { fileService } from '@/services/file';
 import type { FileObjectRecord, FilePreviewMode } from '@/types/api';
@@ -429,6 +430,7 @@ const SystemFilesPage = () => {
         key: 'categoryColumn',
         dataIndex: 'category',
         width: 160,
+        ...(responsive.isMobile ? { responsive: ['md', 'lg', 'xl', 'xxl'] as const } : {}),
         ellipsis: true,
         render: (_, record) => record.category ? <Tag color="blue">{record.category}</Tag> : '-',
       },
@@ -436,6 +438,7 @@ const SystemFilesPage = () => {
         title: formatMessage({ id: 'system.files.field.tags', defaultMessage: 'Tags' }),
         dataIndex: 'tags',
         width: 180,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         ellipsis: true,
         render: (_, record) => renderTags(record.tags),
       },
@@ -443,6 +446,7 @@ const SystemFilesPage = () => {
         title: formatMessage({ id: 'system.files.field.uploader', defaultMessage: 'Uploader' }),
         dataIndex: 'uploadedByName',
         width: 120,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         ellipsis: true,
         render: (_, record) => record.uploadedByName || '-',
       },
@@ -450,6 +454,7 @@ const SystemFilesPage = () => {
         title: formatMessage({ id: 'system.files.field.uploadTime', defaultMessage: 'Upload time' }),
         dataIndex: 'createdAt',
         width: 170,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         sorter: true,
         render: (_, record) => formatDateTime(record.createdAt),
       },
@@ -458,19 +463,34 @@ const SystemFilesPage = () => {
         valueType: 'option',
         width: 220,
         render: (_, record) => (
-          <Space size={4} wrap={false}>
-            <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => void handleDownload(record)}>
-              {formatMessage({ id: 'common.download', defaultMessage: 'Download' })}
-            </Button>
-            <Button type="link" size="small" icon={<CopyOutlined />} onClick={() => void handleCopyLink(record)}>
-              {formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' })}
-            </Button>
-            {actionPermission.can(isTenantScope ? 'system:file:manage:delete' : 'system:file:delete') ? (
-              <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
-                {formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
-              </Button>
-            ) : null}
-          </Space>
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={[
+              {
+                key: 'download',
+                label: formatMessage({ id: 'common.download', defaultMessage: 'Download' }),
+                icon: <DownloadOutlined />,
+                onClick: () => void handleDownload(record),
+              },
+              {
+                key: 'copy',
+                label: formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' }),
+                icon: <CopyOutlined />,
+                onClick: () => void handleCopyLink(record),
+              },
+              ...(actionPermission.can(isTenantScope ? 'system:file:manage:delete' : 'system:file:delete')
+                ? [
+                    {
+                      key: 'delete',
+                      label: formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+                      icon: <DeleteOutlined />,
+                      danger: true,
+                      onClick: () => handleDelete(record),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         ),
       },
     ],

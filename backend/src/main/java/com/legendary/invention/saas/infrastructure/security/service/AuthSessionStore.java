@@ -157,6 +157,22 @@ public class AuthSessionStore {
         }
     }
 
+    public void revokeUserSessionsExcept(Long userId, String excludedSessionId, boolean publishChange) {
+        if (userId == null) {
+            return;
+        }
+
+        for (String sessionId : listActiveUserSessionIds(userId)) {
+            if (sessionId != null && sessionId.equals(excludedSessionId)) {
+                continue;
+            }
+            findBySessionId(sessionId).ifPresentOrElse(
+                    session -> remove(session, publishChange),
+                    () -> removeSessionReferences(sessionId)
+            );
+        }
+    }
+
     public void retainLatestSessionForEachUser() {
         // Use SCAN instead of KEYS so the cleanup job stays non-blocking as the
         // session population grows.

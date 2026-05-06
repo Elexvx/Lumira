@@ -20,7 +20,7 @@
 
 - `services/gateway-service`：统一入口网关。
 - `backend/`：当前作为 `system-service`，承接原有核心业务。
-- `services/auth-service`、`services/tenant-service`、`services/file-service`、`services/message-service`、`services/plugin-service`、`services/audit-service`、`services/localization-service`、`services/job-executor`：后续拆分目标服务。
+- `services/auth-service`、`services/tenant-service`、`services/file-service`、`services/message-service`、`services/plugin-service`、`services/localization-service`、`services/job-executor`：后续拆分目标服务。审计能力目前仍归入 `backend/system-service` 的内部模块。
 - `libs/common-core`、`libs/common-web`、`libs/common-security`、`libs/common-tenant`、`libs/legendary-api`：共享契约和基础能力。
 
 ## 4. 配置规范

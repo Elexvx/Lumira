@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.localization.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -47,12 +48,14 @@ public class LocalizationController {
     }
 
     @PostMapping("/languages")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.LanguageVO> createLanguage(@Valid @RequestBody LocalizationDTO.LanguageUpsertRequest request) {
         require("localization:create");
         return ApiResponse.success(localizationManagementAppService.saveLanguage(null, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/languages/{id}")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.LanguageVO> updateLanguage(
             @PathVariable("id") @Positive Long id,
             @Valid @RequestBody LocalizationDTO.LanguageUpsertRequest request
@@ -62,6 +65,7 @@ public class LocalizationController {
     }
 
     @DeleteMapping("/languages/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deleteLanguage(@PathVariable("id") @Positive Long id) {
         require("localization:delete");
         localizationManagementAppService.deleteLanguage(id);
@@ -75,12 +79,14 @@ public class LocalizationController {
     }
 
     @PostMapping("/namespaces")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.NamespaceVO> createNamespace(@Valid @RequestBody LocalizationDTO.NamespaceUpsertRequest request) {
         require("localization:create");
         return ApiResponse.success(localizationManagementAppService.saveNamespace(null, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/namespaces/{id}")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.NamespaceVO> updateNamespace(
             @PathVariable("id") @Positive Long id,
             @Valid @RequestBody LocalizationDTO.NamespaceUpsertRequest request
@@ -90,6 +96,7 @@ public class LocalizationController {
     }
 
     @DeleteMapping("/namespaces/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deleteNamespace(@PathVariable("id") @Positive Long id) {
         require("localization:delete");
         localizationManagementAppService.deleteNamespace(id);
@@ -116,12 +123,14 @@ public class LocalizationController {
     }
 
     @PostMapping("/entries")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.EntryVO> createEntry(@Valid @RequestBody LocalizationDTO.EntryUpsertRequest request) {
         require("localization:create");
         return ApiResponse.success(localizationManagementAppService.saveEntry(request), TraceContext.getRequestId());
     }
 
     @PutMapping("/entries/{id}")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.EntryVO> updateEntry(
             @PathVariable("id") @Positive Long id,
             @Valid @RequestBody LocalizationDTO.EntryUpsertRequest request
@@ -132,6 +141,7 @@ public class LocalizationController {
     }
 
     @DeleteMapping("/entries/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deleteEntry(@PathVariable("id") @Positive Long id) {
         require("localization:delete");
         localizationManagementAppService.deleteEntry(id);
@@ -139,6 +149,7 @@ public class LocalizationController {
     }
 
     @PostMapping("/sync")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.SyncResultVO> sync(@Valid @RequestBody LocalizationDTO.SyncRequest request) {
         require("localization:sync");
         return ApiResponse.success(localizationManagementAppService.sync(request), TraceContext.getRequestId());
@@ -151,12 +162,14 @@ public class LocalizationController {
     }
 
     @PostMapping("/publish")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.ReleaseVO> publish(@Valid @RequestBody LocalizationDTO.PublishRequest request) {
         require("localization:publish");
         return ApiResponse.success(localizationManagementAppService.publish(request, securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
     }
 
     @PostMapping("/rollback")
+    @RepeatSubmit
     public ApiResponse<LocalizationVO.ReleaseVO> rollback(@Valid @RequestBody LocalizationDTO.RollbackRequest request) {
         require("localization:rollback");
         return ApiResponse.success(localizationManagementAppService.rollback(request, securityContextFacade.getCurrentUser()), TraceContext.getRequestId());

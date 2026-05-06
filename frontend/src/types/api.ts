@@ -183,10 +183,20 @@ export interface CurrentUser {
   idCardNumber?: string | null;
   locale?: string | null;
   currentTenant?: TenantSummary | null;
+  simulatedRoleId?: number | null;
+  availableRoles?: CurrentUserRoleOption[];
   sessionId: string;
   permissionsVersion?: string;
   sessionVersion?: number;
   permissions?: string[];
+}
+
+export interface CurrentUserRoleOption {
+  id: number;
+  roleCode: string;
+  roleName: string;
+  roleType: string;
+  permissionCount?: number;
 }
 
 export interface CurrentTenantResponse {

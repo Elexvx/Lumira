@@ -22,7 +22,6 @@
         <module>services/file-service</module>
         <module>services/message-service</module>
         <module>services/plugin-service</module>
-        <module>services/audit-service</module>
         <module>services/localization-service</module>
         <module>services/job-executor</module>
     </modules>

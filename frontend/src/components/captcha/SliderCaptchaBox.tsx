@@ -69,8 +69,34 @@ export const SliderCaptchaBox = ({
       mode={mode}
       request={requestSliderCaptcha}
       onVerify={verifySliderCaptcha}
+      style={{ width: 'fit-content', margin: '0 auto' }}
       bgSize={{ width: 320, height: 160 }}
       puzzleSize={{ width: 60, height: 160 }}
+      styles={{
+        panel: {
+          width: '100%',
+        },
+        jigsaw: {
+          overflow: 'hidden',
+          borderRadius: 8,
+        },
+        bgImg: {
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: 1,
+        },
+        puzzleImg: {
+          display: 'block',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: 1,
+        },
+        control: {
+          width: '100%',
+        },
+      }}
       tipText={{
         default: '向右拖动滑块完成验证',
         loading: '验证码加载中...',

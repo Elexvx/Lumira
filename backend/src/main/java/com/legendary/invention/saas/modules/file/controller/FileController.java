@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.file.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -113,6 +114,7 @@ public class FileController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
     public ApiResponse<FileVO.FileObjectVO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(name = "category", required = false) String category,
@@ -127,6 +129,7 @@ public class FileController {
     }
 
     @DeleteMapping("/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> delete(
             @PathVariable("id") @Positive Long id,
             @RequestParam(name = "scope", required = false) String scope

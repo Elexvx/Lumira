@@ -2,6 +2,7 @@ import { Button, Drawer, Space } from 'antd';
 import type { DrawerProps } from 'antd';
 import type { ReactNode } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export interface ManagementDrawerAction {
   key: string;
@@ -25,15 +26,17 @@ export const ManagementDrawer = ({
   children,
   ...props
 }: ManagementDrawerProps) => {
+  const responsive = useResponsive();
   const resolvedFooter =
     footer ??
     (footerActions?.length ? (
       <div className="saas-drawer-footer">
-        <Space>
+        <Space wrap>
           {footerActions.map((action) => (
             <Button
               key={action.key}
               type={action.type}
+              size={responsive.isMobile ? 'small' : 'middle'}
               danger={action.danger}
               loading={action.loading}
               disabled={action.disabled}

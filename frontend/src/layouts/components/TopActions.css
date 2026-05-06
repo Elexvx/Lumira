@@ -1,0 +1,43 @@
+.saas-user-menu__header-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: 2px 4px;
+}
+
+.saas-user-menu__nickname {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.saas-user-menu__role {
+  color: var(--ant-color-text-tertiary);
+  font-size: 12px;
+}
+
+.saas-user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 6px;
+}
+
+.saas-user-menu-trigger__name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saas-user-password__footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .saas-user-menu-trigger__name {
+    display: none;
+  }
+}

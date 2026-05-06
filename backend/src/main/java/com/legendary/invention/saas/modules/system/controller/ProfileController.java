@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.api.client.FileInternalApi;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -47,6 +48,7 @@ public class ProfileController {
     }
 
     @PutMapping
+    @RepeatSubmit
     public ApiResponse<CurrentUserVO> updateBasicInfo(@Valid @RequestBody ProfileDTO.BasicInfoUpdateRequest request) {
         return ApiResponse.success(
                 systemManagementAppService.updateCurrentUserProfile(securityContextFacade.getCurrentUser(), request),
@@ -55,6 +57,7 @@ public class ProfileController {
     }
 
     @PutMapping("/email")
+    @RepeatSubmit
     public ApiResponse<CurrentUserVO> updateEmail(@Valid @RequestBody ProfileDTO.EmailUpdateRequest request) {
         return ApiResponse.success(
                 systemManagementAppService.updateCurrentUserEmail(securityContextFacade.getCurrentUser(), request),
@@ -63,6 +66,7 @@ public class ProfileController {
     }
 
     @PostMapping("/contact-bind/challenge")
+    @RepeatSubmit
     public ApiResponse<SystemVO.VerificationChallengeVO> contactBindChallenge(@Valid @RequestBody ProfileDTO.ContactBindChallengeRequest request) {
         return ApiResponse.success(
                 systemManagementAppService.startCurrentUserContactBindChallenge(securityContextFacade.getCurrentUser(), request),
@@ -71,6 +75,7 @@ public class ProfileController {
     }
 
     @PutMapping("/contact-bind")
+    @RepeatSubmit
     public ApiResponse<CurrentUserVO> contactBind(@Valid @RequestBody ProfileDTO.ContactBindRequest request) {
         return ApiResponse.success(
                 systemManagementAppService.updateCurrentUserContactBinding(securityContextFacade.getCurrentUser(), request),
@@ -79,6 +84,7 @@ public class ProfileController {
     }
 
     @PutMapping("/locale")
+    @RepeatSubmit
     public ApiResponse<CurrentUserVO> updateLocale(@Valid @RequestBody ProfileDTO.LocaleUpdateRequest request) {
         return ApiResponse.success(
                 systemManagementAppService.updateCurrentUserLocale(securityContextFacade.getCurrentUser(), request),
@@ -86,7 +92,17 @@ public class ProfileController {
         );
     }
 
+    @PutMapping("/password")
+    @RepeatSubmit
+    public ApiResponse<Boolean> updatePassword(@Valid @RequestBody ProfileDTO.PasswordUpdateRequest request) {
+        return ApiResponse.success(
+                systemManagementAppService.updateCurrentUserPassword(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping(value = "/uploads/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
     public ApiResponse<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "头像", "个人头像上传");
         return ApiResponse.success(uploaded.publicUrl(), TraceContext.getRequestId());

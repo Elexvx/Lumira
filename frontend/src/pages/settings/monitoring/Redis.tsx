@@ -179,55 +179,55 @@ export const RedisMonitorContent = () => {
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Card loading={query.isLoading && !redis} title="Redis信息">
           <Row gutter={[16, 16]}>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="Redis版本" value={redis?.overview.version || '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="运行模式" value={redis?.overview.mode || '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="端口" value={redis?.overview.port ?? '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="客户端数" value={redis?.overview.connectedClients ?? '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="运行时间(天)" value={redis?.overview.uptimeDays ?? '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="命中率" value={formatPercent(redis?.overview.hitRate)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="QPS" value={redis?.overview.instantaneousOpsPerSec ?? '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="键数量" value={redis?.overview.keyCount ?? '-'} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="内存使用量" value={formatBytes(redis?.overview.memoryUsedBytes)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="内存峰值" value={formatBytes(redis?.overview.memoryPeakBytes)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="内存使用率" value={formatPercent(redis?.overview.memoryUsagePercent)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="总连接数" value={redis?.overview.totalConnectionsReceived ?? '-'} valueStyle={valueStyle} />
             </Col>
           </Row>
 
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="总命中" value={formatNumber(redis?.overview.hits)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="总未命中" value={formatNumber(redis?.overview.misses)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="总命令数" value={formatNumber(redis?.overview.totalCommandsProcessed)} valueStyle={valueStyle} />
             </Col>
-            <Col xs={12} sm={6} xl={4}>
+            <Col xs={24} sm={12} xl={4}>
               <Statistic title="采样时间" value={formatDateTime(redis?.sampleTime)} valueStyle={{ ...valueStyle, fontSize: 18 }} />
             </Col>
           </Row>

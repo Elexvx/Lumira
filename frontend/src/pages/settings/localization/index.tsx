@@ -7,11 +7,12 @@ import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/ma
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { adaptPageResult } from '@/features/table/proTable';
+import { TableActionBar } from '@/features/table/TableActionBar';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { normalizeLocale } from '@/i18n/locale';
 import { localizationService, type LocalizationEntryPayload } from '@/services/localization';
 import type { LocalizationEntry, LocalizationLanguage, LocalizationNamespace, LocalizationRelease } from '@/types/api';
-import { buildLocalizationSyncPayload } from '@/pages/localization/sourceScanner';
+import { buildLocalizationSyncPayload } from './sourceScanner';
 import { copyTextToClipboard } from '@/utils/clipboard';
 
 const STATUS_OPTIONS = [
@@ -271,6 +272,7 @@ const LocalizationPage = () => {
         title: intl.formatMessage({ id: 'page.localization.defaultMessage', defaultMessage: '原文' }),
         dataIndex: 'defaultMessage',
         width: 280,
+        ...(responsive.isMobile ? { responsive: ['md', 'lg', 'xl', 'xxl'] as const } : {}),
         ellipsis: true,
       },
       {
@@ -295,35 +297,43 @@ const LocalizationPage = () => {
         title: intl.formatMessage({ id: 'page.localization.sourceRef', defaultMessage: '来源' }),
         dataIndex: 'sourceRef',
         width: 260,
+        responsive: ['lg', 'xl', 'xxl'],
         ellipsis: true,
       },
       {
         title: intl.formatMessage({ id: 'page.localization.usageCount', defaultMessage: '引用数' }),
         dataIndex: 'usageCount',
         width: 100,
+        responsive: ['lg', 'xl', 'xxl'],
       },
       {
         title: intl.formatMessage({ id: 'common.actions', defaultMessage: '操作' }),
         valueType: 'option',
         width: 180,
-        render: (_, record) => [
-          <Button key="edit" type="link" icon={<EditOutlined />} onClick={() => openEntryDrawer(record)}>
-            {intl.formatMessage({ id: 'common.edit', defaultMessage: '编辑' })}
-          </Button>,
-          <Button
-            key="copy"
-            type="link"
-            onClick={async () => {
-              await copyTextToClipboard(record.messageKey);
-              message.success(intl.formatMessage({ id: 'common.success', defaultMessage: '操作成功' }));
-            }}
-          >
-            {intl.formatMessage({ id: 'page.localization.copyKey', defaultMessage: '复制键名' })}
-          </Button>,
-        ],
+        render: (_, record) => (
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={[
+              {
+                key: 'edit',
+                label: intl.formatMessage({ id: 'common.edit', defaultMessage: '编辑' }),
+                icon: <EditOutlined />,
+                onClick: () => openEntryDrawer(record),
+              },
+              {
+                key: 'copy',
+                label: intl.formatMessage({ id: 'page.localization.copyKey', defaultMessage: '复制键名' }),
+                onClick: async () => {
+                  await copyTextToClipboard(record.messageKey);
+                  message.success(intl.formatMessage({ id: 'common.success', defaultMessage: '操作成功' }));
+                },
+              },
+            ]}
+          />
+        ),
       },
     ],
-    [intl, selectedLocale],
+    [intl, responsive.isMobile, selectedLocale],
   );
 
   const localeOptions = languages.map((item) => ({
