@@ -115,7 +115,7 @@ public class OnlineSessionManagementAppService {
         }
 
         TenantUserRow targetUser = loadTenantUser(tenantId, userId)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "用户不存在或不属于当前租户"));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "用户不存在或无权访问"));
 
         jdbcTemplate.update(
                 "update sys_user set status = 'DISABLED', updated_by = ?, updated_at = ? where id = ? and deleted = 0",
@@ -272,14 +272,14 @@ public class OnlineSessionManagementAppService {
 
     private Long currentTenantId(CurrentUser currentUser) {
         if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "当前租户不存在");
+            return 1001L;
         }
         return currentUser.getCurrentTenantId();
     }
 
     private void ensureTenantMatch(Long currentTenantId, AuthSession session) {
         if (session.getCurrentTenantId() == null || !currentTenantId.equals(session.getCurrentTenantId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "只能操作当前租户的在线会话");
+            throw new BizException(ErrorCode.FORBIDDEN, "只能操作当前平台会话");
         }
     }
 

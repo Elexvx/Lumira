@@ -1,7 +1,42 @@
 import type { CurrentUser } from '@/types/api';
 import { tokenManager } from '@/auth/token';
+import { isProtectedAdminAccount } from '@/auth/admin';
 
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
+
+const SYSTEM_MANAGEMENT_PERMISSIONS = [
+  'system:view',
+  'system:menu:view',
+  'system:dict:view',
+  'system:config:view',
+  'system:verification:view',
+  'system:verification:manage',
+  'system:notification:view',
+  'system:notification:write',
+  'system:file:view',
+  'system:file:manage',
+  'system:monitor:view',
+  'system:monitor:service:view',
+  'system:monitor:redis:view',
+  'system:monitor:docs:view',
+  'audit:view',
+  'audit:login:view',
+  'audit:operation:view',
+  'message:message:view',
+  'plugin:management:view',
+];
+
+const SYSTEM_MONITORING_PERMISSIONS = [
+  'system:monitor:view',
+  'system:monitor:service:view',
+  'system:monitor:redis:view',
+  'system:monitor:docs:view',
+  'audit:view',
+  'audit:login:view',
+  'audit:operation:view',
+];
+
+const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
@@ -11,33 +46,14 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
     isLogin,
     canVisitDashboard: isLogin,
-    canVisitTenant: isLogin && hasPermission(permissions, 'tenant:view'),
-    canVisitAudit: isLogin,
     canVisitProfile: isLogin,
     canVisitUserCenter:
       isLogin &&
-      ['user:center:view', 'system:user:view', 'system:online-user:view', 'system:role:view', 'profile:view'].some((item) =>
+      ['user:center:view', 'system:user:view', 'system:online-user:view', 'system:role:view', 'profile:view', 'system:file:view'].some((item) =>
         hasPermission(permissions, item),
       ),
-    canVisitSystemManagement:
-      isLogin &&
-      [
-        'system:view',
-        'system:menu:view',
-        'system:dict:view',
-        'system:config:view',
-        'system:verification:view',
-        'system:verification:manage',
-        'system:notification:view',
-        'system:notification:write',
-        'message:message:view',
-        'plugin:management:view',
-      ].some((item) => hasPermission(permissions, item)),
-    canVisitSystemMonitoring:
-      isLogin &&
-      ['system:monitor:view', 'system:monitor:service:view', 'system:monitor:redis:view', 'system:monitor:docs:view', 'audit:view'].some(
-        (item) => hasPermission(permissions, item),
-      ),
+    canVisitSystemManagement: isLogin && SYSTEM_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
+    canVisitSystemMonitoring: isLogin && SYSTEM_MONITORING_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitSystemMonitoringService: isLogin && hasPermission(permissions, 'system:monitor:service:view'),
     canVisitSystemMonitoringRedis: isLogin && hasPermission(permissions, 'system:monitor:redis:view'),
     canVisitSystemMonitoringDocs: isLogin && hasPermission(permissions, 'system:monitor:docs:view'),
@@ -58,6 +74,12 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
       isLogin &&
       (hasPermission(permissions, 'system:notification:view') ||
         hasPermission(permissions, 'message:message:view')),
+    canVisitSystemFiles: isLogin && hasPermission(permissions, 'system:file:manage'),
+    canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
+    canVisitSystemAllFiles: isLogin && hasPermission(permissions, 'system:file:manage'),
+    canVisitLocalization: isLogin && hasPermission(permissions, 'localization:view'),
+    canVisitAudit: isLogin && AUDIT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
+    canVisitSystemSettings: isLogin && isProtectedAdminAccount(initialState?.currentUser),
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && hasPermission(permissions, 'plugin:management:view'),
     canVisitPluginRuntime: isLogin,

@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: tenant-service
+  config:
+    import:
+      - optional:nacos:tenant-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        file-extension: yaml
+        namespace: ${NACOS_NAMESPACE:}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+    sentinel:
+      transport:
+        port: ${SENTINEL_TRANSPORT_PORT:8721}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:2}
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  port: ${SERVER_PORT:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,sentinel
+
+saas:
+  security:
+    jwt-secret: ${JWT_SECRET:saas_auth_jwt_secret_for_dev_env_change_me_2026}
+    issuer: saas-auth

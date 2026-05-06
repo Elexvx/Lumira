@@ -119,9 +119,8 @@ public class RepeatSubmitAspect {
             return String.join(":", "user", String.valueOf(currentUser.getUserId()), tenantPart);
         }
 
-        String tenantId = request.getHeader(com.legendary.invention.saas.common.constant.HeaderConstants.TENANT_ID);
         String ip = clientIpResolver.resolve(request);
-        return String.join(":", "ip", StringUtils.hasText(tenantId) ? tenantId.trim() : "", ip);
+        return String.join(":", "ip", ip);
     }
 
     private String buildRequestPath(HttpServletRequest request) {

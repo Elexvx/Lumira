@@ -1,5 +1,6 @@
 import { ConfigProvider, theme as antdTheme } from 'antd';
 import type { ReactNode } from 'react';
+import { resolveAntdLocale } from '@/i18n/antdLocale';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
 import type { ThemePreference } from '@/theme/settings';
 
@@ -65,6 +66,10 @@ export const syncAntdStaticThemeHolder = () => {
 
   staticThemeHolderConfigured = true;
   ConfigProvider.config({
-    holderRender: (children: ReactNode) => <ConfigProvider theme={buildAntdThemeConfig()}>{children}</ConfigProvider>,
+    holderRender: (children: ReactNode) => (
+      <ConfigProvider locale={resolveAntdLocale()} theme={buildAntdThemeConfig()}>
+        {children}
+      </ConfigProvider>
+    ),
   });
 };

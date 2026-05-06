@@ -18,6 +18,7 @@ public class CurrentUserVO {
     private String region;
     private String availableTime;
     private String idCardNumber;
+    private String locale;
     private TenantSummaryVO currentTenant;
     private String sessionId;
     private String permissionsVersion;
@@ -118,6 +119,14 @@ public class CurrentUserVO {
 
     public void setIdCardNumber(String idCardNumber) {
         this.idCardNumber = idCardNumber;
+    }
+
+    public String getLocale() {
+        return locale;
+    }
+
+    public void setLocale(String locale) {
+        this.locale = locale;
     }
 
     public TenantSummaryVO getCurrentTenant() {

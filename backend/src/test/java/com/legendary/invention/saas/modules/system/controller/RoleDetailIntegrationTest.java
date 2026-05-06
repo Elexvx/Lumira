@@ -27,7 +27,10 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "spring.cloud.nacos.config.import-check.enabled=false"
+)
 class RoleDetailIntegrationTest {
 
     private static final OAEPParameterSpec OAEP_SPEC = new OAEPParameterSpec(
@@ -73,11 +76,8 @@ class RoleDetailIntegrationTest {
         Assertions.assertEquals("0", loginBody.path("code").asText(), loginResponse.getBody());
 
         String accessToken = loginBody.path("data").path("accessToken").asText();
-        Long tenantId = loginBody.path("data").path("currentTenant").path("tenantId").asLong();
-
         HttpHeaders detailHeaders = new HttpHeaders();
         detailHeaders.setBearerAuth(accessToken);
-        detailHeaders.add("X-Tenant-Id", String.valueOf(tenantId));
         ResponseEntity<String> roleResponse = restTemplate.exchange(
                 baseUrl + "/api/v1/system/roles/2001",
                 HttpMethod.GET,
@@ -114,11 +114,8 @@ class RoleDetailIntegrationTest {
         Assertions.assertEquals("0", loginBody.path("code").asText(), loginResponse.getBody());
 
         String accessToken = loginBody.path("data").path("accessToken").asText();
-        Long tenantId = loginBody.path("data").path("currentTenant").path("tenantId").asLong();
-
         HttpHeaders detailHeaders = new HttpHeaders();
         detailHeaders.setBearerAuth(accessToken);
-        detailHeaders.add("X-Tenant-Id", String.valueOf(tenantId));
         ResponseEntity<String> treeResponse = restTemplate.exchange(
                 baseUrl + "/api/v1/system/permissions/tree",
                 HttpMethod.GET,
@@ -136,10 +133,11 @@ class RoleDetailIntegrationTest {
         Assertions.assertTrue(treeBody.path("data").isArray(), treeResponse.getBody());
         Assertions.assertTrue(treeBody.path("data").size() > 0, treeResponse.getBody());
 
-        JsonNode systemRootNode = findNodeByPageName(treeBody.path("data"), "系统总览");
-        Assertions.assertNotNull(systemRootNode, treeResponse.getBody());
-        Assertions.assertEquals("CATALOG", systemRootNode.path("nodeType").asText(), treeResponse.getBody());
-        Assertions.assertTrue(systemRootNode.path("routePath").isNull() || systemRootNode.path("routePath").asText().isBlank(), treeResponse.getBody());
+        JsonNode settingsRootNode = findNodeByPageName(treeBody.path("data"), "系统设置");
+        Assertions.assertNotNull(settingsRootNode, treeResponse.getBody());
+        Assertions.assertEquals("CATALOG", settingsRootNode.path("nodeType").asText(), treeResponse.getBody());
+        Assertions.assertTrue(settingsRootNode.path("routePath").isNull() || settingsRootNode.path("routePath").asText().isBlank(), treeResponse.getBody());
+        Assertions.assertNull(findNodeByPageName(treeBody.path("data"), "系统总览"), treeResponse.getBody());
         Assertions.assertNull(findNodeByPageName(treeBody.path("data"), "系统管理"), treeResponse.getBody());
 
         ResponseEntity<String> menusResponse = restTemplate.exchange(
@@ -155,11 +153,8 @@ class RoleDetailIntegrationTest {
 
         JsonNode menusBody = objectMapper.readTree(menusResponse.getBody());
         Assertions.assertEquals("0", menusBody.path("code").asText(), menusResponse.getBody());
-        JsonNode systemRootMenu = findNodeByMenuCode(menusBody.path("data"), "system.root");
-        Assertions.assertNotNull(systemRootMenu, menusResponse.getBody());
-        Assertions.assertEquals("CATALOG", systemRootMenu.path("menuType").asText(), menusResponse.getBody());
-        Assertions.assertEquals("/system", systemRootMenu.path("path").asText(), menusResponse.getBody());
-        Assertions.assertTrue(systemRootMenu.path("component").isNull() || systemRootMenu.path("component").asText().isBlank(), menusResponse.getBody());
+        Assertions.assertNull(findNodeByMenuCode(menusBody.path("data"), "system.root"), menusResponse.getBody());
+        Assertions.assertNull(findNodeByMenuCode(menusBody.path("data"), "settings.root"), menusResponse.getBody());
 
         JsonNode userCenterNode = findNodeByPageName(treeBody.path("data"), "用户中心");
         Assertions.assertNotNull(userCenterNode, treeResponse.getBody());
@@ -168,7 +163,8 @@ class RoleDetailIntegrationTest {
 
         JsonNode monitoringNode = findNodeByPageName(treeBody.path("data"), "系统监控");
         Assertions.assertNotNull(monitoringNode, treeResponse.getBody());
-        Assertions.assertEquals("CATALOG", monitoringNode.path("nodeType").asText(), treeResponse.getBody());
+        Assertions.assertEquals("PAGE", monitoringNode.path("nodeType").asText(), treeResponse.getBody());
+        Assertions.assertEquals("/settings/monitoring", monitoringNode.path("routePath").asText(), treeResponse.getBody());
         Assertions.assertTrue(monitoringNode.path("children").isArray(), treeResponse.getBody());
 
         Set<String> childNames = new LinkedHashSet<>();
@@ -178,11 +174,19 @@ class RoleDetailIntegrationTest {
             childTypes.add(child.path("nodeType").asText());
         }
 
-        Assertions.assertTrue(childNames.contains("服务监控"), treeResponse.getBody());
-        Assertions.assertTrue(childNames.contains("Redis监控"), treeResponse.getBody());
         Assertions.assertTrue(childNames.contains("接口文档"), treeResponse.getBody());
         Assertions.assertTrue(childNames.contains("审计中心"), treeResponse.getBody());
+        Assertions.assertFalse(childNames.contains("服务监控"), treeResponse.getBody());
+        Assertions.assertFalse(childNames.contains("Redis监控"), treeResponse.getBody());
         Assertions.assertTrue(childTypes.stream().allMatch("PAGE"::equals), treeResponse.getBody());
+
+        Set<String> monitoringActionPermissions = new LinkedHashSet<>();
+        for (JsonNode actionPermission : monitoringNode.path("actionPermissions")) {
+            monitoringActionPermissions.add(actionPermission.path("permissionKey").asText());
+        }
+        Assertions.assertTrue(monitoringActionPermissions.contains("system:monitor:service:view"), treeResponse.getBody());
+        Assertions.assertTrue(monitoringActionPermissions.contains("system:monitor:redis:view"), treeResponse.getBody());
+        Assertions.assertTrue(monitoringActionPermissions.contains("system:monitor:docs:view"), treeResponse.getBody());
     }
 
     @Test
@@ -207,6 +211,13 @@ class RoleDetailIntegrationTest {
         for (JsonNode node : nodes) {
             if (pageName.equals(node.path("pageName").asText())) {
                 return node;
+            }
+            JsonNode children = node.path("children");
+            if (children.isArray()) {
+                JsonNode childMatch = findNodeByPageName(children, pageName);
+                if (childMatch != null) {
+                    return childMatch;
+                }
             }
         }
         return null;

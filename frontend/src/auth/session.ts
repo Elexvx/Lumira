@@ -2,8 +2,6 @@ import { authService } from '@/services/auth';
 import { systemService } from '@/services/system';
 import { tokenManager } from '@/auth/token';
 import { LOGIN_PATH } from '@/app.constants';
-import { tenantContext } from '@/tenant/context';
-import { syncTenantFromServer } from '@/tenant/actions';
 import { storage } from '@/cache/storage';
 import { clearSessionActivity, persistSessionActivity } from '@/auth/activity';
 import {
@@ -13,6 +11,7 @@ import {
   persistSecuritySettings,
 } from '@/auth/securitySettings';
 import { beginBootstrapFlow, endBootstrapFlow } from '@/auth/loginFlowState';
+import { applyLocalePreference } from '@/i18n/locale';
 import type { CurrentUser, LoginResponse, SecuritySettings } from '@/types/api';
 import { history } from '@umijs/max';
 
@@ -44,7 +43,6 @@ export const clearAuthSession = () => {
   storage.remove(USER_PROFILE_KEY);
   storage.remove(SESSION_META_KEY);
   clearSessionActivity();
-  tenantContext.clearTenantContext();
 };
 
 export const performLogout = async (options: { reason?: LogoutReason; hardReload?: boolean } = {}) => {
@@ -93,20 +91,11 @@ export const initializeAfterLogin = async (loginResponse: LoginResponse): Promis
       tokenType: loginResponse.tokenType,
       expiresIn: loginResponse.expiresIn,
     });
-
-    tenantContext.setMyTenants(loginResponse.tenants || []);
-    tenantContext.setCurrentTenant(loginResponse.currentTenant || null);
     persistSessionActivity(Date.now());
 
     const currentUser = await loadCurrentUserOrFallback(loginResponse);
+    applyLocalePreference(currentUser?.locale || loginResponse.user.locale, false);
     const persistedCurrentUser = persistCurrentUser(currentUser);
-    await syncTenantFromServer({
-      autoRedirectOnUnauthorized: false,
-      allowUnauthorizedWithoutRedirect: true,
-    }).catch(() => {
-      // If the tenant sync endpoint is unavailable, keep the login result
-      // from the login response so authentication can continue.
-    });
     const securitySettings = await loadSecuritySettings();
     return { currentUser: persistedCurrentUser, securitySettings };
   } catch (error) {
@@ -138,25 +127,15 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
         return null;
       }
 
+      applyLocalePreference(refreshedCurrentUser.locale, false);
       const persistedCurrentUser = persistCurrentUser(refreshedCurrentUser);
-      await syncTenantFromServer({
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-      }).catch(() => {
-        // Keep the current tenant stored from the previous session if the sync endpoint is down.
-      });
       persistSessionActivity(Date.now());
       const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
       return { currentUser: persistedCurrentUser, securitySettings };
     }
 
+    applyLocalePreference(currentUser.locale, false);
     const persistedCurrentUser = persistCurrentUser(currentUser);
-    await syncTenantFromServer({
-      autoRedirectOnUnauthorized: false,
-      allowUnauthorizedWithoutRedirect: true,
-    }).catch(() => {
-      // Keep the current tenant stored from the previous session if the sync endpoint is down.
-    });
     persistSessionActivity(Date.now());
     const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
     return { currentUser: persistedCurrentUser, securitySettings };
@@ -252,7 +231,6 @@ async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise
 const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => {
   const storedCurrentUser = getStoredCurrentUser();
   const storedSessionMeta = getStoredSessionMeta();
-  const currentTenant = tenantContext.getCurrentTenant() || loginResponse.currentTenant || null;
   const sessionId = storedSessionMeta?.sessionId?.trim() || createLocalSessionId();
   return {
     userId: loginResponse.user.userId,
@@ -267,7 +245,8 @@ const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => 
     region: loginResponse.user.region ?? null,
     availableTime: loginResponse.user.availableTime ?? null,
     idCardNumber: loginResponse.user.idCardNumber ?? null,
-    currentTenant,
+    locale: loginResponse.user.locale ?? null,
+    currentTenant: loginResponse.currentTenant || null,
     sessionId,
     permissionsVersion: storedSessionMeta?.permissionsVersion,
     sessionVersion: storedSessionMeta?.sessionVersion,

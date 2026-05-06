@@ -18,7 +18,7 @@ export const EmailBindModal = ({ open, submitting, alertMessage, formProps, onCa
     confirmLoading={submitting}
     okText="保存并继续"
     cancelText="取消"
-    destroyOnClose
+    destroyOnHidden
     maskClosable={false}
   >
     <Space direction="vertical" size={16} style={{ width: '100%' }}>

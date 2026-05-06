@@ -14,6 +14,7 @@ public class AuthUserVO {
     private String region;
     private String availableTime;
     private String idCardNumber;
+    private String locale;
 
     public Long getUserId() {
         return userId;
@@ -109,5 +110,13 @@ public class AuthUserVO {
 
     public void setIdCardNumber(String idCardNumber) {
         this.idCardNumber = idCardNumber;
+    }
+
+    public String getLocale() {
+        return locale;
+    }
+
+    public void setLocale(String locale) {
+        this.locale = locale;
     }
 }

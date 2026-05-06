@@ -1,4 +1,4 @@
-import { history } from '@umijs/max';
+import { formatMessage, history } from '@umijs/max';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import React from 'react';
 import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
@@ -6,7 +6,13 @@ import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { isLoggedIn } from '@/auth/session';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
-import { resolveNavigationIcon } from '@/navigation/settingsNavigation';
+import {
+  buildVisibleSettingsNavigationItems,
+  isMainMenuHiddenMonitoringPath,
+  isMainMenuHiddenSettingPath,
+  isSettingsShellPath,
+  resolveNavigationIcon,
+} from '@/navigation/settingsNavigation';
 import NoPermission from '@/pages/exception/NoPermission';
 import { backendRouteMeta } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
@@ -14,6 +20,10 @@ import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
 import { resolveLayoutNavTheme } from '@/theme/runtime';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
+import buildAccess from '@/access';
+import type { BreadcrumbProps } from 'antd';
+
+type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 
@@ -32,10 +42,38 @@ const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string,
   return map;
 };
 
+const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[] =>
+  items.map((item) => {
+    const breadcrumbTitle = item.title || item.name || item.path || '';
+    return {
+      key: item.path || item.name || breadcrumbTitle,
+      path: item.path,
+      title: typeof breadcrumbTitle === 'string'
+        ? formatMessage({ id: breadcrumbTitle, defaultMessage: breadcrumbTitle })
+        : breadcrumbTitle,
+    };
+  });
+
+const buildSettingsMenuData = (initialState?: AppInitialState) => {
+  const access = buildAccess({ currentUser: initialState?.currentUser });
+  return buildVisibleSettingsNavigationItems((accessKey) => Boolean((access as Record<string, unknown>)[accessKey])).map((item) => ({
+    path: item.path,
+    name: formatMessage({
+      id: routeMetaMap.get(item.path)?.name || item.key,
+      defaultMessage: item.label,
+    }),
+    icon: resolveNavigationIcon(item.icon),
+  }));
+};
+
 const composeMenuItem = (
   backendNode: MenuNode,
   localByPath: Map<string, RuntimeMenuDataItem>,
 ): RuntimeMenuDataItem | null => {
+  if (isMainMenuHiddenSettingPath(backendNode.path) || isMainMenuHiddenMonitoringPath(backendNode.path)) {
+    return null;
+  }
+
   const localMeta = localByPath.get(backendNode.path);
   const hasLocalRoute = localMeta || isPluginRuntimePath(backendNode.path);
   const children = (backendNode.children || [])
@@ -48,11 +86,12 @@ const composeMenuItem = (
 
   const mergedMeta = routeMetaMap.get(backendNode.path || '');
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
+  const menuLabelId = mergedMeta?.name || backendNode.menuCode || backendNode.name;
 
   return {
     ...localMeta,
     path: backendNode.path || localMeta?.path,
-    name: localMeta?.name || mergedMeta?.name || backendNode.name,
+    name: formatMessage({ id: menuLabelId, defaultMessage: backendNode.name }),
     icon,
     hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
     children: children.length ? children : undefined,
@@ -92,8 +131,11 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     splitMenus: false,
     breadcrumbRender: (routers = []) => {
       const pathname = history.location.pathname;
+      if (isSettingsShellPath(pathname)) {
+        return [];
+      }
       const menuBreadcrumb = buildBreadcrumbItems(initialState?.menuTree, pathname);
-      return menuBreadcrumb.length ? menuBreadcrumb : routers;
+      return menuBreadcrumb.length ? menuBreadcrumb : translateBreadcrumbItems(routers as RuntimeMenuDataItem[]);
     },
     breadcrumbProps: {
       minLength: 1,
@@ -117,6 +159,11 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       },
     },
     menuDataRender: (menuData) => {
+      const pathname = history.location.pathname;
+      if (isSettingsShellPath(pathname)) {
+        return buildSettingsMenuData(initialState);
+      }
+
       const backendMenus = initialState?.menuTree || [];
       if (!backendMenus.length) {
         return menuData as RuntimeMenuDataItem[];

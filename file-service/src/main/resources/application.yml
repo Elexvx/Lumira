@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: file-service
+  config:
+    import:
+      - optional:nacos:file-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:50MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:50MB}
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        file-extension: yaml
+        namespace: ${NACOS_NAMESPACE:}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+    sentinel:
+      transport:
+        port: ${SENTINEL_TRANSPORT_PORT:8722}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    ignore-migration-patterns:
+      - "*:missing"
+
+server:
+  port: ${SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,sentinel
+
+saas:
+  web:
+    cors-allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+  security:
+    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
+    permit-paths:
+      - /api/uploads/**
+      - /actuator/health
+  upload:
+    storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
+    public-path: /api/uploads
+    max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
+    max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}

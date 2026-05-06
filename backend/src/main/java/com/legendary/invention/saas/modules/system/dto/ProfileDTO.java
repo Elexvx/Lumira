@@ -199,4 +199,17 @@ public final class ProfileDTO {
             this.verificationCode = verificationCode;
         }
     }
+
+    public static class LocaleUpdateRequest {
+        @NotBlank(message = "请选择语言")
+        private String locale;
+
+        public String getLocale() {
+            return locale;
+        }
+
+        public void setLocale(String locale) {
+            this.locale = locale == null ? null : locale.trim();
+        }
+    }
 }

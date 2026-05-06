@@ -29,6 +29,7 @@ export interface AppInitialState {
 export interface RuntimeMenuDataItem {
   path?: string;
   name?: string;
+  title?: string;
   icon?: React.ReactNode | string;
   children?: RuntimeMenuDataItem[];
   hideInMenu?: boolean;

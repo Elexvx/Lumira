@@ -46,6 +46,7 @@ class AuthAppServiceSessionInvalidationTest {
                 securitySettingsService,
                 null,
                 null,
+                null,
                 null
         );
 

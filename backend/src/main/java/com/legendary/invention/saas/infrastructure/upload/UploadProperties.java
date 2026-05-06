@@ -8,6 +8,7 @@ public class UploadProperties {
     private String storageRoot = "storage/uploads";
     private String publicPath = "/api/uploads";
     private long maxImageSizeBytes = 5L * 1024 * 1024;
+    private long maxDocumentSizeBytes = 50L * 1024 * 1024;
 
     public String getStorageRoot() {
         return storageRoot;
@@ -31,5 +32,13 @@ public class UploadProperties {
 
     public void setMaxImageSizeBytes(long maxImageSizeBytes) {
         this.maxImageSizeBytes = maxImageSizeBytes;
+    }
+
+    public long getMaxDocumentSizeBytes() {
+        return maxDocumentSizeBytes;
+    }
+
+    public void setMaxDocumentSizeBytes(long maxDocumentSizeBytes) {
+        this.maxDocumentSizeBytes = maxDocumentSizeBytes;
     }
 }

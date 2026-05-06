@@ -1,5 +1,5 @@
 import { LoginFormPage } from '@ant-design/pro-components';
-import { history, useLocation } from '@umijs/max';
+import { formatMessage, history, useLocation } from '@umijs/max';
 import MarkdownPreview from '@uiw/react-markdown-preview';
 import '@uiw/react-markdown-preview/markdown.css';
 import { Form, Modal, message } from 'antd';
@@ -19,7 +19,6 @@ import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
 import { ApiRequestError } from '@/services/common/request';
-import { tenantContext } from '@/tenant/context';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
@@ -102,7 +101,7 @@ const Login = () => {
       setCaptchaChallenge,
       setCaptchaLoading,
       setCaptchaImageLoadFailed,
-      onRefreshFailure: () => message.warning('验证码刷新失败，请稍后重试'),
+      onRefreshFailure: () => message.warning(formatMessage({ id: 'page.login.error.refreshCaptcha', defaultMessage: 'Captcha refresh failed, please try again later' })),
     }),
   );
 
@@ -170,8 +169,8 @@ const Login = () => {
           setLoginEncryptionKey(key);
           return key;
         })
-        .catch((error) => {
-          message.error(error instanceof Error ? error.message : '登录加密信息加载失败，请刷新后重试');
+      .catch((error) => {
+        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginEncryption', defaultMessage: 'Failed to load login encryption info, please refresh and try again' }));
           return null;
         })
         .finally(() => {
@@ -187,7 +186,13 @@ const Login = () => {
   const pendingSecondFactorOptions = pendingSecondFactorLogin?.secondFactorOptions || [];
   const pendingSecondFactorOption = pendingSecondFactorOptions[0] || null;
   const pendingSecondFactorPrompt =
-    pendingSecondFactorOption?.promptMessage || (pendingSecondFactorOption?.factorName ? `${pendingSecondFactorOption.factorName} 需要完成二次验证` : '请输入收到的验证码完成二次验证');
+    pendingSecondFactorOption?.promptMessage ||
+    (pendingSecondFactorOption?.factorName
+      ? formatMessage(
+          { id: 'page.login.secondFactor.prompt', defaultMessage: '{name} requires second-factor verification' },
+          { name: pendingSecondFactorOption.factorName },
+        )
+      : formatMessage({ id: 'page.login.code.secondFactor', defaultMessage: 'Please enter the verification code to complete second-factor verification' }));
 
   const resetSecondFactorFlow = useCallback(() => {
     setPendingSecondFactorLogin(null);
@@ -217,6 +222,13 @@ const Login = () => {
       return;
     }
 
+    if (securitySettings.captchaType === 'SLIDER') {
+      captchaRefreshControllerRef.current.invalidate();
+      setCaptchaImageLoadFailed(false);
+      setCaptchaLoading(false);
+      return;
+    }
+
     if (!captchaChallenge?.captchaId || captchaChallenge.captchaType !== securitySettings.captchaType) {
       void refreshCaptcha();
     }
@@ -225,6 +237,7 @@ const Login = () => {
   useEffect(() => {
     if (securitySettings.captchaEnabled) {
       loginForm.setFieldValue('captchaCode', undefined);
+      loginForm.setFieldValue('captchaProof', undefined);
     }
   }, [captchaChallenge?.captchaId, loginForm, securitySettings.captchaEnabled]);
 
@@ -254,13 +267,21 @@ const Login = () => {
   const handleSendLoginCode = useCallback(
     async (mode: Exclude<LoginMode, 'password'>) => {
       if (!availableLoginModes.includes(mode)) {
-        message.warning(mode === 'sms' ? '当前未启用短信验证码登录' : '当前未启用邮箱验证码登录');
+        message.warning(
+          mode === 'sms'
+            ? formatMessage({ id: 'page.login.error.smsDisabled', defaultMessage: 'SMS login is not enabled' })
+            : formatMessage({ id: 'page.login.error.emailDisabled', defaultMessage: 'Email login is not enabled' }),
+        );
         return;
       }
       const accountField = mode === 'sms' ? 'smsAccount' : 'emailAccount';
       const account = loginForm.getFieldValue(accountField);
       if (!account) {
-        message.warning(mode === 'sms' ? '请输入手机号' : '请输入邮箱');
+        message.warning(
+          mode === 'sms'
+            ? formatMessage({ id: 'page.login.error.pleaseEnterMobile', defaultMessage: 'Please enter your mobile number' })
+            : formatMessage({ id: 'page.login.error.pleaseEnterEmail', defaultMessage: 'Please enter your email' }),
+        );
         return;
       }
 
@@ -286,10 +307,10 @@ const Login = () => {
         if (challenge.promptMessage) {
           message.success(challenge.promptMessage);
         } else {
-          message.success('验证码已发送');
+          message.success(formatMessage({ id: 'page.login.success.codeSent', defaultMessage: 'Verification code sent' }));
         }
       } catch (error) {
-        message.error(error instanceof Error ? error.message : '验证码发送失败，请稍后重试');
+        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.codeSendFailed', defaultMessage: 'Failed to send the verification code, please try again later' }));
       } finally {
         setSendingLoginType(null);
       }
@@ -300,17 +321,28 @@ const Login = () => {
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
       if (!availableLoginModes.includes(activeLoginMode)) {
-        message.warning(activeLoginMode === 'sms' ? '当前未启用短信验证码登录' : activeLoginMode === 'email' ? '当前未启用邮箱验证码登录' : '当前登录方式不可用');
+        message.warning(
+          activeLoginMode === 'sms'
+            ? formatMessage({ id: 'page.login.error.smsDisabled', defaultMessage: 'SMS login is not enabled' })
+            : activeLoginMode === 'email'
+              ? formatMessage({ id: 'page.login.error.emailDisabled', defaultMessage: 'Email login is not enabled' })
+              : formatMessage({ id: 'page.login.error.loginModeUnavailable', defaultMessage: 'Current login mode is unavailable' }),
+        );
         return false;
       }
 
       if (activeLoginMode === 'password' && securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
-        message.warning('验证码已过期，请刷新后重试');
+        message.warning(formatMessage({ id: 'page.login.error.captchaExpired', defaultMessage: 'The captcha has expired, please refresh and try again' }));
         return false;
       }
 
-      if (activeLoginMode === 'password' && securitySettings.captchaEnabled && !values.captchaCode) {
-        message.warning('请输入验证码');
+      if (activeLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' && !values.captchaCode) {
+        message.warning(formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the captcha' }));
+        return false;
+      }
+
+      if (activeLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' && !values.captchaProof) {
+        message.warning(formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }));
         return false;
       }
     }
@@ -335,20 +367,21 @@ const Login = () => {
                 username: values.passwordAccount,
                 password: await encryptLoginPassword(values.passwordPassword || '', encryptionKey),
                 captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
-                captchaCode: securitySettings.captchaEnabled ? values.captchaCode : undefined,
+                captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
+                captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
               });
             })()
           : await (async () => {
               const mode = activeLoginMode as Exclude<LoginMode, 'password'>;
               const challenge = loginCodeChallenges[mode];
               if (!challenge?.challengeId) {
-                message.warning('请先发送验证码');
+                message.warning(formatMessage({ id: 'page.login.error.pleaseSendCode', defaultMessage: 'Please send the verification code first' }));
                 return null;
               }
 
               const verificationCode = mode === 'sms' ? values.smsVerificationCode : values.emailVerificationCode;
               if (!verificationCode) {
-                message.warning('请输入验证码');
+                message.warning(formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }));
                 return null;
               }
 
@@ -374,7 +407,7 @@ const Login = () => {
 
       if (loginResponse.requiresSecondFactor) {
         setPendingSecondFactorLogin(loginResponse);
-        message.info(loginResponse.secondFactorOptions?.[0]?.promptMessage || '请输入验证码完成二次验证');
+        message.info(loginResponse.secondFactorOptions?.[0]?.promptMessage || formatMessage({ id: 'page.login.code.secondFactor', defaultMessage: 'Please enter the verification code to complete second-factor verification' }));
         return false;
       }
 
@@ -415,8 +448,8 @@ const Login = () => {
         setInitialState((prev: AppInitialState | undefined) => ({
           ...prev,
           currentUser: sessionResult.currentUser,
-          currentTenant: tenantContext.getCurrentTenant(),
-          myTenants: tenantContext.getMyTenants(),
+          currentTenant: sessionResult.currentUser.currentTenant || null,
+          myTenants: [],
           menuTree,
           menuVersion: (prev?.menuVersion ?? 0) + 1,
           availablePlugins,
@@ -438,22 +471,22 @@ const Login = () => {
           type: feedback.type,
           content: feedback.message,
         });
-        if (securitySettings.captchaEnabled) {
+        if (securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE') {
           void refreshCaptcha();
         }
         return false;
       }
 
       if (error instanceof Error) {
-        message.error(error.message || '登录失败，请稍后重试');
-        if (securitySettings.captchaEnabled) {
+        message.error(error.message || formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+        if (securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE') {
           void refreshCaptcha();
         }
         return false;
       }
 
-      message.error('登录失败，请稍后重试');
-      if (securitySettings.captchaEnabled) {
+      message.error(formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+      if (securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE') {
         void refreshCaptcha();
       }
       return false;
@@ -463,7 +496,9 @@ const Login = () => {
     }
   };
 
-  const agreementPreviewTitle = agreementPreviewKind === 'user' ? '用户协议' : '隐私政策';
+  const agreementPreviewTitle = agreementPreviewKind === 'user'
+    ? formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })
+    : formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' });
   const agreementPreviewMarkdown =
     agreementPreviewKind === 'user' ? agreementSettings.userAgreementMarkdown : agreementSettings.privacyAgreementMarkdown;
 
@@ -472,14 +507,22 @@ const Login = () => {
       <LoginFormPage<LoginFormValues>
         form={loginForm}
         title={brandingSettings.websiteName}
-        subTitle={activeLoginMode === 'password' ? '账号密码登录' : activeLoginMode === 'sms' ? '短信验证码登录' : '邮箱验证码登录'}
+        subTitle={
+          activeLoginMode === 'password'
+            ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
+            : activeLoginMode === 'sms'
+              ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
+              : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' })
+        }
         actions={null}
         initialValues={{ remember: true }}
         message={false}
         onFinish={handleSubmit}
         submitter={{
           submitButtonProps: {
-            children: pendingSecondFactorLogin ? '验证并登录' : '登录',
+            children: pendingSecondFactorLogin
+              ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
+              : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' }),
             loading: submitting,
             block: true,
           },
@@ -506,6 +549,7 @@ const Login = () => {
           pendingSecondFactorLogin={pendingSecondFactorLogin}
           pendingSecondFactorPrompt={pendingSecondFactorPrompt}
           securityCaptchaEnabled={securitySettings.captchaEnabled}
+          securityCaptchaType={securitySettings.captchaType}
           captchaChallenge={captchaChallenge}
           captchaLoading={captchaLoading}
           captchaImageLoadFailed={captchaImageLoadFailed}
@@ -516,6 +560,9 @@ const Login = () => {
           onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
           onRefreshCaptcha={() => void refreshCaptcha()}
           onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
+          onSliderCaptchaChallengeChange={setCaptchaChallenge}
+          onSliderCaptchaVerified={(captchaProof) => loginForm.setFieldValue('captchaProof', captchaProof)}
+          onSliderCaptchaReset={() => loginForm.setFieldValue('captchaProof', undefined)}
           onOpenAgreementPreview={openAgreementPreview}
         />
       </LoginFormPage>
@@ -528,12 +575,12 @@ const Login = () => {
         width={720}
         centered
         title={agreementPreviewTitle}
-        destroyOnClose
+        destroyOnHidden
       >
         {agreementPreviewMarkdown ? (
           <MarkdownPreview source={agreementPreviewMarkdown} />
         ) : (
-          <div style={{ color: 'var(--saas-text-secondary)' }}>后台暂未配置该条款内容。</div>
+          <div style={{ color: 'var(--saas-text-secondary)' }}>{formatMessage({ id: 'page.login.agreement.empty', defaultMessage: 'The backend has not configured this agreement yet.' })}</div>
         )}
       </Modal>
     </div>

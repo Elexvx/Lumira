@@ -1,3 +1,4 @@
+import { request } from '@/services/common/request';
 import type { MessageNoticeRecord } from '@/types/api';
 
 export interface MessageCenterRealtimeEvent {
@@ -16,10 +17,26 @@ const listeners = new Set<MessageCenterRealtimeListener>();
 let socket: WebSocket | null = null;
 let reconnectTimer: number | null = null;
 let connectionKey: string | null = null;
+let connectingKey: string | null = null;
 
-const buildWebSocketUrl = (accessToken: string) => {
+interface MessageWebSocketTicket {
+  ticket: string;
+  expiresInSeconds?: number;
+}
+
+const requestWebSocketTicket = async () => {
+  const response = await request<MessageWebSocketTicket>('/v1/message/ws-ticket', {
+    method: 'POST',
+    autoRedirectOnUnauthorized: false,
+    silent: true,
+  });
+  return response.ticket;
+};
+
+const buildWebSocketUrl = (ticket: string) => {
   const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${wsScheme}//${window.location.host}/ws/message?accessToken=${encodeURIComponent(accessToken)}`;
+  const wsHost = window.location.port === '8000' ? `${window.location.hostname}:8080` : window.location.host;
+  return `${wsScheme}//${wsHost}/ws/message?ticket=${encodeURIComponent(ticket)}`;
 };
 
 const clearReconnectTimer = () => {
@@ -39,6 +56,7 @@ const closeSocket = () => {
   const currentSocket = socket;
   socket = null;
   connectionKey = null;
+  connectingKey = null;
 
   currentSocket.onopen = null;
   currentSocket.onmessage = null;
@@ -60,20 +78,38 @@ const notify = (event: MessageCenterRealtimeEvent) => {
   });
 };
 
-const connect = (key: string, accessToken: string) => {
-  if (!accessToken) {
-    closeSocket();
-    return;
-  }
-
-  if (connectionKey === key && socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+const connect = async (key: string) => {
+  if (
+    connectionKey === key &&
+    (connectingKey === key || (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)))
+  ) {
     return;
   }
 
   closeSocket();
   connectionKey = key;
 
-  const nextSocket = new WebSocket(buildWebSocketUrl(accessToken));
+  connectingKey = key;
+  let ticket: string;
+  try {
+    ticket = await requestWebSocketTicket();
+  } catch {
+    if (connectionKey === key && listeners.size > 0) {
+      clearReconnectTimer();
+      reconnectTimer = window.setTimeout(() => void connect(key), 3000);
+    }
+    return;
+  } finally {
+    if (connectingKey === key) {
+      connectingKey = null;
+    }
+  }
+
+  if (connectionKey !== key || listeners.size === 0) {
+    return;
+  }
+
+  const nextSocket = new WebSocket(buildWebSocketUrl(ticket));
   socket = nextSocket;
 
   nextSocket.onopen = () => {
@@ -105,18 +141,18 @@ const connect = (key: string, accessToken: string) => {
     if (socket === nextSocket) {
       socket = null;
     }
-    if (connectionKey === key && listeners.size > 0 && accessToken) {
+    if (connectionKey === key && listeners.size > 0) {
       clearReconnectTimer();
-      reconnectTimer = window.setTimeout(() => connect(key, accessToken), 3000);
+      reconnectTimer = window.setTimeout(() => void connect(key), 3000);
     }
   };
 };
 
-export const subscribeMessageCenterRealtime = (listener: MessageCenterRealtimeListener, options: { enabled: boolean; key: string; accessToken: string }) => {
+export const subscribeMessageCenterRealtime = (listener: MessageCenterRealtimeListener, options: { enabled: boolean; key: string }) => {
   listeners.add(listener);
 
   if (options.enabled) {
-    connect(options.key, options.accessToken);
+    void connect(options.key);
   }
 
   return () => {

@@ -15,6 +15,7 @@ public enum ErrorCode {
     LOGIN_RATE_LIMITED(429, "B6001", "登录频率受限", "登录过于频繁，请稍后再试"),
     CAPTCHA_INVALID(400, "B6002", "验证码错误", "验证码错误或已过期，请刷新后重试"),
     REPEAT_SUBMIT(429, "B6003", "重复提交", "不允许重复提交，请稍后再试"),
+    TRAFFIC_LIMITED(429, "B6004", "请求频率受限", "当前访问过于频繁，请稍后再试"),
     PASSWORD_POLICY_VIOLATION(400, "B3001", "密码不符合规范", "密码不符合安全要求"),
     BIZ_ERROR(409, "B0001", "业务异常", "当前操作无法完成，请检查业务状态"),
     TENANT_ERROR(409, "T0001", "租户异常", "租户上下文无效，请切换后重试"),
@@ -26,7 +27,7 @@ public enum ErrorCode {
     PLUGIN_VERSION_INCOMPATIBLE(409, "P2004", "插件版本不兼容", "插件版本与当前平台不兼容"),
     PLUGIN_DEPENDENCY_CONFLICT(409, "P2005", "插件依赖冲突", "请先安装或启用依赖插件"),
     PLUGIN_RUNTIME_ERROR(500, "P2006", "插件运行时异常", "插件运行失败，请查看运行日志"),
-    PLUGIN_NOT_ENABLED(403, "P2007", "插件未启用", "当前租户未启用该插件"),
+    PLUGIN_NOT_ENABLED(403, "P2007", "插件未启用", "当前未启用该插件"),
     SYSTEM_ERROR(500, "S0001", "系统异常", "系统异常，请稍后重试");
 
     private final Integer httpStatus;

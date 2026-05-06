@@ -114,8 +114,8 @@ const toBoolean = (value: unknown, fallback: boolean) => {
 const toCaptchaType = (value: unknown, fallback: SecuritySettings['captchaType']): SecuritySettings['captchaType'] => {
   if (typeof value === 'string') {
     const normalized = value.trim().toUpperCase();
-    if (normalized === 'IMAGE') {
-      return 'IMAGE';
+    if (normalized === 'IMAGE' || normalized === 'SLIDER') {
+      return normalized;
     }
   }
   return fallback;

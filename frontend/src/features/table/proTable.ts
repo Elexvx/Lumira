@@ -1,4 +1,7 @@
 import type { ProColumns } from '@ant-design/pro-components';
+import type { TablePaginationConfig } from 'antd';
+
+const TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD = 1100;
 
 export interface PageRequestPayload {
   pageNo?: number;
@@ -23,12 +26,14 @@ export const adaptPageResult = <RecordType>(result: PagedResponse<RecordType>): 
   total: result.total,
 });
 
-export const buildMobilePagination = <T extends { simple?: boolean; showSizeChanger?: boolean } | boolean | undefined>(
-  pagination: T,
+type MobilePagination = TablePaginationConfig | false | undefined;
+
+export const buildMobilePagination = (
+  pagination: MobilePagination | boolean,
   isMobile: boolean,
-) => {
+) : MobilePagination => {
   if (!pagination || !isMobile) {
-    return pagination;
+    return pagination as MobilePagination;
   }
 
   if (pagination === true) {
@@ -36,27 +41,22 @@ export const buildMobilePagination = <T extends { simple?: boolean; showSizeChan
   }
 
   if (typeof pagination !== 'object') {
-    return pagination;
+    return pagination as MobilePagination;
   }
 
   return {
     ...pagination,
     simple: true,
     showSizeChanger: false,
-  };
+  } as MobilePagination;
 };
 
 export const buildTableScroll = <RecordType extends object>(
   columns: ProColumns<RecordType>[],
   isMobile: boolean,
-  options?: { wide?: boolean; fallbackX?: number | string },
 ) => {
   if (isMobile) {
     return undefined;
-  }
-
-  if (options?.wide) {
-    return { x: options.fallbackX || 'max-content' };
   }
 
   const estimatedWidth = columns.reduce((sum, column) => {
@@ -69,10 +69,16 @@ export const buildTableScroll = <RecordType extends object>(
     if (column.valueType === 'option') {
       return sum + 160;
     }
-    return sum;
+    if (column.valueType === 'index') {
+      return sum + 72;
+    }
+    if (column.ellipsis) {
+      return sum + 160;
+    }
+    return sum + 120;
   }, 0);
 
-  return estimatedWidth > 0 ? { x: estimatedWidth } : undefined;
+  return estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD ? { x: 'max-content' } : undefined;
 };
 
 export const buildTableRequest = <RecordType, Params extends PageRequestPayload = PageRequestPayload>(

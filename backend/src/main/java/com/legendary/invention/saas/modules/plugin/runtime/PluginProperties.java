@@ -11,7 +11,7 @@ public class PluginProperties {
     private String apiVersion = "1.0.0";
     private String storageRoot = "storage/plugins";
     private String stagingRoot = "storage/plugin-staging";
-    private String signatureSecret = "change-me-plugin-signature-secret";
+    private String signatureSecret = "";
     private String sharedDepsVersion = "1";
 
     public String getPlatformVersion() {

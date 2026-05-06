@@ -5,6 +5,7 @@ import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,11 +24,13 @@ public class PublicCaptchaController {
         this.captchaService = captchaService;
     }
 
+    @SentinelResource(value = "public-captcha-challenge", blockHandler = "challengeBlocked", blockHandlerClass = PublicCaptchaSentinelBlockHandler.class)
     @GetMapping("/challenge")
     public ApiResponse<SystemVO.CaptchaChallengeVO> challenge(@RequestParam(name = "captchaType", defaultValue = "IMAGE") String captchaType) {
         return ApiResponse.success(captchaService.createChallenge(captchaType), TraceContext.getRequestId());
     }
 
+    @SentinelResource(value = "public-captcha-slider-verify", blockHandler = "verifySliderBlocked", blockHandlerClass = PublicCaptchaSentinelBlockHandler.class)
     @PostMapping("/slider/verify")
     public ApiResponse<SystemVO.CaptchaVerifyVO> verifySlider(@Valid @RequestBody SystemDTO.CaptchaSliderVerifyRequest request) {
         return ApiResponse.success(captchaService.verifySliderChallenge(request), TraceContext.getRequestId());

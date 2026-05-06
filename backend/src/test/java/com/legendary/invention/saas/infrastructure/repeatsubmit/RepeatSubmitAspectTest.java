@@ -1,7 +1,6 @@
 package com.legendary.invention.saas.infrastructure.repeatsubmit;
 
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
-import com.legendary.invention.saas.common.constant.HeaderConstants;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.config.WebProperties;
@@ -92,7 +91,6 @@ class RepeatSubmitAspectTest {
     void shouldUseClientIpWhenUserIsAnonymous() throws Throwable {
         MockHttpServletRequest request = buildRequest("/api/v1/auth/login", "POST");
         request.setRemoteAddr("127.0.0.1");
-        request.addHeader(HeaderConstants.TENANT_ID, "1001");
         setRequest(request);
 
         SampleController controller = new SampleController();

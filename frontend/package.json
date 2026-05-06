@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "max dev",
-    "build": "max build",
-    "start": "max preview",
-    "typecheck": "max setup && tsc --noEmit",
+    "dev": "node scripts/console-banner.mjs && DID_YOU_KNOW=none max dev",
+    "build": "DID_YOU_KNOW=none max build",
+    "start": "node scripts/console-banner.mjs && DID_YOU_KNOW=none max preview",
+    "typecheck": "DID_YOU_KNOW=none max setup && tsc --noEmit",
     "test:captcha-load": "tsx scripts/captcha-load-smoke.ts",
     "test:captcha-refresh": "tsx scripts/captcha-refresh-smoke.ts",
     "test:auth-login-flow": "tsx scripts/auth-login-flow-smoke.ts",
@@ -24,12 +24,13 @@
     "@ant-design/charts": "^2.6.7",
     "@ant-design/icons": "^6.2.2",
     "@ant-design/pro-components": "^3.1.12-0",
-    "@uiw/react-md-editor": "^4.1.0",
     "@tanstack/react-query": "^5.100.8",
+    "@uiw/react-md-editor": "^4.1.0",
     "@umijs/max": "^4.6.49",
     "antd": "^6.3.7",
     "antd-img-crop": "^4.30.0",
     "dayjs": "^1.11.20",
+    "rc-slider-captcha": "^1.9.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "swagger-ui-react": "^5.32.5"
@@ -40,5 +41,21 @@
     "@types/react-dom": "^19.2.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios@0.27.2": "1.15.2",
+      "@babel/runtime@7.23.6": "7.29.2",
+      "@remix-run/router@<=1.23.1": "1.23.2",
+      "esbuild@0.18.20": "0.25.12",
+      "esbuild@0.21.4": "0.25.12",
+      "immer@8.0.4": "9.0.21",
+      "node-fetch@1.7.3": "2.6.7",
+      "path-to-regexp@1.7.0": "1.9.0",
+      "path-to-regexp@8.2.0": "8.4.2",
+      "react-router@6.3.0": "6.30.2",
+      "send@<0.19.0": "0.19.1",
+      "vite@4.5.2": "6.4.2"
+    }
   }
 }

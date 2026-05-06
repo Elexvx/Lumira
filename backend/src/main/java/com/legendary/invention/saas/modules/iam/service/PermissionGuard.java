@@ -12,7 +12,9 @@ public class PermissionGuard {
         if (permissionKey == null || permissionKey.isBlank()) {
             return;
         }
-        if (currentUser == null || currentUser.getPermissions() == null || !currentUser.getPermissions().contains(permissionKey)) {
+        if (currentUser == null
+                || currentUser.getPermissions() == null
+                || (!currentUser.getPermissions().contains("*") && !currentUser.getPermissions().contains(permissionKey))) {
             throw new BizException(ErrorCode.FORBIDDEN, "缺少权限: " + permissionKey);
         }
     }

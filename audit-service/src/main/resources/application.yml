@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: audit-service
+  config:
+    import:
+      - optional:nacos:audit-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        file-extension: yaml
+        namespace: ${NACOS_NAMESPACE:}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+    sentinel:
+      transport:
+        port: ${SENTINEL_TRANSPORT_PORT:8725}
+
+server:
+  port: ${SERVER_PORT:8087}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,sentinel

@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
@@ -16,10 +17,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final UploadProperties uploadProperties;
     private final WebProperties webProperties;
+    private final UploadResourceSecurityInterceptor uploadResourceSecurityInterceptor;
 
-    public WebMvcConfig(UploadProperties uploadProperties, WebProperties webProperties) {
+    public WebMvcConfig(
+            UploadProperties uploadProperties,
+            WebProperties webProperties,
+            UploadResourceSecurityInterceptor uploadResourceSecurityInterceptor
+    ) {
         this.uploadProperties = uploadProperties;
         this.webProperties = webProperties;
+        this.uploadResourceSecurityInterceptor = uploadResourceSecurityInterceptor;
     }
 
     @Override
@@ -41,6 +48,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
         registry.addResourceHandler(normalizePath(uploadProperties.getPublicPath()) + "/**")
                 .addResourceLocations(storageRoot.toUri().toString());
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(uploadResourceSecurityInterceptor)
+                .addPathPatterns(normalizePath(uploadProperties.getPublicPath()) + "/**");
     }
 
     private String normalizePath(String path) {

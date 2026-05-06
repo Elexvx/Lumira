@@ -24,6 +24,23 @@ export const normalizeUploadUrl = (value?: string | null, publicPath = DEFAULT_U
   return `${normalizedPublicPath}/${trimmed.replace(/^\/+/, '')}`;
 };
 
+export const resolveAbsoluteUploadUrl = (value?: string | null, publicPath = DEFAULT_UPLOAD_PUBLIC_PATH) => {
+  const normalized = normalizeUploadUrl(value, publicPath);
+  if (!normalized) {
+    return '';
+  }
+
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(normalized)) {
+    return normalized;
+  }
+
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return normalized;
+  }
+
+  return new URL(normalized, window.location.origin).toString();
+};
+
 const normalizePublicPath = (value: string) => {
   let normalized = value.trim();
   if (!normalized.startsWith('/')) {

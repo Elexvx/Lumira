@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 @Service
 public class TenantDomainService {
 
+    private static final Long PLATFORM_TENANT_ID = 1001L;
+
     private final SysUserTenantMapper sysUserTenantMapper;
     private final TenantInfoMapper tenantInfoMapper;
 
@@ -35,7 +37,7 @@ public class TenantDomainService {
                         .eq(SysUserTenantEntity::getStatus, "ENABLED")
         );
         if (relations.isEmpty()) {
-            return Collections.emptyList();
+            return platformTenantAccess();
         }
 
         List<Long> tenantIds = relations.stream().map(SysUserTenantEntity::getTenantId).distinct().toList();
@@ -46,7 +48,7 @@ public class TenantDomainService {
                 .stream()
                 .collect(Collectors.toMap(TenantInfoEntity::getId, Function.identity()));
 
-        return relations.stream()
+        List<UserTenantAccess> accessList = relations.stream()
                 .map(rel -> {
                     TenantInfoEntity tenant = tenantMap.get(rel.getTenantId());
                     if (tenant == null) {
@@ -60,6 +62,11 @@ public class TenantDomainService {
                 })
                 .filter(item -> item != null)
                 .toList();
+        return accessList.isEmpty() ? platformTenantAccess() : accessList;
+    }
+
+    public List<MyTenantVO> listVisibleTenants(Long userId) {
+        return toMyTenantVO(listUserTenantAccess(userId));
     }
 
     public Optional<TenantInfoEntity> findTenantById(Long tenantId) {
@@ -75,6 +82,9 @@ public class TenantDomainService {
     }
 
     public boolean isUserInTenant(Long userId, Long tenantId) {
+        if (PLATFORM_TENANT_ID.equals(tenantId)) {
+            return true;
+        }
         Long count = sysUserTenantMapper.selectCount(new LambdaQueryWrapper<SysUserTenantEntity>()
                 .eq(SysUserTenantEntity::getUserId, userId)
                 .eq(SysUserTenantEntity::getTenantId, tenantId)
@@ -82,6 +92,18 @@ public class TenantDomainService {
                 .eq(SysUserTenantEntity::getDeleted, 0)
                 .last("limit 1"));
         return count != null && count > 0;
+    }
+
+    private List<UserTenantAccess> platformTenantAccess() {
+        return findTenantById(PLATFORM_TENANT_ID)
+                .map(tenant -> {
+                    UserTenantAccess access = new UserTenantAccess();
+                    access.setTenantId(PLATFORM_TENANT_ID);
+                    access.setDefault(true);
+                    access.setTenant(tenant);
+                    return List.of(access);
+                })
+                .orElseGet(Collections::emptyList);
     }
 
     public List<MyTenantVO> toMyTenantVO(List<UserTenantAccess> accessList) {

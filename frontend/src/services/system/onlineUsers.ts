@@ -1,8 +1,7 @@
-import { API_PREFIX, AUTHORIZATION_HEADER, TENANT_HEADER } from '@/constants/http';
+import { API_PREFIX, AUTHORIZATION_HEADER } from '@/constants/http';
 import { performLogout } from '@/auth/session';
 import { buildUnauthorizedRuntimeState, captureAuthRequestSnapshot } from '@/auth/unauthorized';
 import { shouldSuppressUnauthorizedSideEffects } from '@/auth/unauthorizedDecision';
-import { tenantContext } from '@/tenant/context';
 import type { OnlineSessionEventRecord } from '@/types/api';
 
 export interface OnlineSessionStreamOptions {
@@ -48,8 +47,7 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
 
     const requestAuthSnapshot = captureAuthRequestSnapshot();
     const accessToken = requestAuthSnapshot.accessToken;
-    const tenantId = tenantContext.getTenantId();
-    if (!accessToken || !tenantId) {
+    if (!accessToken) {
       scheduleReconnect();
       return;
     }
@@ -59,7 +57,6 @@ export const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) 
         method: 'GET',
         headers: {
           [AUTHORIZATION_HEADER]: `Bearer ${accessToken}`,
-          [TENANT_HEADER]: tenantId,
           Accept: 'text/event-stream',
           'Cache-Control': 'no-cache',
         },

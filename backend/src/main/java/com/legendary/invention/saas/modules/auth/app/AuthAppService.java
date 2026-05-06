@@ -25,11 +25,12 @@ import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
-import com.legendary.invention.saas.modules.tenant.domain.UserTenantAccess;
 import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
 import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
@@ -38,11 +39,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class AuthAppService {
+
+    private static final Long PLATFORM_TENANT_ID = 1001L;
 
     private final UserDomainService userDomainService;
     private final TenantDomainService tenantDomainService;
@@ -56,6 +58,7 @@ public class AuthAppService {
     private final PasswordEncoder passwordEncoder;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemVerificationAppService systemVerificationAppService;
+    private final JdbcTemplate jdbcTemplate;
 
     public AuthAppService(
             UserDomainService userDomainService,
@@ -69,7 +72,8 @@ public class AuthAppService {
             SecuritySettingsService securitySettingsService,
             PasswordEncoder passwordEncoder,
             PermissionSnapshotService permissionSnapshotService,
-            SystemVerificationAppService systemVerificationAppService
+            SystemVerificationAppService systemVerificationAppService,
+            JdbcTemplate jdbcTemplate
     ) {
         this.userDomainService = userDomainService;
         this.tenantDomainService = tenantDomainService;
@@ -83,6 +87,7 @@ public class AuthAppService {
         this.passwordEncoder = passwordEncoder;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemVerificationAppService = systemVerificationAppService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent) {
@@ -123,25 +128,11 @@ public class AuthAppService {
             );
         }
 
-        List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
-                .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
-                .toList();
-
-        if (enabledTenantAccessList.isEmpty()) {
-            loginProtectionService.recordFailure(account, loginIp);
-            loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "用户未绑定可用租户", loginIp, userAgent);
-            throw new BizException(
-                    ErrorCode.TENANT_NOT_BOUND,
-                    "登录失败，用户未绑定可用租户: " + user.getUsername(),
-                    ErrorCode.TENANT_NOT_BOUND.getDefaultUserMessage()
-            );
-        }
-
-        TenantInfoEntity currentTenant = pickCurrentTenant(enabledTenantAccessList);
+        TenantInfoEntity currentTenant = platformTenant();
         Long tenantId = currentTenant == null ? null : currentTenant.getId();
         LoginResponseVO response = new LoginResponseVO();
-        response.setUser(toAuthUser(user));
-        response.setTenants(tenantDomainService.toMyTenantVO(enabledTenantAccessList));
+        response.setUser(toAuthUser(user, tenantId));
+        response.setTenants(List.of());
         response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
         List<LoginResponseVO.SecondFactorOptionVO> secondFactorOptions = collectSecondFactorOptions(user, tenantId);
         if (!secondFactorOptions.isEmpty()) {
@@ -197,20 +188,7 @@ public class AuthAppService {
             );
         }
 
-        List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
-                .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
-                .toList();
-        if (enabledTenantAccessList.isEmpty()) {
-            loginProtectionService.recordFailure(account, loginIp);
-            loginAuditService.log(user.getId(), null, user.getUsername(), request.getLoginType().toUpperCase(), "FAIL", "用户未绑定可用租户", loginIp, userAgent);
-            throw new BizException(
-                    ErrorCode.TENANT_NOT_BOUND,
-                    "登录失败，用户未绑定可用租户: " + user.getUsername(),
-                    ErrorCode.TENANT_NOT_BOUND.getDefaultUserMessage()
-            );
-        }
-
-        TenantInfoEntity currentTenant = pickCurrentTenant(enabledTenantAccessList);
+        TenantInfoEntity currentTenant = platformTenant();
         Long tenantId = currentTenant == null ? null : currentTenant.getId();
         LoginCodeChallengeVO challenge = systemVerificationAppService.startLoginCodeChallenge(user, tenantId, request.getLoginType());
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), challenge.getLoginType().toUpperCase(), "PENDING", "LOGIN_CODE_REQUIRED", loginIp, userAgent);
@@ -227,9 +205,6 @@ public class AuthAppService {
         SysUserEntity user = userDomainService.findById(verification.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
         TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.getTenantId()).orElse(null);
-        List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
-                .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
-                .toList();
         AuthSession session = buildNewSession(user, currentTenant == null ? null : currentTenant.getId(), loginIp, userAgent);
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
@@ -244,8 +219,8 @@ public class AuthAppService {
         response.setRefreshToken(jwtTokenService.generateRefreshToken(session, refreshTokenId));
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
-        response.setUser(toAuthUser(user));
-        response.setTenants(tenantDomainService.toMyTenantVO(enabledTenantAccessList));
+        response.setUser(toAuthUser(user, currentTenant == null ? null : currentTenant.getId()));
+        response.setTenants(List.of());
         response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
         response.setRequiresCaptcha(Boolean.FALSE);
         loginAuditService.log(
@@ -290,9 +265,6 @@ public class AuthAppService {
         SysUserEntity user = userDomainService.findById(verification.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
         TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.getTenantId()).orElse(null);
-        List<UserTenantAccess> enabledTenantAccessList = tenantDomainService.listUserTenantAccess(user.getId()).stream()
-                .filter(access -> access.getTenant() != null && "ENABLED".equalsIgnoreCase(access.getTenant().getStatus()))
-                .toList();
         AuthSession session = buildNewSession(user, currentTenant == null ? null : currentTenant.getId(), loginIp, userAgent);
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
@@ -307,8 +279,8 @@ public class AuthAppService {
         response.setRefreshToken(jwtTokenService.generateRefreshToken(session, refreshTokenId));
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
-        response.setUser(toAuthUser(user));
-        response.setTenants(tenantDomainService.toMyTenantVO(enabledTenantAccessList));
+        response.setUser(toAuthUser(user, currentTenant == null ? null : currentTenant.getId()));
+        response.setTenants(List.of());
         response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
         response.setRequiresCaptcha(Boolean.FALSE);
         loginAuditService.log(user.getId(), currentTenant == null ? null : currentTenant.getId(), user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
@@ -396,6 +368,7 @@ public class AuthAppService {
         response.setRegion(user.getRegion());
         response.setAvailableTime(user.getAvailableTime());
         response.setIdCardNumber(user.getIdCardNumber());
+        response.setLocale(resolveLocale(currentUser.getCurrentTenantId(), user.getId()));
         response.setCurrentTenant(currentTenant);
         response.setSessionId(currentUser.getSessionId());
         response.setPermissionsVersion(snapshot.getVersion());
@@ -454,12 +427,8 @@ public class AuthAppService {
         captchaService.validateCaptcha(request.getCaptchaId(), request.getCaptchaCode(), request.getCaptchaProof());
     }
 
-    private TenantInfoEntity pickCurrentTenant(List<UserTenantAccess> accessList) {
-        return accessList.stream()
-                .filter(UserTenantAccess::isDefault)
-                .findFirst()
-                .map(UserTenantAccess::getTenant)
-                .orElseGet(() -> accessList.size() == 1 ? accessList.get(0).getTenant() : null);
+    private TenantInfoEntity platformTenant() {
+        return tenantDomainService.findTenantById(PLATFORM_TENANT_ID).orElse(null);
     }
 
     private AuthSession buildNewSession(SysUserEntity user, Long currentTenantId, String loginIp, String userAgent) {
@@ -479,7 +448,7 @@ public class AuthAppService {
         return session;
     }
 
-    private AuthUserVO toAuthUser(SysUserEntity user) {
+    private AuthUserVO toAuthUser(SysUserEntity user, Long tenantId) {
         AuthUserVO authUserVO = new AuthUserVO();
         authUserVO.setUserId(user.getId());
         authUserVO.setUsername(user.getUsername());
@@ -493,7 +462,45 @@ public class AuthAppService {
         authUserVO.setRegion(user.getRegion());
         authUserVO.setAvailableTime(user.getAvailableTime());
         authUserVO.setIdCardNumber(user.getIdCardNumber());
+        authUserVO.setLocale(resolveLocale(tenantId, user.getId()));
         return authUserVO;
+    }
+
+    private String resolveLocale(Long tenantId, Long userId) {
+        if (tenantId == null || userId == null) {
+            return "zh-CN";
+        }
+
+        try {
+            String locale = jdbcTemplate.queryForObject(
+                    """
+                            select locale
+                            from sys_user_tenant_profile
+                            where tenant_id = ? and user_id = ? and deleted = 0
+                            """,
+                    String.class,
+                    tenantId,
+                    userId
+            );
+            return normalizeLocale(locale);
+        } catch (EmptyResultDataAccessException ex) {
+            return "zh-CN";
+        }
+    }
+
+    private String normalizeLocale(String locale) {
+        if (!StringUtils.hasText(locale)) {
+            return "zh-CN";
+        }
+
+        String normalized = locale.trim();
+        if ("zh".equalsIgnoreCase(normalized) || "zh-CN".equalsIgnoreCase(normalized)) {
+            return "zh-CN";
+        }
+        if ("en".equalsIgnoreCase(normalized) || "en-US".equalsIgnoreCase(normalized)) {
+            return "en-US";
+        }
+        return "zh-CN";
     }
 
     private List<LoginResponseVO.SecondFactorOptionVO> collectSecondFactorOptions(SysUserEntity user, Long tenantId) {

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class SecuritySettingsService {
@@ -369,7 +370,8 @@ public class SecuritySettingsService {
         if (!StringUtils.hasText(value)) {
             return "IMAGE";
         }
-        return "IMAGE";
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        return "SLIDER".equals(normalized) ? "SLIDER" : "IMAGE";
     }
 
     public static class SecuritySettingsSnapshot {

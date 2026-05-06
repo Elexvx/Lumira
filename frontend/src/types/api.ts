@@ -35,6 +35,7 @@ export interface AuthUser {
   region?: string | null;
   availableTime?: string | null;
   idCardNumber?: string | null;
+  locale?: string | null;
 }
 
 export interface SecondFactorLoginOption {
@@ -80,7 +81,7 @@ export interface LoginEncryptionKey {
   publicKey: string;
 }
 
-export type CaptchaType = 'IMAGE';
+export type CaptchaType = 'IMAGE' | 'SLIDER';
 
 export interface SecuritySettings {
   idleTimeoutSeconds: number;
@@ -180,6 +181,7 @@ export interface CurrentUser {
   region?: string | null;
   availableTime?: string | null;
   idCardNumber?: string | null;
+  locale?: string | null;
   currentTenant?: TenantSummary | null;
   sessionId: string;
   permissionsVersion?: string;
@@ -213,6 +215,79 @@ export interface MenuNode {
   pluginCode?: string;
   sortNo?: number;
   children?: MenuNode[];
+}
+
+export interface LocalizationLanguage {
+  id: number;
+  localeCode: string;
+  languageName: string;
+  nativeName?: string | null;
+  fallbackLocale?: string | null;
+  sortNo?: number | null;
+  status: string;
+  defaultLanguage?: boolean | null;
+  entryCount?: number | null;
+  translatedCount?: number | null;
+  coverageRate?: string | number | null;
+  publishedVersion?: number | null;
+  lastPublishedAt?: string | null;
+}
+
+export interface LocalizationNamespace {
+  id: number;
+  namespaceCode: string;
+  namespaceName: string;
+  sourceType?: string | null;
+  sourceRef?: string | null;
+  sortNo?: number | null;
+  status: string;
+  entryCount?: number | null;
+  translatedCount?: number | null;
+  coverageRate?: string | number | null;
+}
+
+export interface LocalizationEntry {
+  id: number;
+  namespaceCode: string;
+  namespaceName: string;
+  messageKey: string;
+  defaultMessage: string;
+  sourceLocale: string;
+  sourceType?: string | null;
+  sourceRef?: string | null;
+  status: string;
+  translationStatus: 'TRANSLATED' | 'PENDING';
+  currentTranslation?: string | null;
+  usageCount?: number | null;
+  translations?: Record<string, string>;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface LocalizationRelease {
+  id: number;
+  localeCode: string;
+  releaseVersion: number;
+  fallbackLocale?: string | null;
+  note?: string | null;
+  active?: boolean | null;
+  publishedBy?: number | null;
+  publishedAt?: string | null;
+}
+
+export interface LocalizationRuntimeBundle {
+  localeCode: string;
+  fallbackLocale?: string | null;
+  releaseVersion: number;
+  messages: Record<string, string>;
+}
+
+export interface LocalizationSyncResult {
+  languageCount: number;
+  namespaceCount: number;
+  entryCount: number;
+  translationCount: number;
+  usageCount: number;
 }
 
 export interface PluginDefinition {
@@ -318,6 +393,33 @@ export interface PagedResult<T> {
   total: number;
   pageNo: number;
   pageSize: number;
+}
+
+export type FilePreviewMode = 'IMAGE' | 'PDF' | 'TEXT' | 'UNSUPPORTED';
+
+export interface FileObjectRecord {
+  id: number;
+  tenantId?: number | null;
+  uploadedBy?: number | null;
+  uploadedByName?: string | null;
+  originalFileName: string;
+  storedFileName?: string | null;
+  fileExtension: string;
+  mimeType?: string | null;
+  fileSizeBytes: number;
+  fileSizeLabel?: string | null;
+  storagePath?: string | null;
+  publicUrl: string;
+  previewUrl?: string | null;
+  downloadUrl?: string | null;
+  previewMode: FilePreviewMode;
+  previewable?: boolean | null;
+  category?: string | null;
+  tags?: string | null;
+  remark?: string | null;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuditLogRecord {

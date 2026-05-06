@@ -1,6 +1,8 @@
 import { LockOutlined, MailOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
+import { formatMessage } from '@umijs/max';
 import { Form, Input, Space, Tabs, Typography, Checkbox, Button, Alert, Image, Skeleton } from 'antd';
-import type { LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
+import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
+import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
 import { getCaptchaValueFromEvent, shouldBlockCaptchaKey } from '@/pages/user/login/captchaInput';
 
 export type LoginMode = 'password' | 'sms' | 'email';
@@ -14,6 +16,7 @@ export interface LoginFormValues {
   emailVerificationCode?: string;
   remember?: boolean;
   captchaCode?: string;
+  captchaProof?: string;
   agreementAccepted?: boolean;
   verificationCode?: string;
 }
@@ -25,7 +28,8 @@ interface LoginFormFieldsProps {
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
   securityCaptchaEnabled: boolean;
-  captchaChallenge: { captchaId: string; imageUrl?: string | null } | null;
+  securityCaptchaType: CaptchaChallenge['captchaType'];
+  captchaChallenge: CaptchaChallenge | null;
   captchaLoading: boolean;
   captchaImageLoadFailed: boolean;
   loginEncryptionLoading: boolean;
@@ -35,16 +39,31 @@ interface LoginFormFieldsProps {
   onSendLoginCode: (mode: Exclude<LoginMode, 'password'>) => void;
   onRefreshCaptcha: () => void;
   onCaptchaImageError: () => void;
+  onSliderCaptchaChallengeChange: (challenge: CaptchaChallenge | null) => void;
+  onSliderCaptchaVerified: (captchaProof: string) => void;
+  onSliderCaptchaReset: () => void;
   onOpenAgreementPreview: (previewKind: 'user' | 'privacy') => void;
 }
 
 const MODE_META: Record<LoginMode, { label: string; subtitle: string }> = {
-  password: { label: '账号密码', subtitle: '账号密码登录' },
-  sms: { label: '短信验证码', subtitle: '短信验证码登录' },
-  email: { label: '邮箱验证码', subtitle: '邮箱验证码登录' },
+  password: {
+    label: formatMessage({ id: 'page.login.passwordAccount', defaultMessage: 'Account and password' }),
+    subtitle: formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' }),
+  },
+  sms: {
+    label: formatMessage({ id: 'page.login.smsCode', defaultMessage: 'SMS code' }),
+    subtitle: formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' }),
+  },
+  email: {
+    label: formatMessage({ id: 'page.login.emailCode', defaultMessage: 'Email code' }),
+    subtitle: formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' }),
+  },
 };
 
-const getAccountPlaceholder = (mode: Exclude<LoginMode, 'password'>) => (mode === 'sms' ? '请输入手机号' : '请输入邮箱');
+const getAccountPlaceholder = (mode: Exclude<LoginMode, 'password'>) =>
+  mode === 'sms'
+    ? formatMessage({ id: 'page.login.error.pleaseEnterMobile', defaultMessage: 'Please enter your mobile number' })
+    : formatMessage({ id: 'page.login.error.pleaseEnterEmail', defaultMessage: 'Please enter your email' });
 
 export const LoginFormFields = ({
   activeLoginMode,
@@ -53,6 +72,7 @@ export const LoginFormFields = ({
   pendingSecondFactorLogin,
   pendingSecondFactorPrompt,
   securityCaptchaEnabled,
+  securityCaptchaType,
   captchaChallenge,
   captchaLoading,
   captchaImageLoadFailed,
@@ -63,6 +83,9 @@ export const LoginFormFields = ({
   onSendLoginCode,
   onRefreshCaptcha,
   onCaptchaImageError,
+  onSliderCaptchaChallengeChange,
+  onSliderCaptchaVerified,
+  onSliderCaptchaReset,
   onOpenAgreementPreview,
 }: LoginFormFieldsProps) => {
   const form = Form.useFormInstance<LoginFormValues>();
@@ -78,13 +101,13 @@ export const LoginFormFields = ({
         <Alert showIcon type="info" message={pendingSecondFactorPrompt} />
         <Form.Item
           name="verificationCode"
-          rules={[{ required: true, message: '请输入验证码' }]}
+          rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) }]}
         >
           <Input
             size="large"
             autoComplete="one-time-code"
             inputMode="numeric"
-            placeholder="请输入验证码"
+            placeholder={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' })}
           />
         </Form.Item>
       </>
@@ -93,42 +116,42 @@ export const LoginFormFields = ({
 
   const renderPasswordTab = () => (
     <>
-      <Form.Item name="passwordAccount" rules={[{ required: true, message: '请输入账号' }]}>
+      <Form.Item name="passwordAccount" rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account' }) }]}>
         <Input
           size="large"
           prefix={<UserOutlined className="saas-login-page__field-icon" />}
           autoComplete="username"
-          placeholder="请输入账号"
+          placeholder={formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account' })}
         />
       </Form.Item>
       <Form.Item
         name="passwordPassword"
         rules={[
-          { required: true, message: '请输入密码' },
-          { min: 6, message: '密码长度不能少于 6 位' },
+          { required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterPassword', defaultMessage: 'Please enter your password' }) },
+          { min: 6, message: formatMessage({ id: 'page.login.error.passwordLength', defaultMessage: 'Password must be at least 6 characters' }) },
         ]}
       >
         <Input.Password
           size="large"
           prefix={<LockOutlined className="saas-login-page__field-icon" />}
           autoComplete="current-password"
-          placeholder="请输入密码"
+          placeholder={formatMessage({ id: 'page.login.error.pleaseEnterPassword', defaultMessage: 'Please enter your password' })}
         />
       </Form.Item>
       {loginEncryptionLoading ? (
         <Typography.Text type="secondary">
           <Space size={8}>
             <Skeleton.Avatar active size="small" shape="circle" />
-            正在加载登录加密信息...
+            {formatMessage({ id: 'page.login.loadingEncryption', defaultMessage: 'Loading login encryption info...' })}
           </Space>
         </Typography.Text>
       ) : null}
-      {securityCaptchaEnabled ? (
+      {securityCaptchaEnabled && securityCaptchaType !== 'SLIDER' ? (
         <div className="saas-login-page__captcha-row">
           <Form.Item
             key={captchaChallenge?.captchaId || 'captcha-code'}
             name="captchaCode"
-            rules={[{ required: true, message: '请输入验证码' }]}
+            rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the captcha' }) }]}
             getValueFromEvent={getCaptchaValueFromEvent}
             className="saas-login-page__captcha-input"
           >
@@ -141,8 +164,8 @@ export const LoginFormFields = ({
               spellCheck={false}
               inputMode="text"
               maxLength={8}
-              placeholder="请输入验证码"
-              aria-label="验证码"
+              placeholder={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the captcha' })}
+              aria-label={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Captcha' })}
               className="saas-login-page__captcha-native-input"
               onCompositionStart={(event) => event.preventDefault()}
               onKeyDown={(event) => {
@@ -154,28 +177,41 @@ export const LoginFormFields = ({
           </Form.Item>
           <Button
             size="large"
-            aria-label="刷新验证码"
-            title="点击刷新验证码"
+            aria-label={formatMessage({ id: 'page.login.captcha.refresh', defaultMessage: 'Refresh captcha' })}
+            title={formatMessage({ id: 'page.login.captcha.refresh', defaultMessage: 'Click to refresh the captcha' })}
             onClick={onRefreshCaptcha}
             className="saas-login-page__captcha-image-button"
           >
             {captchaLoading ? (
               <Skeleton.Image active className="saas-login-page__captcha-skeleton" />
             ) : captchaImageLoadFailed ? (
-              <Typography.Text type="secondary">点击重试</Typography.Text>
+              <Typography.Text type="secondary">{formatMessage({ id: 'page.login.captcha.retry', defaultMessage: 'Click to retry' })}</Typography.Text>
             ) : captchaChallenge?.imageUrl ? (
               <Image
                 src={captchaChallenge.imageUrl}
-                alt="验证码"
+                alt={formatMessage({ id: 'page.login.captcha.alt', defaultMessage: 'Captcha' })}
                 preview={false}
                 onError={onCaptchaImageError}
                 className="saas-login-page__captcha-image"
               />
             ) : (
-              <Typography.Text type="secondary">点击刷新</Typography.Text>
+              <Typography.Text type="secondary">{formatMessage({ id: 'page.login.captcha.refreshText', defaultMessage: 'Click to refresh' })}</Typography.Text>
             )}
           </Button>
         </div>
+      ) : null}
+      {securityCaptchaEnabled && securityCaptchaType === 'SLIDER' ? (
+        <>
+          <Form.Item name="captchaProof" hidden rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }) }]}>
+            <Input />
+          </Form.Item>
+          <SliderCaptchaBox
+            mode="float"
+            onChallengeChange={onSliderCaptchaChallengeChange}
+            onVerified={(result) => onSliderCaptchaVerified(result.captchaProof)}
+            onReset={onSliderCaptchaReset}
+          />
+        </>
       ) : null}
     </>
   );
@@ -188,8 +224,8 @@ export const LoginFormFields = ({
         <Form.Item
           name={mode === 'sms' ? 'smsAccount' : 'emailAccount'}
           rules={[
-            { required: true, message: mode === 'sms' ? '请输入手机号' : '请输入邮箱' },
-            ...(mode === 'email' ? [{ type: 'email' as const, message: '请输入有效邮箱地址' }] : []),
+            { required: true, message: mode === 'sms' ? formatMessage({ id: 'page.login.error.pleaseEnterMobile', defaultMessage: 'Please enter your mobile number' }) : formatMessage({ id: 'page.login.error.pleaseEnterEmail', defaultMessage: 'Please enter your email' }) },
+            ...(mode === 'email' ? [{ type: 'email' as const, message: formatMessage({ id: 'page.login.error.invalidEmail', defaultMessage: 'Please enter a valid email address' }) }] : []),
           ]}
         >
           <Input
@@ -202,14 +238,14 @@ export const LoginFormFields = ({
         <div className="saas-login-page__code-row">
           <Form.Item
             name={mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode'}
-            rules={[{ required: true, message: '请输入验证码' }]}
+            rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) }]}
             className="saas-login-page__code-input"
           >
             <Input
               size="large"
               autoComplete="one-time-code"
               inputMode="numeric"
-              placeholder="请输入验证码"
+              placeholder={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' })}
             />
           </Form.Item>
           <Button
@@ -219,18 +255,22 @@ export const LoginFormFields = ({
             className="saas-login-page__send-code-button"
             disabled={!accountValue}
           >
-            {challenge?.challengeId ? '重新发送' : '发送验证码'}
+            {challenge?.challengeId
+              ? formatMessage({ id: 'page.login.code.refresh', defaultMessage: 'Resend' })
+              : formatMessage({ id: 'page.login.code.send', defaultMessage: 'Send code' })}
           </Button>
         </div>
         {challenge?.promptMessage ? (
           <Alert showIcon type="info" message={challenge.promptMessage} className="saas-login-page__code-alert" />
         ) : null}
         {challenge?.maskedContact ? (
-          <Typography.Text type="secondary">验证码将发送到 {challenge.maskedContact}</Typography.Text>
+          <Typography.Text type="secondary">
+            {formatMessage({ id: 'page.login.code.to', defaultMessage: 'The verification code will be sent to {contact}' }, { contact: challenge.maskedContact })}
+          </Typography.Text>
         ) : null}
         {challenge?.debugCode ? (
           <Typography.Text type="secondary" className="saas-login-page__debug-code">
-            调试验证码：{challenge.debugCode}
+            {formatMessage({ id: 'page.login.code.debug', defaultMessage: 'Debug code: {code}' }, { code: challenge.debugCode })}
           </Typography.Text>
         ) : null}
       </>
@@ -266,20 +306,20 @@ export const LoginFormFields = ({
                 {
                   validator: async (_, value) => {
                     if (hasAgreement && !value) {
-                      throw new Error('请先同意条款后再登录');
+                      throw new Error(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
                     }
                   },
                 },
               ]}
             >
               <Checkbox>
-                我已阅读并同意
+                {formatMessage({ id: 'page.login.agreement.accept', defaultMessage: 'I have read and agree to' })}
                 <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
-                  用户协议
+                  {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}
                 </Button>
-                和
+                {formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' })}
                 <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
-                  隐私政策
+                  {formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })}
                 </Button>
               </Checkbox>
             </Form.Item>
@@ -288,7 +328,7 @@ export const LoginFormFields = ({
       ) : null}
       <div className="saas-login-page__actions">
         <Form.Item noStyle name="remember" valuePropName="checked">
-          <Checkbox>保持登录状态</Checkbox>
+          <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>
         </Form.Item>
       </div>
     </>

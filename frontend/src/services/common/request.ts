@@ -1,8 +1,6 @@
 import { message } from 'antd';
-import { request as umiRequest } from '@umijs/max';
-import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TENANT_HEADER, TRACE_ID_HEADER } from '@/constants/http';
+import { API_PREFIX, AUTHORIZATION_HEADER, REQUEST_ID_HEADER, TRACE_ID_HEADER } from '@/constants/http';
 import { performLogout } from '@/auth/session';
-import { tenantContext } from '@/tenant/context';
 import { ErrorCode } from '@/enums/errorCode';
 import { resolveApiErrorFeedback, resolveHttpStatusFeedback } from '@/services/common/errorFeedback';
 import type { ApiResponse } from '@/types/api';
@@ -39,23 +37,24 @@ export interface RequestOptions {
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
   try {
-    const response = (await umiRequest(`${API_PREFIX}${url}`, buildRequestConfig(options, authSnapshot))) as {
-      status: number;
-      headers?: { get?: (name: string) => string | null } | Record<string, unknown>;
-      data: unknown;
-    };
+    const response = await fetch(buildRequestUrl(url, options.params), {
+      method: options.method || 'GET',
+      headers: buildRequestHeaders(options, authSnapshot),
+      body: buildRequestBody(options.data, options.method),
+    });
+    const responseData = await parseResponseData(response);
     const httpStatus = response.status;
-    const requestId = getResponseRequestId(response.headers, response.data);
-    const responseData = withRequestId(response.data, requestId);
+    const requestId = getResponseRequestId(response.headers, responseData);
+    const apiResponse = withRequestId(responseData, requestId);
 
-    if (isApiResponse<T>(responseData)) {
-      if (responseData.code === ErrorCode.SUCCESS) {
-        return responseData.data;
+    if (isApiResponse<T>(apiResponse)) {
+      if (apiResponse.code === ErrorCode.SUCCESS) {
+        return apiResponse.data;
       }
 
-      const apiError = new ApiRequestError(responseData.code, responseData.message, {
-        userMessage: responseData.userMessage || responseData.message,
-        requestId: responseData.requestId,
+      const apiError = new ApiRequestError(apiResponse.code, apiResponse.message, {
+        userMessage: apiResponse.userMessage || apiResponse.message,
+        requestId: apiResponse.requestId,
         httpStatus,
       });
 
@@ -130,24 +129,28 @@ const handleApiError = (error: ApiRequestError, options: RequestOptions, authSna
   void performLogout({ reason: 'forced_expired' });
 };
 
-const buildRequestConfig = (options: RequestOptions, authSnapshot: AuthRequestSnapshot) => ({
-  timeout: Number(process.env.UMI_APP_REQUEST_TIMEOUT || 10000),
-  method: options.method,
-  params: options.params,
-  data: options.data,
-  getResponse: true,
-  validateStatus: () => true,
-  errorHandler: undefined,
-  headers: buildRequestHeaders(options, authSnapshot),
-});
+const buildRequestHeaders = (options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
+  const headers = {
+    ...(options.headers || {}),
+    [AUTHORIZATION_HEADER]: buildAuthorization(authSnapshot.accessToken),
+    [REQUEST_ID_HEADER]: crypto.randomUUID(),
+    [TRACE_ID_HEADER]: '',
+  };
 
-const buildRequestHeaders = (options: RequestOptions, authSnapshot: AuthRequestSnapshot) => ({
-  ...(options.headers || {}),
-  [AUTHORIZATION_HEADER]: buildAuthorization(authSnapshot.accessToken),
-  [TENANT_HEADER]: tenantContext.getTenantId(),
-  [REQUEST_ID_HEADER]: crypto.randomUUID(),
-  [TRACE_ID_HEADER]: '',
-});
+  if (shouldSendJsonContentType(options.data, options.method) && !hasHeader(headers, 'content-type')) {
+    return {
+      ...headers,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  return headers;
+};
+
+const hasHeader = (headers: Record<string, string>, headerName: string) => {
+  const normalizedHeaderName = headerName.toLowerCase();
+  return Object.keys(headers).some((key) => key.toLowerCase() === normalizedHeaderName);
+};
 
 const buildRequestUrl = (url: string, params?: Record<string, unknown>) => {
   const fullUrl = new URL(`${API_PREFIX}${url}`, window.location.origin);
@@ -180,6 +183,29 @@ const buildRequestBody = (data: unknown, method?: RequestOptions['method']) => {
     return data;
   }
   return JSON.stringify(data);
+};
+
+const shouldSendJsonContentType = (data: unknown, method?: RequestOptions['method']) => {
+  if (!method || method === 'GET' || data === undefined) {
+    return false;
+  }
+  return !(data instanceof FormData || data instanceof Blob || data instanceof ArrayBuffer);
+};
+
+const parseResponseData = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return await response.json();
+  }
+  const text = await response.text();
+  if (!text) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 };
 
 const buildFileRequestError = async (response: Response, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
@@ -229,7 +255,7 @@ const resolveHeaderValue = (
   const normalizedHeaderName = headerName.toLowerCase();
   const headerGetter = headers && 'get' in headers ? headers.get : undefined;
   if (typeof headerGetter === 'function') {
-    return headerGetter(headerName) || headerGetter(normalizedHeaderName) || undefined;
+    return headerGetter.call(headers, headerName) || headerGetter.call(headers, normalizedHeaderName) || undefined;
   }
   if (!headers || typeof headers !== 'object') {
     return undefined;

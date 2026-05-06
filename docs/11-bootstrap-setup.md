@@ -12,7 +12,7 @@
 - `hooks/`：`useResponsive`、`usePermission`、`useTenantContext`。
 - `constants/enums/types`：常量、错误码、接口模型。
 
-## 后端目录说明（backend/src/main/java/com/yourcompany/saas）
+## 后端目录说明（backend/src/main/java/com/legendary/invention/saas）
 
 - `common/`：统一返回体、错误码、异常、常量、公共工具。
 - `infrastructure/`：配置、安全、租户、日志、trace、redis、db、storage 基础设施。
@@ -54,13 +54,21 @@ pnpm dev
 ### 后端
 
 ```bash
-cd backend
-mvn spring-boot:run
+mvn -pl backend -am spring-boot:run
 ```
 
 默认访问：
 - 健康检查：`http://localhost:8080/api/health`
 - OpenAPI：`http://localhost:8080/swagger-ui.html`
+
+### 网关
+
+```bash
+mvn -pl gateway-service -am spring-boot:run
+```
+
+默认访问：
+- 网关：`http://localhost:8081`
 
 ## 环境变量样例
 

@@ -1,12 +1,13 @@
-import { PageContainer, ProDescriptions, ProTable } from '@ant-design/pro-components';
+import { ProDescriptions } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
-import { Button, Drawer, Form, Space, Spin, message } from 'antd';
+import { Button, Form, Spin, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
+import { buildTableRequest } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
 import { buildUserColumns, userDetailColumns } from '@/pages/system/users/columns';
 import { UserEditorForm } from '@/pages/system/users/components/UserEditorForm';
@@ -151,55 +152,43 @@ const UserManagementPage = () => {
   );
 
   return (
-    <PageContainer title="用户管理" className="saas-management-page">
-      <div className="saas-table-wrap">
-        <ProTable<UserRecord>
-          actionRef={actionRef}
-          rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
-          options={false}
-          pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
-          scroll={buildTableScroll(columns, responsive.isMobile)}
-          request={buildTableRequest((params) => userService.list(params, { autoRedirectOnUnauthorized: false }))}
-          toolBarRender={() =>
-            actionPermission.buildToolbarActions([
-              {
-                permission: 'system:user:create',
-                value: (
-                  <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
-                    新增用户
-                  </Button>
-                ),
-              },
-              {
-                value: (
-                  <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={reloadTable}>
-                    刷新
-                  </Button>
-                ),
-              },
-            ])
-          }
-        />
-      </div>
+    <ManagementPage title="用户管理">
+      <ManagementTable<UserRecord>
+        actionRef={actionRef}
+        rowKey="id"
+        columns={columns}
+        isMobile={responsive.isMobile}
+        search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+        request={buildTableRequest((params) => userService.list(params, { autoRedirectOnUnauthorized: false }))}
+        toolBarRender={() =>
+          actionPermission.buildToolbarActions([
+            {
+              permission: 'system:user:create',
+              value: (
+                <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
+                  新增用户
+                </Button>
+              ),
+            },
+            {
+              value: (
+                <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={reloadTable}>
+                  刷新
+                </Button>
+              ),
+            },
+          ])
+        }
+      />
 
-      <Drawer
+      <ManagementDrawer
         title={drawer.editingId ? '编辑用户' : '新增用户'}
         open={drawer.open}
         onClose={drawer.close}
-        width={720}
-        destroyOnClose
-        footer={
-          <div className="saas-drawer-footer">
-            <Space>
-              <Button onClick={drawer.close}>取消</Button>
-              <Button type="primary" loading={saving} onClick={() => void saveUser()}>
-                保存
-              </Button>
-            </Space>
-          </div>
-        }
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: drawer.close },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveUser() },
+        ]}
       >
         <UserEditorForm
           formProps={editorFormProps}
@@ -207,17 +196,15 @@ const UserManagementPage = () => {
           roleOptions={roleOptions}
           protectedAdminSelected={protectedAdminSelected}
         />
-      </Drawer>
+      </ManagementDrawer>
 
-      <Drawer
+      <ManagementDrawer
         title={detail.currentRecord ? `用户详情 · ${detail.currentRecord.username}` : '用户详情'}
         open={detail.open}
         onClose={() => {
           detail.close();
           setSelectedUserDetail(null);
         }}
-        width={720}
-        destroyOnClose
       >
         {detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
@@ -226,8 +213,8 @@ const UserManagementPage = () => {
         ) : selectedUserDetail ? (
           <ProDescriptions<UserDetail> {...detailProps} columns={userDetailColumns} />
         ) : null}
-      </Drawer>
-    </PageContainer>
+      </ManagementDrawer>
+    </ManagementPage>
   );
 };
 

@@ -1,3 +1,4 @@
+import { formatMessage } from '@umijs/max';
 import type { BreadcrumbProps } from 'antd';
 import { backendRouteMeta } from '@/routes/meta';
 import type { MenuNode } from '@/types/api';
@@ -22,6 +23,9 @@ const findMenuTrail = (menuNodes: MenuNode[], pathname: string): MenuNode[] => {
 };
 
 export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname: string): BreadcrumbItem[] => {
+  if (pathname.startsWith('/settings')) {
+    return [];
+  }
   if (!menuNodes?.length) {
     return [];
   }
@@ -33,7 +37,10 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
 
   return trail.map((node, index) => ({
     key: node.path || String(node.id),
-    title: routeMetaMap.get(node.path || '')?.name || node.name || node.path,
+    title: formatMessage({
+      id: routeMetaMap.get(node.path || '')?.name || node.name || node.path || '',
+      defaultMessage: node.name || node.path || '',
+    }),
     path: index === trail.length - 1 ? undefined : node.path,
   }));
 };
