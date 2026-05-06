@@ -1,6 +1,7 @@
 # Node
 node_modules/
 frontend/dist/
+frontend/.turbopack/
 frontend/src/.umi/
 frontend/src/.umi-production/
 frontend/.umi/
@@ -17,6 +18,8 @@ frontend/package-lock.json
 *.cache
 *.pid
 *.seed
+output/
+backend/storage/
 
 # Java
 **/target/
@@ -24,4 +27,5 @@ frontend/package-lock.json
 # IDE
 .idea/
 .vscode/
-.DS_Store
+**/.DS_Store
+/META-INF/

@@ -11,20 +11,20 @@
 
     <modules>
         <module>backend</module>
-        <module>gateway-service</module>
-        <module>common-core</module>
-        <module>common-web</module>
-        <module>common-security</module>
-        <module>common-tenant</module>
-        <module>legendary-api</module>
-        <module>auth-service</module>
-        <module>tenant-service</module>
-        <module>file-service</module>
-        <module>message-service</module>
-        <module>plugin-service</module>
-        <module>audit-service</module>
-        <module>localization-service</module>
-        <module>job-executor</module>
+        <module>services/gateway-service</module>
+        <module>libs/common-core</module>
+        <module>libs/common-web</module>
+        <module>libs/common-security</module>
+        <module>libs/common-tenant</module>
+        <module>libs/legendary-api</module>
+        <module>services/auth-service</module>
+        <module>services/tenant-service</module>
+        <module>services/file-service</module>
+        <module>services/message-service</module>
+        <module>services/plugin-service</module>
+        <module>services/audit-service</module>
+        <module>services/localization-service</module>
+        <module>services/job-executor</module>
     </modules>
 
     <properties>

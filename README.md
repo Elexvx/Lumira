@@ -219,7 +219,7 @@ pnpm dev
 ### 4. 启动网关
 
 ```bash
-mvn -pl gateway-service -am spring-boot:run
+mvn -pl services/gateway-service -am spring-boot:run
 ```
 
 默认地址：
