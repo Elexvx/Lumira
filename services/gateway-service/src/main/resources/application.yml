@@ -1,0 +1,94 @@
+spring:
+  application:
+    name: gateway-service
+  config:
+    import:
+      - optional:nacos:gateway-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
+  cloud:
+    sentinel:
+      filter:
+        enabled: false
+      scg:
+        fallback:
+          mode: response
+      transport:
+        port: ${SENTINEL_TRANSPORT_PORT:8718}
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        file-extension: yaml
+        namespace: ${NACOS_NAMESPACE:}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - RemoveRequestHeader=Cookie
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns:
+                  - http://localhost:*
+                  - http://127.0.0.1:*
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
+                  - OPTIONS
+                allowedHeaders: "*"
+                exposedHeaders: "*"
+                allowCredentials: true
+          routes:
+            - id: auth-service
+              uri: ${GATEWAY_AUTH_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: file-service
+              uri: ${GATEWAY_FILE_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/files/**,/api/uploads/**
+            - id: message-service
+              uri: ${GATEWAY_MESSAGE_SERVICE_URI:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/message/**,/ws/message
+            - id: plugin-service
+              uri: ${GATEWAY_PLUGIN_SERVICE_URI:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/plugins/**
+            - id: audit-service
+              uri: ${GATEWAY_AUDIT_SERVICE_URI:http://localhost:8087}
+              predicates:
+                - Path=/api/v1/audit/**
+            - id: localization-service
+              uri: ${GATEWAY_LOCALIZATION_SERVICE_URI:http://localhost:8088}
+              predicates:
+                - Path=/api/v1/localization/**
+            - id: system-public-service
+              uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
+              predicates:
+                - Path=/api/v1/public/**
+            - id: system-service
+              uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
+              predicates:
+                - Path=/api/v1/system/**
+            - id: tenant-service
+              uri: ${GATEWAY_TENANT_SERVICE_URI:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/tenant/**
+
+server:
+  port: ${SERVER_PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,sentinel
+  endpoint:
+    gateway:
+      access: unrestricted

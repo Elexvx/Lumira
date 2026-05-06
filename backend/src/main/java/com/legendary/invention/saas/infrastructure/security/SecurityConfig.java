@@ -6,6 +6,7 @@ import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.observability.TraceIdFilter;
+import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
 import com.legendary.invention.saas.infrastructure.tenant.TenantFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -31,6 +32,7 @@ public class SecurityConfig {
     private final TraceIdFilter traceIdFilter;
     private final TenantFilter tenantFilter;
     private final JwtAuthFilter jwtAuthFilter;
+    private final InternalServiceTokenAuthFilter internalServiceTokenAuthFilter;
     private final SecurityProperties securityProperties;
     private final ObjectMapper objectMapper;
 
@@ -38,12 +40,14 @@ public class SecurityConfig {
             TraceIdFilter traceIdFilter,
             TenantFilter tenantFilter,
             JwtAuthFilter jwtAuthFilter,
+            InternalServiceTokenAuthFilter internalServiceTokenAuthFilter,
             SecurityProperties securityProperties,
             ObjectMapper objectMapper
     ) {
         this.traceIdFilter = traceIdFilter;
         this.tenantFilter = tenantFilter;
         this.jwtAuthFilter = jwtAuthFilter;
+        this.internalServiceTokenAuthFilter = internalServiceTokenAuthFilter;
         this.securityProperties = securityProperties;
         this.objectMapper = objectMapper;
     }
@@ -67,7 +71,8 @@ public class SecurityConfig {
                                 writeForbiddenResponse(request, response)))
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .addFilterBefore(traceIdFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtAuthFilter, TraceIdFilter.class)
+                .addFilterAfter(internalServiceTokenAuthFilter, TraceIdFilter.class)
+                .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class)
                 .addFilterAfter(tenantFilter, JwtAuthFilter.class);
         return http.build();
     }

@@ -18,10 +18,10 @@
 
 ## 3. 模块边界
 
-- `gateway-service`：统一入口网关。
+- `services/gateway-service`：统一入口网关。
 - `backend/`：当前作为 `system-service`，承接原有核心业务。
-- `auth-service`、`tenant-service`、`file-service`、`message-service`、`plugin-service`、`audit-service`、`localization-service`、`job-executor`：后续拆分目标服务。
-- `common-core`、`common-web`、`common-security`、`common-tenant`、`legendary-api`：共享契约和基础能力。
+- `services/auth-service`、`services/tenant-service`、`services/file-service`、`services/message-service`、`services/plugin-service`、`services/audit-service`、`services/localization-service`、`services/job-executor`：后续拆分目标服务。
+- `libs/common-core`、`libs/common-web`、`libs/common-security`、`libs/common-tenant`、`libs/legendary-api`：共享契约和基础能力。
 
 ## 4. 配置规范
 
@@ -34,20 +34,20 @@
 
 1. 启动 MySQL、Redis、Nacos。
 2. 启动 `backend` 作为 `system-service`。
-3. 启动 `gateway-service`。
+3. 启动 `services/gateway-service`。
 4. 后续再启用各独立服务模块和 XXL-Job / Seata。
 
 ## 6. 进一步拆分顺序
 
-- 第一批：`file-service`、`message-service`、`job-executor`
-- 第二批：`plugin-service`
-- 第三批：`auth-service`、`system-service`
-- 第四批：`tenant-service`
+- 第一批：`services/file-service`、`services/message-service`、`services/job-executor`
+- 第二批：`services/plugin-service`
+- 第三批：`services/auth-service`、`backend/`（system-service）
+- 第四批：`services/tenant-service`
 
 ## 7. 当前已落地的第一批
 
-- `gateway-service` 已收口 `/api/v1/files/**`、`/api/uploads/**`、`/api/v1/message/**`、`/ws/message` 路由。
-- `job-executor` 已接入 XXL-Job 执行器，并通过后端内部任务接口触发 outbox relay、message heartbeat、online-session heartbeat。
+- `services/gateway-service` 已收口 `/api/v1/files/**`、`/api/uploads/**`、`/api/v1/message/**`、`/ws/message` 路由。
+- `services/job-executor` 已接入 XXL-Job 执行器，并通过后端内部任务接口触发 outbox relay、message heartbeat、online-session heartbeat。
 - 后端业务进程已去掉上述三处 `@Scheduled`，调度职责开始外移到执行器。
 
 ## 7. 官方参考

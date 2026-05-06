@@ -64,7 +64,7 @@ mvn -pl backend -am spring-boot:run
 ### 网关
 
 ```bash
-mvn -pl gateway-service -am spring-boot:run
+mvn -pl services/gateway-service -am spring-boot:run
 ```
 
 默认访问：

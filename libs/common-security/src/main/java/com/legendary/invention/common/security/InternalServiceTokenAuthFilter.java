@@ -1,0 +1,74 @@
+package com.legendary.invention.common.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Set;
+
+@Component
+public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
+
+    private static final String INTERNAL_TOKEN_HEADER = "X-Job-Token";
+    private static final String INTERNAL_PRINCIPAL_NAME = "internal-service";
+
+    private final String internalToken;
+
+    public InternalServiceTokenAuthFilter(@Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken) {
+        this.internalToken = internalToken;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        if (SecurityContextHolder.getContext().getAuthentication() != null
+                && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (!request.getRequestURI().startsWith("/internal/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (!StringUtils.hasText(internalToken)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String requestToken = request.getHeader(INTERNAL_TOKEN_HEADER);
+        if (!StringUtils.hasText(requestToken) || !internalToken.equals(requestToken)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        CurrentUser internalUser = new CurrentUser(
+                0L,
+                INTERNAL_PRINCIPAL_NAME,
+                null,
+                "internal",
+                0,
+                true,
+                Set.of()
+        );
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(internalUser, requestToken, Collections.emptyList());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+}
