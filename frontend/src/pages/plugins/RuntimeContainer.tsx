@@ -40,7 +40,7 @@ const RuntimeContainer = () => {
       setLoading(false);
       setError({
         type: 'warning',
-        message: '当前租户未启用该插件',
+        message: '当前未启用该插件',
       });
       return;
     }

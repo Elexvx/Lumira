@@ -9,15 +9,17 @@ import { normalizeAgreementSettings } from '@/agreement/settings';
 import { normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { isLoggedIn, restoreSession } from '@/auth/session';
 import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
+import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
-import { tenantContext } from '@/tenant/context';
+import { API_PREFIX } from '@/constants/http';
 import {
   DEFAULT_WATERMARK_SETTINGS,
   persistWatermarkSettings,
 } from '@/watermark/settings';
 import type { AppInitialState } from '@/app.types';
 import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin } from '@/types/api';
+import { getLocale } from '@umijs/max';
 
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
   const settings = normalizeBrandingSettings(
@@ -94,6 +96,8 @@ const buildAuthenticatedInitialState = async (
     }),
   ]);
 
+  await loadRuntimeLocalizationBundle(currentUser.locale || getLocale());
+
   setBootstrapSnapshot({
     phase: 'ready',
     progress: 100,
@@ -109,8 +113,8 @@ const buildAuthenticatedInitialState = async (
 
   return {
     currentUser,
-    currentTenant: tenantContext.getCurrentTenant(),
-    myTenants: tenantContext.getMyTenants(),
+    currentTenant: currentUser.currentTenant || null,
+    myTenants: [],
     menuTree,
     menuVersion: 0,
     availablePlugins,
@@ -137,6 +141,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     loadPublicAgreementSettings(),
     loadPublicLoginCapabilities(),
   ]);
+  await loadRuntimeLocalizationBundle(getLocale());
   persistWatermarkSettings(DEFAULT_WATERMARK_SETTINGS);
 
   setBootstrapSnapshot({
@@ -181,6 +186,19 @@ const getHealthRetryDelay = (attempt: number) => {
   return Math.min(baseDelay * 2 ** Math.min(attempt - 1, 3), maxDelay);
 };
 
+const checkBackendHealth = async () => {
+  const response = await fetch(`${API_PREFIX}/health`);
+  if (!response.ok) {
+    throw new Error(`后端健康检查失败：HTTP ${response.status}`);
+  }
+  const payload = await response.json();
+  const health = payload?.data;
+
+  if (health?.status && health.status.toUpperCase() !== 'UP') {
+    throw new Error(`后端健康状态异常：${health.status}`);
+  }
+};
+
 const waitForBackendReady = async () => {
   let attempt = 0;
 
@@ -198,16 +216,7 @@ const waitForBackendReady = async () => {
     });
 
     try {
-      const health = await systemService.health({
-        autoRedirectOnUnauthorized: false,
-        skipAuth: true,
-        silent: true,
-      });
-
-      if (health?.status && health.status.toUpperCase() !== 'UP') {
-        throw new Error(`后端健康状态异常：${health.status}`);
-      }
-
+      await checkBackendHealth();
       return;
     } catch (error) {
       const retryInMs = getHealthRetryDelay(attempt);

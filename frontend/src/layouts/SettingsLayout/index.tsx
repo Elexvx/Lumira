@@ -4,7 +4,6 @@ import {
   buildVisibleSettingsNavigationItems,
   SETTINGS_PROFILE_PATH,
 } from '@/navigation/settingsNavigation';
-import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
 const accessValue = (access: unknown, accessKey: string) =>
   Boolean((access as Record<string, unknown>)[accessKey]);
@@ -19,27 +18,41 @@ const resolveUserCenterLandingPath = (access: unknown) => {
   if (accessValue(access, 'canVisitSystemRoles')) {
     return '/user-center/roles';
   }
+  if (accessValue(access, 'canVisitSystemMyFiles')) {
+    return '/user-center/files';
+  }
+  return '/403';
+};
+
+const resolveFileCenterLandingPath = (access: unknown) => {
+  if (accessValue(access, 'canVisitSystemAllFiles')) {
+    return '/settings/files/all';
+  }
   return '/403';
 };
 
 const SettingsLayout = () => {
   const location = useLocation();
   const access = useAccess();
-  const { initialState } = useInitialStateModel();
   const pathname = location.pathname;
   const settingsItems = useMemo(
-    () => buildVisibleSettingsNavigationItems(initialState?.menuTree, (accessKey) => accessValue(access, accessKey)),
-    [access, initialState?.menuTree],
+    () => buildVisibleSettingsNavigationItems((accessKey) => accessValue(access, accessKey)),
+    [access],
   );
 
   useEffect(() => {
-    if (pathname === '/system' || pathname === '/system/overview') {
-      history.replace(settingsItems[0]?.path || '/403');
+    if (pathname === '/settings' || pathname === '/settings/overview') {
+      history.replace(settingsItems.find((item) => item.path === '/settings/menus')?.path || settingsItems[0]?.path || '/403');
       return;
     }
 
     if (pathname === '/user-center') {
       history.replace(resolveUserCenterLandingPath(access));
+      return;
+    }
+
+    if (pathname === '/files') {
+      history.replace(resolveFileCenterLandingPath(access));
     }
   }, [access, pathname, settingsItems]);
 
@@ -47,7 +60,7 @@ const SettingsLayout = () => {
     return <Outlet />;
   }
 
-  if (pathname === '/system' || pathname === '/system/overview' || pathname === '/user-center') {
+  if (pathname === '/settings' || pathname === '/settings/overview' || pathname === '/user-center' || pathname === '/files') {
     return null;
   }
 

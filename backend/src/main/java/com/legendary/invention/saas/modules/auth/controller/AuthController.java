@@ -196,10 +196,7 @@ public class AuthController {
 
     private Long requireTenantId(com.legendary.invention.saas.infrastructure.security.CurrentUser currentUser) {
         if (currentUser.getCurrentTenantId() == null) {
-            throw new com.legendary.invention.saas.common.exception.BizException(
-                    com.legendary.invention.saas.common.enums.ErrorCode.TENANT_ERROR,
-                    "当前未选择租户"
-            );
+            return 1001L;
         }
         return currentUser.getCurrentTenantId();
     }

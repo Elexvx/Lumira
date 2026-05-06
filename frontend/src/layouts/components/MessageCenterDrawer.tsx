@@ -1,20 +1,21 @@
 import { NotificationOutlined } from '@ant-design/icons';
-import { Badge, Button, Drawer } from 'antd';
+import { Badge, Button } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useIntl } from '@umijs/max';
+import { MESSAGE_CENTER_DRAWER_WIDTH } from '@/constants/ui';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { useResponsive } from '@/hooks/useResponsive';
 import { MessageCenterContent } from '@/components/message-center/MessageCenterContent';
 import { MESSAGE_CENTER_REFRESH_EVENT } from '@/components/message-center/messageCenterEvents';
 import { messageService } from '@/services/message';
 import { useMessageCenterRealtime } from '@/components/message-center/useMessageCenterRealtime';
 import type { MessageCenterRealtimeEvent } from '@/components/message-center/messageCenterRealtime';
+import { ManagementDrawer } from '@/features/management';
 
 export const MessageCenterDrawer = () => {
-  const { isMobile } = useResponsive();
   const { initialState } = useInitialStateModel();
+  const intl = useIntl();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const tenantId = initialState?.currentTenant?.tenantId;
   const permissions = useMemo(() => new Set(initialState?.currentUser?.permissions || []), [initialState?.currentUser?.permissions]);
   const canOpenMessageCenter =
     permissions.has('*') ||
@@ -30,7 +31,7 @@ export const MessageCenterDrawer = () => {
   );
 
   const reloadUnreadCount = useCallback(async () => {
-    if (!tenantId || !canOpenMessageCenter) {
+    if (!canOpenMessageCenter) {
       setUnreadCount(0);
       return;
     }
@@ -41,7 +42,7 @@ export const MessageCenterDrawer = () => {
     } catch {
       setUnreadCount(0);
     }
-  }, [canOpenMessageCenter, requestOptions, tenantId]);
+  }, [canOpenMessageCenter, requestOptions]);
 
   useEffect(() => {
     void reloadUnreadCount();
@@ -58,7 +59,7 @@ export const MessageCenterDrawer = () => {
     };
   }, [reloadUnreadCount]);
 
-  useMessageCenterRealtime(Boolean(tenantId && canOpenMessageCenter), useCallback((event: MessageCenterRealtimeEvent) => {
+  useMessageCenterRealtime(canOpenMessageCenter, useCallback((event: MessageCenterRealtimeEvent) => {
     if (typeof event.unreadCount === 'number') {
       setUnreadCount(Math.max(0, event.unreadCount));
       return;
@@ -72,7 +73,7 @@ export const MessageCenterDrawer = () => {
     ) {
       void reloadUnreadCount();
     }
-  }, [reloadUnreadCount, canOpenMessageCenter, tenantId]));
+  }, [reloadUnreadCount]));
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -84,23 +85,20 @@ export const MessageCenterDrawer = () => {
         <Button
           type="text"
           icon={<NotificationOutlined />}
-          aria-label={`消息中心，当前有 ${unreadCount} 条未读消息`}
+          aria-label={intl.formatMessage({ id: 'message.center.ariaLabel', defaultMessage: '消息中心，当前有 {count} 条未读消息' }, { count: unreadCount })}
           onClick={() => handleOpenChange(true)}
         />
       </Badge>
 
-      <Drawer
-        title="消息中心"
+      <ManagementDrawer
+        title={intl.formatMessage({ id: 'message.center.title', defaultMessage: '消息中心' })}
         open={open}
         onClose={() => handleOpenChange(false)}
-        width={isMobile ? '100vw' : 720}
-        destroyOnClose={false}
-        styles={{
-          body: { padding: 16 },
-        }}
+        width={MESSAGE_CENTER_DRAWER_WIDTH}
+        destroyOnHidden={false}
       >
         <MessageCenterContent onUnreadCountChange={setUnreadCount} />
-      </Drawer>
+      </ManagementDrawer>
     </>
   );
 };

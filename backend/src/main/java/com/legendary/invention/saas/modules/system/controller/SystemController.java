@@ -2,13 +2,14 @@ package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.vo.PageResponse;
+import com.legendary.invention.api.client.FileInternalApi;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
-import com.legendary.invention.saas.infrastructure.upload.ImageUploadService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.legendary.invention.api.file.FileObjectDTO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,18 +32,18 @@ public class SystemController {
     private final SystemManagementAppService systemManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final ImageUploadService imageUploadService;
+    private final FileInternalApi fileInternalApi;
 
     public SystemController(
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            ImageUploadService imageUploadService
+            FileInternalApi fileInternalApi
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
-        this.imageUploadService = imageUploadService;
+        this.fileInternalApi = fileInternalApi;
     }
 
     @GetMapping("/permissions")
@@ -361,7 +362,8 @@ public class SystemController {
     @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<String> uploadImage(@RequestParam("file") MultipartFile file) {
         require("system:config:update");
-        return ApiResponse.success(imageUploadService.upload(file), TraceContext.getRequestId());
+        FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "系统图片", "系统配置图片上传");
+        return ApiResponse.success(uploaded.publicUrl(), TraceContext.getRequestId());
     }
 
     private void require(String permissionKey) {

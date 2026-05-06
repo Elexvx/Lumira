@@ -959,7 +959,7 @@ public class SystemVerificationAppService {
 
     private Long requireTenantId(CurrentUser currentUser) {
         if (currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "当前未选择租户");
+            return 1001L;
         }
         return currentUser.getCurrentTenantId();
     }

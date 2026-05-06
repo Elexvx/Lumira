@@ -2,12 +2,15 @@
 
 企业级多租户 SaaS 平台第一轮工程底座仓库。
 
-这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施，重点覆盖多租户、认证授权、统一请求链路、响应式后台、模块化单体后端和插件化扩展能力。
+这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施。当前阶段已经从模块化单体演进到微服务平台骨架，重点覆盖多租户、认证授权、统一请求链路、网关入口、配置中心、服务治理、定时任务、分布式事务和插件化扩展能力。
 
 ## 仓库概览
 
 - `frontend/`：基于 `React 18`、`TypeScript`、`Umi Max`、`Ant Design 5` 和 `Ant Design Pro` 的前端工程。
-- `backend/`：基于 `Java 21`、`Spring Boot 3`、`Spring Security`、`MyBatis Plus`、`Redis`、`Flyway` 的后端工程。
+- `backend/`：当前作为 `system-service` 的后端工程，承载原有核心业务与底层能力。
+- `gateway-service/`：统一入口网关。
+- `auth-service/`、`tenant-service/`、`file-service/`、`message-service/`、`plugin-service/`、`audit-service/`、`localization-service/`、`job-executor/`：服务拆分骨架。
+- `common-core/`、`common-web/`、`common-security/`、`common-tenant/`、`legendary-api/`：公共契约和基础能力模块。
 - `docs/`：技术方案、前后端架构、数据库设计、权限模型和初始化说明。
 - `database/`：数据库相关资源。
 - `examples/`：示例文件。
@@ -27,8 +30,15 @@
 ### 后端
 
 - `Java 21`
-- `Spring Boot 3.3.x`
+- `Spring Boot 4.0.6`
+- `Spring Cloud 2025.1.1`
+- `Spring Cloud Alibaba 2025.1.0.0`
 - `Spring Security`
+- `Spring Cloud Gateway`
+- `Nacos 3.2.1`
+- `Sentinel 1.8.9`
+- `XXL-JOB 3.4.0`
+- `Seata 2.6.0`
 - `MyBatis Plus`
 - `MySQL 8`
 - `Redis`
@@ -39,7 +49,8 @@
 ### 工程与基础设施
 
 - 前后端分离
-- 模块化单体优先
+- 微服务平台优先
+- 统一网关入口
 - 多租户逻辑隔离
 - 统一响应结构和错误码
 - 统一日志、审计和可观测上下文
@@ -52,12 +63,20 @@
 ```mermaid
 flowchart LR
   U[浏览器 / 移动端 / 平板端] --> F[frontend<br/>Umi Max + React + Ant Design Pro]
-  F -->|API 请求| B[backend<br/>Spring Boot + Security + MyBatis Plus]
-  B --> M[(MySQL)]
-  B --> R[(Redis)]
-  B --> S[(对象存储 / 文件中心)]
-  B --> L[(日志 / 审计 / 监控)]
-  B --> P[插件运行时]
+  F --> G[gateway-service<br/>Spring Cloud Gateway]
+  G --> A[auth-service]
+  G --> S[system-service]
+  G --> T[tenant-service]
+  G --> Fi[file-service]
+  G --> M[message-service]
+  G --> P[plugin-service]
+  G --> Au[audit-service]
+  G --> L[localization-service]
+  G --> J[job-executor]
+  G --> N[(Nacos)]
+  G --> Se[(Sentinel)]
+  G --> X[(XXL-Job)]
+  G --> Sa[(Seata)]
 ```
 
 ### 前端分层
@@ -99,21 +118,21 @@ flowchart LR
 
 ### 2. 后端如何工作
 
-- 认证、租户、权限、审计、配置、文件、任务等能力都按模块拆分。
-- 控制器不直接操作底层持久化，而是通过应用层和领域层完成编排。
-- `TenantFilter`、`JwtAuthFilter`、`TraceIdFilter` 等基础设施组件负责请求上下文。
-- `Flyway` 负责数据库初始化和演进。
-- `Redis` 负责会话、缓存和部分上下文数据。
+- 外部请求先进入 `gateway-service`，再进入具体业务服务。
+- `backend/` 目前承担 `system-service` 的职责，是第一批拆分前的核心业务承载点。
+- 认证、租户、权限、审计、配置、文件、任务等能力逐步拆成独立服务。
+- `Nacos` 负责注册与配置，`Sentinel` 负责治理，`XXL-Job` 负责调度，`Seata` 负责少量强一致事务。
+- `Redis` 负责会话、缓存和部分上下文数据，`Flyway` 负责数据库初始化和演进。
 
 ### 3. 典型请求流程
 
 1. 用户从前端发起请求。
-2. 请求层自动带上 token 和租户信息。
-3. 后端完成认证、租户识别和 Trace 透传。
-4. 应用服务执行业务逻辑。
+2. 请求先到 `gateway-service`，统一做 CORS、路由、基础鉴权和限流。
+3. 网关透传 token、租户、TraceId，转发到目标服务。
+4. 业务服务完成二次鉴权、租户解析和业务编排。
 5. 数据层访问 MySQL / Redis / 文件服务等资源。
-6. 后端返回统一响应。
-7. 前端根据错误码决定提示、跳转或重新登录。
+6. 需要调度或补偿的动作写入 `XXL-Job` 或 Outbox。
+7. 后端返回统一响应，前端根据错误码决定提示、跳转或重新登录。
 
 ## 功能现状
 
@@ -129,7 +148,7 @@ flowchart LR
 - Trace / requestId 透传
 - Redis 配置与缓存封装
 - Flyway 初始化脚本
-- 文件、任务、审计、插件等模块骨架
+- `gateway-service`、`common-*`、`legendary-api` 和业务服务骨架
 
 ## 本地安装与启动
 
@@ -151,7 +170,7 @@ cd legendary-invention
 
 ### 2. 启动后端
 
-后端默认读取 `backend/src/main/resources/application.yml` 中的环境变量，常用配置包括：
+当前建议先启动基础设施，再启动 `backend/system-service` 和 `gateway-service`。后端默认读取 `backend/src/main/resources/application.yml` 中的环境变量，常用配置包括：
 
 - `DB_URL`
 - `DB_USERNAME`
@@ -172,8 +191,7 @@ cd legendary-invention
 如果项目提供了 `.env.example`，建议先复制一份再修改本地配置。
 
 ```bash
-cd backend
-mvn spring-boot:run
+mvn -pl backend -am spring-boot:run
 ```
 
 默认地址：
@@ -198,7 +216,17 @@ pnpm dev
 
 - 前端页面：`http://localhost:8000`
 
-### 4. 常用前端命令
+### 4. 启动网关
+
+```bash
+mvn -pl gateway-service -am spring-boot:run
+```
+
+默认地址：
+
+- 网关：`http://localhost:8081`
+
+### 5. 常用前端命令
 
 ```bash
 cd frontend
@@ -222,10 +250,10 @@ pnpm typecheck
 
 ### 后端
 
-- `src/main/java/com/legendary/invention/saas/common/`：统一返回体、错误码、异常和通用工具。
-- `src/main/java/com/legendary/invention/saas/infrastructure/`：安全、租户、Redis、Trace、配置等基础设施。
-- `src/main/java/com/legendary/invention/saas/modules/`：按业务域拆分的功能模块。
-- `src/main/resources/db/migration/`：Flyway 数据库脚本。
+- `backend/`：当前 `system-service` 的代码与数据库迁移。
+- `gateway-service/`：统一入口网关。
+- `common-*`：平台级共享模块。
+- `legendary-api/`：服务间契约。
 
 ## 推荐阅读
 

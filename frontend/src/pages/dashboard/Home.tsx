@@ -1,7 +1,8 @@
 import { PageContainer, ProCard, StatisticCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Badge, Col, Descriptions, Empty, List, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
+import { Avatar, Col, Empty, List, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
+import { buildTableScroll } from '@/features/table/proTable';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { AuditLogRecord, DashboardSummary, TenantPlugin } from '@/types/api';
@@ -23,6 +24,30 @@ const buildInitials = (name?: string | null, fallback = 'U') => {
   }
 
   return source.slice(0, 1).toUpperCase();
+};
+
+const buildGreeting = (hour: number) => {
+  if (hour >= 5 && hour < 9) {
+    return '早上好';
+  }
+
+  if (hour >= 9 && hour < 12) {
+    return '上午好';
+  }
+
+  if (hour >= 12 && hour < 14) {
+    return '中午好';
+  }
+
+  if (hour >= 14 && hour < 18) {
+    return '下午好';
+  }
+
+  if (hour >= 18 && hour < 23) {
+    return '晚上好';
+  }
+
+  return '凌晨好';
 };
 
 const buildLogColumns = (title: string) => [
@@ -59,6 +84,9 @@ const buildLogColumns = (title: string) => [
   },
 ];
 
+const loginLogColumns = buildLogColumns('登录记录');
+const operationLogColumns = buildLogColumns('操作记录');
+
 const renderPluginDescription = (plugin: TenantPlugin) => {
   const sharedDeps = plugin.sharedDeps?.length ? plugin.sharedDeps.join('、') : '无共享依赖';
   const routeCount = plugin.routes?.length || plugin.menus?.length || 0;
@@ -77,13 +105,14 @@ const renderPluginDescription = (plugin: TenantPlugin) => {
 const DashboardHomePage = () => {
   const { initialState } = useInitialStateModel();
   const dashboardQuery = useQuery({
-    queryKey: ['dashboard-summary', initialState?.currentTenant?.tenantId, initialState?.menuVersion],
+    queryKey: ['dashboard-summary', initialState?.menuVersion],
     queryFn: async () => dashboardService.summary({ autoRedirectOnUnauthorized: false }),
   });
 
   const summary = dashboardQuery.data as DashboardSummary | undefined;
   const currentUser = summary?.currentUser || initialState?.currentUser;
-  const currentTenant = summary?.currentTenant || initialState?.currentTenant || null;
+  const greeting = buildGreeting(dayjs().hour());
+  const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '当前用户';
   const tenantPlugins = summary?.tenantPlugins || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
@@ -92,7 +121,7 @@ const DashboardHomePage = () => {
       title: '菜单数',
       value: summary?.menuCount ?? 0,
       suffix: '个',
-      description: '当前租户可见菜单',
+      description: '当前可见菜单',
     },
     {
       title: '权限数',
@@ -104,7 +133,7 @@ const DashboardHomePage = () => {
       title: '插件数',
       value: tenantPlugins.length,
       suffix: '个',
-      description: '已加载租户插件',
+      description: '已加载插件',
     },
     {
       title: '近期记录',
@@ -126,22 +155,15 @@ const DashboardHomePage = () => {
                     {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
                   </Avatar>
                   <Space direction="vertical" size={4}>
-                    <Typography.Text type="secondary">欢迎回来</Typography.Text>
                     <Typography.Title level={3} style={{ margin: 0 }}>
-                      {currentUser?.nickname || currentUser?.realName || currentUser?.username || '当前用户'}
+                      {greeting}，{displayName}
                     </Typography.Title>
-                    <Typography.Text type="secondary">
-                      {currentTenant ? `${currentTenant.tenantName} · ${currentTenant.tenantCode}` : '当前未选择租户'}
-                    </Typography.Text>
+                    <Typography.Text type="secondary">欢迎回来，继续处理今天的系统事项</Typography.Text>
                   </Space>
                 </Space>
                 {dashboardQuery.isLoading && !summary ? (
                   <Skeleton active paragraph={{ rows: 2 }} title={false} />
-                ) : (
-                  <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    这里汇总当前租户的菜单、权限、插件和近期操作，页面全部使用官方组件组织。
-                  </Typography.Paragraph>
-                )}
+                ) : null}
               </Space>
             </Col>
           </Row>
@@ -178,12 +200,12 @@ const DashboardHomePage = () => {
                         rowKey="id"
                         pagination={false}
                         loading={dashboardQuery.isLoading && !summary}
-                        columns={buildLogColumns('登录记录')}
+                        columns={loginLogColumns}
                         dataSource={recentLoginLogs}
                         locale={{
                           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
                         }}
-                        scroll={{ x: 720 }}
+                        scroll={buildTableScroll(loginLogColumns, false)}
                       />
                     ),
                   },
@@ -196,12 +218,12 @@ const DashboardHomePage = () => {
                         rowKey="id"
                         pagination={false}
                         loading={dashboardQuery.isLoading && !summary}
-                        columns={buildLogColumns('操作记录')}
+                        columns={operationLogColumns}
                         dataSource={recentOperationLogs}
                         locale={{
                           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
                         }}
-                        scroll={{ x: 720 }}
+                        scroll={buildTableScroll(operationLogColumns, false)}
                       />
                     ),
                   },
@@ -212,22 +234,7 @@ const DashboardHomePage = () => {
 
           <Col xs={24} xl={8}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <ProCard variant="outlined" title="当前租户" className="saas-dashboard-home__panel">
-                {currentTenant ? (
-                  <Descriptions column={1} size="small" colon labelStyle={{ width: 88, textAlign: 'right' }}>
-                    <Descriptions.Item label="租户名称">{currentTenant.tenantName}</Descriptions.Item>
-                    <Descriptions.Item label="租户编码">{currentTenant.tenantCode}</Descriptions.Item>
-                    <Descriptions.Item label="状态">
-                      <Badge status={currentTenant.status === 'ENABLED' ? 'success' : 'default'} text={currentTenant.status} />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="更新时间">{formatDateTime(currentTenant.updatedAt)}</Descriptions.Item>
-                  </Descriptions>
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未获取到租户信息" />
-                )}
-              </ProCard>
-
-              <ProCard variant="outlined" title="租户插件" className="saas-dashboard-home__panel">
+              <ProCard variant="outlined" title="插件" className="saas-dashboard-home__panel">
                 {tenantPlugins.length ? (
                   <List
                     size="small"

@@ -1,13 +1,14 @@
 package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
-import com.legendary.invention.saas.infrastructure.upload.ImageUploadService;
+import com.legendary.invention.api.client.FileInternalApi;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.legendary.invention.api.file.FileObjectDTO;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,16 +26,16 @@ public class ProfileController {
 
     private final SystemManagementAppService systemManagementAppService;
     private final SecurityContextFacade securityContextFacade;
-    private final ImageUploadService imageUploadService;
+    private final FileInternalApi fileInternalApi;
 
     public ProfileController(
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
-            ImageUploadService imageUploadService
+            FileInternalApi fileInternalApi
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.securityContextFacade = securityContextFacade;
-        this.imageUploadService = imageUploadService;
+        this.fileInternalApi = fileInternalApi;
     }
 
     @GetMapping("/summary")
@@ -77,8 +78,17 @@ public class ProfileController {
         );
     }
 
+    @PutMapping("/locale")
+    public ApiResponse<CurrentUserVO> updateLocale(@Valid @RequestBody ProfileDTO.LocaleUpdateRequest request) {
+        return ApiResponse.success(
+                systemManagementAppService.updateCurrentUserLocale(securityContextFacade.getCurrentUser(), request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping(value = "/uploads/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
-        return ApiResponse.success(imageUploadService.upload(file), TraceContext.getRequestId());
+        FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "头像", "个人头像上传");
+        return ApiResponse.success(uploaded.publicUrl(), TraceContext.getRequestId());
     }
 }

@@ -7,7 +7,6 @@ import {
   shouldSuppressUnauthorizedSideEffects,
   type AuthRequestSnapshot,
 } from '@/auth/unauthorizedDecision';
-import { tenantContext } from '@/tenant/context';
 import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
 import { validatePluginManifest } from '@/plugins/manifest';
 import { pluginRegistry } from '@/plugins/registry';
@@ -185,10 +184,6 @@ const buildHeaders = (accessToken: string) => {
   };
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
-  }
-  const tenantId = tenantContext.getTenantId();
-  if (tenantId) {
-    headers['X-Tenant-Id'] = tenantId;
   }
   return headers;
 };

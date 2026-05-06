@@ -55,7 +55,7 @@ export const ContactBindModal = ({
       confirmLoading={submitting}
       okText={okText}
       cancelText="取消"
-      destroyOnClose
+      destroyOnHidden
       maskClosable={false}
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>

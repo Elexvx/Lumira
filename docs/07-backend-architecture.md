@@ -1,5 +1,7 @@
 # Ant Design Pro 大型 SaaS 系统后端架构与基础设施规范
 
+> 说明：这份文档保留了早期后端底座的设计约束与演进思路。当前仓库主线已经进入 Spring Cloud Alibaba 微服务骨架阶段，最新目标请以 [docs/12-microservice-restructure.md](./12-microservice-restructure.md) 为准。
+
 ## 1. 文档定位
 
 本规范用于统一后端总体架构、分层模式、模块边界、基础设施接入、数据访问约束、缓存体系、限流策略、异步任务、文件存储、日志审计、配置管理、可观测体系以及高可用与可演进策略。
@@ -16,7 +18,7 @@
 
 ## 3. 架构原则
 
-- 模块化单体优先。
+- 微服务平台优先。
 - 基础设施统一收敛。
 - 主干链路优先。
 - 边界先于实现。
@@ -27,15 +29,18 @@
 建议使用：
 
 - `Java 21`
-- `Spring Boot 3`
+- `Spring Boot 4`
+- `Spring Cloud 2025.1.x`
+- `Spring Cloud Alibaba 2025.1.x`
 - `Spring Security`
 - `MyBatis Plus`
 - `MySQL 8`
 - `Redis`
-- `MinIO` 或 `S3` 兼容对象存储
-- `RabbitMQ` 或 `RocketMQ`
-- `XXL-JOB`、`Quartz` 或轻量任务中心
-- `Prometheus + Grafana + OpenTelemetry + 日志平台`
+- `Nacos`
+- `Sentinel`
+- `XXL-JOB`
+- `Seata`
+- `Springdoc OpenAPI`
 
 第一阶段优先把单体底座做稳，不建议过早拆太多服务。
 

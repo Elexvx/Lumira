@@ -1,8 +1,8 @@
 import * as AntdIcons from '@ant-design/icons';
+import { formatMessage } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import { backendRouteMeta } from '@/routes/meta';
-import type { MenuNode } from '@/types/api';
 
 type AntdIconComponent = ComponentType<Record<string, unknown>>;
 
@@ -18,85 +18,97 @@ interface SettingsNavigationItem {
 
 const ANT_DESIGN_ICONS = AntdIcons as unknown as Record<string, AntdIconComponent>;
 const OUTLINED_ICON_SUFFIX = 'Outlined';
-
-const SETTINGS_ROUTE_PREFIXES = ['/system', '/user-center'];
+const SETTINGS_ROUTE_PREFIX = '/settings';
 const PROFILE_PATH = '/user-center/profile';
+const LEGACY_SETTING_ROUTE_PREFIXES = ['/system'];
 
 export const SETTINGS_PROFILE_PATH = PROFILE_PATH;
 
 export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
   {
-    key: 'plugins',
-    label: '插件管理',
-    path: '/system/plugins',
-    icon: 'ApiOutlined',
-    access: 'canVisitSystemPlugins',
-  },
-  {
-    key: 'user-permissions',
-    label: '用户和权限',
-    path: '/user-center',
-    icon: 'TeamOutlined',
-    access: 'canVisitUserCenter',
-    accessAny: ['canVisitSystemUsers', 'canVisitSystemOnlineUsers', 'canVisitSystemRoles'],
-    matchPrefixes: ['/user-center/'],
-  },
-  {
     key: 'menus',
     label: '菜单管理',
-    path: '/system/menus',
+    path: '/settings/menus',
     icon: 'AppstoreOutlined',
     access: 'canVisitSystemMenus',
   },
   {
     key: 'dicts',
     label: '字典管理',
-    path: '/system/dicts',
+    path: '/settings/dicts',
     icon: 'DatabaseOutlined',
     access: 'canVisitSystemDicts',
   },
   {
     key: 'profile-fields',
     label: '字段管理',
-    path: '/system/profile-fields',
+    path: '/settings/profile-fields',
     icon: 'FormOutlined',
     access: 'canVisitSystemProfileFields',
   },
   {
     key: 'personalization',
     label: '个性化设置',
-    path: '/system/personalization',
+    path: '/settings/personalization',
     icon: 'SkinOutlined',
     access: 'canVisitSystemPersonalization',
   },
   {
     key: 'security',
     label: '安全设置',
-    path: '/system/security',
+    path: '/settings/security',
     icon: 'SafetyOutlined',
     access: 'canVisitSystemSecurity',
   },
   {
     key: 'verification',
     label: '验证管理',
-    path: '/system/verification',
+    path: '/settings/verification',
     icon: 'SafetyOutlined',
     access: 'canVisitSystemVerification',
   },
   {
     key: 'notifications',
     label: '站内信归档',
-    path: '/system/notifications',
+    path: '/settings/notifications',
     icon: 'NotificationOutlined',
     access: 'canVisitSystemNotifications',
   },
   {
+    key: 'plugins',
+    label: '插件管理',
+    path: '/settings/plugins',
+    icon: 'ApiOutlined',
+    access: 'canVisitSystemPlugins',
+  },
+  {
+    key: 'all-files',
+    label: '全站文件管理',
+    path: '/settings/files/all',
+    icon: 'FolderOpenOutlined',
+    access: 'canVisitSystemAllFiles',
+  },
+  {
     key: 'monitoring',
     label: '系统监控',
-    path: '/system/monitoring',
+    path: '/settings/monitoring',
     icon: 'FundOutlined',
     access: 'canVisitSystemMonitoring',
-    matchPrefixes: ['/system/monitoring/'],
+    matchPrefixes: ['/settings/monitoring/'],
+  },
+  {
+    key: 'api-docs',
+    label: '接口文档',
+    path: '/settings/monitoring/api-docs',
+    icon: 'FileTextOutlined',
+    access: 'canVisitSystemMonitoringDocs',
+  },
+  {
+    key: 'audit',
+    label: '审计中心',
+    path: '/settings/monitoring/audit',
+    icon: 'AuditOutlined',
+    access: 'canVisitAudit',
   },
 ];
 
@@ -126,41 +138,24 @@ export const resolveNavigationIcon = (icon?: ReactNode | string) => {
   return createElement(IconComponent);
 };
 
-export const isSettingsNavigationPath = (path?: string) => {
-  if (!path) {
-    return false;
-  }
+export const isSettingsNavigationPath = (path?: string) => Boolean(path && (path === SETTINGS_ROUTE_PREFIX || path.startsWith(`${SETTINGS_ROUTE_PREFIX}/`)));
 
-  return SETTINGS_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
-};
+export const isSettingsShellPath = (path?: string) => isSettingsNavigationPath(path);
 
-export const isSettingsShellPath = (path?: string) => isSettingsNavigationPath(path) && path !== PROFILE_PATH;
+export const isMainMenuHiddenSettingPath = (path?: string) =>
+  Boolean(
+    path &&
+      (isSettingsNavigationPath(path) ||
+        LEGACY_SETTING_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`)) ||
+        path === '/files' ||
+        path === '/files/all'),
+  );
 
-const collectMenuPaths = (menuNodes: MenuNode[] | undefined, paths = new Set<string>()) => {
-  menuNodes?.forEach((node) => {
-    if (node.path) {
-      paths.add(node.path);
-    }
-    if (node.children?.length) {
-      collectMenuPaths(node.children, paths);
-    }
-  });
-
-  return paths;
-};
-
-const hasMenuPath = (menuPaths: Set<string>, item: SettingsNavigationItem) => {
-  if (!menuPaths.size) {
-    return true;
-  }
-
-  if (menuPaths.has(item.path)) {
-    return true;
-  }
-
-  const menuPathList = Array.from(menuPaths).filter((path) => path !== PROFILE_PATH);
-  return item.matchPrefixes?.some((prefix) => menuPathList.some((path) => path.startsWith(prefix))) ?? false;
-};
+export const isMainMenuHiddenMonitoringPath = (path?: string) =>
+  path === '/settings/monitoring/service' ||
+  path === '/settings/monitoring/redis' ||
+  path === '/settings/monitoring/api-docs' ||
+  path === '/settings/monitoring/audit';
 
 const canVisitSetting = (item: SettingsNavigationItem, canVisitAccessKey: (accessKey: string) => boolean) => {
   if (item.accessAny?.length) {
@@ -172,34 +167,27 @@ const canVisitSetting = (item: SettingsNavigationItem, canVisitAccessKey: (acces
   return canVisitAccessKey(accessKey);
 };
 
-export const buildVisibleSettingsNavigationItems = (
-  menuTree: MenuNode[] | undefined,
-  canVisitAccessKey: (accessKey: string) => boolean,
-) => {
-  const menuPaths = collectMenuPaths(menuTree);
+export const buildVisibleSettingsNavigationItems = (canVisitAccessKey: (accessKey: string) => boolean) =>
+  SETTINGS_NAVIGATION_ITEMS.filter((item) => item.path !== PROFILE_PATH).filter((item) => canVisitSetting(item, canVisitAccessKey));
 
-  return SETTINGS_NAVIGATION_ITEMS.filter((item) => item.path !== PROFILE_PATH)
-    .filter((item) => hasMenuPath(menuPaths, item))
-    .filter((item) => canVisitSetting(item, canVisitAccessKey));
-};
+export const buildSettingsDropdownItems = (canVisitAccessKey: (accessKey: string) => boolean): MenuProps['items'] =>
+  buildVisibleSettingsNavigationItems(canVisitAccessKey).map((item) => ({
+    key: item.path,
+    icon: resolveNavigationIcon(item.icon),
+    label: formatMessage({
+      id: routeMetaByPath.get(item.path)?.name || item.key,
+      defaultMessage: item.label,
+    }),
+  }));
 
-export const buildSettingsDropdownItems = (
-  menuTree: MenuNode[] | undefined,
-  canVisitAccessKey: (accessKey: string) => boolean,
-): MenuProps['items'] =>
-  buildVisibleSettingsNavigationItems(menuTree, canVisitAccessKey).map((item) => ({
-      key: item.path,
-      icon: resolveNavigationIcon(item.icon),
-      label: item.label,
-    }));
+export const resolveActiveSettingsNavigationPath = (pathname: string, canVisitAccessKey: (accessKey: string) => boolean) => {
+  const visibleItems = buildVisibleSettingsNavigationItems(canVisitAccessKey);
+  const matchedItem = visibleItems.find(
+    (item) =>
+      pathname === item.path ||
+      item.matchPrefixes?.some((prefix) => pathname.startsWith(prefix)) ||
+      pathname.startsWith(`${item.path}/`),
+  );
 
-export const resolveActiveSettingsPath = (pathname: string, items: SettingsNavigationItem[]) => {
-  const matchedItem = items.find((item) => {
-    if (pathname === item.path) {
-      return true;
-    }
-    return item.matchPrefixes?.some((prefix) => pathname.startsWith(prefix)) ?? false;
-  });
-
-  return matchedItem?.path;
+  return matchedItem?.path || pathname;
 };

@@ -1,4 +1,5 @@
 import type { UserRecord } from '@/types/api';
+import { PROTECTED_ADMIN_ID, PROTECTED_ADMIN_USERNAME, isProtectedAdminAccount as isProtectedAdminUserAccount } from '@/auth/admin';
 
 export const GENDER_OPTIONS = [
   { label: '男', value: 'MALE' },
@@ -11,8 +12,7 @@ export const USER_STATUS_OPTIONS = [
   { label: '禁用', value: 'DISABLED' },
 ];
 
-export const PROTECTED_ADMIN_ID = 1001;
-export const PROTECTED_ADMIN_USERNAME = 'admin';
+export { PROTECTED_ADMIN_ID, PROTECTED_ADMIN_USERNAME };
 
 export const isProtectedAdminAccount = (record?: Pick<UserRecord, 'id' | 'username'> | null) =>
-  Boolean(record && (record.id === PROTECTED_ADMIN_ID || record.username?.toLowerCase() === PROTECTED_ADMIN_USERNAME));
+  isProtectedAdminUserAccount(record ? { userId: record.id, username: record.username } : null);

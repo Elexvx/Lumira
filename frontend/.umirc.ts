@@ -1,5 +1,6 @@
 import { defineConfig } from '@umijs/max';
 import { backendRoutes } from './src/routes/meta';
+import { createLocalePreferenceBootstrapScript } from './src/i18n/locale';
 import { createThemePreferenceBootstrapScript } from './src/theme/settings';
 
 export default defineConfig({
@@ -10,6 +11,13 @@ export default defineConfig({
   model: {},
   request: {},
   layout: {},
+  locale: {
+    default: 'zh-CN',
+    baseNavigator: true,
+    useLocalStorage: true,
+    antd: true,
+    baseSeparator: '-',
+  },
   utoopack: {},
   routePrefetch: {
     defaultPrefetch: 'intent',
@@ -19,6 +27,9 @@ export default defineConfig({
     {
       content: createThemePreferenceBootstrapScript(),
     },
+    {
+      content: createLocalePreferenceBootstrapScript(),
+    },
   ],
   npmClient: 'pnpm',
   routes: backendRoutes,
@@ -26,6 +37,11 @@ export default defineConfig({
     '/api': {
       target: 'http://localhost:8080',
       changeOrigin: true,
+    },
+    '/ws': {
+      target: 'ws://localhost:8080',
+      changeOrigin: true,
+      ws: true,
     },
     '/api-docs': {
       target: 'http://localhost:8080',

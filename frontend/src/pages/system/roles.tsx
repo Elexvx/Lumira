@@ -1,12 +1,13 @@
-import { PageContainer, ProDescriptions, ProTable } from '@ant-design/pro-components';
-import { Button, Drawer, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
+import { ProDescriptions } from '@ant-design/pro-components';
+import { Button, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
 import type { TreeProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
+import { buildTableRequest } from '@/features/table/proTable';
 import { ROLE_TYPE_OPTIONS } from '@/constants/role';
 import { useResponsive } from '@/hooks/useResponsive';
 import { buildRoleColumns, roleDetailColumns } from '@/pages/system/roles/columns';
@@ -212,55 +213,43 @@ const RoleManagementPage = () => {
   );
 
   return (
-    <PageContainer title="角色管理" className="saas-management-page">
-      <div className="saas-table-wrap">
-        <ProTable<RoleRecord>
-          actionRef={roleCrud.actionRef}
-          rowKey="id"
-          columns={columns}
-          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
-          options={false}
-          pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
-          scroll={buildTableScroll(columns, responsive.isMobile)}
-          request={buildTableRequest((params) => iamService.roles(params, { autoRedirectOnUnauthorized: false }))}
-          toolBarRender={() =>
-            actionPermission.buildToolbarActions([
-              {
-                permission: 'system:role:create',
-                value: (
-                  <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
-                    新增角色
-                  </Button>
-                ),
-              },
-              {
-                value: (
-                  <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={roleCrud.reloadTable}>
-                    刷新
-                  </Button>
-                ),
-              },
-            ])
-          }
-        />
-      </div>
+    <ManagementPage title="角色管理">
+      <ManagementTable<RoleRecord>
+        actionRef={roleCrud.actionRef}
+        rowKey="id"
+        columns={columns}
+        isMobile={responsive.isMobile}
+        search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+        request={buildTableRequest((params) => iamService.roles(params, { autoRedirectOnUnauthorized: false }))}
+        toolBarRender={() =>
+          actionPermission.buildToolbarActions([
+            {
+              permission: 'system:role:create',
+              value: (
+                <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
+                  新增角色
+                </Button>
+              ),
+            },
+            {
+              value: (
+                <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={roleCrud.reloadTable}>
+                  刷新
+                </Button>
+              ),
+            },
+          ])
+        }
+      />
 
-      <Drawer
+      <ManagementDrawer
         title={roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色'}
         open={roleCrud.drawer.open}
         onClose={handleEditorClose}
-        width="min(1040px, 96vw)"
-        destroyOnClose
-        footer={
-          <div className="saas-drawer-footer">
-            <Space>
-              <Button onClick={handleEditorClose}>取消</Button>
-              <Button type="primary" loading={saving} onClick={() => void saveRole()}>
-                保存
-              </Button>
-            </Space>
-          </div>
-        }
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: handleEditorClose },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveRole() },
+        ]}
       >
         <Form {...editorFormProps}>
           <Form.Item
@@ -314,17 +303,15 @@ const RoleManagementPage = () => {
             onActionPermissionsChange={permissionEditor.handleActionPermissionsChange}
           />
         </Form>
-      </Drawer>
+      </ManagementDrawer>
 
-      <Drawer
+      <ManagementDrawer
         title={roleCrud.detail.currentRecord ? `角色详情 · ${roleCrud.detail.currentRecord.roleName}` : '角色详情'}
         open={roleCrud.detail.open}
         onClose={() => {
           roleCrud.detail.close();
           setSelectedRoleDetail(null);
         }}
-        width={720}
-        destroyOnClose
       >
         {roleCrud.detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
@@ -353,8 +340,8 @@ const RoleManagementPage = () => {
             </div>
           </>
         ) : null}
-      </Drawer>
-    </PageContainer>
+      </ManagementDrawer>
+    </ManagementPage>
   );
 };
 

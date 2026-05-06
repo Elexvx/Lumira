@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: job-executor
+  config:
+    import:
+      - optional:nacos:job-executor.yaml?refreshEnabled=true&group=DEFAULT_GROUP
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        file-extension: yaml
+        namespace: ${NACOS_NAMESPACE:}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+    sentinel:
+      transport:
+        port: ${SENTINEL_TRANSPORT_PORT:8727}
+
+saas:
+  job:
+    backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:8080}
+    message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:http://localhost:8085}
+    internal-token: ${SAAS_JOB_INTERNAL_TOKEN:legendary-job-token}
+
+xxl:
+  job:
+    admin:
+      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://localhost:8088/xxl-job-admin}
+      accessToken: ${XXL_JOB_ADMIN_ACCESS_TOKEN:}
+      timeout: ${XXL_JOB_ADMIN_TIMEOUT:3}
+    executor:
+      enabled: ${XXL_JOB_EXECUTOR_ENABLED:true}
+      appname: ${XXL_JOB_EXECUTOR_APPNAME:legendary-job-executor}
+      address: ${XXL_JOB_EXECUTOR_ADDRESS:}
+      ip: ${XXL_JOB_EXECUTOR_IP:}
+      port: ${XXL_JOB_EXECUTOR_PORT:9998}
+      logpath: ${XXL_JOB_EXECUTOR_LOG_PATH:storage/xxl-job/logs}
+      logretentiondays: ${XXL_JOB_EXECUTOR_LOG_RETENTION_DAYS:30}
+
+server:
+  port: ${SERVER_PORT:8089}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,sentinel

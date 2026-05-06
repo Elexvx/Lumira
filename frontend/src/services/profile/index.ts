@@ -32,6 +32,10 @@ export interface ContactBindPayload {
   verificationCode?: string;
 }
 
+export interface LocalePayload {
+  locale: string;
+}
+
 export const profileService = {
   summary: (options: RequestOptions = {}) =>
     request<ProfileSummary>('/v1/profile/summary', {
@@ -58,6 +62,12 @@ export const profileService = {
     }),
   contactBind: (payload: ContactBindPayload, options: RequestOptions = {}) =>
     request<CurrentUser>('/v1/profile/contact-bind', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  updateLocale: (payload: LocalePayload, options: RequestOptions = {}) =>
+    request<CurrentUser>('/v1/profile/locale', {
       method: 'PUT',
       data: payload,
       ...options,

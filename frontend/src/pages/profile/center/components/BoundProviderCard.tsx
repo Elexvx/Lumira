@@ -39,7 +39,7 @@ export const BoundProviderCard = ({
   onBind,
   onUnbind,
   title = '已绑定登录方式',
-  emptyDescription = '当前租户暂无可绑定登录方式',
+  emptyDescription = '当前暂无可绑定登录方式',
 }: BoundProviderCardProps) => (
   <Card title={title} loading={loading}>
     {providers.length || supplementalItems.length ? (

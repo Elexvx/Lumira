@@ -18,6 +18,7 @@ import com.legendary.invention.saas.modules.system.verification.SystemVerificati
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
 import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
+import com.legendary.invention.saas.modules.tenant.vo.MyTenantVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
@@ -113,6 +114,7 @@ public class SystemManagementAppService {
     private static final String PROFILE_FIELD_REGION_VISIBLE_KEY = "profile.field.region.visible";
     private static final String PROFILE_FIELD_AVAILABLE_TIME_VISIBLE_KEY = "profile.field.available-time.visible";
     private static final String PROFILE_FIELD_ID_CARD_VISIBLE_KEY = "profile.field.id-card-number.visible";
+    private static final String DEFAULT_LOCALE = "zh-CN";
     private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS = List.of(
             new ProfileFieldDefinition("avatarUrl", "头像", "控制个人中心是否展示头像上传与预览区域", PROFILE_FIELD_AVATAR_VISIBLE_KEY, true),
             new ProfileFieldDefinition("realName", "姓名", "控制个人中心是否展示姓名字段", PROFILE_FIELD_REAL_NAME_VISIBLE_KEY, true),
@@ -152,15 +154,14 @@ public class SystemManagementAppService {
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
-            shortcut("系统管理", "菜单、字典、配置与验证入口", "/system/menus", "system:menu:view"),
-            shortcut("验证管理", "2FA 开关与短信验证码配置", "/system/verification", "system:verification:view"),
+            shortcut("系统管理", "菜单、字典、配置与验证入口", "/settings/menus", "system:menu:view"),
+            shortcut("验证管理", "2FA 开关与短信验证码配置", "/settings/verification", "system:verification:view"),
             shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
-            shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/system/personalization", "system:config:view"),
-            shortcut("安全设置", "空闲超时与 token 生命周期", "/system/security", "system:config:view"),
-            shortcut("租户中心", "当前租户与可访问租户", "/tenant/overview", "tenant:view"),
-            shortcut("审计中心", "登录和操作日志", "/system/monitoring/audit", "audit:view"),
-            shortcut("站内信归档", "租户站内信归档与手动发布", "/system/notifications", "system:notification:view"),
-            shortcut("插件管理", "插件安装、启用和运行态", "/system/plugins", "plugin:management:view")
+            shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/settings/personalization", "system:config:view"),
+            shortcut("安全设置", "空闲超时与 token 生命周期", "/settings/security", "system:config:view"),
+            shortcut("审计中心", "登录和操作日志", "/settings/monitoring/audit", "audit:view"),
+            shortcut("站内信归档", "站内信归档与手动发布", "/settings/notifications", "system:notification:view"),
+            shortcut("插件管理", "插件安装、启用和运行态", "/settings/plugins", "plugin:management:view")
     );
     private static final String NODE_TYPE_CATALOG = "CATALOG";
     private static final String NODE_TYPE_PAGE = "PAGE";
@@ -271,13 +272,13 @@ public class SystemManagementAppService {
         String nextEmail = normalizeNullableText(request.getEmail());
         if (contactValueChanged(user.getMobile(), nextMobile)) {
             if (!systemVerificationAppService.isContactBindAvailable(tenantId, "mobile")) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用短信验证码，暂不允许绑定手机号");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用短信验证码，暂不允许绑定手机号");
             }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "手机号绑定需要验证码，请在已绑定登录方式中修改");
         }
         if (contactValueChanged(user.getEmail(), nextEmail)) {
             if (!systemVerificationAppService.isContactBindAvailable(tenantId, "email")) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用邮箱验证码，暂不允许绑定邮箱");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
             }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱绑定需要验证码，请在已绑定登录方式中修改");
         }
@@ -313,7 +314,7 @@ public class SystemManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         String email = normalizeContactValue("email", request.getEmail());
         if (!systemVerificationAppService.isContactBindAvailable(tenantId, "email")) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用邮箱验证码，暂不允许绑定邮箱");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
         }
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
@@ -355,7 +356,7 @@ public class SystemManagementAppService {
         Long tenantId = currentTenantId(currentUser);
 
         if (!systemVerificationAppService.isContactBindAvailable(tenantId, contactType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前租户未启用该绑定方式");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用该绑定方式");
         }
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
@@ -398,6 +399,36 @@ public class SystemManagementAppService {
         }
 
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
+        return authAppService.currentUser(currentUser);
+    }
+
+    @Transactional
+    public CurrentUserVO updateCurrentUserLocale(CurrentUser currentUser, ProfileDTO.LocaleUpdateRequest request) {
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        Long tenantId = currentTenantId(currentUser);
+        String locale = normalizeLocale(request.getLocale());
+        jdbcTemplate.update(
+                """
+                        insert into sys_user_tenant_profile
+                            (tenant_id, user_id, display_name, avatar_url, locale, created_by, updated_by)
+                        values (?, ?, ?, ?, ?, ?, ?)
+                        on duplicate key update
+                            display_name = values(display_name),
+                            avatar_url = values(avatar_url),
+                            locale = values(locale),
+                            updated_by = values(updated_by),
+                            updated_at = current_timestamp
+                        """,
+                tenantId,
+                user.getId(),
+                resolveProfileDisplayName(user),
+                normalizeNullableText(user.getAvatarUrl()),
+                locale,
+                currentUser.getUserId(),
+                currentUser.getUserId()
+        );
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
         return authAppService.currentUser(currentUser);
     }
 
@@ -632,7 +663,8 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
-        List<SystemVO.MenuVO> menus = listMenus(currentUser);
+        List<SystemVO.MenuVO> menus = new ArrayList<>(SystemRouteCatalog.buildBuiltinPermissionMenus());
+        menus.addAll(listMenus(currentUser));
         List<SystemVO.PermissionVO> permissions = listPermissions(currentUser);
         Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey = buildActionPermissionsByPageKey(permissions);
         return buildPermissionTree(menus, actionPermissionsByPageKey);
@@ -648,10 +680,12 @@ public class SystemManagementAppService {
                         from sys_menu
                         where tenant_id = ? and deleted = 0
                         order by sort_no asc, id asc
-                        """,
+                """,
                 new BeanPropertyRowMapper<>(SystemVO.MenuVO.class),
                 tenantId
-        );
+        ).stream()
+                .filter(menu -> !SystemRouteCatalog.isBuiltInMenu(menu))
+                .toList();
         return buildMenuTree(menus);
     }
 
@@ -816,6 +850,10 @@ public class SystemManagementAppService {
             if (item == null || item.getId() == null || item.getSortNo() == null) {
                 continue;
             }
+            ensureEditableMenu(item.getId(), tenantId);
+            if (item.getParentId() != null && item.getParentId() > 0) {
+                ensureEditableMenu(item.getParentId(), tenantId);
+            }
             jdbcTemplate.update(
                     """
                             update sys_menu
@@ -861,12 +899,17 @@ public class SystemManagementAppService {
         if (menu == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
         }
+        ensureEditableMenu(menu);
         return menu;
     }
 
     @Transactional
     public SystemVO.MenuVO createMenu(CurrentUser currentUser, SystemDTO.MenuUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
+        ensureEditableMenuRequest(request);
+        if (request.getParentId() != null && request.getParentId() > 0) {
+            ensureEditableMenu(request.getParentId(), tenantId);
+        }
         Long menuId = insertMenu(null, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
         return getMenu(currentUser, menuId);
@@ -875,6 +918,11 @@ public class SystemManagementAppService {
     @Transactional
     public SystemVO.MenuVO updateMenu(CurrentUser currentUser, Long menuId, SystemDTO.MenuUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
+        ensureEditableMenu(menuId, tenantId);
+        ensureEditableMenuRequest(request);
+        if (request.getParentId() != null && request.getParentId() > 0) {
+            ensureEditableMenu(request.getParentId(), tenantId);
+        }
         insertMenu(menuId, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
         return getMenu(currentUser, menuId);
@@ -882,6 +930,7 @@ public class SystemManagementAppService {
 
     @Transactional
     public boolean updateMenuStatus(CurrentUser currentUser, Long menuId, String status) {
+        ensureEditableMenu(menuId, currentTenantId(currentUser));
         jdbcTemplate.update(
                 "update sys_menu set status = ?, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
                 status,
@@ -1720,6 +1769,31 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : null;
     }
 
+    private String resolveProfileDisplayName(SysUserEntity user) {
+        if (StringUtils.hasText(user.getNickname())) {
+            return user.getNickname().trim();
+        }
+        if (StringUtils.hasText(user.getRealName())) {
+            return user.getRealName().trim();
+        }
+        return user.getUsername();
+    }
+
+    private String normalizeLocale(String locale) {
+        if (!StringUtils.hasText(locale)) {
+            return DEFAULT_LOCALE;
+        }
+
+        String normalized = locale.trim();
+        if ("zh".equalsIgnoreCase(normalized) || "zh-CN".equalsIgnoreCase(normalized)) {
+            return "zh-CN";
+        }
+        if ("en".equalsIgnoreCase(normalized) || "en-US".equalsIgnoreCase(normalized)) {
+            return "en-US";
+        }
+        return DEFAULT_LOCALE;
+    }
+
     private boolean contactValueChanged(String currentValue, String nextValue) {
         String current = normalizeNullableText(currentValue);
         if (current == null) {
@@ -1844,11 +1918,11 @@ public class SystemManagementAppService {
         if (currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return tenantDomainService.listUserTenantAccess(currentUser.getUserId()).stream()
-                .filter(access -> access.getTenant() != null)
+        return tenantDomainService.listVisibleTenants(currentUser.getUserId()).stream()
+                .filter(access -> access.getTenantId() != null)
                 .findFirst()
-                .map(access -> access.getTenant().getId())
-                .orElseThrow(() -> new BizException(ErrorCode.TENANT_NOT_BOUND, "当前账号没有可用租户"));
+                .map(MyTenantVO::getTenantId)
+                .orElse(DEFAULT_PUBLIC_TENANT_ID);
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
@@ -2171,6 +2245,7 @@ public class SystemManagementAppService {
     }
 
     private Long insertMenu(Long menuId, Long tenantId, SystemDTO.MenuUpsertRequest request, Long operatorId) {
+        ensureEditableMenuRequest(request);
         if (menuId == null) {
             jdbcTemplate.update(
                     """
@@ -2223,6 +2298,43 @@ public class SystemManagementAppService {
                 tenantId
         );
         return menuId;
+    }
+
+    private void ensureEditableMenu(Long menuId, Long tenantId) {
+        if (menuId == null || menuId <= 0) {
+            return;
+        }
+        SystemVO.MenuVO menu = queryOne(
+                """
+                        select id, tenant_id as tenantId, parent_id as parentId, menu_code as menuCode,
+                               menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
+                               permission_key as permissionKey, status
+                        from sys_menu
+                        where id = ? and tenant_id = ? and deleted = 0
+                        """,
+                SystemVO.MenuVO.class,
+                menuId,
+                tenantId
+        );
+        if (menu == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
+        }
+        ensureEditableMenu(menu);
+    }
+
+    private void ensureEditableMenu(SystemVO.MenuVO menu) {
+        if (SystemRouteCatalog.isBuiltInMenu(menu)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
+        }
+    }
+
+    private void ensureEditableMenuRequest(SystemDTO.MenuUpsertRequest request) {
+        if (request == null) {
+            return;
+        }
+        if (SystemRouteCatalog.isBuiltInMenuPath(request.getPath()) || SystemRouteCatalog.isBuiltInMenuComponent(request.getComponent())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
+        }
     }
 
     private Long upsertDictType(Long id, Long tenantId, SystemDTO.DictTypeUpsertRequest request, Long operatorId) {

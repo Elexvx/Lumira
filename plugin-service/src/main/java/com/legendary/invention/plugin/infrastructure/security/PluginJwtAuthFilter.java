@@ -1,0 +1,80 @@
+package com.legendary.invention.plugin.infrastructure.security;
+
+import com.legendary.invention.api.auth.CurrentUserDTO;
+import com.legendary.invention.api.client.AuthInternalApi;
+import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.constant.HeaderConstants;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Component
+public class PluginJwtAuthFilter extends OncePerRequestFilter {
+
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+    private static final List<String> PUBLIC_PREFIXES = List.of("/actuator/health");
+
+    private final JwtTokenService jwtTokenService;
+    private final AuthInternalApi authInternalApi;
+
+    public PluginJwtAuthFilter(JwtTokenService jwtTokenService, AuthInternalApi authInternalApi) {
+        this.jwtTokenService = jwtTokenService;
+        this.authInternalApi = authInternalApi;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        return PUBLIC_PREFIXES.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, requestUri));
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
+            try {
+                TokenClaims claims = jwtTokenService.parseToken(authorization.substring(7));
+                if (claims.getTokenType() == TokenType.ACCESS) {
+                    CurrentUserDTO snapshot = authInternalApi.currentUser(claims.getSessionId());
+                    if (snapshot != null) {
+                        CurrentUser currentUser = new CurrentUser(
+                                snapshot.userId(),
+                                snapshot.username(),
+                                snapshot.currentTenant() == null ? claims.getCurrentTenantId() : snapshot.currentTenant().tenantId(),
+                                snapshot.sessionId(),
+                                snapshot.sessionVersion(),
+                                true,
+                                snapshot.permissions() == null ? Set.of() : snapshot.permissions().stream().collect(Collectors.toUnmodifiableSet())
+                        );
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(currentUser, authorization, List.of());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                }
+            } catch (Exception ignored) {
+                SecurityContextHolder.clearContext();
+            }
+        }
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+}

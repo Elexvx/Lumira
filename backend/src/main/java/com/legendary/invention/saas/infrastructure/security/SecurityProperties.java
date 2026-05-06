@@ -8,7 +8,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "saas.security")
 public class SecurityProperties {
 
-    private String jwtSecret = "replace_me";
+    private String jwtSecret = "";
     private String issuer = "saas-foundation";
     private long idleTimeoutSeconds = 1800;
     private long accessTokenExpireSeconds = 1800;

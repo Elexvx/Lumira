@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageContainer, ProDescriptions, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Modal, Space, Tag, Typography, message } from 'antd';
+import { ProDescriptions, type ActionType, type ProColumns } from '@ant-design/pro-components';
+import { Button, Modal, Space, Tag, Typography, message } from 'antd';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { usePermissionActions } from '@/features/permissions/usePermissionActions';
 import { TableActionBar } from '@/features/table/TableActionBar';
-import { buildMobilePagination, buildTableRequest, buildTableScroll } from '@/features/table/proTable';
+import { buildTableRequest } from '@/features/table/proTable';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
@@ -71,7 +72,7 @@ const OnlineUsersPage = () => {
         reloadTimerRef.current = null;
       }
     };
-  }, [canViewOnlineUsers, currentUser?.sessionId, currentUser?.userId, initialState?.currentTenant?.tenantId]);
+  }, [canViewOnlineUsers, currentUser?.sessionId, currentUser?.userId]);
 
   useEffect(() => {
     if (!currentUser?.sessionId || !canViewOnlineUsers) {
@@ -92,7 +93,7 @@ const OnlineUsersPage = () => {
         pollingTimerRef.current = null;
       }
     };
-  }, [canViewOnlineUsers, currentUser?.sessionId, initialState?.currentTenant?.tenantId]);
+  }, [canViewOnlineUsers, currentUser?.sessionId]);
 
   const columns: ProColumns<OnlineSessionRecord>[] = useMemo(
     () => [
@@ -110,21 +111,6 @@ const OnlineUsersPage = () => {
           <Typography.Text type="secondary">{record.username}</Typography.Text>
         </Space>
       ),
-    },
-    {
-      title: '租户ID',
-      dataIndex: 'currentTenantId',
-      search: false,
-      responsive: ['md', 'lg', 'xl', 'xxl'],
-      width: 140,
-      render: (_, record) =>
-        record.currentTenantId === initialState?.currentTenant?.tenantId ? (
-          <Tag color="green">当前租户</Tag>
-        ) : (
-          <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: record.currentTenantId?.toString() || '-' }}>
-            {record.currentTenantId ?? '-'}
-          </Typography.Text>
-        ),
     },
     {
       title: '终端',
@@ -282,42 +268,36 @@ const OnlineUsersPage = () => {
       },
     },
     ],
-    [buildActions, currentUser?.sessionId, currentUser?.userId, initialState?.currentTenant?.tenantId, responsive.isDesktop, responsive.isMobile],
+    [buildActions, currentUser?.sessionId, currentUser?.userId, responsive.isDesktop, responsive.isMobile],
   );
 
   return (
-    <PageContainer
+    <ManagementPage
       title="在线用户"
-      className="saas-online-users-page saas-management-page"
+      className="saas-online-users-page"
       ghost
     >
-      <div className="saas-table-wrap">
-        <ProTable<OnlineSessionRecord>
+      <ManagementTable<OnlineSessionRecord>
           actionRef={actionRef}
           rowKey="sessionId"
           search={false}
-          options={false}
           columns={columns}
-          pagination={buildMobilePagination({ showSizeChanger: true }, responsive.isMobile)}
-          scroll={buildTableScroll(columns, responsive.isMobile)}
+          isMobile={responsive.isMobile}
           request={buildTableRequest((params) => systemService.onlineUsers(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               刷新
             </Button>,
           ]}
-        />
-      </div>
+      />
 
-      <Drawer
+      <ManagementDrawer
         title={selectedRecord ? `在线会话详情 · ${selectedRecord.realName || selectedRecord.nickname || selectedRecord.username}` : '在线会话详情'}
         open={detailOpen}
         onClose={() => {
           setDetailOpen(false);
           setSelectedRecord(null);
         }}
-        width={720}
-        destroyOnClose
       >
         {selectedRecord ? (
           <ProDescriptions<OnlineSessionRecord>
@@ -326,7 +306,6 @@ const OnlineUsersPage = () => {
               { title: '用户名', dataIndex: 'username' },
               { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
               { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
-              { title: '租户ID', dataIndex: 'currentTenantId', renderText: (value) => value ?? '-' },
               { title: '终端', dataIndex: 'clientType', renderText: (value) => value || '-' },
               { title: '登录 IP', dataIndex: 'loginIp', renderText: (value) => value || '-' },
               { title: '登录时间', dataIndex: 'loginTime', renderText: (value) => formatDateTime(value) },
@@ -337,8 +316,8 @@ const OnlineUsersPage = () => {
             ]}
           />
         ) : null}
-      </Drawer>
-    </PageContainer>
+      </ManagementDrawer>
+    </ManagementPage>
   );
 };
 

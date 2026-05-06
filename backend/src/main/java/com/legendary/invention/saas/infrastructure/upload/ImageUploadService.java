@@ -20,14 +20,13 @@ import java.util.UUID;
 @Service
 public class ImageUploadService {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "ico");
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/png",
             "image/jpeg",
             "image/gif",
             "image/webp",
             "image/bmp",
-            "image/svg+xml",
             "image/x-icon",
             "image/vnd.microsoft.icon"
     );
@@ -87,7 +86,6 @@ public class ImageUploadService {
             case "image/gif" -> ".gif";
             case "image/webp" -> ".webp";
             case "image/bmp" -> ".bmp";
-            case "image/svg+xml" -> ".svg";
             case "image/x-icon", "image/vnd.microsoft.icon" -> ".ico";
             default -> ".png";
         };

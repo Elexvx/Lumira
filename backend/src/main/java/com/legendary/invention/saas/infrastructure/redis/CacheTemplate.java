@@ -33,6 +33,10 @@ public class CacheTemplate {
         return redisTemplate.opsForValue().get(key);
     }
 
+    public String getAndRemove(String key) {
+        return redisTemplate.opsForValue().getAndDelete(key);
+    }
+
     public Long increment(String key) {
         return redisTemplate.opsForValue().increment(key);
     }

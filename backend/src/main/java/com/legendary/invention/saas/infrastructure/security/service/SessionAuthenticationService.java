@@ -52,6 +52,27 @@ public class SessionAuthenticationService {
         return new AuthenticatedAccess(buildCurrentUser(claims, session), session);
     }
 
+    public AuthenticatedAccess authenticateSessionTicket(String sessionId, Long userId, Integer sessionVersion) {
+        if (sessionId == null || sessionId.isBlank() || userId == null || sessionVersion == null) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "WebSocket凭证已失效");
+        }
+        AuthSession session = authSessionStore.findBySessionId(sessionId)
+                .orElseThrow(() -> new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "会话不存在或已失效",
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                ));
+        TokenClaims claims = new TokenClaims();
+        claims.setSessionId(sessionId);
+        claims.setUserId(userId);
+        claims.setUsername(session.getUsername());
+        claims.setCurrentTenantId(session.getCurrentTenantId());
+        claims.setSessionVersion(sessionVersion);
+        claims.setTokenType(TokenType.ACCESS);
+        validateSession(claims, session, Instant.now());
+        return new AuthenticatedAccess(buildCurrentUser(claims, session), session);
+    }
+
     public boolean shouldPersistActivity(AuthSession session, Instant now) {
         Instant lastActivityAt = session.getLastActivityAt();
         if (lastActivityAt == null) {

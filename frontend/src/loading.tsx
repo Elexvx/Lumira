@@ -1,7 +1,11 @@
 import { Spin } from 'antd';
 
 const Loading = () => {
-  return <Spin spinning size="large" fullscreen />;
+  return (
+    <div className="saas-app-loading">
+      <Spin spinning size="large" />
+    </div>
+  );
 };
 
 export default Loading;

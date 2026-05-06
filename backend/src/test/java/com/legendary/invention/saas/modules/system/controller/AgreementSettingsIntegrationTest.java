@@ -27,7 +27,10 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "spring.cloud.nacos.config.import-check.enabled=false"
+)
 class AgreementSettingsIntegrationTest {
 
     private static final OAEPParameterSpec OAEP_SPEC = new OAEPParameterSpec(
@@ -66,7 +69,6 @@ class AgreementSettingsIntegrationTest {
 
         HttpHeaders authHeaders = new HttpHeaders();
         authHeaders.setBearerAuth(loginResult.accessToken());
-        authHeaders.add("X-Tenant-Id", String.valueOf(loginResult.tenantId()));
         authHeaders.setContentType(MediaType.APPLICATION_JSON);
 
         try {
@@ -101,8 +103,7 @@ class AgreementSettingsIntegrationTest {
         Assertions.assertEquals("0", loginBody.path("code").asText(), loginResponse.getBody());
 
         String accessToken = loginBody.path("data").path("accessToken").asText();
-        Long tenantId = loginBody.path("data").path("currentTenant").path("tenantId").asLong();
-        return new LoginResult(accessToken, tenantId);
+        return new LoginResult(accessToken);
     }
 
     private JsonNode readAgreement(String url, HttpHeaders headers) throws Exception {
@@ -132,7 +133,7 @@ class AgreementSettingsIntegrationTest {
         Assertions.assertEquals("0", body.path("code").asText(), response.getBody());
     }
 
-    private record LoginResult(String accessToken, Long tenantId) {
+    private record LoginResult(String accessToken) {
     }
 
     private void disableCaptcha() {

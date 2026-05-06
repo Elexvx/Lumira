@@ -91,7 +91,7 @@ export const BindSecondFactorModal = ({
     onCancel={onCancel}
     footer={null}
     width={780}
-    destroyOnClose
+    destroyOnHidden
     maskClosable={false}
   >
     {bindingCompleted && bindingChallenge ? (

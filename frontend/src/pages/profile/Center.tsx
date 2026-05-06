@@ -1,10 +1,11 @@
-import { PageContainer } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
+import { formatMessage } from '@umijs/max';
 import { Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
+import { ManagementPage } from '@/features/management';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
@@ -26,21 +27,19 @@ const ProfileCenterPage = () => {
   });
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
-  const currentTenant = summary?.currentTenant || initialState?.currentTenant || null;
   const roleNames = summary?.roleNames || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const profileFieldSettings = summary?.profileFieldSettings || [];
   const summaryMobileBindAvailable = Boolean(summary?.mobileBindAvailable ?? summary?.mobileBindVerificationRequired);
   const summaryEmailBindAvailable = Boolean(summary?.emailBindAvailable ?? summary?.emailBindVerificationRequired);
   const loginCapabilitiesQuery = useQuery({
-    queryKey: ['profile-login-capabilities', currentTenant?.tenantId],
+    queryKey: ['profile-login-capabilities'],
     queryFn: async () =>
       systemService.publicLoginCapabilities({
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
       }),
-    enabled: Boolean(currentTenant),
   });
   const loginCapabilities = loginCapabilitiesQuery.data;
   const emailLoginAvailable = Boolean(loginCapabilities?.emailLoginAvailable);
@@ -107,7 +106,7 @@ const ProfileCenterPage = () => {
 
   const handleAvatarBeforeCrop = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      message.error('请选择图片文件');
+      message.error(formatMessage({ id: 'page.profile.avatar.selectImage', defaultMessage: 'Please select an image file' }));
       return false;
     }
     return true;
@@ -132,11 +131,11 @@ const ProfileCenterPage = () => {
             }
           : prev,
       );
-      message.success('头像已上传，请点击保存资料');
+      message.success(formatMessage({ id: 'page.profile.avatar.uploadSuccess', defaultMessage: 'Avatar uploaded, please click save profile' }));
       onSuccess?.(avatarUrl);
     } catch (error) {
       onError?.(error as Error);
-      message.error(error instanceof Error ? error.message : '头像上传失败，请稍后重试');
+      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.avatar.uploadFailed', defaultMessage: 'Avatar upload failed, please try again later' }));
     } finally {
       setAvatarUploading(false);
     }
@@ -178,7 +177,7 @@ const ProfileCenterPage = () => {
     } catch (error) {
       setBindingAlert({
         type: 'error',
-        message: error instanceof Error ? error.message : '获取绑定信息失败，请稍后重试',
+        message: error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.fetchFailed', defaultMessage: 'Failed to load binding info, please try again later' }),
       });
     } finally {
       setBindingLoading(false);
@@ -197,10 +196,10 @@ const ProfileCenterPage = () => {
     void (async () => {
       try {
         await secondFactorService.currentUnbind(provider.factorCode, { autoRedirectOnUnauthorized: false });
-        message.success('已解绑');
+        message.success(formatMessage({ id: 'page.profile.bind.unbound', defaultMessage: 'Unbound' }));
         await providersQuery.refetch();
       } catch (error) {
-        message.error(error instanceof Error ? error.message : '解绑失败，请稍后重试');
+        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.unbindFailed', defaultMessage: 'Failed to unbind, please try again later' }));
       }
     })();
   };
@@ -209,14 +208,14 @@ const ProfileCenterPage = () => {
     if (!bindingProvider || !bindingChallenge) {
       setBindingAlert({
         type: 'warning',
-        message: '绑定信息已失效，请重新发起绑定。',
+        message: formatMessage({ id: 'page.profile.bind.expired', defaultMessage: 'Binding information has expired, please start again.' }),
       });
       return false;
     }
     if (!values.verificationCode) {
       setBindingAlert({
         type: 'warning',
-        message: '请输入验证码。',
+        message: formatMessage({ id: 'page.profile.bind.enterCode', defaultMessage: 'Please enter the verification code.' }),
       });
       return false;
     }
@@ -240,19 +239,19 @@ const ProfileCenterPage = () => {
       if (!result.verified) {
         setBindingAlert({
           type: 'warning',
-          message: result.message || '验证码校验失败，请重试。',
+          message: result.message || formatMessage({ id: 'page.profile.bind.codeFailed', defaultMessage: 'Verification code validation failed, please try again.' }),
         });
         return false;
       }
 
-      message.success('绑定已完成');
+      message.success(formatMessage({ id: 'page.profile.bind.completed', defaultMessage: 'Binding completed' }));
       setBindingCompleted(true);
       await providersQuery.refetch();
       return true;
     } catch (error) {
       setBindingAlert({
         type: 'error',
-        message: error instanceof Error ? error.message : '绑定失败，请稍后重试',
+        message: error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.failed', defaultMessage: 'Binding failed, please try again later' }),
       });
       return false;
     } finally {
@@ -291,7 +290,9 @@ const ProfileCenterPage = () => {
 
   const openContactBindModal = (type: 'mobile' | 'email') => {
     if ((type === 'mobile' && !mobileBindAvailable) || (type === 'email' && !emailBindAvailable)) {
-      message.warning(type === 'mobile' ? '当前租户未启用短信验证码，暂不允许绑定手机号' : '当前租户未启用邮箱验证码，暂不允许绑定邮箱');
+      message.warning(type === 'mobile'
+        ? formatMessage({ id: 'page.profile.bind.mobileDisabled', defaultMessage: 'SMS verification is not enabled, mobile binding is not allowed.' })
+        : formatMessage({ id: 'page.profile.bind.emailDisabled', defaultMessage: 'Email verification is not enabled, email binding is not allowed.' }));
       return;
     }
     setContactBindType(type);
@@ -323,7 +324,9 @@ const ProfileCenterPage = () => {
       return;
     }
     if (!contactBindAvailable) {
-      setContactBindAlert(contactBindType === 'mobile' ? '当前租户未启用短信验证码，暂不允许绑定手机号' : '当前租户未启用邮箱验证码，暂不允许绑定邮箱');
+      setContactBindAlert(contactBindType === 'mobile'
+        ? formatMessage({ id: 'page.profile.bind.mobileDisabled', defaultMessage: 'SMS verification is not enabled, mobile binding is not allowed.' })
+        : formatMessage({ id: 'page.profile.bind.emailDisabled', defaultMessage: 'Email verification is not enabled, email binding is not allowed.' }));
       return;
     }
 
@@ -349,10 +352,10 @@ const ProfileCenterPage = () => {
           setContactBindChallenge(challenge);
           setContactBindChallengeTarget(nextValue);
           contactBindForm.setFieldsValue({ verificationCode: undefined });
-          message.success('验证码已发送，请输入验证码后继续');
+          message.success(formatMessage({ id: 'page.profile.bind.codeSent', defaultMessage: 'Verification code sent, please enter it to continue' }));
           return;
         } catch (error) {
-          setContactBindAlert(error instanceof Error ? error.message : '验证码发送失败，请稍后重试');
+          setContactBindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.sendFailed', defaultMessage: 'Failed to send verification code, please try again later' }));
           return;
         } finally {
           setContactBindChallengeLoading(false);
@@ -362,11 +365,11 @@ const ProfileCenterPage = () => {
       const verificationCode = contactBindVerificationRequired ? contactBindForm.getFieldValue('verificationCode')?.trim() : undefined;
       if (contactBindVerificationRequired) {
         if (!verificationCode) {
-          setContactBindAlert('请输入验证码');
+          setContactBindAlert(formatMessage({ id: 'page.profile.bind.enterCode', defaultMessage: 'Please enter the verification code.' }));
           return;
         }
         if (!contactBindChallenge?.challengeId) {
-          setContactBindAlert('验证码信息已失效，请重新获取验证码');
+          setContactBindAlert(formatMessage({ id: 'page.profile.bind.expired', defaultMessage: 'Binding information has expired, please request a new code.' }));
           return;
         }
       }
@@ -391,7 +394,9 @@ const ProfileCenterPage = () => {
             : prev,
         );
         profileForm.setFieldValue(contactBindType, nextValue);
-        message.success(contactBindType === 'mobile' ? '手机号已绑定' : '邮箱已绑定');
+        message.success(contactBindType === 'mobile'
+          ? formatMessage({ id: 'page.profile.bind.mobileBound', defaultMessage: 'Mobile number bound' })
+          : formatMessage({ id: 'page.profile.bind.emailBound', defaultMessage: 'Email bound' }));
         await profileQuery.refetch();
         setContactBindType(null);
         setContactBindChallenge(null);
@@ -399,12 +404,12 @@ const ProfileCenterPage = () => {
         setContactBindAlert(null);
         contactBindForm.resetFields();
       } catch (error) {
-        setContactBindAlert(error instanceof Error ? error.message : '绑定失败，请稍后重试');
+        setContactBindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.failed', defaultMessage: 'Binding failed, please try again later' }));
       } finally {
         setContactBindSubmitting(false);
       }
     } catch (error) {
-      setContactBindAlert(error instanceof Error ? error.message : '绑定失败，请稍后重试');
+      setContactBindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.failed', defaultMessage: 'Binding failed, please try again later' }));
     }
   };
 
@@ -413,13 +418,13 @@ const ProfileCenterPage = () => {
       ? [
           {
             key: 'mobile',
-            title: '手机号',
-            statusLabel: currentUser?.mobile ? '已绑定' : '未绑定',
+            title: formatMessage({ id: 'page.profile.contact.mobile', defaultMessage: 'Mobile number' }),
+            statusLabel: currentUser?.mobile ? formatMessage({ id: 'page.profile.contact.bound', defaultMessage: 'Bound' }) : formatMessage({ id: 'page.profile.contact.unbound', defaultMessage: 'Unbound' }),
             statusColor: currentUser?.mobile ? 'green' : 'default',
-            value: currentUser?.mobile ? maskMobile(currentUser.mobile) : '未设置手机号',
-            verificationLabel: '需验证码',
+            value: currentUser?.mobile ? maskMobile(currentUser.mobile) : formatMessage({ id: 'page.profile.contact.notSetMobile', defaultMessage: 'Mobile number not set' }),
+            verificationLabel: formatMessage({ id: 'page.profile.contact.verificationRequired', defaultMessage: 'Verification required' }),
             verificationColor: 'blue',
-            actionLabel: currentUser?.mobile ? '修改手机号' : '绑定手机号',
+            actionLabel: currentUser?.mobile ? formatMessage({ id: 'page.profile.contact.editMobile', defaultMessage: 'Change mobile number' }) : formatMessage({ id: 'page.profile.contact.bindMobile', defaultMessage: 'Bind mobile number' }),
             actionLoading: contactBindType === 'mobile' && (contactBindSubmitting || contactBindChallengeLoading),
             disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
             onAction: () => openContactBindModal('mobile'),
@@ -430,13 +435,13 @@ const ProfileCenterPage = () => {
       ? [
           {
             key: 'email',
-            title: '邮箱',
-            statusLabel: currentUser?.email ? '已绑定' : '未绑定',
+            title: formatMessage({ id: 'page.profile.contact.email', defaultMessage: 'Email' }),
+            statusLabel: currentUser?.email ? formatMessage({ id: 'page.profile.contact.bound', defaultMessage: 'Bound' }) : formatMessage({ id: 'page.profile.contact.unbound', defaultMessage: 'Unbound' }),
             statusColor: currentUser?.email ? 'green' : 'default',
-            value: currentUser?.email ? maskEmail(currentUser.email) : '未设置邮箱',
-            verificationLabel: '需验证码',
+            value: currentUser?.email ? maskEmail(currentUser.email) : formatMessage({ id: 'page.profile.contact.notSetEmail', defaultMessage: 'Email not set' }),
+            verificationLabel: formatMessage({ id: 'page.profile.contact.verificationRequired', defaultMessage: 'Verification required' }),
             verificationColor: 'blue',
-            actionLabel: currentUser?.email ? '修改邮箱' : '绑定邮箱',
+            actionLabel: currentUser?.email ? formatMessage({ id: 'page.profile.contact.editEmail', defaultMessage: 'Change email' }) : formatMessage({ id: 'page.profile.contact.bindEmail', defaultMessage: 'Bind email' }),
             actionLoading: contactBindType === 'email' && (contactBindSubmitting || contactBindChallengeLoading),
             disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
             onAction: () => openContactBindModal('email'),
@@ -445,24 +450,26 @@ const ProfileCenterPage = () => {
       : []),
   ];
   const contactBindOpen = contactBindType !== null;
-  const contactBindTitle = contactBindType === 'mobile' ? '绑定手机号' : '绑定邮箱';
+  const contactBindTitle = contactBindType === 'mobile'
+    ? formatMessage({ id: 'page.profile.contact.bindMobile', defaultMessage: 'Bind mobile number' })
+    : formatMessage({ id: 'page.profile.contact.bindEmail', defaultMessage: 'Bind email' });
   const contactBindDescription =
     contactBindType === 'mobile'
       ? contactBindVerificationRequired
-        ? '当前租户已开启短信验证码验证，绑定手机号时需要先获取并输入验证码。'
-        : '当前租户未启用短信验证码，暂不允许绑定手机号。'
+        ? formatMessage({ id: 'page.profile.contact.description.mobile.required', defaultMessage: 'SMS verification is enabled, so you must request and enter a code to bind a mobile number.' })
+        : formatMessage({ id: 'page.profile.contact.description.mobile.disabled', defaultMessage: 'SMS verification is not enabled, mobile binding is not allowed.' })
       : contactBindVerificationRequired
-        ? '当前租户已开启邮箱验证码验证，绑定邮箱时需要先获取并输入验证码。'
-        : '当前租户未启用邮箱验证码，暂不允许绑定邮箱。';
-  const contactBindLabel = contactBindType === 'mobile' ? '手机号' : '邮箱';
-  const contactBindPlaceholder = contactBindType === 'mobile' ? '请输入手机号' : '请输入邮箱地址';
+        ? formatMessage({ id: 'page.profile.contact.description.email.required', defaultMessage: 'Email verification is enabled, so you must request and enter a code to bind an email.' })
+        : formatMessage({ id: 'page.profile.contact.description.email.disabled', defaultMessage: 'Email verification is not enabled, email binding is not allowed.' });
+  const contactBindLabel = contactBindType === 'mobile' ? formatMessage({ id: 'page.profile.contact.label.mobile', defaultMessage: 'Mobile number' }) : formatMessage({ id: 'page.profile.contact.label.email', defaultMessage: 'Email' });
+  const contactBindPlaceholder = contactBindType === 'mobile' ? formatMessage({ id: 'page.profile.contact.placeholder.mobile', defaultMessage: 'Please enter your mobile number' }) : formatMessage({ id: 'page.profile.contact.placeholder.email', defaultMessage: 'Please enter your email address' });
   const contactBindAutoComplete = contactBindType === 'mobile' ? 'tel' : 'email';
   const contactBindInputMode = contactBindType === 'mobile' ? 'tel' : 'email';
   const contactBindOkText = contactBindVerificationRequired
     ? contactBindChallengeMatchesValue
-      ? '确认绑定'
-      : '发送验证码'
-    : '保存';
+      ? formatMessage({ id: 'page.profile.contact.confirm', defaultMessage: 'Confirm bind' })
+      : formatMessage({ id: 'page.profile.contact.sendCode', defaultMessage: 'Send code' })
+    : formatMessage({ id: 'page.profile.contact.save', defaultMessage: 'Save' });
 
   const handleSaveProfile = async () => {
     try {
@@ -485,7 +492,7 @@ const ProfileCenterPage = () => {
             }
           : prev,
       );
-      message.success('个人资料已更新');
+      message.success(formatMessage({ id: 'page.profile.bind.updateSuccess', defaultMessage: 'Profile updated' }));
       await profileQuery.refetch();
     } finally {
       setProfileSaving(false);
@@ -493,10 +500,10 @@ const ProfileCenterPage = () => {
   };
 
   return (
-    <PageContainer className="saas-management-page saas-profile-page" title="个人中心">
+    <ManagementPage className="saas-profile-page" title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Row gutter={[16, 16]} align="top">
-          <Col xs={24} lg={12}>
+          <Col xs={24} xl={12}>
             <ProfileBasicCard
               loading={profileQuery.isLoading}
               hasVisibleProfileFields={hasVisibleProfileFields}
@@ -514,10 +521,9 @@ const ProfileCenterPage = () => {
             />
           </Col>
 
-          <Col xs={24} lg={12}>
+          <Col xs={24} xl={12}>
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
               <SecuritySummaryCard
-                currentTenant={currentTenant}
                 permissionCount={summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}
                 roleNames={roleNames}
                 descriptionsProps={summaryDescriptionsProps}
@@ -537,15 +543,15 @@ const ProfileCenterPage = () => {
           </Col>
         </Row>
 
-        <Card title="最近登录记录" loading={profileQuery.isLoading}>
+        <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={profileQuery.isLoading}>
           {recentLoginLogs.length ? (
             <Timeline
               items={recentLoginLogs.map((item: ProfileSummary['recentLoginLogs'][number]) => ({
                 children: (
                   <Space direction="vertical" size={0}>
-                    <Typography.Text strong>{item.username || '未知用户'}</Typography.Text>
+                    <Typography.Text strong>{item.username || formatMessage({ id: 'page.profile.recentLogins.unknownUser', defaultMessage: 'Unknown user' })}</Typography.Text>
                     <Typography.Text type="secondary">
-                      {item.logResult || item.failReason || '登录记录'} · {item.createdAt}
+                      {item.logResult || item.failReason || formatMessage({ id: 'page.profile.recentLogins.record', defaultMessage: 'Login record' })} · {item.createdAt}
                     </Typography.Text>
                   </Space>
                 ),
@@ -553,7 +559,7 @@ const ProfileCenterPage = () => {
               }))}
             />
           ) : (
-            <Empty description="暂无最近登录记录" />
+            <Empty description={formatMessage({ id: 'page.profile.recentLogins.none', defaultMessage: 'No recent login records' })} />
           )}
         </Card>
       </Space>
@@ -591,7 +597,7 @@ const ProfileCenterPage = () => {
         onCancel={closeContactBindModal}
         onConfirm={() => void handleContactBindConfirm()}
       />
-    </PageContainer>
+    </ManagementPage>
   );
 };
 

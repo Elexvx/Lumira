@@ -73,11 +73,33 @@ public class PermissionSnapshotService {
         String key = CacheKeyConstants.tenantKey(String.valueOf(tenantId), VERSION_SUFFIX);
         String version = cacheTemplate.get(key);
         if (StringUtils.hasText(version)) {
-            return version;
+            return version + ":" + queryRolePermissionVersion(tenantId);
         }
         String newVersion = String.valueOf(System.currentTimeMillis());
         cacheTemplate.put(key, newVersion, Duration.ofDays(30));
-        return newVersion;
+        return newVersion + ":" + queryRolePermissionVersion(tenantId);
+    }
+
+    private String queryRolePermissionVersion(Long tenantId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select concat(
+                                coalesce(date_format(max(updated_at), '%Y%m%d%H%i%s'), '0'),
+                                ':',
+                                count(*)
+                            )
+                            from sys_role_permission
+                            where tenant_id = ?
+                              and deleted = 0
+                            """,
+                    String.class,
+                    tenantId
+            );
+        } catch (Throwable throwable) {
+            log.warn("Failed to query role permission version tenantId={}", tenantId, throwable);
+            return "0";
+        }
     }
 
     private Set<String> queryPermissions(Long tenantId, Long userId) {

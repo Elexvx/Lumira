@@ -1,6 +1,7 @@
 import { ConfigProvider } from 'antd';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { resolveAntdLocale } from '@/i18n/antdLocale';
 import { buildAntdThemeConfig, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { syncThemeRuntimeSnapshot } from '@/theme/runtime';
 import {
@@ -102,7 +103,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
-      <ConfigProvider theme={themeConfig} variant="filled">
+      <ConfigProvider locale={resolveAntdLocale()} theme={themeConfig} variant="filled">
         {children}
       </ConfigProvider>
     </ThemePreferenceContext.Provider>

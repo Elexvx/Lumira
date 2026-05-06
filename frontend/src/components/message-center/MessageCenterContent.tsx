@@ -10,7 +10,9 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { getLocale, useIntl } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { normalizeLocale } from '@/i18n/locale';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { messageService } from '@/services/message';
 import type { MessageNoticeRecord } from '@/types/api';
@@ -37,7 +39,7 @@ interface MessageCenterChannel {
 }
 
 const MESSAGE_TYPE_LABELS: Record<string, string> = {
-  MESSAGE: '站内信',
+  MESSAGE: 'message.center.type.message',
 };
 
 const buildAbsoluteTimeLabel = (value?: string) => {
@@ -50,7 +52,7 @@ const buildAbsoluteTimeLabel = (value?: string) => {
     return value;
   }
 
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(normalizeLocale(getLocale()), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -75,10 +77,12 @@ const buildRelativeTimeLabel = (value?: string) => {
   const absoluteSeconds = Math.abs(diffSeconds);
 
   if (absoluteSeconds < 60) {
-    return diffSeconds <= 0 ? '刚刚' : '即将';
+    return diffSeconds <= 0
+      ? (normalizeLocale(getLocale()) === 'en-US' ? 'Just now' : '刚刚')
+      : (normalizeLocale(getLocale()) === 'en-US' ? 'Soon' : '即将');
   }
 
-  const formatter = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' });
+  const formatter = new Intl.RelativeTimeFormat(normalizeLocale(getLocale()), { numeric: 'auto' });
   const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
     ['year', 60 * 60 * 24 * 365],
     ['month', 60 * 60 * 24 * 30],
@@ -135,6 +139,7 @@ export interface MessageCenterContentProps {
 
 export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterContentProps) => {
   const { initialState } = useInitialStateModel();
+  const intl = useIntl();
   const [filter, setFilter] = useState<MessageCenterFilter>('all');
   const [notices, setNotices] = useState<MessageCenterNotice[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -144,7 +149,6 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
   const [actionKey, setActionKey] = useState<string | null>(null);
   const loadRequestIdRef = useRef(0);
 
-  const tenantId = initialState?.currentTenant?.tenantId;
   const permissions = useMemo(() => new Set(initialState?.currentUser?.permissions || []), [initialState?.currentUser?.permissions]);
   const canOpenMessageCenter =
     permissions.has('*') ||
@@ -160,7 +164,7 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
   );
 
   const reloadCenter = useCallback(async () => {
-    if (!tenantId) {
+    if (!canOpenMessageCenter) {
       setNotices([]);
       setUnreadCount(0);
       setLoadError(null);
@@ -203,16 +207,20 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
       );
 
       if (failedParts > 0) {
-        setLoadError(nextNotices.length > 0 ? '部分消息加载失败，请稍后重试' : '消息加载失败，请稍后重试');
+        setLoadError(
+          nextNotices.length > 0
+            ? intl.formatMessage({ id: 'message.center.loadPartialError', defaultMessage: '部分消息加载失败，请稍后重试' })
+            : intl.formatMessage({ id: 'message.center.loadError', defaultMessage: '消息加载失败，请稍后重试' }),
+        );
       }
     } finally {
       if (loadRequestIdRef.current === requestId) {
         setLoading(false);
       }
     }
-  }, [requestOptions, tenantId]);
+  }, [canOpenMessageCenter, intl, requestOptions]);
 
-  useMessageCenterRealtime(Boolean(tenantId && canOpenMessageCenter), useCallback((event) => {
+  useMessageCenterRealtime(canOpenMessageCenter, useCallback((event) => {
     if (!event.eventType) {
       return;
     }
@@ -229,17 +237,13 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
 
   useEffect(() => {
     if (!canOpenMessageCenter) {
-      return;
-    }
-
-    if (!tenantId) {
       setNotices([]);
       setUnreadCount(0);
       return;
     }
 
     void reloadCenter();
-  }, [canOpenMessageCenter, reloadCenter, tenantId]);
+  }, [canOpenMessageCenter, reloadCenter]);
 
   useEffect(() => {
     onUnreadCountChange?.(unreadCount);
@@ -270,11 +274,11 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
         const unreadCountForChannel = channelNotices.filter((item) => !item.readFlag).length;
         return {
           key,
-          label: resolveMessageTypeLabel(key),
+          label: intl.formatMessage({ id: resolveMessageTypeLabel(key), defaultMessage: '站内信' }),
           notices: channelNotices,
           unreadCount: unreadCountForChannel,
           totalCount: channelNotices.length,
-          preview: latestNotice ? shortenText(latestNotice.title || latestNotice.content) : '暂无消息',
+          preview: latestNotice ? shortenText(latestNotice.title || latestNotice.content) : intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' }),
           relativeTimeLabel: latestNotice?.relativeTimeLabel || '-',
         };
       })
@@ -322,11 +326,11 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
 
   const tabItems = useMemo(
     () => [
-      { label: `全部 (${counts.all})`, key: 'all' },
-      { label: `未读 (${counts.unread})`, key: 'unread' },
-      { label: `已读 (${counts.read})`, key: 'read' },
+      { label: intl.formatMessage({ id: 'message.center.all', defaultMessage: '全部' }) + ` (${counts.all})`, key: 'all' },
+      { label: intl.formatMessage({ id: 'message.center.unread', defaultMessage: '未读' }) + ` (${counts.unread})`, key: 'unread' },
+      { label: intl.formatMessage({ id: 'message.center.read', defaultMessage: '已读' }) + ` (${counts.read})`, key: 'read' },
     ],
-    [counts.all, counts.read, counts.unread],
+    [counts.all, counts.read, counts.unread, intl],
   );
 
   const handleMarkRead = async (notice: MessageCenterNotice) => {
@@ -363,11 +367,14 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
     return null;
   }
 
-  const activeChannelLabel = activeChannel?.label || '站内信';
+  const activeChannelLabel = activeChannel?.label || intl.formatMessage({ id: 'message.center.site', defaultMessage: '站内信' });
   const activeChannelSubtitle =
     activeChannel && activeChannel.totalCount > 0
-      ? `共 ${activeChannel.totalCount} 条消息 · ${activeChannel.unreadCount} 条未读`
-      : '当前没有消息';
+      ? intl.formatMessage(
+          { id: 'message.center.count', defaultMessage: '共 {total} 条消息 · {unread} 条未读' },
+          { total: activeChannel.totalCount, unread: activeChannel.unreadCount },
+        )
+      : intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' });
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -381,10 +388,10 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
 
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()} loading={loading && notices.length === 0}>
-            刷新
+            {intl.formatMessage({ id: 'message.center.refresh', defaultMessage: '刷新' })}
           </Button>
           <Button type="primary" disabled={counts.unread === 0} loading={actionKey === 'all'} onClick={() => void handleMarkAllRead()}>
-            全部标为已读
+            {intl.formatMessage({ id: 'message.center.markAllRead', defaultMessage: '全部标为已读' })}
           </Button>
         </Space>
       </div>
@@ -396,7 +403,7 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
           message={loadError}
           action={
             <Button size="small" icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
-              重试
+              {intl.formatMessage({ id: 'common.retry', defaultMessage: '重试' })}
             </Button>
           }
         />
@@ -415,7 +422,9 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
               <Space size={8} wrap>
                 <Typography.Text>{channel.label}</Typography.Text>
                 <Tag color={channel.unreadCount > 0 ? 'red' : 'blue'} bordered={false}>
-                  {channel.unreadCount > 0 ? '未读' : '已读'}
+              {channel.unreadCount > 0
+                ? intl.formatMessage({ id: 'message.center.statusUnread', defaultMessage: '未读' })
+                : intl.formatMessage({ id: 'message.center.statusRead', defaultMessage: '已读' })}
                 </Tag>
               </Space>
             ),
@@ -423,12 +432,14 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
         />
       ) : null}
 
-      <Spin spinning={loading && notices.length === 0} tip="加载消息中">
-        {visibleNotices.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={filter === 'all' ? '暂无消息' : '暂无符合条件的消息'}>
+        <Spin spinning={loading && notices.length === 0} tip={intl.formatMessage({ id: 'message.center.loading', defaultMessage: '加载消息中' })}>
+          {visibleNotices.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={filter === 'all'
+            ? intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' })
+            : intl.formatMessage({ id: 'message.center.noneFiltered', defaultMessage: '暂无符合条件的消息' })}>
             {loadError ? (
               <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
-                重试
+                {intl.formatMessage({ id: 'common.retry', defaultMessage: '重试' })}
               </Button>
             ) : null}
           </Empty>
@@ -455,13 +466,15 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
                         <Space size={8} wrap>
                           <Typography.Text strong>{notice.title}</Typography.Text>
                           <Tag color={isUnread ? 'red' : 'blue'} bordered={false}>
-                            {isUnread ? '未读' : '已读'}
+                            {isUnread
+                              ? intl.formatMessage({ id: 'message.center.statusUnread', defaultMessage: '未读' })
+                              : intl.formatMessage({ id: 'message.center.statusRead', defaultMessage: '已读' })}
                           </Tag>
                         </Space>
 
                         {isUnread ? (
                           <Button type="link" loading={actionKey === notice.key} onClick={() => void handleMarkRead(notice)}>
-                            标为已读
+                            {intl.formatMessage({ id: 'message.center.markRead', defaultMessage: '标为已读' })}
                           </Button>
                         ) : null}
                       </div>
@@ -470,7 +483,9 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
                         {notice.content}
                       </Typography.Paragraph>
 
-                      <Typography.Text type="secondary">时间：{notice.absoluteTimeLabel}</Typography.Text>
+                      <Typography.Text type="secondary">
+                        {intl.formatMessage({ id: 'message.center.time', defaultMessage: '时间：{time}' }, { time: notice.absoluteTimeLabel })}
+                      </Typography.Text>
                     </Space>
                   </div>
                 </List.Item>

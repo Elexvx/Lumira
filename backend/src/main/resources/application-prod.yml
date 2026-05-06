@@ -9,3 +9,9 @@ spring:
     placeholders:
       defaultAdminInitEnabled: false
       defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G}
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}

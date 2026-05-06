@@ -7,6 +7,7 @@ import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
+import com.legendary.invention.saas.modules.file.app.FileManagementAppService;
 import com.legendary.invention.saas.modules.plugin.dto.PluginDTO;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
@@ -54,6 +55,7 @@ public class PluginManagementAppService {
     private final PluginSemver pluginSemver;
     private final PermissionSnapshotService permissionSnapshotService;
     private final UserDomainService userDomainService;
+    private final FileManagementAppService fileManagementAppService;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
 
@@ -66,6 +68,7 @@ public class PluginManagementAppService {
             PluginSemver pluginSemver,
             PermissionSnapshotService permissionSnapshotService,
             UserDomainService userDomainService,
+            FileManagementAppService fileManagementAppService,
             PlatformTransactionManager transactionManager,
             ObjectMapper objectMapper
     ) {
@@ -77,6 +80,7 @@ public class PluginManagementAppService {
         this.pluginSemver = pluginSemver;
         this.permissionSnapshotService = permissionSnapshotService;
         this.userDomainService = userDomainService;
+        this.fileManagementAppService = fileManagementAppService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper;
     }
@@ -109,6 +113,14 @@ public class PluginManagementAppService {
                 artifact.metadata().getVersion(),
                 artifact.metadata().getMenuDeclarations(),
                 currentUser.getUserId()
+        );
+        fileManagementAppService.recordUploadedLocalFile(
+                currentUser,
+                file.getOriginalFilename(),
+                artifact.zipPath(),
+                file.getContentType(),
+                "插件包",
+                artifact.metadata().getPluginName() + " " + artifact.metadata().getVersion()
         );
         log(null, artifact.metadata().getPluginCode(), artifact.metadata().getVersion(), "UPLOAD", "VERIFIED", "SUCCESS", "插件包已上传并完成校验", null, currentUser.getUserId());
         PluginVO.PluginUploadVO vo = new PluginVO.PluginUploadVO();
@@ -209,7 +221,7 @@ public class PluginManagementAppService {
     @Transactional
     public void disable(PluginDTO.DisableRequest request, CurrentUser currentUser) {
         PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(request.getTenantId(), request.getPluginCode())
-                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前租户尚未启用该插件"));
+                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前尚未启用该插件"));
         pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());
         permissionSnapshotService.invalidateTenant(request.getTenantId());
         safeLog(request.getTenantId(), request.getPluginCode(), tenantEntity.getPluginVersion(), "DISABLE", "DISABLED", "SUCCESS", "租户插件已停用", null, currentUser.getUserId());
@@ -341,7 +353,7 @@ public class PluginManagementAppService {
     public PluginRuntimeDescriptor requireTenantRuntime(Long tenantId, String pluginCode) {
         PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(tenantId, pluginCode)
                 .filter(item -> item.getEnabled() != null && item.getEnabled() == 1)
-                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前租户未启用该插件"));
+                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前未启用该插件"));
         ensureLoaded(pluginCode, tenantEntity.getPluginVersion());
         return pluginRegistry.find(pluginCode, tenantEntity.getPluginVersion())
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时不存在"));

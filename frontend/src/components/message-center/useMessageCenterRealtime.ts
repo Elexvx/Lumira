@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { tokenManager } from '@/auth/token';
 import { subscribeMessageCenterRealtime, type MessageCenterRealtimeEvent } from '@/components/message-center/messageCenterRealtime';
 
 export const useMessageCenterRealtime = (
@@ -8,21 +7,17 @@ export const useMessageCenterRealtime = (
   onEvent: (event: MessageCenterRealtimeEvent) => void,
 ) => {
   const { initialState } = useInitialStateModel();
-  const tenantId = initialState?.currentTenant?.tenantId;
-  const userId = initialState?.currentUser?.userId;
-  const tokenGeneration = tokenManager.getTokenGeneration();
-  const accessToken = tokenManager.getAccessToken();
+  const sessionId = initialState?.currentUser?.sessionId;
 
   useEffect(() => {
-    if (!enabled || !tenantId || !userId || !accessToken) {
+    if (!enabled || !sessionId) {
       return undefined;
     }
 
-    const connectionKey = `${tenantId}:${userId}:${tokenGeneration}`;
+    const connectionKey = sessionId;
     return subscribeMessageCenterRealtime(onEvent, {
       enabled: true,
       key: connectionKey,
-      accessToken,
     });
-  }, [accessToken, enabled, onEvent, tenantId, tokenGeneration, userId]);
+  }, [enabled, onEvent, sessionId]);
 };

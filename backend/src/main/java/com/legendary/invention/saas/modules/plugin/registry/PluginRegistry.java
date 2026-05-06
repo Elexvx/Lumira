@@ -54,6 +54,9 @@ public class PluginRegistry {
         if (descriptor != null) {
             descriptor.close();
         }
+        if (versions.isEmpty()) {
+            runtimeMap.remove(pluginCode);
+        }
         if (version.equals(activeVersionMap.get(pluginCode))) {
             activeVersionMap.remove(pluginCode);
             versions.values().stream()
