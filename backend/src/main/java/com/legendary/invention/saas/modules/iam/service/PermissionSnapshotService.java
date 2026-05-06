@@ -58,6 +58,31 @@ public class PermissionSnapshotService {
         return snapshot;
     }
 
+    public PermissionSnapshot loadRoleSnapshot(Long tenantId, Long roleId) {
+        if (tenantId == null || roleId == null) {
+            return PermissionSnapshot.empty();
+        }
+
+        String version = getOrCreateRoleVersion(tenantId, roleId);
+        String cacheKey = CacheKeyConstants.userKey(String.valueOf(tenantId), String.valueOf(roleId), "role_permission_snapshot:" + version);
+        String cached = cacheTemplate.get(cacheKey);
+        if (StringUtils.hasText(cached)) {
+            try {
+                PermissionSnapshot snapshot = deserialize(cached);
+                if (!snapshot.getPermissions().isEmpty()) {
+                    return snapshot;
+                }
+            } catch (BizException exception) {
+                // Allow stale or incompatible cache payloads to self-heal from DB state.
+            }
+        }
+
+        Set<String> permissions = queryRolePermissions(tenantId, roleId);
+        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions);
+        cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
+        return snapshot;
+    }
+
     public void invalidateTenant(Long tenantId) {
         if (tenantId == null) {
             return;
@@ -102,6 +127,41 @@ public class PermissionSnapshotService {
         }
     }
 
+    private String getOrCreateRoleVersion(Long tenantId, Long roleId) {
+        String key = CacheKeyConstants.tenantKey(String.valueOf(tenantId), "role_permission_version:" + roleId);
+        String version = cacheTemplate.get(key);
+        if (StringUtils.hasText(version)) {
+            return version + ":" + querySingleRolePermissionVersion(tenantId, roleId);
+        }
+        String newVersion = String.valueOf(System.currentTimeMillis());
+        cacheTemplate.put(key, newVersion, Duration.ofDays(30));
+        return newVersion + ":" + querySingleRolePermissionVersion(tenantId, roleId);
+    }
+
+    private String querySingleRolePermissionVersion(Long tenantId, Long roleId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select concat(
+                                coalesce(date_format(max(updated_at), '%Y%m%d%H%i%s'), '0'),
+                                ':',
+                                count(*)
+                            )
+                            from sys_role_permission
+                            where tenant_id = ?
+                              and role_id = ?
+                              and deleted = 0
+                            """,
+                    String.class,
+                    tenantId,
+                    roleId
+            );
+        } catch (Throwable throwable) {
+            log.warn("Failed to query role permission version tenantId={} roleId={}", tenantId, roleId, throwable);
+            return "0";
+        }
+    }
+
     private Set<String> queryPermissions(Long tenantId, Long userId) {
         return new LinkedHashSet<>(jdbcTemplate.query(
                 """
@@ -119,6 +179,22 @@ public class PermissionSnapshotService {
                 (rs, rowNum) -> rs.getString("permission_key"),
                 tenantId,
                 userId
+        ));
+    }
+
+    private Set<String> queryRolePermissions(Long tenantId, Long roleId) {
+        return new LinkedHashSet<>(jdbcTemplate.query(
+                """
+                        select distinct rp.permission_key
+                        from sys_role_permission rp
+                        where rp.tenant_id = ?
+                          and rp.role_id = ?
+                          and rp.deleted = 0
+                        order by rp.permission_key
+                        """,
+                (rs, rowNum) -> rs.getString("permission_key"),
+                tenantId,
+                roleId
         ));
     }
 

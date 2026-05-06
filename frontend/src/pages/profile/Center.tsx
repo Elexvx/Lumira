@@ -3,10 +3,10 @@ import { formatMessage } from '@umijs/max';
 import { Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementPage } from '@/features/management';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useResponsive } from '@/hooks/useResponsive';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
 import { systemService } from '@/services/system';
@@ -14,20 +14,19 @@ import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSec
 import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
 import { ContactBindModal } from '@/pages/profile/center/components/ContactBindModal';
 import { ProfileBasicCard } from '@/pages/profile/center/components/ProfileBasicCard';
-import { SecuritySummaryCard } from '@/pages/profile/center/components/SecuritySummaryCard';
 import { buildVisibleProfileFields } from '@/pages/profile/center/utils';
 import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 
 const ProfileCenterPage = () => {
   const [profileForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
+  const responsive = useResponsive();
   const profileQuery = useQuery({
     queryKey: ['profile-summary', initialState?.currentUser?.userId],
     queryFn: async () => profileService.summary({ autoRedirectOnUnauthorized: false }),
   });
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
-  const roleNames = summary?.roleNames || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const profileFieldSettings = summary?.profileFieldSettings || [];
   const summaryMobileBindAvailable = Boolean(summary?.mobileBindAvailable ?? summary?.mobileBindVerificationRequired);
@@ -54,10 +53,6 @@ const ProfileCenterPage = () => {
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;
   const profileFormProps = useStandardFormProps({ form: profileForm });
-  const summaryDescriptionsProps = useDetailDescriptionsProps({
-    className: 'saas-profile-page__descriptions',
-    column: 1,
-  });
   const providersQuery = useQuery({
     queryKey: ['profile-second-factor-providers', currentUser?.userId],
     queryFn: async () => secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }),
@@ -502,8 +497,8 @@ const ProfileCenterPage = () => {
   return (
     <ManagementPage className="saas-profile-page" title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Row gutter={[16, 16]} align="top">
-          <Col xs={24} xl={12}>
+        {responsive.isMobile ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <ProfileBasicCard
               loading={profileQuery.isLoading}
               hasVisibleProfileFields={hasVisibleProfileFields}
@@ -519,29 +514,53 @@ const ProfileCenterPage = () => {
               onAvatarBeforeCrop={handleAvatarBeforeCrop}
               onAvatarUploadRequest={handleAvatarUploadRequest}
             />
-          </Col>
-
-          <Col xs={24} xl={12}>
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <SecuritySummaryCard
-                permissionCount={summary?.permissionCount ?? currentUser?.permissions?.length ?? 0}
-                roleNames={roleNames}
-                descriptionsProps={summaryDescriptionsProps}
+            <BoundProviderCard
+              canManageSecondFactor
+              loading={providersQuery.isLoading}
+              providers={providersQuery.data || []}
+              bindingLoading={bindingLoading}
+              bindingSubmitting={bindingSubmitting}
+              supplementalItems={supplementalItems}
+              onBind={(provider) => void openBindModal(provider)}
+              onUnbind={handleUnbind}
+            />
+          </Space>
+        ) : (
+          <Row gutter={[16, 16]} align="top">
+            <Col xs={24} xl={12}>
+              <ProfileBasicCard
+                loading={profileQuery.isLoading}
+                hasVisibleProfileFields={hasVisibleProfileFields}
+                profileSaving={profileSaving}
+                profileFormProps={profileFormProps}
+                visibleProfileFields={visibleProfileFields}
+                currentUser={currentUser}
+                avatarValue={avatarValue}
+                avatarUploading={avatarUploading}
+                mobileLockedByVerification
+                emailLockedByVerification
+                onSave={() => void handleSaveProfile()}
+                onAvatarBeforeCrop={handleAvatarBeforeCrop}
+                onAvatarUploadRequest={handleAvatarUploadRequest}
               />
+            </Col>
 
-              <BoundProviderCard
-                canManageSecondFactor
-                loading={providersQuery.isLoading}
-                providers={providersQuery.data || []}
-                bindingLoading={bindingLoading}
-                bindingSubmitting={bindingSubmitting}
-                supplementalItems={supplementalItems}
-                onBind={(provider) => void openBindModal(provider)}
-                onUnbind={handleUnbind}
-              />
-            </Space>
-          </Col>
-        </Row>
+            <Col xs={24} xl={12}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <BoundProviderCard
+                  canManageSecondFactor
+                  loading={providersQuery.isLoading}
+                  providers={providersQuery.data || []}
+                  bindingLoading={bindingLoading}
+                  bindingSubmitting={bindingSubmitting}
+                  supplementalItems={supplementalItems}
+                  onBind={(provider) => void openBindModal(provider)}
+                  onUnbind={handleUnbind}
+                />
+              </Space>
+            </Col>
+          </Row>
+        )}
 
         <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={profileQuery.isLoading}>
           {recentLoginLogs.length ? (

@@ -5,8 +5,11 @@ import dayjs from 'dayjs';
 import { buildTableScroll } from '@/features/table/proTable';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useResponsive } from '@/hooks/useResponsive';
 import type { AuditLogRecord, DashboardSummary, TenantPlugin } from '@/types/api';
 import './Home.css';
+
+const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -50,7 +53,7 @@ const buildGreeting = (hour: number) => {
   return '凌晨好';
 };
 
-const buildLogColumns = (title: string) => [
+const buildLogColumns = (title: string, isMobile: boolean) => [
   {
     title: '时间',
     dataIndex: 'createdAt',
@@ -61,12 +64,14 @@ const buildLogColumns = (title: string) => [
     title: '用户',
     dataIndex: 'username',
     width: 140,
+    ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
     title: '类型',
     dataIndex: 'logResult',
     width: 120,
+    ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => (
       <Tag color={record.logResult === 'SUCCESS' ? 'green' : record.logResult === 'FAILED' ? 'red' : 'default'}>
         {record.logResult || '-'}
@@ -83,9 +88,6 @@ const buildLogColumns = (title: string) => [
     },
   },
 ];
-
-const loginLogColumns = buildLogColumns('登录记录');
-const operationLogColumns = buildLogColumns('操作记录');
 
 const renderPluginDescription = (plugin: TenantPlugin) => {
   const sharedDeps = plugin.sharedDeps?.length ? plugin.sharedDeps.join('、') : '无共享依赖';
@@ -104,6 +106,7 @@ const renderPluginDescription = (plugin: TenantPlugin) => {
 
 const DashboardHomePage = () => {
   const { initialState } = useInitialStateModel();
+  const responsive = useResponsive();
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-summary', initialState?.menuVersion],
     queryFn: async () => dashboardService.summary({ autoRedirectOnUnauthorized: false }),
@@ -116,6 +119,12 @@ const DashboardHomePage = () => {
   const tenantPlugins = summary?.tenantPlugins || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
+  const loginLogColumns = buildLogColumns('登录记录', responsive.isMobile);
+  const operationLogColumns = buildLogColumns('操作记录', responsive.isMobile);
+  const pageContainerToken = {
+    paddingInlinePageContainerContent: responsive.isMobile ? 20 : 25,
+    paddingBlockPageContainerContent: responsive.isMobile ? 16 : 24,
+  };
   const overviewStats = [
     {
       title: '菜单数',
@@ -144,7 +153,7 @@ const DashboardHomePage = () => {
   ];
 
   return (
-    <PageContainer title="工作台" ghost content={null} className="saas-dashboard-home__page">
+    <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <ProCard variant="borderless" className="saas-dashboard-home__hero">
           <Row gutter={[24, 24]} align="middle">
@@ -205,7 +214,7 @@ const DashboardHomePage = () => {
                         locale={{
                           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
                         }}
-                        scroll={buildTableScroll(loginLogColumns, false)}
+                        scroll={buildTableScroll(loginLogColumns, responsive.isMobile)}
                       />
                     ),
                   },
@@ -223,7 +232,7 @@ const DashboardHomePage = () => {
                         locale={{
                           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
                         }}
-                        scroll={buildTableScroll(operationLogColumns, false)}
+                        scroll={buildTableScroll(operationLogColumns, responsive.isMobile)}
                       />
                     ),
                   },

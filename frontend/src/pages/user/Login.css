@@ -6,6 +6,7 @@
   justify-content: center;
   padding: 24px;
   box-sizing: border-box;
+  overflow-x: clip;
   background: var(--saas-page-bg);
   color: var(--saas-text-heading);
 }
@@ -32,6 +33,7 @@
   max-width: 440px;
   margin: 0 auto;
   padding: 28px 32px 30px;
+  box-sizing: border-box !important;
   background: transparent;
   background-image: none;
   border: 0;
@@ -175,5 +177,11 @@
 @media (max-width: 575px) {
   .saas-login-page {
     padding: 16px;
+  }
+
+  .saas-login-page .ant-pro-form-login-page-container {
+    width: calc(100vw - 64px);
+    max-width: calc(100vw - 64px);
+    padding: 24px 16px 26px;
   }
 }

@@ -41,6 +41,7 @@ public final class SystemRouteCatalog {
             "/settings/smtp",
             "/settings/notifications",
             "/settings/plugins",
+            "/settings/localization",
             "/settings/monitoring",
             "/settings/monitoring/service",
             "/settings/monitoring/redis",
@@ -59,9 +60,12 @@ public final class SystemRouteCatalog {
             "@/pages/settings/verification",
             "@/pages/settings/notifications/index",
             "@/pages/settings/Plugins",
+            "@/pages/settings/plugins",
             "@/pages/settings/monitoring/index",
             "@/pages/settings/monitoring/ApiDocs",
             "@/pages/settings/monitoring/Audit",
+            "@/pages/settings/localization",
+            "@/pages/settings/files/Center",
             "@/pages/audit/Overview",
             "@/pages/system/menus",
             "@/pages/system/Plugins",
@@ -118,8 +122,9 @@ public final class SystemRouteCatalog {
                 menu(-1005L, -1000L, "settings.security", "安全设置", "MENU", "/settings/security", "@/pages/settings/security", "SafetyOutlined", 5, "system:config:view"),
                 menu(-1006L, -1000L, "settings.verification", "验证管理", "MENU", "/settings/verification", "@/pages/settings/verification", "SafetyOutlined", 6, "system:verification:view"),
                 menu(-1007L, -1000L, "settings.notifications", "站内信归档", "MENU", "/settings/notifications", "@/pages/settings/notifications/index", "NotificationOutlined", 7, "system:notification:view"),
-                menu(-1008L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/Plugins", "ApiOutlined", 8, "plugin:management:view"),
-                menu(-1009L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
+                menu(-1008L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/plugins", "ApiOutlined", 8, "plugin:management:view"),
+                menu(-1009L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
+                menu(-1010L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
                 monitoringRoot()
         )));
 
@@ -129,7 +134,7 @@ public final class SystemRouteCatalog {
 
     private static SystemVO.MenuVO monitoringRoot() {
         SystemVO.MenuVO monitoring = menu(
-                -1010L,
+                -1011L,
                 -1000L,
                 "settings.monitoring",
                 "系统监控",
@@ -141,8 +146,8 @@ public final class SystemRouteCatalog {
                 "system:monitor:view"
         );
         monitoring.setChildren(new ArrayList<>(List.of(
-                menu(-1011L, -1010L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/monitoring/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 1, "system:monitor:docs:view"),
-                menu(-1012L, -1010L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/monitoring/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 2, "audit:view")
+                menu(-1012L, -1011L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/monitoring/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 1, "system:monitor:docs:view"),
+                menu(-1013L, -1011L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/monitoring/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 2, "audit:view")
         )));
         return monitoring;
     }

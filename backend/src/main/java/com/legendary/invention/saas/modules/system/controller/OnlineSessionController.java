@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -54,6 +55,7 @@ public class OnlineSessionController {
     }
 
     @DeleteMapping("/{sessionId}")
+    @RepeatSubmit
     public ApiResponse<Boolean> kick(@PathVariable("sessionId") String sessionId) {
         require("system:online-user:kick");
         return ApiResponse.success(
@@ -63,6 +65,7 @@ public class OnlineSessionController {
     }
 
     @PatchMapping("/{userId}/ban")
+    @RepeatSubmit
     public ApiResponse<Boolean> ban(@PathVariable("userId") Long userId) {
         require("system:online-user:ban");
         return ApiResponse.success(

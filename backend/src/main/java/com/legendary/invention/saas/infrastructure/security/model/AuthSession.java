@@ -8,6 +8,7 @@ public class AuthSession {
     private Long userId;
     private String username;
     private Long currentTenantId;
+    private Long simulatedRoleId;
     private Instant loginTime;
     private Instant lastActivityAt;
     private Instant expireTime;
@@ -47,6 +48,14 @@ public class AuthSession {
 
     public void setCurrentTenantId(Long currentTenantId) {
         this.currentTenantId = currentTenantId;
+    }
+
+    public Long getSimulatedRoleId() {
+        return simulatedRoleId;
+    }
+
+    public void setSimulatedRoleId(Long simulatedRoleId) {
+        this.simulatedRoleId = simulatedRoleId;
     }
 
     public Instant getLoginTime() {

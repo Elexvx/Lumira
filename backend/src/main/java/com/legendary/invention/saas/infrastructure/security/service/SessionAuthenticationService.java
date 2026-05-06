@@ -124,14 +124,14 @@ public class SessionAuthenticationService {
     }
 
     private CurrentUser buildCurrentUser(TokenClaims claims, AuthSession session) {
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
-                session.getCurrentTenantId(),
-                claims.getUserId()
-        );
+        PermissionSnapshotService.PermissionSnapshot snapshot = session.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(session.getCurrentTenantId(), session.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(session.getCurrentTenantId(), claims.getUserId());
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(claims.getUserId());
         currentUser.setUsername(claims.getUsername());
         currentUser.setCurrentTenantId(session.getCurrentTenantId());
+        currentUser.setSimulatedRoleId(session.getSimulatedRoleId());
         currentUser.setSessionId(claims.getSessionId());
         currentUser.setSessionVersion(session.getSessionVersion());
         currentUser.setAuthenticated(true);

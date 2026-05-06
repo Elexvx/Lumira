@@ -4,6 +4,7 @@ import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
@@ -186,6 +187,7 @@ public class SystemManagementAppService {
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final SystemVerificationAppService systemVerificationAppService;
     private final PasswordEncoder passwordEncoder;
+    private final AuthSessionStore authSessionStore;
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
     private final SecuritySettingsService securitySettingsService;
@@ -201,6 +203,7 @@ public class SystemManagementAppService {
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
             PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
             LoginAuditService loginAuditService,
             OperationAuditService operationAuditService,
             SecuritySettingsService securitySettingsService,
@@ -215,6 +218,7 @@ public class SystemManagementAppService {
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.systemVerificationAppService = systemVerificationAppService;
         this.passwordEncoder = passwordEncoder;
+        this.authSessionStore = authSessionStore;
         this.loginAuditService = loginAuditService;
         this.operationAuditService = operationAuditService;
         this.securitySettingsService = securitySettingsService;
@@ -430,6 +434,38 @@ public class SystemManagementAppService {
         );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
         return authAppService.currentUser(currentUser);
+    }
+
+    @Transactional
+    public boolean updateCurrentUserPassword(CurrentUser currentUser, ProfileDTO.PasswordUpdateRequest request) {
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+
+        String currentPassword = normalizeNullableText(request.getCurrentPassword());
+        String newPassword = normalizeNullableText(request.getNewPassword());
+        String confirmPassword = normalizeNullableText(request.getConfirmPassword());
+
+        if (!StringUtils.hasText(currentPassword) || !StringUtils.hasText(newPassword) || !StringUtils.hasText(confirmPassword)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入完整的密码信息");
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "两次输入的新密码不一致");
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前密码不正确");
+        }
+
+        passwordPolicyService.validatePassword(newPassword);
+        jdbcTemplate.update(
+                "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                passwordEncoder.encode(newPassword),
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                user.getId()
+        );
+        authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getSessionId(), true);
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
+        return true;
     }
 
     public List<SystemVO.ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {

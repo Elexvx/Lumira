@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.auth.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.ClientIpResolver;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -10,6 +11,7 @@ import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.legendary.invention.saas.modules.auth.app.LoginEncryptionService;
 import com.legendary.invention.saas.modules.auth.dto.LoginRequest;
 import com.legendary.invention.saas.modules.auth.dto.RefreshTokenRequest;
+import com.legendary.invention.saas.modules.auth.dto.SimulatedRoleRequest;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
@@ -21,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,12 +58,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @RepeatSubmit
     public ApiResponse<LoginResponseVO> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
         LoginResponseVO response = authAppService.login(request, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
         return ApiResponse.success(response, TraceContext.getRequestId());
     }
 
     @PostMapping("/login/code/challenge")
+    @RepeatSubmit
     public ApiResponse<LoginCodeChallengeVO> loginCodeChallenge(
             @Valid @RequestBody LoginCodeChallengeRequest request,
             HttpServletRequest httpServletRequest
@@ -74,6 +79,7 @@ public class AuthController {
     }
 
     @PostMapping("/login/code/complete")
+    @RepeatSubmit
     public ApiResponse<LoginResponseVO> loginCodeComplete(
             @Valid @RequestBody LoginCodeCompleteRequest request,
             HttpServletRequest httpServletRequest
@@ -87,6 +93,7 @@ public class AuthController {
     }
 
     @PostMapping("/second-factor/complete")
+    @RepeatSubmit
     public ApiResponse<LoginResponseVO> completeSecondFactor(
             @Valid @RequestBody SecondFactorCompleteRequest request,
             HttpServletRequest httpServletRequest
@@ -100,12 +107,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @RepeatSubmit
     public ApiResponse<Boolean> logout(HttpServletRequest httpServletRequest) {
         authAppService.logout(securityContextFacade.getCurrentUser(), clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
     @PostMapping("/refresh-token")
+    @RepeatSubmit
     public ApiResponse<RefreshTokenResponseVO> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         RefreshTokenResponseVO response = authAppService.refreshToken(request);
         return ApiResponse.success(response, TraceContext.getRequestId());
@@ -114,6 +123,13 @@ public class AuthController {
     @GetMapping("/current-user")
     public ApiResponse<CurrentUserVO> currentUser() {
         CurrentUserVO response = authAppService.currentUser(securityContextFacade.getCurrentUser());
+        return ApiResponse.success(response, TraceContext.getRequestId());
+    }
+
+    @PutMapping("/simulated-role")
+    @RepeatSubmit
+    public ApiResponse<CurrentUserVO> simulatedRole(@Valid @RequestBody SimulatedRoleRequest request) {
+        CurrentUserVO response = authAppService.updateSimulatedRole(securityContextFacade.getCurrentUser(), request);
         return ApiResponse.success(response, TraceContext.getRequestId());
     }
 
@@ -136,6 +152,7 @@ public class AuthController {
     }
 
     @PostMapping("/verification/providers/{factorCode}/bind")
+    @RepeatSubmit
     public ApiResponse<com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationChallengeVO> verificationBind(@org.springframework.web.bind.annotation.PathVariable("factorCode") String factorCode) {
         var currentUser = currentUserOrThrow();
         return ApiResponse.success(
@@ -145,6 +162,7 @@ public class AuthController {
     }
 
     @PostMapping("/verification/providers/{factorCode}/unbind")
+    @RepeatSubmit
     public ApiResponse<Boolean> verificationUnbind(@org.springframework.web.bind.annotation.PathVariable("factorCode") String factorCode) {
         var currentUser = currentUserOrThrow();
         return ApiResponse.success(
@@ -154,6 +172,7 @@ public class AuthController {
     }
 
     @PostMapping("/verification/providers/{factorCode}/challenge")
+    @RepeatSubmit
     public ApiResponse<com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationChallengeVO> verificationChallenge(@org.springframework.web.bind.annotation.PathVariable("factorCode") String factorCode) {
         var currentUser = currentUserOrThrow();
         return ApiResponse.success(
@@ -163,6 +182,7 @@ public class AuthController {
     }
 
     @PostMapping("/verification/providers/{factorCode}/verify")
+    @RepeatSubmit
     public ApiResponse<com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationVerificationVO> verificationVerify(
             @org.springframework.web.bind.annotation.PathVariable("factorCode") String factorCode,
             @Valid @RequestBody SecondFactorCompleteRequest request

@@ -100,12 +100,6 @@ body,
   min-height: 100%;
 }
 
-.saas-app-loading {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-}
-
 .saas-page-shell {
   width: min(100%, var(--saas-page-content-width));
   margin: 0 auto;
@@ -140,7 +134,7 @@ body,
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .saas-table-wrap .ant-pro-table,
@@ -368,6 +362,53 @@ body,
   .saas-management-page .ant-form-vertical .ant-form-item-control-input,
   .saas-management-page .ant-form-vertical .ant-form-item-control-input-content {
     width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .saas-management-page-body {
+    gap: 12px;
+  }
+
+  .saas-management-page .ant-btn:not(.ant-btn-link):not(.ant-btn-text) {
+    height: 32px;
+    min-height: 32px;
+    padding-inline: 12px;
+  }
+
+  .saas-management-page .ant-btn:not(.ant-btn-link):not(.ant-btn-text).ant-btn-icon-only {
+    width: 32px;
+    padding-inline: 0;
+  }
+
+  .saas-management-page .ant-card-body,
+  .saas-management-page .ant-pro-card-body {
+    padding: 14px 12px;
+  }
+
+  .saas-management-page .ant-card-head,
+  .saas-management-page .ant-pro-card-head {
+    padding-inline: 12px;
+  }
+
+  .saas-management-page .ant-card-head-title,
+  .saas-management-page .ant-pro-card-title {
+    font-size: 15px;
+  }
+
+  .saas-table-wrap .ant-pro-table-search,
+  .saas-table-wrap .ant-pro-table-list {
+    padding-inline: 0;
+  }
+
+  .saas-table-wrap .ant-table-thead > tr > th,
+  .saas-table-wrap .ant-table-cell {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .saas-table-wrap .ant-table-pagination {
+    margin-top: 12px;
   }
 }
 

@@ -15,6 +15,7 @@ import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.auth.dto.LoginRequest;
 import com.legendary.invention.saas.modules.auth.dto.LoginCodeChallengeRequest;
 import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
+import com.legendary.invention.saas.modules.auth.dto.SimulatedRoleRequest;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.RefreshTokenRequest;
 import com.legendary.invention.saas.modules.auth.vo.AuthUserVO;
@@ -32,8 +33,8 @@ import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -335,7 +336,7 @@ public class AuthAppService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
         response.setSessionVersion(session.getSessionVersion());
-        response.setPermissionsVersion(permissionSnapshotService.loadSnapshot(session.getCurrentTenantId(), session.getUserId()).getVersion());
+        response.setPermissionsVersion(resolvePermissionSnapshot(session.getCurrentTenantId(), session.getUserId(), session.getSimulatedRoleId()).getVersion());
         return response;
     }
 
@@ -347,13 +348,11 @@ public class AuthAppService {
                         ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                 ));
 
-        TenantSummaryVO currentTenant = tenantDomainService.findTenantById(currentUser.getCurrentTenantId())
+        Long tenantId = currentTenantId(currentUser);
+        TenantSummaryVO currentTenant = tenantDomainService.findTenantById(tenantId)
                 .map(tenantDomainService::toTenantSummary)
                 .orElse(null);
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
-                currentUser.getCurrentTenantId(),
-                currentUser.getUserId()
-        );
+        PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(tenantId, currentUser.getUserId(), currentUser.getSimulatedRoleId());
 
         CurrentUserVO response = new CurrentUserVO();
         response.setUserId(user.getId());
@@ -368,13 +367,34 @@ public class AuthAppService {
         response.setRegion(user.getRegion());
         response.setAvailableTime(user.getAvailableTime());
         response.setIdCardNumber(user.getIdCardNumber());
-        response.setLocale(resolveLocale(currentUser.getCurrentTenantId(), user.getId()));
+        response.setLocale(resolveLocale(tenantId, user.getId()));
         response.setCurrentTenant(currentTenant);
+        response.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        response.setAvailableRoles(listAvailableRoles(currentUser.getUserId(), tenantId));
         response.setSessionId(currentUser.getSessionId());
         response.setPermissionsVersion(snapshot.getVersion());
         response.setSessionVersion(currentUser.getSessionVersion());
         response.setPermissions(snapshot.getPermissionList());
         return response;
+    }
+
+    public CurrentUserVO updateSimulatedRole(CurrentUser currentUser, SimulatedRoleRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Long roleId = request.getRoleId();
+        if (roleId != null) {
+            boolean roleExists = listAvailableRoles(currentUser.getUserId(), tenantId).stream()
+                    .anyMatch(role -> role.getId() != null && role.getId().equals(roleId));
+            if (!roleExists) {
+                throw new BizException(ErrorCode.FORBIDDEN, "当前账号没有该角色权限");
+            }
+        }
+
+        AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
+                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话不存在或已失效"));
+        session.setSimulatedRoleId(roleId);
+        authSessionStore.save(session, true);
+        currentUser.setSimulatedRoleId(roleId);
+        return currentUser(currentUser);
     }
 
     private void validateSessionForRefresh(AuthSession session, TokenClaims tokenClaims) {
@@ -466,6 +486,49 @@ public class AuthAppService {
         return authUserVO;
     }
 
+    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long tenantId, Long userId, Long simulatedRoleId) {
+        if (tenantId == null || userId == null) {
+            return PermissionSnapshotService.PermissionSnapshot.empty();
+        }
+        if (simulatedRoleId != null) {
+            return permissionSnapshotService.loadRoleSnapshot(tenantId, simulatedRoleId);
+        }
+        return permissionSnapshotService.loadSnapshot(tenantId, userId);
+    }
+
+    private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId, Long tenantId) {
+        if (userId == null || tenantId == null) {
+            return List.of();
+        }
+
+        return jdbcTemplate.query(
+                """
+                        select r.id as id,
+                               r.role_code as roleCode,
+                               r.role_name as roleName,
+                               r.role_type as roleType,
+                               count(rp.permission_key) as permissionCount
+                        from sys_user_role ur
+                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
+                        left join sys_role_permission rp on rp.role_id = r.id and rp.tenant_id = r.tenant_id and rp.deleted = 0
+                        where ur.tenant_id = ? and ur.user_id = ? and ur.deleted = 0
+                        group by r.id, r.role_code, r.role_name, r.role_type
+                        order by r.id desc
+                        """,
+                (rs, rowNum) -> {
+                    CurrentUserVO.RoleOptionVO role = new CurrentUserVO.RoleOptionVO();
+                    role.setId(rs.getLong("id"));
+                    role.setRoleCode(rs.getString("roleCode"));
+                    role.setRoleName(rs.getString("roleName"));
+                    role.setRoleType(rs.getString("roleType"));
+                    role.setPermissionCount(rs.getInt("permissionCount"));
+                    return role;
+                },
+                tenantId,
+                userId
+        );
+    }
+
     private String resolveLocale(Long tenantId, Long userId) {
         if (tenantId == null || userId == null) {
             return "zh-CN";
@@ -510,5 +573,12 @@ public class AuthAppService {
         List<LoginResponseVO.SecondFactorOptionVO> result = new ArrayList<>();
         systemVerificationAppService.collectSecondFactorOptions(user, tenantId).forEach(result::add);
         return result;
+    }
+
+    private Long currentTenantId(CurrentUser currentUser) {
+        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+            return PLATFORM_TENANT_ID;
+        }
+        return currentUser.getCurrentTenantId();
     }
 }

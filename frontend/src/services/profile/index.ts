@@ -36,6 +36,12 @@ export interface LocalePayload {
   locale: string;
 }
 
+export interface PasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export const profileService = {
   summary: (options: RequestOptions = {}) =>
     request<ProfileSummary>('/v1/profile/summary', {
@@ -68,6 +74,12 @@ export const profileService = {
     }),
   updateLocale: (payload: LocalePayload, options: RequestOptions = {}) =>
     request<CurrentUser>('/v1/profile/locale', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  changePassword: (payload: PasswordPayload, options: RequestOptions = {}) =>
+    request<boolean>('/v1/profile/password', {
       method: 'PUT',
       data: payload,
       ...options,

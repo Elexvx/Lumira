@@ -60,10 +60,6 @@ spring:
               uri: ${GATEWAY_PLUGIN_SERVICE_URI:http://localhost:8086}
               predicates:
                 - Path=/api/v1/plugins/**
-            - id: audit-service
-              uri: ${GATEWAY_AUDIT_SERVICE_URI:http://localhost:8087}
-              predicates:
-                - Path=/api/v1/audit/**
             - id: localization-service
               uri: ${GATEWAY_LOCALIZATION_SERVICE_URI:http://localhost:8088}
               predicates:

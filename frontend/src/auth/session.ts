@@ -247,6 +247,8 @@ const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => 
     idCardNumber: loginResponse.user.idCardNumber ?? null,
     locale: loginResponse.user.locale ?? null,
     currentTenant: loginResponse.currentTenant || null,
+    simulatedRoleId: null,
+    availableRoles: [],
     sessionId,
     permissionsVersion: storedSessionMeta?.permissionsVersion,
     sessionVersion: storedSessionMeta?.sessionVersion,

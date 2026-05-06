@@ -30,6 +30,10 @@ export interface LoginCodeCompletePayload {
   verificationCode: string;
 }
 
+export interface SimulatedRolePayload {
+  roleId?: number | null;
+}
+
 export const authService = {
   login: (payload: LoginPayload, options: RequestOptions = {}) =>
     request<LoginResponse>('/v1/auth/login', {
@@ -85,6 +89,12 @@ export const authService = {
   currentUser: (options: RequestOptions = {}) =>
     request<CurrentUser>('/v1/auth/current-user', {
       method: 'GET',
+      ...options,
+    }),
+  simulatedRole: (payload: SimulatedRolePayload, options: RequestOptions = {}) =>
+    request<CurrentUser>('/v1/auth/simulated-role', {
+      method: 'PUT',
+      data: payload,
       ...options,
     }),
 };

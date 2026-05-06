@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
@@ -81,6 +82,7 @@ public class SystemVerificationController {
     }
 
     @PostMapping("/providers/{factorCode}/bind")
+    @RepeatSubmit
     public ApiResponse<SystemVO.VerificationChallengeVO> bind(@PathVariable("factorCode") String factorCode) {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
@@ -91,6 +93,7 @@ public class SystemVerificationController {
     }
 
     @PostMapping("/providers/{factorCode}/unbind")
+    @RepeatSubmit
     public ApiResponse<Boolean> unbind(@PathVariable("factorCode") String factorCode) {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
@@ -101,6 +104,7 @@ public class SystemVerificationController {
     }
 
     @PostMapping("/providers/{factorCode}/challenge")
+    @RepeatSubmit
     public ApiResponse<SystemVO.VerificationChallengeVO> challenge(@PathVariable("factorCode") String factorCode) {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
@@ -111,6 +115,7 @@ public class SystemVerificationController {
     }
 
     @PostMapping("/providers/{factorCode}/verify")
+    @RepeatSubmit
     public ApiResponse<SystemVO.VerificationVerificationVO> verify(
             @PathVariable("factorCode") String factorCode,
             @Valid @RequestBody SecondFactorVerifyRequest request
@@ -133,6 +138,7 @@ public class SystemVerificationController {
     }
 
     @PutMapping("/sms-settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.SmsVerificationSettingsVO> updateSmsSettings(@Valid @RequestBody SystemDTO.SmsVerificationSettingsRequest request) {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
@@ -143,6 +149,7 @@ public class SystemVerificationController {
     }
 
     @PutMapping("/settings")
+    @RepeatSubmit
     public ApiResponse<SystemVO.VerificationSettingsVO> updateVerificationSettings(@Valid @RequestBody SystemDTO.VerificationSettingsRequest request) {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");

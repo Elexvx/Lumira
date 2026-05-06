@@ -6,6 +6,7 @@ public class CurrentUser {
     private Long userId;
     private String username;
     private Long currentTenantId;
+    private Long simulatedRoleId;
     private String sessionId;
     private Integer sessionVersion;
     private boolean authenticated;
@@ -53,6 +54,14 @@ public class CurrentUser {
 
     public void setCurrentTenantId(Long currentTenantId) {
         this.currentTenantId = currentTenantId;
+    }
+
+    public Long getSimulatedRoleId() {
+        return simulatedRoleId;
+    }
+
+    public void setSimulatedRoleId(Long simulatedRoleId) {
+        this.simulatedRoleId = simulatedRoleId;
     }
 
     public String getSessionId() {

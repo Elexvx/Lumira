@@ -79,7 +79,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemAllFiles: isLogin && hasPermission(permissions, 'system:file:manage'),
     canVisitLocalization: isLogin && hasPermission(permissions, 'localization:view'),
     canVisitAudit: isLogin && AUDIT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
-    canVisitSystemSettings: isLogin && isProtectedAdminAccount(initialState?.currentUser),
+    canVisitSystemSettings: isLogin && isProtectedAdminAccount(initialState?.currentUser) && !initialState?.currentUser?.simulatedRoleId,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && hasPermission(permissions, 'plugin:management:view'),
     canVisitPluginRuntime: isLogin,
