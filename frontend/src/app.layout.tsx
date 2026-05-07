@@ -32,6 +32,7 @@ const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
+const AI_MAIN_ROUTE_PATH = '/ai';
 
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 
@@ -66,6 +67,32 @@ const buildSettingsMenuData = (initialState?: AppInitialState) => {
     initialState?.menuTree,
     (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
   );
+};
+
+const buildMainMenuData = (
+  initialState: AppInitialState | undefined,
+  menuData: RuntimeMenuDataItem[],
+) => {
+  const access = buildAccess({ currentUser: initialState?.currentUser });
+  const visibleMenus = menuData as RuntimeMenuDataItem[];
+  const composedMenus = initialState?.menuTree || [];
+
+  const hasAiAssistantMenu = visibleMenus.some((item) => item.path === AI_MAIN_ROUTE_PATH)
+    || composedMenus.some((item) => item.path === AI_MAIN_ROUTE_PATH);
+
+  if (!hasAiAssistantMenu && Boolean((access as Record<string, unknown>).canVisitAiAssistant)) {
+    const aiRouteMeta = routeMetaMap.get(AI_MAIN_ROUTE_PATH);
+    visibleMenus.push({
+      path: AI_MAIN_ROUTE_PATH,
+      name: formatMessage({
+        id: aiRouteMeta?.name || 'nav.ai.assistant',
+        defaultMessage: 'AI 助手',
+      }),
+      icon: resolveNavigationIcon(aiRouteMeta?.icon),
+    });
+  }
+
+  return visibleMenus;
 };
 
 const composeMenuItem = (
@@ -209,7 +236,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         .map((node) => composeMenuItem(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
 
-      return composedMenus;
+      return buildMainMenuData(initialState, composedMenus);
     },
     onPageChange: () => {
       const { location } = history;

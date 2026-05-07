@@ -12,6 +12,7 @@ import com.legendary.invention.saas.modules.auth.app.AuthAppService;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
+import com.legendary.invention.saas.modules.system.permission.SystemPermissionTreeAssembler;
 import com.legendary.invention.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
@@ -164,20 +165,6 @@ public class SystemManagementAppService {
             shortcut("站内信归档", "站内信归档与手动发布", "/settings/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/settings/plugins", "plugin:management:view")
     );
-    private static final String NODE_TYPE_CATALOG = "CATALOG";
-    private static final String NODE_TYPE_PAGE = "PAGE";
-    private static final String NODE_TYPE_ALIAS = "ALIAS";
-    private static final Set<String> LEGACY_PERMISSION_TREE_ALIAS_PATHS = Set.of(
-            "/audit/overview",
-            "/system/overview",
-            "/system/users",
-            "/system/online-users",
-            "/system/roles",
-            "/profile/center",
-            "/user-center/permissions",
-            "/iam/overview"
-    );
-
     private final JdbcTemplate jdbcTemplate;
     private final AuthAppService authAppService;
     private final TenantDomainService tenantDomainService;
@@ -186,12 +173,15 @@ public class SystemManagementAppService {
     private final PluginManagementAppService pluginManagementAppService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final SystemVerificationAppService systemVerificationAppService;
+    private final SystemPlatformSettingsAppService systemPlatformSettingsAppService;
+    private final SystemProfileSettingsAppService systemProfileSettingsAppService;
     private final PasswordEncoder passwordEncoder;
     private final AuthSessionStore authSessionStore;
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
     private final SecuritySettingsService securitySettingsService;
     private final PasswordPolicyService passwordPolicyService;
+    private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     public SystemManagementAppService(
             JdbcTemplate jdbcTemplate,
@@ -202,6 +192,8 @@ public class SystemManagementAppService {
             PluginManagementAppService pluginManagementAppService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
             PasswordEncoder passwordEncoder,
             AuthSessionStore authSessionStore,
             LoginAuditService loginAuditService,
@@ -217,6 +209,8 @@ public class SystemManagementAppService {
         this.pluginManagementAppService = pluginManagementAppService;
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.systemVerificationAppService = systemVerificationAppService;
+        this.systemPlatformSettingsAppService = systemPlatformSettingsAppService;
+        this.systemProfileSettingsAppService = systemProfileSettingsAppService;
         this.passwordEncoder = passwordEncoder;
         this.authSessionStore = authSessionStore;
         this.loginAuditService = loginAuditService;
@@ -233,9 +227,9 @@ public class SystemManagementAppService {
         summary.setTenantPlugins(pluginManagementAppService.availablePlugins(currentTenantId(currentUser)));
         summary.setMenuCount(countMenus(currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 5).getRecords());
-        summary.setRecentOperationLogs(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords());
-        summary.setShortcuts(DASHBOARD_SHORTCUTS);
+        summary.setRecentLoginLogs(new ArrayList<>(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 5).getRecords()));
+        summary.setRecentOperationLogs(new ArrayList<>(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords()));
+        summary.setShortcuts(new ArrayList<>(DASHBOARD_SHORTCUTS));
         return summary;
     }
 
@@ -246,7 +240,7 @@ public class SystemManagementAppService {
         summary.setCurrentTenant(tenantDomainService.toTenantSummary(tenantInfo));
         summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(listLoginLogs(
+        summary.setRecentLoginLogs(new ArrayList<>(listLoginLogs(
                 currentUser,
                 currentUser.getUsername(),
                 currentTenantId(currentUser),
@@ -255,8 +249,8 @@ public class SystemManagementAppService {
                 null,
                 1,
                 RECENT_LOGIN_LOG_LIMIT
-        ).getRecords());
-        summary.setProfileFieldSettings(loadProfileFieldSettings(currentTenantId(currentUser)));
+        ).getRecords()));
+        summary.setProfileFieldSettings(new ArrayList<>(systemProfileSettingsAppService.getProfileFieldSettings(currentUser)));
         Long tenantId = currentTenantId(currentUser);
         boolean mobileBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "mobile");
         boolean emailBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "email");
@@ -469,24 +463,12 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
-        return loadProfileFieldSettings(currentTenantId(currentUser));
+        return systemProfileSettingsAppService.getProfileFieldSettings(currentUser);
     }
 
     @Transactional
     public List<SystemVO.ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Map<String, Boolean> requestedVisibility = new LinkedHashMap<>();
-        request.getItems().forEach(item -> requestedVisibility.put(item.getFieldKey(), Boolean.TRUE.equals(item.getVisible())));
-        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
-                tenantId,
-                definition.configKey(),
-                definition.fieldLabel() + "展示开关",
-                String.valueOf(requestedVisibility.getOrDefault(definition.fieldKey(), definition.defaultVisible())),
-                definition.fieldDescription(),
-                currentUser.getUserId()
-        ));
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
-        return loadProfileFieldSettings(tenantId);
+        return systemProfileSettingsAppService.updateProfileFieldSettings(currentUser, request);
     }
 
     public PageResponse<SystemVO.UserVO> listUsers(CurrentUser currentUser, String username, String mobile, String status, long pageNo, long pageSize) {
@@ -702,8 +684,7 @@ public class SystemManagementAppService {
         List<SystemVO.MenuVO> menus = new ArrayList<>(SystemRouteCatalog.buildBuiltinPermissionMenus());
         menus.addAll(listMenus(currentUser));
         List<SystemVO.PermissionVO> permissions = listPermissions(currentUser);
-        Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey = buildActionPermissionsByPageKey(permissions);
-        return buildPermissionTree(menus, actionPermissionsByPageKey);
+        return permissionTreeAssembler.build(menus, permissions);
     }
 
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
@@ -723,155 +704,6 @@ public class SystemManagementAppService {
                 .filter(menu -> !SystemRouteCatalog.isBuiltInMenu(menu))
                 .toList();
         return buildMenuTree(menus);
-    }
-
-    private List<SystemVO.PermissionTreeVO> buildPermissionTree(
-            List<SystemVO.MenuVO> menus,
-            Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey
-    ) {
-        if (CollectionUtils.isEmpty(menus)) {
-            return List.of();
-        }
-        List<SystemVO.PermissionTreeVO> tree = new ArrayList<>();
-        for (SystemVO.MenuVO menu : menus) {
-            SystemVO.PermissionTreeVO node = buildPermissionTreeNode(menu, actionPermissionsByPageKey);
-            if (node != null) {
-                tree.add(node);
-            }
-        }
-        return tree;
-    }
-
-    private SystemVO.PermissionTreeVO buildPermissionTreeNode(
-            SystemVO.MenuVO menu,
-            Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey
-    ) {
-        if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
-            return null;
-        }
-
-        List<SystemVO.PermissionTreeVO> children = new ArrayList<>();
-        if (!CollectionUtils.isEmpty(menu.getChildren())) {
-            for (SystemVO.MenuVO child : menu.getChildren()) {
-                SystemVO.PermissionTreeVO childNode = buildPermissionTreeNode(child, actionPermissionsByPageKey);
-                if (childNode != null) {
-                    children.add(childNode);
-                }
-            }
-        }
-
-        String nodeType = resolvePermissionTreeNodeType(menu);
-        boolean selectable = NODE_TYPE_PAGE.equals(nodeType) && StringUtils.hasText(menu.getPermissionKey());
-        if (!selectable && children.isEmpty() && !NODE_TYPE_CATALOG.equals(nodeType)) {
-            return null;
-        }
-
-        SystemVO.PermissionTreeVO node = new SystemVO.PermissionTreeVO();
-        node.setPageKey(menu.getId() != null ? String.valueOf(menu.getId()) : StringUtils.hasText(menu.getPath()) ? menu.getPath() : menu.getMenuCode());
-        node.setPageName(menu.getMenuName());
-        node.setNodeType(nodeType);
-        node.setRoutePath(NODE_TYPE_PAGE.equals(nodeType) ? menu.getPath() : null);
-        node.setIcon(menu.getIcon());
-        node.setPermissionKey(menu.getPermissionKey());
-        node.setSelectable(selectable);
-        node.setChildren(children.isEmpty() ? null : children);
-        if (selectable) {
-            node.setPermissionGroup(resolvePermissionGroup(menu.getPermissionKey()));
-            node.setSourceType(resolvePermissionSourceType(menu.getPermissionKey()));
-            node.setActionPermissions(actionPermissionsByPageKey.getOrDefault(menu.getPermissionKey(), List.of()));
-        }
-        return node;
-    }
-
-    private String resolvePermissionTreeNodeType(SystemVO.MenuVO menu) {
-        if (menu == null) {
-            return NODE_TYPE_ALIAS;
-        }
-        if ("CATALOG".equalsIgnoreCase(menu.getMenuType())) {
-            return NODE_TYPE_CATALOG;
-        }
-        if (isLegacyPermissionTreeAliasPath(menu.getPath()) || isRedirectComponent(menu.getComponent())) {
-            return NODE_TYPE_ALIAS;
-        }
-        return NODE_TYPE_PAGE;
-    }
-
-    private boolean isLegacyPermissionTreeAliasPath(String path) {
-        return StringUtils.hasText(path) && LEGACY_PERMISSION_TREE_ALIAS_PATHS.contains(path);
-    }
-
-    private boolean isRedirectComponent(String component) {
-        return StringUtils.hasText(component) && component.startsWith("redirect:");
-    }
-
-    private Map<String, List<SystemVO.PermissionActionVO>> buildActionPermissionsByPageKey(List<SystemVO.PermissionVO> permissions) {
-        if (CollectionUtils.isEmpty(permissions)) {
-            return Map.of();
-        }
-
-        Map<String, List<SystemVO.PermissionActionVO>> result = new LinkedHashMap<>();
-        Map<String, SystemVO.PermissionVO> permissionMap = permissions.stream()
-                .filter(permission -> StringUtils.hasText(permission.getPermissionKey()))
-                .collect(Collectors.toMap(SystemVO.PermissionVO::getPermissionKey, permission -> permission, (left, right) -> left, LinkedHashMap::new));
-
-        for (SystemVO.PermissionVO permission : permissions) {
-            String permissionKey = permission.getPermissionKey();
-            if (!StringUtils.hasText(permissionKey) || permissionKey.chars().filter(ch -> ch == ':').count() < 2) {
-                continue;
-            }
-            String pagePermissionKey = resolvePagePermissionKey(permissionKey);
-            if (!StringUtils.hasText(pagePermissionKey)) {
-                continue;
-            }
-            String actionPrefix = resolveActionPrefix(pagePermissionKey);
-            List<SystemVO.PermissionActionVO> actions = permissionMap.values().stream()
-                    .filter(candidate -> !permissionKey.equals(candidate.getPermissionKey()))
-                    .filter(candidate -> StringUtils.hasText(candidate.getPermissionKey()) && candidate.getPermissionKey().startsWith(actionPrefix))
-                    .map(candidate -> {
-                        SystemVO.PermissionActionVO action = new SystemVO.PermissionActionVO();
-                        action.setPermissionKey(candidate.getPermissionKey());
-                        action.setPermissionName(candidate.getPermissionName());
-                        action.setPermissionGroup(candidate.getPermissionGroup());
-                        action.setSourceType(candidate.getSourceType());
-                        return action;
-                    })
-                    .sorted(Comparator.comparing(SystemVO.PermissionActionVO::getPermissionKey))
-                    .toList();
-            if (!actions.isEmpty()) {
-                result.put(pagePermissionKey, actions);
-            }
-        }
-
-        return result;
-    }
-
-    private String resolvePagePermissionKey(String permissionKey) {
-        if (!StringUtils.hasText(permissionKey) || !permissionKey.endsWith(":view")) {
-            return null;
-        }
-        return permissionKey;
-    }
-
-    private String resolveActionPrefix(String pagePermissionKey) {
-        if (!StringUtils.hasText(pagePermissionKey) || !pagePermissionKey.endsWith(":view")) {
-            return null;
-        }
-        return pagePermissionKey.substring(0, pagePermissionKey.length() - ":view".length()) + ":";
-    }
-
-    private String resolvePermissionGroup(String permissionKey) {
-        if (!StringUtils.hasText(permissionKey)) {
-            return null;
-        }
-        int firstColon = permissionKey.indexOf(':');
-        return firstColon > 0 ? permissionKey.substring(0, firstColon) : permissionKey;
-    }
-
-    private String resolvePermissionSourceType(String permissionKey) {
-        if (!StringUtils.hasText(permissionKey)) {
-            return null;
-        }
-        return permissionKey.startsWith("plugin:") ? "PLUGIN" : "CORE";
     }
 
     @Transactional
@@ -1159,63 +991,17 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.SmtpSettingsVO getSmtpSettings(CurrentUser currentUser) {
-        return loadSmtpSettings(currentTenantId(currentUser));
+        return systemPlatformSettingsAppService.getSmtpSettings(currentUser);
     }
 
     @Transactional
     public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long operatorId = currentUser.getUserId();
-        Map<String, String> currentValues = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
-        SystemVO.SmtpSettingsVO current = loadSmtpSettings(tenantId);
-        String host = sanitizeText(request.getHost(), current.getHost());
-        Integer port = request.getPort() == null ? current.getPort() : request.getPort();
-        String username = sanitizeText(request.getUsername(), current.getUsername());
-        String existingPassword = defaultIfBlank(currentValues.get(SMTP_PASSWORD_KEY), "");
-        String password = StringUtils.hasText(request.getPassword()) ? request.getPassword() : existingPassword;
-        String from = sanitizeText(request.getFrom(), current.getFrom());
-        boolean authEnabled = request.getAuthEnabled() == null ? Boolean.TRUE.equals(current.getAuthEnabled()) : request.getAuthEnabled();
-        boolean startTlsEnabled = request.getStartTlsEnabled() == null ? Boolean.TRUE.equals(current.getStartTlsEnabled()) : request.getStartTlsEnabled();
-        boolean sslEnabled = request.getSslEnabled() == null ? Boolean.TRUE.equals(current.getSslEnabled()) : request.getSslEnabled();
-
-        upsertPlatformConfig(tenantId, SMTP_HOST_KEY, "SMTP 主机", host, "邮件服务器地址", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_PORT_KEY, "SMTP 端口", String.valueOf(port == null ? 25 : port), "邮件服务器端口", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_USERNAME_KEY, "SMTP 用户名", username, "SMTP 登录用户名", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_PASSWORD_KEY, "SMTP 密码", password, "SMTP 登录密码", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_FROM_KEY, "发件人地址", from, "SMTP 默认发件人", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_AUTH_ENABLED_KEY, "SMTP 认证", String.valueOf(authEnabled), "是否启用 SMTP AUTH", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "是否启用 STARTTLS", operatorId);
-        upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "是否启用 SSL", operatorId);
-
-        operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
-        return loadSmtpSettings(tenantId);
+        return systemPlatformSettingsAppService.updateSmtpSettings(currentUser, request);
     }
 
     @Transactional
     public SystemVO.SmtpTestVO testSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpTestRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
-        JavaMailSenderImpl mailSender = buildSmtpSender(values);
-        String from = defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY));
-        if (!StringUtils.hasText(from)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "请先补充 SMTP 发件人地址");
-        }
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(request.getToEmail());
-        message.setFrom(from);
-        message.setSubject(defaultIfBlank(request.getSubject(), "SMTP 测试邮件"));
-        message.setText(defaultIfBlank(request.getContent(), "这是一封来自系统的 SMTP 测试邮件。"));
-        try {
-            mailSender.send(message);
-        } catch (MailException exception) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "SMTP 测试发送失败: " + exception.getMessage());
-        }
-        SystemVO.SmtpTestVO result = new SystemVO.SmtpTestVO();
-        result.setSuccess(Boolean.TRUE);
-        result.setMessage("SMTP 测试邮件已发送");
-        result.setToEmail(request.getToEmail());
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "smtp", "test", "CREATE", "SUCCESS", "SMTP 测试发送至 " + request.getToEmail());
-        return result;
+        return systemPlatformSettingsAppService.testSmtpSettings(currentUser, request);
     }
 
     @Transactional
@@ -1279,12 +1065,11 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.BrandingSettingsVO getBrandingSettings(CurrentUser currentUser) {
-        return loadBrandingSettings(currentTenantId(currentUser));
+        return systemPlatformSettingsAppService.getBrandingSettings(currentUser);
     }
 
     public SystemVO.BrandingSettingsVO getPublicBrandingSettings(Long preferredTenantId) {
-        Long tenantId = preferredTenantId == null ? DEFAULT_PUBLIC_TENANT_ID : preferredTenantId;
-        return loadBrandingSettings(tenantId);
+        return systemPlatformSettingsAppService.getPublicBrandingSettings(preferredTenantId);
     }
 
     public SystemVO.SecuritySettingsVO getPublicSecuritySettings() {
@@ -1292,163 +1077,31 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.AgreementSettingsVO getAgreementSettings() {
-        return loadAgreementSettings(DEFAULT_PUBLIC_TENANT_ID);
+        return systemPlatformSettingsAppService.getAgreementSettings();
     }
 
     public SystemVO.AgreementSettingsVO getPublicAgreementSettings() {
-        return loadAgreementSettings(DEFAULT_PUBLIC_TENANT_ID);
+        return systemPlatformSettingsAppService.getPublicAgreementSettings();
     }
 
     @Transactional
     public SystemVO.BrandingSettingsVO updateBrandingSettings(CurrentUser currentUser, SystemDTO.BrandingSettingsRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long operatorId = currentUser.getUserId();
-        String websiteName = sanitizeBrandingText(request.getWebsiteName(), "宏翔商道");
-        String companyName = sanitizeBrandingText(request.getCompanyName(), websiteName);
-        Integer copyrightStartYear = request.getCopyrightStartYear() == null ? LocalDate.now().getYear() : request.getCopyrightStartYear();
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_WEBSITE_NAME_KEY,
-                "站点名称",
-                websiteName,
-                "控制台顶部与浏览器标题展示名称",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_WEBSITE_FAVICON_URL_KEY,
-                "站点图标地址",
-                sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""),
-                "浏览器标签页 icon 地址",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_WEBSITE_LOGO_URL_KEY,
-                "站点 Logo 地址",
-                sanitizeBrandingText(request.getWebsiteLogoUrl(), ""),
-                "控制台左上角品牌 Logo 地址",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_GITHUB_LINK_URL_KEY,
-                "GitHub 链接",
-                sanitizeBrandingText(request.getGithubLinkUrl(), ""),
-                "顶部 GitHub 图标跳转地址",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_HELP_LINK_URL_KEY,
-                "帮助链接",
-                sanitizeBrandingText(request.getHelpLinkUrl(), ""),
-                "顶部帮助图标跳转地址",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_COMPANY_NAME_KEY,
-                "公司名称",
-                companyName,
-                "页脚版权主体名称",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_COPYRIGHT_START_YEAR_KEY,
-                "版权起始年份",
-                String.valueOf(copyrightStartYear),
-                "页脚版权起始年份",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_FOOTER_ICP_KEY,
-                "页脚 ICP 备案",
-                sanitizeBrandingText(request.getFooterIcp(), ""),
-                "页脚备案信息",
-                operatorId
-        );
-        upsertBrandingConfig(
-                tenantId,
-                BRANDING_FOOTER_COPYRIGHT_KEY,
-                "页脚版权声明",
-                buildCopyrightText(companyName, copyrightStartYear),
-                "页脚版权声明（由公司名称和起始年份生成）",
-                operatorId
-        );
-
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
-                currentUser.getUsername(),
-                "system",
-                "branding-update",
-                "UPDATE",
-                "SUCCESS",
-                "更新个性化设置"
-        );
-        return loadBrandingSettings(tenantId);
+        return systemPlatformSettingsAppService.updateBrandingSettings(currentUser, request);
     }
 
     @Transactional
     public SystemVO.AgreementSettingsVO updateAgreementSettings(CurrentUser currentUser, SystemDTO.AgreementSettingsRequest request) {
-        Long tenantId = DEFAULT_PUBLIC_TENANT_ID;
-        Long operatorId = currentUser.getUserId();
-        upsertConfigValue(
-                tenantId,
-                AGREEMENT_USER_MARKDOWN_KEY,
-                "用户协议",
-                normalizeMarkdownText(request.getUserAgreementMarkdown()),
-                "用户协议 Markdown",
-                operatorId
-        );
-        upsertConfigValue(
-                tenantId,
-                AGREEMENT_PRIVACY_MARKDOWN_KEY,
-                "隐私协议",
-                normalizeMarkdownText(request.getPrivacyAgreementMarkdown()),
-                "隐私协议 Markdown",
-                operatorId
-        );
-        operationAuditService.log(
-                currentTenantId(currentUser),
-                currentUser.getUserId(),
-                currentUser.getUsername(),
-                "system",
-                "agreement-update",
-                "UPDATE",
-                "SUCCESS",
-                "更新协议设置"
-        );
-        return loadAgreementSettings(tenantId);
+        return systemPlatformSettingsAppService.updateAgreementSettings(currentUser, request);
     }
 
 
     public SystemVO.WatermarkSettingsVO getWatermarkSettings(CurrentUser currentUser) {
-        return loadWatermarkSettings(currentTenantId(currentUser));
+        return systemPlatformSettingsAppService.getWatermarkSettings(currentUser);
     }
 
     @Transactional
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long operatorId = currentUser.getUserId();
-        upsertBrandingConfig(tenantId, WATERMARK_ENABLED_KEY, "水印开关", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "全局水印开关", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_MODE_KEY, "水印模式", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_TEXT_LINES_KEY, "水印文本", String.join("\n", request.getTextLines() == null ? List.of("宏翔商道", "后台管理系统") : request.getTextLines()), "多行文本水印", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_IMAGE_URL_KEY, "水印图片", defaultIfBlank(request.getImageUrl(), ""), "图片水印 URL", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_FONT_COLOR_KEY, "字体颜色", defaultIfBlank(request.getFontColor(), "rgba(0,0,0,0.15)"), "字体颜色", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_FONT_SIZE_KEY, "字体大小", String.valueOf(request.getFontSize() == null ? 14 : request.getFontSize()), "字体大小", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_FONT_WEIGHT_KEY, "字体粗细", defaultIfBlank(request.getFontWeight(), "normal"), "字体粗细", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_ROTATE_KEY, "旋转角度", String.valueOf(request.getRotate() == null ? -22 : request.getRotate()), "旋转角度", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_GAP_X_KEY, "横向间距", String.valueOf(request.getGapX() == null ? 100 : request.getGapX()), "横向间距", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_GAP_Y_KEY, "纵向间距", String.valueOf(request.getGapY() == null ? 100 : request.getGapY()), "纵向间距", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_OFFSET_X_KEY, "横向偏移", String.valueOf(request.getOffsetX() == null ? 0 : request.getOffsetX()), "横向偏移", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_OFFSET_Y_KEY, "纵向偏移", String.valueOf(request.getOffsetY() == null ? 0 : request.getOffsetY()), "纵向偏移", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_Z_INDEX_KEY, "层级", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "z-index", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_OPACITY_KEY, "透明度", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "透明度", operatorId);
-        return loadWatermarkSettings(tenantId);
+        return systemPlatformSettingsAppService.updateWatermarkSettings(currentUser, request);
     }
 
     private SystemVO.WatermarkSettingsVO loadWatermarkSettings(Long tenantId) {

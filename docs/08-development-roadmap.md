@@ -87,7 +87,7 @@
 
 后端侧：
 
-- 完成 `Spring Boot 3 + Java 21 + MyBatis Plus + Spring Security` 初始化。
+- 完成 `Spring Boot 4.0.6 + Java 21 + MyBatis Plus + Spring Security` 初始化。
 - 建立 `common`、`infrastructure`、`modules` 等模块化目录。
 - 接入统一异常处理、统一返回结构、统一日志上下文、数据库连接、Redis 连接、基础配置体系和数据库脚本管理工具。
 

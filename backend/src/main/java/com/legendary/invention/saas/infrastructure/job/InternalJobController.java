@@ -5,6 +5,7 @@ import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.event.PlatformEventOutboxRelay;
 import com.legendary.invention.saas.modules.system.online.OnlineSessionStreamService;
+import com.legendary.invention.common.web.InternalJobTokenValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -44,10 +45,10 @@ public class InternalJobController {
     }
 
     private void ensureAuthorized(String token) {
-        if (internalToken == null || internalToken.isBlank()) {
+        if (!InternalJobTokenValidator.isConfigured(internalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "内部任务令牌未配置");
         }
-        if (token == null || !internalToken.equals(token)) {
+        if (!InternalJobTokenValidator.isAuthorized(token, internalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权访问内部任务接口");
         }
     }

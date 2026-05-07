@@ -8,6 +8,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @SpringBootApplication(scanBasePackages = {
         "com.legendary.invention.common",
         "com.legendary.invention.api",
+        "com.legendary.invention.saas.infrastructure.config",
         "com.legendary.invention.file"
 })
 @EnableDiscoveryClient

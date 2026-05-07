@@ -1,12 +1,11 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Spin, message } from 'antd';
+import { Form, Spin, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { useResponsive } from '@/hooks/useResponsive';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/settings/menus/columns';
 import { MenuEditorForm, buildParentMenuOptions } from '@/pages/settings/menus/components/MenuEditorForm';
@@ -34,8 +33,7 @@ interface MenuDragState {
 const MenuManagementPage = () => {
   const menuCrud = useCrudPageState<MenuRecord>();
   const [editorForm] = Form.useForm();
-  const actionPermission = useActionPermission();
-  const responsive = useResponsive();
+  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const { setInitialState } = useInitialStateModel();
   const [menuTree, setMenuTree] = useState<MenuRecord[]>([]);
   const [saving, setSaving] = useState(false);
@@ -315,7 +313,7 @@ const MenuManagementPage = () => {
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
-          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+          search={searchConfig}
           pagination={false}
           tableLayout="fixed"
           onRow={(record) => ({
@@ -349,27 +347,21 @@ const MenuManagementPage = () => {
             };
           }}
           toolBarRender={() =>
-            actionPermission.buildToolbarActions([
+            buildToolbarButtons([
               {
+                key: 'create',
                 permission: 'system:menu:create',
-                value: (
-                <Button key="create" type="primary" onClick={openCreate}>
-                  新增菜单
-                </Button>
-                ),
+                type: 'primary',
+                label: '新增菜单',
+                onClick: openCreate,
               },
               {
-                value: (
-                  <Button
-                    key="refresh"
-                    onClick={async () => {
-                      await loadMenus();
-                      menuCrud.reloadTable();
-                    }}
-                  >
-                    刷新
-                  </Button>
-                ),
+                key: 'refresh',
+                label: '刷新',
+                onClick: async () => {
+                  await loadMenus();
+                  menuCrud.reloadTable();
+                },
               },
             ])
           }

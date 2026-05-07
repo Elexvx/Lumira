@@ -1,14 +1,13 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Space, Spin, message } from 'antd';
+import { Form, Space, Spin, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { buildTableRequest } from '@/features/table/proTable';
-import { useResponsive } from '@/hooks/useResponsive';
 import { buildDictItemColumns, buildDictTypeColumns, dictTypeDetailColumns } from '@/pages/settings/dicts/columns';
 import { DictItemForm } from '@/pages/settings/dicts/components/DictItemForm';
 import { DictTypeForm } from '@/pages/settings/dicts/components/DictTypeForm';
@@ -20,8 +19,7 @@ const DictManagementPage = () => {
   const itemDrawer = useCrudDrawerState<DictItemRecord>();
   const [typeForm] = Form.useForm();
   const [itemForm] = Form.useForm();
-  const actionPermission = useActionPermission();
-  const responsive = useResponsive();
+  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const [typeDetail, setTypeDetail] = useState<DictTypeRecord | null>(null);
   const [items, setItems] = useState<DictItemRecord[]>([]);
   const [saving, setSaving] = useState(false);
@@ -152,24 +150,21 @@ const DictManagementPage = () => {
           rowKey="id"
           columns={typeColumns}
           isMobile={responsive.isMobile}
-          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+          search={searchConfig}
           request={buildTableRequest((params) => dictService.types(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() =>
-            actionPermission.buildToolbarActions([
+            buildToolbarButtons([
               {
+                key: 'create',
                 permission: 'system:dict:create',
-                value: (
-                  <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateType}>
-                    新增字典类型
-                  </Button>
-                ),
+                type: 'primary',
+                label: '新增字典类型',
+                onClick: openCreateType,
               },
               {
-                value: (
-                  <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={typeCrud.reloadTable}>
-                    刷新
-                  </Button>
-                ),
+                key: 'refresh',
+                label: '刷新',
+                onClick: typeCrud.reloadTable,
               },
             ])
           }
@@ -211,14 +206,13 @@ const DictManagementPage = () => {
                 search={false}
                 pagination={false}
                 toolBarRender={() =>
-                  actionPermission.buildToolbarActions([
+                  buildToolbarButtons([
                     {
+                      key: 'create-item',
                       permission: 'system:dict:update',
-                      value: (
-                        <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreateItem}>
-                          新增项
-                        </Button>
-                      ),
+                      type: 'primary',
+                      label: '新增项',
+                      onClick: openCreateItem,
                     },
                   ])
                 }

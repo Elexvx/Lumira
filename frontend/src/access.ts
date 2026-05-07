@@ -19,6 +19,7 @@ const SYSTEM_MANAGEMENT_PERMISSIONS = [
   'system:monitor:service:view',
   'system:monitor:redis:view',
   'system:monitor:docs:view',
+  'ai:view',
   'audit:view',
   'audit:login:view',
   'audit:operation:view',
@@ -82,6 +83,8 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemSettings: isLogin && isProtectedAdminAccount(initialState?.currentUser) && !initialState?.currentUser?.simulatedRoleId,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && hasPermission(permissions, 'plugin:management:view'),
+    canVisitAiEmployees: isLogin && hasPermission(permissions, 'ai:view'),
+    canVisitAiAssistant: isLogin && hasPermission(permissions, 'ai:chat:send'),
     canVisitPluginRuntime: isLogin,
   };
 }

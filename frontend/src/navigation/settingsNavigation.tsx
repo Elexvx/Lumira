@@ -74,6 +74,12 @@ const SETTINGS_FALLBACK_ITEMS: SettingsNavigationSourceItem[] = [
     access: 'canVisitSystemNotifications',
   },
   {
+    path: '/settings/ai-employees',
+    name: 'nav.system.aiEmployees',
+    icon: 'RobotOutlined',
+    access: 'canVisitAiEmployees',
+  },
+  {
     path: '/settings/plugins',
     name: 'nav.system.plugins',
     icon: 'ApiOutlined',
@@ -96,21 +102,18 @@ const SETTINGS_FALLBACK_ITEMS: SettingsNavigationSourceItem[] = [
     name: 'nav.system.monitoring.root',
     icon: 'FundOutlined',
     access: 'canVisitSystemMonitoring',
-    matchPrefixes: ['/settings/monitoring/'],
-    children: [
-      {
-        path: '/settings/monitoring/api-docs',
-        name: 'nav.system.monitoring.apiDocs',
-        icon: 'FileTextOutlined',
-        access: 'canVisitSystemMonitoringDocs',
-      },
-      {
-        path: '/settings/monitoring/audit',
-        name: 'nav.system.monitoring.audit',
-        icon: 'AuditOutlined',
-        access: 'canVisitAudit',
-      },
-    ],
+  },
+  {
+    path: '/settings/api-docs',
+    name: 'nav.system.monitoring.apiDocs',
+    icon: 'FileTextOutlined',
+    access: 'canVisitSystemMonitoringDocs',
+  },
+  {
+    path: '/settings/audit',
+    name: 'nav.system.monitoring.audit',
+    icon: 'AuditOutlined',
+    access: 'canVisitAudit',
   },
 ];
 
@@ -207,9 +210,6 @@ const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
   }
 
   const routeMeta = getRouteMeta(path);
-  const children = (node.children || [])
-    .map((child) => toSourceItem(child))
-    .filter(Boolean) as SettingsNavigationSourceItem[];
 
   return {
     path,
@@ -217,7 +217,6 @@ const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
     icon: routeMeta?.icon || node.icon,
     access: routeMeta?.access || node.permissionKey,
     sortNo: node.sortNo,
-    children: children.length ? sortNavigationItems(children) : undefined,
   };
 };
 
@@ -236,8 +235,13 @@ const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined) => {
       return;
     }
 
-    candidateNodes.push(node);
-    seenPaths.add(normalizedPath);
+    if (isVisibleSettingsPath(normalizedPath)) {
+      candidateNodes.push(node);
+      seenPaths.add(normalizedPath);
+    }
+
+    // Recursively flatten children so nested backend nodes become siblings
+    (node.children || []).forEach(pushCandidate);
   };
 
   if (rootNode?.children?.length) {
@@ -352,6 +356,4 @@ export const isMainMenuHiddenSettingPath = (path?: string) =>
 
 export const isMainMenuHiddenMonitoringPath = (path?: string) =>
   path === '/settings/monitoring/service' ||
-  path === '/settings/monitoring/redis' ||
-  path === '/settings/monitoring/api-docs' ||
-  path === '/settings/monitoring/audit';
+  path === '/settings/monitoring/redis';

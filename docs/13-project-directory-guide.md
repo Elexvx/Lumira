@@ -25,7 +25,7 @@ legendary-invention/
 
 - `README.md`：项目的整体入口说明，包含仓库定位、技术栈和启动方式。
 - `pom.xml`：根 Maven 聚合文件，定义了多模块结构和统一依赖版本。
-- `backend/`：当前系统主后端，承载 system-service 的核心业务。
+- `backend/`：当前系统主后端，承载 `system-service` 的核心业务。
 - `frontend/`：前端管理台，负责页面、布局、权限、登录态和 API 调用。
 - `services/`：微服务拆分后的独立服务，每个服务都有自己的 `pom.xml` 和 `main` 启动类。
 - `libs/`：共享能力和内部接口契约，供后端各模块与服务复用。

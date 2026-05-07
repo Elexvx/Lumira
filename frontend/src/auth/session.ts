@@ -4,6 +4,7 @@ import { tokenManager } from '@/auth/token';
 import { LOGIN_PATH } from '@/app.constants';
 import { storage } from '@/cache/storage';
 import { clearSessionActivity, persistSessionActivity } from '@/auth/activity';
+import { clearClientRuntimeState } from '@/auth/clientRuntimeState';
 import {
   DEFAULT_SECURITY_SETTINGS,
   getStoredSecuritySettings,
@@ -39,6 +40,7 @@ export const getStoredCurrentUser = (): CurrentUser | null => storage.get<Curren
 export const getStoredSessionMeta = (): SessionMetaState | null => storage.get<SessionMetaState>(SESSION_META_KEY);
 
 export const clearAuthSession = () => {
+  clearClientRuntimeState();
   tokenManager.clearTokenState();
   storage.remove(USER_PROFILE_KEY);
   storage.remove(SESSION_META_KEY);
@@ -85,6 +87,12 @@ export const performLogout = async (options: { reason?: LogoutReason; hardReload
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {
   beginBootstrapFlow();
   try {
+    const previousTenantId = getStoredCurrentUser()?.currentTenant?.tenantId ?? null;
+    const nextTenantId = loginResponse.currentTenant?.tenantId ?? null;
+    if (previousTenantId != null && previousTenantId !== nextTenantId) {
+      clearClientRuntimeState({ tenantId: previousTenantId });
+    }
+
     tokenManager.setTokens({
       accessToken: loginResponse.accessToken,
       refreshToken: loginResponse.refreshToken,
@@ -113,6 +121,7 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
       return null;
     }
 
+    const previousTenantId = getStoredCurrentUser()?.currentTenant?.tenantId ?? null;
     const currentUser = await loadCurrentUserOrFallback();
     if (!currentUser) {
       const refreshed = await tryRefreshToken();
@@ -127,11 +136,21 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
         return null;
       }
 
+      const nextTenantId = refreshedCurrentUser.currentTenant?.tenantId ?? null;
+      if (previousTenantId != null && previousTenantId !== nextTenantId) {
+        clearClientRuntimeState({ tenantId: previousTenantId });
+      }
+
       applyLocalePreference(refreshedCurrentUser.locale, false);
       const persistedCurrentUser = persistCurrentUser(refreshedCurrentUser);
       persistSessionActivity(Date.now());
       const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
       return { currentUser: persistedCurrentUser, securitySettings };
+    }
+
+    const nextTenantId = currentUser.currentTenant?.tenantId ?? null;
+    if (previousTenantId != null && previousTenantId !== nextTenantId) {
+      clearClientRuntimeState({ tenantId: previousTenantId });
     }
 
     applyLocalePreference(currentUser.locale, false);

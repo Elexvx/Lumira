@@ -12,6 +12,12 @@
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
+如果你想直接拉起整个平台，可以从仓库根目录运行：
+
+```bash
+node scripts/start-platform.mjs
+```
+
 ## 后续组件
 
 - Sentinel 控制台

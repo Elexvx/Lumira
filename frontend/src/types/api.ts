@@ -227,6 +227,120 @@ export interface MenuNode {
   children?: MenuNode[];
 }
 
+export type AiSkillPermissionMode = 'visit' | 'allow' | 'deny';
+
+export interface AiSkillRecord {
+  id: number;
+  skillCode: string;
+  skillName: string;
+  category?: string | null;
+  description?: string | null;
+  riskLevel?: string | null;
+  readOnly?: boolean | null;
+  needConfirm?: boolean | null;
+  enabled?: boolean | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface AiEmployeeSkillRecord extends AiSkillRecord {
+  permissionMode: AiSkillPermissionMode;
+}
+
+export interface AiEmployeeRecord {
+  id: number;
+  tenantId?: number | null;
+  username: string;
+  nickname: string;
+  position?: string | null;
+  avatarKey?: string | null;
+  description?: string | null;
+  greeting?: string | null;
+  systemPrompt?: string | null;
+  defaultLlmServiceId?: number | null;
+  defaultLlmServiceTitle?: string | null;
+  enabled?: boolean | null;
+  sortOrder?: number | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface AiEmployeeDetailRecord extends AiEmployeeRecord {
+  defaultSystemPromptTemplate?: string | null;
+  skills?: AiEmployeeSkillRecord[];
+}
+
+export interface AiLlmServiceRecord {
+  id: number;
+  tenantId?: number | null;
+  provider: string;
+  code: string;
+  title: string;
+  baseUrl?: string | null;
+  defaultModel?: string | null;
+  enabled?: boolean | null;
+  timeoutMs?: number | null;
+  temperature?: number | null;
+  maxTokens?: number | null;
+  apiKeyConfigured?: boolean | null;
+  apiKeyMasked?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface AiPromptTemplateRecord {
+  defaultSystemPromptTemplate: string;
+}
+
+export interface AiChatResponseRecord {
+  conversationId?: number | null;
+  conversationCode?: string | null;
+  employeeId?: number | null;
+  replyText: string;
+  replyRole?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  mock?: boolean | null;
+  replyAt?: string | null;
+}
+
+export interface AiEmployeeUpsertPayload {
+  username: string;
+  nickname: string;
+  position?: string | null;
+  avatarKey?: string | null;
+  description?: string | null;
+  greeting?: string | null;
+  systemPrompt?: string | null;
+  defaultLlmServiceId?: number | null;
+  sortOrder?: number | null;
+  skills?: Array<{
+    skillCode: string;
+    permissionMode: AiSkillPermissionMode;
+  }>;
+}
+
+export interface AiLlmServiceUpsertPayload {
+  provider: string;
+  code: string;
+  title: string;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  defaultModel?: string | null;
+  enabled?: boolean | null;
+  timeoutMs?: number | null;
+  temperature?: number | null;
+  maxTokens?: number | null;
+}
+
+export interface AiChatRequestPayload {
+  employeeId: number;
+  conversationId?: number | null;
+  message: string;
+  skillCodes?: string[];
+  confirmed?: boolean | null;
+}
+
 export interface LocalizationLanguage {
   id: number;
   localeCode: string;

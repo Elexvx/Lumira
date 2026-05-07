@@ -4,8 +4,7 @@ import { Button, Card, Checkbox, Form, Input, List, Modal, Select, Space, Spin, 
 import { formatMessage, useIntl } from '@umijs/max';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { useResponsive } from '@/hooks/useResponsive';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { adaptPageResult } from '@/features/table/proTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
@@ -51,8 +50,7 @@ const resolveTagColor = (status?: string | null) => {
 
 const LocalizationPage = () => {
   const intl = useIntl();
-  const responsive = useResponsive();
-  const actionPermission = useActionPermission();
+  const { actionPermission, responsive, buttonSize } = usePagePermissionActions();
   const tableActionRef = useRef<ActionType>(null);
   const [languages, setLanguages] = useState<LocalizationLanguage[]>([]);
   const [namespaces, setNamespaces] = useState<LocalizationNamespace[]>([]);
@@ -363,7 +361,7 @@ const LocalizationPage = () => {
         <Card
           title={intl.formatMessage({ id: 'page.localization.languageSwitch', defaultMessage: '语言切换' })}
           extra={
-            <Button size="small" icon={<PlusOutlined />} onClick={() => openLanguageDrawer()}>
+            <Button size={buttonSize} icon={<PlusOutlined />} onClick={() => openLanguageDrawer()}>
               {intl.formatMessage({ id: 'page.localization.addLanguage', defaultMessage: '新增语言' })}
             </Button>
           }
@@ -489,7 +487,7 @@ const LocalizationPage = () => {
                 {
                   permission: 'localization:create',
                   value: (
-                    <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => openEntryDrawer()}>
+                    <Button key="create" type="primary" size={buttonSize} icon={<PlusOutlined />} onClick={() => openEntryDrawer()}>
                       {intl.formatMessage({ id: 'page.localization.addEntry', defaultMessage: '新增词条' })}
                     </Button>
                   ),

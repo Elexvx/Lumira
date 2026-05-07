@@ -8,7 +8,6 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { type ActionType, type ProColumns } from '@ant-design/pro-components';
-import dayjs from 'dayjs';
 import {
   Button,
   Card,
@@ -34,107 +33,24 @@ import { adaptPageResult } from '@/features/table/proTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { fileService } from '@/services/file';
-import type { FileObjectRecord, FilePreviewMode } from '@/types/api';
+import type { FileObjectRecord } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
-import { normalizeUploadUrl, resolveAbsoluteUploadUrl } from '@/utils/uploadUrl';
-
-const FILE_EXTENSION_LABELS: Record<string, string> = {
-  pdf: 'PDF',
-  doc: 'Word',
-  docx: 'Word',
-  xls: 'Excel',
-  xlsx: 'Excel',
-  ppt: 'PPT',
-  pptx: 'PPT',
-};
-
-const PREVIEW_MODE_LABELS: Record<FilePreviewMode, { text: string; color: string }> = {
-  IMAGE: { text: formatMessage({ id: 'system.files.preview.image', defaultMessage: 'Image preview' }), color: 'green' },
-  PDF: { text: formatMessage({ id: 'system.files.preview.pdf', defaultMessage: 'PDF preview' }), color: 'blue' },
-  TEXT: { text: formatMessage({ id: 'system.files.preview.text', defaultMessage: 'Text preview' }), color: 'gold' },
-  UNSUPPORTED: { text: formatMessage({ id: 'system.files.preview.downloadOnly', defaultMessage: 'Download only' }), color: 'default' },
-};
-
-const FILE_CATEGORY_OPTIONS = [
-  { label: formatMessage({ id: 'system.files.category.rules', defaultMessage: 'Policies' }), value: '制度文档' },
-  { label: formatMessage({ id: 'system.files.category.contract', defaultMessage: 'Contracts' }), value: '合同协议' },
-  { label: formatMessage({ id: 'system.files.category.business', defaultMessage: 'Business materials' }), value: '业务资料' },
-  { label: formatMessage({ id: 'system.files.category.image', defaultMessage: 'Images' }), value: '图片素材' },
-  { label: formatMessage({ id: 'system.files.category.other', defaultMessage: 'Other' }), value: '其他' },
-];
-
-const ALLOWED_UPLOAD_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
-const FILE_ACCEPT = ALLOWED_UPLOAD_EXTENSIONS.map((extension) => `.${extension}`).join(',');
-const MAX_UPLOAD_FILE_COUNT = 5;
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) {
-    return '-';
-  }
-  const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : value;
-};
-
-const formatFileSize = (value?: number | null) => {
-  const size = value ?? 0;
-  if (size >= 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  }
-  if (size >= 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
-  }
-  return `${size} B`;
-};
-
-const splitTags = (value?: string | null) =>
-  (value || '')
-    .split(/[,\n;]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const renderTags = (value?: string | null) => {
-  const tags = splitTags(value);
-  if (!tags.length) {
-    return '-';
-  }
-  return (
-    <Space wrap size={[6, 6]}>
-      {tags.map((tag) => (
-        <Tag key={tag}>{tag}</Tag>
-      ))}
-    </Space>
-  );
-};
-
-const resolveFileTypeLabel = (extension?: string | null) => {
-  if (!extension) {
-    return '-';
-  }
-  return FILE_EXTENSION_LABELS[extension.toLowerCase()] || extension.toUpperCase();
-};
-
-const resolvePreviewMode = (record: FileObjectRecord) => record.previewMode || 'UNSUPPORTED';
-
-const resolveSortParams = (sorter?: Record<string, unknown>) => {
-  if (!sorter) {
-    return {};
-  }
-
-  const entry = Object.entries(sorter).find(([, order]) => order === 'ascend' || order === 'descend');
-  if (!entry) {
-    return {};
-  }
-
-  const [sortField, sortOrder] = entry;
-  return {
-    sortField,
-    sortOrder: sortOrder === 'ascend' ? 'ascend' : 'descend',
-  };
-};
-
-const buildPreviewUrl = (record: FileObjectRecord) => normalizeUploadUrl(record.previewUrl || record.publicUrl);
-const buildPreviewAbsoluteUrl = (record: FileObjectRecord) => resolveAbsoluteUploadUrl(record.previewUrl || record.publicUrl);
+import {
+  ALLOWED_UPLOAD_EXTENSIONS,
+  buildPreviewAbsoluteUrl,
+  buildPreviewUrl,
+  FILE_ACCEPT,
+  FILE_CATEGORY_OPTIONS,
+  formatDateTime,
+  formatFileSize,
+  MAX_UPLOAD_FILE_COUNT,
+  PREVIEW_MODE_LABELS,
+  renderTags,
+  resolveFileTypeLabel,
+  resolvePreviewMode,
+  resolveSortParams,
+} from '@/pages/files/fileCenter.utils';
 
 const SystemFilesPage = () => {
   const location = useLocation();

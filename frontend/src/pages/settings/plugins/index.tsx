@@ -4,7 +4,7 @@ import { Button, Card, Descriptions, Input, Modal, Radio, Space, Typography, Upl
 import { useEffect, useMemo, useState } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { ManagementDrawer, ManagementPage, ManagementPageBody, ManagementTable } from '@/features/management';
-import { useResponsive } from '@/hooks/useResponsive';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { ApiRequestError } from '@/services/common/request';
 import { buildVersionColumns, logColumns } from '@/pages/settings/plugins/columns';
@@ -17,7 +17,7 @@ const PLATFORM_TENANT_ID = 1001;
 
 const PluginsPage = () => {
   const { initialState, setInitialState } = useInitialStateModel();
-  const responsive = useResponsive();
+  const { responsive } = usePagePermissionActions();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
   const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
   const [versionMap, setVersionMap] = useState<Record<string, PluginVersion[]>>({});

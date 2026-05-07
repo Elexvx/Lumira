@@ -26,9 +26,9 @@ saas:
 
 xxl:
   job:
+    accessToken: ${XXL_JOB_ACCESS_TOKEN:${XXL_JOB_ADMIN_ACCESS_TOKEN:legendary-xxl-job-token}}
     admin:
-      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://localhost:8088/xxl-job-admin}
-      accessToken: ${XXL_JOB_ADMIN_ACCESS_TOKEN:}
+      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://localhost:8090/xxl-job-admin}
       timeout: ${XXL_JOB_ADMIN_TIMEOUT:3}
     executor:
       enabled: ${XXL_JOB_EXECUTOR_ENABLED:true}
