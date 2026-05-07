@@ -17,6 +17,54 @@ spring:
     sentinel:
       transport:
         port: ${SENTINEL_TRANSPORT_PORT:8726}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: false
+    locations: classpath:db/migration
+    ignore-migration-patterns:
+      - "*:missing"
+
+saas:
+  web:
+    cors-allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    trusted-proxy-cidrs:
+      - 127.0.0.1/32
+      - ::1/128
+  security:
+    jwt-secret: ${JWT_SECRET}
+    issuer: saas-foundation
+    idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
+    access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
+    refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
+    captcha-enabled: ${CAPTCHA_ENABLED:true}
+    captcha-type: ${CAPTCHA_TYPE:IMAGE}
+    permit-paths:
+      - /api/v1/auth/login
+      - /api/v1/auth/login-encryption-key
+      - /api/v1/auth/second-factor/complete
+      - /api/v1/auth/refresh-token
+      - /ws/message
+      - /api/v1/public/branding-settings
+      - /api/v1/public/agreement-settings
+      - /api/v1/public/login-capabilities
+      - /api/v1/public/security-settings
+      - /api/v1/public/captcha/**
+      - /api/uploads/**
+      - /actuator/health
+      - /api/health
+  tenant:
+    header-name: X-Tenant-Id
+  job:
+    internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
 
 server:
   port: ${SERVER_PORT:8088}

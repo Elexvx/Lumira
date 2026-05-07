@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   CheckOutlined,
   CompressOutlined,
@@ -17,8 +17,9 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { history, setLocale, useAccess, useIntl, useLocation } from '@umijs/max';
-import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, type MenuProps, message } from 'antd';
+import { Avatar, Button, Dropdown, Form, Space, type MenuProps, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
+import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
 import { authService } from '@/services/auth';
 import { performLogout } from '@/auth/session';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettings';
@@ -37,8 +38,8 @@ import {
   resolveActiveSettingsNavigationPath,
 } from '@/navigation/settingsNavigation';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
-import type { SecuritySettings } from '@/types/api';
 import './TopActions.css';
+import { TopActionsPasswordDrawer } from './TopActionsPasswordDrawer';
 
 const THEME_OPTIONS: Array<{
   key: ThemePreference;
@@ -89,7 +90,6 @@ export const TopActions = () => {
     () => normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
     [initialState?.brandingSettings],
   );
-  const securitySettings = initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS;
   const currentUser = initialState?.currentUser;
   const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '用户菜单';
   const userAvatarUrl = normalizeUploadUrl(currentUser?.avatarUrl || '');
@@ -99,12 +99,6 @@ export const TopActions = () => {
   const selectedRoleLabel =
     availableRoles.find((item) => item.id === simulatedRoleId)?.roleName ||
     intl.formatMessage({ id: 'nav.user.role.default', defaultMessage: '默认权限' });
-
-  useEffect(() => {
-    if (!passwordDrawerOpen) {
-      passwordForm.resetFields();
-    }
-  }, [passwordDrawerOpen, passwordForm]);
 
   const themeMenuItems: MenuProps['items'] = useMemo(
     () =>
@@ -354,19 +348,14 @@ export const TopActions = () => {
       await performLogout();
       setInitialState((prev: AppInitialState | undefined) => ({
         ...prev,
-        currentUser: undefined,
-        currentTenant: null,
-        myTenants: [],
-        menuTree: [],
-        menuVersion: 0,
-        availablePlugins: [],
-        securitySettings: prev?.securitySettings || initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS,
-        brandingSettings: prev?.brandingSettings || initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
+        ...buildLoggedOutInitialState(),
       }));
     } finally {
       setLoggingOut(false);
     }
   };
+
+  const securitySettings = initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS;
 
   return (
     <Space size="small" align="center">
@@ -465,73 +454,14 @@ export const TopActions = () => {
           </Button>
         </Dropdown>
       </Space>
-      <Drawer
-        title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: '修改密码' })}
+      <TopActionsPasswordDrawer
         open={passwordDrawerOpen}
-        width={isMobile ? '100%' : 420}
-        destroyOnHidden
+        isMobile={isMobile}
+        form={passwordForm}
+        securitySettings={securitySettings}
         onClose={() => setPasswordDrawerOpen(false)}
-        footer={
-          <Space className="saas-user-password__footer">
-            <Button onClick={() => setPasswordDrawerOpen(false)}>
-              {intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
-            </Button>
-            <Button type="primary" onClick={() => void passwordForm.submit()}>
-              {intl.formatMessage({ id: 'common.save', defaultMessage: '保存' })}
-            </Button>
-          </Space>
-        }
-      >
-        <Form
-          form={passwordForm}
-          layout="vertical"
-          onFinish={handlePasswordFinish}
-          initialValues={{ currentPassword: '', newPassword: '', confirmPassword: '' }}
-        >
-          <Form.Item
-            name="currentPassword"
-            label={intl.formatMessage({ id: 'nav.user.password.current', defaultMessage: '当前密码' })}
-            rules={[{ required: true, message: intl.formatMessage({ id: 'nav.user.password.enterCurrent', defaultMessage: '请输入当前密码' }) }]}
-          >
-            <Input.Password autoComplete="current-password" />
-          </Form.Item>
-          <Form.Item
-            name="newPassword"
-            label={intl.formatMessage({ id: 'nav.user.password.new', defaultMessage: '新密码' })}
-            extra={buildPasswordPolicyHint(securitySettings, intl)}
-            rules={[
-              { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterNew', defaultMessage: '请输入新密码' }) },
-              {
-                min: Math.max(1, Number(securitySettings.passwordMinLength || 0)),
-                message: intl.formatMessage(
-                  { id: 'nav.user.password.minLength', defaultMessage: '密码长度至少为 {length} 位' },
-                  { length: securitySettings.passwordMinLength || 1 },
-                ),
-              },
-            ]}
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            label={intl.formatMessage({ id: 'nav.user.password.confirm', defaultMessage: '确认新密码' })}
-            dependencies={['newPassword']}
-            rules={[
-              { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterConfirm', defaultMessage: '请再次输入新密码' }) },
-              ({ getFieldValue }) => ({
-                validator: async (_, value) => {
-                  if (!value || value === getFieldValue('newPassword')) {
-                    return;
-                  }
-                  throw new Error(intl.formatMessage({ id: 'nav.user.password.confirmMismatch', defaultMessage: '两次输入的新密码不一致' }));
-                },
-              }),
-            ]}
-          >
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-        </Form>
-      </Drawer>
+        onFinish={handlePasswordFinish}
+      />
     </Space>
   );
 };
@@ -555,30 +485,4 @@ const openExternalLink = (url?: string) => {
     return;
   }
   window.open(url, '_blank', 'noopener,noreferrer');
-};
-
-const buildPasswordPolicyHint = (securitySettings: SecuritySettings, intl: ReturnType<typeof useIntl>) => {
-  const rules: string[] = [];
-  const minLength = Math.max(1, Number(securitySettings.passwordMinLength || 0));
-  if (minLength > 0) {
-    rules.push(
-      intl.formatMessage(
-        { id: 'nav.user.password.policy.minLength', defaultMessage: '至少 {length} 位' },
-        { length: minLength },
-      ),
-    );
-  }
-  if (securitySettings.passwordRequireUppercase) {
-    rules.push(intl.formatMessage({ id: 'nav.user.password.policy.uppercase', defaultMessage: '需包含大写字母' }));
-  }
-  if (securitySettings.passwordRequireLowercase) {
-    rules.push(intl.formatMessage({ id: 'nav.user.password.policy.lowercase', defaultMessage: '需包含小写字母' }));
-  }
-  if (securitySettings.passwordRequireSpecialCharacter) {
-    rules.push(intl.formatMessage({ id: 'nav.user.password.policy.special', defaultMessage: '需包含特殊字符' }));
-  }
-  if (!rules.length) {
-    return '';
-  }
-  return `${intl.formatMessage({ id: 'nav.user.password.policy.title', defaultMessage: '密码规则：' })}${rules.join('，')}`;
 };

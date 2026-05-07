@@ -1,14 +1,13 @@
 import { ProDescriptions } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
-import { Button, Form, Spin, message } from 'antd';
+import { Form, Spin, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { buildTableRequest } from '@/features/table/proTable';
-import { useResponsive } from '@/hooks/useResponsive';
 import { buildUserColumns, userDetailColumns } from '@/pages/system/users/columns';
 import { UserEditorForm } from '@/pages/system/users/components/UserEditorForm';
 import { isProtectedAdminAccount } from '@/pages/system/users/constants';
@@ -20,8 +19,7 @@ import { confirmAction } from '@/utils/confirm';
 const UserManagementPage = () => {
   const { actionRef, drawer, detail, reloadTable } = useCrudPageState<UserRecord>();
   const [editorForm] = Form.useForm();
-  const actionPermission = useActionPermission();
-  const responsive = useResponsive();
+  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: number }[]>([]);
@@ -158,24 +156,21 @@ const UserManagementPage = () => {
         rowKey="id"
         columns={columns}
         isMobile={responsive.isMobile}
-        search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+        search={searchConfig}
         request={buildTableRequest((params) => userService.list(params, { autoRedirectOnUnauthorized: false }))}
         toolBarRender={() =>
-          actionPermission.buildToolbarActions([
+          buildToolbarButtons([
             {
+              key: 'create',
               permission: 'system:user:create',
-              value: (
-                <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
-                  新增用户
-                </Button>
-              ),
+              type: 'primary',
+              label: '新增用户',
+              onClick: openCreate,
             },
             {
-              value: (
-                <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={reloadTable}>
-                  刷新
-                </Button>
-              ),
+              key: 'refresh',
+              label: '刷新',
+              onClick: reloadTable,
             },
           ])
         }

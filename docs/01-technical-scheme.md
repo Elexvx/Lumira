@@ -16,9 +16,9 @@
 
 ## 3. 总体技术路线
 
-- 前端：React 18、TypeScript、Umi Max、Ant Design 5、Ant Design Pro、ProComponents。
-- 后端：Java 21、Spring Boot 3、Spring Security、MyBatis Plus、Redis、MySQL 8、消息队列、对象存储、监控体系。
-- 架构：前后端分离，模块化单体优先，云原生部署预留，逻辑隔离优先的多租户路线。
+- 前端：React 19.2.5、TypeScript、Umi Max、Ant Design 6.3.7、Ant Design Pro、ProComponents。
+- 后端：Java 21、Spring Boot 4.0.6、Spring Security、MyBatis Plus、Redis、MySQL 8、消息队列、对象存储、监控体系。
+- 架构：前后端分离，微服务骨架演进，云原生部署预留，逻辑隔离优先的多租户路线。
 
 ## 4. 架构分层
 

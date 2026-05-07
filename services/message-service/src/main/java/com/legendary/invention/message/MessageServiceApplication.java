@@ -8,6 +8,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @SpringBootApplication(scanBasePackages = {
         "com.legendary.invention.common",
         "com.legendary.invention.api.client",
+        "com.legendary.invention.saas.infrastructure.config",
         "com.legendary.invention.message"
 })
 @EnableFeignClients(basePackages = "com.legendary.invention.api.client")

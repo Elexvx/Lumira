@@ -150,8 +150,8 @@ public class CaptchaService {
     }
 
     private void buildSliderChallenge(CaptchaChallengeRecord record, SystemVO.CaptchaChallengeVO response) {
-        String backgroundElements = buildSliderBackgroundElements();
         record.setExpectedX(generateSliderExpectedX());
+        String backgroundElements = buildSliderBackgroundElements(record.getExpectedX());
         record.setExpectedY(0);
         record.setPuzzleWidth(SLIDER_PUZZLE_WIDTH);
         record.setPuzzleHeight(SLIDER_PUZZLE_HEIGHT);
@@ -303,7 +303,7 @@ public class CaptchaService {
         );
     }
 
-    private String buildSliderBackgroundElements() {
+    private String buildSliderBackgroundElements(int expectedX) {
         StringBuilder shapes = new StringBuilder();
         shapes.append("""
                 <defs>
@@ -315,14 +315,24 @@ public class CaptchaService {
                     <stop offset="0%%" stop-color="#93c5fd"/>
                     <stop offset="100%%" stop-color="#1d4ed8"/>
                   </linearGradient>
+                <filter id="piece-shadow" x="-20%%" y="-20%%" width="140%%" height="140%%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.18"/>
+                </filter>
+                <clipPath id="piece-hole">
+                  <path d="%s"/>
+                </clipPath>
                 </defs>
                 <rect width="100%%" height="100%%" fill="url(#slider-bg)"/>
-                <circle cx="48" cy="42" r="28" fill="#ffffff" opacity="0.38"/>
-                <circle cx="280" cy="32" r="34" fill="#bfdbfe" opacity="0.5"/>
-                <rect x="30" y="102" width="260" height="2" fill="url(#slider-accent)" opacity="0.22"/>
-                <text x="26" y="92" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" opacity="0.2">人机验证</text>
-                <text x="154" y="132" fill="#1e293b" font-family="Arial, Helvetica, sans-serif" font-size="14" opacity="0.16">Drag to verify</text>
-                """);
+                <circle cx="48" cy="42" r="28" fill="#ffffff" opacity="0.55"/>
+                <circle cx="280" cy="32" r="34" fill="#93c5fd" opacity="0.68"/>
+                <rect x="30" y="102" width="260" height="2" fill="url(#slider-accent)" opacity="0.38"/>
+                <text x="26" y="92" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" opacity="0.34">人机验证</text>
+                <text x="154" y="132" fill="#1e293b" font-family="Arial, Helvetica, sans-serif" font-size="14" opacity="0.28">Drag to verify</text>
+                <g transform="translate(%d, 0)" filter="url(#piece-shadow)">
+                  <path d="%s" fill="#ffffff" opacity="0.6"/>
+                  <path d="%s" fill="none" stroke="#2563eb" stroke-width="2" opacity="0.42"/>
+                </g>
+                """.formatted(puzzlePath(), expectedX, puzzlePath(), puzzlePath()));
 
         for (int index = 0; index < 8; index++) {
             int radius = 6 + secureRandom.nextInt(18);

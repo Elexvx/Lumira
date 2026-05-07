@@ -3,6 +3,7 @@ package com.legendary.invention.message.controller;
 import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
+import com.legendary.invention.common.web.InternalJobTokenValidator;
 import com.legendary.invention.message.app.PlatformEventOutboxService;
 import com.legendary.invention.message.config.MessageProperties;
 import com.legendary.invention.message.service.MessageEventDeliveryService;
@@ -63,10 +64,10 @@ public class InternalJobController {
     }
 
     private void ensureAuthorized(String token) {
-        if (internalToken == null || internalToken.isBlank()) {
+        if (!InternalJobTokenValidator.isConfigured(internalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "内部任务令牌未配置");
         }
-        if (token == null || !internalToken.equals(token)) {
+        if (!InternalJobTokenValidator.isAuthorized(token, internalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权访问内部任务接口");
         }
     }

@@ -9,6 +9,7 @@ import java.util.Set;
 public final class SystemRouteCatalog {
 
     private static final Set<String> BUILT_IN_ROUTE_PATHS = Set.of(
+            "/ai",
             "/system",
             "/system/overview",
             "/system/menus",
@@ -40,6 +41,7 @@ public final class SystemRouteCatalog {
             "/settings/verification",
             "/settings/smtp",
             "/settings/notifications",
+            "/settings/ai-employees",
             "/settings/plugins",
             "/settings/localization",
             "/settings/monitoring",
@@ -52,6 +54,7 @@ public final class SystemRouteCatalog {
     );
 
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
+            "@/pages/ai/Assistant",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
             "@/pages/settings/profile-fields",
@@ -59,6 +62,7 @@ public final class SystemRouteCatalog {
             "@/pages/settings/security",
             "@/pages/settings/verification",
             "@/pages/settings/notifications/index",
+            "@/pages/settings/ai-employees",
             "@/pages/settings/Plugins",
             "@/pages/settings/plugins",
             "@/pages/settings/monitoring/index",
@@ -101,6 +105,19 @@ public final class SystemRouteCatalog {
     public static List<SystemVO.MenuVO> buildBuiltinPermissionMenus() {
         List<SystemVO.MenuVO> roots = new ArrayList<>();
 
+        SystemVO.MenuVO aiRoot = menu(
+                -990L,
+                0L,
+                "ai.assistant",
+                "AI 助手",
+                "MENU",
+                "/ai",
+                "@/pages/ai/Assistant",
+                "RobotOutlined",
+                2,
+                "ai:chat:send"
+        );
+
         SystemVO.MenuVO settingsRoot = menu(
                 -1000L,
                 0L,
@@ -123,18 +140,20 @@ public final class SystemRouteCatalog {
                 menu(-1006L, -1000L, "settings.verification", "验证管理", "MENU", "/settings/verification", "@/pages/settings/verification", "SafetyOutlined", 6, "system:verification:view"),
                 menu(-1007L, -1000L, "settings.notifications", "站内信归档", "MENU", "/settings/notifications", "@/pages/settings/notifications/index", "NotificationOutlined", 7, "system:notification:view"),
                 menu(-1008L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/plugins", "ApiOutlined", 8, "plugin:management:view"),
-                menu(-1009L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
-                menu(-1010L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
+                menu(-1009L, -1000L, "settings.ai-employees", "数字员工", "MENU", "/settings/ai-employees", "@/pages/settings/ai-employees", "RobotOutlined", 24, "ai:view"),
+                menu(-1010L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
+                menu(-1011L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
                 monitoringRoot()
         )));
 
+        roots.add(aiRoot);
         roots.add(settingsRoot);
         return roots;
     }
 
     private static SystemVO.MenuVO monitoringRoot() {
         SystemVO.MenuVO monitoring = menu(
-                -1011L,
+                -1012L,
                 -1000L,
                 "settings.monitoring",
                 "系统监控",
@@ -146,8 +165,8 @@ public final class SystemRouteCatalog {
                 "system:monitor:view"
         );
         monitoring.setChildren(new ArrayList<>(List.of(
-                menu(-1012L, -1011L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/monitoring/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 1, "system:monitor:docs:view"),
-                menu(-1013L, -1011L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/monitoring/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 2, "audit:view")
+                menu(-1013L, -1012L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/monitoring/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 1, "system:monitor:docs:view"),
+                menu(-1014L, -1012L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/monitoring/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 2, "audit:view")
         )));
         return monitoring;
     }

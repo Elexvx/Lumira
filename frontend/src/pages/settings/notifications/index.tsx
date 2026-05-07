@@ -5,9 +5,8 @@ import { type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { buildTableRequest } from '@/features/table/proTable';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
-import { useResponsive } from '@/hooks/useResponsive';
 import { useStandardFormProps } from '@/features/form/config';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { iamService } from '@/services/iam';
 import { messageService } from '@/services/message';
 import { userService } from '@/services/user';
@@ -77,8 +76,7 @@ const renderEnumTag = (value: string | boolean | undefined | null, labels: Recor
 
 const NotificationsPage = () => {
   const actionRef = useRef<ActionType | undefined>(undefined);
-  const responsive = useResponsive();
-  const actionPermission = useActionPermission();
+  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const [detailRecord, setDetailRecord] = useState<MessageNoticeRecord | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -423,23 +421,25 @@ const NotificationsPage = () => {
     [responsive.isDesktop, responsive.isMobile, detailRecord],
   );
 
-  const toolbar = useMemo(() => {
-    const items = [
-      <Button key="refresh" onClick={() => actionRef.current?.reload()}>
-        刷新
-      </Button>,
-    ];
-
-    if (canManualPublish) {
-      items.push(
-        <Button key="manual-send" type="primary" onClick={openPublishDrawer}>
-          手动发布
-        </Button>,
-      );
-    }
-
-    return items;
-  }, [canManualPublish, openPublishDrawer]);
+  const toolbar = useMemo(
+    () =>
+      buildToolbarButtons([
+        {
+          key: 'refresh',
+          label: '刷新',
+          onClick: () => actionRef.current?.reload(),
+        },
+        {
+          key: 'manual-send',
+          permission: ['message:message:write', 'system:notification:write'],
+          hidden: !canManualPublish,
+          type: 'primary',
+          label: '手动发布',
+          onClick: openPublishDrawer,
+        },
+      ]),
+    [buildToolbarButtons, canManualPublish, openPublishDrawer],
+  );
 
   return (
     <ManagementPage
@@ -452,10 +452,7 @@ const NotificationsPage = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           pagination={{ showSizeChanger: true, pageSize: 10 }}
-          search={{
-            labelWidth: 'auto',
-            span: responsive.isMobile ? 24 : 8,
-          }}
+          search={searchConfig}
           request={buildTableRequest((params, sorter) => messageService.archiveMessages({ ...params, ...resolveSortParams(sorter) }, requestOptions))}
           toolBarRender={() => toolbar}
       />

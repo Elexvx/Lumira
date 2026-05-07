@@ -1,15 +1,14 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
+import { Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
 import type { TreeProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { buildTableRequest } from '@/features/table/proTable';
 import { ROLE_TYPE_OPTIONS } from '@/constants/role';
-import { useResponsive } from '@/hooks/useResponsive';
 import { buildRoleColumns, roleDetailColumns } from '@/pages/system/roles/columns';
 import { RolePermissionEditor } from '@/pages/system/roles/components/RolePermissionEditor';
 import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermissionEditor';
@@ -37,8 +36,7 @@ const formatPermissionGroupLabel = (permissionGroup: string) =>
 const RoleManagementPage = () => {
   const roleCrud = useCrudPageState<RoleRecord>();
   const [editorForm] = Form.useForm();
-  const actionPermission = useActionPermission();
-  const responsive = useResponsive();
+  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -219,24 +217,21 @@ const RoleManagementPage = () => {
         rowKey="id"
         columns={columns}
         isMobile={responsive.isMobile}
-        search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+        search={searchConfig}
         request={buildTableRequest((params) => iamService.roles(params, { autoRedirectOnUnauthorized: false }))}
         toolBarRender={() =>
-          actionPermission.buildToolbarActions([
+          buildToolbarButtons([
             {
+              key: 'create',
               permission: 'system:role:create',
-              value: (
-                <Button key="create" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={openCreate}>
-                  新增角色
-                </Button>
-              ),
+              type: 'primary',
+              label: '新增角色',
+              onClick: openCreate,
             },
             {
-              value: (
-                <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={roleCrud.reloadTable}>
-                  刷新
-                </Button>
-              ),
+              key: 'refresh',
+              label: '刷新',
+              onClick: roleCrud.reloadTable,
             },
           ])
         }

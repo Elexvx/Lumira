@@ -134,7 +134,8 @@ body,
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .saas-table-wrap .ant-pro-table,
@@ -170,6 +171,11 @@ body,
 
 .saas-table-wrap .ant-table-container {
   min-height: 0;
+}
+
+.saas-table-wrap .ant-table-content {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .saas-table-wrap .ant-table-body {
@@ -505,6 +511,37 @@ body,
 }
 
 .ant-pro-layout {
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  .ant-pro-layout-container {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .ant-pro-layout-content {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .ant-pro-layout-content-has-page-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ant-pro-page-container {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .ant-pro-page-container > .ant-pro-grid-content,
+  .ant-pro-page-container .ant-pro-page-container-children-container {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
   .ant-pro-global-header-collapsed-button {
     position: relative;
     z-index: 1;

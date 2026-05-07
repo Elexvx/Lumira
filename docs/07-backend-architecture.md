@@ -29,9 +29,9 @@
 建议使用：
 
 - `Java 21`
-- `Spring Boot 4`
-- `Spring Cloud 2025.1.x`
-- `Spring Cloud Alibaba 2025.1.x`
+- `Spring Boot 4.0.6`
+- `Spring Cloud 2025.1.1`
+- `Spring Cloud Alibaba 2025.1.0.0`
 - `Spring Security`
 - `MyBatis Plus`
 - `MySQL 8`
@@ -42,7 +42,7 @@
 - `Seata`
 - `Springdoc OpenAPI`
 
-第一阶段优先把单体底座做稳，不建议过早拆太多服务。
+当前仓库已经进入微服务骨架阶段，早期“先把单体底座做稳”的描述仅作为演进背景；新增能力应优先落在明确的服务边界上。
 
 ## 5. 分层架构
 

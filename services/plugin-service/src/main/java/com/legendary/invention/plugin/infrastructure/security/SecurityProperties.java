@@ -1,12 +1,10 @@
 package com.legendary.invention.plugin.infrastructure.security;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
 @ConfigurationProperties(prefix = "saas.security")
 public class SecurityProperties {
 

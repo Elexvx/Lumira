@@ -61,6 +61,7 @@ public class SystemVerificationAppService {
     private final UserDomainService userDomainService;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
+    private final SystemVerificationSettingsAppService settingsAppService;
     private final TotpService totpService = new TotpService();
 
     public SystemVerificationAppService(
@@ -68,13 +69,15 @@ public class SystemVerificationAppService {
             ObjectMapper objectMapper,
             UserDomainService userDomainService,
             SystemVerificationProperties properties,
-            SmtpMailService smtpMailService
+            SmtpMailService smtpMailService,
+            SystemVerificationSettingsAppService settingsAppService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.userDomainService = userDomainService;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
+        this.settingsAppService = settingsAppService;
     }
 
     public List<SystemVO.VerificationProviderVO> listProviders(Long tenantId, Long userId) {
@@ -183,57 +186,25 @@ public class SystemVerificationAppService {
     }
 
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
-        return loadSmsSettings(tenantId);
+        return settingsAppService.getSmsSettings(tenantId);
     }
 
     public SystemVO.VerificationSettingsVO getVerificationSettings(Long tenantId) {
-        return loadVerificationSettings(tenantId);
+        return settingsAppService.getVerificationSettings(tenantId);
     }
 
     public SystemVO.LoginCapabilitiesVO loadLoginCapabilities(Long tenantId) {
-        SystemVO.LoginCapabilitiesVO capabilities = new SystemVO.LoginCapabilitiesVO();
-        capabilities.setPasswordLoginAvailable(true);
-        capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
-        capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
-        return capabilities;
+        return settingsAppService.loadLoginCapabilities(tenantId);
     }
 
     @Transactional
     public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        Long operatorId = currentUser.getUserId();
-        boolean enabled = request.getEnabled() == null ? isTotpEnabled(tenantId) : request.getEnabled();
-        boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled(tenantId) : request.getEmailLoginEnabled();
-        upsertPlatformConfigValue(tenantId, TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId);
-        upsertPlatformConfigValue(tenantId, EMAIL_LOGIN_ENABLED_KEY, "邮箱验证码登录", String.valueOf(emailLoginEnabled), "是否启用邮箱验证码登录", operatorId);
-        return loadVerificationSettings(tenantId);
+        return settingsAppService.updateVerificationSettings(currentUser, request);
     }
 
     @Transactional
     public SystemVO.SmsVerificationSettingsVO updateSmsSettings(CurrentUser currentUser, SystemDTO.SmsVerificationSettingsRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        Long operatorId = currentUser.getUserId();
-        SmsVerificationSettingsRecord current = loadSmsSettingsRecord(tenantId);
-        Boolean enabled = request.getEnabled() == null ? current.enabled() : request.getEnabled();
-        String provider = sanitizeText(request.getProvider(), current.provider());
-        String signName = sanitizeText(request.getSignName(), current.signName());
-        String templateCode = sanitizeText(request.getTemplateCode(), current.templateCode());
-        String accessKeyId = sanitizeText(request.getAccessKeyId(), current.accessKeyId());
-        String existingSecret = defaultIfBlank(current.accessKeySecret(), "");
-        String accessKeySecret = StringUtils.hasText(request.getAccessKeySecret()) ? request.getAccessKeySecret() : existingSecret;
-        String endpoint = sanitizeText(request.getEndpoint(), current.endpoint());
-        String region = sanitizeText(request.getRegion(), current.region());
-
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENABLED_KEY, "短信验证码启用", String.valueOf(Boolean.TRUE.equals(enabled)), "是否启用短信验证码服务", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", provider, "短信验证码服务提供方", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_SIGN_NAME_KEY, "短信签名", signName, "短信验证码签名", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", templateCode, "短信验证码模板编码", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", accessKeyId, "短信验证码访问密钥 ID", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", accessKeySecret, "短信验证码访问密钥 Secret", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", endpoint, "短信验证码服务端点", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_REGION_KEY, "短信服务地域", region, "短信验证码服务地域", operatorId);
-
-        return loadSmsSettings(tenantId);
+        return settingsAppService.updateSmsSettings(currentUser, request);
     }
 
     @Transactional

@@ -1,8 +1,6 @@
 import { LoginFormPage } from '@ant-design/pro-components';
 import { formatMessage, history, useLocation } from '@umijs/max';
-import MarkdownPreview from '@uiw/react-markdown-preview';
-import '@uiw/react-markdown-preview/markdown.css';
-import { Form, Modal, message } from 'antd';
+import { Form, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
@@ -23,6 +21,7 @@ import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
 import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
+import { AgreementPreviewModal } from '@/pages/user/login/components/AgreementPreviewModal';
 import { resolveLoginErrorFeedback } from '@/pages/user/login/loginErrorFeedback';
 import type {
   AgreementSettings,
@@ -568,22 +567,12 @@ const Login = () => {
         />
       </LoginFormPage>
 
-      <Modal
-        className="saas-login-page__agreement-modal"
+      <AgreementPreviewModal
         open={agreementPreviewOpen}
-        onCancel={() => setAgreementPreviewOpen(false)}
-        footer={null}
-        width={720}
-        centered
+        onClose={() => setAgreementPreviewOpen(false)}
         title={agreementPreviewTitle}
-        destroyOnHidden
-      >
-        {agreementPreviewMarkdown ? (
-          <MarkdownPreview source={agreementPreviewMarkdown} />
-        ) : (
-          <div style={{ color: 'var(--saas-text-secondary)' }}>{formatMessage({ id: 'page.login.agreement.empty', defaultMessage: 'The backend has not configured this agreement yet.' })}</div>
-        )}
-      </Modal>
+        markdown={agreementPreviewMarkdown}
+      />
     </div>
   );
 };

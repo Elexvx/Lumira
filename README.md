@@ -1,16 +1,16 @@
 # legendary-invention
 
-企业级多租户 SaaS 平台第一轮工程底座仓库。
+企业级多租户 SaaS 平台底座仓库。
 
 这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施。当前阶段已经从模块化单体演进到微服务平台骨架，重点覆盖多租户、认证授权、统一请求链路、网关入口、配置中心、服务治理、定时任务、分布式事务和插件化扩展能力。
 
 ## 仓库概览
 
-- `frontend/`：基于 `React 18`、`TypeScript`、`Umi Max`、`Ant Design 5` 和 `Ant Design Pro` 的前端工程。
+- `frontend/`：基于 `React 19.2.5`、`TypeScript`、`Umi Max`、`Ant Design 6.3.7` 和 `Ant Design Pro` 的前端工程。
 - `backend/`：当前作为 `system-service` 的后端工程，承载原有核心业务与底层能力。
-- `gateway-service/`：统一入口网关。
-- `auth-service/`、`tenant-service/`、`file-service/`、`message-service/`、`plugin-service/`、`localization-service/`、`job-executor/`：服务拆分骨架。审计能力目前保留在 `backend/system-service` 内部模块，不再单独拆成独立服务。
-- `common-core/`、`common-web/`、`common-security/`、`common-tenant/`、`legendary-api/`：公共契约和基础能力模块。
+- `services/gateway-service/`：统一入口网关。
+- `services/auth-service/`、`services/tenant-service/`、`services/file-service/`、`services/message-service/`、`services/plugin-service/`、`services/localization-service/`、`services/job-executor/`：服务拆分骨架。审计能力目前保留在 `backend/system-service` 内部模块，不再单独拆成独立服务。
+- `libs/common-core/`、`libs/common-web/`、`libs/common-security/`、`libs/common-tenant/`、`libs/legendary-api/`：公共契约和基础能力模块。
 - `docs/`：技术方案、前后端架构、数据库设计、权限模型和初始化说明。
 - `database/`：数据库相关资源。
 - `examples/`：示例文件。
@@ -19,10 +19,10 @@
 
 ### 前端
 
-- `React 18`
+- `React 19.2.5`
 - `TypeScript`
 - `Umi Max`
-- `Ant Design 5`
+- `Ant Design 6.3.7`
 - `Ant Design Pro`
 - `ProComponents`
 - `pnpm`
@@ -117,8 +117,8 @@ flowchart LR
 
 ### 2. 后端如何工作
 
-- 外部请求先进入 `gateway-service`，再进入具体业务服务。
-- `backend/` 目前承担 `system-service` 的职责，是第一批拆分前的核心业务承载点。
+- 外部请求先进入 `services/gateway-service`，再进入具体业务服务。
+- `backend/` 目前承担 `system-service` 的职责，是当前系统管理核心业务承载点。
 - 认证、租户、权限、审计、配置、文件、任务等能力逐步拆成独立服务。
 - `Nacos` 负责注册与配置，`Sentinel` 负责治理，`XXL-Job` 负责调度，`Seata` 负责少量强一致事务。
 - `Redis` 负责会话、缓存和部分上下文数据，`Flyway` 负责数据库初始化和演进。
@@ -147,7 +147,7 @@ flowchart LR
 - Trace / requestId 透传
 - Redis 配置与缓存封装
 - Flyway 初始化脚本
-- `gateway-service`、`common-*`、`legendary-api` 和业务服务骨架
+- `services/gateway-service`、`common-*`、`legendary-api` 和业务服务骨架
 
 ## 本地安装与启动
 
@@ -160,6 +160,28 @@ flowchart LR
 - `MySQL`：`8.x`
 - `Redis`：`6.x+`
 
+### 一键启动
+
+仓库提供跨平台统一启动脚本，会先检查本机端口占用情况，复用已经在运行的 MySQL / Redis / Nacos，只补起缺少的基础设施，再依次启动后端服务、网关和前端。
+
+```bash
+node scripts/start-platform.mjs
+```
+
+如果需要把整套本地环境关掉，使用：
+
+```bash
+node scripts/stop-platform.mjs
+```
+
+常用参数：
+
+- `--skip-infra`：跳过基础设施启动，适合你已经手动启动过 Docker Compose 的场景。
+- `--skip-services`：只保留基础设施和前端。
+- `--skip-frontend`：只启动后端和网关。
+
+Windows、macOS、Linux 都可以使用同一条命令。
+
 ### 1. 获取代码
 
 ```bash
@@ -169,7 +191,7 @@ cd legendary-invention
 
 ### 2. 启动后端
 
-当前建议先启动基础设施，再启动 `backend/system-service` 和 `gateway-service`。后端默认读取 `backend/src/main/resources/application.yml` 中的环境变量，常用配置包括：
+如果你不打算使用一键脚本，也可以按模块手工启动。后端默认读取 `backend/src/main/resources/application.yml` 中的环境变量，常用配置包括：
 
 - `DB_URL`
 - `DB_USERNAME`
@@ -250,7 +272,7 @@ pnpm typecheck
 ### 后端
 
 - `backend/`：当前 `system-service` 的代码与数据库迁移。
-- `gateway-service/`：统一入口网关。
+- `services/gateway-service/`：统一入口网关。
 - `common-*`：平台级共享模块。
 - `legendary-api/`：服务间契约。
 
