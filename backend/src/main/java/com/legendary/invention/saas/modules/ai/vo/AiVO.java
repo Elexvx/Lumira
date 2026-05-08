@@ -501,6 +501,174 @@ public final class AiVO {
         }
     }
 
+    public static class ConversationVO {
+        private Long id;
+        private Long tenantId;
+        private Long employeeId;
+        private String employeeName;
+        private String conversationCode;
+        private String title;
+        private String preview;
+        private String status;
+        private Boolean pinned;
+        private LocalDateTime latestMessageAt;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public Long getTenantId() {
+            return tenantId;
+        }
+
+        public void setTenantId(Long tenantId) {
+            this.tenantId = tenantId;
+        }
+
+        public Long getEmployeeId() {
+            return employeeId;
+        }
+
+        public void setEmployeeId(Long employeeId) {
+            this.employeeId = employeeId;
+        }
+
+        public String getEmployeeName() {
+            return employeeName;
+        }
+
+        public void setEmployeeName(String employeeName) {
+            this.employeeName = employeeName;
+        }
+
+        public String getConversationCode() {
+            return conversationCode;
+        }
+
+        public void setConversationCode(String conversationCode) {
+            this.conversationCode = conversationCode;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getPreview() {
+            return preview;
+        }
+
+        public void setPreview(String preview) {
+            this.preview = preview;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public Boolean getPinned() {
+            return pinned;
+        }
+
+        public void setPinned(Boolean pinned) {
+            this.pinned = pinned;
+        }
+
+        public LocalDateTime getLatestMessageAt() {
+            return latestMessageAt;
+        }
+
+        public void setLatestMessageAt(LocalDateTime latestMessageAt) {
+            this.latestMessageAt = latestMessageAt;
+        }
+
+        public LocalDateTime getCreateTime() {
+            return createTime;
+        }
+
+        public void setCreateTime(LocalDateTime createTime) {
+            this.createTime = createTime;
+        }
+
+        public LocalDateTime getUpdateTime() {
+            return updateTime;
+        }
+
+        public void setUpdateTime(LocalDateTime updateTime) {
+            this.updateTime = updateTime;
+        }
+    }
+
+    public static class MessageVO {
+        private Long id;
+        private Long conversationId;
+        private String role;
+        private String content;
+        private List<MessageAttachmentVO> attachments;
+        private LocalDateTime createTime;
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public Long getConversationId() {
+            return conversationId;
+        }
+
+        public void setConversationId(Long conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
+
+        public List<MessageAttachmentVO> getAttachments() {
+            return attachments;
+        }
+
+        public void setAttachments(List<MessageAttachmentVO> attachments) {
+            this.attachments = attachments;
+        }
+
+        public LocalDateTime getCreateTime() {
+            return createTime;
+        }
+
+        public void setCreateTime(LocalDateTime createTime) {
+            this.createTime = createTime;
+        }
+    }
+
     public static class ChatResponseVO {
         private Long conversationId;
         private String conversationCode;
@@ -509,7 +677,6 @@ public final class AiVO {
         private String replyRole;
         private String provider;
         private String model;
-        private Boolean mock;
         private LocalDateTime replyAt;
 
         public Long getConversationId() {
@@ -568,20 +735,249 @@ public final class AiVO {
             this.model = model;
         }
 
-        public Boolean getMock() {
-            return mock;
-        }
-
-        public void setMock(Boolean mock) {
-            this.mock = mock;
-        }
-
         public LocalDateTime getReplyAt() {
             return replyAt;
         }
 
         public void setReplyAt(LocalDateTime replyAt) {
             this.replyAt = replyAt;
+        }
+    }
+
+    public static class MessageAttachmentVO {
+        private Long id;
+        private Long fileId;
+        private String originalFileName;
+        private String fileExtension;
+        private String mimeType;
+        private Long fileSizeBytes;
+        private String fileSizeLabel;
+        private String publicUrl;
+        private String previewUrl;
+        private String downloadUrl;
+        private String previewMode;
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public Long getFileId() {
+            return fileId;
+        }
+
+        public void setFileId(Long fileId) {
+            this.fileId = fileId;
+        }
+
+        public String getOriginalFileName() {
+            return originalFileName;
+        }
+
+        public void setOriginalFileName(String originalFileName) {
+            this.originalFileName = originalFileName;
+        }
+
+        public String getFileExtension() {
+            return fileExtension;
+        }
+
+        public void setFileExtension(String fileExtension) {
+            this.fileExtension = fileExtension;
+        }
+
+        public String getMimeType() {
+            return mimeType;
+        }
+
+        public void setMimeType(String mimeType) {
+            this.mimeType = mimeType;
+        }
+
+        public Long getFileSizeBytes() {
+            return fileSizeBytes;
+        }
+
+        public void setFileSizeBytes(Long fileSizeBytes) {
+            this.fileSizeBytes = fileSizeBytes;
+        }
+
+        public String getFileSizeLabel() {
+            return fileSizeLabel;
+        }
+
+        public void setFileSizeLabel(String fileSizeLabel) {
+            this.fileSizeLabel = fileSizeLabel;
+        }
+
+        public String getPublicUrl() {
+            return publicUrl;
+        }
+
+        public void setPublicUrl(String publicUrl) {
+            this.publicUrl = publicUrl;
+        }
+
+        public String getPreviewUrl() {
+            return previewUrl;
+        }
+
+        public void setPreviewUrl(String previewUrl) {
+            this.previewUrl = previewUrl;
+        }
+
+        public String getDownloadUrl() {
+            return downloadUrl;
+        }
+
+        public void setDownloadUrl(String downloadUrl) {
+            this.downloadUrl = downloadUrl;
+        }
+
+        public String getPreviewMode() {
+            return previewMode;
+        }
+
+        public void setPreviewMode(String previewMode) {
+            this.previewMode = previewMode;
+        }
+    }
+
+    public static class ConversationShareVO {
+        private String shareToken;
+        private Long conversationId;
+        private String shareTitle;
+        private LocalDateTime expiresAt;
+        private LocalDateTime createTime;
+
+        public String getShareToken() {
+            return shareToken;
+        }
+
+        public void setShareToken(String shareToken) {
+            this.shareToken = shareToken;
+        }
+
+        public Long getConversationId() {
+            return conversationId;
+        }
+
+        public void setConversationId(Long conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        public String getShareTitle() {
+            return shareTitle;
+        }
+
+        public void setShareTitle(String shareTitle) {
+            this.shareTitle = shareTitle;
+        }
+
+        public LocalDateTime getExpiresAt() {
+            return expiresAt;
+        }
+
+        public void setExpiresAt(LocalDateTime expiresAt) {
+            this.expiresAt = expiresAt;
+        }
+
+        public LocalDateTime getCreateTime() {
+            return createTime;
+        }
+
+        public void setCreateTime(LocalDateTime createTime) {
+            this.createTime = createTime;
+        }
+    }
+
+    public static class ConversationShareDetailVO {
+        private ConversationShareVO share;
+        private ConversationVO conversation;
+        private List<MessageVO> messages;
+
+        public ConversationShareVO getShare() {
+            return share;
+        }
+
+        public void setShare(ConversationShareVO share) {
+            this.share = share;
+        }
+
+        public ConversationVO getConversation() {
+            return conversation;
+        }
+
+        public void setConversation(ConversationVO conversation) {
+            this.conversation = conversation;
+        }
+
+        public List<MessageVO> getMessages() {
+            return messages;
+        }
+
+        public void setMessages(List<MessageVO> messages) {
+            this.messages = messages;
+        }
+    }
+
+    public static class ConversationExportVO {
+        private Long conversationId;
+        private String title;
+        private String format;
+        private String fileName;
+        private String mimeType;
+        private String content;
+
+        public Long getConversationId() {
+            return conversationId;
+        }
+
+        public void setConversationId(Long conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getFormat() {
+            return format;
+        }
+
+        public void setFormat(String format) {
+            this.format = format;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        public String getMimeType() {
+            return mimeType;
+        }
+
+        public void setMimeType(String mimeType) {
+            this.mimeType = mimeType;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
         }
     }
 

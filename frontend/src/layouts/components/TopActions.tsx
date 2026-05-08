@@ -17,7 +17,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { history, setLocale, useAccess, useIntl, useLocation } from '@umijs/max';
-import { Avatar, Button, Dropdown, Form, Space, type MenuProps, message } from 'antd';
+import { Avatar, Button, Dropdown, Form, Space, Tag, type MenuProps, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
 import { authService } from '@/services/auth';
@@ -68,8 +68,6 @@ const THEME_OPTIONS: Array<{
   },
 ];
 
-const DEFAULT_ROLE_VALUE = '__default__';
-
 export const TopActions = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [switchingLocale, setSwitchingLocale] = useState(false);
@@ -96,9 +94,26 @@ export const TopActions = () => {
   const currentLocale = normalizeLocale(currentUser?.locale || undefined);
   const availableRoles = currentUser?.availableRoles || [];
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
-  const selectedRoleLabel =
-    availableRoles.find((item) => item.id === simulatedRoleId)?.roleName ||
-    intl.formatMessage({ id: 'nav.user.role.default', defaultMessage: '默认权限' });
+  const selectedRoleLabel = useMemo(() => {
+    if (simulatedRoleId == null) {
+      return intl.formatMessage({ id: 'nav.user.role.current', defaultMessage: '当前账号权限' });
+    }
+
+    return availableRoles.find((item) => item.id === simulatedRoleId)?.roleName || intl.formatMessage({
+      id: 'nav.user.role.current',
+      defaultMessage: '当前账号权限',
+    });
+  }, [availableRoles, intl, simulatedRoleId]);
+  const roleSimulationHint = useMemo(
+    () =>
+      simulatedRoleId == null
+        ? ''
+        : intl.formatMessage(
+            { id: 'nav.user.role.simulationHint', defaultMessage: '当前正在模拟 {roleName}' },
+            { roleName: selectedRoleLabel },
+          ),
+    [intl, selectedRoleLabel, simulatedRoleId],
+  );
 
   const themeMenuItems: MenuProps['items'] = useMemo(
     () =>
@@ -160,29 +175,22 @@ export const TopActions = () => {
         key: 'role-switch',
         icon: <SwapOutlined />,
         label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: '切换角色' }),
-        children: [
-          {
-            key: DEFAULT_ROLE_VALUE,
-            label: intl.formatMessage({ id: 'nav.user.role.default', defaultMessage: '默认权限' }),
-          },
-          ...availableRoles.map((role) => ({
-            key: String(role.id),
-            label: role.roleName,
-          })),
-        ],
+        children: availableRoles.map((role) => ({
+          key: String(role.id),
+          label: role.roleName,
+        })),
       },
     ];
-  }, [availableRoles, intl]);
+  }, [availableRoles, intl, simulatedRoleId]);
 
   const userMenuItems = useMemo<MenuProps['items']>(
     () => [
       {
-        key: 'user-header',
+      key: 'user-header',
         disabled: true,
         label: (
           <div className="saas-user-menu__header-item">
-            <div className="saas-user-menu__nickname">{userName}</div>
-            <div className="saas-user-menu__role">{selectedRoleLabel}</div>
+            <div className="saas-user-menu__name">{userName}</div>
           </div>
         ),
       },
@@ -211,7 +219,7 @@ export const TopActions = () => {
         label: intl.formatMessage({ id: 'auth.logout', defaultMessage: '注销' }),
       },
     ],
-    [intl, roleMenuItems, selectedRoleLabel, userName],
+    [intl, roleMenuItems, userName],
   );
 
   const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -232,7 +240,7 @@ export const TopActions = () => {
 
     const nextRoleValue = String(key);
     const availableRoleIds = new Set(availableRoles.map((role) => String(role.id)));
-    if (nextRoleValue === DEFAULT_ROLE_VALUE || availableRoleIds.has(nextRoleValue)) {
+    if (availableRoleIds.has(nextRoleValue)) {
       void handleSwitchRole(nextRoleValue);
     }
   };
@@ -282,7 +290,10 @@ export const TopActions = () => {
   };
 
   const handleSwitchRole = async (nextRoleValue: string) => {
-    const nextRoleId = nextRoleValue === DEFAULT_ROLE_VALUE ? null : Number(nextRoleValue);
+    const nextRoleId = Number(nextRoleValue);
+    if (!Number.isFinite(nextRoleId)) {
+      return;
+    }
     if (nextRoleId === simulatedRoleId) {
       return;
     }
@@ -307,13 +318,16 @@ export const TopActions = () => {
           : prev,
       );
       message.success(
-        nextRoleId == null
-          ? intl.formatMessage({ id: 'nav.user.role.restoreSuccess', defaultMessage: '已恢复默认权限' })
-          : intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: '角色已切换' }),
+        intl.formatMessage(
+          { id: 'nav.user.role.switchSuccessWithName', defaultMessage: '已切换至 {roleName}' },
+          {
+            roleName:
+              availableRoles.find((role) => role.id === nextRoleId)?.roleName ||
+              intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: '角色已切换' }),
+          },
+        ),
       );
-      window.setTimeout(() => {
-        window.location.replace(DEFAULT_HOME_PATH);
-      }, 200);
+      history.replace(DEFAULT_HOME_PATH);
     } catch (error) {
       message.error(error instanceof Error ? error.message : intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
     } finally {
@@ -397,6 +411,15 @@ export const TopActions = () => {
             )}
           />
         </Dropdown>
+        {simulatedRoleId != null ? (
+          <Tag
+            color="orange"
+            className="saas-role-simulation-tag"
+            title={roleSimulationHint}
+          >
+            {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: '角色模拟' })}
+          </Tag>
+        ) : null}
         <Button
           type="text"
           icon={<QuestionCircleOutlined />}
@@ -434,7 +457,7 @@ export const TopActions = () => {
           placement="bottomRight"
           menu={{
             items: userMenuItems,
-            selectedKeys: simulatedRoleId == null ? [DEFAULT_ROLE_VALUE] : [String(simulatedRoleId)],
+            selectedKeys: simulatedRoleId == null ? [] : [String(simulatedRoleId)],
             onClick: handleUserMenuClick,
           }}
         >

@@ -2,6 +2,7 @@ import type { CurrentUser, LoginCodeChallenge, LoginEncryptionKey, LoginResponse
 import { request, type RequestOptions } from '@/services/common/request';
 
 export interface LoginPayload {
+  account?: string;
   username?: string;
   mobile?: string;
   password: string;

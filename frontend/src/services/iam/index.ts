@@ -17,6 +17,10 @@ export interface RoleMutationPayload {
   permissionKeys?: string[];
 }
 
+export interface DefaultRegistrationRolePayload {
+  roleId: number;
+}
+
 export interface MenuMutationPayload {
   parentId?: number | null;
   menuCode: string;
@@ -50,6 +54,17 @@ export const iamService = {
   roleDetail: (id: number, options: RequestOptions = {}) =>
     request<RoleDetail>(`/v1/system/roles/${id}`, {
       method: 'GET',
+      ...options,
+    }),
+  defaultRegistrationRole: (options: RequestOptions = {}) =>
+    request<RoleDetail>('/v1/system/roles/default-registration-role', {
+      method: 'GET',
+      ...options,
+    }),
+  updateDefaultRegistrationRole: (payload: DefaultRegistrationRolePayload, options: RequestOptions = {}) =>
+    request<RoleDetail>('/v1/system/roles/default-registration-role', {
+      method: 'PUT',
+      data: payload,
       ...options,
     }),
   createRole: (payload: RoleMutationPayload, options: RequestOptions = {}) =>

@@ -14,6 +14,7 @@ public class ProfileSummaryVO {
     private Integer permissionCount;
     private List<AuditLogVO> recentLoginLogs;
     private List<ProfileFieldSettingVO> profileFieldSettings;
+    private ProfileCompletionSummaryVO profileCompletion;
     private Boolean mobileBindAvailable;
     private Boolean emailBindAvailable;
     private Boolean mobileBindVerificationRequired;
@@ -31,6 +32,8 @@ public class ProfileSummaryVO {
     public void setRecentLoginLogs(List<AuditLogVO> recentLoginLogs) { this.recentLoginLogs = recentLoginLogs; }
     public List<ProfileFieldSettingVO> getProfileFieldSettings() { return profileFieldSettings; }
     public void setProfileFieldSettings(List<ProfileFieldSettingVO> profileFieldSettings) { this.profileFieldSettings = profileFieldSettings; }
+    public ProfileCompletionSummaryVO getProfileCompletion() { return profileCompletion; }
+    public void setProfileCompletion(ProfileCompletionSummaryVO profileCompletion) { this.profileCompletion = profileCompletion; }
     public Boolean getMobileBindAvailable() { return mobileBindAvailable; }
     public void setMobileBindAvailable(Boolean mobileBindAvailable) { this.mobileBindAvailable = mobileBindAvailable; }
     public Boolean getEmailBindAvailable() { return emailBindAvailable; }

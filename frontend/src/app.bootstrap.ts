@@ -5,8 +5,8 @@ import {
   normalizeBrandingSettings,
   persistBrandingSettings,
 } from '@/branding/settings';
-import { normalizeAgreementSettings } from '@/agreement/settings';
-import { normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
+import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
+import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { isLoggedIn, restoreSession } from '@/auth/session';
 import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
@@ -28,8 +28,8 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
           autoRedirectOnUnauthorized: false,
           allowUnauthorizedWithoutRedirect: true,
           silent: true,
-        })
-      : await systemService.publicBrandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+        }).catch(() => DEFAULT_BRANDING_SETTINGS)
+      : await systemService.publicBrandingSettings({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => DEFAULT_BRANDING_SETTINGS),
   );
   persistBrandingSettings(settings);
   applyFavicon(settings.websiteFaviconUrl);
@@ -59,7 +59,7 @@ const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
 
 const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
   const settings = normalizeSecuritySettings(
-    await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true }),
+    await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => DEFAULT_SECURITY_SETTINGS),
   );
   persistSecuritySettings(settings);
   return settings;
@@ -67,11 +67,15 @@ const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
 
 const loadPublicAgreementSettings = async (): Promise<AgreementSettings> =>
   normalizeAgreementSettings(
-    await systemService.publicAgreementSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+    await systemService.publicAgreementSettings({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => DEFAULT_AGREEMENT_SETTINGS),
   );
 
 const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
-  await systemService.publicLoginCapabilities({ autoRedirectOnUnauthorized: false, silent: true });
+  await systemService.publicLoginCapabilities({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => ({
+    passwordLoginAvailable: true,
+    smsLoginAvailable: false,
+    emailLoginAvailable: false,
+  }));
 
 const buildAuthenticatedInitialState = async (
   currentUser: CurrentUser,
@@ -238,6 +242,22 @@ const waitForBackendReady = async () => {
 export async function getAppInitialState(): Promise<AppInitialState> {
   resetBootstrapSnapshot();
   const storedBrandingSettings = normalizeBrandingSettings(getStoredBrandingSettings() || DEFAULT_BRANDING_SETTINGS);
+
+  if (!isLoggedIn()) {
+    setBootstrapSnapshot({
+      phase: 'ready',
+      progress: 100,
+      title: '系统已就绪',
+      description: '正在展示登录页',
+      ready: true,
+      retryInMs: undefined,
+      errorMessage: undefined,
+      brandName: storedBrandingSettings.websiteName,
+    });
+
+    return await buildGuestInitialState(storedBrandingSettings);
+  }
+
   let retryCount = 0;
 
   while (true) {

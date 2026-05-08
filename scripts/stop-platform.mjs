@@ -106,7 +106,7 @@ async function waitForExit(pid, timeoutMs = 5_000) {
   return false;
 }
 
-function killMatchingProcesses({ name, patterns }) {
+async function killMatchingProcesses({ name, patterns }) {
   const processes = listProcesses();
   const matched = processes.filter((entry) => patterns.some((pattern) => pattern.test(entry.command)));
 
@@ -149,7 +149,7 @@ async function main() {
   }
 
   if (!skipFrontend) {
-    killMatchingProcesses({
+    await killMatchingProcesses({
       name: 'frontend',
       patterns: [
         /node .*frontend\/scripts\/console-banner\.mjs/,
@@ -157,12 +157,13 @@ async function main() {
         /max preview/,
         /pnpm .*--dir frontend dev/,
         /pnpm .*--dir frontend start/,
+        /utoopack-dev-server/,
       ],
     });
   }
 
   if (!skipServices) {
-    killMatchingProcesses({
+    await killMatchingProcesses({
       name: 'backend services',
       patterns: [
         /mvn .*backend\/pom\.xml .*spring-boot:run/,
@@ -174,6 +175,15 @@ async function main() {
         /mvn .*services\/plugin-service\/pom\.xml .*spring-boot:run/,
         /mvn .*services\/localization-service\/pom\.xml .*spring-boot:run/,
         /mvn .*services\/job-executor\/pom\.xml .*spring-boot:run/,
+        /com\.legendary\.invention\.saas\.SaasApplication/,
+        /com\.legendary\.invention\.gateway\.GatewayServiceApplication/,
+        /com\.legendary\.invention\.auth\.AuthServiceApplication/,
+        /com\.legendary\.invention\.tenant\.TenantServiceApplication/,
+        /com\.legendary\.invention\.file\.FileServiceApplication/,
+        /com\.legendary\.invention\.message\.MessageServiceApplication/,
+        /com\.legendary\.invention\.plugin\.PluginServiceApplication/,
+        /com\.legendary\.invention\.localization\.LocalizationServiceApplication/,
+        /com\.legendary\.invention\.job\.JobExecutorApplication/,
       ],
     });
   }

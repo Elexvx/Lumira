@@ -112,6 +112,9 @@ const smtpTestInitialValues: SmtpTestPayload = {
   toEmail: '',
 };
 
+const SMS_ACCESS_KEY_SECRET_MASK = '********';
+const SMTP_PASSWORD_MASK = '********';
+
 const SystemVerificationPage = () => {
   const actionPermission = useActionPermission();
   const canViewVerification =
@@ -202,13 +205,17 @@ const SystemVerificationPage = () => {
       return;
     }
     const providerCode = normalizeProviderCode(smsSettingsQuery.data.provider);
+    const accessKeySecret = smsSettingsQuery.data.accessKeySecretConfigured ? SMS_ACCESS_KEY_SECRET_MASK : '';
     setProviderDrafts((drafts) => ({
       ...drafts,
-      [providerCode]: smsSettingsQuery.data,
+      [providerCode]: {
+        ...smsSettingsQuery.data,
+        accessKeySecret,
+      },
     }));
     smsSettingsForm.setFieldsValue({
       ...smsSettingsQuery.data,
-      accessKeySecret: '',
+      accessKeySecret,
     });
   }, [smsSettingsForm, smsSettingsQuery.data]);
 
@@ -216,7 +223,7 @@ const SystemVerificationPage = () => {
     if (smtpSettingsQuery.data) {
       smtpSettingsForm.setFieldsValue({
         ...smtpSettingsQuery.data,
-        password: '',
+        password: smtpSettingsQuery.data.passwordConfigured ? SMTP_PASSWORD_MASK : '',
       });
     }
   }, [smtpSettingsForm, smtpSettingsQuery.data]);
@@ -284,10 +291,14 @@ const SystemVerificationPage = () => {
 
       if (nextEmailLoginEnabled) {
         const smtpValues = await smtpSettingsForm.validateFields();
-        const smtpResult = await systemService.updateSmtpSettings(smtpValues, { autoRedirectOnUnauthorized: false });
+        const smtpPayload = {
+          ...smtpValues,
+          password: smtpValues.password === SMTP_PASSWORD_MASK ? undefined : smtpValues.password,
+        };
+        const smtpResult = await systemService.updateSmtpSettings(smtpPayload, { autoRedirectOnUnauthorized: false });
         smtpSettingsForm.setFieldsValue({
           ...smtpResult,
-          password: '',
+          password: smtpResult.passwordConfigured ? SMTP_PASSWORD_MASK : '',
         });
       }
 
@@ -310,11 +321,18 @@ const SystemVerificationPage = () => {
     try {
       const values = await smsSettingsForm.validateFields();
       const providerCode = normalizeProviderCode(values.provider);
+      const accessKeySecret = values.accessKeySecret === SMS_ACCESS_KEY_SECRET_MASK ? undefined : values.accessKeySecret;
       setProviderDrafts((drafts) => ({
         ...drafts,
         [providerCode]: values,
       }));
-      const result = await systemService.updateSmsVerificationSettings(values, { autoRedirectOnUnauthorized: false });
+      const result = await systemService.updateSmsVerificationSettings(
+        {
+          ...values,
+          accessKeySecret,
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
       message.success(result.configured ? '短信验证码配置已保存' : '短信验证码配置已保存，当前仍未完全启用');
       await smsSettingsQuery.refetch();
     } finally {
@@ -340,6 +358,7 @@ const SystemVerificationPage = () => {
   const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
   const verificationLoading = verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading;
   const emailLoginEnabled = Form.useWatch('emailLoginEnabled', verificationForm) ?? false;
+  const smsAccessKeySecretConfigured = smsSettingsQuery.data?.accessKeySecretConfigured ?? false;
 
   const renderVerificationTab = () => (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -385,9 +404,19 @@ const SystemVerificationPage = () => {
             name={field.name}
             label={field.label}
             rules={smsEnabled && field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
+            extra={
+              field.password && field.name === 'accessKeySecret'
+                ? smsAccessKeySecretConfigured
+                  ? '当前密钥已脱敏显示，留空则保持现有密钥'
+                  : '留空则保持现有密钥'
+                : undefined
+            }
           >
             {field.password ? (
-              <Input.Password disabled={!canManageSettings || !smsEnabled} placeholder={field.placeholder} />
+              <Input.Password
+                disabled={!canManageSettings || !smsEnabled}
+                placeholder={field.placeholder}
+              />
             ) : (
               <Input disabled={!canManageSettings || !smsEnabled} placeholder={field.placeholder} />
             )}
@@ -432,8 +461,15 @@ const SystemVerificationPage = () => {
               <Form.Item name="username" label="SMTP 用户名" rules={[{ required: true, message: '请输入 SMTP 用户名' }]}>
                 <Input disabled={!canManageSettings || !emailLoginEnabled} placeholder="username@example.com" />
               </Form.Item>
-              <Form.Item name="password" label="SMTP 密码">
-                <Input.Password disabled={!canManageSettings || !emailLoginEnabled} placeholder="留空则保留现有密码" />
+              <Form.Item
+                name="password"
+                label="SMTP 密码"
+                extra={smtpSettingsQuery.data?.passwordConfigured ? '当前密码已脱敏显示，留空则保留现有密码' : '留空则保留现有密码'}
+              >
+                <Input.Password
+                  disabled={!canManageSettings || !emailLoginEnabled}
+                  placeholder="留空则保留现有密码"
+                />
               </Form.Item>
               <Form.Item name="from" label="发件人地址" rules={[{ required: true, message: '请输入发件人地址' }]}>
                 <Input disabled={!canManageSettings || !emailLoginEnabled} placeholder="noreply@example.com" />

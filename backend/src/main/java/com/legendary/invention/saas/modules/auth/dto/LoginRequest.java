@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public class LoginRequest {
 
+    private String account;
     private String username;
     private String mobile;
 
@@ -13,6 +14,14 @@ public class LoginRequest {
     private String captchaId;
     private String captchaCode;
     private String captchaProof;
+
+    public String getAccount() {
+        return account;
+    }
+
+    public void setAccount(String account) {
+        this.account = account;
+    }
 
     public String getUsername() {
         return username;
@@ -62,12 +71,17 @@ public class LoginRequest {
         this.captchaProof = captchaProof;
     }
 
-    @AssertTrue(message = "用户名和手机号至少填写一项")
+    @AssertTrue(message = "账号、用户名或手机号至少填写一项")
     public boolean isAccountProvided() {
-        return (username != null && !username.isBlank()) || (mobile != null && !mobile.isBlank());
+        return (account != null && !account.isBlank())
+                || (username != null && !username.isBlank())
+                || (mobile != null && !mobile.isBlank());
     }
 
     public String account() {
+        if (account != null && !account.isBlank()) {
+            return account.trim();
+        }
         if (username != null && !username.isBlank()) {
             return username.trim();
         }

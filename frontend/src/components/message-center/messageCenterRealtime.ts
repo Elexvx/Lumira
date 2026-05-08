@@ -35,7 +35,7 @@ const requestWebSocketTicket = async () => {
 
 const buildWebSocketUrl = (ticket: string) => {
   const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsHost = window.location.port === '8000' ? `${window.location.hostname}:8080` : window.location.host;
+  const wsHost = window.location.host;
   return `${wsScheme}//${wsHost}/ws/message?ticket=${encodeURIComponent(ticket)}`;
 };
 

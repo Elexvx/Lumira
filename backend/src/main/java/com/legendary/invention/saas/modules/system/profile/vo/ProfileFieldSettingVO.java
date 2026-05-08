@@ -6,6 +6,9 @@ public class ProfileFieldSettingVO {
     private String fieldLabel;
     private String fieldDescription;
     private Boolean visible;
+    private Integer weight;
+    private String groupKey;
+    private String groupLabel;
 
     public String getFieldKey() {
         return fieldKey;
@@ -37,5 +40,29 @@ public class ProfileFieldSettingVO {
 
     public void setVisible(Boolean visible) {
         this.visible = visible;
+    }
+
+    public Integer getWeight() {
+        return weight;
+    }
+
+    public void setWeight(Integer weight) {
+        this.weight = weight;
+    }
+
+    public String getGroupKey() {
+        return groupKey;
+    }
+
+    public void setGroupKey(String groupKey) {
+        this.groupKey = groupKey;
+    }
+
+    public String getGroupLabel() {
+        return groupLabel;
+    }
+
+    public void setGroupLabel(String groupLabel) {
+        this.groupLabel = groupLabel;
     }
 }

@@ -317,6 +317,7 @@ public class SystemPlatformSettingsAppService {
         settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
         settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
         settings.setPassword("");
+        settings.setPasswordConfigured(StringUtils.hasText(valueByKey.get(SMTP_PASSWORD_KEY)));
         settings.setFrom(defaultIfBlank(valueByKey.get(SMTP_FROM_KEY), ""));
         settings.setAuthEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_AUTH_ENABLED_KEY), "true")));
         settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));

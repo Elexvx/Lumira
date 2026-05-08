@@ -5,6 +5,12 @@ spring:
     import:
       - optional:nacos:message-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
   cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            auth-service:
+              - uri: ${AUTH_SERVICE_BASE_URL:http://localhost:8082}
     nacos:
       config:
         server-addr: ${NACOS_SERVER_ADDR:localhost:8848}

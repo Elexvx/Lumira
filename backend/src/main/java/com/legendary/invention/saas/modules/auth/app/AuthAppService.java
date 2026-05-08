@@ -8,6 +8,7 @@ import com.legendary.invention.saas.infrastructure.security.model.TokenClaims;
 import com.legendary.invention.saas.infrastructure.security.model.TokenType;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
+import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
 import com.legendary.invention.saas.infrastructure.security.service.JwtTokenService;
 import com.legendary.invention.saas.infrastructure.security.service.LoginProtectionService;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
@@ -30,6 +31,7 @@ import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
 import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,12 +42,18 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class AuthAppService {
 
     private static final Long PLATFORM_TENANT_ID = 1001L;
+    private static final String DEFAULT_LOGIN_ROLE_CODE = "commonuser";
+    private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
+    private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final UserDomainService userDomainService;
     private final TenantDomainService tenantDomainService;
@@ -56,6 +64,7 @@ public class AuthAppService {
     private final LoginEncryptionService loginEncryptionService;
     private final JwtTokenService jwtTokenService;
     private final SecuritySettingsService securitySettingsService;
+    private final PasswordPolicyService passwordPolicyService;
     private final PasswordEncoder passwordEncoder;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemVerificationAppService systemVerificationAppService;
@@ -71,6 +80,7 @@ public class AuthAppService {
             LoginEncryptionService loginEncryptionService,
             JwtTokenService jwtTokenService,
             SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
             PasswordEncoder passwordEncoder,
             PermissionSnapshotService permissionSnapshotService,
             SystemVerificationAppService systemVerificationAppService,
@@ -85,6 +95,7 @@ public class AuthAppService {
         this.loginEncryptionService = loginEncryptionService;
         this.jwtTokenService = jwtTokenService;
         this.securitySettingsService = securitySettingsService;
+        this.passwordPolicyService = passwordPolicyService;
         this.passwordEncoder = passwordEncoder;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemVerificationAppService = systemVerificationAppService;
@@ -96,8 +107,9 @@ public class AuthAppService {
         loginProtectionService.ensureCanAttempt(account, loginIp);
         loginProtectionService.recordAttempt(account, loginIp);
         validateCaptchaIfRequired(request, account, loginIp, userAgent);
+        String loginPassword = loginEncryptionService.decryptPassword(request.getPassword());
 
-        SysUserEntity user = userDomainService.findLoginUser(account).orElse(null);
+        SysUserEntity user = resolveLoginUserForPassword(account, loginPassword, loginIp, userAgent);
         if (user == null) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(null, null, account, "PASSWORD", "FAIL", "用户不存在", loginIp, userAgent);
@@ -118,7 +130,6 @@ public class AuthAppService {
             );
         }
 
-        String loginPassword = loginEncryptionService.decryptPassword(request.getPassword());
         if (!passwordEncoder.matches(loginPassword, user.getPasswordHash())) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
@@ -168,7 +179,7 @@ public class AuthAppService {
         loginProtectionService.ensureCanAttempt(account, loginIp);
         loginProtectionService.recordAttempt(account, loginIp);
 
-        SysUserEntity user = userDomainService.findLoginUser(account).orElse(null);
+        SysUserEntity user = resolveLoginUserForCodeChallenge(request.getLoginType(), account, loginIp, userAgent);
         if (user == null) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(null, null, account, request.getLoginType().toUpperCase(), "FAIL", "用户不存在", loginIp, userAgent);
@@ -303,6 +314,186 @@ public class AuthAppService {
                 loginIp,
                 userAgent
         );
+    }
+
+    private SysUserEntity resolveLoginUserForPassword(String account, String rawPassword, String loginIp, String userAgent) {
+        SysUserEntity user = userDomainService.findLoginUser(account).orElse(null);
+        if (user != null) {
+            return user;
+        }
+        if (!shouldAutoRegister(account, "PASSWORD")) {
+            return null;
+        }
+        return registerLoginUser(account, rawPassword, "PASSWORD", loginIp, userAgent);
+    }
+
+    private SysUserEntity resolveLoginUserForCodeChallenge(String loginType, String account, String loginIp, String userAgent) {
+        SysUserEntity user = userDomainService.findLoginUser(account).orElse(null);
+        if (user != null) {
+            return user;
+        }
+        if (!shouldAutoRegister(account, loginType)) {
+            return null;
+        }
+        return registerLoginUser(account, null, loginType, loginIp, userAgent);
+    }
+
+    private SysUserEntity registerLoginUser(String account, String rawPassword, String loginType, String loginIp, String userAgent) {
+        String normalizedAccount = normalizeRegistrationAccount(account);
+        String password = StringUtils.hasText(rawPassword) ? rawPassword : UUID.randomUUID().toString();
+        if (StringUtils.hasText(rawPassword)) {
+            passwordPolicyService.validatePassword(rawPassword);
+        }
+
+        Long tenantId = PLATFORM_TENANT_ID;
+        String encodedPassword = passwordEncoder.encode(password);
+        String username = normalizedAccount;
+        String mobile = isMobileAccount(normalizedAccount) ? normalizedAccount : null;
+        String email = isEmailAccount(normalizedAccount) ? normalizedAccount : null;
+
+        try {
+            jdbcTemplate.update(
+                    """
+                            insert into sys_user (
+                                username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                                available_time, id_card_number, status,
+                                created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            """,
+                    username,
+                    encodedPassword,
+                    mobile,
+                    normalizedAccount,
+                    null,
+                    null,
+                    email,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "ENABLED",
+                    0L,
+                    0L
+            );
+        } catch (DuplicateKeyException ex) {
+            SysUserEntity existing = userDomainService.findLoginUser(normalizedAccount).orElse(null);
+            if (existing != null) {
+                return existing;
+            }
+            throw ex;
+        }
+
+        SysUserEntity user = userDomainService.findLoginUser(normalizedAccount)
+                .orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR, "自动注册用户失败"));
+        upsertUserTenantRelation(user.getId(), tenantId, true, 0L);
+        grantDefaultLoginRole(user.getId(), tenantId, 0L);
+        return user;
+    }
+
+    private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {
+        jdbcTemplate.update(
+                """
+                        insert into sys_user_tenant (tenant_id, user_id, is_default, status, created_by, updated_by, deleted)
+                        values (?, ?, ?, 'ENABLED', ?, ?, 0)
+                        on duplicate key update is_default = values(is_default),
+                                                 status = values(status),
+                                                 updated_by = values(updated_by),
+                                                 updated_at = current_timestamp,
+                                                 deleted = 0
+                        """,
+                tenantId,
+                userId,
+                isDefault ? 1 : 0,
+                operatorId,
+                operatorId
+        );
+    }
+
+    private void grantDefaultLoginRole(Long userId, Long tenantId, Long operatorId) {
+        String roleCode = resolveDefaultRegistrationRoleCode(tenantId);
+        Long roleId = jdbcTemplate.query(
+                """
+                        select id
+                        from sys_role
+                        where tenant_id = ? and role_code = ? and deleted = 0
+                        order by id desc
+                        limit 1
+                        """,
+                rs -> rs.next() ? rs.getLong("id") : null,
+                tenantId,
+                roleCode
+        );
+        if (roleId == null) {
+            return;
+        }
+
+        jdbcTemplate.update(
+                """
+                        insert into sys_user_role (tenant_id, user_id, role_id, created_by, updated_by, deleted)
+                        values (?, ?, ?, ?, ?, 0)
+                        on duplicate key update updated_by = values(updated_by), updated_at = current_timestamp, deleted = 0
+                        """,
+                tenantId,
+                userId,
+                roleId,
+                operatorId,
+                operatorId
+        );
+    }
+
+    private String resolveDefaultRegistrationRoleCode(Long tenantId) {
+        try {
+            String configuredRoleCode = jdbcTemplate.queryForObject(
+                    """
+                            select config_value
+                            from sys_config
+                            where deleted = 0
+                              and config_scope = 'PLATFORM'
+                              and config_key = ?
+                              and (tenant_id = ? or tenant_id is null)
+                            order by case when tenant_id = ? then 0 else 1 end, id desc
+                            limit 1
+                            """,
+                    String.class,
+                    DEFAULT_REGISTRATION_ROLE_CODE_KEY,
+                    tenantId,
+                    tenantId
+            );
+            return StringUtils.hasText(configuredRoleCode) ? configuredRoleCode.trim() : DEFAULT_LOGIN_ROLE_CODE;
+        } catch (EmptyResultDataAccessException ex) {
+            return DEFAULT_LOGIN_ROLE_CODE;
+        }
+    }
+
+    private boolean shouldAutoRegister(String account, String loginType) {
+        if (!StringUtils.hasText(account)) {
+            return false;
+        }
+        String normalizedLoginType = loginType == null ? "" : loginType.trim().toLowerCase(Locale.ROOT);
+        if ("sms".equals(normalizedLoginType)) {
+            return isMobileAccount(account);
+        }
+        if ("email".equals(normalizedLoginType)) {
+            return isEmailAccount(account);
+        }
+        return isMobileAccount(account) || isEmailAccount(account);
+    }
+
+    private String normalizeRegistrationAccount(String account) {
+        String normalizedAccount = account == null ? "" : account.trim();
+        if (isEmailAccount(normalizedAccount)) {
+            return normalizedAccount.toLowerCase(Locale.ROOT);
+        }
+        return normalizedAccount;
+    }
+
+    private boolean isMobileAccount(String account) {
+        return StringUtils.hasText(account) && MOBILE_PATTERN.matcher(account.trim()).matches();
+    }
+
+    private boolean isEmailAccount(String account) {
+        return StringUtils.hasText(account) && EMAIL_PATTERN.matcher(account.trim()).matches();
     }
 
     public RefreshTokenResponseVO refreshToken(RefreshTokenRequest request) {

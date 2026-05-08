@@ -6,6 +6,8 @@ import com.legendary.invention.auth.model.AuthSession;
 import com.legendary.invention.common.constant.CacheKeyConstants;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -20,6 +22,8 @@ import java.util.Set;
 
 @Service
 public class AuthSessionStore {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthSessionStore.class);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -57,7 +61,14 @@ public class AuthSessionStore {
         try {
             return Optional.of(objectMapper.readValue(payload, AuthSession.class));
         } catch (Exception ex) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "会话反序列化失败");
+            log.warn(
+                    "Session payload is corrupted, removing stale session cache. sessionId={}, reason={}",
+                    sessionId,
+                    ex.getMessage()
+            );
+            removeSessionReferences(sessionId);
+            removeSessionFromOnlineIndexes(sessionId);
+            return Optional.empty();
         }
     }
 
@@ -121,7 +132,25 @@ public class AuthSessionStore {
         if (tenantId == null || !StringUtils.hasText(sessionId)) {
             return;
         }
-        redisTemplate.opsForZSet().remove(CacheKeyConstants.PREFIX + ":online:session:tenant:" + tenantId, sessionId);
+        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionTenantKey(tenantId), sessionId);
+    }
+
+    private void removeSessionFromOnlineIndexes(String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            return;
+        }
+        Set<String> userIndexKeys = redisTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.ONLINE_SESSION_USER + ":*");
+        if (!CollectionUtils.isEmpty(userIndexKeys)) {
+            for (String key : userIndexKeys) {
+                redisTemplate.opsForZSet().remove(key, sessionId);
+            }
+        }
+        Set<String> tenantIndexKeys = redisTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.ONLINE_SESSION_TENANT + ":*");
+        if (!CollectionUtils.isEmpty(tenantIndexKeys)) {
+            for (String key : tenantIndexKeys) {
+                redisTemplate.opsForZSet().remove(key, sessionId);
+            }
+        }
     }
 
     private double score(AuthSession session) {

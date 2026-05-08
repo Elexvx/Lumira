@@ -3,6 +3,7 @@ import type { PermissionAwareTableAction } from '@/features/permissions/useActio
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
 import type { ProColumns, ProDescriptionsItemProps } from '@ant-design/pro-components';
 import type { RoleDetail, RoleRecord } from '@/types/api';
+import { Space, Tag } from 'antd';
 
 interface BuildRoleColumnsOptions {
   isDesktop: boolean;
@@ -33,6 +34,12 @@ export const buildRoleColumns = ({
     title: '角色名称',
     dataIndex: 'roleName',
     search: true,
+    render: (_, record) => (
+      <Space size={6} wrap>
+        <span>{record.roleName}</span>
+        {record.defaultRegistrationRole ? <Tag color="blue">默认注册</Tag> : null}
+      </Space>
+    ),
   },
   {
     title: '角色类型',

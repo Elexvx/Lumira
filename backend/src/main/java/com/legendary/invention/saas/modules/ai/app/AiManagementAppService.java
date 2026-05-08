@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class AiManagementAppService {
@@ -378,6 +379,261 @@ public class AiManagementAppService {
         return listEmployeeSkills(tenantId, employeeId);
     }
 
+    public AiVO.EmployeeVO getAssistantEmployee(CurrentUser currentUser) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.EmployeeVO employee = jdbcTemplate.query(
+                """
+                        select e.id, e.tenant_id as tenantId, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
+                               e.description, e.greeting, e.default_llm_service_id as defaultLlmServiceId,
+                               e.enabled, e.sort_order as sortOrder, e.create_time as createTime, e.update_time as updateTime,
+                               s.title as defaultLlmServiceTitle
+                        from ai_employee e
+                        left join ai_llm_service s
+                          on s.id = e.default_llm_service_id
+                         and s.tenant_id = e.tenant_id
+                         and s.is_deleted = 0
+                        where e.tenant_id = ?
+                          and e.is_deleted = 0
+                          and e.enabled = 1
+                        order by e.sort_order asc, e.id desc
+                        limit 1
+                        """,
+                new BeanPropertyRowMapper<>(AiVO.EmployeeVO.class),
+                tenantId
+        ).stream().findFirst().orElse(null);
+        if (employee == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "暂无可用数字员工");
+        }
+        return employee;
+    }
+
+    public PageResponse<AiVO.ConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
+        Long tenantId = currentTenantId(currentUser);
+        requireEmployee(tenantId, employeeId);
+        return pageQuery(
+                """
+                        select c.id, c.tenant_id as tenantId, c.employee_id as employeeId,
+                               coalesce(e.nickname, e.username) as employeeName,
+                               c.conversation_code as conversationCode, c.title, c.status,
+                               c.is_pinned as pinned,
+                               (
+                                   select m.content
+                                   from ai_message m
+                                   where m.tenant_id = c.tenant_id
+                                     and m.conversation_id = c.id
+                                     and m.is_deleted = 0
+                                   order by m.id desc
+                                   limit 1
+                               ) as preview,
+                               c.latest_message_at as latestMessageAt,
+                               c.create_time as createTime,
+                               c.update_time as updateTime
+                        from ai_conversation c
+                        left join ai_employee e
+                          on e.id = c.employee_id
+                         and e.tenant_id = c.tenant_id
+                         and e.is_deleted = 0
+                        where c.tenant_id = ?
+                          and c.employee_id = ?
+                          and c.is_deleted = 0
+                        order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
+                        """,
+                """
+                        select count(1)
+                        from ai_conversation c
+                        where c.tenant_id = ?
+                          and c.employee_id = ?
+                          and c.is_deleted = 0
+                        """,
+                AiVO.ConversationVO.class,
+                pageNo,
+                pageSize,
+                List.of(tenantId, employeeId)
+        );
+    }
+
+    public List<AiVO.MessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
+        Long tenantId = currentTenantId(currentUser);
+        requireConversation(tenantId, conversationId);
+        List<AiVO.MessageVO> messages = jdbcTemplate.query(
+                """
+                        select id, conversation_id as conversationId, role, content, create_time as createTime
+                        from ai_message
+                        where tenant_id = ?
+                          and conversation_id = ?
+                          and is_deleted = 0
+                        order by id asc
+                        """,
+                new BeanPropertyRowMapper<>(AiVO.MessageVO.class),
+                tenantId,
+                conversationId
+        );
+        Map<Long, List<AiVO.MessageAttachmentVO>> attachmentMap = loadMessageAttachments(tenantId, conversationId);
+        for (AiVO.MessageVO message : messages) {
+            message.setAttachments(attachmentMap.getOrDefault(message.getId(), List.of()));
+        }
+        return messages;
+    }
+
+    @Transactional
+    public boolean updateConversation(CurrentUser currentUser, Long conversationId, AiDTO.ConversationUpdateRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        String title = request == null ? null : request.getTitle();
+        Boolean pinned = request == null ? null : request.getPinned();
+        jdbcTemplate.update(
+                """
+                        update ai_conversation
+                        set title = coalesce(?, title),
+                            is_pinned = coalesce(?, is_pinned),
+                            update_time = ?
+                        where tenant_id = ? and id = ? and is_deleted = 0
+                        """,
+                StringUtils.hasText(title) ? title.trim() : null,
+                pinned == null ? null : (pinned ? 1 : 0),
+                LocalDateTime.now(),
+                tenantId,
+                conversationId
+        );
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "ai",
+                "conversation-update",
+                "UPDATE",
+                "SUCCESS",
+                "更新会话: " + conversation.getConversationCode()
+        );
+        return true;
+    }
+
+    @Transactional
+    public boolean deleteConversation(CurrentUser currentUser, Long conversationId) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+                """
+                        update ai_conversation
+                        set is_deleted = 1, update_time = ?
+                        where tenant_id = ? and id = ? and is_deleted = 0
+                        """,
+                now,
+                tenantId,
+                conversationId
+        );
+        jdbcTemplate.update(
+                """
+                        update ai_message
+                        set is_deleted = 1, update_time = ?
+                        where tenant_id = ? and conversation_id = ? and is_deleted = 0
+                        """,
+                now,
+                tenantId,
+                conversationId
+        );
+        jdbcTemplate.update(
+                """
+                        update ai_message_attachment
+                        set is_deleted = 1, update_time = ?
+                        where tenant_id = ? and conversation_id = ? and is_deleted = 0
+                        """,
+                now,
+                tenantId,
+                conversationId
+        );
+        jdbcTemplate.update(
+                """
+                        update ai_conversation_share
+                        set is_deleted = 1, update_time = ?
+                        where tenant_id = ? and conversation_id = ? and is_deleted = 0
+                        """,
+                now,
+                tenantId,
+                conversationId
+        );
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "ai",
+                "conversation-delete",
+                "DELETE",
+                "SUCCESS",
+                "删除会话: " + conversation.getConversationCode()
+        );
+        return true;
+    }
+
+    @Transactional
+    public AiVO.ConversationShareVO createConversationShare(CurrentUser currentUser, Long conversationId) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plusDays(30);
+        String shareToken = "share_" + UUID.randomUUID().toString().replace("-", "");
+        jdbcTemplate.update(
+                """
+                        insert into ai_conversation_share (
+                            tenant_id, conversation_id, share_token, title, status, expires_at, created_by, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, ?, 'ACTIVE', ?, ?, 0, ?, ?)
+                        """,
+                tenantId,
+                conversationId,
+                shareToken,
+                StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : conversation.getPreview(),
+                expiresAt,
+                currentUser.getUserId(),
+                now,
+                now
+        );
+        AiVO.ConversationShareVO share = new AiVO.ConversationShareVO();
+        share.setShareToken(shareToken);
+        share.setConversationId(conversationId);
+        share.setShareTitle(StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : conversation.getPreview());
+        share.setExpiresAt(expiresAt);
+        share.setCreateTime(now);
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "ai",
+                "conversation-share",
+                "CREATE",
+                "SUCCESS",
+                "创建会话分享: " + conversation.getConversationCode()
+        );
+        return share;
+    }
+
+    public AiVO.ConversationShareDetailVO getConversationShare(CurrentUser currentUser, String shareToken) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.ConversationShareVO share = requireConversationShare(tenantId, shareToken);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, share.getConversationId());
+        AiVO.ConversationShareDetailVO detail = new AiVO.ConversationShareDetailVO();
+        detail.setShare(share);
+        detail.setConversation(conversation);
+        detail.setMessages(listConversationMessages(currentUser, share.getConversationId()));
+        return detail;
+    }
+
+    public AiVO.ConversationExportVO exportConversation(CurrentUser currentUser, Long conversationId, String format) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        List<AiVO.MessageVO> messages = listConversationMessages(currentUser, conversationId);
+        String normalizedFormat = normalizeExportFormat(format);
+        String content = buildConversationExportContent(conversation, messages, normalizedFormat);
+        AiVO.ConversationExportVO export = new AiVO.ConversationExportVO();
+        export.setConversationId(conversationId);
+        export.setTitle(StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : "会话");
+        export.setFormat(normalizedFormat);
+        export.setFileName(buildExportFileName(export.getTitle(), normalizedFormat));
+        export.setMimeType("markdown".equals(normalizedFormat) ? "text/markdown;charset=utf-8" : "text/plain;charset=utf-8");
+        export.setContent(content);
+        return export;
+    }
+
     @Transactional
     public boolean updateEmployeeSkills(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeSkillsUpdateRequest request) {
         Long tenantId = currentTenantId(currentUser);
@@ -626,6 +882,186 @@ public class AiManagementAppService {
         if (employee == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "数字员工不存在");
         }
+    }
+
+    private AiVO.ConversationVO requireConversation(Long tenantId, Long conversationId) {
+        AiVO.ConversationVO conversation = jdbcTemplate.query(
+                """
+                        select c.id,
+                               c.tenant_id as tenantId,
+                               c.employee_id as employeeId,
+                               coalesce(e.nickname, e.username) as employeeName,
+                               c.conversation_code as conversationCode,
+                               c.title,
+                               (
+                                   select m.content
+                                   from ai_message m
+                                   where m.tenant_id = c.tenant_id
+                                     and m.conversation_id = c.id
+                                     and m.is_deleted = 0
+                                   order by m.id desc
+                                   limit 1
+                               ) as preview,
+                               c.status,
+                               c.is_pinned as pinned,
+                               c.latest_message_at as latestMessageAt,
+                               c.create_time as createTime,
+                               c.update_time as updateTime
+                        from ai_conversation c
+                        left join ai_employee e
+                          on e.id = c.employee_id
+                         and e.tenant_id = c.tenant_id
+                         and e.is_deleted = 0
+                        where c.tenant_id = ?
+                          and c.id = ?
+                          and c.is_deleted = 0
+                        limit 1
+                        """,
+                new BeanPropertyRowMapper<>(AiVO.ConversationVO.class),
+                tenantId,
+                conversationId
+        ).stream().findFirst().orElse(null);
+        if (conversation == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "会话不存在");
+        }
+        return conversation;
+    }
+
+    private AiVO.ConversationShareVO requireConversationShare(Long tenantId, String shareToken) {
+        AiVO.ConversationShareVO share = jdbcTemplate.query(
+                """
+                        select share_token as shareToken, conversation_id as conversationId, title as shareTitle,
+                               expires_at as expiresAt, create_time as createTime
+                        from ai_conversation_share
+                        where tenant_id = ?
+                          and share_token = ?
+                          and is_deleted = 0
+                          and status = 'ACTIVE'
+                          and (expires_at is null or expires_at >= now())
+                        limit 1
+                        """,
+                new BeanPropertyRowMapper<>(AiVO.ConversationShareVO.class),
+                tenantId,
+                shareToken
+        ).stream().findFirst().orElse(null);
+        if (share == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "分享链接不存在或已失效");
+        }
+        return share;
+    }
+
+    private Map<Long, List<AiVO.MessageAttachmentVO>> loadMessageAttachments(Long tenantId, Long conversationId) {
+        Map<Long, List<AiVO.MessageAttachmentVO>> attachmentMap = new LinkedHashMap<>();
+        jdbcTemplate.query(
+                """
+                        select id,
+                               file_id as fileId,
+                               message_id as messageId,
+                               original_file_name as originalFileName,
+                               file_extension as fileExtension,
+                               mime_type as mimeType,
+                               file_size_bytes as fileSizeBytes,
+                               concat(round(coalesce(file_size_bytes, 0) / 1024, 1), ' KB') as fileSizeLabel,
+                               public_url as publicUrl,
+                               preview_url as previewUrl,
+                               download_url as downloadUrl,
+                               preview_mode as previewMode
+                        from ai_message_attachment
+                        where tenant_id = ?
+                          and conversation_id = ?
+                          and is_deleted = 0
+                        order by id asc
+                        """,
+                (rs, rowNum) -> {
+                    AiVO.MessageAttachmentVO attachment = new AiVO.MessageAttachmentVO();
+                    attachment.setId(rs.getLong("id"));
+                    attachment.setFileId(rs.getLong("fileId"));
+                    attachment.setOriginalFileName(rs.getString("originalFileName"));
+                    attachment.setFileExtension(rs.getString("fileExtension"));
+                    attachment.setMimeType(rs.getString("mimeType"));
+                    attachment.setFileSizeBytes(rs.getObject("fileSizeBytes") == null ? null : rs.getLong("fileSizeBytes"));
+                    attachment.setFileSizeLabel(rs.getString("fileSizeLabel"));
+                    attachment.setPublicUrl(rs.getString("publicUrl"));
+                    attachment.setPreviewUrl(rs.getString("previewUrl"));
+                    attachment.setDownloadUrl(rs.getString("downloadUrl"));
+                    attachment.setPreviewMode(rs.getString("previewMode"));
+                    Long messageId = rs.getLong("messageId");
+                    attachmentMap.computeIfAbsent(messageId, ignored -> new ArrayList<>()).add(attachment);
+                    return attachment;
+                },
+                tenantId,
+                conversationId
+        );
+        return attachmentMap;
+    }
+
+    private String normalizeExportFormat(String format) {
+        if (!StringUtils.hasText(format)) {
+            return "markdown";
+        }
+        String normalized = format.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "md", "markdown" -> "markdown";
+            case "txt", "text" -> "text";
+            default -> throw new BizException(ErrorCode.BIZ_ERROR, "不支持的导出格式");
+        };
+    }
+
+    private String buildConversationExportContent(AiVO.ConversationVO conversation, List<AiVO.MessageVO> messages, String format) {
+        StringBuilder builder = new StringBuilder();
+        boolean markdown = "markdown".equals(format);
+        String title = StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : "会话";
+        if (markdown) {
+            builder.append("# ").append(title).append("\n\n");
+        } else {
+            builder.append(title).append("\n");
+        }
+        if (StringUtils.hasText(conversation.getEmployeeName())) {
+            builder.append(markdown ? "- " : "").append("AI 员工: ").append(conversation.getEmployeeName()).append("\n");
+        }
+        if (conversation.getLatestMessageAt() != null) {
+            builder.append(markdown ? "- " : "").append("更新时间: ").append(conversation.getLatestMessageAt()).append("\n");
+        }
+        builder.append("\n");
+        for (AiVO.MessageVO message : messages) {
+            String role = "USER".equalsIgnoreCase(message.getRole()) ? "用户" : "AI";
+            if (markdown) {
+                builder.append("## ").append(role).append("\n\n");
+            } else {
+                builder.append(role).append(":\n");
+            }
+            if (StringUtils.hasText(message.getContent())) {
+                builder.append(message.getContent().trim()).append("\n");
+            }
+            if (message.getAttachments() != null && !message.getAttachments().isEmpty()) {
+                if (markdown) {
+                    builder.append("\n附件:\n");
+                    for (AiVO.MessageAttachmentVO attachment : message.getAttachments()) {
+                        builder.append("- ").append(attachment.getOriginalFileName());
+                        if (StringUtils.hasText(attachment.getDownloadUrl())) {
+                            builder.append(" (").append(attachment.getDownloadUrl()).append(")");
+                        }
+                        builder.append("\n");
+                    }
+                } else {
+                    builder.append("附件:\n");
+                    for (AiVO.MessageAttachmentVO attachment : message.getAttachments()) {
+                        builder.append("- ").append(attachment.getOriginalFileName());
+                        if (StringUtils.hasText(attachment.getDownloadUrl())) {
+                            builder.append(" (").append(attachment.getDownloadUrl()).append(")");
+                        }
+                        builder.append("\n");
+                    }
+                }
+            }
+            builder.append("\n");
+        }
+        return builder.toString().trim();
+    }
+
+    private String buildExportFileName(String title, String format) {
+        String safeTitle = StringUtils.hasText(title) ? title.trim().replaceAll("[\\\\/:*?\"<>|]", "_") : "ai-conversation";
+        return safeTitle + ("markdown".equals(format) ? ".md" : ".txt");
     }
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {

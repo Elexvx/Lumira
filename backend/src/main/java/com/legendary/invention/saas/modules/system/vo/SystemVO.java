@@ -27,6 +27,15 @@ public final class SystemVO {
     public static class ProfileFieldSettingVO extends com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO {
     }
 
+    public static class ProfileCompletionSummaryVO extends com.legendary.invention.saas.modules.system.profile.vo.ProfileCompletionSummaryVO {
+    }
+
+    public static class ProfileCompletionGroupVO extends com.legendary.invention.saas.modules.system.profile.vo.ProfileCompletionGroupVO {
+    }
+
+    public static class ProfileCompletionItemVO extends com.legendary.invention.saas.modules.system.profile.vo.ProfileCompletionItemVO {
+    }
+
     public static class VerificationProviderVO extends com.legendary.invention.saas.modules.system.verification.vo.VerificationProviderVO {
     }
 
@@ -49,6 +58,9 @@ public final class SystemVO {
     }
 
     public static class RoleDetailVO extends com.legendary.invention.saas.modules.system.role.vo.RoleDetailVO {
+    }
+
+    public static class DefaultRegistrationRoleVO extends RoleDetailVO {
     }
 
     public static class PermissionVO extends com.legendary.invention.saas.modules.system.permission.vo.PermissionVO {

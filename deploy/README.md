@@ -18,6 +18,12 @@ docker compose -f deploy/docker-compose.yml up -d
 node scripts/start-platform.mjs
 ```
 
+停止本地整套环境：
+
+```bash
+node scripts/stop-platform.mjs
+```
+
 ## 后续组件
 
 - Sentinel 控制台
