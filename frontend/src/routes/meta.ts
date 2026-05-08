@@ -8,6 +8,7 @@ export interface BackendRouteMeta {
 
 export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/dashboard/home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+  { path: '/ai/share/:token', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant', hideInMenu: true },
   { path: '/ai', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant' },
   { path: '/settings', name: 'nav.system.root', icon: 'SettingOutlined', access: 'canVisitSystemManagement', hideInMenu: true },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
@@ -28,6 +29,7 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/user-center/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
   { path: '/user-center/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
   { path: '/user-center/roles', name: 'nav.user.roles', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
+  { path: '/user-center/personal-center', name: 'nav.user.personalCenter', icon: 'IdcardOutlined', access: 'canVisitUserCenter' },
   { path: '/user-center/profile', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
   { path: '/user-center/files', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },
   { path: '/plugins/:pluginCode', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
@@ -50,6 +52,7 @@ export interface BackendRouteRecord {
 export const backendRoutes: BackendRouteRecord[] = [
   { path: '/', redirect: '/dashboard/home' },
   { path: '/dashboard/home', component: '@/pages/dashboard/Home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+  { path: '/ai/share/:token', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant', hideInMenu: true },
   { path: '/ai', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant' },
   { path: '/audit/overview', redirect: '/settings/audit' },
   { path: '/system', redirect: '/settings' },
@@ -90,6 +93,7 @@ export const backendRoutes: BackendRouteRecord[] = [
       { path: '/user-center/users', component: '@/pages/system/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
       { path: '/user-center/online-users', component: '@/pages/system/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
       { path: '/user-center/roles', component: '@/pages/system/roles', name: 'nav.user.roles', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
+      { path: '/user-center/personal-center', redirect: '/user-center/profile' },
       { path: '/user-center/profile', component: '@/pages/profile/Center', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
       { path: '/user-center/files', component: '@/pages/files/Center', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },
     ],
@@ -125,7 +129,7 @@ export const backendRoutes: BackendRouteRecord[] = [
   { path: '/plugins/:pluginCode', component: '@/pages/plugins/RuntimeContainer', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
   { path: '/blank/workflow', component: '@/pages/exception/BlankFlow', layout: false, name: 'common.failure', hideInMenu: true },
   { path: '/user/login', component: '@/pages/user/Login', layout: false, name: 'page.login.title', hideInMenu: true },
-  { path: '/403', component: '@/pages/exception/NoPermission', layout: false, name: 'common.failure', hideInMenu: true },
+  { path: '/403', component: '@/pages/exception/NoPermission', name: 'common.failure', hideInMenu: true },
   { path: '/404', component: '@/pages/exception/NotFound', layout: false, name: 'common.failure', hideInMenu: true },
   { path: '*', redirect: '/404' },
 ];

@@ -2,6 +2,11 @@ import { request, type RequestOptions } from '@/services/common/request';
 import type {
   AiChatRequestPayload,
   AiChatResponseRecord,
+  AiConversationExportRecord,
+  AiConversationShareDetailRecord,
+  AiConversationShareRecord,
+  AiConversationMessageRecord,
+  AiConversationRecord,
   AiEmployeeDetailRecord,
   AiEmployeeRecord,
   AiEmployeeUpsertPayload,
@@ -99,6 +104,49 @@ export const aiService = {
     }),
   employeeSkills: (id: number, options: RequestOptions = {}) =>
     request<AiEmployeeSkillRecord[]>(`/ai/employees/${id}/skills`, {
+      method: 'GET',
+      ...options,
+    }),
+  assistant: (options: RequestOptions = {}) =>
+    request<AiEmployeeRecord>('/ai/assistant', {
+      method: 'GET',
+      ...options,
+    }),
+  updateConversation: (id: number, payload: { title?: string | null; pinned?: boolean | null }, options: RequestOptions = {}) =>
+    request<boolean>(`/ai/conversations/${id}`, {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  deleteConversation: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/ai/conversations/${id}`, {
+      method: 'DELETE',
+      ...options,
+    }),
+  shareConversation: (id: number, options: RequestOptions = {}) =>
+    request<AiConversationShareRecord>(`/ai/conversations/${id}/share`, {
+      method: 'POST',
+      ...options,
+    }),
+  conversationShare: (token: string, options: RequestOptions = {}) =>
+    request<AiConversationShareDetailRecord>(`/ai/shares/${token}`, {
+      method: 'GET',
+      ...options,
+    }),
+  exportConversation: (id: number, params: { format?: 'markdown' | 'text' } = {}, options: RequestOptions = {}) =>
+    request<AiConversationExportRecord>(`/ai/conversations/${id}/export`, {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  conversations: (params: AiPageQuery & { employeeId: number }, options: RequestOptions = {}) =>
+    request<PagedResult<AiConversationRecord>>('/ai/conversations', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  conversationMessages: (id: number, options: RequestOptions = {}) =>
+    request<AiConversationMessageRecord[]>(`/ai/conversations/${id}/messages`, {
       method: 'GET',
       ...options,
     }),

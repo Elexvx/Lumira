@@ -47,8 +47,8 @@ interface LoginFormFieldsProps {
 
 const MODE_META: Record<LoginMode, { label: string; subtitle: string }> = {
   password: {
-    label: formatMessage({ id: 'page.login.passwordAccount', defaultMessage: 'Account and password' }),
-    subtitle: formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' }),
+    label: formatMessage({ id: 'page.login.passwordAccount', defaultMessage: '密码登录' }),
+    subtitle: formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: '密码登录' }),
   },
   sms: {
     label: formatMessage({ id: 'page.login.smsCode', defaultMessage: 'SMS code' }),
@@ -115,17 +115,21 @@ export const LoginFormFields = ({
   }
 
   const renderPasswordTab = () => (
-    <>
-      <Form.Item name="passwordAccount" rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account' }) }]}>
+    <div className="saas-login-page__credentials-stack">
+      <Form.Item
+        name="passwordAccount"
+        rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account, mobile number, or email' }) }]}
+      >
         <Input
           size="large"
           prefix={<UserOutlined className="saas-login-page__field-icon" />}
           autoComplete="username"
-          placeholder={formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account' })}
+          placeholder={formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account, mobile number, or email' })}
         />
       </Form.Item>
       <Form.Item
         name="passwordPassword"
+        className="saas-login-page__password-item saas-login-page__feedback-reserved"
         rules={[
           { required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterPassword', defaultMessage: 'Please enter your password' }) },
           { min: 6, message: formatMessage({ id: 'page.login.error.passwordLength', defaultMessage: 'Password must be at least 6 characters' }) },
@@ -213,14 +217,14 @@ export const LoginFormFields = ({
           />
         </>
       ) : null}
-    </>
+    </div>
   );
 
   const renderCodeTab = (mode: Exclude<LoginMode, 'password'>) => {
     const accountValue = mode === 'sms' ? smsAccount : emailAccount;
     const challenge = pendingChallenge;
     return (
-      <>
+      <div className="saas-login-page__credentials-stack">
         <Form.Item
           name={mode === 'sms' ? 'smsAccount' : 'emailAccount'}
           rules={[
@@ -239,7 +243,7 @@ export const LoginFormFields = ({
           <Form.Item
             name={mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode'}
             rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) }]}
-            className="saas-login-page__code-input"
+            className="saas-login-page__code-input saas-login-page__feedback-reserved"
           >
             <Input
               size="large"
@@ -260,20 +264,7 @@ export const LoginFormFields = ({
               : formatMessage({ id: 'page.login.code.send', defaultMessage: 'Send code' })}
           </Button>
         </div>
-        {challenge?.promptMessage ? (
-          <Alert showIcon type="info" message={challenge.promptMessage} className="saas-login-page__code-alert" />
-        ) : null}
-        {challenge?.maskedContact ? (
-          <Typography.Text type="secondary">
-            {formatMessage({ id: 'page.login.code.to', defaultMessage: 'The verification code will be sent to {contact}' }, { contact: challenge.maskedContact })}
-          </Typography.Text>
-        ) : null}
-        {challenge?.debugCode ? (
-          <Typography.Text type="secondary" className="saas-login-page__debug-code">
-            {formatMessage({ id: 'page.login.code.debug', defaultMessage: 'Debug code: {code}' }, { code: challenge.debugCode })}
-          </Typography.Text>
-        ) : null}
-      </>
+      </div>
     );
   };
 

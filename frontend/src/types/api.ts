@@ -270,6 +270,67 @@ export interface AiEmployeeDetailRecord extends AiEmployeeRecord {
   skills?: AiEmployeeSkillRecord[];
 }
 
+export interface AiConversationRecord {
+  id: number;
+  tenantId?: number | null;
+  employeeId: number;
+  employeeName?: string | null;
+  conversationCode: string;
+  title?: string | null;
+  preview?: string | null;
+  status?: string | null;
+  isPinned?: boolean | null;
+  latestMessageAt?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface AiConversationAttachmentRecord {
+  id: number;
+  fileId: number;
+  originalFileName: string;
+  fileExtension?: string | null;
+  mimeType?: string | null;
+  fileSizeBytes?: number | null;
+  fileSizeLabel?: string | null;
+  publicUrl?: string | null;
+  previewUrl?: string | null;
+  downloadUrl?: string | null;
+  previewMode?: string | null;
+}
+
+export interface AiConversationMessageRecord {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  attachments?: AiConversationAttachmentRecord[] | null;
+  createTime?: string | null;
+}
+
+export interface AiConversationShareRecord {
+  shareToken: string;
+  conversationId: number;
+  shareTitle?: string | null;
+  expiresAt?: string | null;
+  createTime?: string | null;
+}
+
+export interface AiConversationShareDetailRecord {
+  share: AiConversationShareRecord;
+  conversation: AiConversationRecord;
+  messages: AiConversationMessageRecord[];
+}
+
+export interface AiConversationExportRecord {
+  conversationId: number;
+  title: string;
+  format: 'markdown' | 'text';
+  fileName: string;
+  mimeType: string;
+  content: string;
+}
+
 export interface AiLlmServiceRecord {
   id: number;
   tenantId?: number | null;
@@ -300,7 +361,6 @@ export interface AiChatResponseRecord {
   replyRole?: string | null;
   provider?: string | null;
   model?: string | null;
-  mock?: boolean | null;
   replyAt?: string | null;
 }
 
@@ -337,6 +397,9 @@ export interface AiChatRequestPayload {
   employeeId: number;
   conversationId?: number | null;
   message: string;
+  attachments?: Array<{
+    fileId: number;
+  }> | null;
   skillCodes?: string[];
   confirmed?: boolean | null;
 }
@@ -609,6 +672,7 @@ export interface SmtpSettings {
   startTlsEnabled: boolean;
   sslEnabled: boolean;
   configured?: boolean;
+  passwordConfigured?: boolean;
 }
 
 export interface SmtpSettingsPayload {
@@ -632,6 +696,7 @@ export interface SmsVerificationSettings {
   endpoint: string;
   region: string;
   configured?: boolean;
+  accessKeySecretConfigured?: boolean;
 }
 
 export interface SmsVerificationSettingsPayload {
@@ -805,6 +870,7 @@ export interface ProfileSummary {
   permissionCount: number;
   recentLoginLogs: AuditLogRecord[];
   profileFieldSettings: ProfileFieldSetting[];
+  profileCompletion?: ProfileCompletionSummary | null;
   mobileBindAvailable?: boolean | null;
   emailBindAvailable?: boolean | null;
   mobileBindVerificationRequired?: boolean | null;
@@ -816,6 +882,47 @@ export interface ProfileFieldSetting {
   fieldLabel: string;
   fieldDescription?: string | null;
   visible: boolean;
+  weight?: number | null;
+  groupKey?: string | null;
+  groupLabel?: string | null;
+}
+
+export interface ProfileCompletionSummary {
+  score: number;
+  maxScore: number;
+  completionRate: number;
+  totalWeight?: number | null;
+  earnedWeight?: number | null;
+  groups: ProfileCompletionGroup[];
+  incompleteItems: ProfileCompletionItem[];
+}
+
+export interface ProfileCompletionGroup {
+  groupKey: string;
+  groupLabel: string;
+  score: number;
+  maxScore: number;
+  completionRate: number;
+  totalWeight?: number | null;
+  earnedWeight?: number | null;
+  items: ProfileCompletionItem[];
+}
+
+export interface ProfileCompletionItem {
+  fieldKey: string;
+  fieldLabel: string;
+  fieldDescription?: string | null;
+  groupKey?: string | null;
+  groupLabel?: string | null;
+  completed: boolean;
+  weight?: number | null;
+  scoreContribution?: number | null;
+  valueText?: string | null;
+  actionType?: string | null;
+  actionAvailable?: boolean | null;
+  actionTarget?: string | null;
+  actionLabel?: string | null;
+  actionHint?: string | null;
 }
 
 export interface UserRecord {
@@ -876,6 +983,7 @@ export interface RoleRecord {
   roleType: string;
   permissionCount?: number;
   userCount?: number;
+  defaultRegistrationRole?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

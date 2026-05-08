@@ -9,6 +9,7 @@ import com.legendary.invention.saas.infrastructure.security.SecurityContextFacad
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.api.file.FileObjectDTO;
 import jakarta.validation.Valid;
@@ -126,6 +127,19 @@ public class SystemController {
     public ApiResponse<SystemVO.RoleDetailVO> role(@PathVariable("id") Long id) {
         require("system:role:view");
         return ApiResponse.success(systemManagementAppService.getRole(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/roles/default-registration-role")
+    public ApiResponse<SystemVO.DefaultRegistrationRoleVO> defaultRegistrationRole() {
+        require("system:role:view");
+        return ApiResponse.success(systemManagementAppService.getDefaultRegistrationRole(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/roles/default-registration-role")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.DefaultRegistrationRoleVO> updateDefaultRegistrationRole(@Valid @RequestBody SystemDTO.DefaultRegistrationRoleRequest request) {
+        require("system:role:update");
+        return ApiResponse.success(systemManagementAppService.updateDefaultRegistrationRole(securityContextFacade.getCurrentUser(), request.getRoleId()), TraceContext.getRequestId());
     }
 
     @PostMapping("/roles")
@@ -284,14 +298,14 @@ public class SystemController {
     }
 
     @GetMapping("/profile-field-settings")
-    public ApiResponse<List<SystemVO.ProfileFieldSettingVO>> profileFieldSettings() {
+    public ApiResponse<List<ProfileFieldSettingVO>> profileFieldSettings() {
         require("system:config:view");
         return ApiResponse.success(systemManagementAppService.getProfileFieldSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
     }
 
     @PutMapping("/profile-field-settings")
     @RepeatSubmit
-    public ApiResponse<List<SystemVO.ProfileFieldSettingVO>> updateProfileFieldSettings(
+    public ApiResponse<List<ProfileFieldSettingVO>> updateProfileFieldSettings(
             @Valid @RequestBody SystemDTO.ProfileFieldSettingsRequest request
     ) {
         require("system:config:update");

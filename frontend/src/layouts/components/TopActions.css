@@ -1,19 +1,57 @@
 .saas-user-menu__header-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   padding-block: 2px 4px;
+  color: var(--ant-color-text-tertiary);
+  font-size: 14px;
+  line-height: 1.5714;
+  font-weight: 400;
 }
 
-.saas-user-menu__nickname {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.4;
+.saas-user-menu__header-item :where(*) {
+  color: var(--ant-color-text-tertiary);
+}
+
+.saas-user-menu__name {
+  color: var(--ant-color-text-tertiary);
+  font-size: 14px;
+  line-height: 1.5714;
+  font-weight: 400;
 }
 
 .saas-user-menu__role {
   color: var(--ant-color-text-tertiary);
   font-size: 12px;
+  line-height: 1.4;
+}
+
+.saas-role-simulation-tag {
+  margin-inline: 2px 6px;
+  font-weight: 600;
+}
+
+.saas-role-menu__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+
+.saas-role-menu__item-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saas-role-menu__item-title {
+  color: var(--ant-color-text);
+  font-size: 14px;
+  line-height: 1.5714;
+  font-weight: 500;
+}
+
+.saas-role-menu__item-meta {
+  color: var(--ant-color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .saas-user-menu-trigger {

@@ -248,6 +248,8 @@ public final class AiDTO {
         private Long conversationId;
         @NotBlank
         private String message;
+        @Valid
+        private List<ChatAttachmentItem> attachments;
         private List<String> skillCodes;
         private Boolean confirmed;
 
@@ -275,6 +277,14 @@ public final class AiDTO {
             this.message = message;
         }
 
+        public List<ChatAttachmentItem> getAttachments() {
+            return attachments;
+        }
+
+        public void setAttachments(List<ChatAttachmentItem> attachments) {
+            this.attachments = attachments;
+        }
+
         public List<String> getSkillCodes() {
             return skillCodes;
         }
@@ -289,6 +299,53 @@ public final class AiDTO {
 
         public void setConfirmed(Boolean confirmed) {
             this.confirmed = confirmed;
+        }
+    }
+
+    public static class ChatAttachmentItem {
+        @NotNull
+        private Long fileId;
+
+        public Long getFileId() {
+            return fileId;
+        }
+
+        public void setFileId(Long fileId) {
+            this.fileId = fileId;
+        }
+    }
+
+    public static class ConversationUpdateRequest {
+        private String title;
+        private Boolean pinned;
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public Boolean getPinned() {
+            return pinned;
+        }
+
+        public void setPinned(Boolean pinned) {
+            this.pinned = pinned;
+        }
+    }
+
+    public static class ConversationExportRequest {
+        @NotBlank
+        private String format;
+
+        public String getFormat() {
+            return format;
+        }
+
+        public void setFormat(String format) {
+            this.format = format;
         }
     }
 }

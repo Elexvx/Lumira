@@ -29,6 +29,7 @@ export interface ProfileFieldSettingsPayload {
   items: Array<{
     fieldKey: string;
     visible: boolean;
+    weight?: number;
   }>;
 }
 export interface OnlineSessionListQuery extends Record<string, unknown> {

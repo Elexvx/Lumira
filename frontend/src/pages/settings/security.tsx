@@ -184,7 +184,10 @@ const SecuritySettingsPage = () => {
                       />
                     </Form.Item>
                     {captchaType === 'SLIDER' ? (
-                      <Card size="small" title={formatMessage({ id: 'page.security.sliderPreview', defaultMessage: 'Slider captcha preview' })}>
+                      <Card
+                        size="small"
+                        title={formatMessage({ id: 'page.security.sliderPreview', defaultMessage: 'Background image and puzzle preview' })}
+                      >
                         <SliderCaptchaBox
                           onVerified={() => {
                             message.success(formatMessage({ id: 'page.security.sliderPreviewSuccess', defaultMessage: 'Slider captcha preview verified' }));

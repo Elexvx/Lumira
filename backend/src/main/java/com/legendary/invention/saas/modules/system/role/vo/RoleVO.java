@@ -11,6 +11,7 @@ public class RoleVO {
     private String roleType;
     private Integer permissionCount;
     private Integer userCount;
+    private Boolean defaultRegistrationRole;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -28,6 +29,8 @@ public class RoleVO {
     public void setPermissionCount(Integer permissionCount) { this.permissionCount = permissionCount; }
     public Integer getUserCount() { return userCount; }
     public void setUserCount(Integer userCount) { this.userCount = userCount; }
+    public Boolean getDefaultRegistrationRole() { return defaultRegistrationRole; }
+    public void setDefaultRegistrationRole(Boolean defaultRegistrationRole) { this.defaultRegistrationRole = defaultRegistrationRole; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

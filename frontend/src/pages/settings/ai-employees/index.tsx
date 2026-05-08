@@ -199,7 +199,7 @@ const AiEmployeesPage = () => {
   const [employeePromptTemplate, setEmployeePromptTemplate] = useState('');
   const [llmServiceOptions, setLlmServiceOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [employeeSkillModes, setEmployeeSkillModes] = useState<Record<string, AiSkillPermissionMode>>({});
-  const [selectedLlmService, setSelectedLlmService] = useState<AiLlmServiceRecord | null>(null);
+  const [, setSelectedLlmService] = useState<AiLlmServiceRecord | null>(null);
   const [employeeSaving, setEmployeeSaving] = useState(false);
   const [llmSaving, setLlmSaving] = useState(false);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
@@ -720,9 +720,8 @@ const AiEmployeesPage = () => {
                         <Space wrap>
                           {AVATAR_OPTIONS.map((option) => (
                             <Radio key={option.key} value={option.key}>
-                              <Space direction="vertical" align="center" size={4}>
+                              <Space direction="vertical" align="center" size={0}>
                                 <Avatar style={{ backgroundColor: option.color }} icon={option.icon} />
-                                <Typography.Text style={{ fontSize: 12 }}>{option.label}</Typography.Text>
                               </Space>
                             </Radio>
                           ))}
@@ -769,9 +768,6 @@ const AiEmployeesPage = () => {
                     <Form.Item name="systemPrompt" label="systemPrompt">
                       <Input.TextArea rows={12} placeholder="请输入系统提示词" />
                     </Form.Item>
-                    <Typography.Text type="secondary">
-                      这里保存的是后端下发的默认模板或你修改后的提示词，前端不会写死模板内容。
-                    </Typography.Text>
                   </Space>
                 ),
               },
@@ -827,16 +823,6 @@ const AiEmployeesPage = () => {
       >
         <Form layout="vertical" form={llmForm}>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            {selectedLlmService?.apiKeyConfigured ? (
-              <Alert
-                type="info"
-                showIcon
-                message="API Key 已配置"
-                description={`后端不会回显明文密钥，当前状态：${selectedLlmService.apiKeyMasked || '******'}。留空表示保持原值。`}
-              />
-            ) : (
-              <Alert type="info" showIcon message="API Key 只允许写入，不会回显明文。" />
-            )}
             <Row gutter={16}>
               <Col xs={24} md={12}>
                 <Form.Item label="LLM 类型" name="provider" rules={[{ required: true, message: '请选择 LLM 类型' }]}>
@@ -864,7 +850,7 @@ const AiEmployeesPage = () => {
             <Form.Item label="Base URL" name="baseUrl">
               <Input placeholder="例如：https://api.example.com/v1" />
             </Form.Item>
-            <Form.Item label="API Key" name="apiKey" extra="留空表示保持原值，后端加密存储，不会回显明文。">
+            <Form.Item label="API Key" name="apiKey">
               <Input.Password placeholder="请输入 API Key" autoComplete="off" />
             </Form.Item>
             <Row gutter={16}>

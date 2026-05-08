@@ -27,6 +27,14 @@ public final class SystemDTO {
     public static class RolePermissionRequest extends com.legendary.invention.saas.modules.system.role.dto.RolePermissionRequest {
     }
 
+    public static class DefaultRegistrationRoleRequest {
+        @NotNull
+        private Long roleId;
+
+        public Long getRoleId() { return roleId; }
+        public void setRoleId(Long roleId) { this.roleId = roleId; }
+    }
+
     public static class MenuUpsertRequest {
         private Long parentId;
         @NotBlank

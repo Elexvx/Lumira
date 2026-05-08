@@ -34,9 +34,18 @@ export default defineConfig({
   npmClient: 'pnpm',
   routes: backendRoutes,
   proxy: {
+    '/api/v1/message': {
+      target: 'http://localhost:8085',
+      changeOrigin: true,
+    },
     '/api': {
       target: 'http://localhost:8080',
       changeOrigin: true,
+    },
+    '/ws/message': {
+      target: 'ws://localhost:8085',
+      changeOrigin: true,
+      ws: true,
     },
     '/ws': {
       target: 'ws://localhost:8080',

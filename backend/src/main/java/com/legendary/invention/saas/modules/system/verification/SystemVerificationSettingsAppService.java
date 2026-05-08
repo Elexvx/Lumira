@@ -54,6 +54,7 @@ public class SystemVerificationSettingsAppService {
         settings.setTemplateCode(record.templateCode());
         settings.setAccessKeyId(record.accessKeyId());
         settings.setAccessKeySecret("");
+        settings.setAccessKeySecretConfigured(StringUtils.hasText(record.accessKeySecret()));
         settings.setEndpoint(record.endpoint());
         settings.setRegion(record.region());
         settings.setConfigured(record.configured());

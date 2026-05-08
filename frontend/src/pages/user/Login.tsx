@@ -303,10 +303,9 @@ const Login = () => {
         loginForm.setFieldsValue({
           [mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode']: undefined,
         } as Partial<LoginFormValues>);
-        if (challenge.promptMessage) {
-          message.success(challenge.promptMessage);
-        } else {
-          message.success(formatMessage({ id: 'page.login.success.codeSent', defaultMessage: 'Verification code sent' }));
+        message.success(formatMessage({ id: 'page.login.success.codeSent', defaultMessage: 'Verification code sent' }));
+        if (challenge.debugCode) {
+          message.info(formatMessage({ id: 'page.login.code.debug', defaultMessage: 'Debug code: {code}' }, { code: challenge.debugCode }));
         }
       } catch (error) {
         message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.codeSendFailed', defaultMessage: 'Failed to send the verification code, please try again later' }));
@@ -363,6 +362,7 @@ const Login = () => {
               }
 
               return authService.login({
+                account: values.passwordAccount,
                 username: values.passwordAccount,
                 password: await encryptLoginPassword(values.passwordPassword || '', encryptionKey),
                 captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,

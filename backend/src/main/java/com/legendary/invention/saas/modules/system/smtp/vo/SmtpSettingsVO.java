@@ -11,6 +11,7 @@ public class SmtpSettingsVO {
     private Boolean startTlsEnabled;
     private Boolean sslEnabled;
     private Boolean configured;
+    private Boolean passwordConfigured;
 
     public String getHost() { return host; }
     public void setHost(String host) { this.host = host; }
@@ -30,4 +31,6 @@ public class SmtpSettingsVO {
     public void setSslEnabled(Boolean sslEnabled) { this.sslEnabled = sslEnabled; }
     public Boolean getConfigured() { return configured; }
     public void setConfigured(Boolean configured) { this.configured = configured; }
+    public Boolean getPasswordConfigured() { return passwordConfigured; }
+    public void setPasswordConfigured(Boolean passwordConfigured) { this.passwordConfigured = passwordConfigured; }
 }

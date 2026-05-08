@@ -73,6 +73,8 @@ saas:
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     permit-paths:
       - /api/v1/auth/login
+      - /api/v1/auth/login/code/challenge
+      - /api/v1/auth/login/code/complete
       - /api/v1/auth/login-encryption-key
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
@@ -82,6 +84,7 @@ saas:
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
+      - /api/v1/localization/runtime/**
       - /api/uploads/**
       - /actuator/health
       - /api/health

@@ -1,7 +1,10 @@
 package com.legendary.invention.auth.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.Instant;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AuthSession {
     private String sessionId;
     private Long userId;

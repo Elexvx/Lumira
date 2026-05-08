@@ -40,6 +40,11 @@ const RoleManagementPage = () => {
   const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [defaultRoleModalOpen, setDefaultRoleModalOpen] = useState(false);
+  const [defaultRoleOptions, setDefaultRoleOptions] = useState<RoleRecord[]>([]);
+  const [defaultRoleId, setDefaultRoleId] = useState<number | undefined>();
+  const [defaultRoleLoading, setDefaultRoleLoading] = useState(false);
+  const [defaultRoleSaving, setDefaultRoleSaving] = useState(false);
   const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { roleType: 'CUSTOM', permissionKeys: [] },
@@ -124,6 +129,39 @@ const RoleManagementPage = () => {
     permissionEditor.setEditorLoading(false);
     editorForm.resetFields();
     editorForm.setFieldsValue({ roleType: 'CUSTOM', permissionKeys: [] });
+  };
+
+  const openDefaultRoleModal = async () => {
+    setDefaultRoleModalOpen(true);
+    setDefaultRoleLoading(true);
+    try {
+      const [defaultRole, rolePage] = await Promise.all([
+        iamService.defaultRegistrationRole({ autoRedirectOnUnauthorized: false }),
+        iamService.roles({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false }),
+      ]);
+      setDefaultRoleId(defaultRole.id);
+      setDefaultRoleOptions(rolePage.records || []);
+    } catch {
+      message.error('默认注册角色加载失败，请稍后重试');
+    } finally {
+      setDefaultRoleLoading(false);
+    }
+  };
+
+  const saveDefaultRole = async () => {
+    if (!defaultRoleId) {
+      message.warning('请选择默认注册角色');
+      return;
+    }
+    setDefaultRoleSaving(true);
+    try {
+      await iamService.updateDefaultRegistrationRole({ roleId: defaultRoleId }, { autoRedirectOnUnauthorized: false });
+      message.success('默认注册角色已更新');
+      setDefaultRoleModalOpen(false);
+      roleCrud.reloadTable();
+    } finally {
+      setDefaultRoleSaving(false);
+    }
   };
 
   const openEdit = async (record: RoleRecord) => {
@@ -229,6 +267,12 @@ const RoleManagementPage = () => {
               onClick: openCreate,
             },
             {
+              key: 'default-registration-role',
+              permission: 'system:role:update',
+              label: '默认注册角色',
+              onClick: () => void openDefaultRoleModal(),
+            },
+            {
               key: 'refresh',
               label: '刷新',
               onClick: roleCrud.reloadTable,
@@ -236,6 +280,35 @@ const RoleManagementPage = () => {
           ])
         }
       />
+
+      <Modal
+        title="默认注册角色"
+        open={defaultRoleModalOpen}
+        confirmLoading={defaultRoleSaving}
+        onOk={() => void saveDefaultRole()}
+        onCancel={() => setDefaultRoleModalOpen(false)}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Typography.Text type="secondary">
+            新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。
+          </Typography.Text>
+          <Select
+            showSearch
+            loading={defaultRoleLoading}
+            value={defaultRoleId}
+            onChange={setDefaultRoleId}
+            placeholder="请选择默认注册角色"
+            optionFilterProp="label"
+            style={{ width: '100%' }}
+            options={defaultRoleOptions.map((role) => ({
+              label: `${role.roleName}（${role.roleCode}）`,
+              value: role.id,
+            }))}
+          />
+        </Space>
+      </Modal>
 
       <ManagementDrawer
         title={roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色'}

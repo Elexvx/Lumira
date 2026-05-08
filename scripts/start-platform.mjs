@@ -17,6 +17,7 @@ const showHelp = argv.has('--help') || argv.has('-h');
 const skipInfra = argv.has('--skip-infra') || argv.has('--no-infra');
 const skipFrontend = argv.has('--skip-frontend') || argv.has('--no-frontend');
 const skipServices = argv.has('--skip-services') || argv.has('--no-services');
+const verboseLogs = argv.has('--verbose-logs') || argv.has('--verbose');
 let runtimeEnv = process.env;
 
 function log(message) {
@@ -34,6 +35,7 @@ Options:
   --skip-infra      Skip Docker Compose infrastructure startup.
   --skip-services   Skip Java backend services.
   --skip-frontend   Skip frontend dev server.
+  --verbose-logs    Show full process logs without filtering.
   -h, --help        Show this help message.
 `);
 }
@@ -64,6 +66,7 @@ function buildRuntimeEnv() {
     ...process.env,
     DB_USERNAME: process.env.DB_USERNAME ?? 'root',
     DB_PASSWORD: process.env.DB_PASSWORD ?? '123456',
+    NACOS_DISCOVERY_ENABLED: process.env.NACOS_DISCOVERY_ENABLED ?? 'true',
     JWT_SECRET: process.env.JWT_SECRET ?? 'saas_foundation_jwt_secret_for_dev_env_please_change_me_2026',
     SAAS_JOB_INTERNAL_TOKEN: process.env.SAAS_JOB_INTERNAL_TOKEN ?? 'legendary-job-token',
     XXL_JOB_ADMIN_ADDRESSES: process.env.XXL_JOB_ADMIN_ADDRESSES ?? 'http://localhost:8090/xxl-job-admin',
@@ -81,8 +84,29 @@ function attachLinePrefix(stream, prefix, isError = false) {
   const writer = isError ? error : log;
 
   interface_.on('line', (line) => {
+    if (!isError && !verboseLogs && shouldSuppressLine(line)) {
+      return;
+    }
     writer(`${prefix} ${line}`);
   });
+}
+
+function shouldSuppressLine(line) {
+  const noisyPatterns = [
+    /^\[INFO\] Scanning for projects\.\.\.$/,
+    /^\[INFO\] Building /,
+    /^\[INFO\] --- .* @ .* ---$/,
+    /^\[INFO\] Changes detected - recompiling the module!$/,
+    /^\[INFO\] Compiling \d+ source files?/,
+    /^\[INFO\] Copying \d+ resources?/,
+    /^\[INFO\] Copying \d+ resource$/,
+    /^\[INFO\] Nothing to compile - all classes are up to date\.$/,
+    /^\[INFO\] skip non existing resourceDirectory/,
+    /^Progress \(\d+\): /,
+    /^\[INFO\] Downloading from /,
+    /^\[INFO\] Downloaded from /,
+  ];
+  return noisyPatterns.some((pattern) => pattern.test(line));
 }
 
 function installSignalHandlers() {
@@ -244,6 +268,48 @@ function spawnTask(task) {
   runningChildren.add(child);
 }
 
+function formatServiceRef(service) {
+  if (service.url) {
+    return `${service.name} (${service.url})`;
+  }
+  return `${service.name} (127.0.0.1:${service.port})`;
+}
+
+async function waitForTaskReadiness(tasks) {
+  const readyChecks = tasks.filter((task) => typeof task.port === 'number');
+
+  if (readyChecks.length === 0) {
+    return;
+  }
+
+  log(`Waiting for readiness: ${readyChecks.map((task) => task.name).join(', ')}`);
+
+  await Promise.all(
+    readyChecks.map(async (task) => {
+      await waitForTcp({
+        port: task.port,
+        label: `${task.name} startup`,
+        timeoutMs: task.startupTimeoutMs ?? 300_000,
+        intervalMs: 1_000,
+      });
+    }),
+  );
+}
+
+function printReadyBanner(readyEntries, reusedEntries) {
+  if (readyEntries.length === 0 && reusedEntries.length === 0) {
+    return;
+  }
+
+  log('Platform is ready.');
+  for (const entry of readyEntries) {
+    log(`Ready: ${formatServiceRef(entry)}`);
+  }
+  for (const entry of reusedEntries) {
+    log(`Reused: ${formatServiceRef(entry)}`);
+  }
+}
+
 let isShuttingDown = false;
 let forcedExitTimer = null;
 const runningChildren = new Set();
@@ -308,10 +374,11 @@ async function main() {
       throw new Error('Docker was not found in PATH. Install Docker or rerun with --skip-infra.');
     }
 
-    const [mysqlReady, redisReady, nacosReady, xxlReady] = await Promise.all([
+    const [mysqlReady, redisReady, nacosReady, nacosGrpcReady, xxlReady] = await Promise.all([
       probeTcp({ port: 3306 }),
       probeTcp({ port: 6379 }),
       probeTcp({ port: 8848 }),
+      probeTcp({ port: 9848 }),
       probeTcp({ port: 8090 }),
     ]);
 
@@ -330,7 +397,7 @@ async function main() {
     }
 
     const needsRedis = !redisReady;
-    const needsNacos = !nacosReady;
+    const needsNacos = !(nacosReady && nacosGrpcReady);
     const redisAndNacos = [];
     if (needsRedis) {
       redisAndNacos.push('redis');
@@ -340,7 +407,7 @@ async function main() {
     if (needsNacos) {
       redisAndNacos.push('nacos');
     } else {
-      log('Reusing existing Nacos on 127.0.0.1:8848.');
+      log('Reusing existing Nacos on 127.0.0.1:8848/9848.');
     }
     if (redisAndNacos.length > 0) {
       log(`Starting ${redisAndNacos.join(', ')} from ${composeFile}...`);
@@ -353,6 +420,7 @@ async function main() {
       }
       if (needsNacos) {
         await waitForTcp({ port: 8848, label: 'nacos', timeoutMs: 180_000 });
+        await waitForTcp({ port: 9848, label: 'nacos grpc', timeoutMs: 180_000 });
       }
     }
 
@@ -370,6 +438,7 @@ async function main() {
   }
 
   const tasks = [];
+  const reusedEntries = [];
   const backendServices = [
     { name: 'system-service', port: 8080, command: 'mvn', args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
     { name: 'gateway-service', port: 8081, command: 'mvn', args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
@@ -394,6 +463,7 @@ async function main() {
       // This keeps the script safe on machines with existing local infra.
       if (service.running) {
         log(`Reusing existing ${service.name} on 127.0.0.1:${service.port}.`);
+        reusedEntries.push(service);
         continue;
       }
       tasks.push(service);
@@ -409,6 +479,7 @@ async function main() {
 
     if (frontendRunning) {
       log('Reusing existing frontend on 127.0.0.1:8000.');
+      reusedEntries.push({ name: 'frontend', port: 8000, url: 'http://localhost:8000' });
     } else {
       // Install frontend dependencies only when the frontend workspace is still cold.
       // That gives us a smoother first-run experience on a fresh clone.
@@ -417,6 +488,9 @@ async function main() {
       const packageManager = pickPackageManager();
       tasks.push({
         name: 'frontend',
+        port: 8000,
+        url: 'http://localhost:8000',
+        startupTimeoutMs: 180_000,
         command: packageManager.command,
         args: [...packageManager.args, '--dir', 'frontend', 'dev'],
       });
@@ -424,6 +498,11 @@ async function main() {
   }
 
   if (tasks.length === 0) {
+    if (reusedEntries.length > 0) {
+      printReadyBanner([], reusedEntries);
+      log('All requested parts are already running.');
+      return;
+    }
     log('Nothing to start. All requested parts were skipped.');
     return;
   }
@@ -433,6 +512,11 @@ async function main() {
   }
 
   log('All requested processes have been launched.');
+  if (!verboseLogs) {
+    log('Log filtering is enabled. Use --verbose-logs to print full build logs.');
+  }
+  await waitForTaskReadiness(tasks);
+  printReadyBanner(tasks, reusedEntries);
   log('Press Ctrl+C to stop the platform.');
 
   await new Promise(() => {});

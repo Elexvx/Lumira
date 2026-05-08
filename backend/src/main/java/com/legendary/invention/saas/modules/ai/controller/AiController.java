@@ -152,6 +152,64 @@ public class AiController {
         return ApiResponse.success(aiManagementAppService.updateEmployeeSkills(currentUser(), id, request), TraceContext.getRequestId());
     }
 
+    @GetMapping("/assistant")
+    public ApiResponse<AiVO.EmployeeVO> assistant() {
+        require("ai:chat:send");
+        return ApiResponse.success(aiManagementAppService.getAssistantEmployee(currentUser()), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/conversations")
+    public ApiResponse<PageResponse<AiVO.ConversationVO>> conversations(
+            @RequestParam(name = "employeeId") Long employeeId,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+    ) {
+        require("ai:chat:send");
+        return ApiResponse.success(aiManagementAppService.listConversations(currentUser(), employeeId, pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/conversations/{id}/messages")
+    public ApiResponse<List<AiVO.MessageVO>> conversationMessages(@PathVariable("id") Long id) {
+        require("ai:chat:send");
+        return ApiResponse.success(aiManagementAppService.listConversationMessages(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/conversations/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> updateConversation(@PathVariable("id") Long id, @RequestBody AiDTO.ConversationUpdateRequest request) {
+        require("ai:chat:send");
+        return ApiResponse.success(aiManagementAppService.updateConversation(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/conversations/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteConversation(@PathVariable("id") Long id) {
+        require("ai:chat:send");
+        return ApiResponse.success(aiManagementAppService.deleteConversation(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/conversations/{id}/share")
+    @RepeatSubmit
+    public ApiResponse<AiVO.ConversationShareVO> createConversationShare(@PathVariable("id") Long id) {
+        require("ai:chat:send");
+        return ApiResponse.success(aiManagementAppService.createConversationShare(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/conversations/{id}/export")
+    public ApiResponse<AiVO.ConversationExportVO> exportConversation(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "format", defaultValue = "markdown") String format
+    ) {
+        require("ai:view");
+        return ApiResponse.success(aiManagementAppService.exportConversation(currentUser(), id, format), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/shares/{token}")
+    public ApiResponse<AiVO.ConversationShareDetailVO> conversationShare(@PathVariable("token") String token) {
+        require("ai:view");
+        return ApiResponse.success(aiManagementAppService.getConversationShare(currentUser(), token), TraceContext.getRequestId());
+    }
+
     @PostMapping("/chat")
     @RepeatSubmit
     public ApiResponse<AiVO.ChatResponseVO> chat(@Valid @RequestBody AiDTO.ChatRequest request) {

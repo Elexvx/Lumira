@@ -75,10 +75,14 @@ export const SliderCaptchaBox = ({
       styles={{
         panel: {
           width: '100%',
+          paddingTop: 12,
         },
         jigsaw: {
           overflow: 'hidden',
           borderRadius: 8,
+          boxShadow: '0 12px 24px rgba(0, 0, 0, 0.16)',
+          border: '1px solid var(--ant-color-border-secondary)',
+          backgroundColor: 'var(--ant-color-bg-container)',
         },
         bgImg: {
           display: 'block',

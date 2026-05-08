@@ -1,21 +1,62 @@
-import { PlusOutlined, RobotOutlined, SettingOutlined } from '@ant-design/icons';
-import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { useQuery } from '@tanstack/react-query';
-import { history, useAccess } from '@umijs/max';
-import { Bubble, Conversations, Sender, Welcome } from '@ant-design/x';
-import { Avatar, Button, Space, Spin, Tag, Typography, message } from 'antd';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  FileOutlined,
+  PaperClipOutlined,
+  PlusOutlined,
+  PushpinOutlined,
+  RobotOutlined,
+  ShareAltOutlined,
+  SettingOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
+import { PageContainer } from '@ant-design/pro-components';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { history, useAccess, useParams } from '@umijs/max';
+import { Actions, Bubble, Conversations, Sender, Welcome } from '@ant-design/x';
+import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Select, Space, Spin, Tag, message } from 'antd';
+import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, DragEvent } from 'react';
 import { aiService } from '@/services/ai';
-import type { AiEmployeeRecord } from '@/types/api';
+import { fileService } from '@/services/file';
+import type {
+  AiConversationAttachmentRecord,
+  AiConversationMessageRecord,
+  AiConversationRecord,
+  AiConversationShareDetailRecord,
+  AiEmployeeRecord,
+  FileObjectRecord,
+} from '@/types/api';
+import { copyTextToClipboard } from '@/utils/clipboard';
+import { confirmAction } from '@/utils/confirm';
+import { ALLOWED_UPLOAD_EXTENSIONS, FILE_ACCEPT, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
 import './Assistant.css';
 
 type BubbleRole = 'user' | 'ai';
+
+type ComposerAttachment = {
+  id: string;
+  fileId: number;
+  originalFileName: string;
+  fileExtension?: string | null;
+  mimeType?: string | null;
+  fileSizeBytes?: number | null;
+  fileSizeLabel?: string | null;
+  publicUrl?: string | null;
+  previewUrl?: string | null;
+  downloadUrl?: string | null;
+  previewMode?: string | null;
+};
 
 type ChatBubble = {
   key: string;
   role: BubbleRole;
   content: string;
+  attachments: ComposerAttachment[];
 };
 
 type ChatSession = {
@@ -28,6 +69,31 @@ type ChatSession = {
   messages: ChatBubble[];
   conversationId?: number | null;
   updatedAt: string;
+  isDraft?: boolean;
+  isPinned?: boolean;
+  pendingAttachments: ComposerAttachment[];
+};
+
+type RouteParams = {
+  token?: string;
+};
+
+type ComposerProps = {
+  selectedEmployee?: AiEmployeeRecord | null;
+  selectedEmployeeOptions: AiEmployeeRecord[];
+  readOnly: boolean;
+  activeSession?: ChatSession | null;
+  sending: boolean;
+  attachmentUploading: boolean;
+  onEmployeeChange: (employeeId: number) => void;
+  onOpenUploadDialog: () => void;
+  onCopyShareLink: () => void;
+  onShareConversation: () => void;
+  onExportConversation: (format: 'markdown' | 'text') => void;
+  onSend: (messageText: string) => void;
+  onPasteFile: (files: FileList) => void;
+  onRemoveAttachment: (fileId: number) => void;
+  onTriggerUpload: () => void;
 };
 
 const buildBubbleKey = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -37,15 +103,15 @@ const buildSessionTitle = (message: string) => {
   if (!trimmed) {
     return '新对话';
   }
-  return trimmed.length > 18 ? `${trimmed.slice(0, 18)}...` : trimmed;
+  return trimmed.length > 24 ? `${trimmed.slice(0, 24)}...` : trimmed;
 };
 
-const buildAssistantGreeting = (employee?: AiEmployeeRecord | null) => {
+const buildAssistantGreeting = (employee?: Pick<AiEmployeeRecord, 'greeting' | 'nickname' | 'username'> | null, fallbackName?: string) => {
   if (employee?.greeting?.trim()) {
     return employee.greeting.trim();
   }
 
-  const nickname = employee?.nickname?.trim() || 'AI 助手';
+  const nickname = employee?.nickname?.trim() || employee?.username?.trim() || fallbackName || 'AI 助手';
   return `你好，我是${nickname}，有什么可以帮你？`;
 };
 
@@ -56,15 +122,89 @@ const buildInitialSession = (employee?: AiEmployeeRecord | null): ChatSession =>
     title: '新对话',
     preview: greeting,
     employeeId: employee?.id ?? null,
-    employeeName: employee?.nickname?.trim() || 'AI 助手',
+    employeeName: employee?.nickname?.trim() || employee?.username || 'AI 助手',
     employeeAvatarKey: employee?.avatarKey ?? null,
     messages: [],
+    isDraft: true,
+    isPinned: false,
+    pendingAttachments: [],
     updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
   };
 };
 
-const getConversationGroup = (updatedAt: string) => {
-  const time = dayjs(updatedAt);
+const buildSessionFromConversation = (conversation: AiConversationRecord, employee?: AiEmployeeRecord | null): ChatSession => ({
+  id: String(conversation.id),
+  title: conversation.title?.trim() || '新对话',
+  preview: conversation.preview?.trim() || conversation.title?.trim() || '新对话',
+  employeeId: conversation.employeeId,
+  employeeName: conversation.employeeName?.trim() || employee?.nickname?.trim() || employee?.username || 'AI 助手',
+  employeeAvatarKey: employee?.avatarKey ?? null,
+  messages: [],
+  conversationId: conversation.id,
+  updatedAt: conversation.latestMessageAt || conversation.updateTime || conversation.createTime || dayjs().format('YYYY-MM-DD HH:mm'),
+  isDraft: false,
+  isPinned: Boolean(conversation.isPinned),
+  pendingAttachments: [],
+});
+
+const buildSessionFromShare = (detail: AiConversationShareDetailRecord): ChatSession => ({
+  id: String(detail.conversation.id),
+  title: detail.share.shareTitle?.trim() || detail.conversation.title?.trim() || '共享会话',
+  preview: detail.conversation.preview?.trim() || detail.conversation.title?.trim() || '共享会话',
+  employeeId: detail.conversation.employeeId,
+  employeeName: detail.conversation.employeeName?.trim() || 'AI 助手',
+  employeeAvatarKey: null,
+  messages: (detail.messages || []).map(mapMessageRecord),
+  conversationId: detail.conversation.id,
+  updatedAt: detail.conversation.latestMessageAt || detail.conversation.updateTime || detail.conversation.createTime || dayjs().format('YYYY-MM-DD HH:mm'),
+  isDraft: false,
+  isPinned: Boolean(detail.conversation.isPinned),
+  pendingAttachments: [],
+});
+
+const mapAttachmentRecord = (attachment: AiConversationAttachmentRecord): ComposerAttachment => ({
+  id: `attachment_${attachment.id}`,
+  fileId: attachment.fileId,
+  originalFileName: attachment.originalFileName,
+  fileExtension: attachment.fileExtension,
+  mimeType: attachment.mimeType,
+  fileSizeBytes: attachment.fileSizeBytes,
+  fileSizeLabel: attachment.fileSizeLabel,
+  publicUrl: attachment.publicUrl,
+  previewUrl: attachment.previewUrl,
+  downloadUrl: attachment.downloadUrl,
+  previewMode: attachment.previewMode,
+});
+
+const mapFileObjectToAttachment = (file: FileObjectRecord): ComposerAttachment => ({
+  id: `file_${file.id}_${Date.now()}`,
+  fileId: file.id,
+  originalFileName: file.originalFileName,
+  fileExtension: file.fileExtension,
+  mimeType: file.mimeType,
+  fileSizeBytes: file.fileSizeBytes,
+  fileSizeLabel: file.fileSizeLabel,
+  publicUrl: file.publicUrl,
+  previewUrl: file.previewUrl,
+  downloadUrl: file.downloadUrl,
+  previewMode: file.previewMode,
+});
+
+const mapMessageRecord = (record: AiConversationMessageRecord): ChatBubble => ({
+  key: `message_${record.id}`,
+  role: record.role.trim().toUpperCase() === 'USER' ? 'user' : 'ai',
+  content: record.content,
+  attachments: (record.attachments || []).map(mapAttachmentRecord),
+});
+
+const getConversationGroup = (session: ChatSession) => {
+  if (session.isDraft) {
+    return '草稿';
+  }
+  if (session.isPinned) {
+    return '置顶';
+  }
+  const time = dayjs(session.updatedAt);
   if (time.isSame(dayjs(), 'day')) {
     return '今天';
   }
@@ -74,112 +214,587 @@ const getConversationGroup = (updatedAt: string) => {
   return '更早';
 };
 
+const sortSessions = (sessions: ChatSession[]) =>
+  [...sessions].sort((a, b) => {
+    if (a.isDraft !== b.isDraft) {
+      return a.isDraft ? -1 : 1;
+    }
+    if (a.isPinned !== b.isPinned) {
+      return a.isPinned ? -1 : 1;
+    }
+    const diff = dayjs(b.updatedAt).valueOf() - dayjs(a.updatedAt).valueOf();
+    if (diff !== 0) {
+      return diff;
+    }
+    return Number(b.conversationId || 0) - Number(a.conversationId || 0);
+  });
+
+const formatExportFileName = (title: string, format: 'markdown' | 'text') => {
+  const safeTitle = title.trim().replaceAll(/[\\/:*?"<>|]/g, '_') || 'ai-conversation';
+  return `${safeTitle}.${format === 'markdown' ? 'md' : 'txt'}`;
+};
+
+const buildExportContent = (session: ChatSession, format: 'markdown' | 'text') => {
+  const markdown = format === 'markdown';
+  const lines: string[] = [];
+  lines.push(markdown ? `# ${session.title}` : session.title);
+  lines.push('');
+  lines.push(`AI 员工: ${session.employeeName}`);
+  lines.push(`更新时间: ${session.updatedAt}`);
+  lines.push('');
+
+  session.messages.forEach((messageItem) => {
+    lines.push(markdown ? `## ${messageItem.role === 'user' ? '用户' : 'AI'}` : `${messageItem.role === 'user' ? '用户' : 'AI'}:`);
+    lines.push(messageItem.content);
+    if (messageItem.attachments.length) {
+      lines.push('');
+      lines.push('附件:');
+      messageItem.attachments.forEach((attachment) => {
+        lines.push(`- ${attachment.originalFileName}`);
+      });
+    }
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+};
+
+const downloadText = (content: string, fileName: string, mimeType: string) => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  window.URL.revokeObjectURL(url);
+};
+
+const renderAttachmentTag = (attachment: ComposerAttachment) => (
+  <Tag key={attachment.id} icon={<FileOutlined />} color="blue">
+    {attachment.originalFileName}
+    {attachment.fileSizeLabel ? ` · ${attachment.fileSizeLabel}` : ''}
+  </Tag>
+);
+
+const createActions = (
+  session: ChatSession,
+  messageItem: ChatBubble,
+  handlers: {
+    onCopy: (text: string) => void;
+    onShare: () => void;
+    onExport: (format: 'markdown' | 'text') => void;
+  },
+) => {
+  const items = [
+    {
+      key: 'copy',
+      label: '复制',
+      icon: <CopyOutlined />,
+      onItemClick: () => handlers.onCopy(messageItem.content),
+    },
+  ];
+
+  if (!session.isDraft && session.conversationId && messageItem.role === 'ai') {
+    items.push(
+      {
+        key: 'share',
+        label: '分享会话',
+        icon: <ShareAltOutlined />,
+        onItemClick: handlers.onShare,
+      },
+      {
+        key: 'export-markdown',
+        label: '导出 Markdown',
+        icon: <DownloadOutlined />,
+        onItemClick: () => handlers.onExport('markdown'),
+      },
+      {
+        key: 'export-text',
+        label: '导出文本',
+        icon: <DownloadOutlined />,
+        onItemClick: () => handlers.onExport('text'),
+      },
+    );
+  }
+
+  return <Actions items={items} variant="borderless" />;
+};
+
+const Composer = ({
+  selectedEmployee,
+  selectedEmployeeOptions,
+  readOnly,
+  activeSession,
+  sending,
+  attachmentUploading,
+  onEmployeeChange,
+  onOpenUploadDialog,
+  onCopyShareLink,
+  onShareConversation,
+  onExportConversation,
+  onSend,
+  onPasteFile,
+  onRemoveAttachment,
+  onTriggerUpload,
+}: ComposerProps) => {
+  const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    setInputValue('');
+  }, [activeSession?.id, readOnly]);
+
+  const employeeSelect = selectedEmployeeOptions.length ? (
+    <Select
+      value={selectedEmployee?.id}
+      onChange={(value) => onEmployeeChange(Number(value))}
+      options={selectedEmployeeOptions.map((employee) => ({
+        label: employee.nickname || employee.username,
+        value: employee.id,
+      }))}
+      style={{ minWidth: 240 }}
+      disabled={readOnly}
+    />
+  ) : null;
+
+  const toolbar = readOnly ? (
+    <Space wrap>
+      <Tag color="blue">只读分享</Tag>
+      {activeSession?.conversationId ? (
+        <Button icon={<DownloadOutlined />} onClick={() => onExportConversation('markdown')}>
+          导出
+        </Button>
+      ) : null}
+      <Button icon={<ShareAltOutlined />} onClick={onCopyShareLink}>
+        复制分享链接
+      </Button>
+    </Space>
+  ) : (
+    <Space wrap>
+      {employeeSelect}
+      <Button icon={<PaperClipOutlined />} onClick={onOpenUploadDialog} disabled={!selectedEmployee || !activeSession || sending || attachmentUploading}>
+        上传文件
+      </Button>
+      <Button icon={<ShareAltOutlined />} onClick={onShareConversation} disabled={!activeSession?.conversationId || sending}>
+        分享
+      </Button>
+      <Dropdown
+        menu={{
+          items: [
+            { key: 'markdown', label: '导出 Markdown', icon: <DownloadOutlined /> },
+            { key: 'text', label: '导出文本', icon: <DownloadOutlined /> },
+          ],
+          onClick: ({ key }) => onExportConversation(key === 'text' ? 'text' : 'markdown'),
+        }}
+        disabled={!activeSession}
+      >
+        <Button icon={<DownloadOutlined />} disabled={!activeSession}>
+          导出
+        </Button>
+      </Dropdown>
+      <Button icon={<UploadOutlined />} onClick={onTriggerUpload} disabled={!selectedEmployee || !activeSession || sending || attachmentUploading}>
+        附件
+      </Button>
+    </Space>
+  );
+
+  const attachmentFooter = !readOnly && activeSession?.pendingAttachments.length ? (
+    <Space wrap className="saas-ai-assistant-composer__attachments">
+      {activeSession.pendingAttachments.map((attachment) => (
+        <Tag
+          key={attachment.id}
+          closable
+          icon={<FileOutlined />}
+          onClose={(event) => {
+            event.preventDefault();
+            onRemoveAttachment(attachment.fileId);
+          }}
+        >
+          {attachment.originalFileName}
+        </Tag>
+      ))}
+      {attachmentUploading ? <Tag color="processing">附件上传中…</Tag> : null}
+    </Space>
+  ) : attachmentUploading ? (
+    <Tag color="processing">附件上传中…</Tag>
+  ) : null;
+
+  return (
+    <Sender
+      value={inputValue}
+      loading={sending}
+      readOnly={readOnly}
+      disabled={readOnly || !selectedEmployee || !activeSession}
+      onChange={(nextValue) => setInputValue(nextValue)}
+      onSubmit={(nextValue) => {
+        onSend(nextValue);
+        setInputValue('');
+      }}
+      onPasteFile={onPasteFile}
+      placeholder={readOnly ? '当前为只读分享页面' : selectedEmployee && activeSession ? '输入消息，按 Enter 发送...' : '暂无可用数字员工'}
+      header={
+        <Sender.Header open closable={false} title="会话工具" forceRender>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <div className="saas-ai-assistant-composer__toolbar">{toolbar}</div>
+            {!readOnly && attachmentFooter ? <div className="saas-ai-assistant-composer__attachments">{attachmentFooter}</div> : null}
+          </Space>
+        </Sender.Header>
+      }
+      footer={readOnly ? null : attachmentFooter}
+      suffix={null}
+    />
+  );
+};
+
 const AiAssistantPage = () => {
   const access = useAccess();
-  const [inputValue, setInputValue] = useState('');
+  const queryClient = useQueryClient();
+  const params = useParams<RouteParams>();
+  const shareToken = params.token?.trim() || '';
+  const isShareMode = Boolean(shareToken);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string>('session-default');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameTargetSessionId, setRenameTargetSessionId] = useState<string | null>(null);
 
   const employeesQuery = useQuery({
     queryKey: ['ai-assistant-employees'],
+    enabled: !isShareMode,
     queryFn: async () => aiService.employees({ pageNo: 1, pageSize: 50 }, { autoRedirectOnUnauthorized: false }),
   });
 
+  const assistantQuery = useQuery({
+    queryKey: ['ai-assistant-default'],
+    enabled: !isShareMode,
+    queryFn: async () => aiService.assistant({ autoRedirectOnUnauthorized: false }),
+    retry: false,
+  });
+
+  const shareQuery = useQuery({
+    queryKey: ['ai-assistant-share', shareToken],
+    enabled: isShareMode && Boolean(shareToken),
+    queryFn: async () => aiService.conversationShare(shareToken, { autoRedirectOnUnauthorized: false }),
+    retry: false,
+  });
+
   const employees = employeesQuery.data?.records || [];
-  const selectedEmployee = useMemo(() => {
-    if (!employees.length) {
-      return null;
-    }
-    return employees.find((item) => item.enabled) || employees[0];
-  }, [employees]);
+  const assistantEmployee = assistantQuery.data || null;
+  const shareConversation = shareQuery.data?.conversation || null;
+  const shareEmployee = shareConversation
+    ? ({
+        id: shareConversation.employeeId,
+        username: shareConversation.employeeName || 'ai-assistant',
+        nickname: shareConversation.employeeName || 'AI 助手',
+        avatarKey: null,
+        enabled: true,
+      } as AiEmployeeRecord)
+    : null;
 
   useEffect(() => {
-    if (!sessions.length) {
-      setSessions([buildInitialSession(selectedEmployee)]);
+    if (isShareMode) {
       return;
     }
 
-    setSessions((currentSessions) => {
-      if (!currentSessions.length) {
-        return [buildInitialSession(selectedEmployee)];
-      }
+    if (!employees.length) {
+      setSelectedEmployeeId(assistantEmployee?.id ?? null);
+      return;
+    }
 
-      const activeSession = currentSessions.find((session) => session.id === activeSessionId);
-      if (!activeSession) {
-        return currentSessions;
+    setSelectedEmployeeId((currentValue) => {
+      if (currentValue && employees.some((employee) => employee.id === currentValue)) {
+        return currentValue;
       }
-
-      if (activeSession.employeeId || !selectedEmployee) {
-        return currentSessions;
-      }
-
-      return currentSessions.map((session) =>
-        session.id === activeSessionId
-          ? {
-              ...session,
-              employeeId: selectedEmployee.id,
-              employeeName: selectedEmployee.nickname?.trim() || selectedEmployee.username,
-              employeeAvatarKey: selectedEmployee.avatarKey ?? null,
-            }
-          : session,
-      );
+      const defaultEmployee = employees.find((employee) => employee.enabled) || employees[0];
+      return defaultEmployee?.id ?? assistantEmployee?.id ?? null;
     });
-  }, [activeSessionId, selectedEmployee, sessions.length]);
+  }, [assistantEmployee?.id, employees, isShareMode]);
 
-  const activeSession = useMemo(() => {
-    return sessions.find((session) => session.id === activeSessionId) || sessions[0] || null;
-  }, [activeSessionId, sessions]);
+  const selectedEmployeeOptions = useMemo(() => {
+    if (employees.length) {
+      return employees;
+    }
+    return assistantEmployee ? [assistantEmployee] : [];
+  }, [assistantEmployee, employees]);
+
+  const selectedEmployee = useMemo(() => {
+    if (isShareMode) {
+      return shareEmployee;
+    }
+
+    if (!selectedEmployeeOptions.length) {
+      return null;
+    }
+
+    if (selectedEmployeeId) {
+      return selectedEmployeeOptions.find((employee) => employee.id === selectedEmployeeId) || selectedEmployeeOptions[0];
+    }
+
+    return selectedEmployeeOptions.find((employee) => employee.enabled) || selectedEmployeeOptions[0] || null;
+  }, [isShareMode, selectedEmployeeId, selectedEmployeeOptions, shareEmployee]);
+
+  const conversationsQuery = useQuery({
+    queryKey: ['ai-assistant-conversations', selectedEmployee?.id],
+    enabled: !isShareMode && Boolean(selectedEmployee?.id),
+    queryFn: async () =>
+      aiService.conversations(
+        {
+          employeeId: selectedEmployee!.id,
+          pageNo: 1,
+          pageSize: 50,
+        },
+        { autoRedirectOnUnauthorized: false },
+      ),
+  });
+
+  useEffect(() => {
+    if (isShareMode) {
+      return;
+    }
+
+    if (!selectedEmployee) {
+      setSessions([]);
+      setActiveSessionId('session-default');
+      return;
+    }
+
+    const records = conversationsQuery.data?.records || [];
+    setSessions((currentSessions) => {
+      const draftSessions = currentSessions.filter((session) => session.isDraft || !session.conversationId);
+      const persistedSessions = records.map((record) => {
+        const existingSession = currentSessions.find((session) => session.conversationId === record.id || session.id === String(record.id));
+        if (!existingSession) {
+          return buildSessionFromConversation(record, selectedEmployee);
+        }
+
+        return {
+          ...existingSession,
+          id: String(record.id),
+          title: record.title?.trim() || existingSession.title,
+          preview: record.preview?.trim() || record.title?.trim() || existingSession.preview,
+          employeeId: record.employeeId,
+          employeeName: record.employeeName?.trim() || existingSession.employeeName,
+          updatedAt: record.latestMessageAt || record.updateTime || record.createTime || existingSession.updatedAt,
+          conversationId: record.id,
+          isDraft: false,
+          isPinned: Boolean(record.isPinned),
+        };
+      });
+
+      const mergedSessions = sortSessions([...draftSessions, ...persistedSessions]);
+      return mergedSessions.length ? mergedSessions : [buildInitialSession(selectedEmployee)];
+    });
+
+    setActiveSessionId((currentActiveSessionId) => {
+      if (!records.length) {
+        return currentActiveSessionId;
+      }
+
+      if (currentActiveSessionId.startsWith('session_') && currentActiveSessionId !== 'session-default') {
+        return currentActiveSessionId;
+      }
+
+      if (currentActiveSessionId !== 'session-default' && records.some((record) => String(record.id) === currentActiveSessionId)) {
+        return currentActiveSessionId;
+      }
+
+      return records[0] ? String(records[0].id) : 'session-default';
+    });
+  }, [conversationsQuery.data, isShareMode, selectedEmployee]);
+
+  useEffect(() => {
+    if (!isShareMode || !shareQuery.data) {
+      return;
+    }
+
+    const session = buildSessionFromShare(shareQuery.data);
+    setSessions([session]);
+    setActiveSessionId(session.id);
+  }, [isShareMode, shareQuery.data]);
+
+  const activeSession = useMemo(() => sessions.find((session) => session.id === activeSessionId) || sessions[0] || null, [activeSessionId, sessions]);
 
   const updateSession = (sessionId: string, updater: (session: ChatSession) => ChatSession) => {
-    setSessions((currentSessions) => currentSessions.map((session) => (session.id === sessionId ? updater(session) : session)));
+    setSessions((currentSessions) => sortSessions(currentSessions.map((session) => (session.id === sessionId ? updater(session) : session))));
   };
 
-  const createSession = () => {
-    const nextSession = buildInitialSession(selectedEmployee);
-    nextSession.id = buildBubbleKey('session');
-    nextSession.title = '新对话';
-    nextSession.preview = buildAssistantGreeting(selectedEmployee);
-    nextSession.messages = [];
-    nextSession.updatedAt = dayjs().format('YYYY-MM-DD HH:mm');
-    setSessions((currentSessions) => [nextSession, ...currentSessions.filter((session) => session.id !== nextSession.id)]);
-    setActiveSessionId(nextSession.id);
-    setInputValue('');
+  useEffect(() => {
+    if (isShareMode || !activeSession?.conversationId || activeSession.messages.length > 0) {
+      return;
+    }
+
+    let alive = true;
+
+    const loadMessages = async () => {
+      try {
+        const records = await aiService.conversationMessages(activeSession.conversationId!, {
+          autoRedirectOnUnauthorized: false,
+        });
+        if (!alive) {
+          return;
+        }
+
+        updateSession(activeSession.id, (session) => ({
+          ...session,
+          messages: records.map(mapMessageRecord),
+        }));
+      } catch (error) {
+        if (alive) {
+          message.error(error instanceof Error && error.message ? error.message : '加载对话记录失败');
+        }
+      }
+    };
+
+    void loadMessages();
+
+    return () => {
+      alive = false;
+    };
+  }, [activeSession?.conversationId, activeSession?.id, activeSession?.messages.length, isShareMode]);
+
+  const currentExportSession = useMemo(() => {
+    if (activeSession) {
+      return activeSession;
+    }
+    return sessions[0] || null;
+  }, [activeSession, sessions]);
+
+  const openRenameModal = (session: ChatSession) => {
+    setRenameTargetSessionId(session.id);
+    setRenameValue(session.title);
+    setRenameModalOpen(true);
   };
 
-  const handleSessionSelect = (sessionId: string) => {
-    setActiveSessionId(sessionId);
-    setInputValue('');
+  const closeRenameModal = () => {
+    setRenameTargetSessionId(null);
+    setRenameModalOpen(false);
+    setRenameValue('');
+  };
+
+  const applyRename = async () => {
+    if (!renameTargetSessionId) {
+      return;
+    }
+
+    const nextTitle = renameValue.trim();
+    if (!nextTitle) {
+      message.warning('请输入会话名称');
+      return;
+    }
+
+    const session = sessions.find((item) => item.id === renameTargetSessionId);
+    if (!session) {
+      closeRenameModal();
+      return;
+    }
+
+    if (session.isDraft || !session.conversationId) {
+      updateSession(session.id, (current) => ({
+        ...current,
+        title: nextTitle,
+      }));
+      closeRenameModal();
+      return;
+    }
+
+    try {
+      await aiService.updateConversation(session.conversationId, { title: nextTitle }, { autoRedirectOnUnauthorized: false });
+      updateSession(session.id, (current) => ({
+        ...current,
+        title: nextTitle,
+      }));
+      void queryClient.invalidateQueries({ queryKey: ['ai-assistant-conversations', selectedEmployee?.id] });
+      closeRenameModal();
+      message.success('会话名称已更新');
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '重命名失败');
+    }
+  };
+
+  const uploadAttachments = async (files: File[]) => {
+    if (isShareMode || !selectedEmployee || !activeSession) {
+      return;
+    }
+
+    const allowedFiles = files.filter((file) => {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+      return ALLOWED_UPLOAD_EXTENSIONS.includes(fileExtension);
+    });
+
+    if (!allowedFiles.length) {
+      message.error(`仅支持 ${ALLOWED_UPLOAD_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
+      return;
+    }
+
+    const remainingSlots = MAX_UPLOAD_FILE_COUNT - activeSession.pendingAttachments.length;
+    if (remainingSlots <= 0) {
+      message.warning(`一次最多选择 ${MAX_UPLOAD_FILE_COUNT} 个附件`);
+      return;
+    }
+
+    const nextFiles = allowedFiles.slice(0, remainingSlots);
+    setAttachmentUploading(true);
+    try {
+      const uploadedAttachments: ComposerAttachment[] = [];
+      for (const file of nextFiles) {
+        const record = await fileService.upload(
+          file,
+          {
+            category: 'AI 会话附件',
+            tags: 'ai,conversation',
+            remark: activeSession.title,
+          },
+          { autoRedirectOnUnauthorized: false },
+        );
+        uploadedAttachments.push(mapFileObjectToAttachment(record));
+      }
+
+      updateSession(activeSession.id, (session) => ({
+        ...session,
+        pendingAttachments: [...session.pendingAttachments, ...uploadedAttachments],
+      }));
+      message.success(`已添加 ${uploadedAttachments.length} 个附件`);
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '附件上传失败');
+    } finally {
+      setAttachmentUploading(false);
+    }
   };
 
   const handleSend = async (messageText: string) => {
     const trimmed = messageText.trim();
-    if (!trimmed || !selectedEmployee || !activeSession) {
+    if (!trimmed || !selectedEmployee || !activeSession || isShareMode) {
       return;
     }
 
+    const draftAttachments = activeSession.pendingAttachments;
     const userBubble: ChatBubble = {
       key: buildBubbleKey('user'),
       role: 'user',
       content: trimmed,
+      attachments: draftAttachments,
     };
 
     const assistantPlaceholder: ChatBubble = {
       key: buildBubbleKey('assistant'),
       role: 'ai',
       content: '正在思考中...',
+      attachments: [],
     };
 
     setSending(true);
-    setInputValue('');
     updateSession(activeSession.id, (session) => ({
       ...session,
       employeeId: selectedEmployee.id,
       employeeName: selectedEmployee.nickname?.trim() || selectedEmployee.username,
       employeeAvatarKey: selectedEmployee.avatarKey ?? null,
-      title: session.messages.length ? session.title : buildSessionTitle(trimmed),
+      title: session.conversationId ? session.title : buildSessionTitle(trimmed),
       preview: trimmed,
       messages: [...session.messages, userBubble, assistantPlaceholder],
+      pendingAttachments: [],
       updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
     }));
 
@@ -189,30 +804,56 @@ const AiAssistantPage = () => {
           employeeId: selectedEmployee.id,
           conversationId: activeSession.conversationId ?? null,
           message: trimmed,
+          attachments: draftAttachments.map((attachment) => ({ fileId: attachment.fileId })),
         },
         { autoRedirectOnUnauthorized: false, silent: true },
       );
 
-      updateSession(activeSession.id, (session) => ({
-        ...session,
-        conversationId: response.conversationId ?? session.conversationId,
-        title: session.title === '新对话' ? buildSessionTitle(trimmed) : session.title,
-        preview: response.replyText || trimmed,
-        messages: [
-          ...session.messages.filter((item) => item.key !== assistantPlaceholder.key),
-          {
-            key: buildBubbleKey('assistant'),
-            role: 'ai',
-            content: response.replyText || '我已经收到你的消息。',
-          },
-        ],
-        updatedAt: dayjs(response.replyAt || undefined).isValid()
-          ? dayjs(response.replyAt).format('YYYY-MM-DD HH:mm')
-          : dayjs().format('YYYY-MM-DD HH:mm'),
-      }));
+      const responseConversationId = response.conversationId ?? activeSession.conversationId;
+      const responseSessionId = responseConversationId ? String(responseConversationId) : activeSession.id;
+
+      setSessions((currentSessions) =>
+        sortSessions(
+          currentSessions.map((session) => {
+            if (session.id !== activeSession.id) {
+              return session;
+            }
+
+            return {
+              ...session,
+              id: responseSessionId,
+              conversationId: responseConversationId,
+              isDraft: false,
+              title: session.conversationId ? session.title : buildSessionTitle(trimmed),
+              preview: response.replyText || trimmed,
+              messages: [
+                ...session.messages.filter((item) => item.key !== assistantPlaceholder.key),
+                {
+                  key: buildBubbleKey('assistant'),
+                  role: 'ai',
+                  content: response.replyText || '我已经收到你的消息。',
+                  attachments: [],
+                },
+              ],
+              updatedAt: dayjs(response.replyAt || undefined).isValid()
+                ? dayjs(response.replyAt).format('YYYY-MM-DD HH:mm')
+                : dayjs().format('YYYY-MM-DD HH:mm'),
+            };
+          }),
+        ),
+      );
+
+      if (responseConversationId) {
+        setActiveSessionId(responseSessionId);
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: ['ai-assistant-conversations', selectedEmployee.id],
+      });
     } catch (error) {
       updateSession(activeSession.id, (session) => ({
         ...session,
+        pendingAttachments: draftAttachments,
         messages: session.messages.filter((item) => item.key !== assistantPlaceholder.key),
       }));
       message.error(error instanceof Error && error.message ? error.message : '发送失败，请稍后重试');
@@ -221,26 +862,236 @@ const AiAssistantPage = () => {
     }
   };
 
+  const handleCreateSession = () => {
+    if (isShareMode || !selectedEmployee) {
+      return;
+    }
+
+    const nextSession = buildInitialSession(selectedEmployee);
+    nextSession.id = buildBubbleKey('session');
+    nextSession.title = '新对话';
+    nextSession.preview = buildAssistantGreeting(selectedEmployee);
+    nextSession.messages = [];
+    nextSession.pendingAttachments = [];
+    nextSession.isDraft = true;
+    nextSession.updatedAt = dayjs().format('YYYY-MM-DD HH:mm');
+    setSessions((currentSessions) => sortSessions([nextSession, ...currentSessions.filter((session) => session.id !== nextSession.id)]));
+    setActiveSessionId(nextSession.id);
+  };
+
+  const handleSessionSelect = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+  };
+
+  const handleRemoveDraftAttachment = (sessionId: string, fileId: number) => {
+    updateSession(sessionId, (session) => ({
+      ...session,
+      pendingAttachments: session.pendingAttachments.filter((attachment) => attachment.fileId !== fileId),
+    }));
+  };
+
+  const handleCopyMessage = async (content: string) => {
+    try {
+      await copyTextToClipboard(content);
+      message.success('已复制');
+    } catch {
+      message.error('复制失败');
+    }
+  };
+
+  const handleShareConversation = async (session?: ChatSession | null) => {
+    const targetSession = session || currentExportSession;
+    if (!targetSession?.conversationId) {
+      message.warning('请先发送至少一条消息后再分享');
+      return;
+    }
+
+    try {
+      const share = await aiService.shareConversation(targetSession.conversationId, { autoRedirectOnUnauthorized: false });
+      const shareUrl = new URL(`/ai/share/${share.shareToken}`, window.location.origin).toString();
+      await copyTextToClipboard(shareUrl);
+      message.success('分享链接已复制');
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '创建分享链接失败');
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    try {
+      const shareUrl = isShareMode && typeof window !== 'undefined' ? window.location.href : null;
+      if (shareUrl) {
+        await copyTextToClipboard(shareUrl);
+        message.success('分享链接已复制');
+        return;
+      }
+      await handleShareConversation(currentExportSession);
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '复制分享链接失败');
+    }
+  };
+
+  const handleExportConversation = async (format: 'markdown' | 'text', session?: ChatSession | null) => {
+    const targetSession = session || currentExportSession;
+    if (!targetSession) {
+      message.warning('暂无可导出的会话');
+      return;
+    }
+
+    try {
+      if (targetSession.conversationId) {
+        const exportResult = await aiService.exportConversation(targetSession.conversationId, { format }, { autoRedirectOnUnauthorized: false });
+        downloadText(exportResult.content, exportResult.fileName, exportResult.mimeType);
+        return;
+      }
+
+      const content = buildExportContent(targetSession, format);
+      const fileName = formatExportFileName(targetSession.title, format);
+      downloadText(content, fileName, format === 'markdown' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8');
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '导出失败');
+    }
+  };
+
+  const handleDeleteConversation = (session: ChatSession) => {
+    confirmAction({
+      title: '删除会话',
+      content: `确认删除会话「${session.title}」吗？删除后消息、附件和分享记录都会清理。`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        if (session.isDraft || !session.conversationId) {
+          setSessions((currentSessions) => currentSessions.filter((item) => item.id !== session.id));
+          setActiveSessionId((current) => {
+            if (current !== session.id) {
+              return current;
+            }
+            const remaining = sessions.filter((item) => item.id !== session.id);
+            return remaining[0] ? remaining[0].id : 'session-default';
+          });
+          return;
+        }
+
+        await aiService.deleteConversation(session.conversationId, { autoRedirectOnUnauthorized: false });
+        setSessions((currentSessions) => currentSessions.filter((item) => item.id !== session.id));
+        setActiveSessionId((current) => {
+          if (current !== session.id) {
+            return current;
+          }
+          const remaining = sessions.filter((item) => item.id !== session.id);
+          return remaining[0] ? remaining[0].id : 'session-default';
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ['ai-assistant-conversations', selectedEmployee?.id],
+        });
+      },
+    });
+  };
+
+  const handleTogglePinConversation = async (session: ChatSession) => {
+    if (session.isDraft || !session.conversationId) {
+      updateSession(session.id, (current) => ({
+        ...current,
+        isPinned: !current.isPinned,
+      }));
+      return;
+    }
+
+    try {
+      await aiService.updateConversation(session.conversationId, { pinned: !session.isPinned }, { autoRedirectOnUnauthorized: false });
+      updateSession(session.id, (current) => ({
+        ...current,
+        isPinned: !current.isPinned,
+      }));
+      void queryClient.invalidateQueries({
+        queryKey: ['ai-assistant-conversations', selectedEmployee?.id],
+      });
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '置顶设置失败');
+    }
+  };
+
+  const buildConversationMenu = (session: ChatSession): MenuProps => {
+    const canShare = Boolean(session.conversationId);
+    return {
+      items: [
+        {
+          key: 'rename',
+          label: '重命名',
+          icon: <EditOutlined />,
+        },
+        {
+          key: 'pin',
+          label: session.isPinned ? '取消置顶' : '置顶',
+          icon: <PushpinOutlined />,
+        },
+        ...(canShare
+          ? [
+              {
+                key: 'share',
+                label: '复制分享链接',
+                icon: <ShareAltOutlined />,
+              },
+              {
+                key: 'export-markdown',
+                label: '导出 Markdown',
+                icon: <DownloadOutlined />,
+              },
+              {
+                key: 'export-text',
+                label: '导出文本',
+                icon: <DownloadOutlined />,
+              },
+            ]
+          : []),
+        { type: 'divider' as const },
+        {
+          key: 'delete',
+          label: '删除',
+          icon: <DeleteOutlined />,
+          danger: true,
+        },
+      ],
+      onClick: ({ key }) => {
+        if (key === 'rename') {
+          openRenameModal(session);
+          return;
+        }
+        if (key === 'pin') {
+          void handleTogglePinConversation(session);
+          return;
+        }
+        if (key === 'share') {
+          void handleShareConversation(session);
+          return;
+        }
+        if (key === 'export-markdown') {
+          void handleExportConversation('markdown', session);
+          return;
+        }
+        if (key === 'export-text') {
+          void handleExportConversation('text', session);
+          return;
+        }
+        if (key === 'delete') {
+          handleDeleteConversation(session);
+        }
+      },
+    };
+  };
+
   const conversationItems = useMemo(
     () =>
-      sessions.map((session) => ({
+      sortSessions(sessions).map((session) => ({
         key: session.id,
         label: (
-          <Space direction="vertical" size={2} style={{ width: '100%', minWidth: 0 }}>
-            <Typography.Text ellipsis strong>
-              {session.title}
-            </Typography.Text>
-            <Typography.Text ellipsis type="secondary" style={{ fontSize: 12 }}>
-              {session.preview}
-            </Typography.Text>
-            <Space wrap size={4}>
-              <Tag color="blue">{session.employeeName}</Tag>
-              <Tag>{session.updatedAt}</Tag>
-            </Space>
+          <Space size={6}>
+            <span>{session.title}</span>
+            {session.isPinned ? <Tag color="gold">置顶</Tag> : null}
           </Space>
         ),
         icon: <RobotOutlined />,
-        group: getConversationGroup(session.updatedAt),
+        group: getConversationGroup(session),
+        disabled: false,
       })),
     [sessions],
   );
@@ -251,11 +1102,13 @@ const AiAssistantPage = () => {
         placement: 'end' as const,
         variant: 'filled' as const,
         shape: 'round' as const,
+        footerPlacement: 'outer-end' as const,
       },
       ai: {
         placement: 'start' as const,
         variant: 'borderless' as const,
         shape: 'round' as const,
+        footerPlacement: 'outer-end' as const,
         avatar: <Avatar size={32} icon={<RobotOutlined />} />,
       },
     }),
@@ -268,17 +1121,72 @@ const AiAssistantPage = () => {
         key: item.key,
         role: item.role,
         content: item.content,
+        footer: (
+          <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
+            {item.attachments.length ? <Space wrap>{item.attachments.map(renderAttachmentTag)}</Space> : null}
+            <div className="saas-ai-assistant-bubble__actions">
+              {createActions(activeSession, item, {
+                onCopy: handleCopyMessage,
+                onShare: () => void handleShareConversation(activeSession),
+                onExport: (format) => void handleExportConversation(format, activeSession),
+              })}
+            </div>
+          </Space>
+        ),
       })) || [],
-    [activeSession?.messages],
+    [activeSession],
   );
 
-  const emptyWelcome = buildAssistantGreeting(selectedEmployee);
+  const emptyWelcome = buildAssistantGreeting(selectedEmployee, shareConversation?.employeeName || undefined);
   const canManageEmployees = Boolean((access as Record<string, unknown>).canVisitAiEmployees);
   const hasContent = Boolean(activeSession?.messages?.length);
+  const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
+
+  const triggerUploadDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFiles = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!nextFiles.length) {
+      return;
+    }
+    void uploadAttachments(nextFiles);
+  };
+
+  const handleDropFiles = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (isShareMode) {
+      return;
+    }
+    const nextFiles = Array.from(event.dataTransfer.files || []);
+    if (!nextFiles.length) {
+      return;
+    }
+    void uploadAttachments(nextFiles);
+  };
+
+  if (isShareMode && shareQuery.isError) {
+    return (
+      <PageContainer title={pageTitle} ghost>
+        <Result
+          status="404"
+          title="分享链接不可用"
+          subTitle="这条分享链接不存在、已过期，或者已被撤销。"
+          extra={
+            <Button type="primary" onClick={() => history.push('/ai')}>
+              返回 AI 助手
+            </Button>
+          }
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer
-      title="AI 助手"
+      title={pageTitle}
       ghost
       className="saas-ai-assistant-page"
       token={{
@@ -286,98 +1194,118 @@ const AiAssistantPage = () => {
         paddingBlockPageContainerContent: 20,
       }}
       extra={
-        canManageEmployees ? (
+        isShareMode ? (
+          <Button icon={<RobotOutlined />} onClick={() => history.push('/ai')}>
+            返回 AI 助手
+          </Button>
+        ) : canManageEmployees ? (
           <Button icon={<SettingOutlined />} onClick={() => history.push('/settings/ai-employees')}>
             数字员工配置
           </Button>
         ) : null
       }
     >
-      <ProCard className="saas-ai-assistant-shell" variant="outlined">
-        <div className="saas-ai-assistant-shell__sidebar">
-          <div className="saas-ai-assistant-shell__sidebar-header">
-            <Conversations
-              items={conversationItems}
-              activeKey={activeSessionId}
-              onActiveChange={(key) => handleSessionSelect(String(key))}
-              creation={{
-                label: '新建对话',
-                icon: <PlusOutlined />,
-                onClick: createSession,
-                align: 'center',
-              }}
-              groupable
-              className="saas-ai-assistant-conversations"
+      {isShareMode && shareQuery.isLoading ? (
+        <div className="saas-ai-assistant-loading">
+          <Spin size="large" />
+        </div>
+      ) : (
+        <>
+          {isShareMode ? (
+            <Alert
+              type="info"
+              showIcon
+              className="saas-ai-assistant-share-alert"
+              message="只读分享"
+              description="当前会话以分享链接方式打开，仅支持查看、复制和导出。"
             />
-          </div>
-          <div className="saas-ai-assistant-shell__sidebar-footer">
-            {employeesQuery.isLoading ? (
-              <div className="saas-ai-assistant-shell__loading">
-                <Spin />
+          ) : null}
+
+          <div className={`saas-ai-assistant-layout${isShareMode ? ' saas-ai-assistant-layout--share' : ''}`}>
+            {!isShareMode ? (
+              <aside className="saas-ai-assistant-layout__sidebar">
+                <Conversations
+                  items={conversationItems}
+                  activeKey={activeSessionId}
+                  onActiveChange={(key) => handleSessionSelect(String(key))}
+                  creation={
+                    selectedEmployee
+                      ? {
+                          label: '新建对话',
+                          icon: <PlusOutlined />,
+                          onClick: handleCreateSession,
+                          align: 'center' as const,
+                        }
+                      : undefined
+                  }
+                  menu={(conversation) => buildConversationMenu(sessions.find((session) => session.id === String(conversation.key)) || activeSession || buildInitialSession(selectedEmployee))}
+                  groupable
+                  className="saas-ai-assistant-conversations"
+                />
+              </aside>
+            ) : null}
+
+            <section className="saas-ai-assistant-layout__chat">
+              <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
+                {!hasContent ? (
+                  <Welcome
+                    icon={<RobotOutlined />}
+                    title={isShareMode ? '分享会话为空' : '你好，有什么可以帮你？'}
+                    description={isShareMode ? '这条分享会话还没有消息。' : '你可以直接输入问题，或者先创建一个新的对话继续。'}
+                    extra={<Bubble.System content={emptyWelcome} variant="borderless" />}
+                    className="saas-ai-assistant-shell__welcome"
+                  />
+                ) : (
+                  <Bubble.List items={activeMessageItems} role={bubbleRole} autoScroll className="saas-ai-assistant-bubbles" />
+                )}
               </div>
-            ) : (
-              <Space align="center" size={12} className="saas-ai-assistant-shell__employee-card">
-                <Avatar size={44} icon={<RobotOutlined />} />
-                <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
-                  <Typography.Text strong ellipsis>
-                    {selectedEmployee?.nickname?.trim() || selectedEmployee?.username || 'AI 助手'}
-                  </Typography.Text>
-                  <Space wrap size={6}>
-                    <Tag color="blue">{selectedEmployee?.defaultLlmServiceTitle || '未绑定 LLM 服务'}</Tag>
-                    <Tag color={selectedEmployee?.enabled ? 'green' : 'red'}>
-                      {selectedEmployee?.enabled ? '启用中' : '已禁用'}
-                    </Tag>
-                  </Space>
-                </Space>
-              </Space>
-            )}
-          </div>
-        </div>
 
-        <div className="saas-ai-assistant-shell__chat">
-          <div className="saas-ai-assistant-shell__chat-header">
-            <Space size={12} align="center" wrap>
-              <Avatar size={48} icon={<RobotOutlined />} />
-              <Space direction="vertical" size={0}>
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {activeSession?.employeeName || selectedEmployee?.nickname || 'AI 助手'}
-                </Typography.Title>
-                <Space wrap size={8}>
-                  <Tag color="blue">{selectedEmployee?.defaultLlmServiceTitle || '未绑定 LLM 服务'}</Tag>
-                  <Tag color={selectedEmployee?.enabled ? 'green' : 'red'}>
-                    {selectedEmployee?.enabled ? '启用中' : '已禁用'}
-                  </Tag>
-                </Space>
-              </Space>
-            </Space>
+              <div className="saas-ai-assistant-shell__composer">
+                <Composer
+                  selectedEmployee={selectedEmployee}
+                  selectedEmployeeOptions={isShareMode ? [] : selectedEmployeeOptions}
+                  readOnly={isShareMode}
+                  activeSession={activeSession}
+                  sending={sending}
+                  attachmentUploading={attachmentUploading}
+                  onEmployeeChange={(employeeId) => {
+                    setSelectedEmployeeId(employeeId);
+                    setActiveSessionId('session-default');
+                  }}
+                  onOpenUploadDialog={triggerUploadDialog}
+                  onCopyShareLink={handleCopyShareLink}
+                  onShareConversation={() => void handleShareConversation(activeSession)}
+                  onExportConversation={(format) => void handleExportConversation(format, activeSession)}
+                  onSend={(messageText) => void handleSend(messageText)}
+                  onPasteFile={(files) => void uploadAttachments(Array.from(files))}
+                  onRemoveAttachment={(fileId) => handleRemoveDraftAttachment(activeSession?.id || '', fileId)}
+                  onTriggerUpload={triggerUploadDialog}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={FILE_ACCEPT}
+                  multiple
+                  className="saas-ai-assistant-file-input"
+                  onChange={handleUploadFileInputChange}
+                />
+              </div>
+            </section>
           </div>
+        </>
+      )}
 
-          <div className="saas-ai-assistant-shell__chat-body">
-            {!hasContent ? (
-              <Welcome
-                icon={<RobotOutlined />}
-                title="你好，有什么可以帮你？"
-                description="你可以直接输入问题，或者先创建一个新的对话继续。"
-                extra={<Bubble.System content={emptyWelcome} variant="borderless" />}
-                className="saas-ai-assistant-shell__welcome"
-              />
-            ) : (
-              <Bubble.List items={activeMessageItems} role={bubbleRole} autoScroll className="saas-ai-assistant-bubbles" />
-            )}
-          </div>
-
-          <div className="saas-ai-assistant-shell__composer">
-            <Sender
-              value={inputValue}
-              loading={sending}
-              disabled={!selectedEmployee}
-              onChange={(nextValue) => setInputValue(nextValue)}
-              onSubmit={(nextValue) => void handleSend(nextValue)}
-              placeholder={selectedEmployee ? '输入消息，按 Enter 发送...' : '暂无可用数字员工'}
-            />
-          </div>
-        </div>
-      </ProCard>
+      <Modal
+        open={renameModalOpen}
+        title="重命名会话"
+        okText="保存"
+        cancelText="取消"
+        centered
+        onOk={() => void applyRename()}
+        onCancel={closeRenameModal}
+      >
+        <Input value={renameValue} onChange={(event) => setRenameValue(event.target.value)} placeholder="请输入会话名称" />
+      </Modal>
     </PageContainer>
   );
 };

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatMessage } from '@umijs/max';
 import { Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementPage } from '@/features/management';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -13,9 +13,10 @@ import { systemService } from '@/services/system';
 import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSecondFactorModal';
 import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
 import { ContactBindModal } from '@/pages/profile/center/components/ContactBindModal';
+import { ProfileCompletionCard } from '@/pages/profile/center/components/ProfileCompletionCard';
 import { ProfileBasicCard } from '@/pages/profile/center/components/ProfileBasicCard';
 import { buildVisibleProfileFields } from '@/pages/profile/center/utils';
-import type { ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
+import type { ProfileCompletionItem, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 
 const ProfileCenterPage = () => {
   const [profileForm] = Form.useForm();
@@ -75,6 +76,8 @@ const ProfileCenterPage = () => {
   const [contactBindAlert, setContactBindAlert] = useState<string | null>(null);
   const [contactBindForm] = Form.useForm<{ value?: string; verificationCode?: string }>();
   const contactBindValue = Form.useWatch('value', contactBindForm);
+  const profileBasicCardRef = useRef<HTMLDivElement | null>(null);
+  const profileCompletionSummary = summary?.profileCompletion;
 
   const contactBindFormProps = useStandardFormProps({
     form: contactBindForm,
@@ -494,40 +497,37 @@ const ProfileCenterPage = () => {
     }
   };
 
+  const handleProfileCompletionAction = (item: ProfileCompletionItem) => {
+    if (item.actionAvailable === false) {
+      return;
+    }
+
+    if (item.actionType === 'CONTACT_BIND') {
+      if (item.actionTarget === 'mobile') {
+        openContactBindModal('mobile');
+      } else if (item.actionTarget === 'email') {
+        openContactBindModal('email');
+      }
+      return;
+    }
+
+    if (item.actionTarget === 'avatarUrl') {
+      profileBasicCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    if (item.actionTarget) {
+      profileForm.scrollToField([item.actionTarget]);
+      profileBasicCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <ManagementPage className="saas-profile-page" title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         {responsive.isMobile ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <ProfileBasicCard
-              loading={profileQuery.isLoading}
-              hasVisibleProfileFields={hasVisibleProfileFields}
-              profileSaving={profileSaving}
-              profileFormProps={profileFormProps}
-              visibleProfileFields={visibleProfileFields}
-              currentUser={currentUser}
-              avatarValue={avatarValue}
-              avatarUploading={avatarUploading}
-              mobileLockedByVerification
-              emailLockedByVerification
-              onSave={() => void handleSaveProfile()}
-              onAvatarBeforeCrop={handleAvatarBeforeCrop}
-              onAvatarUploadRequest={handleAvatarUploadRequest}
-            />
-            <BoundProviderCard
-              canManageSecondFactor
-              loading={providersQuery.isLoading}
-              providers={providersQuery.data || []}
-              bindingLoading={bindingLoading}
-              bindingSubmitting={bindingSubmitting}
-              supplementalItems={supplementalItems}
-              onBind={(provider) => void openBindModal(provider)}
-              onUnbind={handleUnbind}
-            />
-          </Space>
-        ) : (
-          <Row gutter={[16, 16]} align="top">
-            <Col xs={24} xl={12}>
+            <div ref={profileBasicCardRef}>
               <ProfileBasicCard
                 loading={profileQuery.isLoading}
                 hasVisibleProfileFields={hasVisibleProfileFields}
@@ -543,6 +543,42 @@ const ProfileCenterPage = () => {
                 onAvatarBeforeCrop={handleAvatarBeforeCrop}
                 onAvatarUploadRequest={handleAvatarUploadRequest}
               />
+            </div>
+            <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+            <BoundProviderCard
+              canManageSecondFactor
+              loading={providersQuery.isLoading}
+              providers={providersQuery.data || []}
+              bindingLoading={bindingLoading}
+              bindingSubmitting={bindingSubmitting}
+              supplementalItems={supplementalItems}
+              onBind={(provider) => void openBindModal(provider)}
+              onUnbind={handleUnbind}
+            />
+          </Space>
+        ) : (
+          <Row gutter={[16, 16]} align="top">
+            <Col xs={24} xl={12}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <div ref={profileBasicCardRef}>
+                  <ProfileBasicCard
+                    loading={profileQuery.isLoading}
+                    hasVisibleProfileFields={hasVisibleProfileFields}
+                    profileSaving={profileSaving}
+                    profileFormProps={profileFormProps}
+                    visibleProfileFields={visibleProfileFields}
+                    currentUser={currentUser}
+                    avatarValue={avatarValue}
+                    avatarUploading={avatarUploading}
+                    mobileLockedByVerification
+                    emailLockedByVerification
+                    onSave={() => void handleSaveProfile()}
+                    onAvatarBeforeCrop={handleAvatarBeforeCrop}
+                    onAvatarUploadRequest={handleAvatarUploadRequest}
+                  />
+                </div>
+                <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+              </Space>
             </Col>
 
             <Col xs={24} xl={12}>

@@ -11,6 +11,7 @@ public class SmsVerificationSettingsVO {
     private String endpoint;
     private String region;
     private Boolean configured;
+    private Boolean accessKeySecretConfigured;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -30,4 +31,6 @@ public class SmsVerificationSettingsVO {
     public void setRegion(String region) { this.region = region; }
     public Boolean getConfigured() { return configured; }
     public void setConfigured(Boolean configured) { this.configured = configured; }
+    public Boolean getAccessKeySecretConfigured() { return accessKeySecretConfigured; }
+    public void setAccessKeySecretConfigured(Boolean accessKeySecretConfigured) { this.accessKeySecretConfigured = accessKeySecretConfigured; }
 }

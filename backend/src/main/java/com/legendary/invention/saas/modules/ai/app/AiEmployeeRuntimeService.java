@@ -59,9 +59,10 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 tenantId,
                 employee.getId(),
                 request.getConversationId(),
-                StringUtils.hasText(employee.getNickname()) ? employee.getNickname() : employee.getUsername()
+                buildConversationTitle(request.getMessage())
         );
-        aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
+        Long userMessageId = aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
+        aiConversationService.recordMessageAttachments(tenantId, conversationId, userMessageId, request.getAttachments());
 
         AiLlmServiceConfig config = aiLlmServiceConfigProvider.findById(tenantId, employee.getDefaultLlmServiceId())
                 .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
@@ -75,6 +76,14 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
         recordToolAuditLog(tenantId, employee.getId(), conversationId, request, response, confirmed);
         return response;
+    }
+
+    private String buildConversationTitle(String message) {
+        if (!StringUtils.hasText(message)) {
+            return "新会话";
+        }
+        String trimmed = message.trim().replaceAll("\\s+", " ");
+        return trimmed.length() > 32 ? trimmed.substring(0, 32) + "..." : trimmed;
     }
 
     private void recordToolAuditLog(Long tenantId, Long employeeId, Long conversationId, AiDTO.ChatRequest request, AiVO.ChatResponseVO response, boolean confirmed) {

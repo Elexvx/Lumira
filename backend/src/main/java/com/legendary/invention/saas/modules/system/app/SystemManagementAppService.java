@@ -16,6 +16,7 @@ import com.legendary.invention.saas.modules.system.permission.SystemPermissionTr
 import com.legendary.invention.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
@@ -96,6 +97,8 @@ public class SystemManagementAppService {
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
+    private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
+    private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final List<String> SMTP_CONFIG_KEYS = List.of(
             SMTP_HOST_KEY,
             SMTP_PORT_KEY,
@@ -107,32 +110,7 @@ public class SystemManagementAppService {
             SMTP_SSL_ENABLED_KEY
     );
 
-    private static final String PROFILE_FIELD_AVATAR_VISIBLE_KEY = "profile.field.avatar.visible";
-    private static final String PROFILE_FIELD_REAL_NAME_VISIBLE_KEY = "profile.field.real-name.visible";
-    private static final String PROFILE_FIELD_MOBILE_VISIBLE_KEY = "profile.field.mobile.visible";
-    private static final String PROFILE_FIELD_EMAIL_VISIBLE_KEY = "profile.field.email.visible";
-    private static final String PROFILE_FIELD_BIRTH_MONTH_VISIBLE_KEY = "profile.field.birth-month.visible";
-    private static final String PROFILE_FIELD_GENDER_VISIBLE_KEY = "profile.field.gender.visible";
-    private static final String PROFILE_FIELD_REGION_VISIBLE_KEY = "profile.field.region.visible";
-    private static final String PROFILE_FIELD_AVAILABLE_TIME_VISIBLE_KEY = "profile.field.available-time.visible";
-    private static final String PROFILE_FIELD_ID_CARD_VISIBLE_KEY = "profile.field.id-card-number.visible";
     private static final String DEFAULT_LOCALE = "zh-CN";
-    private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS = List.of(
-            new ProfileFieldDefinition("avatarUrl", "头像", "控制个人中心是否展示头像上传与预览区域", PROFILE_FIELD_AVATAR_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("realName", "姓名", "控制个人中心是否展示姓名字段", PROFILE_FIELD_REAL_NAME_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("mobile", "手机号", "控制个人中心是否展示手机号字段", PROFILE_FIELD_MOBILE_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("email", "邮箱", "控制个人中心是否展示邮箱字段", PROFILE_FIELD_EMAIL_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("birthMonth", "出生年月", "控制个人中心是否展示出生年月字段", PROFILE_FIELD_BIRTH_MONTH_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("gender", "性别", "控制个人中心是否展示性别字段", PROFILE_FIELD_GENDER_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_REGION_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("availableTime", "可工作时间", "控制个人中心是否展示可工作时间字段", PROFILE_FIELD_AVAILABLE_TIME_VISIBLE_KEY, true),
-            new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_ID_CARD_VISIBLE_KEY, true)
-    );
-    private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
-            .map(ProfileFieldDefinition::configKey)
-            .toList();
-
-
     private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
     private static final String WATERMARK_MODE_KEY = "watermark.mode";
     private static final String WATERMARK_TEXT_LINES_KEY = "watermark.text-lines";
@@ -258,6 +236,12 @@ public class SystemManagementAppService {
         summary.setEmailBindAvailable(emailBindAvailable);
         summary.setMobileBindVerificationRequired(mobileBindAvailable);
         summary.setEmailBindVerificationRequired(emailBindAvailable);
+        summary.setProfileCompletion(systemProfileSettingsAppService.buildProfileCompletionSummary(
+                summary.getCurrentUser(),
+                summary.getProfileFieldSettings(),
+                mobileBindAvailable,
+                emailBindAvailable
+        ));
         return summary;
     }
 
@@ -462,12 +446,12 @@ public class SystemManagementAppService {
         return true;
     }
 
-    public List<SystemVO.ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
+    public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
         return systemProfileSettingsAppService.getProfileFieldSettings(currentUser);
     }
 
     @Transactional
-    public List<SystemVO.ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
+    public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
         return systemProfileSettingsAppService.updateProfileFieldSettings(currentUser, request);
     }
 
@@ -604,9 +588,11 @@ public class SystemManagementAppService {
                        r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
                 """ + baseSql + " order by r.id desc";
         PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
+        String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode(tenantId);
         page.setRecords(page.getRecords().stream().map(role -> {
             role.setPermissionCount(countRolePermissions(role.getId(), tenantId));
             role.setUserCount(countRoleUsers(role.getId(), tenantId));
+            role.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(defaultRegistrationRoleCode));
             return role;
         }).toList());
         return page;
@@ -632,8 +618,75 @@ public class SystemManagementAppService {
         copyRole(detail, role);
         detail.setPermissionCount(countRolePermissions(roleId, tenantId));
         detail.setUserCount(countRoleUsers(roleId, tenantId));
+        detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode(tenantId)));
         detail.setPermissionKeys(listRolePermissionKeys(roleId, tenantId));
         return detail;
+    }
+
+    public SystemVO.DefaultRegistrationRoleVO getDefaultRegistrationRole(CurrentUser currentUser) {
+        Long tenantId = currentTenantId(currentUser);
+        String roleCode = resolveDefaultRegistrationRoleCode(tenantId);
+        SystemVO.RoleVO role = queryOne(
+                """
+                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                        from sys_role r
+                        where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
+                        order by r.id desc
+                        limit 1
+                        """,
+                SystemVO.RoleVO.class,
+                tenantId,
+                roleCode
+        );
+        if (role == null) {
+            role = queryOne(
+                    """
+                            select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                                   r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                            from sys_role r
+                            where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
+                            order by r.id desc
+                            limit 1
+                            """,
+                    SystemVO.RoleVO.class,
+                    tenantId,
+                    DEFAULT_REGISTRATION_ROLE_CODE
+            );
+        }
+        if (role == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
+        }
+        return toDefaultRegistrationRole(tenantId, role);
+    }
+
+    @Transactional
+    public SystemVO.DefaultRegistrationRoleVO updateDefaultRegistrationRole(CurrentUser currentUser, Long roleId) {
+        Long tenantId = currentTenantId(currentUser);
+        SystemVO.RoleVO role = queryOne(
+                """
+                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                        from sys_role r
+                        where r.id = ? and r.tenant_id = ? and r.deleted = 0
+                        """,
+                SystemVO.RoleVO.class,
+                roleId,
+                tenantId
+        );
+        if (role == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
+        }
+        upsertConfigValue(
+                tenantId,
+                DEFAULT_REGISTRATION_ROLE_CODE_KEY,
+                "默认注册角色",
+                role.getRoleCode(),
+                "用户通过注册或验证码自动注册后默认绑定的角色编码",
+                currentUser.getUserId()
+        );
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
+        return toDefaultRegistrationRole(tenantId, role);
     }
 
     @Transactional
@@ -1260,6 +1313,7 @@ public class SystemManagementAppService {
         settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
         settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
         settings.setPassword("");
+        settings.setPasswordConfigured(StringUtils.hasText(valueByKey.get(SMTP_PASSWORD_KEY)));
         settings.setFrom(defaultIfBlank(valueByKey.get(SMTP_FROM_KEY), ""));
         settings.setAuthEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_AUTH_ENABLED_KEY), "true")));
         settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));
@@ -1441,18 +1495,6 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : fallback;
     }
 
-    private List<SystemVO.ProfileFieldSettingVO> loadProfileFieldSettings(Long tenantId) {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, PROFILE_FIELD_CONFIG_KEYS);
-        return PROFILE_FIELD_DEFINITIONS.stream().map(definition -> {
-            SystemVO.ProfileFieldSettingVO item = new SystemVO.ProfileFieldSettingVO();
-            item.setFieldKey(definition.fieldKey());
-            item.setFieldLabel(definition.fieldLabel());
-            item.setFieldDescription(definition.fieldDescription());
-            item.setVisible(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.configKey()), String.valueOf(definition.defaultVisible()))));
-            return item;
-        }).toList();
-    }
-
     private String normalizeNullableText(String value) {
         String normalized = normalizeConfigText(value);
         return StringUtils.hasText(normalized) ? normalized : null;
@@ -1497,42 +1539,6 @@ public class SystemManagementAppService {
         String yearLabel = startYear < currentYear ? startYear + "-" + currentYear : String.valueOf(startYear);
         String owner = StringUtils.hasText(companyName) ? companyName : "宏翔商道";
         return "Copyright © " + yearLabel + " " + owner + " All Rights Reserved";
-    }
-
-    private static final class ProfileFieldDefinition {
-        private final String fieldKey;
-        private final String fieldLabel;
-        private final String fieldDescription;
-        private final String configKey;
-        private final boolean defaultVisible;
-
-        private ProfileFieldDefinition(String fieldKey, String fieldLabel, String fieldDescription, String configKey, boolean defaultVisible) {
-            this.fieldKey = fieldKey;
-            this.fieldLabel = fieldLabel;
-            this.fieldDescription = fieldDescription;
-            this.configKey = configKey;
-            this.defaultVisible = defaultVisible;
-        }
-
-        private String fieldKey() {
-            return fieldKey;
-        }
-
-        private String fieldLabel() {
-            return fieldLabel;
-        }
-
-        private String fieldDescription() {
-            return fieldDescription;
-        }
-
-        private String configKey() {
-            return configKey;
-        }
-
-        private boolean defaultVisible() {
-            return defaultVisible;
-        }
     }
 
     private Integer parseInteger(String value, Integer fallback) {
@@ -1871,6 +1877,21 @@ public class SystemManagementAppService {
         }
     }
 
+    private String resolveDefaultRegistrationRoleCode(Long tenantId) {
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(DEFAULT_REGISTRATION_ROLE_CODE_KEY));
+        String roleCode = values.get(DEFAULT_REGISTRATION_ROLE_CODE_KEY);
+        return StringUtils.hasText(roleCode) ? roleCode.trim() : DEFAULT_REGISTRATION_ROLE_CODE;
+    }
+
+    private SystemVO.DefaultRegistrationRoleVO toDefaultRegistrationRole(Long tenantId, SystemVO.RoleVO role) {
+        SystemVO.DefaultRegistrationRoleVO result = new SystemVO.DefaultRegistrationRoleVO();
+        copyRole(result, role);
+        result.setPermissionCount(countRolePermissions(role.getId(), tenantId));
+        result.setUserCount(countRoleUsers(role.getId(), tenantId));
+        result.setDefaultRegistrationRole(Boolean.TRUE);
+        return result;
+    }
+
     private Long upsertRole(Long roleId, Long tenantId, SystemDTO.RoleUpsertRequest request, Long operatorId) {
         if (roleId == null) {
             jdbcTemplate.update(
@@ -2193,6 +2214,7 @@ public class SystemManagementAppService {
         target.setRoleType(source.getRoleType());
         target.setPermissionCount(source.getPermissionCount());
         target.setUserCount(source.getUserCount());
+        target.setDefaultRegistrationRole(source.getDefaultRegistrationRole());
         target.setCreatedAt(source.getCreatedAt());
         target.setUpdatedAt(source.getUpdatedAt());
     }
