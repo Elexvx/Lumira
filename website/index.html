@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="一个由后台系统统一管理的公开官网前端，支持品牌展示、内容资讯和在线申请。"
+    />
+    <title>宏翔商道</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#home" aria-label="返回首页">
+        <span class="brand-mark" data-brand-mark>宏</span>
+        <span class="brand-copy">
+          <strong data-brand-name>宏翔商道</strong>
+          <small>Public Platform</small>
+        </span>
+      </a>
+      <nav class="site-nav" aria-label="官网导航">
+        <a href="#about">平台能力</a>
+        <a href="#content">内容中心</a>
+        <a href="#apply">在线申请</a>
+      </nav>
+      <a class="header-action" href="/user/login">管理后台</a>
+    </header>
+
+    <main id="home">
+      <section class="hero-section">
+        <div class="hero-content">
+          <p class="eyebrow">Managed by the existing SaaS system</p>
+          <h1>
+            <span data-hero-brand>宏翔商道</span>
+            <span>公开服务平台</span>
+          </h1>
+          <p class="hero-lead">
+            用一个清爽、可信、可配置的公开前端承接品牌展示、内容资讯、开放注册与在线申请，
+            后台负责内容管理，官网专注访问体验。
+          </p>
+          <div class="hero-actions">
+            <a class="primary-action" href="#apply">提交申请</a>
+            <a class="secondary-action" href="#content">浏览资讯</a>
+          </div>
+        </div>
+        <div class="hero-panel" aria-label="官网内容结构预览">
+          <div class="panel-head">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="panel-body">
+            <div class="metric-card metric-card-primary">
+              <strong>CMS</strong>
+              <span>页面 / 栏目 / 区块</span>
+            </div>
+            <div class="metric-grid">
+              <div>
+                <strong>Brand</strong>
+                <span>统一品牌配置</span>
+              </div>
+              <div>
+                <strong>Forms</strong>
+                <span>申请与审核</span>
+              </div>
+            </div>
+            <div class="content-list">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band" id="about">
+        <div class="section-heading">
+          <p class="eyebrow">Architecture Direction</p>
+          <h2>官网独立，后台统一管理</h2>
+          <p>
+            公开访问链路保持轻量，后台继续承担权限、配置、上传、发布审核等管理职责。
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span>01</span>
+            <h3>品牌统一</h3>
+            <p>读取现有公开品牌配置，站点名称、Logo、页脚信息与后台设置保持一致。</p>
+          </article>
+          <article class="feature-card">
+            <span>02</span>
+            <h3>区块式页面</h3>
+            <p>首页、介绍页、专题页由标准区块组合，先保持简单，后续可扩展页面搭建器。</p>
+          </article>
+          <article class="feature-card">
+            <span>03</span>
+            <h3>内容发布</h3>
+            <p>资讯、公告、期刊内容走草稿与发布版本，官网只展示已发布内容。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="split-section" id="content">
+        <div>
+          <p class="eyebrow">Content Center</p>
+          <h2>内容资讯、企业展示、专题活动可以共用一套模型</h2>
+          <p>
+            通过栏目、文章、页面区块和发布状态组合，不把官网限制成固定模板，也不会一开始就做过重的低代码系统。
+          </p>
+        </div>
+        <div class="news-stack">
+          <article>
+            <time>平台资讯</time>
+            <strong>内容中心支持栏目化管理</strong>
+            <span>文章列表、详情页、推荐位可以由后台统一配置。</span>
+          </article>
+          <article>
+            <time>企业展示</time>
+            <strong>品牌信息和页面区块分离</strong>
+            <span>运营改内容，前端保持稳定的展示质量。</span>
+          </article>
+          <article>
+            <time>期刊申请</time>
+            <strong>开放注册后支持登录提交</strong>
+            <span>表单进入审核流，后续可接审批、消息和任务中心。</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="apply-section" id="apply">
+        <div>
+          <p class="eyebrow">Submission Flow</p>
+          <h2>把访客转化为可管理的申请记录</h2>
+          <p>
+            首版官网保留清晰入口，等后端 CMS 和表单模型落地后，这里可以直接接入在线申请。
+          </p>
+        </div>
+        <form class="apply-form">
+          <label>
+            姓名
+            <input type="text" placeholder="请输入姓名" />
+          </label>
+          <label>
+            联系方式
+            <input type="text" placeholder="手机号或邮箱" />
+          </label>
+          <label>
+            申请类型
+            <select>
+              <option>期刊申请</option>
+              <option>企业合作</option>
+              <option>内容投稿</option>
+            </select>
+          </label>
+          <button type="button">提交意向</button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong data-footer-company>宏翔商道</strong>
+        <span data-footer-copy>Copyright © 2026 宏翔商道 All Rights Reserved</span>
+      </div>
+      <span data-footer-icp></span>
+    </footer>
+
+    <script src="./site.js" type="module"></script>
+  </body>
+</html>

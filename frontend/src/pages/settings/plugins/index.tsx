@@ -47,22 +47,12 @@ const PluginsPage = () => {
   const loadOverview = async () => {
     setLoading(true);
     try {
-      const [definitionList, tenantPlugins] = await Promise.all([
+      const [definitionList, tenantPlugins, versionResult] = await Promise.all([
         pluginService.definitions({ autoRedirectOnUnauthorized: false }),
         pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+        pluginService.allVersions({ autoRedirectOnUnauthorized: false }),
       ]);
-      const versionResults = await Promise.allSettled(
-        definitionList.map(async (plugin) => ({
-          pluginCode: plugin.pluginCode,
-          versions: await pluginService.versions(plugin.pluginCode, { autoRedirectOnUnauthorized: false }),
-        })),
-      );
-      const nextVersionMap: Record<string, PluginVersion[]> = {};
-      versionResults.forEach((result) => {
-        if (result.status === 'fulfilled') {
-          nextVersionMap[result.value.pluginCode] = result.value.versions;
-        }
-      });
+      const nextVersionMap: Record<string, PluginVersion[]> = { ...versionResult };
       definitionList.forEach((plugin) => {
         nextVersionMap[plugin.pluginCode] = nextVersionMap[plugin.pluginCode] || [];
       });

@@ -72,6 +72,7 @@ function buildRuntimeEnv() {
     XXL_JOB_ADMIN_ADDRESSES: process.env.XXL_JOB_ADMIN_ADDRESSES ?? 'http://localhost:8090/xxl-job-admin',
     XXL_JOB_ACCESS_TOKEN: process.env.XXL_JOB_ACCESS_TOKEN ?? 'legendary-xxl-job-token',
     XXL_JOB_ADMIN_ACCESS_TOKEN: process.env.XXL_JOB_ADMIN_ACCESS_TOKEN ?? 'legendary-xxl-job-token',
+    XXL_JOB_EXECUTOR_ADDRESS: process.env.XXL_JOB_EXECUTOR_ADDRESS ?? 'http://host.docker.internal:9998',
   };
 }
 
@@ -165,6 +166,51 @@ function probeTcp({ host = '127.0.0.1', port, timeoutMs = 1_000 }) {
       socket.destroy();
       resolve(false);
     });
+  });
+}
+
+async function probeHttpJson({ url, timeoutMs = 3_000, validate = () => true }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      return false;
+    }
+
+    const body = await response.json();
+    return validate(body);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function waitForHttpJson({ url, label, timeoutMs = 120_000, intervalMs = 2_000, validate = () => true }) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+
+    const attempt = async () => {
+      const ready = await probeHttpJson({ url, validate });
+      if (ready) {
+        log(`${label} is ready at ${url}`);
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        reject(new Error(`Timed out waiting for ${label} at ${url}`));
+        return;
+      }
+
+      setTimeout(() => {
+        void attempt();
+      }, intervalMs);
+    };
+
+    void attempt();
   });
 }
 
@@ -374,7 +420,10 @@ async function main() {
       throw new Error('Docker was not found in PATH. Install Docker or rerun with --skip-infra.');
     }
 
-    const [mysqlReady, redisReady, nacosReady, nacosGrpcReady, xxlReady] = await Promise.all([
+    const xxlJobHealthUrl = 'http://localhost:8090/xxl-job-admin/actuator/health';
+    const xxlJobHealthValidator = (body) => body?.status === 'UP';
+
+    const [mysqlReady, redisReady, nacosReady, nacosGrpcReady, xxlPortReady] = await Promise.all([
       probeTcp({ port: 3306 }),
       probeTcp({ port: 6379 }),
       probeTcp({ port: 8848 }),
@@ -424,6 +473,12 @@ async function main() {
       }
     }
 
+    const xxlReady = xxlPortReady
+      && await probeHttpJson({
+        url: xxlJobHealthUrl,
+        validate: xxlJobHealthValidator,
+      });
+
     if (!xxlReady) {
       const xxlDbHost = mysqlReady ? 'host.docker.internal' : 'mysql';
       log(`Starting xxl-job-admin from ${composeFile} using ${xxlDbHost} as the database host...`);
@@ -431,7 +486,13 @@ async function main() {
       if (xxlCompose.status !== 0) {
         throw new Error('docker compose up -d xxl-job-admin failed.');
       }
-      await waitForTcp({ port: 8090, label: 'xxl-job-admin', timeoutMs: 180_000 });
+      await waitForTcp({ port: 8090, label: 'xxl-job-admin port', timeoutMs: 180_000 });
+      await waitForHttpJson({
+        url: xxlJobHealthUrl,
+        label: 'xxl-job-admin health',
+        timeoutMs: 180_000,
+        validate: xxlJobHealthValidator,
+      });
     } else {
       log('Reusing existing XXL-Job Admin on 127.0.0.1:8090.');
     }

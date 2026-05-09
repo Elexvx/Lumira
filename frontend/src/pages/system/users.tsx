@@ -1,7 +1,7 @@
 import { ProDescriptions } from '@ant-design/pro-components';
 import dayjs from 'dayjs';
 import { Form, Spin, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
@@ -23,6 +23,7 @@ const UserManagementPage = () => {
   const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: number }[]>([]);
+  const [roleOptionsLoaded, setRoleOptionsLoaded] = useState(false);
   const protectedAdminSelected = isProtectedAdminAccount(drawer.currentRecord);
   const editorFormProps = useStandardFormProps({
     form: editorForm,
@@ -33,36 +34,38 @@ const UserManagementPage = () => {
     dataSource: selectedUserDetail || undefined,
   });
 
-  useEffect(() => {
-    let active = true;
-    void iamService.roles({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false }).then((result) => {
-      if (!active) {
-        return;
-      }
+  const ensureRoleOptionsLoaded = async () => {
+    if (roleOptionsLoaded) {
+      return;
+    }
+    const result = await iamService.roles({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false });
+    setRoleOptions(
+      (result.records || []).map((role) => ({
+        label: role.roleName,
+        value: role.id,
+      })),
+    );
+    setRoleOptionsLoaded(true);
+  };
 
-      setRoleOptions(
-        (result.records || []).map((role) => ({
-          label: role.roleName,
-          value: role.id,
-        })),
-      );
-    });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const openCreate = () => {
+  const openCreate = async () => {
     drawer.openCreate();
     editorForm.resetFields();
     editorForm.setFieldsValue({ status: 'ENABLED', roleIds: [] });
+    try {
+      await ensureRoleOptionsLoaded();
+    } catch {
+      drawer.reset();
+    }
   };
 
   const openEdit = async (record: UserRecord) => {
     drawer.openEdit(record, record.id);
     try {
-      const detailResult = await userService.detail(record.id, { autoRedirectOnUnauthorized: false });
+      const [detailResult] = await Promise.all([
+        userService.detail(record.id, { autoRedirectOnUnauthorized: false }),
+        ensureRoleOptionsLoaded(),
+      ]);
       editorForm.setFieldsValue({
         ...detailResult,
         birthMonth: detailResult.birthMonth ? dayjs(detailResult.birthMonth, 'YYYY-MM') : null,
@@ -165,7 +168,7 @@ const UserManagementPage = () => {
               permission: 'system:user:create',
               type: 'primary',
               label: '新增用户',
-              onClick: openCreate,
+              onClick: () => void openCreate(),
             },
             {
               key: 'refresh',

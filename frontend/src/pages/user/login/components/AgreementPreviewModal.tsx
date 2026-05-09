@@ -1,5 +1,3 @@
-import MarkdownPreview from '@uiw/react-markdown-preview';
-import '@uiw/react-markdown-preview/markdown.css';
 import { formatMessage } from '@umijs/max';
 import { Modal } from 'antd';
 
@@ -22,7 +20,9 @@ export const AgreementPreviewModal = ({ open, title, markdown, onClose }: Agreem
     destroyOnHidden
   >
     {markdown ? (
-      <MarkdownPreview source={markdown} />
+      <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.75 }}>
+        {markdown}
+      </div>
     ) : (
       <div style={{ color: 'var(--saas-text-secondary)' }}>
         {formatMessage({ id: 'page.login.agreement.empty', defaultMessage: 'The backend has not configured this agreement yet.' })}

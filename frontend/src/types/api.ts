@@ -125,6 +125,7 @@ export interface BrandingSettings {
   websiteName: string;
   websiteFaviconUrl?: string;
   websiteLogoUrl?: string;
+  loginBackgroundUrl?: string;
   githubLinkUrl?: string;
   helpLinkUrl?: string;
   companyName?: string;
@@ -746,6 +747,147 @@ export interface DashboardSummary {
     path: string;
     permission?: string;
   }>;
+  taskSummary?: TaskSummaryRecord;
+}
+
+export interface TaskRecord {
+  id: number;
+  taskType: string;
+  businessType: string;
+  businessId?: number | null;
+  businessTitle?: string | null;
+  title: string;
+  description?: string | null;
+  status: string;
+  sourceModule: string;
+  sourceTaskId?: number | null;
+  redirectUrl?: string | null;
+  dueTime?: string | null;
+  completedAt?: string | null;
+  createTime?: string | null;
+}
+
+export interface TaskSummaryRecord {
+  pendingCount: number;
+  approvalCount: number;
+  evaluationCount: number;
+  reviewCount: number;
+  latestPending: TaskRecord[];
+}
+
+export interface ApprovalNodeRecord {
+  id?: number;
+  nodeName: string;
+  sortOrder?: number;
+  approvalPolicy?: string;
+  approverType: 'USER' | 'ROLE' | 'DEPARTMENT';
+  approverId: number;
+}
+
+export interface ApprovalTemplateRecord {
+  id: number;
+  templateName: string;
+  businessType: string;
+  description?: string | null;
+  enabled: boolean;
+  createTime?: string | null;
+  nodes?: ApprovalNodeRecord[];
+}
+
+export interface ApprovalInstanceRecord {
+  id: number;
+  templateId: number;
+  businessType: string;
+  businessId?: number | null;
+  businessTitle: string;
+  summary?: string | null;
+  payloadJson?: string | null;
+  applicantId: number;
+  applicantName?: string | null;
+  status: string;
+  currentNodeId?: number | null;
+  createTime?: string | null;
+  tasks?: ApprovalTaskRecord[];
+  records?: ApprovalRecord[];
+}
+
+export interface ApprovalTaskRecord {
+  id: number;
+  instanceId: number;
+  nodeId: number;
+  assigneeUserId?: number | null;
+  assigneeRoleId?: number | null;
+  assigneeDeptId?: number | null;
+  status: string;
+  handledBy?: number | null;
+  handledComment?: string | null;
+  handledAt?: string | null;
+  createTime?: string | null;
+}
+
+export interface ApprovalRecord {
+  id: number;
+  instanceId: number;
+  taskId?: number | null;
+  action: string;
+  operatorId: number;
+  operatorName?: string | null;
+  comment?: string | null;
+  createTime?: string | null;
+}
+
+export interface EvaluationDimensionRecord {
+  id?: number;
+  dimensionName: string;
+  weight: number;
+  maxScore: number;
+  sortOrder?: number;
+}
+
+export interface EvaluationGradeRuleRecord {
+  id?: number;
+  gradeCode: string;
+  gradeName: string;
+  minScore: number;
+  maxScore: number;
+}
+
+export interface EvaluationTemplateRecord {
+  id: number;
+  templateName: string;
+  objectType: 'PROJECT_SCORE' | 'EMPLOYEE_RATING' | string;
+  description?: string | null;
+  enabled: boolean;
+  createTime?: string | null;
+  dimensions?: EvaluationDimensionRecord[];
+  gradeRules?: EvaluationGradeRuleRecord[];
+}
+
+export interface EvaluationInstanceRecord {
+  id: number;
+  templateId: number;
+  objectType: string;
+  objectId?: number | null;
+  objectTitle: string;
+  status: string;
+  creatorId: number;
+  reviewerUserId?: number | null;
+  finalScore?: number | null;
+  finalGrade?: string | null;
+  archiveComment?: string | null;
+  createTime?: string | null;
+  scoreTasks?: EvaluationScoreTaskRecord[];
+}
+
+export interface EvaluationScoreTaskRecord {
+  id: number;
+  instanceId: number;
+  assigneeUserId: number;
+  status: string;
+  totalScore?: number | null;
+  comment?: string | null;
+  submittedAt?: string | null;
+  createTime?: string | null;
 }
 
 export interface ServiceMonitorCpu {

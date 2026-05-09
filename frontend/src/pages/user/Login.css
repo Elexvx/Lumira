@@ -1,4 +1,6 @@
 .saas-login-page {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -6,14 +8,46 @@
   justify-content: center;
   padding: 24px;
   box-sizing: border-box;
-  overflow-x: clip;
+  overflow: hidden;
   background: var(--saas-page-bg);
   color: var(--saas-text-heading);
 }
 
+.saas-login-page::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: '';
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.22) 46%, rgba(255, 255, 255, 0.14) 100%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.2) 78%);
+}
+
+.saas-login-page::after {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  content: '';
+  background-image: var(--saas-login-background-image, url('../../assets/login-cloud-platform.png'));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .saas-login-page .ant-pro-form-login-page {
+  position: relative;
+  z-index: 0;
   width: 100%;
+  min-height: auto;
+  height: auto;
   justify-content: center;
+  background: transparent !important;
+}
+
+.saas-login-page .ant-pro-form-login-page > .ant-pro-form-login-page {
+  background: transparent !important;
 }
 
 .saas-login-page .ant-pro-form-login-page-notice {
@@ -30,18 +64,22 @@
 
 .saas-login-page .ant-pro-form-login-page-container {
   width: 100%;
-  max-width: 440px;
+  max-width: 536px;
   margin: 0 auto;
-  padding: 28px 32px 30px;
+  padding: 42px 48px 44px;
   box-sizing: border-box !important;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.74);
   background-image: none;
-  border: 0;
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 8px;
+  box-shadow: 0 18px 52px rgba(33, 70, 93, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(112%);
 }
 
 .saas-login-page .ant-pro-form-login-page-main {
   width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
   background: transparent;
 }
 
@@ -60,8 +98,8 @@
 }
 
 .saas-login-page .ant-pro-form-login-page-desc {
-  margin-block-start: 8px;
-  margin-block-end: 28px;
+  margin-block-start: 10px;
+  margin-block-end: 36px;
   color: var(--saas-text-secondary);
   font-size: 15px;
 }
@@ -70,8 +108,44 @@
   color: var(--saas-icon-color);
 }
 
+html[data-theme='dark'] .saas-login-page {
+  color: var(--ant-color-text);
+}
+
+html[data-theme='dark'] .saas-login-page::before {
+  background:
+    linear-gradient(90deg, rgba(3, 9, 13, 0.44) 0%, rgba(3, 10, 15, 0.28) 46%, rgba(3, 10, 15, 0.2) 100%),
+    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.04), rgba(0, 0, 0, 0.2) 78%);
+}
+
+html[data-theme='dark'] .saas-login-page .ant-pro-form-login-page-container {
+  background: rgba(15, 23, 30, 0.86);
+  border-color: rgba(203, 213, 225, 0.2);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme='dark'] .saas-login-page .ant-pro-form-login-page-title {
+  color: rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme='dark'] .saas-login-page .ant-pro-form-login-page-desc,
+html[data-theme='dark'] .saas-login-page__field-icon {
+  color: rgba(226, 232, 240, 0.7);
+}
+
+html[data-theme='dark'] .saas-login-page .ant-checkbox-wrapper,
+html[data-theme='dark'] .saas-login-page__actions {
+  color: rgba(248, 250, 252, 0.88);
+}
+
+@media (min-aspect-ratio: 21 / 9) {
+  .saas-login-page::after {
+    background-size: 100% auto;
+  }
+}
+
 .saas-login-page .ant-pro-form-login-page-main .ant-form-item {
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .saas-login-page .ant-pro-form-login-page-main .ant-form-item:last-child {
@@ -82,7 +156,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .saas-login-page__credentials-stack .ant-form-item {
@@ -160,14 +234,36 @@
 }
 
 .saas-login-page__agreement {
-  margin-top: 0;
+  margin-top: 24px;
 }
 
 .saas-login-page__actions {
   display: flex;
   align-items: center;
   min-height: 24px;
+  margin-top: 12px;
   color: var(--saas-text-primary);
+}
+
+.saas-login-page__tabs {
+  margin-bottom: 0;
+}
+
+.saas-login-page__tabs .ant-tabs-nav {
+  margin-bottom: 24px;
+}
+
+.saas-login-page__tabs .ant-tabs-tab {
+  padding-block: 0 12px;
+}
+
+.saas-login-page .ant-pro-form-login-page-main .ant-pro-form-login-page-main-other {
+  margin-top: 0;
+}
+
+.saas-login-page .ant-pro-form-login-page-main .ant-btn-primary {
+  height: 48px;
+  margin-top: 16px;
 }
 
 .saas-login-page .ant-checkbox-wrapper {
@@ -220,9 +316,13 @@
     padding: 16px;
   }
 
+  .saas-login-page::after {
+    background-position: 58% center;
+  }
+
   .saas-login-page .ant-pro-form-login-page-container {
-    width: calc(100vw - 64px);
-    max-width: calc(100vw - 64px);
+    width: min(100%, calc(100vw - 32px));
+    max-width: min(100%, calc(100vw - 32px));
     padding: 24px 16px 26px;
   }
 

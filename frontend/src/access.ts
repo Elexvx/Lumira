@@ -85,6 +85,9 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemPlugins: isLogin && hasPermission(permissions, 'plugin:management:view'),
     canVisitAiEmployees: isLogin && hasPermission(permissions, 'ai:view'),
     canVisitAiAssistant: isLogin && hasPermission(permissions, 'ai:chat:send'),
+    canVisitTasks: isLogin && hasPermission(permissions, 'task:view'),
+    canVisitApprovals: isLogin && hasPermission(permissions, 'approval:view'),
+    canVisitEvaluations: isLogin && hasPermission(permissions, 'evaluation:view'),
     canVisitPluginRuntime: isLogin,
   };
 }

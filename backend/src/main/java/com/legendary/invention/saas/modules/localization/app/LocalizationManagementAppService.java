@@ -194,7 +194,8 @@ public class LocalizationManagementAppService {
 
         List<LocalizationVO.EntryVO> records = jdbcTemplate.query(selectSql, new BeanPropertyRowMapper<>(LocalizationVO.EntryVO.class), pagedParams.toArray());
         Long total = jdbcTemplate.queryForObject("select count(1) " + baseSql, Long.class, params.toArray());
-        records.forEach(record -> record.setTranslations(loadTranslationMap(record.getId())));
+        Map<Long, Map<String, String>> translationsByEntry = loadTranslationMaps(records.stream().map(LocalizationVO.EntryVO::getId).toList());
+        records.forEach(record -> record.setTranslations(translationsByEntry.getOrDefault(record.getId(), Map.of())));
         PageResponse<LocalizationVO.EntryVO> response = new PageResponse<>();
         response.setRecords(records);
         response.setTotal(total == null ? 0L : total);
@@ -936,6 +937,36 @@ public class LocalizationManagementAppService {
         return translations;
     }
 
+    private Map<Long, Map<String, String>> loadTranslationMaps(List<Long> entryIds) {
+        List<Long> distinctEntryIds = entryIds.stream().filter(id -> id != null).distinct().toList();
+        if (distinctEntryIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(", ", Collections.nCopies(distinctEntryIds.size(), "?"));
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                """
+                        select entry_id as entryId, locale_code as localeCode, translated_message as translatedMessage
+                        from sys_localization_translation
+                        where entry_id in (%s) and deleted = 0
+                        order by entry_id asc, locale_code asc
+                        """.formatted(placeholders),
+                distinctEntryIds.toArray()
+        );
+        Map<Long, Map<String, String>> result = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Long entryId = longValue(row.get("entryId"));
+            if (entryId == null) {
+                continue;
+            }
+            String locale = stringValue(row.get("localeCode"));
+            String translation = stringValue(row.get("translatedMessage"));
+            if (StringUtils.hasText(locale) && StringUtils.hasText(translation)) {
+                result.computeIfAbsent(entryId, ignored -> new LinkedHashMap<>()).put(locale, translation);
+            }
+        }
+        return result;
+    }
+
     private String resolveFallbackLocale(String localeCode) {
         if (!StringUtils.hasText(localeCode)) {
             return DEFAULT_LOCALE;
@@ -1029,5 +1060,19 @@ public class LocalizationManagementAppService {
 
     private String stringValue(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private Long longValue(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException error) {
+            return null;
+        }
     }
 }

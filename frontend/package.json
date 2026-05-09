@@ -23,17 +23,14 @@
   "dependencies": {
     "@ant-design/icons": "^6.2.2",
     "@ant-design/pro-components": "^3.1.12-0",
-    "@ant-design/x": "2.7.0",
     "@tanstack/react-query": "^5.100.8",
-    "@uiw/react-md-editor": "^4.1.0",
     "@umijs/max": "^4.6.49",
     "antd": "^6.3.7",
     "antd-img-crop": "^4.30.0",
     "dayjs": "^1.11.20",
     "rc-slider-captcha": "^1.9.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "swagger-ui-react": "^5.32.5"
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

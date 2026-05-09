@@ -1,7 +1,7 @@
 import { LoginFormPage } from '@ant-design/pro-components';
 import { formatMessage, history, useLocation } from '@umijs/max';
 import { Form, message } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
@@ -81,6 +81,15 @@ const Login = () => {
   const [loginEncryptionLoading, setLoginEncryptionLoading] = useState(false);
   const location = useLocation();
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
+  const loginPageStyle = useMemo(
+    () =>
+      ({
+        '--saas-login-background-image': brandingSettings.loginBackgroundUrl
+          ? `url("${brandingSettings.loginBackgroundUrl.replace(/"/g, '\\"')}")`
+          : undefined,
+      }) as CSSProperties,
+    [brandingSettings.loginBackgroundUrl],
+  );
   const agreementSettings = normalizeAgreementSettings(initialState?.agreementSettings || DEFAULT_AGREEMENT_SETTINGS);
   const loginCapabilities = initialState?.loginCapabilities || DEFAULT_LOGIN_CAPABILITIES;
   const availableLoginModes = useMemo(() => getAvailableLoginModes(loginCapabilities), [loginCapabilities]);
@@ -502,7 +511,7 @@ const Login = () => {
     agreementPreviewKind === 'user' ? agreementSettings.userAgreementMarkdown : agreementSettings.privacyAgreementMarkdown;
 
   return (
-    <div className="saas-login-page">
+    <div className="saas-login-page" style={loginPageStyle}>
       <LoginFormPage<LoginFormValues>
         form={loginForm}
         title={brandingSettings.websiteName}
@@ -529,18 +538,15 @@ const Login = () => {
         }}
         containerStyle={{
           width: '100%',
-          maxWidth: 440,
+          maxWidth: 536,
           boxSizing: 'border-box',
-          background: 'transparent',
-          boxShadow: 'none',
-          border: 'none',
         }}
         style={{
           width: '100%',
           minHeight: '100%',
           background: 'transparent',
         }}
-        mainStyle={{ width: '100%', background: 'transparent' }}
+        mainStyle={{ width: '100%', maxWidth: 440, margin: '0 auto', background: 'transparent' }}
       >
         <LoginFormFields
           activeLoginMode={activeLoginMode}

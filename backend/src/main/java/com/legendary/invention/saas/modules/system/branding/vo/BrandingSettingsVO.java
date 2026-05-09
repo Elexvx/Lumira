@@ -5,6 +5,7 @@ public class BrandingSettingsVO {
     private String websiteName;
     private String websiteFaviconUrl;
     private String websiteLogoUrl;
+    private String loginBackgroundUrl;
     private String githubLinkUrl;
     private String helpLinkUrl;
     private String companyName;
@@ -18,6 +19,8 @@ public class BrandingSettingsVO {
     public void setWebsiteFaviconUrl(String websiteFaviconUrl) { this.websiteFaviconUrl = websiteFaviconUrl; }
     public String getWebsiteLogoUrl() { return websiteLogoUrl; }
     public void setWebsiteLogoUrl(String websiteLogoUrl) { this.websiteLogoUrl = websiteLogoUrl; }
+    public String getLoginBackgroundUrl() { return loginBackgroundUrl; }
+    public void setLoginBackgroundUrl(String loginBackgroundUrl) { this.loginBackgroundUrl = loginBackgroundUrl; }
     public String getGithubLinkUrl() { return githubLinkUrl; }
     public void setGithubLinkUrl(String githubLinkUrl) { this.githubLinkUrl = githubLinkUrl; }
     public String getHelpLinkUrl() { return helpLinkUrl; }

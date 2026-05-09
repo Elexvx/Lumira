@@ -2,8 +2,6 @@ import { history, useLocation } from '@umijs/max';
 import { Card, Form, Tabs, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
-import '@uiw/react-md-editor/markdown-editor.css';
-import '@uiw/react-markdown-preview/markdown.css';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_BRANDING_SETTINGS, applyFavicon, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
@@ -19,8 +17,8 @@ import { WatermarkTab } from '@/pages/settings/personalization/components/Waterm
 import type { AgreementSettings, BrandingSettings, WatermarkSettings } from '@/types/api';
 
 type PersonalizationTabKey = 'branding' | 'watermark' | 'agreement';
-type UploadTarget = 'favicon' | 'logo' | 'watermark';
-type BrandingClearField = 'websiteFaviconUrl' | 'websiteLogoUrl';
+type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark';
+type BrandingClearField = 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl';
 
 const MAX_IMAGE_UPLOAD_SIZE = 5 * 1024 * 1024;
 
@@ -135,6 +133,9 @@ const PersonalizationSettingsPage = () => {
         } else if (target === 'logo') {
           brandingForm.setFieldValue('websiteLogoUrl', normalizedUrl);
           setPreviewState((prev) => ({ ...prev, websiteLogoUrl: normalizedUrl }));
+        } else if (target === 'loginBackground') {
+          brandingForm.setFieldValue('loginBackgroundUrl', normalizedUrl);
+          setPreviewState((prev) => ({ ...prev, loginBackgroundUrl: normalizedUrl }));
         } else {
           watermarkForm.setFieldValue('imageUrl', normalizedUrl);
           setWatermarkPreview((prev) => ({ ...prev, imageUrl: normalizedUrl }));
