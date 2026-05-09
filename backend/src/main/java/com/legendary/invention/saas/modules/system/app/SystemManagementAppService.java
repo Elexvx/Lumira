@@ -19,6 +19,7 @@ import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
 import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
 import com.legendary.invention.saas.modules.tenant.vo.MyTenantVO;
@@ -26,6 +27,7 @@ import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -64,6 +66,7 @@ public class SystemManagementAppService {
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
     private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
+    private static final String BRANDING_LOGIN_BACKGROUND_URL_KEY = "branding.login-background-url";
     private static final String BRANDING_GITHUB_LINK_URL_KEY = "branding.github-link-url";
     private static final String BRANDING_HELP_LINK_URL_KEY = "branding.help-link-url";
     private static final String BRANDING_COMPANY_NAME_KEY = "branding.company-name";
@@ -74,6 +77,7 @@ public class SystemManagementAppService {
             BRANDING_WEBSITE_NAME_KEY,
             BRANDING_WEBSITE_FAVICON_URL_KEY,
             BRANDING_WEBSITE_LOGO_URL_KEY,
+            BRANDING_LOGIN_BACKGROUND_URL_KEY,
             BRANDING_GITHUB_LINK_URL_KEY,
             BRANDING_HELP_LINK_URL_KEY,
             BRANDING_COMPANY_NAME_KEY,
@@ -159,7 +163,47 @@ public class SystemManagementAppService {
     private final OperationAuditService operationAuditService;
     private final SecuritySettingsService securitySettingsService;
     private final PasswordPolicyService passwordPolicyService;
+    private final TaskCenterAppService taskCenterAppService;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
+
+    @Autowired
+    public SystemManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            AuthAppService authAppService,
+            TenantDomainService tenantDomainService,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            PluginManagementAppService pluginManagementAppService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            TaskCenterAppService taskCenterAppService
+    ) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.authAppService = authAppService;
+        this.tenantDomainService = tenantDomainService;
+        this.userDomainService = userDomainService;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.pluginManagementAppService = pluginManagementAppService;
+        this.onlineSessionManagementAppService = onlineSessionManagementAppService;
+        this.systemVerificationAppService = systemVerificationAppService;
+        this.systemPlatformSettingsAppService = systemPlatformSettingsAppService;
+        this.systemProfileSettingsAppService = systemProfileSettingsAppService;
+        this.passwordEncoder = passwordEncoder;
+        this.authSessionStore = authSessionStore;
+        this.loginAuditService = loginAuditService;
+        this.operationAuditService = operationAuditService;
+        this.securitySettingsService = securitySettingsService;
+        this.passwordPolicyService = passwordPolicyService;
+        this.taskCenterAppService = taskCenterAppService;
+    }
 
     public SystemManagementAppService(
             JdbcTemplate jdbcTemplate,
@@ -179,22 +223,25 @@ public class SystemManagementAppService {
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.authAppService = authAppService;
-        this.tenantDomainService = tenantDomainService;
-        this.userDomainService = userDomainService;
-        this.permissionSnapshotService = permissionSnapshotService;
-        this.pluginManagementAppService = pluginManagementAppService;
-        this.onlineSessionManagementAppService = onlineSessionManagementAppService;
-        this.systemVerificationAppService = systemVerificationAppService;
-        this.systemPlatformSettingsAppService = systemPlatformSettingsAppService;
-        this.systemProfileSettingsAppService = systemProfileSettingsAppService;
-        this.passwordEncoder = passwordEncoder;
-        this.authSessionStore = authSessionStore;
-        this.loginAuditService = loginAuditService;
-        this.operationAuditService = operationAuditService;
-        this.securitySettingsService = securitySettingsService;
-        this.passwordPolicyService = passwordPolicyService;
+        this(
+                jdbcTemplate,
+                authAppService,
+                tenantDomainService,
+                userDomainService,
+                permissionSnapshotService,
+                pluginManagementAppService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                null
+        );
     }
 
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
@@ -208,6 +255,9 @@ public class SystemManagementAppService {
         summary.setRecentLoginLogs(new ArrayList<>(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 5).getRecords()));
         summary.setRecentOperationLogs(new ArrayList<>(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords()));
         summary.setShortcuts(new ArrayList<>(DASHBOARD_SHORTCUTS));
+        if (taskCenterAppService != null) {
+            summary.setTaskSummary(taskCenterAppService.summary(currentUser));
+        }
         return summary;
     }
 
@@ -488,11 +538,7 @@ public class SystemManagementAppService {
                 order by u.id desc
                 """;
         PageResponse<SystemVO.UserVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.UserVO.class, pageNo, pageSize, params);
-        page.setRecords(page.getRecords().stream().map(user -> {
-            user.setTenantNames(listUserTenantNames(user.getId()));
-            user.setRoleNames(listUserRoleNames(user.getId(), tenantId));
-            return user;
-        }).toList());
+        decorateUsers(page.getRecords(), tenantId);
         return page;
     }
 
@@ -589,9 +635,11 @@ public class SystemManagementAppService {
                 """ + baseSql + " order by r.id desc";
         PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
         String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode(tenantId);
+        Map<Long, Integer> permissionCounts = countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId);
+        Map<Long, Integer> userCounts = countRoleUsers(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId);
         page.setRecords(page.getRecords().stream().map(role -> {
-            role.setPermissionCount(countRolePermissions(role.getId(), tenantId));
-            role.setUserCount(countRoleUsers(role.getId(), tenantId));
+            role.setPermissionCount(permissionCounts.getOrDefault(role.getId(), 0));
+            role.setUserCount(userCounts.getOrDefault(role.getId(), 0));
             role.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(defaultRegistrationRoleCode));
             return role;
         }).toList());
@@ -1285,6 +1333,7 @@ public class SystemManagementAppService {
         settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
         settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
         settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
+        settings.setLoginBackgroundUrl(defaultIfBlank(valueByKey.get(BRANDING_LOGIN_BACKGROUND_URL_KEY), ""));
         settings.setGithubLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_URL_KEY), ""));
         settings.setHelpLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_URL_KEY), ""));
         settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
@@ -1653,6 +1702,46 @@ public class SystemManagementAppService {
         );
     }
 
+    private void decorateUsers(List<SystemVO.UserVO> users, Long tenantId) {
+        List<Long> userIds = users.stream()
+                .map(SystemVO.UserVO::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, List<String>> tenantNames = listUserTenantNames(userIds);
+        Map<Long, List<String>> roleNames = listUserRoleNames(userIds, tenantId);
+        users.forEach(user -> {
+            user.setTenantNames(tenantNames.getOrDefault(user.getId(), List.of()));
+            user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
+        });
+    }
+
+    private Map<Long, List<String>> listUserTenantNames(List<Long> userIds) {
+        String placeholders = placeholders(userIds.size());
+        return jdbcTemplate.query(
+                """
+                        select ut.user_id as userId, t.tenant_name as tenantName
+                        from sys_user_tenant ut
+                        join tenant_info t on t.id = ut.tenant_id and t.deleted = 0
+                        where ut.user_id in (%s) and ut.deleted = 0
+                        order by ut.user_id asc, t.id asc
+                        """.formatted(placeholders),
+                rs -> {
+                    Map<Long, List<String>> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.computeIfAbsent(rs.getLong("userId"), ignored -> new ArrayList<>())
+                                .add(rs.getString("tenantName"));
+                    }
+                    return result;
+                },
+                userIds.toArray()
+        );
+    }
+
     private List<Long> listUserTenantIds(Long userId) {
         return jdbcTemplate.queryForList(
                 """
@@ -1695,6 +1784,35 @@ public class SystemManagementAppService {
         );
     }
 
+    private Map<Long, List<String>> listUserRoleNames(List<Long> userIds, Long tenantId) {
+        String placeholders = placeholders(userIds.size());
+        List<Object> params = new ArrayList<>();
+        params.addAll(userIds);
+        params.add(tenantId);
+        return jdbcTemplate.query(
+                """
+                        select ur.user_id as userId, r.role_name as roleName
+                        from sys_user_role ur
+                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
+                        where ur.user_id in (%s) and ur.tenant_id = ? and ur.deleted = 0
+                        order by ur.user_id asc, r.id asc
+                        """.formatted(placeholders),
+                rs -> {
+                    Map<Long, List<String>> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.computeIfAbsent(rs.getLong("userId"), ignored -> new ArrayList<>())
+                                .add(rs.getString("roleName"));
+                    }
+                    return result;
+                },
+                params.toArray()
+        );
+    }
+
+    private String placeholders(int count) {
+        return String.join(", ", java.util.Collections.nCopies(count, "?"));
+    }
+
     private Integer countRolePermissions(Long roleId, Long tenantId) {
         Long count = jdbcTemplate.queryForObject(
                 """
@@ -1721,6 +1839,60 @@ public class SystemManagementAppService {
                 tenantId
         );
         return count == null ? 0 : count.intValue();
+    }
+
+    private Map<Long, Integer> countRolePermissions(List<Long> roleIds, Long tenantId) {
+        List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
+        if (distinctRoleIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = placeholders(distinctRoleIds.size());
+        List<Object> params = new ArrayList<>();
+        params.addAll(distinctRoleIds);
+        params.add(tenantId);
+        return jdbcTemplate.query(
+                """
+                        select role_id as roleId, count(1) as total
+                        from sys_role_permission
+                        where role_id in (%s) and tenant_id = ? and deleted = 0
+                        group by role_id
+                        """.formatted(placeholders),
+                rs -> {
+                    Map<Long, Integer> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.put(rs.getLong("roleId"), rs.getInt("total"));
+                    }
+                    return result;
+                },
+                params.toArray()
+        );
+    }
+
+    private Map<Long, Integer> countRoleUsers(List<Long> roleIds, Long tenantId) {
+        List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
+        if (distinctRoleIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = placeholders(distinctRoleIds.size());
+        List<Object> params = new ArrayList<>();
+        params.addAll(distinctRoleIds);
+        params.add(tenantId);
+        return jdbcTemplate.query(
+                """
+                        select role_id as roleId, count(1) as total
+                        from sys_user_role
+                        where role_id in (%s) and tenant_id = ? and deleted = 0
+                        group by role_id
+                        """.formatted(placeholders),
+                rs -> {
+                    Map<Long, Integer> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.put(rs.getLong("roleId"), rs.getInt("total"));
+                    }
+                    return result;
+                },
+                params.toArray()
+        );
     }
 
     private List<String> listRolePermissionKeys(Long roleId, Long tenantId) {

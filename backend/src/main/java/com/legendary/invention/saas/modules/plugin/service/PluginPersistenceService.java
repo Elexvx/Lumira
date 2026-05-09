@@ -16,7 +16,9 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -141,24 +143,27 @@ public class PluginPersistenceService {
                           and deleted = 0
                         order by created_at desc
                         """,
-                (rs, rowNum) -> {
-                    PluginVO.PluginVersionVO vo = new PluginVO.PluginVersionVO();
-                    vo.setPluginCode(rs.getString("plugin_code"));
-                    vo.setVersion(rs.getString("version"));
-                    vo.setInstallStatus(rs.getString("install_status"));
-                    vo.setLoadStatus(rs.getString("load_status"));
-                    vo.setHealthStatus(rs.getString("health_status"));
-                    vo.setIsActive(rs.getInt("is_active"));
-                    vo.setRollbackable(rs.getInt("rollbackable"));
-                    vo.setMinPlatformVersion(rs.getString("min_platform_version"));
-                    vo.setFrontendManifestPath(rs.getString("frontend_manifest_path"));
-                    vo.setValidationReportJson(rs.getString("validation_report_json"));
-                    vo.setInstalledAt(toLocalDateTime(rs.getTimestamp("installed_at")));
-                    vo.setCreatedAt(toLocalDateTime(rs.getTimestamp("created_at")));
-                    return vo;
-                },
+                (rs, rowNum) -> mapVersionVO(rs),
                 pluginCode
         );
+    }
+
+    public Map<String, List<PluginVO.PluginVersionVO>> listAllVersions() {
+        List<PluginVO.PluginVersionVO> versions = jdbcTemplate.query(
+                """
+                        select plugin_code, version, install_status, load_status, health_status, is_active, rollbackable,
+                               min_platform_version, frontend_manifest_path, validation_report_json, installed_at, created_at
+                        from sys_plugin_version
+                        where deleted = 0
+                        order by plugin_code asc, created_at desc
+                        """,
+                (rs, rowNum) -> mapVersionVO(rs)
+        );
+        Map<String, List<PluginVO.PluginVersionVO>> result = new LinkedHashMap<>();
+        for (PluginVO.PluginVersionVO version : versions) {
+            result.computeIfAbsent(version.getPluginCode(), ignored -> new ArrayList<>()).add(version);
+        }
+        return result;
     }
 
     public List<PluginVO.PluginRuntimeLogVO> listRuntimeLogs(String pluginCode) {
@@ -768,6 +773,23 @@ public class PluginPersistenceService {
         entity.setStagedPath(rs.getString("staged_path"));
         entity.setInstalledAt(toLocalDateTime(rs.getTimestamp("installed_at")));
         return entity;
+    }
+
+    private PluginVO.PluginVersionVO mapVersionVO(ResultSet rs) throws SQLException {
+        PluginVO.PluginVersionVO vo = new PluginVO.PluginVersionVO();
+        vo.setPluginCode(rs.getString("plugin_code"));
+        vo.setVersion(rs.getString("version"));
+        vo.setInstallStatus(rs.getString("install_status"));
+        vo.setLoadStatus(rs.getString("load_status"));
+        vo.setHealthStatus(rs.getString("health_status"));
+        vo.setIsActive(rs.getInt("is_active"));
+        vo.setRollbackable(rs.getInt("rollbackable"));
+        vo.setMinPlatformVersion(rs.getString("min_platform_version"));
+        vo.setFrontendManifestPath(rs.getString("frontend_manifest_path"));
+        vo.setValidationReportJson(rs.getString("validation_report_json"));
+        vo.setInstalledAt(toLocalDateTime(rs.getTimestamp("installed_at")));
+        vo.setCreatedAt(toLocalDateTime(rs.getTimestamp("created_at")));
+        return vo;
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {

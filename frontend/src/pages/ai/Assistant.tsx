@@ -14,14 +14,11 @@ import {
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { history, useAccess, useModel, useParams } from '@umijs/max';
-import { Actions, Bubble, Conversations, Sender, Welcome } from '@ant-design/x';
 import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Select, Space, Spin, Tag, Tabs, message } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import MarkdownPreview from '@uiw/react-markdown-preview';
-import '@uiw/react-markdown-preview/markdown.css';
 import { aiService } from '@/services/ai';
 import { fileService } from '@/services/file';
 import type {
@@ -82,6 +79,28 @@ type RouteParams = {
   token?: string;
 };
 
+type ActionItem = {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  onItemClick?: () => void;
+};
+
+type ConversationItem = {
+  key: string;
+  label: React.ReactNode;
+  icon?: React.ReactNode;
+  group?: string;
+  disabled?: boolean;
+};
+
+type BubbleItem = {
+  key: string;
+  role: BubbleRole;
+  content: React.ReactNode;
+  footer?: React.ReactNode;
+};
+
 type ComposerProps = {
   selectedEmployee?: AiEmployeeRecord | null;
   selectedEmployeeOptions: AiEmployeeRecord[];
@@ -98,6 +117,194 @@ type ComposerProps = {
   onPasteFile: (files: FileList) => void;
   onRemoveAttachment: (fileId: number) => void;
   onTriggerUpload: () => void;
+};
+
+const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
+  <Space size={4} wrap>
+    {items.map((item) => (
+      <Button key={item.key} type="text" size="small" icon={item.icon} onClick={item.onItemClick}>
+        {item.label}
+      </Button>
+    ))}
+  </Space>
+);
+
+const BubbleSystem = ({ content }: { content: React.ReactNode; variant?: string }) => (
+  <div className="saas-ai-assistant-bubble-system">{content}</div>
+);
+
+const BubbleList = ({ items, className }: { items: BubbleItem[]; role?: unknown; autoScroll?: boolean; className?: string }) => (
+  <div className={className}>
+    {items.map((item) => (
+      <div key={item.key} className={`saas-ai-assistant-bubble saas-ai-assistant-bubble--${item.role}`}>
+        <div className="saas-ai-assistant-bubble__content">{item.content}</div>
+        {item.footer ? <div className="saas-ai-assistant-bubble__footer">{item.footer}</div> : null}
+      </div>
+    ))}
+  </div>
+);
+
+const Bubble = {
+  List: BubbleList,
+  System: BubbleSystem,
+};
+
+const Welcome = ({
+  icon,
+  title,
+  description,
+  extra,
+  className,
+}: {
+  icon?: React.ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  extra?: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={className}>
+    {icon ? <div className="saas-ai-assistant-welcome__icon">{icon}</div> : null}
+    <h2>{title}</h2>
+    {description ? <p>{description}</p> : null}
+    {extra}
+  </div>
+);
+
+const SenderHeader = ({
+  title,
+  children,
+}: {
+  open?: boolean;
+  closable?: boolean;
+  forceRender?: boolean;
+  title?: React.ReactNode;
+  children?: React.ReactNode;
+}) => (
+  <div className="saas-ai-assistant-sender-header">
+    {title ? <div className="saas-ai-assistant-sender-header__title">{title}</div> : null}
+    {children}
+  </div>
+);
+
+const SenderBase = ({
+  value,
+  loading,
+  readOnly,
+  disabled,
+  onChange,
+  onSubmit,
+  onPasteFile,
+  placeholder,
+  header,
+  footer,
+}: {
+  value: string;
+  loading?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  onPasteFile?: (files: FileList) => void;
+  placeholder?: string;
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  suffix?: React.ReactNode;
+}) => (
+  <div className="saas-ai-assistant-sender">
+    {header}
+    <Input.TextArea
+      value={value}
+      autoSize={{ minRows: 2, maxRows: 6 }}
+      readOnly={readOnly}
+      disabled={disabled}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      onPaste={(event) => {
+        const files = event.clipboardData?.files;
+        if (files?.length) {
+          onPasteFile?.(files);
+        }
+      }}
+      onPressEnter={(event) => {
+        if (!event.shiftKey) {
+          event.preventDefault();
+          if (value.trim() && !disabled && !loading) {
+            onSubmit(value);
+          }
+        }
+      }}
+    />
+    <div className="saas-ai-assistant-sender__footer">
+      <div>{footer}</div>
+      <Button type="primary" loading={loading} disabled={disabled || !value.trim()} onClick={() => onSubmit(value)}>
+        发送
+      </Button>
+    </div>
+  </div>
+);
+
+const Sender = Object.assign(SenderBase, {
+  Header: SenderHeader,
+});
+
+const Conversations = ({
+  items,
+  activeKey,
+  onActiveChange,
+  creation,
+  menu,
+  className,
+}: {
+  items: ConversationItem[];
+  activeKey?: string;
+  onActiveChange: (key: string) => void;
+  creation?: { label: string; icon?: React.ReactNode; onClick: () => void; align?: string };
+  menu?: (conversation: ConversationItem) => MenuProps;
+  groupable?: boolean;
+  className?: string;
+}) => {
+  const groupedItems = items.reduce<Record<string, ConversationItem[]>>((result, item) => {
+    const groupName = item.group || '会话';
+    result[groupName] = [...(result[groupName] || []), item];
+    return result;
+  }, {});
+
+  return (
+    <div className={className}>
+      {creation ? (
+        <Button block type="primary" icon={creation.icon} onClick={creation.onClick}>
+          {creation.label}
+        </Button>
+      ) : null}
+      <div className="saas-ai-assistant-conversations__groups">
+        {Object.entries(groupedItems).map(([groupName, groupItems]) => (
+          <div key={groupName} className="saas-ai-assistant-conversations__group">
+            <div className="saas-ai-assistant-conversations__group-title">{groupName}</div>
+            {groupItems.map((item) => {
+              const content = (
+                <Button
+                  key={item.key}
+                  block
+                  type={item.key === activeKey ? 'primary' : 'text'}
+                  icon={item.icon}
+                  disabled={item.disabled}
+                  onClick={() => onActiveChange(item.key)}
+                >
+                  {item.label}
+                </Button>
+              );
+              const menuProps = menu?.(item);
+              return menuProps ? (
+                <Dropdown key={item.key} menu={menuProps} trigger={['contextMenu']}>
+                  <div>{content}</div>
+                </Dropdown>
+              ) : content;
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 const buildBubbleKey = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -294,7 +501,7 @@ const renderMessageContent = (item: ChatBubble, visibleThinkingSteps: number, vi
 
   const content = visibleReplyText ?? item.content;
   if (item.role === 'ai') {
-    return <MarkdownPreview source={content} wrapperElement={{ 'data-color-mode': 'dark' }} className="saas-ai-assistant-markdown" />;
+    return <div className="saas-ai-assistant-markdown">{content}</div>;
   }
 
   return content;

@@ -235,6 +235,10 @@ public class PluginManagementAppService {
         return pluginPersistenceService.listVersions(pluginCode);
     }
 
+    public Map<String, List<PluginVO.PluginVersionVO>> listAllVersions() {
+        return pluginPersistenceService.listAllVersions();
+    }
+
     public String validationDetail(String pluginCode, String version) {
         return requireVersion(pluginCode, version).getValidationReportJson();
     }

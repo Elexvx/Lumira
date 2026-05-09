@@ -1,4 +1,25 @@
-import * as AntdIcons from '@ant-design/icons';
+import {
+  ApiOutlined,
+  AppstoreOutlined,
+  AuditOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  FileOutlined,
+  FileTextOutlined,
+  FolderOpenOutlined,
+  FormOutlined,
+  FundOutlined,
+  IdcardOutlined,
+  NotificationOutlined,
+  RobotOutlined,
+  SafetyOutlined,
+  SettingOutlined,
+  SkinOutlined,
+  TeamOutlined,
+  TranslationOutlined,
+  UserOutlined,
+  UserSwitchOutlined,
+} from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import { createElement, type ComponentType, type ReactNode } from 'react';
@@ -19,7 +40,28 @@ interface SettingsNavigationSourceItem {
   children?: SettingsNavigationSourceItem[];
 }
 
-const ANT_DESIGN_ICONS = AntdIcons as unknown as Record<string, AntdIconComponent>;
+const ANT_DESIGN_ICONS: Record<string, AntdIconComponent> = {
+  ApiOutlined,
+  AppstoreOutlined,
+  AuditOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  FileOutlined,
+  FileTextOutlined,
+  FolderOpenOutlined,
+  FormOutlined,
+  FundOutlined,
+  IdcardOutlined,
+  NotificationOutlined,
+  RobotOutlined,
+  SafetyOutlined,
+  SettingOutlined,
+  SkinOutlined,
+  TeamOutlined,
+  TranslationOutlined,
+  UserOutlined,
+  UserSwitchOutlined,
+};
 const OUTLINED_ICON_SUFFIX = 'Outlined';
 const SETTINGS_ROUTE_PREFIX = '/settings';
 const PROFILE_PATH = '/user-center/profile';

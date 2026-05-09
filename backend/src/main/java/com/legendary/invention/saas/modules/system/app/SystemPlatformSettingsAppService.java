@@ -32,6 +32,7 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
     private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
+    private static final String BRANDING_LOGIN_BACKGROUND_URL_KEY = "branding.login-background-url";
     private static final String BRANDING_GITHUB_LINK_URL_KEY = "branding.github-link-url";
     private static final String BRANDING_HELP_LINK_URL_KEY = "branding.help-link-url";
     private static final String BRANDING_COMPANY_NAME_KEY = "branding.company-name";
@@ -42,6 +43,7 @@ public class SystemPlatformSettingsAppService {
             BRANDING_WEBSITE_NAME_KEY,
             BRANDING_WEBSITE_FAVICON_URL_KEY,
             BRANDING_WEBSITE_LOGO_URL_KEY,
+            BRANDING_LOGIN_BACKGROUND_URL_KEY,
             BRANDING_GITHUB_LINK_URL_KEY,
             BRANDING_HELP_LINK_URL_KEY,
             BRANDING_COMPANY_NAME_KEY,
@@ -142,6 +144,7 @@ public class SystemPlatformSettingsAppService {
         upsertBrandingConfig(tenantId, BRANDING_WEBSITE_NAME_KEY, "站点名称", websiteName, "控制台顶部与浏览器标题展示名称", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_WEBSITE_FAVICON_URL_KEY, "站点图标地址", sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), "浏览器标签页 icon 地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_WEBSITE_LOGO_URL_KEY, "站点 Logo 地址", sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), "控制台左上角品牌 Logo 地址", operatorId);
+        upsertBrandingConfig(tenantId, BRANDING_LOGIN_BACKGROUND_URL_KEY, "登录页背景图地址", sanitizeBrandingText(request.getLoginBackgroundUrl(), ""), "登录页背景图地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_GITHUB_LINK_URL_KEY, "GitHub 链接", sanitizeBrandingText(request.getGithubLinkUrl(), ""), "顶部 GitHub 图标跳转地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_HELP_LINK_URL_KEY, "帮助链接", sanitizeBrandingText(request.getHelpLinkUrl(), ""), "顶部帮助图标跳转地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_COMPANY_NAME_KEY, "公司名称", companyName, "页脚版权主体名称", operatorId);
@@ -270,6 +273,7 @@ public class SystemPlatformSettingsAppService {
         settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
         settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
         settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
+        settings.setLoginBackgroundUrl(defaultIfBlank(valueByKey.get(BRANDING_LOGIN_BACKGROUND_URL_KEY), ""));
         settings.setGithubLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_URL_KEY), ""));
         settings.setHelpLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_URL_KEY), ""));
         settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));

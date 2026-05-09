@@ -5,6 +5,7 @@ public class BrandingSettingsRequest {
     private String websiteName;
     private String websiteFaviconUrl;
     private String websiteLogoUrl;
+    private String loginBackgroundUrl;
     private String githubLinkUrl;
     private String helpLinkUrl;
     private String companyName;
@@ -34,6 +35,14 @@ public class BrandingSettingsRequest {
 
     public void setWebsiteLogoUrl(String websiteLogoUrl) {
         this.websiteLogoUrl = websiteLogoUrl;
+    }
+
+    public String getLoginBackgroundUrl() {
+        return loginBackgroundUrl;
+    }
+
+    public void setLoginBackgroundUrl(String loginBackgroundUrl) {
+        this.loginBackgroundUrl = loginBackgroundUrl;
     }
 
     public String getGithubLinkUrl() {

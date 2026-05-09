@@ -63,6 +63,12 @@ public class PluginManagementController {
         return ApiResponse.success(pluginManagementAppService.listVersions(pluginCode), TraceContext.getRequestId());
     }
 
+    @GetMapping("/versions")
+    public ApiResponse<Map<String, List<PluginVO.PluginVersionVO>>> versions() {
+        require("plugin:management:view");
+        return ApiResponse.success(pluginManagementAppService.listAllVersions(), TraceContext.getRequestId());
+    }
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RepeatSubmit
     public ApiResponse<PluginVO.PluginUploadVO> upload(@RequestParam("file") MultipartFile file) {

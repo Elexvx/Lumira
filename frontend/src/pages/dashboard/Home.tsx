@@ -1,6 +1,6 @@
-import { PageContainer, ProCard, StatisticCard } from '@ant-design/pro-components';
+import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Col, Empty, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
+import { Avatar, Col, Empty, List, Row, Skeleton, Space, Statistic, Table, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { buildTableScroll } from '@/features/table/proTable';
 import { dashboardService } from '@/services/dashboard';
@@ -103,33 +103,14 @@ const DashboardHomePage = () => {
   const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '当前用户';
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
+  const taskSummary = summary?.taskSummary;
+  const latestPendingTasks = taskSummary?.latestPending || [];
   const loginLogColumns = buildLogColumns('登录记录', responsive.isMobile);
   const operationLogColumns = buildLogColumns('操作记录', responsive.isMobile);
   const pageContainerToken = {
     paddingInlinePageContainerContent: responsive.isMobile ? 20 : 25,
     paddingBlockPageContainerContent: responsive.isMobile ? 16 : 24,
   };
-  const overviewStats = [
-    {
-      title: '菜单数',
-      value: summary?.menuCount ?? 0,
-      suffix: '个',
-      description: '当前可见菜单',
-    },
-    {
-      title: '权限数',
-      value: summary?.permissionCount ?? 0,
-      suffix: '项',
-      description: '当前会话权限总数',
-    },
-    {
-      title: '近期记录',
-      value: recentLoginLogs.length + recentOperationLogs.length,
-      suffix: '条',
-      description: '最近登录与操作摘要',
-    },
-  ];
-
   return (
     <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -156,21 +137,29 @@ const DashboardHomePage = () => {
           </Row>
         </ProCard>
 
-        <Row gutter={[16, 16]}>
-          {overviewStats.map((stat) => (
-            <Col key={stat.title} xs={24} sm={12} xl={6}>
-              <StatisticCard
-                variant="outlined"
-                statistic={{
-                  title: stat.title,
-                  value: stat.value,
-                  suffix: stat.suffix,
-                  description: <Typography.Text type="secondary">{stat.description}</Typography.Text>,
-                }}
+        <ProCard variant="outlined" title="待办事项" className="saas-dashboard-home__todo">
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Row gutter={[16, 16]}>
+              <Col xs={12} md={6}><Statistic title="全部待办" value={taskSummary?.pendingCount || 0} /></Col>
+              <Col xs={12} md={6}><Statistic title="待审批" value={taskSummary?.approvalCount || 0} /></Col>
+              <Col xs={12} md={6}><Statistic title="待评分" value={taskSummary?.evaluationCount || 0} /></Col>
+              <Col xs={12} md={6}><Statistic title="待复核" value={taskSummary?.reviewCount || 0} /></Col>
+            </Row>
+            {latestPendingTasks.length ? (
+              <List
+                dataSource={latestPendingTasks}
+                renderItem={(item) => (
+                  <List.Item>
+                    <List.Item.Meta title={item.title} description={`${item.businessType} · ${formatDateTime(item.createTime)}`} />
+                    <Tag color="blue">{item.taskType}</Tag>
+                  </List.Item>
+                )}
               />
-            </Col>
-          ))}
-        </Row>
+            ) : (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办事项" />
+            )}
+          </Space>
+        </ProCard>
 
         <Row gutter={[16, 16]} align="stretch">
           <Col xs={24} xl={16}>

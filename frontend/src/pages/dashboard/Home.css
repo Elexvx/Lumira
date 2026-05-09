@@ -6,6 +6,10 @@
   border-radius: 12px;
 }
 
+.saas-dashboard-home__todo .ant-card-body {
+  min-height: 220px;
+}
+
 .saas-dashboard-home__panel {
   height: 100%;
 }

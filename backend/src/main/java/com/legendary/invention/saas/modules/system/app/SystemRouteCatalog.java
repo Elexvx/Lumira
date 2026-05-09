@@ -10,6 +10,9 @@ public final class SystemRouteCatalog {
 
     private static final Set<String> BUILT_IN_ROUTE_PATHS = Set.of(
             "/ai",
+            "/tasks",
+            "/approvals",
+            "/evaluations",
             "/system",
             "/system/overview",
             "/system/menus",
@@ -55,6 +58,9 @@ public final class SystemRouteCatalog {
 
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
             "@/pages/ai/Assistant",
+            "@/pages/tasks",
+            "@/pages/approvals",
+            "@/pages/evaluations",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
             "@/pages/settings/profile-fields",
@@ -149,6 +155,9 @@ public final class SystemRouteCatalog {
         )));
 
         roots.add(aiRoot);
+        roots.add(menu(-980L, 0L, "tasks.root", "任务中心", "MENU", "/tasks", "@/pages/tasks", "CheckSquareOutlined", 4, "task:view"));
+        roots.add(menu(-970L, 0L, "approvals.root", "审批中心", "MENU", "/approvals", "@/pages/approvals", "AuditOutlined", 5, "approval:view"));
+        roots.add(menu(-960L, 0L, "evaluations.root", "评审中心", "MENU", "/evaluations", "@/pages/evaluations", "StarOutlined", 6, "evaluation:view"));
         roots.add(settingsRoot);
         return roots;
     }

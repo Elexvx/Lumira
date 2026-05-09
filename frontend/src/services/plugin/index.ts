@@ -45,6 +45,11 @@ export const pluginService = {
       method: 'GET',
       ...options,
     }),
+  allVersions: (options: RequestOptions = {}) =>
+    request<Record<string, PluginVersion[]>>('/v1/plugins/versions', {
+      method: 'GET',
+      ...options,
+    }),
   validation: (pluginCode: string, version: string, options: RequestOptions = {}) =>
     request<string>(`/v1/plugins/${pluginCode}/${version}/validation`, {
       method: 'GET',

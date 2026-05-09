@@ -8,10 +8,10 @@ import type { BrandingSettings } from '@/types/api';
 interface BrandingTabProps {
   formProps: FormProps;
   previewState: BrandingSettings;
-  uploadingTarget: 'favicon' | 'logo' | 'watermark' | null;
+  uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | null;
   brandingSaving: boolean;
-  onUpload: (target: 'favicon' | 'logo', file: File) => Promise<void>;
-  onClearField: (field: 'websiteFaviconUrl' | 'websiteLogoUrl', label: string) => void;
+  onUpload: (target: 'favicon' | 'logo' | 'loginBackground', file: File) => Promise<void>;
+  onClearField: (field: 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl', label: string) => void;
   onSave: () => void;
 }
 
@@ -121,6 +121,47 @@ export const BrandingTab = ({
             <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteLogoUrl', 'Logo')} disabled={!previewState.websiteLogoUrl}>
               清除
             </Button>
+          </Space>
+        </Space>
+      </Form.Item>
+
+      <Form.Item name="loginBackgroundUrl" hidden>
+        <Input />
+      </Form.Item>
+      <Form.Item label="登录页背景图（本地上传）">
+        <Space align="start" size={16} wrap>
+          <Card size="small" style={{ width: 280 }} bodyStyle={{ padding: 12 }}>
+            <div style={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+              {previewState.loginBackgroundUrl ? (
+                <Image
+                  width="100%"
+                  height="100%"
+                  preview={false}
+                  src={normalizeUploadUrl(previewState.loginBackgroundUrl)}
+                  style={{ objectFit: 'cover' }}
+                />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
+              )}
+            </div>
+          </Card>
+          <Space direction="vertical" size={8}>
+            <Upload
+              accept="image/*"
+              showUploadList={false}
+              beforeUpload={async (file) => {
+                await onUpload('loginBackground', file);
+                return Upload.LIST_IGNORE;
+              }}
+            >
+              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'loginBackground'}>
+                上传背景图
+              </Button>
+            </Upload>
+            <Button icon={<DeleteOutlined />} onClick={() => onClearField('loginBackgroundUrl', '登录页背景图')} disabled={!previewState.loginBackgroundUrl}>
+              清除
+            </Button>
+            <Typography.Text type="secondary">建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。</Typography.Text>
           </Space>
         </Space>
       </Form.Item>
