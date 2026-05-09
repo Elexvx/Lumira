@@ -1,0 +1,286 @@
+x-backend-build: &backend-build
+  context: ..
+  dockerfile: deploy/docker/backend.Dockerfile
+
+x-common-env: &common-env
+  TZ: Asia/Shanghai
+  NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
+  NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+  NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
+  SPRING_CLOUD_NACOS_CONFIG_ENABLED: ${NACOS_CONFIG_ENABLED:-false}
+  SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
+  DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
+  DB_USERNAME: ${DB_USERNAME:-root}
+  DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  REDIS_DATABASE: 0
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+  PLUGIN_SIGNATURE_SECRET: ${PLUGIN_SIGNATURE_SECRET:?PLUGIN_SIGNATURE_SECRET is required}
+  SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN is required}
+  TRUST_FORWARDED_HEADERS: "true"
+  JAVA_OPTS: ${JAVA_OPTS:-}
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: legendary-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-saas}
+      MYSQL_INITDB_SKIP_TZINFO: "1"
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.4
+    container_name: legendary-redis
+    restart: unless-stopped
+    command: >
+      sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
+      redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
+      else redis-server --appendonly yes; fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      TZ: Asia/Shanghai
+    volumes:
+      - redis_data:/data
+
+  nacos:
+    profiles:
+      - nacos
+    image: nacos/nacos-server:v3.2.1
+    container_name: legendary-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN is required}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:?NACOS_AUTH_IDENTITY_KEY is required}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:?NACOS_AUTH_IDENTITY_VALUE is required}
+      TZ: Asia/Shanghai
+    volumes:
+      - nacos_data:/home/nacos/data
+      - nacos_logs:/home/nacos/logs
+    depends_on:
+      - mysql
+
+  xxl-job-admin:
+    image: xuxueli/xxl-job-admin:3.4.0
+    container_name: legendary-xxl-job-admin
+    restart: unless-stopped
+    environment:
+      PARAMS: >-
+        --server.port=8080
+        --spring.datasource.url=jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-saas}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+        --spring.datasource.username=root
+        --spring.datasource.password=${DB_PASSWORD:?DB_PASSWORD is required}
+        --xxl.job.accessToken=${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
+        --xxl.job.login.username=admin
+        --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:?XXL_JOB_LOGIN_PASSWORD is required}
+      TZ: Asia/Shanghai
+    depends_on:
+      - mysql
+
+  system-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: backend
+    image: legendary/system-service:0.1.0
+    container_name: legendary-system-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8080
+      UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
+      PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
+      PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
+    volumes:
+      - upload_data:/data/uploads
+      - plugin_data:/data/plugins
+      - plugin_staging:/data/plugin-staging
+    depends_on:
+      - mysql
+      - redis
+
+  gateway-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/gateway-service
+    image: legendary/gateway-service:0.1.0
+    container_name: legendary-gateway-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8081
+      GATEWAY_AUTH_SERVICE_URI: http://auth-service:8082
+      GATEWAY_FILE_SERVICE_URI: http://file-service:8084
+      GATEWAY_MESSAGE_SERVICE_URI: http://message-service:8085
+      GATEWAY_PLUGIN_SERVICE_URI: http://plugin-service:8086
+      GATEWAY_LOCALIZATION_SERVICE_URI: http://localization-service:8088
+      GATEWAY_SYSTEM_SERVICE_URI: http://system-service:8080
+      GATEWAY_TENANT_SERVICE_URI: http://tenant-service:8083
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      - system-service
+      - auth-service
+      - tenant-service
+      - file-service
+      - message-service
+      - plugin-service
+      - localization-service
+
+  auth-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/auth-service
+    image: legendary/auth-service:0.1.0
+    container_name: legendary-auth-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8082
+    depends_on:
+      - redis
+
+  tenant-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/tenant-service
+    image: legendary/tenant-service:0.1.0
+    container_name: legendary-tenant-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8083
+    depends_on:
+      - mysql
+      - redis
+
+  file-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/file-service
+    image: legendary/file-service:0.1.0
+    container_name: legendary-file-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8084
+      UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
+    volumes:
+      - upload_data:/data/uploads
+    depends_on:
+      - mysql
+
+  message-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/message-service
+    image: legendary/message-service:0.1.0
+    container_name: legendary-message-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8085
+      AUTH_SERVICE_BASE_URL: http://auth-service:8082
+    depends_on:
+      - mysql
+      - redis
+      - auth-service
+
+  plugin-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/plugin-service
+    image: legendary/plugin-service:0.1.0
+    container_name: legendary-plugin-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8086
+      PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
+      PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
+    volumes:
+      - plugin_data:/data/plugins
+      - plugin_staging:/data/plugin-staging
+    depends_on:
+      - mysql
+
+  localization-service:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/localization-service
+    image: legendary/localization-service:0.1.0
+    container_name: legendary-localization-service
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8088
+    depends_on:
+      - mysql
+
+  job-executor:
+    build:
+      <<: *backend-build
+      args:
+        SERVICE_DIR: services/job-executor
+    image: legendary/job-executor:0.1.0
+    container_name: legendary-job-executor
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8089
+      SAAS_JOB_BACKEND_BASE_URL: http://system-service:8080
+      SAAS_JOB_MESSAGE_SERVICE_BASE_URL: http://message-service:8085
+      XXL_JOB_ADMIN_ADDRESSES: http://xxl-job-admin:8080/xxl-job-admin
+      XXL_JOB_ADMIN_ACCESS_TOKEN: ${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
+      XXL_JOB_ACCESS_TOKEN: ${XXL_JOB_ACCESS_TOKEN:?XXL_JOB_ACCESS_TOKEN is required}
+      XXL_JOB_EXECUTOR_ADDRESS: http://job-executor:9998
+      XXL_JOB_EXECUTOR_IP: job-executor
+      XXL_JOB_EXECUTOR_PORT: 9998
+      XXL_JOB_EXECUTOR_LOG_PATH: /data/xxl-job/logs
+    volumes:
+      - xxl_job_executor_logs:/data/xxl-job/logs
+    depends_on:
+      - xxl-job-admin
+      - system-service
+      - message-service
+
+  frontend:
+    profiles:
+      - frontend
+    build:
+      context: ..
+      dockerfile: deploy/docker/frontend.Dockerfile
+    image: legendary/frontend:0.1.0
+    container_name: legendary-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:80"
+    depends_on:
+      - gateway-service
+
+volumes:
+  mysql_data:
+  redis_data:
+  nacos_data:
+  nacos_logs:
+  upload_data:
+  plugin_data:
+  plugin_staging:
+  xxl_job_executor_logs:
