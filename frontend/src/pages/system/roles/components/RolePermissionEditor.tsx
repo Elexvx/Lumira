@@ -1,4 +1,5 @@
 import { Button, Checkbox, Empty, Form, Input, Space, Spin, Tag, Tree } from 'antd';
+import type { TreeProps } from 'antd';
 import type { PermissionActionRecord, PermissionTreeRecord } from '@/types/api';
 import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree';
 
@@ -84,14 +85,12 @@ export const RolePermissionEditor = ({
                 checkable
                 blockNode
                 selectable
-                virtual
-                height={360}
                 treeData={pageTreeData}
                 checkedKeys={selectedPageNodeKeys}
                 selectedKeys={activePageKey ? [activePageKey] : []}
                 expandedKeys={expandedKeys}
                 onExpand={(nextExpandedKeys) => onExpandChange(nextExpandedKeys.map(String))}
-                onCheck={(checkedKeys, info) => {
+                onCheck={(checkedKeys: Parameters<NonNullable<TreeProps['onCheck']>>[0], info) => {
                   const nextCheckedKeys = Array.isArray(checkedKeys) ? checkedKeys.map(String) : [];
                   onPageTreeCheck(nextCheckedKeys);
                   if ((info.node as NormalizedPermissionTreeRecord).selectable && (info.node as NormalizedPermissionTreeRecord).pageKey) {

@@ -28,6 +28,11 @@ export interface RolePermissionDisplayGroup {
 
 const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType'] => node.nodeType || 'PAGE';
 
+const isAdminOnlySettingsPath = (path?: string | null) => {
+  const normalizedPath = path?.trim() || '';
+  return normalizedPath === '/settings' || normalizedPath.startsWith('/settings/');
+};
+
 export const normalizePermissionTree = (
   nodes: PermissionTreeRecord[],
   allowedRoutePaths: Set<string> = realPageRoutePaths,
@@ -36,6 +41,9 @@ export const normalizePermissionTree = (
   const result: NormalizedPermissionTreeRecord[] = [];
 
   nodes.forEach((node) => {
+    if (isAdminOnlySettingsPath(node.routePath)) {
+      return;
+    }
     const nodeType = getNodeType(node);
     const children = node.children?.length
       ? normalizePermissionTree(node.children, allowedRoutePaths, seenRoutePaths)
@@ -82,10 +90,11 @@ export const normalizePermissionTree = (
 
 export const buildPermissionTreeData = (
   nodes: NormalizedPermissionTreeRecord[],
-): Array<NormalizedPermissionTreeRecord & { key: string; title: ReactElement; disableCheckbox: boolean }> =>
+): Array<NormalizedPermissionTreeRecord & { key: string; title: ReactElement; checkable: boolean; disableCheckbox: boolean }> =>
   nodes.map((node) => ({
     ...node,
     key: node.pageKey,
+    checkable: node.nodeType === 'PAGE',
     disableCheckbox: node.nodeType === 'PAGE' ? !node.selectable : !node.children?.length,
     selectable: node.selectable,
     title: (

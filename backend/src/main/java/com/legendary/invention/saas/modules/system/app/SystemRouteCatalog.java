@@ -143,7 +143,9 @@ public final class SystemRouteCatalog {
                 menu(-1009L, -1000L, "settings.ai-employees", "数字员工", "MENU", "/settings/ai-employees", "@/pages/settings/ai-employees", "RobotOutlined", 24, "ai:view"),
                 menu(-1010L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
                 menu(-1011L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
-                monitoringRoot()
+                monitoringRoot(),
+                menu(-1013L, -1000L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 11, "system:monitor:docs:view"),
+                menu(-1014L, -1000L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 12, "audit:view")
         )));
 
         roots.add(aiRoot);
@@ -164,10 +166,6 @@ public final class SystemRouteCatalog {
                 10,
                 "system:monitor:view"
         );
-        monitoring.setChildren(new ArrayList<>(List.of(
-                menu(-1013L, -1012L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/monitoring/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 1, "system:monitor:docs:view"),
-                menu(-1014L, -1012L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/monitoring/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 2, "audit:view")
-        )));
         return monitoring;
     }
 

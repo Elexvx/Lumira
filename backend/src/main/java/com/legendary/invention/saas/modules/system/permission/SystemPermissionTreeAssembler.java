@@ -17,6 +17,15 @@ public final class SystemPermissionTreeAssembler {
     private static final String NODE_TYPE_CATALOG = "CATALOG";
     private static final String NODE_TYPE_PAGE = "PAGE";
     private static final String NODE_TYPE_ALIAS = "ALIAS";
+    private static final Map<String, List<String>> EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION = Map.of(
+            "ai:view", List.of("ai:employee:", "ai:llm:"),
+            "audit:view", List.of("audit:"),
+            "plugin:management:view", List.of("plugin:management:"),
+            "system:file:manage", List.of("system:file:manage:"),
+            "system:monitor:view", List.of("system:monitor:"),
+            "system:notification:view", List.of("system:notification:", "message:message:"),
+            "system:verification:view", List.of("system:verification:")
+    );
     private static final Set<String> LEGACY_PERMISSION_TREE_ALIAS_PATHS = Set.of(
             "/audit/overview",
             "/system/overview",
@@ -48,6 +57,9 @@ public final class SystemPermissionTreeAssembler {
             Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey
     ) {
         if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
+            return null;
+        }
+        if (isAdminOnlySettingsPath(menu.getPath())) {
             return null;
         }
 
@@ -105,6 +117,14 @@ public final class SystemPermissionTreeAssembler {
         return StringUtils.hasText(component) && component.startsWith("redirect:");
     }
 
+    private boolean isAdminOnlySettingsPath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return false;
+        }
+        String normalizedPath = path.trim();
+        return "/settings".equals(normalizedPath) || normalizedPath.startsWith("/settings/");
+    }
+
     private Map<String, List<SystemVO.PermissionActionVO>> buildActionPermissionsByPageKey(List<SystemVO.PermissionVO> permissions) {
         if (CollectionUtils.isEmpty(permissions)) {
             return Map.of();
@@ -117,17 +137,17 @@ public final class SystemPermissionTreeAssembler {
 
         for (SystemVO.PermissionVO permission : permissions) {
             String permissionKey = permission.getPermissionKey();
-            if (!StringUtils.hasText(permissionKey) || permissionKey.chars().filter(ch -> ch == ':').count() < 2) {
+            if (!StringUtils.hasText(permissionKey)) {
                 continue;
             }
             String pagePermissionKey = resolvePagePermissionKey(permissionKey);
             if (!StringUtils.hasText(pagePermissionKey)) {
                 continue;
             }
-            String actionPrefix = resolveActionPrefix(pagePermissionKey);
+            List<String> actionPrefixes = resolveActionPrefixes(pagePermissionKey);
             List<SystemVO.PermissionActionVO> actions = permissionMap.values().stream()
                     .filter(candidate -> !permissionKey.equals(candidate.getPermissionKey()))
-                    .filter(candidate -> StringUtils.hasText(candidate.getPermissionKey()) && candidate.getPermissionKey().startsWith(actionPrefix))
+                    .filter(candidate -> isActionPermissionForPage(candidate.getPermissionKey(), actionPrefixes))
                     .map(candidate -> {
                         SystemVO.PermissionActionVO action = new SystemVO.PermissionActionVO();
                         action.setPermissionKey(candidate.getPermissionKey());
@@ -146,6 +166,18 @@ public final class SystemPermissionTreeAssembler {
         return result;
     }
 
+    private boolean isActionPermissionForPage(String permissionKey, List<String> actionPrefixes) {
+        if (!StringUtils.hasText(permissionKey) || CollectionUtils.isEmpty(actionPrefixes)) {
+            return false;
+        }
+        for (String actionPrefix : actionPrefixes) {
+            if (permissionKey.startsWith(actionPrefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private String resolvePagePermissionKey(String permissionKey) {
         if (!StringUtils.hasText(permissionKey) || !permissionKey.endsWith(":view")) {
             return null;
@@ -153,11 +185,15 @@ public final class SystemPermissionTreeAssembler {
         return permissionKey;
     }
 
-    private String resolveActionPrefix(String pagePermissionKey) {
+    private List<String> resolveActionPrefixes(String pagePermissionKey) {
         if (!StringUtils.hasText(pagePermissionKey) || !pagePermissionKey.endsWith(":view")) {
-            return null;
+            return List.of();
         }
-        return pagePermissionKey.substring(0, pagePermissionKey.length() - ":view".length()) + ":";
+        List<String> explicitPrefixes = EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION.get(pagePermissionKey);
+        if (!CollectionUtils.isEmpty(explicitPrefixes)) {
+            return explicitPrefixes;
+        }
+        return List.of(pagePermissionKey.substring(0, pagePermissionKey.length() - ":view".length()) + ":");
     }
 
     private String resolvePermissionGroup(String permissionKey) {

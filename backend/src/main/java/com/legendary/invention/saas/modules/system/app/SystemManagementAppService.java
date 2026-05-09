@@ -139,7 +139,7 @@ public class SystemManagementAppService {
             shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
             shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/settings/personalization", "system:config:view"),
             shortcut("安全设置", "空闲超时与 token 生命周期", "/settings/security", "system:config:view"),
-            shortcut("审计中心", "登录和操作日志", "/settings/monitoring/audit", "audit:view"),
+            shortcut("审计中心", "登录和操作日志", "/settings/audit", "audit:view"),
             shortcut("站内信归档", "站内信归档与手动发布", "/settings/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/settings/plugins", "plugin:management:view")
     );
