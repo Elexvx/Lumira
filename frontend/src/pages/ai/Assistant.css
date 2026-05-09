@@ -1,11 +1,20 @@
 .saas-ai-assistant-page {
-  min-height: calc(100vh - 120px);
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.saas-ai-assistant-page .ant-pro-page-container-children-container {
+  height: calc(100vh - 168px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .saas-ai-assistant-layout {
-  display: grid;
-  grid-template-columns: 332px minmax(0, 1fr);
-  min-height: clamp(560px, calc(100vh - 220px), 920px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.15));
   border-radius: 12px;
   overflow: hidden;
@@ -13,7 +22,46 @@
 }
 
 .saas-ai-assistant-layout--share {
-  grid-template-columns: minmax(0, 1fr);
+  flex-direction: column;
+}
+
+.saas-ai-assistant-desktop-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.saas-ai-assistant-mobile-shell {
+  display: none;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.saas-ai-assistant-mobile-tabs {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.saas-ai-assistant-mobile-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+  padding: 0 12px;
+}
+
+.saas-ai-assistant-mobile-tabs .ant-tabs-content-holder {
+  flex: 1;
+  min-height: 0;
+}
+
+.saas-ai-assistant-mobile-tabs .ant-tabs-content,
+.saas-ai-assistant-mobile-tabs .ant-tabs-tabpane {
+  height: 100%;
+  min-height: 0;
 }
 
 .saas-ai-assistant-layout__sidebar {
@@ -39,6 +87,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   background: var(--ant-color-bg-container, #fff);
 }
 
@@ -100,34 +149,92 @@
   justify-content: flex-end;
 }
 
+.saas-ai-assistant-markdown.wmde-markdown {
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.7;
+}
+
+.saas-ai-assistant-markdown.wmde-markdown p,
+.saas-ai-assistant-markdown.wmde-markdown ul,
+.saas-ai-assistant-markdown.wmde-markdown ol {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.saas-ai-assistant-markdown.wmde-markdown p:last-child,
+.saas-ai-assistant-markdown.wmde-markdown ul:last-child,
+.saas-ai-assistant-markdown.wmde-markdown ol:last-child {
+  margin-bottom: 0;
+}
+
+.saas-ai-assistant-markdown.wmde-markdown ul,
+.saas-ai-assistant-markdown.wmde-markdown ol {
+  padding-left: 20px;
+}
+
+.saas-ai-assistant-markdown.wmde-markdown strong {
+  color: inherit;
+}
+
+.saas-ai-assistant-thinking {
+  min-width: min(360px, 100%);
+}
+
+.saas-ai-assistant-thinking__title {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.saas-ai-assistant-thinking__steps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ant-color-text-secondary);
+}
+
+.saas-ai-assistant-thinking__steps li + li {
+  margin-top: 6px;
+}
+
 .saas-ai-assistant-file-input {
   display: none;
 }
 
 @media (max-width: 992px) {
-  .saas-ai-assistant-layout {
-    grid-template-columns: 292px minmax(0, 1fr);
-    min-height: clamp(520px, calc(100vh - 220px), 860px);
-  }
-
-  .saas-ai-assistant-layout--share {
-    grid-template-columns: minmax(0, 1fr);
+  .saas-ai-assistant-desktop-shell {
+    grid-template-columns: 208px minmax(0, 1fr);
   }
 }
 
 @media (max-width: 768px) {
   .saas-ai-assistant-layout {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: auto;
+    display: block;
+    overflow: hidden;
   }
 
-  .saas-ai-assistant-layout__sidebar {
+  .saas-ai-assistant-desktop-shell {
+    display: none;
+  }
+
+  .saas-ai-assistant-mobile-shell {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .saas-ai-assistant-mobile-shell .saas-ai-assistant-layout__chat {
+    min-height: 0;
+  }
+
+  .saas-ai-assistant-mobile-shell .saas-ai-assistant-layout__sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+    min-height: 0;
   }
 
-  .saas-ai-assistant-conversations {
-    max-height: 300px;
+  .saas-ai-assistant-mobile-shell .saas-ai-assistant-conversations {
+    max-height: 220px;
   }
 
   .saas-ai-assistant-shell__chat-body,

@@ -10,17 +10,18 @@ import {
   RobotOutlined,
   ShareAltOutlined,
   SettingOutlined,
-  UploadOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { history, useAccess, useParams } from '@umijs/max';
+import { history, useAccess, useModel, useParams } from '@umijs/max';
 import { Actions, Bubble, Conversations, Sender, Welcome } from '@ant-design/x';
-import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Select, Space, Spin, Tag, message } from 'antd';
+import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Select, Space, Spin, Tag, Tabs, message } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
+import MarkdownPreview from '@uiw/react-markdown-preview';
+import '@uiw/react-markdown-preview/markdown.css';
 import { aiService } from '@/services/ai';
 import { fileService } from '@/services/file';
 import type {
@@ -33,6 +34,7 @@ import type {
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
+import { isProtectedAdminAccount } from '@/auth/admin';
 import { ALLOWED_UPLOAD_EXTENSIONS, FILE_ACCEPT, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
 import './Assistant.css';
 
@@ -57,6 +59,8 @@ type ChatBubble = {
   role: BubbleRole;
   content: string;
   attachments: ComposerAttachment[];
+  thinkingSteps?: string[];
+  streamingContent?: string;
 };
 
 type ChatSession = {
@@ -259,6 +263,43 @@ const buildExportContent = (session: ChatSession, format: 'markdown' | 'text') =
   return lines.join('\n').trim();
 };
 
+const buildThinkingSteps = (attachments: ComposerAttachment[]) => [
+  '接收用户消息',
+  attachments.length ? `整理会话上下文和 ${attachments.length} 个附件` : '整理会话上下文',
+  '检查数字员工技能与权限边界',
+  '生成回复中',
+];
+
+const renderThinkingContent = (item: ChatBubble, visibleSteps: number) => {
+  if (item.thinkingSteps?.length) {
+    return (
+      <div className="saas-ai-assistant-thinking">
+        <div className="saas-ai-assistant-thinking__title">处理过程</div>
+        <ol className="saas-ai-assistant-thinking__steps">
+          {item.thinkingSteps.slice(0, Math.max(1, visibleSteps)).map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+const renderMessageContent = (item: ChatBubble, visibleThinkingSteps: number, visibleReplyText?: string) => {
+  if (item.thinkingSteps?.length) {
+    return renderThinkingContent(item, visibleThinkingSteps);
+  }
+
+  const content = visibleReplyText ?? item.content;
+  if (item.role === 'ai') {
+    return <MarkdownPreview source={content} wrapperElement={{ 'data-color-mode': 'dark' }} className="saas-ai-assistant-markdown" />;
+  }
+
+  return content;
+};
+
 const downloadText = (content: string, fileName: string, mimeType: string) => {
   const blob = new Blob([content], { type: mimeType });
   const url = window.URL.createObjectURL(blob);
@@ -372,7 +413,7 @@ const Composer = ({
     <Space wrap>
       {employeeSelect}
       <Button icon={<PaperClipOutlined />} onClick={onOpenUploadDialog} disabled={!selectedEmployee || !activeSession || sending || attachmentUploading}>
-        上传文件
+        上传附件
       </Button>
       <Button icon={<ShareAltOutlined />} onClick={onShareConversation} disabled={!activeSession?.conversationId || sending}>
         分享
@@ -391,9 +432,6 @@ const Composer = ({
           导出
         </Button>
       </Dropdown>
-      <Button icon={<UploadOutlined />} onClick={onTriggerUpload} disabled={!selectedEmployee || !activeSession || sending || attachmentUploading}>
-        附件
-      </Button>
     </Space>
   );
 
@@ -447,6 +485,7 @@ const Composer = ({
 
 const AiAssistantPage = () => {
   const access = useAccess();
+  const { initialState } = useModel('@@initialState');
   const queryClient = useQueryClient();
   const params = useParams<RouteParams>();
   const shareToken = params.token?.trim() || '';
@@ -455,11 +494,13 @@ const AiAssistantPage = () => {
   const [sending, setSending] = useState(false);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string>('session-default');
+  const [mobilePanel, setMobilePanel] = useState<'chat' | 'sessions'>('chat');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameTargetSessionId, setRenameTargetSessionId] = useState<string | null>(null);
+  const [streamProgress, setStreamProgress] = useState<Record<string, number>>({});
 
   const employeesQuery = useQuery({
     queryKey: ['ai-assistant-employees'],
@@ -781,8 +822,9 @@ const AiAssistantPage = () => {
     const assistantPlaceholder: ChatBubble = {
       key: buildBubbleKey('assistant'),
       role: 'ai',
-      content: '正在思考中...',
+      content: '',
       attachments: [],
+      thinkingSteps: buildThinkingSteps(draftAttachments),
     };
 
     setSending(true);
@@ -833,6 +875,7 @@ const AiAssistantPage = () => {
                   role: 'ai',
                   content: response.replyText || '我已经收到你的消息。',
                   attachments: [],
+                  streamingContent: response.replyText || '我已经收到你的消息。',
                 },
               ],
               updatedAt: dayjs(response.replyAt || undefined).isValid()
@@ -1120,7 +1163,11 @@ const AiAssistantPage = () => {
       activeSession?.messages.map((item) => ({
         key: item.key,
         role: item.role,
-        content: item.content,
+        content: renderMessageContent(
+          item,
+          item.thinkingSteps?.length ? streamProgress[item.key] ?? 0 : 0,
+          item.streamingContent ? item.streamingContent.slice(0, streamProgress[item.key] ?? 0) : undefined,
+        ),
         footer: (
           <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
             {item.attachments.length ? <Space wrap>{item.attachments.map(renderAttachmentTag)}</Space> : null}
@@ -1134,11 +1181,42 @@ const AiAssistantPage = () => {
           </Space>
         ),
       })) || [],
-    [activeSession],
+    [activeSession, streamProgress],
   );
 
+  useEffect(() => {
+    const nextThinking = activeSession?.messages.find(
+      (item) => item.thinkingSteps?.length && (streamProgress[item.key] ?? 0) < item.thinkingSteps.length,
+    );
+    const nextReply = activeSession?.messages.find(
+      (item) => item.streamingContent && (streamProgress[item.key] ?? 0) < item.streamingContent.length,
+    );
+    const target = nextThinking || nextReply;
+
+    if (!target) {
+      return undefined;
+    }
+
+    const total = target.thinkingSteps?.length ?? target.streamingContent?.length ?? 0;
+    const current = streamProgress[target.key] ?? 0;
+    const nextValue = Math.min(current + 1, total);
+    const delay = target.thinkingSteps?.length ? 260 : 12;
+
+    const timer = window.setTimeout(() => {
+      setStreamProgress((prev) => ({
+        ...prev,
+        [target.key]: nextValue,
+      }));
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSession?.messages, streamProgress]);
+
   const emptyWelcome = buildAssistantGreeting(selectedEmployee, shareConversation?.employeeName || undefined);
-  const canManageEmployees = Boolean((access as Record<string, unknown>).canVisitAiEmployees);
+  const canManageEmployees =
+    Boolean((access as Record<string, unknown>).canVisitAiEmployees) &&
+    isProtectedAdminAccount(initialState?.currentUser) &&
+    !initialState?.currentUser?.simulatedRoleId;
   const hasContent = Boolean(activeSession?.messages?.length);
   const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
 
@@ -1166,6 +1244,84 @@ const AiAssistantPage = () => {
     }
     void uploadAttachments(nextFiles);
   };
+
+  const chatPanel = (
+    <section className="saas-ai-assistant-layout__chat">
+      <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
+        {!hasContent ? (
+          <Welcome
+            icon={<RobotOutlined />}
+            title={isShareMode ? '分享会话为空' : '你好，有什么可以帮你？'}
+            description={isShareMode ? '这条分享会话还没有消息。' : '你可以直接输入问题，或者先创建一个新的对话继续。'}
+            extra={<Bubble.System content={emptyWelcome} variant="borderless" />}
+            className="saas-ai-assistant-shell__welcome"
+          />
+        ) : (
+          <Bubble.List items={activeMessageItems} role={bubbleRole} autoScroll className="saas-ai-assistant-bubbles" />
+        )}
+      </div>
+
+      <div className="saas-ai-assistant-shell__composer">
+        <Composer
+          selectedEmployee={selectedEmployee}
+          selectedEmployeeOptions={isShareMode ? [] : selectedEmployeeOptions}
+          readOnly={isShareMode}
+          activeSession={activeSession}
+          sending={sending}
+          attachmentUploading={attachmentUploading}
+          onEmployeeChange={(employeeId) => {
+            setSelectedEmployeeId(employeeId);
+            setActiveSessionId('session-default');
+          }}
+          onOpenUploadDialog={triggerUploadDialog}
+          onCopyShareLink={handleCopyShareLink}
+          onShareConversation={() => void handleShareConversation(activeSession)}
+          onExportConversation={(format) => void handleExportConversation(format, activeSession)}
+          onSend={(messageText) => void handleSend(messageText)}
+          onPasteFile={(files) => void uploadAttachments(Array.from(files))}
+          onRemoveAttachment={(fileId) => handleRemoveDraftAttachment(activeSession?.id || '', fileId)}
+          onTriggerUpload={triggerUploadDialog}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={FILE_ACCEPT}
+          multiple
+          className="saas-ai-assistant-file-input"
+          onChange={handleUploadFileInputChange}
+        />
+      </div>
+    </section>
+  );
+
+  const sessionsPanel = (
+    <aside className="saas-ai-assistant-layout__sidebar">
+      <Conversations
+        items={conversationItems}
+        activeKey={activeSessionId}
+        onActiveChange={(key) => {
+          handleSessionSelect(String(key));
+          setMobilePanel('chat');
+        }}
+        creation={
+          selectedEmployee
+            ? {
+                label: '新建对话',
+                icon: <PlusOutlined />,
+                onClick: () => {
+                  handleCreateSession();
+                  setMobilePanel('chat');
+                },
+                align: 'center' as const,
+              }
+            : undefined
+        }
+        menu={(conversation) => buildConversationMenu(sessions.find((session) => session.id === String(conversation.key)) || activeSession || buildInitialSession(selectedEmployee))}
+        groupable
+        className="saas-ai-assistant-conversations"
+      />
+    </aside>
+  );
 
   if (isShareMode && shareQuery.isError) {
     return (
@@ -1222,75 +1378,38 @@ const AiAssistantPage = () => {
           ) : null}
 
           <div className={`saas-ai-assistant-layout${isShareMode ? ' saas-ai-assistant-layout--share' : ''}`}>
-            {!isShareMode ? (
-              <aside className="saas-ai-assistant-layout__sidebar">
-                <Conversations
-                  items={conversationItems}
-                  activeKey={activeSessionId}
-                  onActiveChange={(key) => handleSessionSelect(String(key))}
-                  creation={
-                    selectedEmployee
-                      ? {
-                          label: '新建对话',
-                          icon: <PlusOutlined />,
-                          onClick: handleCreateSession,
-                          align: 'center' as const,
-                        }
-                      : undefined
-                  }
-                  menu={(conversation) => buildConversationMenu(sessions.find((session) => session.id === String(conversation.key)) || activeSession || buildInitialSession(selectedEmployee))}
-                  groupable
-                  className="saas-ai-assistant-conversations"
-                />
-              </aside>
-            ) : null}
-
-            <section className="saas-ai-assistant-layout__chat">
-              <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
-                {!hasContent ? (
-                  <Welcome
-                    icon={<RobotOutlined />}
-                    title={isShareMode ? '分享会话为空' : '你好，有什么可以帮你？'}
-                    description={isShareMode ? '这条分享会话还没有消息。' : '你可以直接输入问题，或者先创建一个新的对话继续。'}
-                    extra={<Bubble.System content={emptyWelcome} variant="borderless" />}
-                    className="saas-ai-assistant-shell__welcome"
+            {isShareMode ? (
+              <>
+                {sessionsPanel}
+                {chatPanel}
+              </>
+            ) : (
+              <>
+                <div className="saas-ai-assistant-mobile-shell">
+                  <Tabs
+                    className="saas-ai-assistant-mobile-tabs"
+                    activeKey={mobilePanel}
+                    onChange={(key) => setMobilePanel(key as 'chat' | 'sessions')}
+                    items={[
+                      {
+                        key: 'chat',
+                        label: '聊天',
+                        children: chatPanel,
+                      },
+                      {
+                        key: 'sessions',
+                        label: '会话',
+                        children: sessionsPanel,
+                      },
+                    ]}
                   />
-                ) : (
-                  <Bubble.List items={activeMessageItems} role={bubbleRole} autoScroll className="saas-ai-assistant-bubbles" />
-                )}
-              </div>
-
-              <div className="saas-ai-assistant-shell__composer">
-                <Composer
-                  selectedEmployee={selectedEmployee}
-                  selectedEmployeeOptions={isShareMode ? [] : selectedEmployeeOptions}
-                  readOnly={isShareMode}
-                  activeSession={activeSession}
-                  sending={sending}
-                  attachmentUploading={attachmentUploading}
-                  onEmployeeChange={(employeeId) => {
-                    setSelectedEmployeeId(employeeId);
-                    setActiveSessionId('session-default');
-                  }}
-                  onOpenUploadDialog={triggerUploadDialog}
-                  onCopyShareLink={handleCopyShareLink}
-                  onShareConversation={() => void handleShareConversation(activeSession)}
-                  onExportConversation={(format) => void handleExportConversation(format, activeSession)}
-                  onSend={(messageText) => void handleSend(messageText)}
-                  onPasteFile={(files) => void uploadAttachments(Array.from(files))}
-                  onRemoveAttachment={(fileId) => handleRemoveDraftAttachment(activeSession?.id || '', fileId)}
-                  onTriggerUpload={triggerUploadDialog}
-                />
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={FILE_ACCEPT}
-                  multiple
-                  className="saas-ai-assistant-file-input"
-                  onChange={handleUploadFileInputChange}
-                />
-              </div>
-            </section>
+                </div>
+                <div className="saas-ai-assistant-desktop-shell">
+                  {sessionsPanel}
+                  {chatPanel}
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

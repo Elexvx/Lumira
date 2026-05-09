@@ -54,15 +54,10 @@
   background: transparent;
 }
 
-.role-permission-tree .ant-tree-node-content-wrapper {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  border-radius: 10px;
-}
-
-.role-permission-tree .ant-tree-switcher {
-  align-self: center;
+.role-permission-tree .ant-tree-title {
+  display: block;
+  min-width: 0;
+  width: 100%;
 }
 
 .role-permission-tree .ant-tree-node-content-wrapper:hover {
@@ -78,8 +73,9 @@
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
+  padding-block: 4px;
 }
 
 .role-page-row--mismatch .role-page-row__name,
@@ -89,15 +85,20 @@
 }
 
 .role-page-row__name {
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .role-page-row__meta {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
   min-width: 0;
+  flex: 0 1 auto;
 }
 
 .role-page-row__kind {

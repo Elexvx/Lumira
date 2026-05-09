@@ -33,9 +33,6 @@ const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
 const AI_MAIN_ROUTE_PATH = '/ai';
-const USER_CENTER_PATH = '/user-center';
-const PERSONAL_CENTER_PATH = '/user-center/personal-center';
-
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 
 const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string, RuntimeMenuDataItem>()) => {
@@ -76,7 +73,7 @@ const buildMainMenuData = (
   menuData: RuntimeMenuDataItem[],
 ) => {
   const access = buildAccess({ currentUser: initialState?.currentUser });
-  const visibleMenus = promotePersonalCenterToTopLevel(menuData as RuntimeMenuDataItem[]);
+  const visibleMenus = [...menuData] as RuntimeMenuDataItem[];
   const composedMenus = initialState?.menuTree || [];
 
   const hasAiAssistantMenu = visibleMenus.some((item) => item.path === AI_MAIN_ROUTE_PATH)
@@ -95,35 +92,6 @@ const buildMainMenuData = (
   }
 
   return visibleMenus;
-};
-
-const promotePersonalCenterToTopLevel = (menus: RuntimeMenuDataItem[]) => {
-  const nextMenus = [...menus];
-  const userCenterIndex = nextMenus.findIndex((item) => item.path === USER_CENTER_PATH);
-  if (userCenterIndex < 0) {
-    return nextMenus;
-  }
-
-  const userCenterNode = nextMenus[userCenterIndex];
-  const userCenterChildren = userCenterNode.children || [];
-  const personalCenterIndex = userCenterChildren.findIndex((child) => child.path === PERSONAL_CENTER_PATH);
-  if (personalCenterIndex < 0) {
-    return nextMenus;
-  }
-
-  const personalCenterNode = userCenterChildren[personalCenterIndex];
-  const remainingChildren = userCenterChildren.filter((_, index) => index !== personalCenterIndex);
-
-  nextMenus[userCenterIndex] = {
-    ...userCenterNode,
-    children: remainingChildren.length ? remainingChildren : undefined,
-  };
-
-  if (!nextMenus.some((item) => item.path === PERSONAL_CENTER_PATH)) {
-    nextMenus.splice(userCenterIndex + 1, 0, personalCenterNode);
-  }
-
-  return nextMenus;
 };
 
 const composeMenuItem = (

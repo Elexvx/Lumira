@@ -1,12 +1,12 @@
 import { PageContainer, ProCard, StatisticCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Col, Empty, List, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
+import { Avatar, Col, Empty, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { buildTableScroll } from '@/features/table/proTable';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
-import type { AuditLogRecord, DashboardSummary, TenantPlugin } from '@/types/api';
+import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import './Home.css';
 
 const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
@@ -89,21 +89,6 @@ const buildLogColumns = (title: string, isMobile: boolean) => [
   },
 ];
 
-const renderPluginDescription = (plugin: TenantPlugin) => {
-  const sharedDeps = plugin.sharedDeps?.length ? plugin.sharedDeps.join('、') : '无共享依赖';
-  const routeCount = plugin.routes?.length || plugin.menus?.length || 0;
-
-  return (
-    <Space direction="vertical" size={4} style={{ width: '100%' }}>
-      <Typography.Text type="secondary">{plugin.manifestPath}</Typography.Text>
-      <Typography.Text type="secondary">
-        {routeCount > 0 ? `包含 ${routeCount} 个路由或菜单` : '未声明前端入口'}
-      </Typography.Text>
-      <Typography.Text type="secondary">{sharedDeps}</Typography.Text>
-    </Space>
-  );
-};
-
 const DashboardHomePage = () => {
   const { initialState } = useInitialStateModel();
   const responsive = useResponsive();
@@ -116,7 +101,6 @@ const DashboardHomePage = () => {
   const currentUser = summary?.currentUser || initialState?.currentUser;
   const greeting = buildGreeting(dayjs().hour());
   const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '当前用户';
-  const tenantPlugins = summary?.tenantPlugins || [];
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
   const loginLogColumns = buildLogColumns('登录记录', responsive.isMobile);
@@ -137,12 +121,6 @@ const DashboardHomePage = () => {
       value: summary?.permissionCount ?? 0,
       suffix: '项',
       description: '当前会话权限总数',
-    },
-    {
-      title: '插件数',
-      value: tenantPlugins.length,
-      suffix: '个',
-      description: '已加载插件',
     },
     {
       title: '近期记录',
@@ -241,26 +219,6 @@ const DashboardHomePage = () => {
             </ProCard>
           </Col>
 
-          <Col xs={24} xl={8}>
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <ProCard variant="outlined" title="插件" className="saas-dashboard-home__panel">
-                {tenantPlugins.length ? (
-                  <List
-                    size="small"
-                    dataSource={tenantPlugins}
-                    renderItem={(plugin) => (
-                      <List.Item style={{ paddingInline: 0 }}>
-                        <List.Item.Meta title={plugin.pluginName || plugin.pluginCode} description={renderPluginDescription(plugin)} />
-                        <Tag color="blue">{plugin.version}</Tag>
-                      </List.Item>
-                    )}
-                  />
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无插件数据" />
-                )}
-              </ProCard>
-            </Space>
-          </Col>
         </Row>
       </Space>
     </PageContainer>

@@ -48,7 +48,7 @@ import type {
   AiSkillRecord,
 } from '@/types/api';
 
-type AiPageTabKey = 'employees' | 'llm-services' | 'data-source' | 'settings';
+type AiPageTabKey = 'employees' | 'llm-services';
 
 type AvatarOption = {
   key: string;
@@ -60,8 +60,6 @@ type AvatarOption = {
 const DEFAULT_AVATAR_KEY = 'avatar-purple-01';
 const EMPLOYEE_TAB_KEY: AiPageTabKey = 'employees';
 const LLM_TAB_KEY: AiPageTabKey = 'llm-services';
-const DATA_SOURCE_TAB_KEY: AiPageTabKey = 'data-source';
-const SETTINGS_TAB_KEY: AiPageTabKey = 'settings';
 
 const AVATAR_OPTIONS: AvatarOption[] = [
   { key: 'avatar-purple-01', label: '紫色', color: '#6E56CF', icon: <RobotOutlined /> },
@@ -98,7 +96,7 @@ const RISK_LEVEL_COLOR: Record<string, string> = {
 };
 
 const parseTabKey = (value?: string | null): AiPageTabKey => {
-  if (value === LLM_TAB_KEY || value === DATA_SOURCE_TAB_KEY || value === SETTINGS_TAB_KEY) {
+  if (value === LLM_TAB_KEY) {
     return value;
   }
   return EMPLOYEE_TAB_KEY;
@@ -648,16 +646,6 @@ const AiEmployeesPage = () => {
             items={[
               { key: EMPLOYEE_TAB_KEY, label: 'AI 员工', children: employeeTab },
               { key: LLM_TAB_KEY, label: 'LLM 服务', children: llmTab },
-              {
-                key: DATA_SOURCE_TAB_KEY,
-                label: '数据源',
-                children: <Empty description="第一期暂未开放数据源管理，后续会在这里接入知识库、数据库和文件类数据源。" />,
-              },
-              {
-                key: SETTINGS_TAB_KEY,
-                label: '设置',
-                children: <Empty description="第一期暂未开放平台级设置，后续会在这里接入运行参数、默认模型与安全策略。" />,
-              },
             ]}
           />
         </Card>
