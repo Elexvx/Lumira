@@ -3,6 +3,18 @@
   "installCommand": "corepack enable && corepack pnpm install --frozen-lockfile",
   "buildCommand": "corepack pnpm build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/dashboard/home",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "destination": "/user/login",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/:path*",
