@@ -4,6 +4,21 @@ FROM maven:3.9.11-eclipse-temurin-21 AS builder
 
 WORKDIR /workspace
 
+RUN mkdir -p /root/.m2 && cat > /root/.m2/settings.xml <<'EOF'
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>aliyun-public</id>
+      <mirrorOf>central</mirrorOf>
+      <name>Aliyun Maven Central Mirror</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+</settings>
+EOF
+
 COPY pom.xml ./
 COPY backend/pom.xml backend/pom.xml
 COPY libs/common-core/pom.xml libs/common-core/pom.xml
