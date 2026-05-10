@@ -5,6 +5,14 @@ spring:
     import:
       - optional:nacos:auth-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
   cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            system-service:
+              - uri: ${SYSTEM_SERVICE_BASE_URL:http://localhost:8080}
+            tenant-service:
+              - uri: ${TENANT_SERVICE_BASE_URL:http://localhost:8083}
     nacos:
       config:
         server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
