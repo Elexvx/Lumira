@@ -154,7 +154,11 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8082
+      SYSTEM_SERVICE_BASE_URL: http://system-service:8080
+      TENANT_SERVICE_BASE_URL: http://tenant-service:8083
     depends_on:
+      - system-service
+      - tenant-service
       - redis
 
   tenant-service:
