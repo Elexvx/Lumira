@@ -1,3 +1,4 @@
+import { API_ORIGIN } from '@/constants/http';
 import { request } from '@/services/common/request';
 import type { MessageNoticeRecord } from '@/types/api';
 
@@ -34,9 +35,9 @@ const requestWebSocketTicket = async () => {
 };
 
 const buildWebSocketUrl = (ticket: string) => {
-  const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsHost = window.location.host;
-  return `${wsScheme}//${wsHost}/ws/message?ticket=${encodeURIComponent(ticket)}`;
+  const apiOrigin = API_ORIGIN ? new URL(API_ORIGIN) : window.location;
+  const wsScheme = apiOrigin.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsScheme}//${apiOrigin.host}/ws/message?ticket=${encodeURIComponent(ticket)}`;
 };
 
 const clearReconnectTimer = () => {
