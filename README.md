@@ -203,7 +203,7 @@ cd legendary-invention
 
 常用安全相关配置：
 
-- `CORS_ALLOWED_ORIGINS`：生产/测试环境允许的前端 origin 列表，逗号分隔。
+- `CORS_ALLOWED_ORIGIN_PATTERNS`：生产/测试环境允许的前端 origin pattern 列表，逗号分隔，例如 `https://*.vercel.app,https://*.elexvx.com`。
 - `TRUSTED_PROXY_CIDRS`：受信代理网段，逗号分隔。
 - `TRUST_FORWARDED_HEADERS`：是否允许解析代理头，生产环境建议仅在受信代理后开启。
 - `DEFAULT_ADMIN_INIT_ENABLED`：仅 `dev` 环境建议开启默认管理员初始化。
