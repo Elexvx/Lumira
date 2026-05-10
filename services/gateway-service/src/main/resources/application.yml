@@ -30,9 +30,7 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
-                allowedOriginPatterns:
-                  - http://localhost:*
-                  - http://127.0.0.1:*
+                allowedOriginPatterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://*.vercel.app,https://*.elexvx.com,https://elexvx.com}
                 allowedMethods:
                   - GET
                   - POST
