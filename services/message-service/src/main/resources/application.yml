@@ -47,9 +47,7 @@ server:
 
 saas:
   web:
-    cors-allowed-origin-patterns:
-      - http://localhost:*
-      - http://127.0.0.1:*
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
   security:
     jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
     issuer: saas-foundation

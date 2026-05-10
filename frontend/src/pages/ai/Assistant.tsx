@@ -718,7 +718,17 @@ const AiAssistantPage = () => {
   const assistantQuery = useQuery({
     queryKey: ['ai-assistant-default'],
     enabled: !isShareMode,
-    queryFn: async () => aiService.assistant({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () =>
+      aiService.assistant({
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      }).catch((error) => {
+        if (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'A0404') {
+          return null;
+        }
+
+        throw error;
+      }),
     retry: false,
   });
 

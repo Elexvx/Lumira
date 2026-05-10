@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "system-service", contextId = "systemInternalApi", path = "/internal/system")
+@FeignClient(name = "system-service", contextId = "systemInternalApi", url = "${SYSTEM_SERVICE_BASE_URL:}", path = "/internal/system")
 public interface SystemInternalApi {
 
     @GetMapping("/users/login/{account}")

@@ -9,6 +9,14 @@ spring:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE:200MB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:200MB}
   cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            auth-service:
+              - uri: ${AUTH_SERVICE_BASE_URL:http://localhost:8082}
+            system-service:
+              - uri: ${SYSTEM_SERVICE_BASE_URL:http://localhost:8080}
     nacos:
       config:
         server-addr: ${NACOS_SERVER_ADDR:localhost:8848}

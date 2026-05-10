@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
-@FeignClient(name = "file-service", contextId = "fileInternalApi", path = "/internal/files")
+@FeignClient(name = "file-service", contextId = "fileInternalApi", url = "${FILE_SERVICE_BASE_URL:}", path = "/internal/files")
 public interface FileInternalApi {
 
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
