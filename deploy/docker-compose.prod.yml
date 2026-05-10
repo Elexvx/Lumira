@@ -12,6 +12,7 @@ x-common-env: &common-env
   DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
   DB_USERNAME: ${DB_USERNAME:-root}
   DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+  SPRING_FLYWAY_ENABLED: "false"
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -71,6 +72,8 @@ services:
       - mysql
 
   xxl-job-admin:
+    profiles:
+      - jobs
     image: xuxueli/xxl-job-admin:3.4.0
     container_name: legendary-xxl-job-admin
     restart: unless-stopped
@@ -98,6 +101,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8080
+      SPRING_FLYWAY_ENABLED: "true"
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
       PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
@@ -235,6 +239,8 @@ services:
       - mysql
 
   job-executor:
+    profiles:
+      - jobs
     build:
       <<: *backend-build
       args:

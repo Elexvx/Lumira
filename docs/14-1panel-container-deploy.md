@@ -44,9 +44,6 @@ cp deploy/.env.example deploy/.env
 - `JWT_SECRET`
 - `PLUGIN_SIGNATURE_SECRET`
 - `SAAS_JOB_INTERNAL_TOKEN`
-- `XXL_JOB_ADMIN_ACCESS_TOKEN`
-- `XXL_JOB_ACCESS_TOKEN`
-- `XXL_JOB_LOGIN_PASSWORD`
 
 `DB_PASSWORD` 会同时作为容器内 MySQL root 用户密码和后端数据库连接密码，避免维护两套数据库密码。
 
@@ -62,6 +59,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --
 ```
 
 如果需要启用 Nacos profile，再替换 `NACOS_AUTH_TOKEN`、`NACOS_AUTH_IDENTITY_KEY`、`NACOS_AUTH_IDENTITY_VALUE`。
+如果需要启用定时任务 profile，再替换 `XXL_JOB_ADMIN_ACCESS_TOKEN`、`XXL_JOB_ACCESS_TOKEN`、`XXL_JOB_LOGIN_PASSWORD`。
 
 ## 访问入口
 
@@ -85,6 +83,13 @@ SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS_0=https://你的前端.vercel.app
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile frontend up -d --build frontend
 ```
 
+如果以后需要启用 Nacos 或 XXL-Job：
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile nacos up -d
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile jobs up -d --build
+```
+
 ## 持久化数据
 
 Compose 已使用 Docker volume 保存：
@@ -94,7 +99,7 @@ Compose 已使用 Docker volume 保存：
 - Nacos 数据和日志：`nacos_data`、`nacos_logs`，仅启用 `nacos` profile 时使用
 - 上传文件：`upload_data`
 - 插件文件：`plugin_data`、`plugin_staging`
-- XXL-Job 执行器日志：`xxl_job_executor_logs`
+- XXL-Job 执行器日志：`xxl_job_executor_logs`，仅启用 `jobs` profile 时使用
 
 不要把本地的 `backend/storage` 直接打包进生产镜像；该目录已经被 `.dockerignore` 排除。
 
