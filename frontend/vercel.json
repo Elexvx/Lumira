@@ -2,5 +2,19 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "corepack enable && corepack pnpm install --frozen-lockfile",
   "buildCommand": "corepack pnpm build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.elexvx.com/api/:path*"
+    },
+    {
+      "source": "/ws/:path*",
+      "destination": "https://api.elexvx.com/ws/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
 }
