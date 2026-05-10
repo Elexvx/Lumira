@@ -7,7 +7,7 @@ import {
 } from '@/branding/settings';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
-import { isLoggedIn, restoreSession } from '@/auth/session';
+import { clearAuthSession, isLoggedIn, restoreSession } from '@/auth/session';
 import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { pluginService } from '@/services/plugin';
@@ -190,10 +190,24 @@ const getHealthRetryDelay = (attempt: number) => {
   return Math.min(baseDelay * 2 ** Math.min(attempt - 1, 3), maxDelay);
 };
 
+class BackendProxyUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BackendProxyUnavailableError';
+  }
+}
+
 const checkBackendHealth = async () => {
   const response = await fetch(`${API_PREFIX}/health`);
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('text/html')) {
+    throw new BackendProxyUnavailableError('后端健康检查返回了前端页面，请检查 API 代理配置');
+  }
   if (!response.ok) {
     throw new Error(`后端健康检查失败：HTTP ${response.status}`);
+  }
+  if (!contentType.includes('application/json')) {
+    throw new BackendProxyUnavailableError('后端健康检查未返回 JSON，请检查 API 代理配置');
   }
   const payload = await response.json();
   const health = payload?.data;
@@ -223,6 +237,9 @@ const waitForBackendReady = async () => {
       await checkBackendHealth();
       return;
     } catch (error) {
+      if (error instanceof BackendProxyUnavailableError) {
+        throw error;
+      }
       const retryInMs = getHealthRetryDelay(attempt);
       setBootstrapSnapshot({
         phase: 'health',
@@ -283,6 +300,10 @@ export async function getAppInitialState(): Promise<AppInitialState> {
 
       return await buildGuestInitialState(storedBrandingSettings);
     } catch (error) {
+      if (error instanceof BackendProxyUnavailableError) {
+        clearAuthSession();
+        return await buildGuestInitialState(storedBrandingSettings);
+      }
       retryCount += 1;
       const retryInMs = getHealthRetryDelay(retryCount);
       setBootstrapSnapshot({
