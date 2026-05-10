@@ -21,11 +21,15 @@ public class FeignHeaderForwardingConfig {
     @Bean
     public RequestInterceptor requestInterceptor() {
         return template -> {
+            boolean internalRequest = isInternalRequest(template);
+            if (internalRequest && StringUtils.hasText(internalToken)) {
+                template.header("X-Job-Token", internalToken);
+            }
+
             HttpServletRequest request = RequestContextUtils.currentRequest();
             if (request == null) {
                 return;
             }
-            boolean internalRequest = isInternalRequest(template);
             copyHeader(request, template, HeaderConstants.REQUEST_ID);
             copyHeader(request, template, HeaderConstants.TENANT_ID);
             copyHeader(request, template, HeaderConstants.TRACE_ID);
@@ -46,7 +50,12 @@ public class FeignHeaderForwardingConfig {
             return true;
         }
         String url = template.url();
-        return StringUtils.hasText(url) && url.contains("/internal/");
+        if (StringUtils.hasText(url) && url.contains("/internal/")) {
+            return true;
+        }
+        return template.feignTarget() != null
+                && template.feignTarget().type() != null
+                && template.feignTarget().type().getName().startsWith("com.legendary.invention.api.client.");
     }
 
     private void copyHeader(HttpServletRequest request, RequestTemplate template, String headerName) {

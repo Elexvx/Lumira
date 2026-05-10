@@ -58,6 +58,10 @@ spring:
               uri: ${GATEWAY_PLUGIN_SERVICE_URI:http://localhost:8086}
               predicates:
                 - Path=/api/v1/plugins/**
+            - id: localization-runtime-service
+              uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
+              predicates:
+                - Path=/api/v1/localization/runtime/**
             - id: localization-service
               uri: ${GATEWAY_LOCALIZATION_SERVICE_URI:http://localhost:8088}
               predicates:

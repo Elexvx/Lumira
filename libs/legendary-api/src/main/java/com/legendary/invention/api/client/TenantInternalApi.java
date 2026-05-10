@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "tenant-service", contextId = "tenantInternalApi", path = "/internal/tenant")
+@FeignClient(name = "tenant-service", contextId = "tenantInternalApi", url = "${TENANT_SERVICE_BASE_URL:}", path = "/internal/tenant")
 public interface TenantInternalApi {
 
     @GetMapping("/users/{userId}/visible-tenants")

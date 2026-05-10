@@ -63,21 +63,12 @@ export default defineConfig({
   npmClient: 'pnpm',
   routes: backendRoutes,
   proxy: {
-    '/api/v1/message': {
-      target: 'http://localhost:8085',
-      changeOrigin: true,
-    },
     '/api': {
-      target: 'http://localhost:8080',
+      target: process.env.UMI_DEV_API_TARGET || 'http://localhost:8081',
       changeOrigin: true,
-    },
-    '/ws/message': {
-      target: 'ws://localhost:8085',
-      changeOrigin: true,
-      ws: true,
     },
     '/ws': {
-      target: 'ws://localhost:8080',
+      target: process.env.UMI_DEV_WS_TARGET || 'ws://localhost:8081',
       changeOrigin: true,
       ws: true,
     },

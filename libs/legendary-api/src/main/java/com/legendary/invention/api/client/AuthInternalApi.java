@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "auth-service", contextId = "authInternalApi", path = "/internal/auth")
+@FeignClient(name = "auth-service", contextId = "authInternalApi", url = "${AUTH_SERVICE_BASE_URL:}", path = "/internal/auth")
 public interface AuthInternalApi {
 
     @GetMapping("/sessions/{sessionId}/current-user")

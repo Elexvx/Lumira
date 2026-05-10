@@ -273,7 +273,7 @@ export const TopActions = () => {
           allowUnauthorizedWithoutRedirect: true,
         },
       );
-      setLocale(normalizedNextLocale);
+      setLocale(normalizedNextLocale, true);
     } catch (error) {
       message.error(error instanceof Error ? error.message : intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
     } finally {

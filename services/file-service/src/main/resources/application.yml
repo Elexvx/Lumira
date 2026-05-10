@@ -45,9 +45,7 @@ management:
 
 saas:
   web:
-    cors-allowed-origin-patterns:
-      - http://localhost:*
-      - http://127.0.0.1:*
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
   job:
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
   security:

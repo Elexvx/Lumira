@@ -32,9 +32,7 @@ spring:
 
 saas:
   web:
-    cors-allowed-origin-patterns:
-      - http://localhost:*
-      - http://127.0.0.1:*
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
     trusted-proxy-cidrs:
       - 127.0.0.1/32
@@ -58,6 +56,7 @@ saas:
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
+      - /api/v1/localization/runtime/**
       - /api/uploads/**
       - /actuator/health
       - /api/health
