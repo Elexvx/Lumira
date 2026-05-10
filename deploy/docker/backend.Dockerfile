@@ -38,7 +38,7 @@ ENV JAVA_OPTS="" \
 
 WORKDIR /app
 
-RUN addgroup --system app && adduser --system --ingroup app app && mkdir -p /tmp/nacos && chown -R app:app /tmp/nacos
+RUN addgroup --system app && adduser --system --ingroup app app && mkdir -p /tmp/nacos /tmp/sentinel && chown -R app:app /tmp/nacos /tmp/sentinel
 
 COPY --from=builder /workspace/app.jar /app/app.jar
 
@@ -46,4 +46,4 @@ USER app
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java -DJM.LOG.PATH=/tmp/nacos $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $JAVA_OPTS -jar /app/app.jar"]
