@@ -22,6 +22,7 @@ x-common-env: &common-env
   SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN is required}
   TRUST_FORWARDED_HEADERS: "true"
   JAVA_OPTS: ${JAVA_OPTS:-}
+  CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,https://*.vercel.app,https://*.elexvx.com,https://elexvx.com}
 
 services:
   mysql:

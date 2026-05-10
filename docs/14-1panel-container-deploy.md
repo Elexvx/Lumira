@@ -74,7 +74,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --
 Vercel 前端的 API 地址配置成这个后端域名即可。跨域放行可以通过环境变量覆盖，例如只允许你的 Vercel 域名：
 
 ```bash
-SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS_0=https://你的前端.vercel.app
+CORS_ALLOWED_ORIGIN_PATTERNS=https://你的前端.vercel.app,https://你的前端自定义域名
 ```
 
 如果以后想让 1Panel 同时托管前端，可以启用可选 profile：
