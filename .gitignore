@@ -41,3 +41,4 @@ backend/storage/
 .vscode/
 **/.DS_Store
 /META-INF/
+.vercel
