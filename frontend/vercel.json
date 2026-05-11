@@ -17,6 +17,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/uploads/:path*",
+      "destination": "https://api.elexvx.com/api/uploads/:path*"
+    },
+    {
       "source": "/:path*",
       "destination": "/index.html"
     }
