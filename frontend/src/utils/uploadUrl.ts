@@ -1,3 +1,5 @@
+import { API_ORIGIN } from '@/constants/http';
+
 const DEFAULT_UPLOAD_PUBLIC_PATH = '/api/uploads';
 
 export const normalizeUploadUrl = (value?: string | null, publicPath = DEFAULT_UPLOAD_PUBLIC_PATH) => {
@@ -12,16 +14,18 @@ export const normalizeUploadUrl = (value?: string | null, publicPath = DEFAULT_U
 
   const normalizedPublicPath = normalizePublicPath(publicPath);
   const publicPathWithoutLeadingSlash = normalizedPublicPath.slice(1);
+  const uploadOrigin = normalizeUploadOrigin(API_ORIGIN);
 
   if (trimmed === normalizedPublicPath || trimmed.startsWith(`${normalizedPublicPath}/`)) {
-    return trimmed;
+    return uploadOrigin ? `${uploadOrigin}${trimmed}` : trimmed;
   }
 
   if (trimmed === publicPathWithoutLeadingSlash || trimmed.startsWith(`${publicPathWithoutLeadingSlash}/`)) {
-    return `/${trimmed}`;
+    return uploadOrigin ? `${uploadOrigin}/${trimmed}` : `/${trimmed}`;
   }
 
-  return `${normalizedPublicPath}/${trimmed.replace(/^\/+/, '')}`;
+  const normalizedPath = `${normalizedPublicPath}/${trimmed.replace(/^\/+/, '')}`;
+  return uploadOrigin ? `${uploadOrigin}${normalizedPath}` : normalizedPath;
 };
 
 export const resolveAbsoluteUploadUrl = (value?: string | null, publicPath = DEFAULT_UPLOAD_PUBLIC_PATH) => {
@@ -51,3 +55,5 @@ const normalizePublicPath = (value: string) => {
   }
   return normalized;
 };
+
+const normalizeUploadOrigin = (value?: string | null) => value?.trim().replace(/\/+$/, '') || '';
