@@ -16,7 +16,7 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { history, setLocale, useAccess, useIntl, useLocation } from '@umijs/max';
+import { getLocale, history, setLocale, useAccess, useIntl, useLocation } from '@umijs/max';
 import { Avatar, Button, Dropdown, Form, Space, Tag, type MenuProps, message } from 'antd';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
@@ -91,7 +91,7 @@ export const TopActions = () => {
   const currentUser = initialState?.currentUser;
   const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '用户菜单';
   const userAvatarUrl = normalizeUploadUrl(currentUser?.avatarUrl || '');
-  const currentLocale = normalizeLocale(currentUser?.locale || undefined);
+  const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
   const availableRoles = currentUser?.availableRoles || [];
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
   const selectedRoleLabel = useMemo(() => {

@@ -103,6 +103,7 @@ services:
       <<: *common-env
       SERVER_PORT: 8080
       SPRING_FLYWAY_ENABLED: "true"
+      FILE_SERVICE_BASE_URL: http://file-service:8084
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
       PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
@@ -197,6 +198,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8084
+      AUTH_SERVICE_BASE_URL: http://auth-service:8082
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
     volumes:
       - upload_data:/data/uploads
