@@ -401,9 +401,6 @@ public class AiManagementAppService {
                 new BeanPropertyRowMapper<>(AiVO.EmployeeVO.class),
                 tenantId
         ).stream().findFirst().orElse(null);
-        if (employee == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "暂无可用数字员工");
-        }
         return employee;
     }
 
