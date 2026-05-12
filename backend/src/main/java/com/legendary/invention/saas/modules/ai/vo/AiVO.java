@@ -583,6 +583,10 @@ public final class AiVO {
             return pinned;
         }
 
+        public Boolean getIsPinned() {
+            return pinned;
+        }
+
         public void setPinned(Boolean pinned) {
             this.pinned = pinned;
         }
