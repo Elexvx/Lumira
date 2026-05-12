@@ -138,16 +138,6 @@ export default () => {
             description={error}
           />
         ) : null}
-        <Card>
-          <Space direction="vertical" size={4} style={{ width: '100%' }}>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {openApiDocument?.info?.title || 'OpenAPI'}
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              版本 {openApiDocument?.info?.version || openApiDocument?.openapi || '-'} · 共 {endpointRecords.length} 个接口
-            </Typography.Text>
-          </Space>
-        </Card>
         <Spin spinning={loading}>
           {endpointRecords.length ? (
             <Collapse
