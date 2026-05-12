@@ -827,6 +827,8 @@ export interface ApprovalTaskRecord {
   id: number;
   instanceId: number;
   nodeId: number;
+  businessType?: string | null;
+  businessTitle?: string | null;
   assigneeUserId?: number | null;
   assigneeRoleId?: number | null;
   assigneeDeptId?: number | null;

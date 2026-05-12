@@ -16,7 +16,7 @@ import {
   resolveNavigationIcon,
 } from '@/navigation/settingsNavigation';
 import NoPermission from '@/pages/exception/NoPermission';
-import { backendRouteMeta } from '@/routes/meta';
+import { backendRouteMeta, realPageRouteMetaMap } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
 import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -30,6 +30,7 @@ import type { BreadcrumbProps } from 'antd';
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
+const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
@@ -102,6 +103,40 @@ const buildMainMenuData = (
   });
 };
 
+const translateVisibleLocalMenuData = (
+  initialState: AppInitialState | undefined,
+  items: RuntimeMenuDataItem[],
+): RuntimeMenuDataItem[] => {
+  const access = buildAccess({ currentUser: initialState?.currentUser }) as Record<string, unknown>;
+
+  return items.map((item) => {
+    const routeMeta = item.path ? routeMetaMap.get(item.path) : undefined;
+    const hasRealPageRoute = item.path ? realPagePathSet.has(item.path) : false;
+    const children = item.children?.length ? translateVisibleLocalMenuData(initialState, item.children) : [];
+    if ((!routeMeta || !hasRealPageRoute) && !children.length) {
+      return null;
+    }
+    if (routeMeta?.hideInMenu && !children.length) {
+      return null;
+    }
+    if (routeMeta?.access && !access[routeMeta.access] && !children.length) {
+      return null;
+    }
+
+    const labelId = typeof item.locale === 'string' ? item.locale : item.name || item.title || item.path;
+    return {
+      ...item,
+      path: routeMeta?.path || item.path,
+      name: typeof labelId === 'string'
+        ? resolveBuiltinMessage(labelId, typeof item.name === 'string' ? item.name : undefined)
+        : item.name,
+      locale: false as const,
+      hideInMenu: routeMeta?.hideInMenu,
+      children: children.length ? children : undefined,
+    };
+  }).filter(Boolean) as RuntimeMenuDataItem[];
+};
+
 const composeMenuItem = (
   backendNode: MenuNode,
   localByPath: Map<string, RuntimeMenuDataItem>,
@@ -111,7 +146,11 @@ const composeMenuItem = (
   }
 
   const localMeta = localByPath.get(backendNode.path);
-  const hasLocalRoute = localMeta || isPluginRuntimePath(backendNode.path);
+  const mergedMeta = routeMetaMap.get(backendNode.path || '');
+  const hasLocalRoute = Boolean(
+    (backendNode.path && realPagePathSet.has(backendNode.path))
+      || isPluginRuntimePath(backendNode.path),
+  );
   const children = (backendNode.children || [])
     .map((child) => composeMenuItem(child, localByPath))
     .filter(Boolean) as RuntimeMenuDataItem[];
@@ -120,9 +159,8 @@ const composeMenuItem = (
     return null;
   }
 
-  const mergedMeta = routeMetaMap.get(backendNode.path || '');
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
-  const menuLabelId = mergedMeta?.name || backendNode.menuCode || backendNode.name;
+  const menuLabelId = mergedMeta?.name || backendNode.name || backendNode.menuCode;
 
   return {
     ...localMeta,
@@ -223,6 +261,13 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     footerRender: () => renderFooter(brandingSettings),
     unAccessible: <NoPermission />,
     pageTitleRender: (props, defaultTitle) => (!props?.title ? defaultTitle || brandName : `${props.title} - ${brandName}`),
+    menuTextRender: (item, defaultDom) =>
+      typeof defaultDom === 'string'
+        ? resolveBuiltinMessage(
+            typeof item.locale === 'string' ? item.locale : item.name,
+            defaultDom,
+          )
+        : defaultDom,
     menu: {
       params: {
         menuVersion: initialState?.menuVersion ?? 0,
@@ -236,7 +281,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
 
       const backendMenus = initialState?.menuTree || [];
       if (!backendMenus.length) {
-        return menuData as RuntimeMenuDataItem[];
+        return buildMainMenuData(initialState, translateVisibleLocalMenuData(initialState, menuData as RuntimeMenuDataItem[]));
       }
 
       const localByPath = flattenLocalMenuMap(menuData as RuntimeMenuDataItem[]);

@@ -12,7 +12,7 @@ import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { encryptLoginPassword } from '@/auth/loginEncryption';
 import { initializeAfterLogin } from '@/auth/session';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
-import { createLoginStorageHandler, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
+import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { authService } from '@/services/auth';
 import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
@@ -255,8 +255,12 @@ const Login = () => {
       return;
     }
 
-    window.location.replace(redirectTarget);
-  }, [initialState?.currentUser?.sessionId, redirectTarget]);
+    if (initialState?.currentUser) {
+      window.location.replace(resolveAuthorizedLoginRedirectTarget(location.search, initialState.currentUser, initialState.menuTree));
+    } else {
+      window.location.replace(redirectTarget);
+    }
+  }, [initialState?.currentUser, initialState?.menuTree, location.search, redirectTarget]);
 
   useEffect(() => {
     const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
@@ -470,7 +474,7 @@ const Login = () => {
       });
 
       setLoginCodeChallenges({});
-      history.replace(redirectTarget);
+      history.replace(resolveAuthorizedLoginRedirectTarget(location.search, sessionResult.currentUser, menuTree));
       return true;
     } catch (error) {
       if (error instanceof ApiRequestError) {
