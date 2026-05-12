@@ -71,11 +71,35 @@ const AVATAR_OPTIONS: AvatarOption[] = [
 ];
 
 const PROVIDER_OPTIONS = [
-  { label: 'DashScope', value: 'dashscope' },
+  { label: '阿里云百炼', value: 'aliyun-bailian' },
+  { label: 'DashScope（兼容旧配置）', value: 'dashscope' },
   { label: 'DeepSeek', value: 'deepseek' },
   { label: 'OpenAI Compatible', value: 'openai-compatible' },
   { label: 'Ollama', value: 'ollama' },
 ];
+
+const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; defaultModel: string }> = {
+  'aliyun-bailian': {
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultModel: 'qwen-plus',
+  },
+  dashscope: {
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultModel: 'qwen-plus',
+  },
+  deepseek: {
+    baseUrl: 'https://api.deepseek.com/v1',
+    defaultModel: 'deepseek-chat',
+  },
+  'openai-compatible': {
+    baseUrl: 'https://api.openai.com/v1',
+    defaultModel: '',
+  },
+  ollama: {
+    baseUrl: 'http://localhost:11434/v1',
+    defaultModel: '',
+  },
+};
 
 const PERMISSION_MODE_OPTIONS: Array<{ label: string; value: AiSkillPermissionMode }> = [
   { label: '访问', value: 'visit' },
@@ -372,12 +396,12 @@ const AiEmployeesPage = () => {
     setSelectedLlmService(null);
     llmForm.resetFields();
     llmForm.setFieldsValue({
-      provider: 'openai-compatible',
+      provider: 'aliyun-bailian',
       code: '',
       title: '',
-      baseUrl: '',
+      baseUrl: PROVIDER_DEFAULTS['aliyun-bailian'].baseUrl,
       apiKey: '',
-      defaultModel: '',
+      defaultModel: PROVIDER_DEFAULTS['aliyun-bailian'].defaultModel,
       enabled: true,
       timeoutMs: 60000,
       temperature: 0.7,
@@ -406,6 +430,17 @@ const AiEmployeesPage = () => {
       llmState.drawer.reset();
       setSelectedLlmService(null);
     }
+  };
+
+  const handleProviderChange = (provider: string) => {
+    const defaults = PROVIDER_DEFAULTS[provider];
+    if (!defaults) {
+      return;
+    }
+    llmForm.setFieldsValue({
+      baseUrl: defaults.baseUrl,
+      defaultModel: defaults.defaultModel || llmForm.getFieldValue('defaultModel'),
+    });
   };
 
   const saveLlmService = async () => {
@@ -814,7 +849,7 @@ const AiEmployeesPage = () => {
             <Row gutter={16}>
               <Col xs={24} md={12}>
                 <Form.Item label="LLM 类型" name="provider" rules={[{ required: true, message: '请选择 LLM 类型' }]}>
-                  <Select options={PROVIDER_OPTIONS} placeholder="请选择供应商类型" />
+                  <Select options={PROVIDER_OPTIONS} placeholder="请选择供应商类型" onChange={handleProviderChange} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
@@ -831,12 +866,12 @@ const AiEmployeesPage = () => {
               </Col>
               <Col xs={24} md={12}>
                 <Form.Item label="默认模型" name="defaultModel">
-                  <Input placeholder="例如：qwen-max 或 deepseek-chat" />
+                  <Input placeholder="例如：qwen-plus / qwen-plus-latest / deepseek-chat" />
                 </Form.Item>
               </Col>
             </Row>
             <Form.Item label="Base URL" name="baseUrl">
-              <Input placeholder="例如：https://api.example.com/v1" />
+              <Input placeholder="阿里云百炼：https://dashscope.aliyuncs.com/compatible-mode/v1" />
             </Form.Item>
             <Form.Item label="API Key" name="apiKey">
               <Input.Password placeholder="请输入 API Key" autoComplete="off" />

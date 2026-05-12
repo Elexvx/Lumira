@@ -30,7 +30,13 @@ public interface AiChatModelFactory {
     interface AiChatClient {
         AiVO.ChatResponseVO chat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills);
 
-        AiVO.ChatResponseVO streamChat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills, Consumer<String> onDelta);
+        AiVO.ChatResponseVO streamChat(
+                AiDTO.ChatRequest request,
+                AiVO.EmployeeDetailVO employee,
+                List<AiVO.SkillVO> skills,
+                Consumer<String> onDelta,
+                Consumer<String> onThinking
+        );
     }
 }
 
@@ -161,8 +167,14 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             }
 
             @Override
-            public AiVO.ChatResponseVO streamChat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills, Consumer<String> onDelta) {
-                return invokeStreamingChatCompletion(config, request, employee, skills, onDelta);
+            public AiVO.ChatResponseVO streamChat(
+                    AiDTO.ChatRequest request,
+                    AiVO.EmployeeDetailVO employee,
+                    List<AiVO.SkillVO> skills,
+                    Consumer<String> onDelta,
+                    Consumer<String> onThinking
+            ) {
+                return invokeStreamingChatCompletion(config, request, employee, skills, onDelta, onThinking);
             }
         };
     }
@@ -204,7 +216,8 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             AiDTO.ChatRequest request,
             AiVO.EmployeeDetailVO employee,
             List<AiVO.SkillVO> skills,
-            Consumer<String> onDelta
+            Consumer<String> onDelta,
+            Consumer<String> onThinking
     ) {
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
@@ -221,7 +234,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
                     .build();
 
             HttpResponse<java.io.InputStream> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
-            return parseStreamingResponse(config, request, employee, httpResponse, onDelta);
+            return parseStreamingResponse(config, request, employee, httpResponse, onDelta, onThinking);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用被中断");
@@ -265,7 +278,8 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             AiDTO.ChatRequest request,
             AiVO.EmployeeDetailVO employee,
             HttpResponse<java.io.InputStream> httpResponse,
-            Consumer<String> onDelta
+            Consumer<String> onDelta,
+            Consumer<String> onThinking
     ) throws IOException {
         if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
             String body = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8);
@@ -275,12 +289,13 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         }
 
         StringBuilder replyBuilder = new StringBuilder();
+        StringBuilder thinkingBuilder = new StringBuilder();
         StringBuilder eventBuilder = new StringBuilder();
         try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(httpResponse.body(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank()) {
-                    appendStreamingEvent(eventBuilder.toString(), replyBuilder, onDelta);
+                    appendStreamingEvent(eventBuilder.toString(), replyBuilder, thinkingBuilder, onDelta, onThinking);
                     eventBuilder.setLength(0);
                     continue;
                 }
@@ -289,7 +304,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
                 }
             }
         }
-        appendStreamingEvent(eventBuilder.toString(), replyBuilder, onDelta);
+        appendStreamingEvent(eventBuilder.toString(), replyBuilder, thinkingBuilder, onDelta, onThinking);
 
         String replyText = replyBuilder.toString();
         if (!StringUtils.hasText(replyText)) {
@@ -304,15 +319,30 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         response.setModel(resolveModel(config, null));
         response.setReplyAt(LocalDateTime.now());
         response.setReplyText(replyText.trim());
+        response.setThinkingContent(StringUtils.hasText(thinkingBuilder.toString()) ? thinkingBuilder.toString().trim() : null);
         return response;
     }
 
-    private void appendStreamingEvent(String payload, StringBuilder replyBuilder, Consumer<String> onDelta) throws IOException {
+    private void appendStreamingEvent(
+            String payload,
+            StringBuilder replyBuilder,
+            StringBuilder thinkingBuilder,
+            Consumer<String> onDelta,
+            Consumer<String> onThinking
+    ) throws IOException {
         if (!StringUtils.hasText(payload) || "[DONE]".equals(payload.trim())) {
             return;
         }
 
         JsonNode root = objectMapper.readTree(payload);
+        String thinking = extractStreamingThinking(root);
+        if (StringUtils.hasText(thinking)) {
+            thinkingBuilder.append(thinking);
+            if (onThinking != null) {
+                onThinking.accept(thinking);
+            }
+        }
+
         String delta = extractStreamingDelta(root);
         if (!StringUtils.hasText(delta)) {
             return;
@@ -362,6 +392,9 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         var body = objectMapper.readTree(buildRequestBody(config, request, employee, skills));
         if (body instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
             objectNode.put("stream", stream);
+            if (stream && shouldEnableThinking(config)) {
+                objectNode.put("enable_thinking", true);
+            }
             return objectMapper.writeValueAsString(objectNode);
         }
         return objectMapper.writeValueAsString(body);
@@ -481,6 +514,20 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         return StringUtils.hasText(outputText) ? outputText : null;
     }
 
+    private String extractStreamingThinking(JsonNode root) {
+        JsonNode choices = root.path("choices");
+        if (choices.isArray() && !choices.isEmpty()) {
+            JsonNode firstChoice = choices.get(0);
+            String reasoningContent = firstChoice.path("delta").path("reasoning_content").asText(null);
+            if (StringUtils.hasText(reasoningContent)) {
+                return reasoningContent;
+            }
+        }
+
+        String reasoningContent = root.path("reasoning_content").asText(null);
+        return StringUtils.hasText(reasoningContent) ? reasoningContent : null;
+    }
+
     private String extractErrorMessage(JsonNode root) {
         String message = root.path("error").path("message").asText(null);
         if (StringUtils.hasText(message)) {
@@ -517,10 +564,15 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         return switch (normalizedProvider) {
             case "openai", "openai-compatible" -> "https://api.openai.com/v1";
             case "deepseek" -> "https://api.deepseek.com/v1";
-            case "dashscope" -> "https://dashscope.aliyuncs.com/compatible-mode/v1";
+            case "aliyun-bailian", "dashscope" -> "https://dashscope.aliyuncs.com/compatible-mode/v1";
             case "ollama" -> "http://localhost:11434/v1";
             default -> null;
         };
+    }
+
+    private boolean shouldEnableThinking(AiLlmServiceConfig config) {
+        String normalizedProvider = normalizeProvider(config.getProvider());
+        return "aliyun-bailian".equals(normalizedProvider) || "dashscope".equals(normalizedProvider);
     }
 
     private String resolveModel(AiLlmServiceConfig config, JsonNode root) {
