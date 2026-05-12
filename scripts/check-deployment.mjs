@@ -10,6 +10,7 @@ const checks = [
   { label: 'system API through API proxy', url: `${baseUrl}/api/health` },
   { label: 'gateway actuator', url: `${gatewayUrl}/actuator/health` },
   { label: 'public login capabilities API', url: `${baseUrl}/api/v1/public/login-capabilities` },
+  { label: 'protected localization management API is routed', url: `${baseUrl}/api/v1/localization/languages`, expectedStatus: 401 },
 ];
 
 function log(message) {
@@ -46,7 +47,7 @@ for (const check of checks) {
   const body = result.text.toLowerCase();
   const expected = check.includes?.toLowerCase();
 
-  if (result.ok && (!expected || body.includes(expected))) {
+  if ((check.expectedStatus ? result.status === check.expectedStatus : result.ok) && (!expected || body.includes(expected))) {
     log(`OK ${check.label}: ${check.url}`);
     continue;
   }
