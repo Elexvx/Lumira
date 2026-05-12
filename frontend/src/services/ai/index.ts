@@ -24,7 +24,7 @@ export interface AiPageQuery extends Record<string, unknown> {
 }
 
 export interface AiChatStreamEvent {
-  type: 'status' | 'delta' | 'done' | 'error';
+  type: 'status' | 'thinking' | 'delta' | 'done' | 'error';
   message?: string | null;
   delta?: string | null;
   response?: AiChatResponseRecord | null;

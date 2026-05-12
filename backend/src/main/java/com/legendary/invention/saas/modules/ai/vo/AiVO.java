@@ -674,6 +674,7 @@ public final class AiVO {
         private String conversationCode;
         private Long employeeId;
         private String replyText;
+        private String thinkingContent;
         private String replyRole;
         private String provider;
         private String model;
@@ -709,6 +710,14 @@ public final class AiVO {
 
         public void setReplyText(String replyText) {
             this.replyText = replyText;
+        }
+
+        public String getThinkingContent() {
+            return thinkingContent;
+        }
+
+        public void setThinkingContent(String thinkingContent) {
+            this.thinkingContent = thinkingContent;
         }
 
         public String getReplyRole() {
@@ -760,6 +769,13 @@ public final class AiVO {
         public static ChatStreamEventVO delta(String delta) {
             ChatStreamEventVO event = new ChatStreamEventVO();
             event.setType("delta");
+            event.setDelta(delta);
+            return event;
+        }
+
+        public static ChatStreamEventVO thinking(String delta) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("thinking");
             event.setDelta(delta);
             return event;
         }

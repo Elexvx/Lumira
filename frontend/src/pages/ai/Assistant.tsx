@@ -1094,6 +1094,22 @@ const AiAssistantPage = () => {
             return;
           }
 
+          if (event.type === 'thinking' && event.delta) {
+            updateSession(activeSession.id, (session) => ({
+              ...session,
+              messages: session.messages.map((item) =>
+                item.key === assistantPlaceholder.key
+                  ? {
+                    ...item,
+                    thinkingContent: `${item.thinkingContent || ''}${event.delta}`,
+                    thinkingLoading: true,
+                  }
+                  : item,
+              ),
+            }));
+            return;
+          }
+
           if (event.type === 'delta' && event.delta) {
             streamState.replyText += event.delta;
             updateSession(activeSession.id, (session) => ({

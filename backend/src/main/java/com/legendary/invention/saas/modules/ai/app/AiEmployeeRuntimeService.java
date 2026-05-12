@@ -86,7 +86,13 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用模型"));
         AiVO.ChatResponseVO response = onEvent == null
                 ? aiChatModelFactory.create(config).chat(request, employee, skills)
-                : aiChatModelFactory.create(config).streamChat(request, employee, skills, delta -> emit(onEvent, AiVO.ChatStreamEventVO.delta(delta)));
+                : aiChatModelFactory.create(config).streamChat(
+                        request,
+                        employee,
+                        skills,
+                        delta -> emit(onEvent, AiVO.ChatStreamEventVO.delta(delta)),
+                        thinking -> emit(onEvent, AiVO.ChatStreamEventVO.thinking(thinking))
+                );
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在保存 AI 回复"));
         response.setConversationId(conversationId);
         if (response.getConversationCode() == null) {
