@@ -51,6 +51,9 @@ class CaptchaServiceTest {
         assertNotNull(challenge.getBgUrl());
         assertNotNull(challenge.getPuzzleUrl());
         assertEquals("SLIDER", challenge.getCaptchaType());
+        assertEquals(58, challenge.getPuzzleWidth());
+        assertEquals(58, challenge.getPuzzleHeight());
+        assertTrue(challenge.getPuzzleTop() > 0);
         assertNotNull(record);
 
         SystemDTO.CaptchaSliderVerifyRequest request = new SystemDTO.CaptchaSliderVerifyRequest();

@@ -29,8 +29,8 @@ public class CaptchaService {
     private static final int IMAGE_HEIGHT = 56;
     private static final int SLIDER_WIDTH = 320;
     private static final int SLIDER_HEIGHT = 160;
-    private static final int SLIDER_PUZZLE_WIDTH = 60;
-    private static final int SLIDER_PUZZLE_HEIGHT = 160;
+    private static final int SLIDER_PUZZLE_WIDTH = 58;
+    private static final int SLIDER_PUZZLE_HEIGHT = 58;
     private static final int SLIDER_TOLERANCE_PX = 10;
     private static final int SLIDER_MIN_DURATION_MS = 180;
     private static final String CAPTCHA_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -151,22 +151,23 @@ public class CaptchaService {
 
     private void buildSliderChallenge(CaptchaChallengeRecord record, SystemVO.CaptchaChallengeVO response) {
         record.setExpectedX(generateSliderExpectedX());
-        String backgroundElements = buildSliderBackgroundElements(record.getExpectedX());
+        int puzzleTop = generateSliderPuzzleTop();
+        String sceneElements = buildSliderSceneElements();
         record.setExpectedY(0);
         record.setPuzzleWidth(SLIDER_PUZZLE_WIDTH);
         record.setPuzzleHeight(SLIDER_PUZZLE_HEIGHT);
         record.setBgWidth(SLIDER_WIDTH);
         record.setBgHeight(SLIDER_HEIGHT);
         record.setPuzzleLeft(0);
-        record.setPuzzleTop(0);
+        record.setPuzzleTop(puzzleTop);
         response.setBgWidth(SLIDER_WIDTH);
         response.setBgHeight(SLIDER_HEIGHT);
         response.setPuzzleWidth(SLIDER_PUZZLE_WIDTH);
         response.setPuzzleHeight(SLIDER_PUZZLE_HEIGHT);
         response.setPuzzleLeft(0);
-        response.setPuzzleTop(0);
-        response.setBgUrl(buildSliderBackgroundDataUrl(backgroundElements));
-        response.setPuzzleUrl(buildSliderPuzzleDataUrl(record.getExpectedX(), backgroundElements));
+        response.setPuzzleTop(puzzleTop);
+        response.setBgUrl(buildSliderBackgroundDataUrl(record.getExpectedX(), puzzleTop, sceneElements));
+        response.setPuzzleUrl(buildSliderPuzzleDataUrl(record.getExpectedX(), puzzleTop, sceneElements));
     }
 
     private void validateSliderMove(CaptchaChallengeRecord record, SystemDTO.CaptchaSliderVerifyRequest request) {
@@ -191,6 +192,12 @@ public class CaptchaService {
     private int generateSliderExpectedX() {
         int min = 76;
         int max = SLIDER_WIDTH - SLIDER_PUZZLE_WIDTH - 20;
+        return min + secureRandom.nextInt(Math.max(max - min + 1, 1));
+    }
+
+    private int generateSliderPuzzleTop() {
+        int min = 36;
+        int max = SLIDER_HEIGHT - SLIDER_PUZZLE_HEIGHT - 18;
         return min + secureRandom.nextInt(Math.max(max - min + 1, 1));
     }
 
@@ -258,23 +265,28 @@ public class CaptchaService {
                 """.formatted(x, y, fill, rotate, x, y, escapeXml(String.valueOf(character)));
     }
 
-    private String buildSliderBackgroundDataUrl(String backgroundElements) {
-        String svg = buildSliderBackgroundSvg(backgroundElements);
+    private String buildSliderBackgroundDataUrl(int expectedX, int puzzleTop, String sceneElements) {
+        String svg = buildSliderBackgroundSvg(expectedX, puzzleTop, sceneElements);
         return toDataUrl(svg);
     }
 
-    private String buildSliderPuzzleDataUrl(int expectedX, String backgroundElements) {
+    private String buildSliderPuzzleDataUrl(int expectedX, int puzzleTop, String sceneElements) {
         String svg = """
                 <svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">
                   <defs>
                     <clipPath id="piece">
                       <path d="%s"/>
                     </clipPath>
+                    <filter id="piece-depth" x="-20%%" y="-20%%" width="140%%" height="140%%">
+                      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.32"/>
+                    </filter>
                   </defs>
-                  <g clip-path="url(#piece)">
-                    <g transform="translate(-%d, 0)">
+                  <g clip-path="url(#piece)" filter="url(#piece-depth)">
+                    <g transform="translate(-%d, -%d)">
                       %s
                     </g>
+                    <path d="%s" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.82"/>
+                    <path d="%s" fill="none" stroke="#2563eb" stroke-width="1.2" opacity="0.48"/>
                   </g>
                 </svg>
                 """.formatted(
@@ -284,73 +296,90 @@ public class CaptchaService {
                 SLIDER_PUZZLE_HEIGHT,
                 puzzlePath(),
                 expectedX,
-                backgroundElements
+                puzzleTop,
+                sceneElements,
+                puzzlePath(),
+                puzzlePath()
         );
         return toDataUrl(svg);
     }
 
-    private String buildSliderBackgroundSvg(String backgroundElements) {
+    private String buildSliderBackgroundSvg(int expectedX, int puzzleTop, String sceneElements) {
         return """
                 <svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">
                   %s
+                  <defs>
+                    <clipPath id="piece-hole">
+                      <path d="%s"/>
+                    </clipPath>
+                    <filter id="hole-shadow" x="-20%%" y="-20%%" width="140%%" height="140%%">
+                      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#0f172a" flood-opacity="0.36"/>
+                    </filter>
+                  </defs>
+                  <g transform="translate(%d, %d)" filter="url(#hole-shadow)">
+                    <path d="%s" fill="#0f172a" opacity="0.22"/>
+                    <path d="%s" fill="none" stroke="#ffffff" stroke-width="2.2" opacity="0.78"/>
+                    <path d="%s" fill="none" stroke="#1d4ed8" stroke-width="1.2" opacity="0.52"/>
+                  </g>
                 </svg>
                 """.formatted(
                 SLIDER_WIDTH,
                 SLIDER_HEIGHT,
                 SLIDER_WIDTH,
                 SLIDER_HEIGHT,
-                backgroundElements
+                sceneElements,
+                puzzlePath(),
+                expectedX,
+                puzzleTop,
+                puzzlePath(),
+                puzzlePath(),
+                puzzlePath()
         );
     }
 
-    private String buildSliderBackgroundElements(int expectedX) {
+    private String buildSliderSceneElements() {
         StringBuilder shapes = new StringBuilder();
         shapes.append("""
                 <defs>
-                  <linearGradient id="slider-bg" x1="0%%" y1="0%%" x2="100%%" y2="100%%">
-                    <stop offset="0%%" stop-color="#dbeafe"/>
-                    <stop offset="100%%" stop-color="#eff6ff"/>
+                  <linearGradient id="sky" x1="0%%" y1="0%%" x2="0%%" y2="100%%">
+                    <stop offset="0%%" stop-color="#8ec5ff"/>
+                    <stop offset="55%%" stop-color="#d8efff"/>
+                    <stop offset="100%%" stop-color="#f8fafc"/>
                   </linearGradient>
-                  <linearGradient id="slider-accent" x1="0%%" y1="0%%" x2="100%%" y2="0%%">
-                    <stop offset="0%%" stop-color="#93c5fd"/>
-                    <stop offset="100%%" stop-color="#1d4ed8"/>
+                  <linearGradient id="field" x1="0%%" y1="0%%" x2="100%%" y2="0%%">
+                    <stop offset="0%%" stop-color="#67c587"/>
+                    <stop offset="52%%" stop-color="#a3d977"/>
+                    <stop offset="100%%" stop-color="#4f9f7b"/>
                   </linearGradient>
-                <filter id="piece-shadow" x="-20%%" y="-20%%" width="140%%" height="140%%">
-                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.18"/>
-                </filter>
-                <clipPath id="piece-hole">
-                  <path d="%s"/>
-                </clipPath>
                 </defs>
-                <rect width="100%%" height="100%%" fill="url(#slider-bg)"/>
-                <circle cx="48" cy="42" r="28" fill="#ffffff" opacity="0.55"/>
-                <circle cx="280" cy="32" r="34" fill="#93c5fd" opacity="0.68"/>
-                <rect x="30" y="102" width="260" height="2" fill="url(#slider-accent)" opacity="0.38"/>
-                <text x="26" y="92" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" opacity="0.34">人机验证</text>
-                <text x="154" y="132" fill="#1e293b" font-family="Arial, Helvetica, sans-serif" font-size="14" opacity="0.28">Drag to verify</text>
-                <g transform="translate(%d, 0)" filter="url(#piece-shadow)">
-                  <path d="%s" fill="#ffffff" opacity="0.6"/>
-                  <path d="%s" fill="none" stroke="#2563eb" stroke-width="2" opacity="0.42"/>
-                </g>
-                """.formatted(puzzlePath(), expectedX, puzzlePath(), puzzlePath()));
+                <rect width="100%%" height="100%%" fill="url(#sky)"/>
+                <circle cx="268" cy="34" r="19" fill="#fff7ad" opacity="0.94"/>
+                <ellipse cx="58" cy="38" rx="30" ry="11" fill="#ffffff" opacity="0.72"/>
+                <ellipse cx="86" cy="35" rx="24" ry="9" fill="#ffffff" opacity="0.6"/>
+                <ellipse cx="205" cy="48" rx="34" ry="12" fill="#ffffff" opacity="0.52"/>
+                <path d="M0 104 C34 78 62 84 96 58 C132 30 168 48 206 30 C244 12 282 26 320 8 L320 160 L0 160 Z" fill="#4f8f99" opacity="0.82"/>
+                <path d="M0 118 C46 96 72 102 112 86 C154 68 190 78 228 58 C270 36 296 42 320 30 L320 160 L0 160 Z" fill="#7fb68d" opacity="0.92"/>
+                <path d="M0 132 C54 114 102 126 148 108 C202 86 242 104 320 78 L320 160 L0 160 Z" fill="url(#field)"/>
+                <path d="M0 148 C54 136 112 148 166 132 C224 116 270 130 320 112 L320 160 L0 160 Z" fill="#2f7d58" opacity="0.76"/>
+                """);
 
-        for (int index = 0; index < 8; index++) {
-            int radius = 6 + secureRandom.nextInt(18);
-            int cx = 10 + secureRandom.nextInt(SLIDER_WIDTH - 20);
-            int cy = 12 + secureRandom.nextInt(SLIDER_HEIGHT - 24);
-            String fill = index % 2 == 0 ? "#ffffff" : "#93c5fd";
+        for (int index = 0; index < 18; index++) {
+            int radius = 2 + secureRandom.nextInt(5);
+            int cx = 8 + secureRandom.nextInt(SLIDER_WIDTH - 16);
+            int cy = 96 + secureRandom.nextInt(SLIDER_HEIGHT - 102);
+            String fill = index % 3 == 0 ? "#fef3c7" : (index % 3 == 1 ? "#ffffff" : "#14532d");
             shapes.append("""
                     <circle cx="%d" cy="%d" r="%d" fill="%s" opacity="0.18"/>
                     """.formatted(cx, cy, radius, fill));
         }
 
-        for (int index = 0; index < 5; index++) {
-            int x = 20 + secureRandom.nextInt(SLIDER_WIDTH - 40);
-            int y = 24 + secureRandom.nextInt(SLIDER_HEIGHT - 48);
-            int width = 26 + secureRandom.nextInt(48);
-            int height = 4 + secureRandom.nextInt(8);
+        for (int index = 0; index < 10; index++) {
+            int x = 10 + secureRandom.nextInt(SLIDER_WIDTH - 20);
+            int y = 110 + secureRandom.nextInt(SLIDER_HEIGHT - 116);
+            int width = 18 + secureRandom.nextInt(42);
+            int height = 2 + secureRandom.nextInt(5);
             shapes.append("""
-                    <rect x="%d" y="%d" width="%d" height="%d" rx="%d" fill="#ffffff" opacity="0.3"/>
+                    <rect x="%d" y="%d" width="%d" height="%d" rx="%d" fill="#ffffff" opacity="0.16"/>
                     """.formatted(x, y, width, height, Math.max(2, height / 2)));
         }
 
@@ -358,21 +387,25 @@ public class CaptchaService {
     }
 
     private String puzzlePath() {
-        return "M0 12 " +
-                "Q0 0 12 0 " +
-                "H22 " +
-                "Q30 0 30 8 " +
-                "Q30 16 38 16 " +
-                "Q46 16 46 8 " +
-                "Q46 0 54 0 " +
-                "H60 " +
-                "V148 " +
-                "Q60 160 48 160 " +
+        return "M0 8 " +
+                "Q0 0 8 0 " +
+                "H20 " +
+                "Q28 0 28 8 " +
+                "Q28 16 36 16 " +
+                "Q44 16 44 8 " +
+                "Q44 0 52 0 " +
+                "H58 " +
+                "V20 " +
+                "Q58 28 50 28 " +
+                "Q42 28 42 36 " +
+                "Q42 44 50 44 " +
+                "Q58 44 58 52 " +
+                "V58 " +
                 "H38 " +
-                "Q30 160 30 152 " +
-                "Q30 144 22 144 " +
-                "Q14 144 14 152 " +
-                "Q14 160 6 160 " +
+                "Q30 58 30 50 " +
+                "Q30 42 22 42 " +
+                "Q14 42 14 50 " +
+                "Q14 58 6 58 " +
                 "H0 Z";
     }
 

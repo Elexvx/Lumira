@@ -1,5 +1,5 @@
 import SliderCaptcha, { type VerifyParam } from 'rc-slider-captcha';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { systemService } from '@/services/system';
 import type { CaptchaChallenge, CaptchaVerifyResult } from '@/types/api';
 
@@ -17,6 +17,7 @@ export const SliderCaptchaBox = ({
   onReset,
 }: SliderCaptchaBoxProps) => {
   const activeChallengeRef = useRef<CaptchaChallenge | null>(null);
+  const [puzzleSize, setPuzzleSize] = useState({ width: 58, height: 58, left: 0, top: 48 });
 
   const requestSliderCaptcha = async () => {
     onReset?.();
@@ -25,6 +26,12 @@ export const SliderCaptchaBox = ({
       silent: true,
     });
     activeChallengeRef.current = challenge;
+    setPuzzleSize({
+      width: challenge.puzzleWidth ?? 58,
+      height: challenge.puzzleHeight ?? 58,
+      left: challenge.puzzleLeft ?? 0,
+      top: challenge.puzzleTop ?? 48,
+    });
     onChallengeChange?.(challenge);
 
     if (!challenge.bgUrl || !challenge.puzzleUrl) {
@@ -71,7 +78,7 @@ export const SliderCaptchaBox = ({
       onVerify={verifySliderCaptcha}
       style={{ width: 'fit-content', margin: '0 auto' }}
       bgSize={{ width: 320, height: 160 }}
-      puzzleSize={{ width: 60, height: 160 }}
+      puzzleSize={puzzleSize}
       styles={{
         panel: {
           width: '100%',
