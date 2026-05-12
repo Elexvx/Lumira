@@ -17,6 +17,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api-docs/:path*",
+      "destination": "https://api.elexvx.com/api-docs/:path*"
+    },
+    {
+      "source": "/api-docs",
+      "destination": "https://api.elexvx.com/api-docs"
+    },
+    {
       "source": "/api/uploads/:path*",
       "destination": "https://api.elexvx.com/api/uploads/:path*"
     },
