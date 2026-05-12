@@ -19,6 +19,15 @@ public class AuditLogVO {
     private String traceId;
     private String loginIp;
     private String userAgent;
+    private Long conversationId;
+    private Long employeeId;
+    private String skillCode;
+    private String toolName;
+    private String permissionMode;
+    private Integer confirmRequired;
+    private Integer confirmResult;
+    private String requestPayloadJson;
+    private String responsePayloadJson;
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }
@@ -51,6 +60,24 @@ public class AuditLogVO {
     public void setLoginIp(String loginIp) { this.loginIp = loginIp; }
     public String getUserAgent() { return userAgent; }
     public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
+    public Long getConversationId() { return conversationId; }
+    public void setConversationId(Long conversationId) { this.conversationId = conversationId; }
+    public Long getEmployeeId() { return employeeId; }
+    public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+    public String getSkillCode() { return skillCode; }
+    public void setSkillCode(String skillCode) { this.skillCode = skillCode; }
+    public String getToolName() { return toolName; }
+    public void setToolName(String toolName) { this.toolName = toolName; }
+    public String getPermissionMode() { return permissionMode; }
+    public void setPermissionMode(String permissionMode) { this.permissionMode = permissionMode; }
+    public Integer getConfirmRequired() { return confirmRequired; }
+    public void setConfirmRequired(Integer confirmRequired) { this.confirmRequired = confirmRequired; }
+    public Integer getConfirmResult() { return confirmResult; }
+    public void setConfirmResult(Integer confirmResult) { this.confirmResult = confirmResult; }
+    public String getRequestPayloadJson() { return requestPayloadJson; }
+    public void setRequestPayloadJson(String requestPayloadJson) { this.requestPayloadJson = requestPayloadJson; }
+    public String getResponsePayloadJson() { return responsePayloadJson; }
+    public void setResponsePayloadJson(String responsePayloadJson) { this.responsePayloadJson = responsePayloadJson; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

@@ -620,6 +620,7 @@ export interface AuditLogRecord {
   loginResult?: string;
   logType?: string;
   logResult?: string;
+  resultStatus?: string;
   moduleName?: string;
   actionName?: string;
   operationType?: string;
@@ -629,6 +630,15 @@ export interface AuditLogRecord {
   detailMessage?: string | null;
   loginIp?: string | null;
   userAgent?: string | null;
+  conversationId?: number | null;
+  employeeId?: number | null;
+  skillCode?: string | null;
+  toolName?: string | null;
+  permissionMode?: string | null;
+  confirmRequired?: number | null;
+  confirmResult?: number | null;
+  requestPayloadJson?: string | null;
+  responsePayloadJson?: string | null;
   createdAt: string;
 }
 

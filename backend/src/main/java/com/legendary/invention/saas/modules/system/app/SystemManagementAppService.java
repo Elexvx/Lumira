@@ -1317,6 +1317,59 @@ public class SystemManagementAppService {
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
     }
 
+    public PageResponse<SystemVO.AuditLogVO> listAiCallLogs(
+            CurrentUser currentUser,
+            Long tenantId,
+            Long employeeId,
+            String skillCode,
+            String resultStatus,
+            String startTime,
+            String endTime,
+            long pageNo,
+            long pageSize
+    ) {
+        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        String baseSql = """
+                from ai_tool_audit_log l
+                where l.is_deleted = 0
+                """;
+        List<Object> params = new ArrayList<>();
+        if (effectiveTenantId != null) {
+            baseSql += " and l.tenant_id = ?";
+            params.add(effectiveTenantId);
+        }
+        if (employeeId != null) {
+            baseSql += " and l.employee_id = ?";
+            params.add(employeeId);
+        }
+        if (StringUtils.hasText(skillCode)) {
+            baseSql += " and l.skill_code like ?";
+            params.add(like(skillCode));
+        }
+        if (StringUtils.hasText(resultStatus)) {
+            baseSql += " and l.result_status = ?";
+            params.add(resultStatus);
+        }
+        if (StringUtils.hasText(startTime)) {
+            baseSql += " and l.create_time >= ?";
+            params.add(parseDateTime(startTime));
+        }
+        if (StringUtils.hasText(endTime)) {
+            baseSql += " and l.create_time <= ?";
+            params.add(parseDateTime(endTime));
+        }
+        String selectSql = """
+                select l.id, l.tenant_id as tenantId, l.conversation_id as conversationId,
+                       l.employee_id as employeeId, l.skill_code as skillCode, l.tool_name as toolName,
+                       l.permission_mode as permissionMode, l.confirm_required as confirmRequired,
+                       l.confirm_result as confirmResult, l.result_status as logResult,
+                       l.detail_message as detailMessage, l.request_payload_json as requestPayloadJson,
+                       l.response_payload_json as responsePayloadJson, l.create_time as createdAt,
+                       'AI' as moduleName, l.tool_name as actionName, 'CALL' as operationType
+                """ + baseSql + " order by l.id desc";
+        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+    }
+
     public Integer countMenus(Long tenantId) {
         Long count = jdbcTemplate.queryForObject(
                 "select count(1) from sys_menu where tenant_id = ? and deleted = 0 and status = 'ENABLED'",
