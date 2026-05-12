@@ -2,7 +2,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Collapse, Empty, Result, Space, Spin, Tag, Typography, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { tokenManager } from '@/auth/token';
-import { API_ORIGIN, AUTHORIZATION_HEADER } from '@/constants/http';
+import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management';
 
 type OpenApiOperation = {
@@ -31,7 +31,7 @@ type EndpointRecord = {
   operationId?: string;
 };
 
-const OPENAPI_URL = `${API_ORIGIN}/api-docs`;
+const OPENAPI_URL = '/api-docs';
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'];
 const METHOD_COLORS: Record<string, string> = {
   GET: 'green',
@@ -89,7 +89,7 @@ export default () => {
         credentials: 'include',
       });
       if (!response.ok) {
-        throw new Error(`OpenAPI 文档加载失败：HTTP ${response.status}`);
+        throw new Error(`OpenAPI 文档加载失败：HTTP ${response.status}。请确认后端已部署并放行 /api-docs。`);
       }
       const payload = (await response.json()) as OpenApiDocument;
       setOpenApiDocument(payload);
