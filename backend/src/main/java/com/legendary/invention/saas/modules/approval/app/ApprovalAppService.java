@@ -196,29 +196,75 @@ public class ApprovalAppService implements WorkflowEngineAdapter {
     }
 
     public PageResponse<ApprovalVO.TaskVO> myPendingTasks(CurrentUser currentUser, long pageNo, long pageSize) {
+        Long tenantId = tenantId(currentUser);
+        List<Object> params = new ArrayList<>();
+        params.add(tenantId);
+        params.add(currentUser.getUserId());
+        String visibility = "t.tenant_id = ? and t.status = 'PENDING' and (t.assignee_user_id = ?";
+        if (currentUser.getUserId() != null) {
+            visibility += """
+                     or exists (
+                        select 1
+                        from sys_user_role ur
+                        where ur.tenant_id = t.tenant_id
+                          and ur.user_id = ?
+                          and ur.role_id = t.assignee_role_id
+                          and ur.deleted = 0
+                    )
+                    """;
+            params.add(currentUser.getUserId());
+        }
+        if (hasPermission(currentUser, "approval:approve")) {
+            visibility += " or t.assignee_dept_id is not null";
+        }
+        visibility += ")";
         return pageQuery(
                 """
-                        select id, instance_id as instanceId, node_id as nodeId, assignee_user_id as assigneeUserId,
-                               assignee_role_id as assigneeRoleId, assignee_dept_id as assigneeDeptId, status,
-                               handled_by as handledBy, handled_comment as handledComment, handled_at as handledAt, create_time as createTime
-                        from approval_task
-                        where tenant_id = ? and status = 'PENDING'
-                        order by id desc
-                        """,
-                "select count(1) from approval_task where tenant_id = ? and status = 'PENDING'",
+                        select t.id, t.instance_id as instanceId, t.node_id as nodeId,
+                               i.business_type as businessType, i.business_title as businessTitle,
+                               t.assignee_user_id as assigneeUserId, t.assignee_role_id as assigneeRoleId,
+                               t.assignee_dept_id as assigneeDeptId, t.status, t.handled_by as handledBy,
+                               t.handled_comment as handledComment, t.handled_at as handledAt, t.create_time as createTime
+                        from approval_task t
+                        join approval_instance i on i.tenant_id = t.tenant_id and i.id = t.instance_id
+                        where
+                        """ + visibility + " order by t.id desc",
+                """
+                        select count(1)
+                        from approval_task t
+                        join approval_instance i on i.tenant_id = t.tenant_id and i.id = t.instance_id
+                        where
+                        """ + visibility,
                 ApprovalVO.TaskVO.class,
                 pageNo,
                 pageSize,
-                List.of(tenantId(currentUser))
+                params
         );
     }
 
     public ApprovalVO.InstanceVO getInstance(CurrentUser currentUser, Long id) {
         Long tenantId = tenantId(currentUser);
         ApprovalVO.InstanceVO instance = requireInstance(tenantId, id);
+        if (!canViewInstance(currentUser, instance)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权查看该审批");
+        }
         instance.setTasks(listTasks(tenantId, id));
         instance.setRecords(listRecords(tenantId, id));
         return instance;
+    }
+
+    private boolean canViewInstance(CurrentUser currentUser, ApprovalVO.InstanceVO instance) {
+        if (currentUser.getUserId() != null && currentUser.getUserId().equals(instance.getApplicantId())) {
+            return true;
+        }
+        Long tenantId = tenantId(currentUser);
+        List<ApprovalVO.TaskVO> tasks = listTasks(tenantId, instance.getId());
+        for (ApprovalVO.TaskVO task : tasks) {
+            if (canHandle(currentUser, task) || (currentUser.getUserId() != null && currentUser.getUserId().equals(task.getHandledBy()))) {
+                return true;
+            }
+        }
+        return hasPermission(currentUser, "approval:template:manage");
     }
 
     private void advanceOrFinish(CurrentUser currentUser, ApprovalVO.TaskVO task) {

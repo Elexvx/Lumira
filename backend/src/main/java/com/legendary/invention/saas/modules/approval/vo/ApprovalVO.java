@@ -101,6 +101,8 @@ public final class ApprovalVO {
         private Long id;
         private Long instanceId;
         private Long nodeId;
+        private String businessType;
+        private String businessTitle;
         private Long assigneeUserId;
         private Long assigneeRoleId;
         private Long assigneeDeptId;
@@ -115,6 +117,10 @@ public final class ApprovalVO {
         public void setInstanceId(Long instanceId) { this.instanceId = instanceId; }
         public Long getNodeId() { return nodeId; }
         public void setNodeId(Long nodeId) { this.nodeId = nodeId; }
+        public String getBusinessType() { return businessType; }
+        public void setBusinessType(String businessType) { this.businessType = businessType; }
+        public String getBusinessTitle() { return businessTitle; }
+        public void setBusinessTitle(String businessTitle) { this.businessTitle = businessTitle; }
         public Long getAssigneeUserId() { return assigneeUserId; }
         public void setAssigneeUserId(Long assigneeUserId) { this.assigneeUserId = assigneeUserId; }
         public Long getAssigneeRoleId() { return assigneeRoleId; }

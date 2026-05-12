@@ -53,6 +53,17 @@ export const resolvePreferredLocale = (value?: string | null): AppLocale => {
     return normalized;
   }
 
+  if (typeof window !== 'undefined') {
+    const storedLocale = window.localStorage?.getItem('umi_locale');
+    if (storedLocale) {
+      return normalizeLocale(storedLocale);
+    }
+  }
+
+  return DEFAULT_APP_LOCALE;
+};
+
+export const resolveRuntimeLocale = (): AppLocale => {
   const runtimeLocale = normalizeLocale(getLocale());
   if (runtimeLocale) {
     return runtimeLocale;

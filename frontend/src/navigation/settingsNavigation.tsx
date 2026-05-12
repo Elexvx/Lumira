@@ -161,6 +161,7 @@ const SETTINGS_FALLBACK_ITEMS: SettingsNavigationSourceItem[] = [
 ];
 
 const routeMetaByPath = new Map(backendRouteMeta.map((item) => [item.path, item]));
+const settingsFallbackPathSet = new Set(SETTINGS_FALLBACK_ITEMS.map((item) => item.path));
 
 const normalizeMenuPath = (path?: string) => {
   if (!path) {
@@ -246,6 +247,8 @@ const sortNavigationItems = (items: SettingsNavigationSourceItem[]) =>
     return left.path.localeCompare(right.path);
   });
 
+const cloneSettingsFallbackItems = () => SETTINGS_FALLBACK_ITEMS.map((item) => ({ ...item }));
+
 const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
   const path = normalizeMenuPath(node.path);
   if (!path || !isVisibleSettingsPath(path) && !isSettingsRootNode(path)) {
@@ -278,7 +281,7 @@ const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined) => {
       return;
     }
 
-    if (isVisibleSettingsPath(normalizedPath)) {
+    if (isVisibleSettingsPath(normalizedPath) && settingsFallbackPathSet.has(normalizedPath)) {
       candidateNodes.push(node);
       seenPaths.add(normalizedPath);
     }
@@ -298,11 +301,18 @@ const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined) => {
     })
     .forEach(pushCandidate);
 
-  if (!candidateNodes.length) {
-    return SETTINGS_FALLBACK_ITEMS;
-  }
+  const backendItemsByPath = new Map(
+    sortNavigationItems(candidateNodes.map((node) => toSourceItem(node)).filter(Boolean) as SettingsNavigationSourceItem[])
+      .map((item) => [item.path, item]),
+  );
 
-  return sortNavigationItems(candidateNodes.map((node) => toSourceItem(node)).filter(Boolean) as SettingsNavigationSourceItem[]);
+  return cloneSettingsFallbackItems().map((fallbackItem) => ({
+    ...fallbackItem,
+    ...backendItemsByPath.get(fallbackItem.path),
+    name: fallbackItem.name,
+    icon: fallbackItem.icon,
+    access: fallbackItem.access,
+  }));
 };
 
 const mapSourceItemToRuntimeMenuItem = (
