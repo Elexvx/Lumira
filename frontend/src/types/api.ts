@@ -280,6 +280,7 @@ export interface AiConversationRecord {
   title?: string | null;
   preview?: string | null;
   status?: string | null;
+  pinned?: boolean | null;
   isPinned?: boolean | null;
   latestMessageAt?: string | null;
   createTime?: string | null;

@@ -356,7 +356,7 @@ const buildSessionFromConversation = (conversation: AiConversationRecord, employ
   conversationId: conversation.id,
   updatedAt: conversation.latestMessageAt || conversation.updateTime || conversation.createTime || dayjs().format('YYYY-MM-DD HH:mm'),
   isDraft: false,
-  isPinned: Boolean(conversation.isPinned),
+  isPinned: Boolean(conversation.pinned ?? conversation.isPinned),
   pendingAttachments: [],
 });
 
@@ -846,7 +846,7 @@ const AiAssistantPage = () => {
           updatedAt: record.latestMessageAt || record.updateTime || record.createTime || existingSession.updatedAt,
           conversationId: record.id,
           isDraft: false,
-          isPinned: Boolean(record.isPinned),
+          isPinned: Boolean(record.pinned ?? record.isPinned),
         };
       });
 
@@ -961,6 +961,7 @@ const AiAssistantPage = () => {
       updateSession(session.id, (current) => ({
         ...current,
         title: nextTitle,
+        preview: current.preview === current.title || current.preview === session.title ? nextTitle : current.preview,
       }));
       closeRenameModal();
       return;
@@ -971,6 +972,8 @@ const AiAssistantPage = () => {
       updateSession(session.id, (current) => ({
         ...current,
         title: nextTitle,
+        preview: current.preview === current.title || current.preview === session.title ? nextTitle : current.preview,
+        updatedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       }));
       void queryClient.invalidateQueries({ queryKey: ['ai-assistant-conversations', selectedEmployee?.id] });
       closeRenameModal();
