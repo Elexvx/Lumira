@@ -1,9 +1,10 @@
 import { ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Result, Space } from 'antd';
 import { tokenManager } from '@/auth/token';
+import { API_ORIGIN } from '@/constants/http';
 import { ManagementPage } from '@/features/management';
 
-const SWAGGER_UI_URL = '/swagger-ui/index.html?url=/api-docs';
+const SWAGGER_UI_URL = `${API_ORIGIN}/swagger-ui.html?url=${encodeURIComponent(`${API_ORIGIN}/api-docs`)}`;
 
 export default () => {
   const isLoggedIn = tokenManager.hasToken();

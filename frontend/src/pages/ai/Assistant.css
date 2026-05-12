@@ -245,23 +245,66 @@
   word-break: break-word;
 }
 
+.saas-ai-assistant-ai-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .saas-ai-assistant-thinking {
   min-width: min(360px, 100%);
-}
-
-.saas-ai-assistant-thinking__title {
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.saas-ai-assistant-thinking__steps {
-  margin: 0;
-  padding-left: 18px;
   color: var(--ant-color-text-secondary);
 }
 
-.saas-ai-assistant-thinking__steps li + li {
-  margin-top: 6px;
+.saas-ai-assistant-thinking__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  color: var(--ant-color-text-secondary);
+}
+
+.saas-ai-assistant-thinking__summary::-webkit-details-marker {
+  display: none;
+}
+
+.saas-ai-assistant-thinking__summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.saas-ai-assistant-thinking[open] .saas-ai-assistant-thinking__summary::after {
+  transform: rotate(225deg) translateY(-2px);
+}
+
+.saas-ai-assistant-thinking__icon {
+  color: var(--ant-color-text-tertiary);
+}
+
+.saas-ai-assistant-thinking__body {
+  margin-top: 12px;
+  padding-left: 18px;
+  border-left: 3px solid var(--ant-color-border-secondary);
+}
+
+.saas-ai-assistant-thinking__content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.saas-ai-assistant-thinking__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .saas-ai-assistant-file-input {

@@ -96,9 +96,9 @@ const LocalizationPage = () => {
     setLoadingMeta(true);
     try {
       const [languageList, namespaceList, releaseList] = await Promise.all([
-        localizationService.languages({ autoRedirectOnUnauthorized: false }),
-        localizationService.namespaces({ localeCode: selectedLocale }, { autoRedirectOnUnauthorized: false }),
-        localizationService.releases(selectedLocale, { autoRedirectOnUnauthorized: false }),
+        localizationService.languages({ autoRedirectOnUnauthorized: false, silent: true }),
+        localizationService.namespaces({ localeCode: selectedLocale }, { autoRedirectOnUnauthorized: false, silent: true }),
+        localizationService.releases(selectedLocale, { autoRedirectOnUnauthorized: false, silent: true }),
       ]);
       setLanguages(languageList);
       setNamespaces(namespaceList);
@@ -109,8 +109,8 @@ const LocalizationPage = () => {
       if (selectedNamespace !== 'all' && !namespaceList.some((item) => item.namespaceCode === selectedNamespace)) {
         setSelectedNamespace('all');
       }
-    } catch {
-      // Global request interceptor already handles feedback.
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : '本地化中心数据加载失败');
     } finally {
       setLoadingMeta(false);
     }
@@ -478,7 +478,7 @@ const LocalizationPage = () => {
                   sortField: Object.keys(sorter || {}).find((key) => ['ascend', 'descend'].includes(String((sorter as Record<string, unknown>)[key]))) || undefined,
                   sortOrder: Object.values(sorter || {}).find((value) => value === 'ascend' || value === 'descend') as string | undefined,
                 },
-                { autoRedirectOnUnauthorized: false },
+                { autoRedirectOnUnauthorized: false, silent: true },
                 ),
               )
             }
