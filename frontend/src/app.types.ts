@@ -30,6 +30,7 @@ export interface RuntimeMenuDataItem {
   path?: string;
   name?: string;
   title?: string;
+  locale?: false | string;
   icon?: React.ReactNode | string;
   children?: RuntimeMenuDataItem[];
   hideInMenu?: boolean;

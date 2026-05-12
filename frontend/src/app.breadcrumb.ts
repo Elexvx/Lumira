@@ -1,6 +1,7 @@
 import { formatMessage } from '@umijs/max';
 import type { BreadcrumbProps } from 'antd';
 import { backendRouteMeta } from '@/routes/meta';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { MenuNode } from '@/types/api';
 
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
@@ -35,12 +36,19 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
     return [];
   }
 
-  return trail.map((node, index) => ({
-    key: node.path || String(node.id),
-    title: formatMessage({
-      id: routeMetaMap.get(node.path || '')?.name || node.name || node.path || '',
-      defaultMessage: node.name || node.path || '',
-    }),
-    path: index === trail.length - 1 ? undefined : node.path,
-  }));
+  return trail.map((node, index) => {
+    const messageId = routeMetaMap.get(node.path || '')?.name || node.name || node.path || '';
+    const fallback = node.name || node.path || '';
+    return {
+      key: node.path || String(node.id),
+      title: resolveBuiltinMessage(
+        messageId,
+        formatMessage({
+          id: messageId,
+          defaultMessage: fallback,
+        }),
+      ),
+      path: index === trail.length - 1 ? undefined : node.path,
+    };
+  });
 };

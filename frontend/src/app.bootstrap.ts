@@ -281,7 +281,6 @@ export async function getAppInitialState(): Promise<AppInitialState> {
 
   while (true) {
     try {
-      await waitForBackendReady({ maxAttempts: MAX_AUTHENTICATED_BOOTSTRAP_RETRIES });
       const restored = await restoreSession().catch(() => null);
 
       setBootstrapSnapshot({
@@ -300,10 +299,10 @@ export async function getAppInitialState(): Promise<AppInitialState> {
         return await buildAuthenticatedInitialState(restored.currentUser, restored.securitySettings, storedBrandingSettings);
       }
 
+      await waitForBackendReady({ maxAttempts: MAX_AUTHENTICATED_BOOTSTRAP_RETRIES });
       return await buildGuestInitialState(storedBrandingSettings);
     } catch (error) {
       if (error instanceof BackendProxyUnavailableError) {
-        clearAuthSession();
         return await buildGuestInitialState(storedBrandingSettings);
       }
       clearAuthSession();

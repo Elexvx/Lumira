@@ -24,6 +24,7 @@ import { resolveLayoutNavTheme } from '@/theme/runtime';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
 import buildAccess from '@/access';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { BreadcrumbProps } from 'antd';
 
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
@@ -55,7 +56,7 @@ const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[
       key: item.path || item.name || breadcrumbTitle,
       path: item.path,
       title: typeof breadcrumbTitle === 'string'
-        ? formatMessage({ id: breadcrumbTitle, defaultMessage: breadcrumbTitle })
+        ? resolveBuiltinMessage(breadcrumbTitle, formatMessage({ id: breadcrumbTitle, defaultMessage: breadcrumbTitle }))
         : breadcrumbTitle,
     };
   });
@@ -85,7 +86,8 @@ const buildMainMenuData = (
   return [
     ...fallbackMenus.map((meta) => ({
       path: meta.path,
-      name: formatMessage({ id: meta.name, defaultMessage: meta.name }),
+      name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
+      locale: false as const,
       icon: resolveNavigationIcon(meta.icon),
       hideInMenu: meta.hideInMenu,
     })),
@@ -125,7 +127,8 @@ const composeMenuItem = (
   return {
     ...localMeta,
     path: backendNode.path || localMeta?.path,
-    name: formatMessage({ id: menuLabelId, defaultMessage: backendNode.name }),
+    name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
+    locale: false as const,
     icon,
     hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
     children: children.length ? children : undefined,

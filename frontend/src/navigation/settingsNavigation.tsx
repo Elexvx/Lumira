@@ -25,6 +25,7 @@ import type { MenuProps } from 'antd';
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import { backendRouteMeta } from '@/routes/meta';
 import type { RuntimeMenuDataItem } from '@/app.types';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { MenuNode } from '@/types/api';
 
 type AntdIconComponent = ComponentType<Record<string, unknown>>;
@@ -318,10 +319,14 @@ const mapSourceItemToRuntimeMenuItem = (
 
   return {
     path: item.path,
-    name: formatMessage({
-      id: item.name,
-      defaultMessage: item.name,
-    }),
+    name: resolveBuiltinMessage(
+      item.name,
+      formatMessage({
+        id: item.name,
+        defaultMessage: item.name,
+      }),
+    ),
+    locale: false as const,
     icon: resolveNavigationIcon(item.icon),
     hideInMenu: false,
     children: children.length ? children : undefined,
