@@ -163,7 +163,9 @@ async function waitForHttp(url, label, options = {}) {
 
     const body = result.text.toLowerCase();
     const expected = options.includes?.toLowerCase();
-    if (result.ok && (!expected || body.includes(expected))) {
+    const expectedStatus = options.expectedStatus;
+    const statusMatches = expectedStatus ? result.status === expectedStatus : result.ok;
+    if (statusMatches && (!expected || body.includes(expected))) {
       log(`${label} is ready at ${url}`);
       return;
     }
@@ -185,6 +187,7 @@ async function checkDeployment() {
   await waitForHttp(`${baseUrl}/api/health`, 'system API through API proxy');
   await waitForHttp(`${gatewayUrl}/actuator/health`, 'gateway actuator');
   await waitForHttp(`${baseUrl}/api/v1/public/login-capabilities`, 'public login capabilities API');
+  await waitForHttp(`${baseUrl}/api/v1/localization/languages`, 'protected localization management API is routed', { expectedStatus: 401 });
   log('Deployment health checks passed.');
 }
 

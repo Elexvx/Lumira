@@ -46,7 +46,7 @@ const buildGreeting = (hour: number) => {
     return '下午好';
   }
 
-  if (hour >= 18 && hour < 23) {
+  if (hour >= 18 && hour < 24) {
     return '晚上好';
   }
 

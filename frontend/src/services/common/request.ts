@@ -34,6 +34,10 @@ export interface RequestOptions {
   silent?: boolean;
 }
 
+export interface StreamRequestOptions extends RequestOptions {
+  onEvent?: (event: { event: string; data: string }) => void;
+}
+
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
   try {
@@ -65,6 +69,35 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     const fallbackError = buildFallbackError(httpStatus, requestId, authSnapshot.hasAuthToken);
     handleApiError(fallbackError, options, authSnapshot);
     throw fallbackError;
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      throw error;
+    }
+
+    const fallbackError = buildUnexpectedError(error, authSnapshot.hasAuthToken);
+    handleApiError(fallbackError, options, authSnapshot);
+    throw fallbackError;
+  }
+};
+
+export const requestEventStream = async (url: string, options: StreamRequestOptions = {}) => {
+  const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+  try {
+    const response = await fetch(buildRequestUrl(url, options.params), {
+      method: options.method || 'POST',
+      headers: {
+        ...buildRequestHeaders(options, authSnapshot),
+        Accept: 'text/event-stream',
+      },
+      body: buildRequestBody(options.data, options.method || 'POST'),
+    });
+
+    if (!response.ok || !response.body) {
+      const fallbackError = await buildFileRequestError(response, options, authSnapshot);
+      throw fallbackError;
+    }
+
+    await readEventStream(response.body, options.onEvent);
   } catch (error) {
     if (error instanceof ApiRequestError) {
       throw error;
@@ -183,6 +216,46 @@ const buildRequestBody = (data: unknown, method?: RequestOptions['method']) => {
     return data;
   }
   return JSON.stringify(data);
+};
+
+const readEventStream = async (
+  body: ReadableStream<Uint8Array>,
+  onEvent?: (event: { event: string; data: string }) => void,
+) => {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = events.pop() || '';
+    events.forEach((eventBlock) => emitStreamEvent(eventBlock, onEvent));
+  }
+
+  if (buffer.trim()) {
+    emitStreamEvent(buffer, onEvent);
+  }
+};
+
+const emitStreamEvent = (eventBlock: string, onEvent?: (event: { event: string; data: string }) => void) => {
+  let event = 'message';
+  const dataLines: string[] = [];
+  eventBlock.split(/\r?\n/).forEach((line) => {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim() || 'message';
+    }
+    if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  });
+  if (dataLines.length) {
+    onEvent?.({ event, data: dataLines.join('\n') });
+  }
 };
 
 const shouldSendJsonContentType = (data: unknown, method?: RequestOptions['method']) => {

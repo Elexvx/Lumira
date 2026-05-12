@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 public interface AiChatModelFactory {
 
@@ -28,6 +29,8 @@ public interface AiChatModelFactory {
 
     interface AiChatClient {
         AiVO.ChatResponseVO chat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills);
+
+        AiVO.ChatResponseVO streamChat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills, Consumer<String> onDelta);
     }
 }
 
@@ -151,7 +154,17 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
     @Override
     public AiChatClient create(AiLlmServiceConfig config) {
         validateConfig(config);
-        return (request, employee, skills) -> invokeChatCompletion(config, request, employee, skills);
+        return new AiChatClient() {
+            @Override
+            public AiVO.ChatResponseVO chat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills) {
+                return invokeChatCompletion(config, request, employee, skills);
+            }
+
+            @Override
+            public AiVO.ChatResponseVO streamChat(AiDTO.ChatRequest request, AiVO.EmployeeDetailVO employee, List<AiVO.SkillVO> skills, Consumer<String> onDelta) {
+                return invokeStreamingChatCompletion(config, request, employee, skills, onDelta);
+            }
+        };
     }
 
     private AiVO.ChatResponseVO invokeChatCompletion(
@@ -176,6 +189,39 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
 
             HttpResponse<String> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             return parseResponse(config, request, employee, httpResponse);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用被中断");
+        } catch (IOException exception) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用失败: " + safeMessage(exception));
+        } catch (IllegalArgumentException exception) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 请求参数无效: " + safeMessage(exception));
+        }
+    }
+
+    private AiVO.ChatResponseVO invokeStreamingChatCompletion(
+            AiLlmServiceConfig config,
+            AiDTO.ChatRequest request,
+            AiVO.EmployeeDetailVO employee,
+            List<AiVO.SkillVO> skills,
+            Consumer<String> onDelta
+    ) {
+        try {
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(resolveEndpoint(config)))
+                    .timeout(Duration.ofMillis(resolveTimeout(config)))
+                    .header("Content-Type", "application/json; charset=utf-8")
+                    .header("Accept", "text/event-stream");
+            if (StringUtils.hasText(config.getApiKey())) {
+                requestBuilder.header("Authorization", "Bearer " + config.getApiKey().trim());
+            }
+
+            HttpRequest httpRequest = requestBuilder
+                    .POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(config, request, employee, skills, true), StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<java.io.InputStream> httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
+            return parseStreamingResponse(config, request, employee, httpResponse, onDelta);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用被中断");
@@ -214,6 +260,70 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         return response;
     }
 
+    private AiVO.ChatResponseVO parseStreamingResponse(
+            AiLlmServiceConfig config,
+            AiDTO.ChatRequest request,
+            AiVO.EmployeeDetailVO employee,
+            HttpResponse<java.io.InputStream> httpResponse,
+            Consumer<String> onDelta
+    ) throws IOException {
+        if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
+            String body = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8);
+            JsonNode root = objectMapper.readTree(body);
+            String errorMessage = extractErrorMessage(root);
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用失败(" + httpResponse.statusCode() + "): " + errorMessage);
+        }
+
+        StringBuilder replyBuilder = new StringBuilder();
+        StringBuilder eventBuilder = new StringBuilder();
+        try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(httpResponse.body(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) {
+                    appendStreamingEvent(eventBuilder.toString(), replyBuilder, onDelta);
+                    eventBuilder.setLength(0);
+                    continue;
+                }
+                if (line.startsWith("data:")) {
+                    eventBuilder.append(line.substring(5).trim());
+                }
+            }
+        }
+        appendStreamingEvent(eventBuilder.toString(), replyBuilder, onDelta);
+
+        String replyText = replyBuilder.toString();
+        if (!StringUtils.hasText(replyText)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 返回内容为空");
+        }
+
+        AiVO.ChatResponseVO response = new AiVO.ChatResponseVO();
+        response.setConversationId(request.getConversationId());
+        response.setEmployeeId(employee.getId());
+        response.setReplyRole("ASSISTANT");
+        response.setProvider(normalizeProvider(config.getProvider()));
+        response.setModel(resolveModel(config, null));
+        response.setReplyAt(LocalDateTime.now());
+        response.setReplyText(replyText.trim());
+        return response;
+    }
+
+    private void appendStreamingEvent(String payload, StringBuilder replyBuilder, Consumer<String> onDelta) throws IOException {
+        if (!StringUtils.hasText(payload) || "[DONE]".equals(payload.trim())) {
+            return;
+        }
+
+        JsonNode root = objectMapper.readTree(payload);
+        String delta = extractStreamingDelta(root);
+        if (!StringUtils.hasText(delta)) {
+            return;
+        }
+
+        replyBuilder.append(delta);
+        if (onDelta != null) {
+            onDelta.accept(delta);
+        }
+    }
+
     private String buildRequestBody(
             AiLlmServiceConfig config,
             AiDTO.ChatRequest request,
@@ -239,6 +349,21 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         messages.addObject()
                 .put("role", "user")
                 .put("content", buildUserPrompt(request));
+        return objectMapper.writeValueAsString(body);
+    }
+
+    private String buildRequestBody(
+            AiLlmServiceConfig config,
+            AiDTO.ChatRequest request,
+            AiVO.EmployeeDetailVO employee,
+            List<AiVO.SkillVO> skills,
+            boolean stream
+    ) throws IOException {
+        var body = objectMapper.readTree(buildRequestBody(config, request, employee, skills));
+        if (body instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
+            objectNode.put("stream", stream);
+            return objectMapper.writeValueAsString(objectNode);
+        }
         return objectMapper.writeValueAsString(body);
     }
 
@@ -332,6 +457,28 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         }
 
         return null;
+    }
+
+    private String extractStreamingDelta(JsonNode root) {
+        JsonNode choices = root.path("choices");
+        if (choices.isArray() && !choices.isEmpty()) {
+            JsonNode firstChoice = choices.get(0);
+            String content = firstChoice.path("delta").path("content").asText(null);
+            if (StringUtils.hasText(content)) {
+                return content;
+            }
+            content = firstChoice.path("text").asText(null);
+            if (StringUtils.hasText(content)) {
+                return content;
+            }
+        }
+
+        String delta = root.path("delta").asText(null);
+        if (StringUtils.hasText(delta)) {
+            return delta;
+        }
+        String outputText = root.path("output_text").asText(null);
+        return StringUtils.hasText(outputText) ? outputText : null;
     }
 
     private String extractErrorMessage(JsonNode root) {

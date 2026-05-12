@@ -1,7 +1,9 @@
 package com.legendary.invention.saas.modules.ai.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
+import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.observability.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -20,8 +22,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -30,15 +34,18 @@ public class AiController {
     private final AiManagementAppService aiManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final ObjectMapper objectMapper;
 
     public AiController(
             AiManagementAppService aiManagementAppService,
             SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard
+            PermissionGuard permissionGuard,
+            ObjectMapper objectMapper
     ) {
         this.aiManagementAppService = aiManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/employees")
@@ -215,6 +222,41 @@ public class AiController {
     public ApiResponse<AiVO.ChatResponseVO> chat(@Valid @RequestBody AiDTO.ChatRequest request) {
         require("ai:chat:send");
         return ApiResponse.success(aiManagementAppService.chat(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PostMapping(value = "/chat/stream", produces = "text/event-stream")
+    public SseEmitter streamChat(@Valid @RequestBody AiDTO.ChatRequest request) {
+        require("ai:chat:send");
+        var currentUser = currentUser();
+        SseEmitter emitter = new SseEmitter(0L);
+        CompletableFuture.runAsync(() -> {
+            try {
+                AiVO.ChatResponseVO response = aiManagementAppService.streamChat(currentUser, request, event -> sendEvent(emitter, event));
+                sendEvent(emitter, AiVO.ChatStreamEventVO.done(response));
+                emitter.complete();
+            } catch (Exception exception) {
+                sendEvent(emitter, AiVO.ChatStreamEventVO.error(resolveErrorMessage(exception)));
+                emitter.complete();
+            }
+        });
+        return emitter;
+    }
+
+    private void sendEvent(SseEmitter emitter, AiVO.ChatStreamEventVO event) {
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(event.getType())
+                    .data(objectMapper.writeValueAsString(event)));
+        } catch (Exception ignored) {
+            emitter.completeWithError(ignored);
+        }
+    }
+
+    private String resolveErrorMessage(Exception exception) {
+        if (exception instanceof BizException bizException) {
+            return bizException.getMessage();
+        }
+        return exception.getMessage() == null || exception.getMessage().isBlank() ? "AI 回复生成失败" : exception.getMessage();
     }
 
     private com.legendary.invention.saas.infrastructure.security.CurrentUser currentUser() {

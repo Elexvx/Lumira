@@ -1,4 +1,4 @@
-import { request, type RequestOptions } from '@/services/common/request';
+import { request, requestEventStream, type RequestOptions } from '@/services/common/request';
 import type {
   AiChatRequestPayload,
   AiChatResponseRecord,
@@ -21,6 +21,13 @@ import type {
 export interface AiPageQuery extends Record<string, unknown> {
   pageNo?: number;
   pageSize?: number;
+}
+
+export interface AiChatStreamEvent {
+  type: 'status' | 'delta' | 'done' | 'error';
+  message?: string | null;
+  delta?: string | null;
+  response?: AiChatResponseRecord | null;
 }
 
 export const aiService = {
@@ -161,5 +168,18 @@ export const aiService = {
       method: 'POST',
       data: payload,
       ...options,
+    }),
+  streamChat: (
+    payload: AiChatRequestPayload,
+    onEvent: (event: AiChatStreamEvent) => void,
+    options: RequestOptions = {},
+  ) =>
+    requestEventStream('/ai/chat/stream', {
+      method: 'POST',
+      data: payload,
+      ...options,
+      onEvent: ({ data }) => {
+        onEvent(JSON.parse(data) as AiChatStreamEvent);
+      },
     }),
 };

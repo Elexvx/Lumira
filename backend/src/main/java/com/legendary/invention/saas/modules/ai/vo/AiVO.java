@@ -744,6 +744,73 @@ public final class AiVO {
         }
     }
 
+    public static class ChatStreamEventVO {
+        private String type;
+        private String message;
+        private String delta;
+        private ChatResponseVO response;
+
+        public static ChatStreamEventVO status(String message) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("status");
+            event.setMessage(message);
+            return event;
+        }
+
+        public static ChatStreamEventVO delta(String delta) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("delta");
+            event.setDelta(delta);
+            return event;
+        }
+
+        public static ChatStreamEventVO done(ChatResponseVO response) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("done");
+            event.setResponse(response);
+            return event;
+        }
+
+        public static ChatStreamEventVO error(String message) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("error");
+            event.setMessage(message);
+            return event;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public String getDelta() {
+            return delta;
+        }
+
+        public void setDelta(String delta) {
+            this.delta = delta;
+        }
+
+        public ChatResponseVO getResponse() {
+            return response;
+        }
+
+        public void setResponse(ChatResponseVO response) {
+            this.response = response;
+        }
+    }
+
     public static class MessageAttachmentVO {
         private Long id;
         private Long fileId;

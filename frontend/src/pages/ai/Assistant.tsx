@@ -26,6 +26,7 @@ import type {
   AiConversationMessageRecord,
   AiConversationRecord,
   AiConversationShareDetailRecord,
+  AiChatResponseRecord,
   AiEmployeeRecord,
   FileObjectRecord,
 } from '@/types/api';
@@ -477,7 +478,7 @@ const renderThinkingContent = (item: ChatBubble) => {
     return null;
   }
 
-  const statusText = thinkingContent ? '完成思考' : '思考中';
+  const statusText = thinkingContent ? '处理过程' : '正在生成回复';
 
   return (
     <details className="saas-ai-assistant-thinking" open={Boolean(thinkingContent)}>
@@ -491,7 +492,7 @@ const renderThinkingContent = (item: ChatBubble) => {
         ) : (
           <div className="saas-ai-assistant-thinking__loading">
             <Spin size="small" />
-            <span>正在等待思考过程...</span>
+            <span>正在调用模型并生成回复，当前接口暂不支持实时过程流。</span>
           </div>
         )}
       </div>
@@ -1065,15 +1066,72 @@ const AiAssistantPage = () => {
     }));
 
     try {
-      const response = await aiService.chat(
+      const streamState: { response?: AiChatResponseRecord; error?: Error; replyText: string } = {
+        replyText: '',
+      };
+
+      await aiService.streamChat(
         {
           employeeId: selectedEmployee.id,
           conversationId: activeSession.conversationId ?? null,
           message: trimmed,
           attachments: draftAttachments.map((attachment) => ({ fileId: attachment.fileId })),
         },
+        (event) => {
+          if (event.type === 'status' && event.message) {
+            updateSession(activeSession.id, (session) => ({
+              ...session,
+              messages: session.messages.map((item) =>
+                item.key === assistantPlaceholder.key
+                  ? {
+                    ...item,
+                    thinkingContent: [item.thinkingContent, event.message].filter(Boolean).join('\n'),
+                    thinkingLoading: true,
+                  }
+                  : item,
+              ),
+            }));
+            return;
+          }
+
+          if (event.type === 'delta' && event.delta) {
+            streamState.replyText += event.delta;
+            updateSession(activeSession.id, (session) => ({
+              ...session,
+              preview: streamState.replyText || session.preview,
+              messages: session.messages.map((item) =>
+                item.key === assistantPlaceholder.key
+                  ? {
+                    ...item,
+                    content: streamState.replyText,
+                    thinkingLoading: false,
+                  }
+                  : item,
+              ),
+            }));
+            return;
+          }
+
+          if (event.type === 'done' && event.response) {
+            streamState.response = event.response;
+            return;
+          }
+
+          if (event.type === 'error') {
+            streamState.error = new Error(event.message || '发送失败，请稍后重试');
+          }
+        },
         { autoRedirectOnUnauthorized: false, silent: true },
       );
+
+      if (streamState.error) {
+        throw streamState.error;
+      }
+
+      const response = streamState.response;
+      if (!response) {
+        throw new Error('AI 回复生成失败');
+      }
 
       const responseConversationId = response.conversationId ?? activeSession.conversationId;
       const responseSessionId = responseConversationId ? String(responseConversationId) : activeSession.id;

@@ -644,6 +644,10 @@ public class AiManagementAppService {
         return aiEmployeeRuntimeService.chat(currentUser, request);
     }
 
+    public AiVO.ChatResponseVO streamChat(CurrentUser currentUser, AiDTO.ChatRequest request, java.util.function.Consumer<AiVO.ChatStreamEventVO> onEvent) {
+        return aiEmployeeRuntimeService.streamChat(currentUser, request, onEvent);
+    }
+
     public AiVO.PromptTemplateVO defaultTemplate() {
         return employeeTemplate(null);
     }

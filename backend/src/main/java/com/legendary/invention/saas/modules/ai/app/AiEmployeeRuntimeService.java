@@ -13,10 +13,13 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Consumer;
 
 public interface AiEmployeeRuntimeService {
 
     AiVO.ChatResponseVO chat(CurrentUser currentUser, AiDTO.ChatRequest request);
+
+    AiVO.ChatResponseVO streamChat(CurrentUser currentUser, AiDTO.ChatRequest request, Consumer<AiVO.ChatStreamEventVO> onEvent);
 }
 
 @Service
@@ -48,13 +51,25 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
 
     @Override
     public AiVO.ChatResponseVO chat(CurrentUser currentUser, AiDTO.ChatRequest request) {
+        return executeChat(currentUser, request, null);
+    }
+
+    @Override
+    public AiVO.ChatResponseVO streamChat(CurrentUser currentUser, AiDTO.ChatRequest request, Consumer<AiVO.ChatStreamEventVO> onEvent) {
+        return executeChat(currentUser, request, onEvent);
+    }
+
+    private AiVO.ChatResponseVO executeChat(CurrentUser currentUser, AiDTO.ChatRequest request, Consumer<AiVO.ChatStreamEventVO> onEvent) {
         Long tenantId = currentTenantId(currentUser);
+        emit(onEvent, AiVO.ChatStreamEventVO.status("正在加载数字员工配置"));
         AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, request.getEmployeeId());
         if (!Boolean.TRUE.equals(employee.getEnabled())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "数字员工已禁用");
         }
+        emit(onEvent, AiVO.ChatStreamEventVO.status("正在校验技能授权"));
         boolean confirmed = Boolean.TRUE.equals(request.getConfirmed());
         aiSkillPermissionChecker.verifyAllowed(tenantId, employee.getId(), request.getSkillCodes(), confirmed);
+        emit(onEvent, AiVO.ChatStreamEventVO.status("正在创建会话并保存用户消息"));
         Long conversationId = aiConversationService.ensureConversation(
                 tenantId,
                 employee.getId(),
@@ -68,7 +83,11 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
                 .orElse(null);
         List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
-        AiVO.ChatResponseVO response = aiChatModelFactory.create(config).chat(request, employee, skills);
+        emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用模型"));
+        AiVO.ChatResponseVO response = onEvent == null
+                ? aiChatModelFactory.create(config).chat(request, employee, skills)
+                : aiChatModelFactory.create(config).streamChat(request, employee, skills, delta -> emit(onEvent, AiVO.ChatStreamEventVO.delta(delta)));
+        emit(onEvent, AiVO.ChatStreamEventVO.status("正在保存 AI 回复"));
         response.setConversationId(conversationId);
         if (response.getConversationCode() == null) {
             response.setConversationCode(queryConversationCode(tenantId, conversationId));
@@ -76,6 +95,12 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
         recordToolAuditLog(tenantId, employee.getId(), conversationId, request, response, confirmed);
         return response;
+    }
+
+    private void emit(Consumer<AiVO.ChatStreamEventVO> onEvent, AiVO.ChatStreamEventVO event) {
+        if (onEvent != null) {
+            onEvent.accept(event);
+        }
     }
 
     private String buildConversationTitle(String message) {
