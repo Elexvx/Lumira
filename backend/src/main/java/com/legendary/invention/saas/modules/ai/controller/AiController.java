@@ -248,7 +248,7 @@ public class AiController {
                     .name(event.getType())
                     .data(objectMapper.writeValueAsString(event)));
         } catch (Exception ignored) {
-            emitter.completeWithError(ignored);
+            emitter.complete();
         }
     }
 

@@ -4,6 +4,9 @@ import type { AuditLogRecord, PagedResult } from '@/types/api';
 export interface AuditLogQuery extends Record<string, unknown> {
   username?: string;
   tenantId?: number;
+  employeeId?: number;
+  skillCode?: string;
+  resultStatus?: string;
   loginType?: string;
   logType?: string;
   startTime?: string;
@@ -25,8 +28,14 @@ export const auditService = {
       params,
       ...options,
     }),
+  aiCallLogs: (params: AuditLogQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<AuditLogRecord>>('/v1/audit/ai-call-logs', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
   summary: (options: RequestOptions = {}) =>
-    request<{ loginCount: number; operationCount: number }>('/v1/audit/summary', {
+    request<{ loginCount: number; operationCount: number; aiCallCount?: number }>('/v1/audit/summary', {
       method: 'GET',
       ...options,
     }),
