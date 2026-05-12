@@ -32,7 +32,7 @@ const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
-const AI_MAIN_ROUTE_PATH = '/ai';
+const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/tasks', '/approvals', '/evaluations'];
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 
 const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string, RuntimeMenuDataItem>()) => {
@@ -74,24 +74,30 @@ const buildMainMenuData = (
 ) => {
   const access = buildAccess({ currentUser: initialState?.currentUser });
   const visibleMenus = [...menuData] as RuntimeMenuDataItem[];
-  const composedMenus = initialState?.menuTree || [];
+  const existingPaths = new Set(visibleMenus.map((item) => item.path).filter(Boolean));
+  const accessMap = access as Record<string, unknown>;
 
-  const hasAiAssistantMenu = visibleMenus.some((item) => item.path === AI_MAIN_ROUTE_PATH)
-    || composedMenus.some((item) => item.path === AI_MAIN_ROUTE_PATH);
+  const fallbackMenus = STABLE_MAIN_ROUTE_PATHS
+    .filter((path) => !existingPaths.has(path))
+    .map((path) => routeMetaMap.get(path))
+    .filter((meta) => meta && (!meta.access || Boolean(accessMap[meta.access]))) as NonNullable<ReturnType<typeof routeMetaMap.get>>[];
 
-  if (!hasAiAssistantMenu && Boolean((access as Record<string, unknown>).canVisitAiAssistant)) {
-    const aiRouteMeta = routeMetaMap.get(AI_MAIN_ROUTE_PATH);
-    visibleMenus.push({
-      path: AI_MAIN_ROUTE_PATH,
-      name: formatMessage({
-        id: aiRouteMeta?.name || 'nav.ai.assistant',
-        defaultMessage: 'AI 助手',
-      }),
-      icon: resolveNavigationIcon(aiRouteMeta?.icon),
-    });
-  }
-
-  return visibleMenus;
+  return [
+    ...fallbackMenus.map((meta) => ({
+      path: meta.path,
+      name: formatMessage({ id: meta.name, defaultMessage: meta.name }),
+      icon: resolveNavigationIcon(meta.icon),
+      hideInMenu: meta.hideInMenu,
+    })),
+    ...visibleMenus,
+  ].sort((a, b) => {
+    const leftIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(a.path || '');
+    const rightIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(b.path || '');
+    if (leftIndex !== -1 || rightIndex !== -1) {
+      return (leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex) - (rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex);
+    }
+    return 0;
+  });
 };
 
 const composeMenuItem = (
