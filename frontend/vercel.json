@@ -25,6 +25,18 @@
       "destination": "https://api.elexvx.com/api-docs"
     },
     {
+      "source": "/swagger-ui.html",
+      "destination": "https://api.elexvx.com/swagger-ui.html"
+    },
+    {
+      "source": "/swagger-ui/:path*",
+      "destination": "https://api.elexvx.com/swagger-ui/:path*"
+    },
+    {
+      "source": "/webjars/:path*",
+      "destination": "https://api.elexvx.com/webjars/:path*"
+    },
+    {
       "source": "/api/uploads/:path*",
       "destination": "https://api.elexvx.com/api/uploads/:path*"
     },
