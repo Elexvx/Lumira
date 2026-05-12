@@ -189,6 +189,7 @@ const getHealthRetryDelay = (attempt: number) => {
   const maxDelay = 4000;
   return Math.min(baseDelay * 2 ** Math.min(attempt - 1, 3), maxDelay);
 };
+const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
 
 class BackendProxyUnavailableError extends Error {
   constructor(message: string) {
@@ -217,7 +218,7 @@ const checkBackendHealth = async () => {
   }
 };
 
-const waitForBackendReady = async () => {
+const waitForBackendReady = async (options: { maxAttempts?: number } = {}) => {
   let attempt = 0;
 
   while (true) {
@@ -238,6 +239,9 @@ const waitForBackendReady = async () => {
       return;
     } catch (error) {
       if (error instanceof BackendProxyUnavailableError) {
+        throw error;
+      }
+      if (options.maxAttempts && attempt >= options.maxAttempts) {
         throw error;
       }
       const retryInMs = getHealthRetryDelay(attempt);
@@ -275,11 +279,9 @@ export async function getAppInitialState(): Promise<AppInitialState> {
     return await buildGuestInitialState(storedBrandingSettings);
   }
 
-  let retryCount = 0;
-
   while (true) {
     try {
-      await waitForBackendReady();
+      await waitForBackendReady({ maxAttempts: MAX_AUTHENTICATED_BOOTSTRAP_RETRIES });
       const restored = await restoreSession().catch(() => null);
 
       setBootstrapSnapshot({
@@ -304,20 +306,8 @@ export async function getAppInitialState(): Promise<AppInitialState> {
         clearAuthSession();
         return await buildGuestInitialState(storedBrandingSettings);
       }
-      retryCount += 1;
-      const retryInMs = getHealthRetryDelay(retryCount);
-      setBootstrapSnapshot({
-        phase: 'error',
-        progress: Math.min(28 + retryCount * 2, 45),
-        title: '启动重试中',
-        description: `启动阶段暂时失败，${Math.ceil(retryInMs / 1000)} 秒后重新尝试`,
-        retryCount,
-        retryInMs,
-        errorMessage: getErrorMessage(error),
-        brandName: storedBrandingSettings.websiteName,
-        ready: false,
-      });
-      await sleep(retryInMs);
+      clearAuthSession();
+      return await buildGuestInitialState(storedBrandingSettings);
     }
   }
 }
