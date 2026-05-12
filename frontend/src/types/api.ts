@@ -359,6 +359,7 @@ export interface AiChatResponseRecord {
   conversationCode?: string | null;
   employeeId?: number | null;
   replyText: string;
+  thinkingContent?: string | null;
   replyRole?: string | null;
   provider?: string | null;
   model?: string | null;

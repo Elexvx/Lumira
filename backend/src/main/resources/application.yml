@@ -83,6 +83,10 @@ saas:
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
       - /api/v1/localization/runtime/**
+      - /api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /v3/api-docs/**
       - /api/uploads/**
       - /actuator/health
       - /api/health

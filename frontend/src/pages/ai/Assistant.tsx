@@ -56,7 +56,8 @@ type ChatBubble = {
   role: BubbleRole;
   content: string;
   attachments: ComposerAttachment[];
-  thinkingSteps?: string[];
+  thinkingContent?: string | null;
+  thinkingLoading?: boolean;
   streamingContent?: string;
 };
 
@@ -470,38 +471,44 @@ const buildExportContent = (session: ChatSession, format: 'markdown' | 'text') =
   return lines.join('\n').trim();
 };
 
-const buildThinkingSteps = (attachments: ComposerAttachment[]) => [
-  '接收用户消息',
-  attachments.length ? `整理会话上下文和 ${attachments.length} 个附件` : '整理会话上下文',
-  '检查数字员工技能与权限边界',
-  '生成回复中',
-];
-
-const renderThinkingContent = (item: ChatBubble, visibleSteps: number) => {
-  if (item.thinkingSteps?.length) {
-    return (
-      <div className="saas-ai-assistant-thinking">
-        <div className="saas-ai-assistant-thinking__title">处理过程</div>
-        <ol className="saas-ai-assistant-thinking__steps">
-          {item.thinkingSteps.slice(0, Math.max(1, visibleSteps)).map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </div>
-    );
+const renderThinkingContent = (item: ChatBubble) => {
+  const thinkingContent = item.thinkingContent?.trim();
+  if (!thinkingContent && !item.thinkingLoading) {
+    return null;
   }
 
-  return null;
+  const statusText = thinkingContent ? '完成思考' : '思考中';
+
+  return (
+    <details className="saas-ai-assistant-thinking" open={Boolean(thinkingContent)}>
+      <summary className="saas-ai-assistant-thinking__summary">
+        <RobotOutlined className="saas-ai-assistant-thinking__icon" />
+        <span>{statusText}</span>
+      </summary>
+      <div className="saas-ai-assistant-thinking__body">
+        {thinkingContent ? (
+          <div className="saas-ai-assistant-thinking__content">{thinkingContent}</div>
+        ) : (
+          <div className="saas-ai-assistant-thinking__loading">
+            <Spin size="small" />
+            <span>正在等待思考过程...</span>
+          </div>
+        )}
+      </div>
+    </details>
+  );
 };
 
-const renderMessageContent = (item: ChatBubble, visibleThinkingSteps: number, visibleReplyText?: string) => {
-  if (item.thinkingSteps?.length) {
-    return renderThinkingContent(item, visibleThinkingSteps);
-  }
-
+const renderMessageContent = (item: ChatBubble, visibleReplyText?: string) => {
   const content = visibleReplyText ?? item.content;
   if (item.role === 'ai') {
-    return <div className="saas-ai-assistant-markdown">{content}</div>;
+    const thinking = renderThinkingContent(item);
+    return (
+      <div className="saas-ai-assistant-ai-content">
+        {thinking}
+        {content ? <div className="saas-ai-assistant-markdown">{content}</div> : null}
+      </div>
+    );
   }
 
   return content;
@@ -1041,7 +1048,7 @@ const AiAssistantPage = () => {
       role: 'ai',
       content: '',
       attachments: [],
-      thinkingSteps: buildThinkingSteps(draftAttachments),
+      thinkingLoading: true,
     };
 
     setSending(true);
@@ -1092,6 +1099,7 @@ const AiAssistantPage = () => {
                   role: 'ai',
                   content: response.replyText || '我已经收到你的消息。',
                   attachments: [],
+                  thinkingContent: response.thinkingContent,
                   streamingContent: response.replyText || '我已经收到你的消息。',
                 },
               ],
@@ -1382,7 +1390,6 @@ const AiAssistantPage = () => {
         role: item.role,
         content: renderMessageContent(
           item,
-          item.thinkingSteps?.length ? streamProgress[item.key] ?? 0 : 0,
           item.streamingContent ? item.streamingContent.slice(0, streamProgress[item.key] ?? 0) : undefined,
         ),
         footer: (
@@ -1402,22 +1409,19 @@ const AiAssistantPage = () => {
   );
 
   useEffect(() => {
-    const nextThinking = activeSession?.messages.find(
-      (item) => item.thinkingSteps?.length && (streamProgress[item.key] ?? 0) < item.thinkingSteps.length,
-    );
     const nextReply = activeSession?.messages.find(
       (item) => item.streamingContent && (streamProgress[item.key] ?? 0) < item.streamingContent.length,
     );
-    const target = nextThinking || nextReply;
+    const target = nextReply;
 
     if (!target) {
       return undefined;
     }
 
-    const total = target.thinkingSteps?.length ?? target.streamingContent?.length ?? 0;
+    const total = target.streamingContent?.length ?? 0;
     const current = streamProgress[target.key] ?? 0;
     const nextValue = Math.min(current + 1, total);
-    const delay = target.thinkingSteps?.length ? 260 : 12;
+    const delay = 12;
 
     const timer = window.setTimeout(() => {
       setStreamProgress((prev) => ({
