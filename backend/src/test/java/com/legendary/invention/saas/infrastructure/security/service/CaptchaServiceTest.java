@@ -6,7 +6,9 @@ import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -50,6 +52,8 @@ class CaptchaServiceTest {
 
         assertNotNull(challenge.getBgUrl());
         assertNotNull(challenge.getPuzzleUrl());
+        assertTrue(decodeDataUrl(challenge.getBgUrl()).contains("data:image/png;base64,"));
+        assertTrue(decodeDataUrl(challenge.getPuzzleUrl()).contains("data:image/png;base64,"));
         assertEquals("SLIDER", challenge.getCaptchaType());
         assertEquals(58, challenge.getPuzzleWidth());
         assertEquals(58, challenge.getPuzzleHeight());
@@ -102,6 +106,11 @@ class CaptchaServiceTest {
         SystemVO.CaptchaChallengeVO challenge = service.createChallenge("unknown");
 
         assertEquals("IMAGE", challenge.getCaptchaType());
+    }
+
+    private String decodeDataUrl(String dataUrl) {
+        String base64Payload = dataUrl.substring(dataUrl.indexOf(',') + 1);
+        return new String(Base64.getDecoder().decode(base64Payload), StandardCharsets.UTF_8);
     }
 
     private static final class InMemoryCacheTemplate extends com.legendary.invention.saas.infrastructure.redis.CacheTemplate {

@@ -53,7 +53,14 @@ public final class SystemRouteCatalog {
             "/settings/monitoring/api-docs",
             "/settings/monitoring/audit",
             "/settings/files",
-            "/settings/files/all"
+            "/settings/files/all",
+            "/user-center",
+            "/user-center/users",
+            "/user-center/online-users",
+            "/user-center/roles",
+            "/user-center/personal-center",
+            "/user-center/profile",
+            "/user-center/files"
     );
 
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
@@ -76,6 +83,11 @@ public final class SystemRouteCatalog {
             "@/pages/settings/monitoring/Audit",
             "@/pages/settings/localization",
             "@/pages/settings/files/Center",
+            "@/pages/system/users",
+            "@/pages/system/online-users",
+            "@/pages/system/roles",
+            "@/pages/profile/Center",
+            "@/pages/files/Center",
             "@/pages/audit/Overview",
             "@/pages/system/menus",
             "@/pages/system/Plugins",
@@ -158,6 +170,19 @@ public final class SystemRouteCatalog {
         roots.add(menu(-980L, 0L, "tasks.root", "任务中心", "MENU", "/tasks", "@/pages/tasks", "CheckSquareOutlined", 4, "task:view"));
         roots.add(menu(-970L, 0L, "approvals.root", "审批中心", "MENU", "/approvals", "@/pages/approvals", "AuditOutlined", 5, "approval:view"));
         roots.add(menu(-960L, 0L, "evaluations.root", "评审中心", "MENU", "/evaluations", "@/pages/evaluations", "StarOutlined", 6, "evaluation:view"));
+        SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
+        userCenterRoot.setChildren(new ArrayList<>(List.of(
+                menu(-951L, -950L, "system.users", "用户管理", "MENU", "/user-center/users", "@/pages/system/users", "TeamOutlined", 21, "system:user:view"),
+                menu(-952L, -950L, "system.online-users", "在线用户", "MENU", "/user-center/online-users", "@/pages/system/online-users", "UserSwitchOutlined", 22, "system:online-user:view"),
+                menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 23, "system:role:view")
+        )));
+        SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", "/user-center/personal-center", "redirect:/user-center/profile", "IdcardOutlined", 19, "profile:view");
+        personalCenterRoot.setChildren(new ArrayList<>(List.of(
+                menu(-941L, -940L, "profile.center", "个人资料", "MENU", "/user-center/profile", "@/pages/profile/Center", "UserOutlined", 1, "profile:view"),
+                menu(-942L, -940L, "files.my", "我的文件", "MENU", "/user-center/files", "@/pages/files/Center", "FileOutlined", 2, "system:file:view")
+        )));
+        roots.add(userCenterRoot);
+        roots.add(personalCenterRoot);
         roots.add(settingsRoot);
         return roots;
     }

@@ -48,9 +48,10 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     isLogin,
     canVisitDashboard: isLogin,
     canVisitProfile: isLogin,
+    canVisitPersonalCenter: isLogin && (hasPermission(permissions, 'profile:view') || hasPermission(permissions, 'system:file:view')),
     canVisitUserCenter:
       isLogin &&
-      ['user:center:view', 'system:user:view', 'system:online-user:view', 'system:role:view', 'profile:view', 'system:file:view'].some((item) =>
+      ['user:center:view', 'system:user:view', 'system:online-user:view', 'system:role:view'].some((item) =>
         hasPermission(permissions, item),
       ),
     canVisitSystemManagement: isLogin && SYSTEM_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item)),

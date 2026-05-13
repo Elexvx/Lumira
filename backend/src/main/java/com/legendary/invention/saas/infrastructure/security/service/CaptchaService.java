@@ -11,6 +11,8 @@ import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -34,6 +36,12 @@ public class CaptchaService {
     private static final int SLIDER_TOLERANCE_PX = 10;
     private static final int SLIDER_MIN_DURATION_MS = 180;
     private static final String CAPTCHA_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final List<String> SLIDER_BACKGROUND_RESOURCES = List.of(
+            "captcha/slider-backgrounds/mountain-valley.png",
+            "captcha/slider-backgrounds/neon-city.png",
+            "captcha/slider-backgrounds/botanical-glasshouse.png",
+            "captcha/slider-backgrounds/coastal-harbor.png"
+    );
 
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
@@ -338,6 +346,32 @@ public class CaptchaService {
     }
 
     private String buildSliderSceneElements() {
+        String imageDataUrl = loadRandomSliderBackgroundDataUrl();
+        if (StringUtils.hasText(imageDataUrl)) {
+            return """
+                    <image x="0" y="0" width="%d" height="%d" href="%s" preserveAspectRatio="none"/>
+                    """.formatted(SLIDER_WIDTH, SLIDER_HEIGHT, imageDataUrl);
+        }
+        return buildFallbackSliderSceneElements();
+    }
+
+    private String loadRandomSliderBackgroundDataUrl() {
+        String resourcePath = SLIDER_BACKGROUND_RESOURCES.get(secureRandom.nextInt(SLIDER_BACKGROUND_RESOURCES.size()));
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        if (classLoader == null) {
+            classLoader = CaptchaService.class.getClassLoader();
+        }
+        try (InputStream inputStream = classLoader == null ? null : classLoader.getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                return "";
+            }
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+        } catch (IOException ex) {
+            return "";
+        }
+    }
+
+    private String buildFallbackSliderSceneElements() {
         StringBuilder shapes = new StringBuilder();
         shapes.append("""
                 <defs>
