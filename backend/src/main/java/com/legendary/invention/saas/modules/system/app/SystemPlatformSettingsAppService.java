@@ -33,7 +33,9 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
     private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
     private static final String BRANDING_LOGIN_BACKGROUND_URL_KEY = "branding.login-background-url";
+    private static final String BRANDING_GITHUB_LINK_ENABLED_KEY = "branding.github-link-enabled";
     private static final String BRANDING_GITHUB_LINK_URL_KEY = "branding.github-link-url";
+    private static final String BRANDING_HELP_LINK_ENABLED_KEY = "branding.help-link-enabled";
     private static final String BRANDING_HELP_LINK_URL_KEY = "branding.help-link-url";
     private static final String BRANDING_COMPANY_NAME_KEY = "branding.company-name";
     private static final String BRANDING_COPYRIGHT_START_YEAR_KEY = "branding.copyright-start-year";
@@ -44,7 +46,9 @@ public class SystemPlatformSettingsAppService {
             BRANDING_WEBSITE_FAVICON_URL_KEY,
             BRANDING_WEBSITE_LOGO_URL_KEY,
             BRANDING_LOGIN_BACKGROUND_URL_KEY,
+            BRANDING_GITHUB_LINK_ENABLED_KEY,
             BRANDING_GITHUB_LINK_URL_KEY,
+            BRANDING_HELP_LINK_ENABLED_KEY,
             BRANDING_HELP_LINK_URL_KEY,
             BRANDING_COMPANY_NAME_KEY,
             BRANDING_COPYRIGHT_START_YEAR_KEY,
@@ -145,7 +149,9 @@ public class SystemPlatformSettingsAppService {
         upsertBrandingConfig(tenantId, BRANDING_WEBSITE_FAVICON_URL_KEY, "站点图标地址", sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), "浏览器标签页 icon 地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_WEBSITE_LOGO_URL_KEY, "站点 Logo 地址", sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), "控制台左上角品牌 Logo 地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_LOGIN_BACKGROUND_URL_KEY, "登录页背景图地址", sanitizeBrandingText(request.getLoginBackgroundUrl(), ""), "登录页背景图地址", operatorId);
+        upsertBrandingConfig(tenantId, BRANDING_GITHUB_LINK_ENABLED_KEY, "GitHub 链接开关", String.valueOf(request.getGithubLinkEnabled() == null || request.getGithubLinkEnabled()), "是否显示顶部 GitHub 图标", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_GITHUB_LINK_URL_KEY, "GitHub 链接", sanitizeBrandingText(request.getGithubLinkUrl(), ""), "顶部 GitHub 图标跳转地址", operatorId);
+        upsertBrandingConfig(tenantId, BRANDING_HELP_LINK_ENABLED_KEY, "帮助链接开关", String.valueOf(request.getHelpLinkEnabled() == null || request.getHelpLinkEnabled()), "是否显示顶部帮助图标", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_HELP_LINK_URL_KEY, "帮助链接", sanitizeBrandingText(request.getHelpLinkUrl(), ""), "顶部帮助图标跳转地址", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_COMPANY_NAME_KEY, "公司名称", companyName, "页脚版权主体名称", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_COPYRIGHT_START_YEAR_KEY, "版权起始年份", String.valueOf(copyrightStartYear), "页脚版权起始年份", operatorId);
@@ -274,7 +280,9 @@ public class SystemPlatformSettingsAppService {
         settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
         settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
         settings.setLoginBackgroundUrl(defaultIfBlank(valueByKey.get(BRANDING_LOGIN_BACKGROUND_URL_KEY), ""));
+        settings.setGithubLinkEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_ENABLED_KEY), "true")));
         settings.setGithubLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_URL_KEY), ""));
+        settings.setHelpLinkEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_ENABLED_KEY), "true")));
         settings.setHelpLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_URL_KEY), ""));
         settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
         settings.setCopyrightStartYear(parseInteger(valueByKey.get(BRANDING_COPYRIGHT_START_YEAR_KEY), LocalDate.now().getYear()));

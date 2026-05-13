@@ -6,7 +6,9 @@ public class BrandingSettingsVO {
     private String websiteFaviconUrl;
     private String websiteLogoUrl;
     private String loginBackgroundUrl;
+    private Boolean githubLinkEnabled;
     private String githubLinkUrl;
+    private Boolean helpLinkEnabled;
     private String helpLinkUrl;
     private String companyName;
     private Integer copyrightStartYear;
@@ -21,8 +23,12 @@ public class BrandingSettingsVO {
     public void setWebsiteLogoUrl(String websiteLogoUrl) { this.websiteLogoUrl = websiteLogoUrl; }
     public String getLoginBackgroundUrl() { return loginBackgroundUrl; }
     public void setLoginBackgroundUrl(String loginBackgroundUrl) { this.loginBackgroundUrl = loginBackgroundUrl; }
+    public Boolean getGithubLinkEnabled() { return githubLinkEnabled; }
+    public void setGithubLinkEnabled(Boolean githubLinkEnabled) { this.githubLinkEnabled = githubLinkEnabled; }
     public String getGithubLinkUrl() { return githubLinkUrl; }
     public void setGithubLinkUrl(String githubLinkUrl) { this.githubLinkUrl = githubLinkUrl; }
+    public Boolean getHelpLinkEnabled() { return helpLinkEnabled; }
+    public void setHelpLinkEnabled(Boolean helpLinkEnabled) { this.helpLinkEnabled = helpLinkEnabled; }
     public String getHelpLinkUrl() { return helpLinkUrl; }
     public void setHelpLinkUrl(String helpLinkUrl) { this.helpLinkUrl = helpLinkUrl; }
     public String getCompanyName() { return companyName; }
