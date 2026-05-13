@@ -342,6 +342,8 @@ export default {
   'page.login.captcha.retry': '点击重试',
   'page.login.captcha.alt': '验证码',
   'page.login.captcha.refreshText': '点击刷新',
+  'page.login.captcha.startSlider': '验证',
+  'page.login.captcha.sliderVerified': '已验证',
   'page.login.error.pleaseSendCode': '请先发送验证码',
   'page.login.error.invalidEmail': '请输入有效邮箱地址',
   'page.login.error.loginFailed': '登录失败，请稍后重试',

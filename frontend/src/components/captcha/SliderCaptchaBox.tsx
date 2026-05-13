@@ -76,7 +76,7 @@ export const SliderCaptchaBox = ({
       mode={mode}
       request={requestSliderCaptcha}
       onVerify={verifySliderCaptcha}
-      style={{ width: 'fit-content', margin: '0 auto' }}
+      style={{ width: mode === 'embed' ? '100%' : 'fit-content', margin: '0 auto' }}
       bgSize={{ width: 320, height: 160 }}
       puzzleSize={puzzleSize}
       styles={{

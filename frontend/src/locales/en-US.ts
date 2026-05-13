@@ -163,6 +163,8 @@ export default {
   'page.login.captcha.retry': 'Retry captcha',
   'page.login.captcha.alt': 'Captcha',
   'page.login.captcha.refreshText': 'Click to refresh',
+  'page.login.captcha.startSlider': 'Verify',
+  'page.login.captcha.sliderVerified': 'Verified',
   'page.login.error.pleaseSendCode': 'Please send the verification code first',
   'page.login.error.invalidEmail': 'Please enter a valid email address',
   'page.login.error.loginFailed': 'Login failed, please try again later',
