@@ -219,7 +219,7 @@ public class SystemVerificationSettingsAppService {
     }
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        Long effectiveTenantId = tenantId == null ? 1001L : tenantId;
+        Long effectiveTenantId = tenantId == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select tenant_id as tenantId, config_key as configKey, config_value as configValue
@@ -254,7 +254,7 @@ public class SystemVerificationSettingsAppService {
 
     private Long requireTenantId(CurrentUser currentUser) {
         if (currentUser.getCurrentTenantId() == null) {
-            return 1001L;
+            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
         }
         return currentUser.getCurrentTenantId();
     }

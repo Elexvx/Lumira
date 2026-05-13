@@ -2,8 +2,10 @@ package com.legendary.invention.plugin.infrastructure.security;
 
 import com.legendary.invention.api.auth.CurrentUserDTO;
 import com.legendary.invention.api.client.AuthInternalApi;
-import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.constant.HeaderConstants;
+import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.JwtTokenClaims;
+import com.legendary.invention.common.security.JwtTokenType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,8 +50,8 @@ public class PluginJwtAuthFilter extends OncePerRequestFilter {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
             try {
-                TokenClaims claims = jwtTokenService.parseToken(authorization.substring(7));
-                if (claims.getTokenType() == TokenType.ACCESS) {
+                JwtTokenClaims claims = jwtTokenService.parseToken(authorization.substring(7));
+                if (claims.getTokenType() == JwtTokenType.ACCESS) {
                     CurrentUserDTO snapshot = authInternalApi.currentUser(claims.getSessionId());
                     if (snapshot != null) {
                         CurrentUser currentUser = new CurrentUser(

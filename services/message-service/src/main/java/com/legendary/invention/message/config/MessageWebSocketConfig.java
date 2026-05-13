@@ -1,6 +1,6 @@
 package com.legendary.invention.message.config;
 
-import com.legendary.invention.message.config.WebProperties;
+import com.legendary.invention.common.web.WebProperties;
 import com.legendary.invention.message.service.MessageSessionHandshakeInterceptor;
 import com.legendary.invention.message.service.MessageWebSocketHandler;
 import org.springframework.context.annotation.Configuration;

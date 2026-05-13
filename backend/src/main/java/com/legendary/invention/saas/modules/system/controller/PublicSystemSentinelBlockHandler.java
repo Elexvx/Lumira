@@ -2,7 +2,7 @@ package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 

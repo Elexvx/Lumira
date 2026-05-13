@@ -16,7 +16,7 @@ import java.util.Properties;
 @Service
 public class SmtpMailService {
 
-    private static final Long PLATFORM_TENANT_ID = 1001L;
+    private static final Long PLATFORM_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String PLATFORM_SCOPE = "PLATFORM";
     private static final String SMTP_HOST_KEY = "smtp.host";
     private static final String SMTP_PORT_KEY = "smtp.port";

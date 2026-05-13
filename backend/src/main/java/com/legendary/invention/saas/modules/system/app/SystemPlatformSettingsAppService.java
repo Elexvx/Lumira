@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class SystemPlatformSettingsAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = 1001L;
+    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
 
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";

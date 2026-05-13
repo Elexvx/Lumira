@@ -1,6 +1,6 @@
 package com.legendary.invention.saas.infrastructure.security;
 
-import com.legendary.invention.saas.infrastructure.config.WebProperties;
+import com.legendary.invention.common.web.WebProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;

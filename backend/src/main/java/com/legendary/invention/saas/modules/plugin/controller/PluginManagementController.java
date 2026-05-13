@@ -2,7 +2,7 @@ package com.legendary.invention.saas.modules.plugin.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;

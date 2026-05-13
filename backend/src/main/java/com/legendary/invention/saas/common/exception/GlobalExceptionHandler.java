@@ -2,7 +2,7 @@ package com.legendary.invention.saas.common.exception;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

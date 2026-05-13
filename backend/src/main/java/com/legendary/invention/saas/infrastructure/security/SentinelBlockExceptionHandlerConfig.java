@@ -3,7 +3,7 @@ package com.legendary.invention.saas.infrastructure.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import com.alibaba.csp.sentinel.adapter.spring.webmvc_v6x.callback.BlockExceptionHandler;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import jakarta.servlet.http.HttpServletRequest;

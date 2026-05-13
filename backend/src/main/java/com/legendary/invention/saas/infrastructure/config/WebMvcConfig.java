@@ -1,8 +1,11 @@
 package com.legendary.invention.saas.infrastructure.config;
 
+import com.legendary.invention.common.web.CorsMappingConfigurer;
+import com.legendary.invention.common.web.TraceIdFilter;
+import com.legendary.invention.common.web.WebProperties;
 import com.legendary.invention.saas.infrastructure.upload.UploadProperties;
-import com.legendary.invention.saas.infrastructure.config.WebProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -31,16 +34,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        var registration = registry.addMapping("/**")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                .allowedHeaders("*")
-                .exposedHeaders("X-Request-Id", "X-Trace-Id");
+        CorsMappingConfigurer.addDefaultCorsMapping(registry, webProperties);
+    }
 
-        if (!webProperties.getCorsAllowedOrigins().isEmpty()) {
-            registration.allowedOrigins(webProperties.getCorsAllowedOrigins().toArray(new String[0]));
-        } else if (!webProperties.getCorsAllowedOriginPatterns().isEmpty()) {
-            registration.allowedOriginPatterns(webProperties.getCorsAllowedOriginPatterns().toArray(new String[0]));
-        }
+    @Bean
+    public TraceIdFilter traceIdFilter() {
+        return new TraceIdFilter();
     }
 
     @Override

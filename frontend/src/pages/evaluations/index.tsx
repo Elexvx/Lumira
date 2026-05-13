@@ -1,9 +1,12 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Switch, Table, Tabs, Tag, message } from 'antd';
+import { Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Table, Tabs, message } from 'antd';
 import { useState } from 'react';
+import { useRefetchAll } from '@/hooks/useRefetchAll';
 import { evaluationService, type EvaluationTemplatePayload } from '@/services/evaluation';
 import type { EvaluationInstanceRecord, EvaluationScoreTaskRecord, EvaluationTemplateRecord } from '@/types/api';
+import { renderStatusTag } from '@/utils/statusTag';
+import { buildTemplateEnabledColumn } from '@/utils/templateColumns';
 
 const defaultDimensions = [{ dimensionName: '交付质量', weight: 40, maxScore: 100, sortOrder: 0 }];
 const defaultGradeRules = [
@@ -24,9 +27,7 @@ const EvaluationsPage = () => {
   const pending = useQuery({ queryKey: ['evaluation-pending'], queryFn: () => evaluationService.myPendingTasks({ pageNo: 1, pageSize: 100 }, { autoRedirectOnUnauthorized: false }) });
   const all = useQuery({ queryKey: ['evaluation-all'], queryFn: () => evaluationService.instances({ pageNo: 1, pageSize: 100 }) });
 
-  const reload = () => {
-    void templates.refetch(); void projects.refetch(); void employees.refetch(); void pending.refetch(); void all.refetch();
-  };
+  const reload = useRefetchAll([templates, projects, employees, pending, all]);
 
   const openTemplate = (record?: EvaluationTemplateRecord) => {
     setActiveTemplate(record || null);
@@ -57,7 +58,7 @@ const EvaluationsPage = () => {
   const instanceColumns = [
     { title: '对象', dataIndex: 'objectTitle' },
     { title: '类型', dataIndex: 'objectType', width: 160 },
-    { title: '状态', dataIndex: 'status', width: 120, render: (value: string) => <Tag>{value}</Tag> },
+    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value) },
     { title: '最终分', dataIndex: 'finalScore', width: 100 },
     { title: '等级', dataIndex: 'finalGrade', width: 100 },
     { title: '创建时间', dataIndex: 'createTime', width: 190 },
@@ -82,7 +83,7 @@ const EvaluationsPage = () => {
                   columns={[
                     { title: '任务ID', dataIndex: 'id', width: 100 },
                     { title: '实例ID', dataIndex: 'instanceId', width: 100 },
-                    { title: '状态', dataIndex: 'status', render: (value) => <Tag color="orange">{value}</Tag> },
+                    { title: '状态', dataIndex: 'status', render: (value?: string | null) => renderStatusTag(value, { PENDING: { color: 'orange', text: value || '-' } }) },
                     { title: '操作', render: (_, record) => <Button size="small" type="primary" onClick={async () => { await evaluationService.submitScore(record.id, { details: [{ dimensionId: 1, score: 80 }], comment: '默认评分' }); message.success('已提交评分'); reload(); }}>快速提交</Button> },
                   ]}
                   locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无评分待办" /> }}
@@ -103,7 +104,7 @@ const EvaluationsPage = () => {
                     columns={[
                       { title: '模板名称', dataIndex: 'templateName' },
                       { title: '对象类型', dataIndex: 'objectType' },
-                      { title: '启用', dataIndex: 'enabled', render: (value, record) => <Switch checked={value} onChange={(checked) => evaluationService.updateTemplateEnabled(record.id, checked).then(reload)} /> },
+                      buildTemplateEnabledColumn<EvaluationTemplateRecord>(evaluationService.updateTemplateEnabled, reload),
                       { title: '操作', render: (_, record) => <Button size="small" onClick={() => openTemplate(record)}>编辑</Button> },
                     ]}
                   />

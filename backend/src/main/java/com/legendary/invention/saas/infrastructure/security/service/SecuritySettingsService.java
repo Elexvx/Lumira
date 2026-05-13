@@ -13,7 +13,7 @@ import java.util.Locale;
 @Component
 public class SecuritySettingsService {
 
-    private static final long PLATFORM_TENANT_ID = 1001L;
+    private static final long PLATFORM_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String PLATFORM_SCOPE = "PLATFORM";
     private static final String IDLE_TIMEOUT_KEY = "security.idle-timeout-seconds";
     private static final String ACCESS_TOKEN_EXPIRE_KEY = "security.access-token-expire-seconds";

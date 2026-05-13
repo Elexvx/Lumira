@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Service
 public class SystemProfileSettingsAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = 1001L;
+    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final Integer PROFILE_SCORE_MAX = 100;
     private static final String PROFILE_FIELD_GROUP_BASIC_KEY = "basic";
     private static final String PROFILE_FIELD_GROUP_CONTACT_KEY = "contact";

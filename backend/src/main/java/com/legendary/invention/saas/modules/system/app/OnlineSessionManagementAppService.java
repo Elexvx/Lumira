@@ -272,7 +272,7 @@ public class OnlineSessionManagementAppService {
 
     private Long currentTenantId(CurrentUser currentUser) {
         if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            return 1001L;
+            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
         }
         return currentUser.getCurrentTenantId();
     }

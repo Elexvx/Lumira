@@ -6,7 +6,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.file.config.TraceIdFilter;
+import com.legendary.invention.common.web.TraceIdFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

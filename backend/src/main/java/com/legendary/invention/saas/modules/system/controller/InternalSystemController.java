@@ -290,8 +290,8 @@ public class InternalSystemController {
         );
         SysUserEntity user = userDomainService.findLoginUser(username)
                 .orElseThrow(() -> new IllegalStateException("微信登录自动注册用户失败"));
-        upsertUserTenantRelation(user.getId(), 1001L);
-        grantDefaultLoginRole(user.getId(), 1001L);
+        upsertUserTenantRelation(user.getId(), com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
+        grantDefaultLoginRole(user.getId(), com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
         return user;
     }
 

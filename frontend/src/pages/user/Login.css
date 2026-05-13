@@ -272,6 +272,26 @@ html[data-theme='dark'] .saas-login-page__actions {
   border-radius: 8px;
 }
 
+.saas-login-page__slider-modal .ant-modal-body {
+  display: flex;
+  justify-content: center;
+}
+
+.saas-login-page__slider-modal .saas-slider-captcha-box,
+.saas-login-page__slider-modal .rc-slider-captcha,
+.saas-login-page__slider-modal .rc-slider-captcha-panel,
+.saas-login-page__slider-modal .rc-slider-captcha-panel-inner,
+.saas-login-page__slider-modal .rc-slider-captcha-jigsaw,
+.saas-login-page__slider-modal .rc-slider-captcha-control {
+  width: 320px !important;
+  max-width: 320px !important;
+  box-sizing: border-box;
+}
+
+.saas-login-page__slider-modal .rc-slider-captcha-panel {
+  padding-bottom: 14px;
+}
+
 .saas-login-page__slider-modal .ant-modal-header {
   margin-bottom: 12px;
 }

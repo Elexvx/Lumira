@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.modules.system.monitor.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.system.monitor.app.SystemMonitorAppService;

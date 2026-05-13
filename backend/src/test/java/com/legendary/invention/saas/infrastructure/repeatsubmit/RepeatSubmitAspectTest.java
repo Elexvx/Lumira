@@ -3,7 +3,7 @@ package com.legendary.invention.saas.infrastructure.repeatsubmit;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.config.WebProperties;
+import com.legendary.invention.common.web.WebProperties;
 import com.legendary.invention.saas.infrastructure.redis.CacheTemplate;
 import com.legendary.invention.saas.infrastructure.security.ClientIpResolver;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;

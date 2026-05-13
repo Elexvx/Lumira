@@ -10,12 +10,12 @@ import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import com.legendary.invention.api.tenant.MyTenantDTO;
 import com.legendary.invention.api.tenant.TenantSummaryDTO;
 import com.legendary.invention.auth.model.AuthSession;
-import com.legendary.invention.auth.model.TokenClaims;
-import com.legendary.invention.auth.model.TokenType;
 import com.legendary.invention.auth.support.ClientIpResolver;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.JwtTokenClaims;
+import com.legendary.invention.common.security.JwtTokenType;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -212,8 +212,8 @@ public class AuthAppService {
 
     @SentinelResource(value = "auth-refresh-token", blockHandler = "refreshTokenBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public RefreshTokenResponseDTO refreshToken(RefreshTokenRequest request) {
-        TokenClaims claims = jwtTokenService.parseToken(request.refreshToken());
-        if (claims.getTokenType() != TokenType.REFRESH) {
+        JwtTokenClaims claims = jwtTokenService.parseToken(request.refreshToken());
+        if (claims.getTokenType() != JwtTokenType.REFRESH) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token无效");
         }
         AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())

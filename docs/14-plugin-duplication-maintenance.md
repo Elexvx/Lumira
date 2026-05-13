@@ -56,6 +56,16 @@ Run this check before changing plugin runtime contracts:
 mvn -pl services/plugin-service -am -Dtest=PluginDuplicateContractTest -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
+## Shared Foundation Already Extracted
+
+The current duplication boundary no longer includes generic platform plumbing:
+
+- JWT parsing and token claim models belong in `libs/common-security`.
+- Trace ID propagation, MDC cleanup, and shared CORS properties belong in `libs/common-web`.
+- The platform tenant identifier belongs in `libs/common-core`.
+
+Plugin-specific security filters may still stay in `plugin-service`, but they should consume the shared foundation instead of copying JWT parsing or trace/CORS code back into the plugin module.
+
 ## Extraction Path
 
 The safest extraction order is:

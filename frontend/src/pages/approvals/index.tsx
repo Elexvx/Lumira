@@ -10,17 +10,18 @@ import {
   InputNumber,
   Select,
   Space,
-  Switch,
   Table,
   Tabs,
-  Tag,
   Timeline,
   Typography,
   message,
 } from 'antd';
 import { useMemo, useState } from 'react';
+import { useRefetchAll } from '@/hooks/useRefetchAll';
 import { approvalService, type ApprovalInstancePayload, type ApprovalTemplatePayload } from '@/services/approval';
 import type { ApprovalInstanceRecord, ApprovalTaskRecord, ApprovalTemplateRecord } from '@/types/api';
+import { renderStatusTag } from '@/utils/statusTag';
+import { buildTemplateEnabledColumn } from '@/utils/templateColumns';
 
 const defaultNodes = [{ nodeName: '一级审批', sortOrder: 0, approvalPolicy: 'ANY_ONE', approverType: 'USER' as const, approverId: 1001 }];
 
@@ -37,11 +38,6 @@ const actionText: Record<string, string> = {
   REJECT: '审批驳回',
   CANCEL: '撤回审批',
   FINISH: '审批完成',
-};
-
-const renderStatus = (value?: string | null) => {
-  const meta = statusMeta[value || ''] || { color: 'default', text: value || '-' };
-  return <Tag color={meta.color}>{meta.text}</Tag>;
 };
 
 const ApprovalsPage = () => {
@@ -78,10 +74,9 @@ const ApprovalsPage = () => {
     [detail.data?.tasks, detailTaskId],
   );
 
+  const refetchList = useRefetchAll([templates, pending, submitted]);
   const reload = () => {
-    void templates.refetch();
-    void pending.refetch();
-    void submitted.refetch();
+    refetchList();
     if (detailInstanceId) {
       void detail.refetch();
     }
@@ -157,7 +152,7 @@ const ApprovalsPage = () => {
   const instanceColumns = [
     { title: '审批标题', dataIndex: 'businessTitle' },
     { title: '业务类型', dataIndex: 'businessType', width: 160 },
-    { title: '状态', dataIndex: 'status', width: 120, render: renderStatus },
+    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
     { title: '创建时间', dataIndex: 'createTime', width: 190 },
     {
       title: '操作',
@@ -208,7 +203,7 @@ const ApprovalsPage = () => {
                   columns={[
                     { title: '审批标题', dataIndex: 'businessTitle', render: (value) => value || '-' },
                     { title: '业务类型', dataIndex: 'businessType', width: 160, render: (value) => value || '-' },
-                    { title: '状态', dataIndex: 'status', width: 120, render: renderStatus },
+                    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
                     { title: '创建时间', dataIndex: 'createTime', width: 190 },
                     {
                       title: '操作',
@@ -238,7 +233,7 @@ const ApprovalsPage = () => {
                     columns={[
                       { title: '模板名称', dataIndex: 'templateName' },
                       { title: '业务类型', dataIndex: 'businessType' },
-                      { title: '启用', dataIndex: 'enabled', render: (value, record) => <Switch checked={value} onChange={(checked) => approvalService.updateTemplateEnabled(record.id, checked).then(reload)} /> },
+                      buildTemplateEnabledColumn<ApprovalTemplateRecord>(approvalService.updateTemplateEnabled, reload),
                       { title: '操作', render: (_, record) => <Button size="small" onClick={() => openTemplate(record)}>编辑</Button> },
                     ]}
                   />
@@ -343,7 +338,7 @@ const ApprovalsPage = () => {
               <Descriptions.Item label="业务类型">{detail.data.businessType}</Descriptions.Item>
               <Descriptions.Item label="业务ID">{detail.data.businessId || '-'}</Descriptions.Item>
               <Descriptions.Item label="发起人">{detail.data.applicantName || '-'}</Descriptions.Item>
-              <Descriptions.Item label="状态">{renderStatus(detail.data.status)}</Descriptions.Item>
+              <Descriptions.Item label="状态">{renderStatusTag(detail.data.status, statusMeta)}</Descriptions.Item>
               <Descriptions.Item label="摘要">{detail.data.summary || '-'}</Descriptions.Item>
               <Descriptions.Item label="补充信息">{detail.data.payloadJson || '-'}</Descriptions.Item>
             </Descriptions>

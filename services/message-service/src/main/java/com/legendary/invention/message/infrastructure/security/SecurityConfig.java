@@ -5,7 +5,7 @@ import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.message.config.TraceIdFilter;
+import com.legendary.invention.common.web.TraceIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
