@@ -109,10 +109,12 @@ export const backendRoutes: BackendRouteRecord[] = [
     access: 'canVisitPersonalCenter',
     routes: [
       { path: '/user-center/personal-center', redirect: '/user-center/profile' },
-      { path: '/user-center/profile', component: '@/pages/profile/Center', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
-      { path: '/user-center/files', component: '@/pages/files/Center', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },
+      { path: '/user-center/personal-center/profile', redirect: '/user-center/profile' },
+      { path: '/user-center/personal-center/files', redirect: '/user-center/files' },
     ],
   },
+  { path: '/user-center/profile', component: '@/pages/profile/Center', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
+  { path: '/user-center/files', component: '@/pages/files/Center', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },
   {
     path: '/settings',
     component: '@/layouts/SettingsLayout',
