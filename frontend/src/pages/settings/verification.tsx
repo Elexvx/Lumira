@@ -11,9 +11,10 @@ import type {
   SmtpSettings,
   SmtpTestPayload,
   VerificationSettings,
+  WechatLoginSettings,
 } from '@/types/api';
 
-const TAB_KEYS = ['totp', 'sms', 'email'] as const;
+const TAB_KEYS = ['totp', 'sms', 'email', 'wechat'] as const;
 
 type VerificationTabKey = (typeof TAB_KEYS)[number];
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
@@ -84,7 +85,7 @@ const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
 };
 
 const normalizeTabKey = (value?: string | null): VerificationTabKey => {
-  if (value === 'sms' || value === 'email') {
+  if (value === 'sms' || value === 'email' || value === 'wechat') {
     return value;
   }
   return 'totp';
@@ -114,6 +115,7 @@ const smtpTestInitialValues: SmtpTestPayload = {
 
 const SMS_ACCESS_KEY_SECRET_MASK = '********';
 const SMTP_PASSWORD_MASK = '********';
+const WECHAT_APP_SECRET_MASK = '********';
 
 const SystemVerificationPage = () => {
   const actionPermission = useActionPermission();
@@ -128,11 +130,13 @@ const SystemVerificationPage = () => {
   const [smsSettingsForm] = Form.useForm<SmsVerificationSettings>();
   const [smtpSettingsForm] = Form.useForm<SmtpSettings>();
   const [smtpTestForm] = Form.useForm<SmtpTestPayload>();
+  const [wechatSettingsForm] = Form.useForm<WechatLoginSettings>();
   const [providerDrafts, setProviderDrafts] = useState<Partial<Record<SmsProviderCode, SmsVerificationSettings>>>({});
   const [activeTab, setActiveTab] = useState<VerificationTabKey>(() => normalizeTabKey(new URLSearchParams(location.search).get('tab')));
   const [verificationSaving, setVerificationSaving] = useState(false);
   const [savingSmsSettings, setSavingSmsSettings] = useState(false);
   const [savingEmailSettings, setSavingEmailSettings] = useState(false);
+  const [savingWechatSettings, setSavingWechatSettings] = useState(false);
   const [testingSmtpSettings, setTestingSmtpSettings] = useState(false);
 
   const verificationSettingsQuery = useQuery({
@@ -148,6 +152,11 @@ const SystemVerificationPage = () => {
   const smtpSettingsQuery = useQuery({
     queryKey: ['smtp-settings'],
     queryFn: async () => systemService.smtpSettings({ autoRedirectOnUnauthorized: false }),
+    enabled: canViewVerification,
+  });
+  const wechatSettingsQuery = useQuery({
+    queryKey: ['wechat-login-settings'],
+    queryFn: async () => systemService.wechatLoginSettings({ autoRedirectOnUnauthorized: false }),
     enabled: canViewVerification,
   });
   const verificationFormProps = useStandardFormProps({
@@ -169,9 +178,20 @@ const SystemVerificationPage = () => {
     form: smtpTestForm,
     initialValues: smtpTestInitialValues,
   });
+  const wechatFormProps = useStandardFormProps({
+    form: wechatSettingsForm,
+    initialValues: {
+      enabled: false,
+      appId: '',
+      appSecret: '',
+      redirectUri: '',
+      stateExpireMinutes: 10,
+    },
+  });
 
   const currentProvider = Form.useWatch('provider', smsSettingsForm);
   const smsEnabled = Form.useWatch('enabled', smsSettingsForm) ?? false;
+  const wechatEnabled = Form.useWatch('enabled', wechatSettingsForm) ?? false;
 
   const updateTabInUrl = useCallback(
     (nextTab: VerificationTabKey) => {
@@ -227,6 +247,15 @@ const SystemVerificationPage = () => {
       });
     }
   }, [smtpSettingsForm, smtpSettingsQuery.data]);
+
+  useEffect(() => {
+    if (wechatSettingsQuery.data) {
+      wechatSettingsForm.setFieldsValue({
+        ...wechatSettingsQuery.data,
+        appSecret: wechatSettingsQuery.data.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
+      });
+    }
+  }, [wechatSettingsForm, wechatSettingsQuery.data]);
 
   const handleSmsProviderChange = (nextProvider: string) => {
     const currentValues = smsSettingsForm.getFieldsValue(true) as Partial<SmsVerificationSettings>;
@@ -340,6 +369,32 @@ const SystemVerificationPage = () => {
     }
   };
 
+  const handleSaveWechatSettings = async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setSavingWechatSettings(true);
+    try {
+      const values = await wechatSettingsForm.validateFields();
+      const appSecret = values.appSecret === WECHAT_APP_SECRET_MASK ? undefined : values.appSecret;
+      const result = await systemService.updateWechatLoginSettings(
+        {
+          ...values,
+          appSecret,
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
+      wechatSettingsForm.setFieldsValue({
+        ...result,
+        appSecret: result.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
+      });
+      message.success(result.configured ? '微信登录配置已保存' : '微信登录配置已保存，当前仍未完全启用');
+      await wechatSettingsQuery.refetch();
+    } finally {
+      setSavingWechatSettings(false);
+    }
+  };
+
   const handleTestSmtpSettings = async () => {
     if (!canManageSettings) {
       return;
@@ -356,9 +411,11 @@ const SystemVerificationPage = () => {
 
   const activeProvider = normalizeProviderCode(currentProvider);
   const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
-  const verificationLoading = verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading;
+  const verificationLoading =
+    verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading || wechatSettingsQuery.isLoading;
   const emailLoginEnabled = Form.useWatch('emailLoginEnabled', verificationForm) ?? false;
   const smsAccessKeySecretConfigured = smsSettingsQuery.data?.accessKeySecretConfigured ?? false;
+  const wechatAppSecretConfigured = wechatSettingsQuery.data?.appSecretConfigured ?? false;
 
   const renderVerificationTab = () => (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -520,6 +577,53 @@ const SystemVerificationPage = () => {
     </Space>
   );
 
+  const renderWechatTab = () => (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Form {...wechatFormProps}>
+        <Form.Item name="enabled" label="启用微信登录" valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item
+          name="appId"
+          label="AppID"
+          rules={wechatEnabled ? [{ required: true, message: '请输入微信 AppID' }] : undefined}
+        >
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder="微信开放平台网站应用 AppID" />
+        </Form.Item>
+        <Form.Item
+          name="appSecret"
+          label="AppSecret"
+          rules={wechatEnabled && !wechatAppSecretConfigured ? [{ required: true, message: '请输入微信 AppSecret' }] : undefined}
+          extra={wechatAppSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '留空则保持现有密钥'}
+        >
+          <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder="留空则保持现有密钥" />
+        </Form.Item>
+        <Form.Item
+          name="redirectUri"
+          label="回调地址"
+          rules={[
+            ...(wechatEnabled ? [{ required: true, message: '请输入微信回调地址' }] : []),
+            { type: 'url', message: '请输入有效 URL' },
+          ]}
+        >
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder="https://你的域名/api/v1/auth/wechat/callback" />
+        </Form.Item>
+        <Form.Item
+          name="stateExpireMinutes"
+          label="状态有效期"
+          rules={wechatEnabled ? [{ required: true, message: '请输入状态有效期' }] : undefined}
+        >
+          <InputNumber disabled={!canManageSettings || !wechatEnabled} style={{ width: '100%' }} min={1} max={60} addonAfter="分钟" />
+        </Form.Item>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button type="primary" loading={savingWechatSettings} disabled={!canManageSettings} onClick={() => void handleSaveWechatSettings()}>
+            保存配置
+          </Button>
+        </div>
+      </Form>
+    </Space>
+  );
+
   return (
     <ManagementPage title="验证管理">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -530,6 +634,7 @@ const SystemVerificationPage = () => {
               { key: 'totp', label: '2FA', children: renderVerificationTab() },
               { key: 'sms', label: '短信验证码', children: renderSmsTab() },
               { key: 'email', label: '邮箱与 SMTP', children: renderEmailTab() },
+              { key: 'wechat', label: '微信登录', children: renderWechatTab() },
             ]}
             onChange={(key) => {
               const nextTab = normalizeTabKey(key);

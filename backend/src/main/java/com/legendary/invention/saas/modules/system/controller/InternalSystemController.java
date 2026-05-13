@@ -11,7 +11,9 @@ import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.VerificationVerificationDTO;
+import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
+import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService;
 import com.legendary.invention.saas.modules.system.app.SystemRouteCatalog;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
@@ -41,6 +43,7 @@ public class InternalSystemController {
     private final PermissionSnapshotService permissionSnapshotService;
     private final CaptchaService captchaService;
     private final SystemVerificationAppService verificationAppService;
+    private final WechatLoginSettingsService wechatLoginSettingsService;
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
@@ -49,6 +52,7 @@ public class InternalSystemController {
             PermissionSnapshotService permissionSnapshotService,
             CaptchaService captchaService,
             SystemVerificationAppService verificationAppService,
+            WechatLoginSettingsService wechatLoginSettingsService,
             JdbcTemplate jdbcTemplate,
             PasswordEncoder passwordEncoder
     ) {
@@ -56,6 +60,7 @@ public class InternalSystemController {
         this.permissionSnapshotService = permissionSnapshotService;
         this.captchaService = captchaService;
         this.verificationAppService = verificationAppService;
+        this.wechatLoginSettingsService = wechatLoginSettingsService;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
     }
@@ -107,6 +112,11 @@ public class InternalSystemController {
                 Boolean.TRUE.equals(capabilities.getEmailLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getWechatLoginAvailable())
         );
+    }
+
+    @GetMapping("/verification/wechat-settings")
+    public WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId) {
+        return wechatLoginSettingsService.getInternalSettings(tenantId);
     }
 
     @GetMapping("/verification/providers")

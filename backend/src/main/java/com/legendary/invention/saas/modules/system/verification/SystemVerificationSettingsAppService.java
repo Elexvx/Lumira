@@ -3,7 +3,6 @@ package com.legendary.invention.saas.modules.system.verification;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
-import com.legendary.invention.saas.modules.auth.app.WechatLoginService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.system.support.SmtpMailService;
@@ -35,18 +34,18 @@ public class SystemVerificationSettingsAppService {
     private final JdbcTemplate jdbcTemplate;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
-    private final WechatLoginService wechatLoginService;
+    private final WechatLoginSettingsService wechatLoginSettingsService;
 
     public SystemVerificationSettingsAppService(
             JdbcTemplate jdbcTemplate,
             SystemVerificationProperties properties,
             SmtpMailService smtpMailService,
-            WechatLoginService wechatLoginService
+            WechatLoginSettingsService wechatLoginSettingsService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
-        this.wechatLoginService = wechatLoginService;
+        this.wechatLoginSettingsService = wechatLoginSettingsService;
     }
 
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
@@ -77,8 +76,12 @@ public class SystemVerificationSettingsAppService {
         capabilities.setPasswordLoginAvailable(true);
         capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
         capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
-        capabilities.setWechatLoginAvailable(wechatLoginService.isAvailable());
+        capabilities.setWechatLoginAvailable(wechatLoginSettingsService.isAvailable(tenantId));
         return capabilities;
+    }
+
+    public SystemVO.WechatLoginSettingsVO getWechatSettings(Long tenantId) {
+        return wechatLoginSettingsService.getSettings(tenantId);
     }
 
     public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
@@ -115,6 +118,11 @@ public class SystemVerificationSettingsAppService {
         upsertSmsConfigValue(tenantId, SMS_CONFIG_REGION_KEY, "短信服务地域", region, "短信验证码服务地域", operatorId);
 
         return getSmsSettings(tenantId);
+    }
+
+    public SystemVO.WechatLoginSettingsVO updateWechatSettings(CurrentUser currentUser, SystemDTO.WechatLoginSettingsRequest request) {
+        Long tenantId = requireTenantId(currentUser);
+        return wechatLoginSettingsService.updateSettings(tenantId, currentUser.getUserId(), request);
     }
 
     private SmsVerificationSettingsRecord loadSmsSettingsRecord(Long tenantId) {

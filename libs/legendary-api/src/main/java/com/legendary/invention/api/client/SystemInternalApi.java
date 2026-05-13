@@ -8,6 +8,7 @@ import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.VerificationVerificationDTO;
+import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +42,9 @@ public interface SystemInternalApi {
 
     @GetMapping("/verification/login-capabilities")
     LoginCapabilitiesDTO loginCapabilities(@RequestParam("tenantId") Long tenantId);
+
+    @GetMapping("/verification/wechat-settings")
+    WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId);
 
     @GetMapping("/verification/providers")
     List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);

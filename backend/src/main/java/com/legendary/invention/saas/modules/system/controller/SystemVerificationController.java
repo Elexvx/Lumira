@@ -71,6 +71,16 @@ public class SystemVerificationController {
         );
     }
 
+    @GetMapping("/wechat-settings")
+    public ApiResponse<SystemVO.WechatLoginSettingsVO> wechatSettings() {
+        CurrentUser currentUser = currentUser();
+        requireView();
+        return ApiResponse.success(
+                verificationAppService.getWechatSettings(requireTenantId(currentUser)),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/settings")
     public ApiResponse<SystemVO.VerificationSettingsVO> verificationSettings() {
         CurrentUser currentUser = currentUser();
@@ -144,6 +154,17 @@ public class SystemVerificationController {
         require("system:verification:manage");
         return ApiResponse.success(
                 verificationAppService.updateSmsSettings(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/wechat-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.WechatLoginSettingsVO> updateWechatSettings(@Valid @RequestBody SystemDTO.WechatLoginSettingsRequest request) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.updateWechatSettings(currentUser, request),
                 TraceContext.getRequestId()
         );
     }
