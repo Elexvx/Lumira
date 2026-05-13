@@ -673,7 +673,7 @@ const AiEmployeesPage = () => {
   return (
     <ManagementPage className="saas-crud-page" ghost title="数字员工" style={{ height: '100%', minHeight: 0 }} content={null}>
       <ManagementPageBody>
-        <Card bodyStyle={{ paddingTop: 8 }}>
+        <Card className="saas-ai-employees-card" bodyStyle={{ paddingTop: 8 }}>
           <Tabs
             activeKey={activeTab}
             destroyInactiveTabPane={false}

@@ -201,6 +201,10 @@ body,
   vertical-align: middle;
 }
 
+.saas-ai-employees-card .ant-tabs-content .saas-table-wrap .ant-pro-card-body {
+  padding-inline: 0;
+}
+
 .saas-menu-tree-cell {
   box-sizing: border-box;
   display: block;
