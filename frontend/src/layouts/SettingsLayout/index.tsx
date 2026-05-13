@@ -19,9 +19,6 @@ const resolveUserCenterLandingPath = (access: unknown) => {
   if (accessValue(access, 'canVisitSystemRoles')) {
     return '/user-center/roles';
   }
-  if (accessValue(access, 'canVisitSystemMyFiles')) {
-    return '/user-center/files';
-  }
   return '/403';
 };
 
@@ -49,6 +46,11 @@ const SettingsLayout = () => {
       return;
     }
 
+    if (pathname === '/user-center/personal-center') {
+      history.replace('/user-center/profile');
+      return;
+    }
+
     if (pathname === '/files') {
       history.replace(resolveFileCenterLandingPath(access));
     }
@@ -58,7 +60,7 @@ const SettingsLayout = () => {
     return <Outlet />;
   }
 
-  if (pathname === '/settings' || pathname === '/settings/overview' || pathname === '/user-center' || pathname === '/files') {
+  if (pathname === '/settings' || pathname === '/settings/overview' || pathname === '/user-center' || pathname === '/user-center/personal-center' || pathname === '/files') {
     return null;
   }
 

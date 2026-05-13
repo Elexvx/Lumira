@@ -9,11 +9,10 @@ import {
   PushpinOutlined,
   RobotOutlined,
   ShareAltOutlined,
-  SettingOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { history, useAccess, useModel, useParams } from '@umijs/max';
+import { history, useParams } from '@umijs/max';
 import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Select, Space, Spin, Tag, Tabs, message } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
@@ -32,7 +31,6 @@ import type {
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
-import { isProtectedAdminAccount } from '@/auth/admin';
 import { ALLOWED_UPLOAD_EXTENSIONS, FILE_ACCEPT, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
 import './Assistant.css';
 
@@ -699,8 +697,6 @@ const Composer = ({
 };
 
 const AiAssistantPage = () => {
-  const access = useAccess();
-  const { initialState } = useModel('@@initialState');
   const queryClient = useQueryClient();
   const params = useParams<RouteParams>();
   const shareToken = params.token?.trim() || '';
@@ -1511,10 +1507,6 @@ const AiAssistantPage = () => {
   }, [activeSession?.messages, streamProgress]);
 
   const emptyWelcome = buildAssistantGreeting(selectedEmployee, shareConversation?.employeeName || undefined);
-  const canManageEmployees =
-    Boolean((access as Record<string, unknown>).canVisitAiEmployees) &&
-    isProtectedAdminAccount(initialState?.currentUser) &&
-    !initialState?.currentUser?.simulatedRoleId;
   const hasContent = Boolean(activeSession?.messages?.length);
   const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
 
@@ -1651,10 +1643,6 @@ const AiAssistantPage = () => {
         isShareMode ? (
           <Button icon={<RobotOutlined />} onClick={() => history.push('/ai')}>
             返回 AI 助手
-          </Button>
-        ) : canManageEmployees ? (
-          <Button icon={<SettingOutlined />} onClick={() => history.push('/settings/ai-employees')}>
-            数字员工配置
           </Button>
         ) : null
       }
