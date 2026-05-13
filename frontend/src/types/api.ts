@@ -126,7 +126,9 @@ export interface BrandingSettings {
   websiteFaviconUrl?: string;
   websiteLogoUrl?: string;
   loginBackgroundUrl?: string;
+  githubLinkEnabled?: boolean;
   githubLinkUrl?: string;
+  helpLinkEnabled?: boolean;
   helpLinkUrl?: string;
   companyName?: string;
   copyrightStartYear?: number;

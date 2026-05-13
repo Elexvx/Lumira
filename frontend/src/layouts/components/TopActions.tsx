@@ -148,8 +148,8 @@ export const TopActions = () => {
     [currentLocale, intl],
   );
 
-  const githubLink = resolveExternalLink(brandingSettings.githubLinkUrl);
-  const helpLink = resolveExternalLink(brandingSettings.helpLinkUrl);
+  const githubLink = brandingSettings.githubLinkEnabled ? resolveExternalLink(brandingSettings.githubLinkUrl) : '';
+  const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
   const canVisitSystemSettings = Boolean((access as Record<string, unknown>).canVisitSystemSettings);
   const settingsMenuItems = useMemo(
     () => buildSettingsDropdownItems(initialState?.menuTree, (accessKey) => Boolean((access as Record<string, unknown>)[accessKey])),
@@ -420,20 +420,24 @@ export const TopActions = () => {
             {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: '角色模拟' })}
           </Tag>
         ) : null}
-        <Button
-          type="text"
-          icon={<QuestionCircleOutlined />}
-          aria-label={helpLink ? intl.formatMessage({ id: 'help.center', defaultMessage: '帮助中心' }) : intl.formatMessage({ id: 'help.center.unconfigured', defaultMessage: '帮助中心（未配置链接）' })}
-          disabled={!helpLink}
-          onClick={() => openExternalLink(helpLink)}
-        />
-        <Button
-          type="text"
-          icon={<GithubOutlined />}
-          aria-label={githubLink ? intl.formatMessage({ id: 'github.link', defaultMessage: 'GitHub 链接' }) : intl.formatMessage({ id: 'github.link.unconfigured', defaultMessage: 'GitHub 链接（未配置）' })}
-          disabled={!githubLink}
-          onClick={() => openExternalLink(githubLink)}
-        />
+        {brandingSettings.helpLinkEnabled ? (
+          <Button
+            type="text"
+            icon={<QuestionCircleOutlined />}
+            aria-label={helpLink ? intl.formatMessage({ id: 'help.center', defaultMessage: '帮助中心' }) : intl.formatMessage({ id: 'help.center.unconfigured', defaultMessage: '帮助中心（未配置链接）' })}
+            disabled={!helpLink}
+            onClick={() => openExternalLink(helpLink)}
+          />
+        ) : null}
+        {brandingSettings.githubLinkEnabled ? (
+          <Button
+            type="text"
+            icon={<GithubOutlined />}
+            aria-label={githubLink ? intl.formatMessage({ id: 'github.link', defaultMessage: 'GitHub 链接' }) : intl.formatMessage({ id: 'github.link.unconfigured', defaultMessage: 'GitHub 链接（未配置）' })}
+            disabled={!githubLink}
+            onClick={() => openExternalLink(githubLink)}
+          />
+        ) : null}
         {canVisitSystemSettings && settingsMenuItems?.length ? (
           <Dropdown
             trigger={['click']}

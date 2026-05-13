@@ -6,7 +6,9 @@ public class BrandingSettingsRequest {
     private String websiteFaviconUrl;
     private String websiteLogoUrl;
     private String loginBackgroundUrl;
+    private Boolean githubLinkEnabled;
     private String githubLinkUrl;
+    private Boolean helpLinkEnabled;
     private String helpLinkUrl;
     private String companyName;
     private Integer copyrightStartYear;
@@ -49,8 +51,24 @@ public class BrandingSettingsRequest {
         return githubLinkUrl;
     }
 
+    public Boolean getGithubLinkEnabled() {
+        return githubLinkEnabled;
+    }
+
+    public void setGithubLinkEnabled(Boolean githubLinkEnabled) {
+        this.githubLinkEnabled = githubLinkEnabled;
+    }
+
     public void setGithubLinkUrl(String githubLinkUrl) {
         this.githubLinkUrl = githubLinkUrl;
+    }
+
+    public Boolean getHelpLinkEnabled() {
+        return helpLinkEnabled;
+    }
+
+    public void setHelpLinkEnabled(Boolean helpLinkEnabled) {
+        this.helpLinkEnabled = helpLinkEnabled;
     }
 
     public String getHelpLinkUrl() {

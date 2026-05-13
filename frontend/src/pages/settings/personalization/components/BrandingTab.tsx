@@ -1,5 +1,5 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Empty, Form, Image, Input, Space, Typography, Upload } from 'antd';
+import { Button, Card, Empty, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
 import type { FormProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
@@ -166,11 +166,33 @@ export const BrandingTab = ({
         </Space>
       </Form.Item>
 
-      <Form.Item name="githubLinkUrl" label="GitHub 链接">
-        <Input allowClear placeholder="https://github.com/your-org/your-repo" />
+      <Form.Item label="GitHub 链接">
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
+            <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
+            {({ getFieldValue }) => (
+              <Form.Item name="githubLinkUrl" noStyle>
+                <Input allowClear disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
+              </Form.Item>
+            )}
+          </Form.Item>
+        </Space>
       </Form.Item>
-      <Form.Item name="helpLinkUrl" label="帮助链接">
-        <Input allowClear placeholder="https://docs.example.com/help" />
+      <Form.Item label="帮助链接">
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          <Form.Item name="helpLinkEnabled" valuePropName="checked" noStyle>
+            <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
+            {({ getFieldValue }) => (
+              <Form.Item name="helpLinkUrl" noStyle>
+                <Input allowClear disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
+              </Form.Item>
+            )}
+          </Form.Item>
+        </Space>
       </Form.Item>
       <Form.Item name="footerIcp" label="Footer ICP">
         <Input allowClear />

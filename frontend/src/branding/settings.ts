@@ -9,7 +9,9 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   websiteFaviconUrl: '',
   websiteLogoUrl: '',
   loginBackgroundUrl: '',
+  githubLinkEnabled: true,
   githubLinkUrl: '',
+  helpLinkEnabled: true,
   helpLinkUrl: '',
   companyName: '宏翔商道',
   copyrightStartYear: new Date().getFullYear(),
@@ -24,7 +26,9 @@ export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> |
     websiteFaviconUrl: normalizeUploadUrl(settings?.websiteFaviconUrl),
     websiteLogoUrl: normalizeUploadUrl(settings?.websiteLogoUrl),
     loginBackgroundUrl: normalizeUploadUrl(settings?.loginBackgroundUrl),
+    githubLinkEnabled: normalizeBoolean(settings?.githubLinkEnabled, true),
     githubLinkUrl: normalizeLink(settings?.githubLinkUrl),
+    helpLinkEnabled: normalizeBoolean(settings?.helpLinkEnabled, true),
     helpLinkUrl: normalizeLink(settings?.helpLinkUrl),
     companyName: normalizeText(settings?.companyName, websiteName),
     copyrightStartYear: normalizeYear(settings?.copyrightStartYear, new Date().getFullYear()),
@@ -102,4 +106,14 @@ const normalizeLink = (value?: string | null) => {
     return '';
   }
   return value.trim();
+};
+
+const normalizeBoolean = (value: unknown, fallback: boolean) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim().toLowerCase() === 'true';
+  }
+  return fallback;
 };
