@@ -6,6 +6,10 @@ import com.legendary.invention.saas.infrastructure.security.SecurityContextFacad
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.system.monitor.app.SystemMonitorAppService;
 import com.legendary.invention.saas.modules.system.monitor.vo.SystemMonitorVO;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +42,12 @@ public class SystemMonitorController {
     public ApiResponse<SystemMonitorVO.RedisMonitorVO> redisMonitor() {
         require("system:monitor:redis:view");
         return ApiResponse.success(systemMonitorAppService.getRedisMonitor(), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/api-docs")
+    public void apiDocs(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        require("system:monitor:docs:view");
+        request.getRequestDispatcher("/api-docs").forward(request, response);
     }
 
     private void require(String permissionKey) {

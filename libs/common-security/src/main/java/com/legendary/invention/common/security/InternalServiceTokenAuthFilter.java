@@ -42,13 +42,13 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
         }
 
         if (!StringUtils.hasText(internalToken)) {
-            filterChain.doFilter(request, response);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Internal service token is not configured");
             return;
         }
 
         String requestToken = request.getHeader(INTERNAL_TOKEN_HEADER);
         if (!StringUtils.hasText(requestToken) || !internalToken.equals(requestToken)) {
-            filterChain.doFilter(request, response);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid internal service token");
             return;
         }
 

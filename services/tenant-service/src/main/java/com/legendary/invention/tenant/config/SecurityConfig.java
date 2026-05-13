@@ -13,12 +13,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
+    private static final String[] PUBLIC_PATHS = {
+            "/actuator/health"
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter, InternalServiceTokenAuthFilter internalServiceTokenAuthFilter) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers("/internal/**").authenticated()
+                        .anyRequest().authenticated())
                 .addFilterBefore(internalServiceTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class)
                 .build();

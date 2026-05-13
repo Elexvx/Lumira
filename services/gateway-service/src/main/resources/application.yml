@@ -70,10 +70,6 @@ spring:
               uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
               predicates:
                 - Path=/api/v1/public/**
-            - id: system-api-docs
-              uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
-              predicates:
-                - Path=/api-docs/**,/swagger-ui/**,/swagger-ui.html,/v3/api-docs/**
             - id: system-service
               uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
               predicates:
