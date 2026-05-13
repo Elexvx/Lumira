@@ -1,6 +1,6 @@
 import { CheckOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Form, Input, Space, Tabs, Typography, Checkbox, Button, Alert, Image, Skeleton } from 'antd';
+import { Alert, Button, Checkbox, Form, Image, Input, Modal, Skeleton, Space, Tabs, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
@@ -48,7 +48,7 @@ interface LoginFormFieldsProps {
   onOpenAgreementPreview: (previewKind: 'user' | 'privacy') => void;
 }
 
-type SliderVerificationStatus = 'idle' | 'challenge' | 'verified';
+type SliderVerificationStatus = 'idle' | 'verified';
 
 const MODE_META: Record<LoginMode, { label: string; subtitle: string }> = {
   password: {
@@ -101,6 +101,7 @@ export const LoginFormFields = ({
   const smsAccount = Form.useWatch('smsAccount', form);
   const emailAccount = Form.useWatch('emailAccount', form);
   const [sliderVerificationStatus, setSliderVerificationStatus] = useState<SliderVerificationStatus>('idle');
+  const [sliderCaptchaOpen, setSliderCaptchaOpen] = useState(false);
   const previousPasswordCredentialsRef = useRef<{ account?: string; password?: string } | null>(null);
   const hasAgreement = Boolean(agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown);
   const showTabs = availableLoginModes.length > 1 || availableLoginModes[0] !== 'password';
@@ -116,6 +117,7 @@ export const LoginFormFields = ({
 
     if (previous.account !== passwordAccount || previous.password !== passwordPassword) {
       setSliderVerificationStatus('idle');
+      setSliderCaptchaOpen(false);
       onSliderCaptchaChallengeChange(null);
       onSliderCaptchaReset();
     }
@@ -124,10 +126,15 @@ export const LoginFormFields = ({
   const handleStartSliderCaptcha = async () => {
     try {
       await form.validateFields(['passwordAccount', 'passwordPassword']);
-      setSliderVerificationStatus('challenge');
+      setSliderCaptchaOpen(true);
     } catch {
       // Ant Design will surface the field-level validation errors.
     }
+  };
+
+  const handleCloseSliderCaptcha = () => {
+    setSliderCaptchaOpen(false);
+    onSliderCaptchaChallengeChange(null);
   };
 
   if (pendingSecondFactorLogin) {
@@ -249,16 +256,6 @@ export const LoginFormFields = ({
               <span>{formatMessage({ id: 'page.login.captcha.sliderVerified', defaultMessage: '已验证' })}</span>
               <CheckOutlined />
             </div>
-          ) : sliderVerificationStatus === 'challenge' ? (
-            <SliderCaptchaBox
-              mode="embed"
-              onChallengeChange={onSliderCaptchaChallengeChange}
-              onVerified={(result) => {
-                onSliderCaptchaVerified(result.captchaProof);
-                setSliderVerificationStatus('verified');
-              }}
-              onReset={onSliderCaptchaReset}
-            />
           ) : (
             <Button
               block
@@ -270,6 +267,27 @@ export const LoginFormFields = ({
               {formatMessage({ id: 'page.login.captcha.startSlider', defaultMessage: '验证' })}
             </Button>
           )}
+          <Modal
+            centered
+            destroyOnHidden
+            footer={null}
+            open={sliderCaptchaOpen}
+            title={formatMessage({ id: 'page.login.captcha.sliderTitle', defaultMessage: '拖动验证' })}
+            width={392}
+            onCancel={handleCloseSliderCaptcha}
+            className="saas-login-page__slider-modal"
+          >
+            <SliderCaptchaBox
+              mode="embed"
+              onChallengeChange={onSliderCaptchaChallengeChange}
+              onVerified={(result) => {
+                onSliderCaptchaVerified(result.captchaProof);
+                setSliderVerificationStatus('verified');
+                setSliderCaptchaOpen(false);
+              }}
+              onReset={onSliderCaptchaReset}
+            />
+          </Modal>
         </>
       ) : null}
     </div>

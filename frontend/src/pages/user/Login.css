@@ -267,6 +267,19 @@ html[data-theme='dark'] .saas-login-page__actions {
   font-size: 18px;
 }
 
+.saas-login-page__slider-modal .ant-modal-content {
+  padding: 20px 24px 24px;
+  border-radius: 8px;
+}
+
+.saas-login-page__slider-modal .ant-modal-header {
+  margin-bottom: 12px;
+}
+
+.saas-login-page__slider-modal .ant-modal-title {
+  text-align: center;
+}
+
 .saas-login-page__agreement {
   margin-top: 24px;
 }
