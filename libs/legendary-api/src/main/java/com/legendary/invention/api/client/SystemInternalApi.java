@@ -8,6 +8,7 @@ import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.VerificationVerificationDTO;
+import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +26,9 @@ public interface SystemInternalApi {
 
     @GetMapping("/users/{id}")
     SystemUserSnapshotDTO findUserById(@PathVariable("id") Long id);
+
+    @PostMapping("/users/wechat-login")
+    SystemUserSnapshotDTO resolveWechatLoginUser(@RequestBody WechatLoginUserRequestDTO request);
 
     @GetMapping("/permissions/snapshot")
     PermissionSnapshotDTO permissionSnapshot(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);

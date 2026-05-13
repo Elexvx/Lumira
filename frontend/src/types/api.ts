@@ -63,6 +63,7 @@ export interface LoginCapabilities {
   passwordLoginAvailable: boolean;
   smsLoginAvailable: boolean;
   emailLoginAvailable: boolean;
+  wechatLoginAvailable?: boolean;
 }
 
 export interface LoginCodeChallenge {
@@ -79,6 +80,11 @@ export interface LoginEncryptionKey {
   algorithm: string;
   keyId: string;
   publicKey: string;
+}
+
+export interface WechatAuthorizeUrl {
+  authorizeUrl: string;
+  state: string;
 }
 
 export type CaptchaType = 'IMAGE' | 'SLIDER';

@@ -38,6 +38,7 @@ const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
   passwordLoginAvailable: true,
   smsLoginAvailable: false,
   emailLoginAvailable: false,
+  wechatLoginAvailable: false,
 };
 
 const getAvailableLoginModes = (capabilities: LoginCapabilities): LoginMode[] => {
@@ -96,6 +97,7 @@ const Login = () => {
   const redirectTarget = resolveLoginRedirectTarget(location.search);
   const securitySettingsRef = useRef(securitySettings);
   const loginEncryptionLoadPromiseRef = useRef<Promise<LoginEncryptionKey | null> | null>(null);
+  const wechatCallbackHandledRef = useRef(false);
   const captchaRefreshControllerRef = useRef(
     createCaptchaRefreshController({
       getCaptchaEnabled: () => securitySettingsRef.current.captchaEnabled,
@@ -329,6 +331,133 @@ const Login = () => {
     [availableLoginModes, loginForm],
   );
 
+  const completeSuccessfulLogin = useCallback(
+    async (loginResponse: LoginResponse) => {
+      const sessionResult = await initializeAfterLogin(loginResponse);
+      const [menuResult, pluginResult, brandingResult, watermarkResult] = await Promise.allSettled([
+        pluginService.currentMenus({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+        pluginService.currentAvailable({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+        systemService.brandingSettings({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+        systemService.watermarkSettings({
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+      ]);
+      const menuTree = menuResult.status === 'fulfilled' ? menuResult.value : [];
+      const availablePlugins = pluginResult.status === 'fulfilled' ? pluginResult.value : [];
+      const normalizedBrandingSettings = normalizeBrandingSettings(
+        brandingResult.status === 'fulfilled'
+          ? brandingResult.value
+          : initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
+      );
+      const watermarkSettings = watermarkResult.status === 'fulfilled' ? watermarkResult.value : initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
+      persistBrandingSettings(normalizedBrandingSettings);
+      persistWatermarkSettings(watermarkSettings);
+      flushSync(() => {
+        setInitialState((prev: AppInitialState | undefined) => ({
+          ...prev,
+          currentUser: sessionResult.currentUser,
+          currentTenant: sessionResult.currentUser.currentTenant || null,
+          myTenants: [],
+          menuTree,
+          menuVersion: (prev?.menuVersion ?? 0) + 1,
+          availablePlugins,
+          securitySettings: sessionResult.securitySettings,
+          brandingSettings: normalizedBrandingSettings,
+          watermarkSettings,
+          agreementSettings: prev?.agreementSettings || agreementSettings,
+          loginCapabilities: prev?.loginCapabilities || loginCapabilities,
+        }));
+      });
+
+      setLoginCodeChallenges({});
+      history.replace(resolveAuthorizedLoginRedirectTarget(location.search, sessionResult.currentUser, menuTree));
+    },
+    [agreementSettings, initialState?.brandingSettings, initialState?.watermarkSettings, location.search, loginCapabilities, setInitialState],
+  );
+
+  const handleWechatLogin = useCallback(async () => {
+    if (agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown) {
+      const accepted = loginForm.getFieldValue('agreementAccepted');
+      if (!accepted) {
+        message.warning(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      message.loading({
+        content: formatMessage({ id: 'page.login.wechatStarting', defaultMessage: 'Redirecting to WeChat login...' }),
+        key: 'wechat-login',
+        duration: 1,
+      });
+      const result = await authService.wechatAuthorizeUrl({
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      });
+      window.location.assign(result.authorizeUrl);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [agreementSettings.privacyAgreementMarkdown, agreementSettings.userAgreementMarkdown, loginForm]);
+
+  useEffect(() => {
+    if (wechatCallbackHandledRef.current) {
+      return;
+    }
+    const searchParams = new URLSearchParams(location.search || '');
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    if (!code || !state || !loginCapabilities.wechatLoginAvailable) {
+      return;
+    }
+
+    wechatCallbackHandledRef.current = true;
+    setSubmitting(true);
+    beginLoginFlow();
+    void authService
+      .wechatLogin(
+        { code, state },
+        {
+          autoRedirectOnUnauthorized: false,
+          silent: true,
+        },
+      )
+      .then(async (loginResponse) => {
+        if (loginResponse.requiresSecondFactor) {
+          setPendingSecondFactorLogin(loginResponse);
+          message.info(loginResponse.secondFactorOptions?.[0]?.promptMessage || formatMessage({ id: 'page.login.code.secondFactor', defaultMessage: 'Please enter the verification code to complete second-factor verification' }));
+          history.replace(location.pathname);
+          return;
+        }
+        await completeSuccessfulLogin(loginResponse);
+      })
+      .catch((error) => {
+        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+        history.replace(location.pathname);
+      })
+      .finally(() => {
+        endLoginFlow();
+        setSubmitting(false);
+      });
+  }, [completeSuccessfulLogin, location.pathname, location.search, loginCapabilities.wechatLoginAvailable]);
+
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
       if (!availableLoginModes.includes(activeLoginMode)) {
@@ -423,58 +552,7 @@ const Login = () => {
         return false;
       }
 
-      const sessionResult = await initializeAfterLogin(loginResponse);
-      const [menuResult, pluginResult, brandingResult, watermarkResult] = await Promise.allSettled([
-        pluginService.currentMenus({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        pluginService.currentAvailable({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        systemService.brandingSettings({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        systemService.watermarkSettings({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-      ]);
-      const menuTree = menuResult.status === 'fulfilled' ? menuResult.value : [];
-      const availablePlugins = pluginResult.status === 'fulfilled' ? pluginResult.value : [];
-      const normalizedBrandingSettings = normalizeBrandingSettings(
-        brandingResult.status === 'fulfilled'
-          ? brandingResult.value
-          : initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
-      );
-      const watermarkSettings = watermarkResult.status === 'fulfilled' ? watermarkResult.value : initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
-      persistBrandingSettings(normalizedBrandingSettings);
-      persistWatermarkSettings(watermarkSettings);
-      flushSync(() => {
-        setInitialState((prev: AppInitialState | undefined) => ({
-          ...prev,
-          currentUser: sessionResult.currentUser,
-          currentTenant: sessionResult.currentUser.currentTenant || null,
-          myTenants: [],
-          menuTree,
-          menuVersion: (prev?.menuVersion ?? 0) + 1,
-          availablePlugins,
-          securitySettings: sessionResult.securitySettings,
-          brandingSettings: normalizedBrandingSettings,
-          watermarkSettings,
-          agreementSettings: prev?.agreementSettings || agreementSettings,
-          loginCapabilities: prev?.loginCapabilities || loginCapabilities,
-        }));
-      });
-
-      setLoginCodeChallenges({});
-      history.replace(resolveAuthorizedLoginRedirectTarget(location.search, sessionResult.currentUser, menuTree));
+      await completeSuccessfulLogin(loginResponse);
       return true;
     } catch (error) {
       if (error instanceof ApiRequestError) {
@@ -566,8 +644,10 @@ const Login = () => {
           loginEncryptionLoading={loginEncryptionLoading}
           sendingLoginType={sendingLoginType}
           loginCodeChallenges={loginCodeChallenges}
+          wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
           onModeChange={setActiveLoginMode}
           onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
+          onWechatLogin={() => void handleWechatLogin()}
           onRefreshCaptcha={() => void refreshCaptcha()}
           onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
           onSliderCaptchaChallengeChange={setCaptchaChallenge}

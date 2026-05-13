@@ -6,6 +6,7 @@ import com.legendary.invention.api.client.TenantInternalApi;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
+import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import com.legendary.invention.api.tenant.MyTenantDTO;
 import com.legendary.invention.api.tenant.TenantSummaryDTO;
 import com.legendary.invention.auth.model.AuthSession;
@@ -38,6 +39,7 @@ public class AuthAppService {
     private final PasswordEncoder passwordEncoder;
     private final SecurityContextFacade securityContextFacade;
     private final ClientIpResolver clientIpResolver;
+    private final WechatLoginService wechatLoginService;
 
     public AuthAppService(
             SystemInternalApi systemInternalApi,
@@ -48,7 +50,8 @@ public class AuthAppService {
             JwtTokenService jwtTokenService,
             PasswordEncoder passwordEncoder,
             SecurityContextFacade securityContextFacade,
-            ClientIpResolver clientIpResolver
+            ClientIpResolver clientIpResolver,
+            WechatLoginService wechatLoginService
     ) {
         this.systemInternalApi = systemInternalApi;
         this.tenantInternalApi = tenantInternalApi;
@@ -59,6 +62,7 @@ public class AuthAppService {
         this.passwordEncoder = passwordEncoder;
         this.securityContextFacade = securityContextFacade;
         this.clientIpResolver = clientIpResolver;
+        this.wechatLoginService = wechatLoginService;
     }
 
     public LoginEncryptionKeyDTO loginEncryptionKey() {
@@ -164,6 +168,32 @@ public class AuthAppService {
             throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "验证码校验失败" : verification.message());
         }
         return completeVerifiedLogin(verification.userId(), verification.tenantId(), httpServletRequest);
+    }
+
+    public WechatAuthorizeUrlDTO wechatAuthorizeUrl() {
+        return wechatLoginService.createAuthorizeUrl();
+    }
+
+    public LoginResponseDTO wechatLogin(WechatLoginRequest request, HttpServletRequest httpServletRequest) {
+        WechatLoginService.WechatOAuthUser wechatUser = wechatLoginService.exchangeCode(request.code(), request.state());
+        SystemUserSnapshotDTO user = systemInternalApi.resolveWechatLoginUser(
+                new WechatLoginUserRequestDTO(wechatUser.openid(), wechatUser.unionid(), wechatUser.scope())
+        );
+        if (user == null) {
+            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "微信登录用户创建失败");
+        }
+        if (!"ENABLED".equalsIgnoreCase(user.status())) {
+            throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
+        }
+        List<MyTenantDTO> visibleTenants = tenantInternalApi.listVisibleTenants(user.userId());
+        TenantSummaryDTO currentTenant = resolveCurrentTenant(visibleTenants);
+        if (currentTenant == null) {
+            throw new BizException(ErrorCode.TENANT_NOT_BOUND, "当前账号未绑定可用租户");
+        }
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenant.tenantId(), user.userId());
+        AuthSession session = buildSession(user, currentTenant, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"), snapshot);
+        authSessionStore.save(session, true);
+        return toLoginResponse(session, user, currentTenant, snapshot);
     }
 
     @SentinelResource(value = "auth-second-factor-complete", blockHandler = "completeSecondFactorLoginBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)

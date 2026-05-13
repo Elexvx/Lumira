@@ -19,11 +19,13 @@ import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.SimulatedRoleRequest;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.RefreshTokenRequest;
+import com.legendary.invention.saas.modules.auth.dto.WechatLoginRequest;
 import com.legendary.invention.saas.modules.auth.vo.AuthUserVO;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
+import com.legendary.invention.saas.modules.auth.vo.WechatAuthorizeUrlVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
@@ -68,6 +70,7 @@ public class AuthAppService {
     private final PasswordEncoder passwordEncoder;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemVerificationAppService systemVerificationAppService;
+    private final WechatLoginService wechatLoginService;
     private final JdbcTemplate jdbcTemplate;
 
     public AuthAppService(
@@ -84,6 +87,7 @@ public class AuthAppService {
             PasswordEncoder passwordEncoder,
             PermissionSnapshotService permissionSnapshotService,
             SystemVerificationAppService systemVerificationAppService,
+            WechatLoginService wechatLoginService,
             JdbcTemplate jdbcTemplate
     ) {
         this.userDomainService = userDomainService;
@@ -99,6 +103,7 @@ public class AuthAppService {
         this.passwordEncoder = passwordEncoder;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemVerificationAppService = systemVerificationAppService;
+        this.wechatLoginService = wechatLoginService;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -248,6 +253,29 @@ public class AuthAppService {
         return response;
     }
 
+    public WechatAuthorizeUrlVO wechatAuthorizeUrl() {
+        return wechatLoginService.createAuthorizeUrl();
+    }
+
+    public LoginResponseVO wechatLogin(WechatLoginRequest request, String loginIp, String userAgent) {
+        WechatLoginService.WechatOAuthUser wechatUser = wechatLoginService.exchangeCode(request.getCode(), request.getState());
+        SysUserEntity user = resolveWechatLoginUser(wechatUser);
+        if (isUserDisabled(user)) {
+            loginAuditService.log(user.getId(), null, user.getUsername(), "WECHAT", "FAIL", "账号已禁用", loginIp, userAgent);
+            throw new BizException(
+                    ErrorCode.ACCOUNT_DISABLED,
+                    "登录失败，账号已禁用: " + user.getUsername(),
+                    ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage()
+            );
+        }
+
+        TenantInfoEntity currentTenant = platformTenant();
+        Long tenantId = currentTenant == null ? null : currentTenant.getId();
+        LoginResponseVO response = issueLoginTokens(user, currentTenant, loginIp, userAgent);
+        loginAuditService.log(user.getId(), tenantId, user.getUsername(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
+        return response;
+    }
+
     private void validateCaptchaIfRequired(LoginRequest request, String account, String loginIp, String userAgent) {
         if (!securitySettingsService.isCaptchaEnabled()) {
             return;
@@ -391,6 +419,141 @@ public class AuthAppService {
         return user;
     }
 
+    private SysUserEntity resolveWechatLoginUser(WechatLoginService.WechatOAuthUser wechatUser) {
+        SysUserEntity boundUser = findWechatBoundUser(wechatUser.unionid(), wechatUser.openid());
+        if (boundUser != null) {
+            upsertWechatBinding(boundUser.getId(), wechatUser);
+            return boundUser;
+        }
+
+        SysUserEntity user = registerWechatUser(wechatUser);
+        upsertWechatBinding(user.getId(), wechatUser);
+        return user;
+    }
+
+    private SysUserEntity findWechatBoundUser(String unionid, String openid) {
+        List<SysUserEntity> users = jdbcTemplate.query(
+                """
+                        select u.id, u.username, u.nickname, u.real_name, u.avatar_url, u.birth_month, u.gender, u.region,
+                               u.available_time, u.id_card_number, u.password_hash, u.mobile, u.email, u.status, u.deleted
+                        from sys_user_wechat_binding b
+                        join sys_user u on u.id = b.user_id and u.deleted = 0
+                        where b.deleted = 0
+                          and ((? <> '' and b.unionid = ?) or b.openid = ?)
+                        order by case when ? <> '' and b.unionid = ? then 0 else 1 end, b.id desc
+                        limit 1
+                        """,
+                (rs, rowNum) -> {
+                    SysUserEntity user = new SysUserEntity();
+                    user.setId(rs.getLong("id"));
+                    user.setUsername(rs.getString("username"));
+                    user.setNickname(rs.getString("nickname"));
+                    user.setRealName(rs.getString("real_name"));
+                    user.setAvatarUrl(rs.getString("avatar_url"));
+                    user.setBirthMonth(rs.getString("birth_month"));
+                    user.setGender(rs.getString("gender"));
+                    user.setRegion(rs.getString("region"));
+                    user.setAvailableTime(rs.getString("available_time"));
+                    user.setIdCardNumber(rs.getString("id_card_number"));
+                    user.setPasswordHash(rs.getString("password_hash"));
+                    user.setMobile(rs.getString("mobile"));
+                    user.setEmail(rs.getString("email"));
+                    user.setStatus(rs.getString("status"));
+                    user.setDeleted(rs.getInt("deleted"));
+                    return user;
+                },
+                defaultIfBlank(wechatUserId(unionid), ""),
+                defaultIfBlank(wechatUserId(unionid), ""),
+                openid,
+                defaultIfBlank(wechatUserId(unionid), ""),
+                defaultIfBlank(wechatUserId(unionid), "")
+        );
+        return users.isEmpty() ? null : users.get(0);
+    }
+
+    private SysUserEntity registerWechatUser(WechatLoginService.WechatOAuthUser wechatUser) {
+        Long tenantId = PLATFORM_TENANT_ID;
+        String username = nextWechatUsername(wechatUser);
+        String password = UUID.randomUUID().toString();
+
+        jdbcTemplate.update(
+                """
+                        insert into sys_user (
+                            username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                            available_time, id_card_number, status,
+                            created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                username,
+                passwordEncoder.encode(password),
+                null,
+                "微信用户",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "ENABLED",
+                0L,
+                0L
+        );
+
+        SysUserEntity user = userDomainService.findLoginUser(username)
+                .orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR, "微信登录自动注册用户失败"));
+        upsertUserTenantRelation(user.getId(), tenantId, true, 0L);
+        grantDefaultLoginRole(user.getId(), tenantId, 0L);
+        return user;
+    }
+
+    private String nextWechatUsername(WechatLoginService.WechatOAuthUser wechatUser) {
+        String sourceId = StringUtils.hasText(wechatUser.unionid()) ? wechatUser.unionid() : wechatUser.openid();
+        String normalized = sourceId == null ? UUID.randomUUID().toString() : sourceId.replaceAll("[^A-Za-z0-9_]", "");
+        if (normalized.length() > 24) {
+            normalized = normalized.substring(0, 24);
+        }
+        String baseUsername = "wx_" + (StringUtils.hasText(normalized) ? normalized : UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+        String username = baseUsername;
+        int suffix = 1;
+        while (userDomainService.findLoginUser(username).isPresent()) {
+            username = baseUsername + "_" + suffix;
+            suffix++;
+        }
+        return username;
+    }
+
+    private void upsertWechatBinding(Long userId, WechatLoginService.WechatOAuthUser wechatUser) {
+        jdbcTemplate.update(
+                """
+                        insert into sys_user_wechat_binding (
+                            user_id, openid, unionid, scope, created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, 0)
+                        on duplicate key update user_id = values(user_id),
+                                                unionid = values(unionid),
+                                                scope = values(scope),
+                                                updated_by = values(updated_by),
+                                                updated_at = current_timestamp,
+                                                deleted = 0
+                        """,
+                userId,
+                wechatUser.openid(),
+                StringUtils.hasText(wechatUser.unionid()) ? wechatUser.unionid() : null,
+                wechatUser.scope(),
+                0L,
+                0L
+        );
+    }
+
+    private String wechatUserId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : "";
+    }
+
+    private String defaultIfBlank(String value, String fallback) {
+        return StringUtils.hasText(value) ? value : fallback;
+    }
+
     private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {
         jdbcTemplate.update(
                 """
@@ -494,6 +657,29 @@ public class AuthAppService {
 
     private boolean isEmailAccount(String account) {
         return StringUtils.hasText(account) && EMAIL_PATTERN.matcher(account.trim()).matches();
+    }
+
+    private LoginResponseVO issueLoginTokens(SysUserEntity user, TenantInfoEntity currentTenant, String loginIp, String userAgent) {
+        Long tenantId = currentTenant == null ? null : currentTenant.getId();
+        AuthSession session = buildNewSession(user, tenantId, loginIp, userAgent);
+        String refreshTokenId = UUID.randomUUID().toString();
+        session.setRefreshTokenId(refreshTokenId);
+
+        if (!securitySettingsService.isAllowMultiDeviceLogin()) {
+            authSessionStore.revokeUserSessions(user.getId(), true);
+        }
+        authSessionStore.save(session, true);
+
+        LoginResponseVO response = new LoginResponseVO();
+        response.setAccessToken(jwtTokenService.generateAccessToken(session));
+        response.setRefreshToken(jwtTokenService.generateRefreshToken(session, refreshTokenId));
+        response.setTokenType("Bearer");
+        response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
+        response.setUser(toAuthUser(user, tenantId));
+        response.setTenants(List.of());
+        response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
+        response.setRequiresCaptcha(Boolean.FALSE);
+        return response;
     }
 
     public RefreshTokenResponseVO refreshToken(RefreshTokenRequest request) {
