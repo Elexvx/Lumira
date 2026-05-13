@@ -731,6 +731,24 @@ export interface SmsVerificationSettingsPayload {
   region?: string;
 }
 
+export interface WechatLoginSettings {
+  enabled: boolean;
+  appId: string;
+  appSecret?: string;
+  redirectUri: string;
+  stateExpireMinutes: number;
+  configured?: boolean;
+  appSecretConfigured?: boolean;
+}
+
+export interface WechatLoginSettingsPayload {
+  enabled?: boolean;
+  appId?: string;
+  appSecret?: string;
+  redirectUri?: string;
+  stateExpireMinutes?: number;
+}
+
 export interface VerificationSettings {
   enabled: boolean;
   emailLoginEnabled: boolean;

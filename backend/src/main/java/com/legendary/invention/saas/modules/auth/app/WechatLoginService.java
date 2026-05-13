@@ -6,8 +6,9 @@ import com.legendary.invention.saas.common.constant.CacheKeyConstants;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.redis.CacheTemplate;
-import com.legendary.invention.saas.modules.auth.config.WechatLoginProperties;
 import com.legendary.invention.saas.modules.auth.vo.WechatAuthorizeUrlVO;
+import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService;
+import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService.WechatLoginSettingsRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -28,18 +29,19 @@ public class WechatLoginService {
     private static final String SCOPE = "snsapi_login";
     private static final String AUTHORIZE_URL = "https://open.weixin.qq.com/connect/qrconnect";
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
+    private static final Long PLATFORM_TENANT_ID = 1001L;
 
-    private final WechatLoginProperties properties;
+    private final WechatLoginSettingsService settingsService;
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public WechatLoginService(
-            WechatLoginProperties properties,
+            WechatLoginSettingsService settingsService,
             CacheTemplate cacheTemplate,
             ObjectMapper objectMapper
     ) {
-        this.properties = properties;
+        this.settingsService = settingsService;
         this.cacheTemplate = cacheTemplate;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -48,20 +50,17 @@ public class WechatLoginService {
     }
 
     public boolean isAvailable() {
-        return properties.isEnabled()
-                && StringUtils.hasText(properties.getAppId())
-                && StringUtils.hasText(properties.getAppSecret())
-                && StringUtils.hasText(properties.getRedirectUri());
+        return settingsService.isAvailable(PLATFORM_TENANT_ID);
     }
 
     public WechatAuthorizeUrlVO createAuthorizeUrl() {
-        ensureAvailable();
+        WechatLoginSettingsRecord settings = requireAvailableSettings();
         String state = UUID.randomUUID().toString().replace("-", "");
-        cacheTemplate.put(CacheKeyConstants.wechatLoginStateKey(state), "1", stateTtl());
+        cacheTemplate.put(CacheKeyConstants.wechatLoginStateKey(state), "1", stateTtl(settings));
 
-        String redirectUri = URLEncoder.encode(properties.getRedirectUri().trim(), StandardCharsets.UTF_8);
+        String redirectUri = URLEncoder.encode(settings.redirectUri().trim(), StandardCharsets.UTF_8);
         String authorizeUrl = AUTHORIZE_URL
-                + "?appid=" + encode(properties.getAppId())
+                + "?appid=" + encode(settings.appId())
                 + "&redirect_uri=" + redirectUri
                 + "&response_type=code"
                 + "&scope=" + SCOPE
@@ -75,7 +74,7 @@ public class WechatLoginService {
     }
 
     public WechatOAuthUser exchangeCode(String code, String state) {
-        ensureAvailable();
+        WechatLoginSettingsRecord settings = requireAvailableSettings();
         if (!StringUtils.hasText(code) || !StringUtils.hasText(state)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "微信授权参数不完整");
         }
@@ -85,8 +84,8 @@ public class WechatLoginService {
         }
 
         URI uri = UriComponentsBuilder.fromUriString(ACCESS_TOKEN_URL)
-                .queryParam("appid", properties.getAppId().trim())
-                .queryParam("secret", properties.getAppSecret().trim())
+                .queryParam("appid", settings.appId().trim())
+                .queryParam("secret", settings.appSecret().trim())
                 .queryParam("code", code.trim())
                 .queryParam("grant_type", "authorization_code")
                 .build()
@@ -124,14 +123,16 @@ public class WechatLoginService {
         return URLEncoder.encode(value.trim(), StandardCharsets.UTF_8);
     }
 
-    private void ensureAvailable() {
-        if (!isAvailable()) {
+    private WechatLoginSettingsRecord requireAvailableSettings() {
+        WechatLoginSettingsRecord settings = settingsService.loadSettings(PLATFORM_TENANT_ID);
+        if (!settings.configured()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "微信登录未启用或配置不完整", "微信登录暂不可用");
         }
+        return settings;
     }
 
-    private Duration stateTtl() {
-        return Duration.ofMinutes(Math.max(1, properties.getStateExpireMinutes()));
+    private Duration stateTtl(WechatLoginSettingsRecord settings) {
+        return Duration.ofMinutes(Math.max(1, settings.stateExpireMinutes()));
     }
 
     public record WechatOAuthUser(String openid, String unionid, String scope) {

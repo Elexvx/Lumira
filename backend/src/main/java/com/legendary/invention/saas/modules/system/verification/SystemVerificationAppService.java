@@ -193,6 +193,10 @@ public class SystemVerificationAppService {
         return settingsAppService.getVerificationSettings(tenantId);
     }
 
+    public SystemVO.WechatLoginSettingsVO getWechatSettings(Long tenantId) {
+        return settingsAppService.getWechatSettings(tenantId);
+    }
+
     public SystemVO.LoginCapabilitiesVO loadLoginCapabilities(Long tenantId) {
         return settingsAppService.loadLoginCapabilities(tenantId);
     }
@@ -205,6 +209,11 @@ public class SystemVerificationAppService {
     @Transactional
     public SystemVO.SmsVerificationSettingsVO updateSmsSettings(CurrentUser currentUser, SystemDTO.SmsVerificationSettingsRequest request) {
         return settingsAppService.updateSmsSettings(currentUser, request);
+    }
+
+    @Transactional
+    public SystemVO.WechatLoginSettingsVO updateWechatSettings(CurrentUser currentUser, SystemDTO.WechatLoginSettingsRequest request) {
+        return settingsAppService.updateWechatSettings(currentUser, request);
     }
 
     @Transactional

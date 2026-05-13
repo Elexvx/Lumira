@@ -19,6 +19,8 @@ import type {
   SmtpTestPayload,
   SmtpTestResult,
   WatermarkSettings,
+  WechatLoginSettings,
+  WechatLoginSettingsPayload,
 } from '@/types/api';
 
 export interface SecuritySettingsPayload extends SecuritySettings {}
@@ -195,6 +197,17 @@ export const systemService = {
     }),
   updateSmsVerificationSettings: (payload: SmsVerificationSettingsPayload, options: RequestOptions = {}) =>
     request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  wechatLoginSettings: (options: RequestOptions = {}) =>
+    request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updateWechatLoginSettings: (payload: WechatLoginSettingsPayload, options: RequestOptions = {}) =>
+    request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
       method: 'PUT',
       data: payload,
       ...options,
