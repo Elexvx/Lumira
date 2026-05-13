@@ -13,11 +13,13 @@ import com.legendary.invention.saas.modules.auth.dto.LoginRequest;
 import com.legendary.invention.saas.modules.auth.dto.RefreshTokenRequest;
 import com.legendary.invention.saas.modules.auth.dto.SimulatedRoleRequest;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
+import com.legendary.invention.saas.modules.auth.dto.WechatLoginRequest;
 import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginEncryptionKeyVO;
 import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
+import com.legendary.invention.saas.modules.auth.vo.WechatAuthorizeUrlVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -85,6 +87,25 @@ public class AuthController {
             HttpServletRequest httpServletRequest
     ) {
         LoginResponseVO response = authAppService.completeLoginCodeLogin(
+                request,
+                clientIpResolver.resolve(httpServletRequest),
+                httpServletRequest.getHeader("User-Agent")
+        );
+        return ApiResponse.success(response, TraceContext.getRequestId());
+    }
+
+    @GetMapping("/wechat/authorize-url")
+    public ApiResponse<WechatAuthorizeUrlVO> wechatAuthorizeUrl() {
+        return ApiResponse.success(authAppService.wechatAuthorizeUrl(), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/wechat/login")
+    @RepeatSubmit
+    public ApiResponse<LoginResponseVO> wechatLogin(
+            @Valid @RequestBody WechatLoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        LoginResponseVO response = authAppService.wechatLogin(
                 request,
                 clientIpResolver.resolve(httpServletRequest),
                 httpServletRequest.getHeader("User-Agent")

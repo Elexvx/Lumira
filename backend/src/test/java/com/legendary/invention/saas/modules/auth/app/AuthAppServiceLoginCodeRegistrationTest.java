@@ -75,6 +75,7 @@ class AuthAppServiceLoginCodeRegistrationTest {
                 passwordEncoder,
                 null,
                 verificationAppService,
+                null,
                 jdbcTemplate
         );
 

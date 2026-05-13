@@ -1,4 +1,4 @@
-import { LockOutlined, MailOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
+import { LockOutlined, MailOutlined, MobileOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
 import { Form, Input, Space, Tabs, Typography, Checkbox, Button, Alert, Image, Skeleton } from 'antd';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
@@ -35,8 +35,10 @@ interface LoginFormFieldsProps {
   loginEncryptionLoading: boolean;
   sendingLoginType: LoginMode | null;
   loginCodeChallenges: Partial<Record<Exclude<LoginMode, 'password'>, LoginCodeChallenge | null>>;
+  wechatLoginAvailable?: boolean;
   onModeChange: (mode: LoginMode) => void;
   onSendLoginCode: (mode: Exclude<LoginMode, 'password'>) => void;
+  onWechatLogin: () => void;
   onRefreshCaptcha: () => void;
   onCaptchaImageError: () => void;
   onSliderCaptchaChallengeChange: (challenge: CaptchaChallenge | null) => void;
@@ -79,8 +81,10 @@ export const LoginFormFields = ({
   loginEncryptionLoading,
   sendingLoginType,
   loginCodeChallenges,
+  wechatLoginAvailable,
   onModeChange,
   onSendLoginCode,
+  onWechatLogin,
   onRefreshCaptcha,
   onCaptchaImageError,
   onSliderCaptchaChallengeChange,
@@ -288,34 +292,47 @@ export const LoginFormFields = ({
         renderPasswordTab()
       )}
       {!pendingSecondFactorLogin ? (
-        <div className="saas-login-page__agreement">
-          {hasAgreement ? (
-            <Form.Item
-              name="agreementAccepted"
-              valuePropName="checked"
-              rules={[
-                {
-                  validator: async (_, value) => {
-                    if (hasAgreement && !value) {
-                      throw new Error(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
-                    }
-                  },
-                },
-              ]}
+        <>
+          {wechatLoginAvailable ? (
+            <Button
+              block
+              size="large"
+              icon={<WechatOutlined />}
+              onClick={onWechatLogin}
+              className="saas-login-page__wechat-button"
             >
-              <Checkbox>
-                {formatMessage({ id: 'page.login.agreement.accept', defaultMessage: 'I have read and agree to' })}
-                <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
-                  {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}
-                </Button>
-                {formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' })}
-                <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
-                  {formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })}
-                </Button>
-              </Checkbox>
-            </Form.Item>
+              {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
+            </Button>
           ) : null}
-        </div>
+          <div className="saas-login-page__agreement">
+            {hasAgreement ? (
+              <Form.Item
+                name="agreementAccepted"
+                valuePropName="checked"
+                rules={[
+                  {
+                    validator: async (_, value) => {
+                      if (hasAgreement && !value) {
+                        throw new Error(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
+                      }
+                    },
+                  },
+                ]}
+              >
+                <Checkbox>
+                  {formatMessage({ id: 'page.login.agreement.accept', defaultMessage: 'I have read and agree to' })}
+                  <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
+                    {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}
+                  </Button>
+                  {formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' })}
+                  <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
+                    {formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })}
+                  </Button>
+                </Checkbox>
+              </Form.Item>
+            ) : null}
+          </div>
+        </>
       ) : null}
       <div className="saas-login-page__actions">
         <Form.Item noStyle name="remember" valuePropName="checked">

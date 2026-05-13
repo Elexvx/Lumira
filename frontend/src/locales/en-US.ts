@@ -135,6 +135,8 @@ export default {
   'page.login.passwordSubtitle': 'Password login',
   'page.login.smsSubtitle': 'SMS code login',
   'page.login.emailSubtitle': 'Email code login',
+  'page.login.wechat': 'WeChat login',
+  'page.login.wechatStarting': 'Redirecting to WeChat login...',
   'page.login.smsAccount': 'Mobile number',
   'page.login.emailAccount': 'Email',
   'page.login.smsCode': 'SMS code',

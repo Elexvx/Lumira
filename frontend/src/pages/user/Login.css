@@ -237,6 +237,10 @@ html[data-theme='dark'] .saas-login-page__actions {
   margin-top: 24px;
 }
 
+.saas-login-page__wechat-button {
+  margin-top: 12px;
+}
+
 .saas-login-page__actions {
   display: flex;
   align-items: center;

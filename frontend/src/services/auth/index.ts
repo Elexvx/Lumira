@@ -1,4 +1,4 @@
-import type { CurrentUser, LoginCodeChallenge, LoginEncryptionKey, LoginResponse, RefreshTokenResponse } from '@/types/api';
+import type { CurrentUser, LoginCodeChallenge, LoginEncryptionKey, LoginResponse, RefreshTokenResponse, WechatAuthorizeUrl } from '@/types/api';
 import { request, type RequestOptions } from '@/services/common/request';
 
 export interface LoginPayload {
@@ -31,6 +31,11 @@ export interface LoginCodeCompletePayload {
   verificationCode: string;
 }
 
+export interface WechatLoginPayload {
+  code: string;
+  state: string;
+}
+
 export interface SimulatedRolePayload {
   roleId?: number | null;
 }
@@ -61,6 +66,21 @@ export const authService = {
     }),
   loginCodeComplete: (payload: LoginCodeCompletePayload, options: RequestOptions = {}) =>
     request<LoginResponse>('/v1/auth/login/code/complete', {
+      method: 'POST',
+      data: payload,
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  wechatAuthorizeUrl: (options: RequestOptions = {}) =>
+    request<WechatAuthorizeUrl>('/v1/auth/wechat/authorize-url', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  wechatLogin: (payload: WechatLoginPayload, options: RequestOptions = {}) =>
+    request<LoginResponse>('/v1/auth/wechat/login', {
       method: 'POST',
       data: payload,
       skipAuth: true,

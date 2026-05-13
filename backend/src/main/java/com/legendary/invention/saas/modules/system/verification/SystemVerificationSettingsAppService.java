@@ -3,6 +3,7 @@ package com.legendary.invention.saas.modules.system.verification;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.saas.modules.auth.app.WechatLoginService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.system.support.SmtpMailService;
@@ -34,15 +35,18 @@ public class SystemVerificationSettingsAppService {
     private final JdbcTemplate jdbcTemplate;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
+    private final WechatLoginService wechatLoginService;
 
     public SystemVerificationSettingsAppService(
             JdbcTemplate jdbcTemplate,
             SystemVerificationProperties properties,
-            SmtpMailService smtpMailService
+            SmtpMailService smtpMailService,
+            WechatLoginService wechatLoginService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
+        this.wechatLoginService = wechatLoginService;
     }
 
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
@@ -73,6 +77,7 @@ public class SystemVerificationSettingsAppService {
         capabilities.setPasswordLoginAvailable(true);
         capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
         capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
+        capabilities.setWechatLoginAvailable(wechatLoginService.isAvailable());
         return capabilities;
     }
 

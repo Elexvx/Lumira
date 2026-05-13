@@ -30,6 +30,17 @@ class SecurityPermitPathsTest {
         Assertions.assertTrue(testConfig.contains("- /api/v1/auth/login/code/complete"), testConfig);
     }
 
+    @Test
+    void wechatLoginEndpointsShouldBePublicInMainAndTestConfig() throws IOException {
+        String mainConfig = readConfig("src/main/resources/application.yml");
+        String testConfig = readConfig("src/test/resources/application.yml");
+
+        Assertions.assertTrue(mainConfig.contains("- /api/v1/auth/wechat/authorize-url"), mainConfig);
+        Assertions.assertTrue(mainConfig.contains("- /api/v1/auth/wechat/login"), mainConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/v1/auth/wechat/authorize-url"), testConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/v1/auth/wechat/login"), testConfig);
+    }
+
     private static String readConfig(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

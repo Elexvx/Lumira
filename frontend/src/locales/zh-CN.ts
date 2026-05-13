@@ -306,6 +306,8 @@ export default {
   'page.login.passwordSubtitle': '密码登录',
   'page.login.smsSubtitle': '短信验证码登录',
   'page.login.emailSubtitle': '邮箱验证码登录',
+  'page.login.wechat': '微信登录',
+  'page.login.wechatStarting': '正在跳转到微信登录...',
   'page.login.smsAccount': '手机号',
   'page.login.emailAccount': '邮箱',
   'page.login.smsCode': '短信验证码',

@@ -5,6 +5,7 @@ public class LoginCapabilitiesVO {
     private Boolean passwordLoginAvailable;
     private Boolean smsLoginAvailable;
     private Boolean emailLoginAvailable;
+    private Boolean wechatLoginAvailable;
 
     public Boolean getPasswordLoginAvailable() {
         return passwordLoginAvailable;
@@ -28,5 +29,13 @@ public class LoginCapabilitiesVO {
 
     public void setEmailLoginAvailable(Boolean emailLoginAvailable) {
         this.emailLoginAvailable = emailLoginAvailable;
+    }
+
+    public Boolean getWechatLoginAvailable() {
+        return wechatLoginAvailable;
+    }
+
+    public void setWechatLoginAvailable(Boolean wechatLoginAvailable) {
+        this.wechatLoginAvailable = wechatLoginAvailable;
     }
 }

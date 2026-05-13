@@ -38,6 +38,16 @@ public class AuthController {
         return ApiResponse.success(authAppService.completeLoginCodeLogin(request, httpServletRequest), TraceContext.getRequestId());
     }
 
+    @GetMapping("/wechat/authorize-url")
+    public ApiResponse<WechatAuthorizeUrlDTO> wechatAuthorizeUrl() {
+        return ApiResponse.success(authAppService.wechatAuthorizeUrl(), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/wechat/login")
+    public ApiResponse<LoginResponseDTO> wechatLogin(@Valid @RequestBody WechatLoginRequest request, HttpServletRequest httpServletRequest) {
+        return ApiResponse.success(authAppService.wechatLogin(request, httpServletRequest), TraceContext.getRequestId());
+    }
+
     @PostMapping("/second-factor/complete")
     public ApiResponse<LoginResponseDTO> completeSecondFactor(@Valid @RequestBody SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
         return ApiResponse.success(authAppService.completeSecondFactorLogin(request, httpServletRequest), TraceContext.getRequestId());
