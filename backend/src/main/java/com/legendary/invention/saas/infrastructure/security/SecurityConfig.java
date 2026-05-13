@@ -28,16 +28,6 @@ import java.io.IOException;
 @Configuration
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
-    private static final String[] SPRINGDOC_PERMIT_PATHS = {
-            "/api-docs",
-            "/api-docs/**",
-            "/v3/api-docs",
-            "/v3/api-docs/**",
-            "/swagger-ui.html",
-            "/swagger-ui/**",
-            "/webjars/**"
-    };
-
     private final TraceIdFilter traceIdFilter;
     private final TenantFilter tenantFilter;
     private final JwtAuthFilter jwtAuthFilter;
@@ -69,8 +59,6 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(registry -> registry
-                        .requestMatchers(SPRINGDOC_PERMIT_PATHS)
-                        .permitAll()
                         .requestMatchers(securityProperties.getPermitPaths().toArray(new String[0]))
                         .permitAll()
                         .anyRequest()

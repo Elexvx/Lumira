@@ -31,7 +31,7 @@ const buildSwaggerHtml = () => {
       const authorization = ${JSON.stringify(authorization)};
       window.onload = function () {
         window.ui = SwaggerUIBundle({
-          url: '/api-docs',
+          url: '/api/v1/system/monitor/api-docs',
           dom_id: '#swagger-ui',
           deepLinking: true,
           displayRequestDuration: true,
