@@ -1,14 +1,13 @@
-package com.legendary.invention.message.infrastructure.security;
+package com.legendary.invention.common.security;
 
-public class TokenClaims {
-
+public class JwtTokenClaims {
     private String sessionId;
     private Long userId;
     private String username;
     private Long currentTenantId;
     private Integer sessionVersion;
     private String tokenId;
-    private TokenType tokenType;
+    private JwtTokenType tokenType;
 
     public String getSessionId() {
         return sessionId;
@@ -58,11 +57,11 @@ public class TokenClaims {
         this.tokenId = tokenId;
     }
 
-    public TokenType getTokenType() {
+    public JwtTokenType getTokenType() {
         return tokenType;
     }
 
-    public void setTokenType(TokenType tokenType) {
+    public void setTokenType(JwtTokenType tokenType) {
         this.tokenType = tokenType;
     }
 }

@@ -273,7 +273,7 @@ export const LoginFormFields = ({
             footer={null}
             open={sliderCaptchaOpen}
             title={formatMessage({ id: 'page.login.captcha.sliderTitle', defaultMessage: '拖动验证' })}
-            width={392}
+            width={368}
             onCancel={handleCloseSliderCaptcha}
             className="saas-login-page__slider-modal"
           >

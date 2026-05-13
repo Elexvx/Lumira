@@ -60,7 +60,7 @@ import java.util.stream.Collectors;
 @Service
 public class SystemManagementAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = 1001L;
+    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";

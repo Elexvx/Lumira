@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Service
 public class TenantDomainService {
 
-    private static final Long PLATFORM_TENANT_ID = 1001L;
+    private static final Long PLATFORM_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
 
     private final SysUserTenantMapper sysUserTenantMapper;
     private final TenantInfoMapper tenantInfoMapper;

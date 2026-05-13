@@ -506,7 +506,7 @@ public class ApprovalAppService implements WorkflowEngineAdapter {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return currentUser.getCurrentTenantId() == null ? 1001L : currentUser.getCurrentTenantId();
+        return currentUser.getCurrentTenantId() == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : currentUser.getCurrentTenantId();
     }
 
     private boolean hasPermission(CurrentUser currentUser, String permission) {

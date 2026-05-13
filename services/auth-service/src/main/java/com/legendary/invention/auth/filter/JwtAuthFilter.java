@@ -1,11 +1,11 @@
 package com.legendary.invention.auth.filter;
 
 import com.legendary.invention.auth.model.AuthSession;
-import com.legendary.invention.auth.model.TokenClaims;
-import com.legendary.invention.auth.model.TokenType;
 import com.legendary.invention.auth.service.AuthSessionStore;
 import com.legendary.invention.auth.service.JwtTokenService;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.JwtTokenClaims;
+import com.legendary.invention.common.security.JwtTokenType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,8 +41,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String authorization = request.getHeader("Authorization");
         if (authorization != null && authorization.startsWith("Bearer ")) {
             try {
-                TokenClaims claims = jwtTokenService.parseToken(authorization.substring(7));
-                if (claims.getTokenType() == TokenType.ACCESS) {
+                JwtTokenClaims claims = jwtTokenService.parseToken(authorization.substring(7));
+                if (claims.getTokenType() == JwtTokenType.ACCESS) {
                     AuthSession session = authSessionStore.findBySessionId(claims.getSessionId()).orElse(null);
                     if (session != null) {
                         CurrentUser currentUser = new CurrentUser(

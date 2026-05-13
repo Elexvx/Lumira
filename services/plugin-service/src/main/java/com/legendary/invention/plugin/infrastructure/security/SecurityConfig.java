@@ -5,7 +5,7 @@ import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.plugin.config.TraceIdFilter;
+import com.legendary.invention.common.web.TraceIdFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,6 +35,11 @@ public class SecurityConfig {
         this.traceIdFilter = traceIdFilter;
         this.pluginJwtAuthFilter = pluginJwtAuthFilter;
         this.objectMapper = objectMapper;
+    }
+
+    @Bean
+    public TraceIdFilter traceIdFilter() {
+        return new TraceIdFilter(true, true);
     }
 
     @Bean

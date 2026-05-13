@@ -5,6 +5,8 @@ import com.legendary.invention.api.client.AuthInternalApi;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.JwtTokenClaims;
+import com.legendary.invention.common.security.JwtTokenType;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -23,8 +25,8 @@ public class MessageSessionAuthenticationService {
     }
 
     public AuthenticatedAccess authenticateAccessToken(String token) {
-        TokenClaims claims = jwtTokenService.parseToken(token);
-        if (claims.getTokenType() != TokenType.ACCESS) {
+        JwtTokenClaims claims = jwtTokenService.parseToken(token);
+        if (claims.getTokenType() != JwtTokenType.ACCESS) {
             throw new BizException(ErrorCode.SESSION_EXPIRED, "accessToken类型非法");
         }
 
@@ -59,7 +61,7 @@ public class MessageSessionAuthenticationService {
         return new AuthenticatedAccess(buildCurrentUser(snapshot, null), snapshot);
     }
 
-    private CurrentUser buildCurrentUser(CurrentUserDTO snapshot, TokenClaims claims) {
+    private CurrentUser buildCurrentUser(CurrentUserDTO snapshot, JwtTokenClaims claims) {
         Set<String> permissions = snapshot.permissions() == null
                 ? Collections.emptySet()
                 : Collections.unmodifiableSet(new LinkedHashSet<>(snapshot.permissions()));

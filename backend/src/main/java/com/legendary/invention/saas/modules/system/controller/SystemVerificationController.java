@@ -4,7 +4,7 @@ import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
@@ -186,7 +186,7 @@ public class SystemVerificationController {
 
     private Long requireTenantId(CurrentUser currentUser) {
         if (currentUser.getCurrentTenantId() == null) {
-            return 1001L;
+            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
         }
         return currentUser.getCurrentTenantId();
     }

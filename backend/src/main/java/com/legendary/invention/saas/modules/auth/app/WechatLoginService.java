@@ -29,7 +29,7 @@ public class WechatLoginService {
     private static final String SCOPE = "snsapi_login";
     private static final String AUTHORIZE_URL = "https://open.weixin.qq.com/connect/qrconnect";
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
-    private static final Long PLATFORM_TENANT_ID = 1001L;
+    private static final Long PLATFORM_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
 
     private final WechatLoginSettingsService settingsService;
     private final CacheTemplate cacheTemplate;

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.observability.TraceContext;
+import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
@@ -905,7 +905,7 @@ public class SystemVerificationAppService {
     }
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        Long effectiveTenantId = tenantId == null ? 1001L : tenantId;
+        Long effectiveTenantId = tenantId == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select tenant_id as tenantId, config_key as configKey, config_value as configValue
@@ -940,7 +940,7 @@ public class SystemVerificationAppService {
 
     private Long requireTenantId(CurrentUser currentUser) {
         if (currentUser.getCurrentTenantId() == null) {
-            return 1001L;
+            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
         }
         return currentUser.getCurrentTenantId();
     }

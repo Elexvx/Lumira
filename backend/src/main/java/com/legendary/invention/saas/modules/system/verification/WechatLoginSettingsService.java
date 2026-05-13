@@ -182,7 +182,7 @@ public class WechatLoginSettingsService {
     }
 
     private Long effectiveTenantId(Long tenantId) {
-        return tenantId == null ? 1001L : tenantId;
+        return tenantId == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
     }
 
     private String sanitizeText(String value, String fallback) {

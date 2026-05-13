@@ -51,7 +51,7 @@ import java.util.regex.Pattern;
 @Service
 public class AuthAppService {
 
-    private static final Long PLATFORM_TENANT_ID = 1001L;
+    private static final Long PLATFORM_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String DEFAULT_LOGIN_ROLE_CODE = "commonuser";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
