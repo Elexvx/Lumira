@@ -233,6 +233,40 @@ html[data-theme='dark'] .saas-login-page__actions {
   padding-inline: 12px;
 }
 
+.saas-login-page__slider-placeholder,
+.saas-login-page__slider-verified {
+  height: 40px;
+  border-radius: 8px;
+}
+
+.saas-login-page__slider-placeholder {
+  justify-content: center;
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-tertiary);
+  border-color: var(--ant-color-border);
+}
+
+.saas-login-page__slider-verified {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 16px 14px;
+  box-sizing: border-box;
+  color: var(--ant-color-success-text);
+  background: var(--ant-color-success-bg);
+  border: 1px solid var(--ant-color-success-border);
+}
+
+.saas-login-page__slider-verified .anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--ant-color-success);
+  font-size: 18px;
+}
+
 .saas-login-page__agreement {
   margin-top: 24px;
 }

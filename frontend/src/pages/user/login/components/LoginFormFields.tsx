@@ -1,6 +1,7 @@
-import { LockOutlined, MailOutlined, MobileOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
+import { CheckOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
 import { Form, Input, Space, Tabs, Typography, Checkbox, Button, Alert, Image, Skeleton } from 'antd';
+import { useEffect, useRef, useState } from 'react';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
 import { getCaptchaValueFromEvent, shouldBlockCaptchaKey } from '@/pages/user/login/captchaInput';
@@ -46,6 +47,8 @@ interface LoginFormFieldsProps {
   onSliderCaptchaReset: () => void;
   onOpenAgreementPreview: (previewKind: 'user' | 'privacy') => void;
 }
+
+type SliderVerificationStatus = 'idle' | 'challenge' | 'verified';
 
 const MODE_META: Record<LoginMode, { label: string; subtitle: string }> = {
   password: {
@@ -93,11 +96,39 @@ export const LoginFormFields = ({
   onOpenAgreementPreview,
 }: LoginFormFieldsProps) => {
   const form = Form.useFormInstance<LoginFormValues>();
+  const passwordAccount = Form.useWatch('passwordAccount', form);
+  const passwordPassword = Form.useWatch('passwordPassword', form);
   const smsAccount = Form.useWatch('smsAccount', form);
   const emailAccount = Form.useWatch('emailAccount', form);
+  const [sliderVerificationStatus, setSliderVerificationStatus] = useState<SliderVerificationStatus>('idle');
+  const previousPasswordCredentialsRef = useRef<{ account?: string; password?: string } | null>(null);
   const hasAgreement = Boolean(agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown);
   const showTabs = availableLoginModes.length > 1 || availableLoginModes[0] !== 'password';
   const pendingChallenge = activeLoginMode === 'sms' ? loginCodeChallenges.sms : activeLoginMode === 'email' ? loginCodeChallenges.email : null;
+
+  useEffect(() => {
+    const previous = previousPasswordCredentialsRef.current;
+    previousPasswordCredentialsRef.current = { account: passwordAccount, password: passwordPassword };
+
+    if (!previous) {
+      return;
+    }
+
+    if (previous.account !== passwordAccount || previous.password !== passwordPassword) {
+      setSliderVerificationStatus('idle');
+      onSliderCaptchaChallengeChange(null);
+      onSliderCaptchaReset();
+    }
+  }, [passwordAccount, passwordPassword, onSliderCaptchaChallengeChange, onSliderCaptchaReset]);
+
+  const handleStartSliderCaptcha = async () => {
+    try {
+      await form.validateFields(['passwordAccount', 'passwordPassword']);
+      setSliderVerificationStatus('challenge');
+    } catch {
+      // Ant Design will surface the field-level validation errors.
+    }
+  };
 
   if (pendingSecondFactorLogin) {
     return (
@@ -213,12 +244,32 @@ export const LoginFormFields = ({
           <Form.Item name="captchaProof" hidden rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }) }]}>
             <Input />
           </Form.Item>
-          <SliderCaptchaBox
-            mode="float"
-            onChallengeChange={onSliderCaptchaChallengeChange}
-            onVerified={(result) => onSliderCaptchaVerified(result.captchaProof)}
-            onReset={onSliderCaptchaReset}
-          />
+          {sliderVerificationStatus === 'verified' ? (
+            <div className="saas-login-page__slider-verified" aria-live="polite">
+              <span>{formatMessage({ id: 'page.login.captcha.sliderVerified', defaultMessage: '已验证' })}</span>
+              <CheckOutlined />
+            </div>
+          ) : sliderVerificationStatus === 'challenge' ? (
+            <SliderCaptchaBox
+              mode="embed"
+              onChallengeChange={onSliderCaptchaChallengeChange}
+              onVerified={(result) => {
+                onSliderCaptchaVerified(result.captchaProof);
+                setSliderVerificationStatus('verified');
+              }}
+              onReset={onSliderCaptchaReset}
+            />
+          ) : (
+            <Button
+              block
+              size="large"
+              icon={<SafetyCertificateOutlined />}
+              onClick={() => void handleStartSliderCaptcha()}
+              className="saas-login-page__slider-placeholder"
+            >
+              {formatMessage({ id: 'page.login.captcha.startSlider', defaultMessage: '验证' })}
+            </Button>
+          )}
         </>
       ) : null}
     </div>
