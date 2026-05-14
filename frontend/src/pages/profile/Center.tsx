@@ -58,10 +58,6 @@ const ProfileCenterPage = () => {
   const breadcrumbItems = useMemo(
     () => [
       {
-        title: formatMessage({ id: 'nav.user.center', defaultMessage: '用户中心' }),
-        path: '/user-center',
-      },
-      {
         title: formatMessage({ id: 'nav.user.personalCenter', defaultMessage: '个人中心' }),
         path: '/user-center/personal-center',
       },

@@ -80,5 +80,5 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
     };
   });
 
-  return menuTrail.length >= routeMetaTrail.length ? menuTrail : routeMetaTrail;
+  return menuTrail;
 };

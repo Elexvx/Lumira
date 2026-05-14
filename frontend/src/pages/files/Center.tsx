@@ -62,6 +62,21 @@ const SystemFilesPage = () => {
   const pageTitle = isTenantScope
     ? formatMessage({ id: 'system.files.title.all', defaultMessage: 'Global File Management' })
     : formatMessage({ id: 'system.files.title.my', defaultMessage: 'My Files' });
+  const breadcrumbItems = useMemo(
+    () =>
+      isTenantScope
+        ? undefined
+        : [
+            {
+              title: formatMessage({ id: 'nav.user.personalCenter', defaultMessage: '个人中心' }),
+              path: '/user-center/personal-center',
+            },
+            {
+              title: formatMessage({ id: 'nav.files.my', defaultMessage: '我的文件' }),
+            },
+          ],
+    [isTenantScope],
+  );
   const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadForm] = Form.useForm<{
@@ -463,6 +478,7 @@ const SystemFilesPage = () => {
 
   return (
     <ManagementPage
+      breadcrumb={breadcrumbItems ? { items: breadcrumbItems } : undefined}
       title={pageTitle}
       ghost
     >
