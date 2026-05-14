@@ -160,11 +160,13 @@ const composeMenuItem = (
     return null;
   }
 
+  const { children: _localChildren, routes: _localRoutes, ...localItemMeta } =
+    (localMeta || {}) as RuntimeMenuDataItem & { routes?: RuntimeMenuDataItem[] };
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
   const menuLabelId = mergedMeta?.name || backendNode.name || backendNode.menuCode;
 
   return {
-    ...localMeta,
+    ...localItemMeta,
     path: backendNode.path || localMeta?.path,
     name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
     locale: false as const,
