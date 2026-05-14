@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type { PublicPage, SiteSettings } from './api';
+import type { ContentRecord, PublicPage, SiteSettings } from './api';
 
 interface SeoConfig {
   title?: string;
@@ -49,6 +49,39 @@ export function metadataForPage(page: PublicPage | null, fallbackTitle = 'Legend
       images: image ? [{ url: image }] : undefined,
       type: 'website',
       locale: 'zh_CN',
+    },
+    twitter: {
+      card: image ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
+export function metadataForContent(content: ContentRecord | null, site?: SiteSettings, fallbackTitle = 'Legendary Invention'): Metadata {
+  const siteSeo = parseSeoJson(site?.seoJson);
+  const contentSeo = parseSeoJson(content?.seoJson);
+  const title = contentSeo.title || content?.title || siteSeo.title || site?.name || fallbackTitle;
+  const description = contentSeo.description || content?.summary || siteSeo.description || defaultDescription;
+  const canonicalPath = contentSeo.canonical || content?.slug || '/';
+  const canonical = canonicalPath.startsWith('http') ? canonicalPath : `${siteUrl()}${canonicalPath === '/' ? '' : canonicalPath}`;
+  const image = contentSeo.image || content?.coverUrl || siteSeo.image;
+
+  return {
+    title,
+    description,
+    keywords: contentSeo.keywords || siteSeo.keywords,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: site?.name || fallbackTitle,
+      images: image ? [{ url: image }] : undefined,
+      type: 'article',
+      locale: 'zh_CN',
+      publishedTime: content?.publishedAt,
     },
     twitter: {
       card: image ? 'summary_large_image' : 'summary',

@@ -270,6 +270,66 @@ nav a:hover {
   align-items: center;
 }
 
+.article-shell {
+  width: min(860px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 72px 0 108px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 44px;
+}
+
+.back-link:hover {
+  color: var(--ink);
+}
+
+.article-header span {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.article-header h1 {
+  margin: 0;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.article-header p {
+  margin: 26px 0 0;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1.75;
+}
+
+.article-cover {
+  width: 100%;
+  margin-top: 44px;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.article-body {
+  margin-top: 54px;
+  color: #2f3742;
+  font-size: 18px;
+  line-height: 1.9;
+}
+
+.article-body p {
+  margin: 0 0 24px;
+}
+
 .contact p {
   color: rgba(255, 255, 255, 0.72);
   margin-top: 18px;
