@@ -55,6 +55,22 @@ const ProfileCenterPage = () => {
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;
   const profileFormProps = useStandardFormProps({ form: profileForm });
+  const breadcrumbItems = useMemo(
+    () => [
+      {
+        title: formatMessage({ id: 'nav.user.center', defaultMessage: '用户中心' }),
+        path: '/user-center',
+      },
+      {
+        title: formatMessage({ id: 'nav.user.personalCenter', defaultMessage: '个人中心' }),
+        path: '/user-center/personal-center',
+      },
+      {
+        title: formatMessage({ id: 'nav.user.profile', defaultMessage: '个人资料' }),
+      },
+    ],
+    [],
+  );
   const providersQuery = useQuery({
     queryKey: ['profile-second-factor-providers', currentUser?.userId],
     queryFn: async () => secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }),
@@ -557,7 +573,11 @@ const ProfileCenterPage = () => {
   );
 
   return (
-    <ManagementPage className="saas-profile-page" title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}>
+    <ManagementPage
+      breadcrumb={{ items: breadcrumbItems }}
+      className="saas-profile-page"
+      title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}
+    >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         {responsive.isMobile ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
