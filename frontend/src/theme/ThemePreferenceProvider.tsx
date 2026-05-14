@@ -1,4 +1,4 @@
-import { ConfigProvider } from 'antd';
+import { App as AntdApp, ConfigProvider } from 'antd';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveAntdLocale } from '@/i18n/antdLocale';
@@ -91,7 +91,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
       <ConfigProvider locale={resolveAntdLocale()} theme={themeConfig} variant="filled">
-        {children}
+        <AntdApp>{children}</AntdApp>
       </ConfigProvider>
     </ThemePreferenceContext.Provider>
   );
