@@ -36,6 +36,7 @@ const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/tasks', '/approvals', '/evaluations'];
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
+const resolveSiderMenuMode = (pathname: string) => (isSettingsShellPath(pathname) ? 'settings' : 'main');
 
 const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string, RuntimeMenuDataItem>()) => {
   items.forEach((item) => {
@@ -217,6 +218,8 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const navTheme = resolveLayoutNavTheme();
   const siderBackground = navTheme === 'realDark' ? DARK_SIDER_BACKGROUND : LIGHT_SIDER_BACKGROUND;
+  const currentPathname = history.location.pathname;
+  const siderMenuMode = resolveSiderMenuMode(currentPathname);
 
   applyFavicon(brandingSettings.websiteFaviconUrl);
 
@@ -270,12 +273,13 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         : defaultDom,
     menu: {
       params: {
+        pathname: currentPathname,
+        siderMenuMode,
         menuVersion: initialState?.menuVersion ?? 0,
       },
     },
     menuDataRender: (menuData) => {
-      const pathname = history.location.pathname;
-      if (isSettingsShellPath(pathname)) {
+      if (siderMenuMode === 'settings') {
         return buildSettingsMenuData(initialState);
       }
 
