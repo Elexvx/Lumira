@@ -8,7 +8,7 @@ type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 
-const normalizeBreadcrumbPath = (path?: string | null) => path || undefined;
+const normalizeBreadcrumbPath = (path: string | null | undefined, id: number) => path || `#menu-${id}`;
 
 const resolveRouteMetaTitle = (path: string) => {
   const meta = routeMetaMap.get(path);
@@ -78,7 +78,7 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
           defaultMessage: fallback,
         }),
       ),
-      path: index === trail.length - 1 ? undefined : normalizeBreadcrumbPath(node.path),
+      path: index === trail.length - 1 ? undefined : normalizeBreadcrumbPath(node.path, node.id),
     };
   });
 
