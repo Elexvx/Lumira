@@ -5,7 +5,6 @@ import com.legendary.invention.saas.modules.plugin.vo.PluginVO;
 import com.legendary.invention.saas.modules.system.permission.vo.PermissionActionVO;
 import com.legendary.invention.saas.modules.system.permission.vo.PermissionVO;
 import com.legendary.invention.saas.modules.system.session.vo.OnlineSessionVO;
-import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
 
 import java.time.LocalDateTime;
 import java.util.List;

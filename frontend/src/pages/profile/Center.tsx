@@ -471,7 +471,6 @@ const ProfileCenterPage = () => {
       : formatMessage({ id: 'page.profile.contact.sendCode', defaultMessage: 'Send code' })
     : formatMessage({ id: 'page.profile.contact.save', defaultMessage: 'Save' });
   const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '-';
-  const tenantName = currentUser?.currentTenant?.tenantName || '暂无所属主体';
   const roleNames = currentUser?.availableRoles?.map((role) => role.roleName).filter(Boolean) || [];
   const activeRoleName =
     currentUser?.availableRoles?.find((role) => role.id === currentUser.simulatedRoleId)?.roleName || roleNames[0] || '暂无角色';
@@ -577,7 +576,7 @@ const ProfileCenterPage = () => {
                 <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
                 <Space direction="vertical" size={6}>
                   <Typography.Title level={3} style={{ margin: 0 }}>My Account</Typography.Title>
-                  <Typography.Text>{tenantName} · {activeRoleName}</Typography.Text>
+                  <Typography.Text>{activeRoleName}</Typography.Text>
                 </Space>
               </Space>
             </Card>
@@ -631,7 +630,7 @@ const ProfileCenterPage = () => {
                       <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
                     </Space>
                     <Typography.Title level={2} className="saas-profile-page__tenant-mark">
-                      {tenantName}
+                      {activeRoleName}
                     </Typography.Title>
                   </div>
                 </Card>
@@ -667,7 +666,6 @@ const ProfileCenterPage = () => {
                       <Typography.Title level={3} style={{ margin: 0 }}>
                         My Account
                       </Typography.Title>
-                      <Typography.Text>{tenantName}</Typography.Text>
                       <Typography.Text>{activeRoleName}</Typography.Text>
                     </Space>
                   </Space>

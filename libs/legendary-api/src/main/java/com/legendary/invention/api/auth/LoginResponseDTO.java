@@ -1,8 +1,5 @@
 package com.legendary.invention.api.auth;
 
-import com.legendary.invention.api.tenant.MyTenantDTO;
-import com.legendary.invention.api.tenant.TenantSummaryDTO;
-
 import java.util.List;
 
 public class LoginResponseDTO {
@@ -12,8 +9,6 @@ public class LoginResponseDTO {
     private String tokenType;
     private Long expiresIn;
     private AuthUserDTO user;
-    private List<MyTenantDTO> tenants;
-    private TenantSummaryDTO currentTenant;
     private Boolean requiresSecondFactor;
     private List<SecondFactorOptionDTO> secondFactorOptions;
     private Boolean requiresCaptcha;
@@ -56,22 +51,6 @@ public class LoginResponseDTO {
 
     public void setUser(AuthUserDTO user) {
         this.user = user;
-    }
-
-    public List<MyTenantDTO> getTenants() {
-        return tenants;
-    }
-
-    public void setTenants(List<MyTenantDTO> tenants) {
-        this.tenants = tenants;
-    }
-
-    public TenantSummaryDTO getCurrentTenant() {
-        return currentTenant;
-    }
-
-    public void setCurrentTenant(TenantSummaryDTO currentTenant) {
-        this.currentTenant = currentTenant;
     }
 
     public Boolean getRequiresSecondFactor() {

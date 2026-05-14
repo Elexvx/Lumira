@@ -18,8 +18,6 @@ public enum ErrorCode {
     TRAFFIC_LIMITED(429, "B6004", "请求频率受限", "当前访问过于频繁，请稍后再试"),
     PASSWORD_POLICY_VIOLATION(400, "B3001", "密码不符合规范", "密码不符合安全要求"),
     BIZ_ERROR(409, "B0001", "业务异常", "当前操作无法完成，请检查业务状态"),
-    TENANT_ERROR(409, "T0001", "租户异常", "租户上下文无效，请切换后重试"),
-    TENANT_NOT_BOUND(409, "T0002", "用户未绑定可用租户", "当前账号未绑定可用租户，请联系管理员"),
     PERMISSION_SNAPSHOT_ERROR(409, "P1001", "权限快照异常", "权限数据暂不可用，请稍后重试"),
     PLUGIN_PACKAGE_INVALID(400, "P2001", "插件包不合法", "插件包结构或元数据校验失败"),
     PLUGIN_SIGNATURE_INVALID(400, "P2002", "插件签名校验失败", "插件签名无效，请重新上传可信制品"),

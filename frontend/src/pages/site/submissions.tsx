@@ -1,5 +1,6 @@
 import { Button, Drawer, Form, Input, Select, Space, Table, Tag, message } from 'antd';
 import { useEffect, useState } from 'react';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteSubmission } from '@/services/site';
 import './site.css';
 
@@ -10,6 +11,8 @@ const SubmissionsPage = () => {
   const [detail, setDetail] = useState<SiteSubmission | null>(null);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<{ status: string; reviewRemark?: string }>();
+  const actionPermission = useActionPermission();
+  const canReview = actionPermission.can('site:submission:review');
 
   const load = async (nextPage = pageNo) => {
     setLoading(true);
@@ -61,10 +64,10 @@ const SubmissionsPage = () => {
           ]}
         />
       </div>
-      <Drawer title="提交详情" open={Boolean(detail)} width={720} onClose={() => setDetail(null)} extra={<Button type="primary" onClick={save}>保存审核</Button>}>
+      <Drawer title="提交详情" open={Boolean(detail)} width={720} onClose={() => setDetail(null)} extra={canReview ? <Button type="primary" onClick={save}>保存审核</Button> : null}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Input.TextArea className="site-admin-json" rows={12} value={detail?.dataJson} readOnly />
-          <Form form={form} layout="vertical">
+          <Form form={form} layout="vertical" disabled={!canReview}>
             <Form.Item name="status" label="审核状态" rules={[{ required: true }]}>
               <Select options={[{ value: 'PENDING', label: '待处理' }, { value: 'APPROVED', label: '通过' }, { value: 'REJECTED', label: '驳回' }, { value: 'ARCHIVED', label: '归档' }]} />
             </Form.Item>

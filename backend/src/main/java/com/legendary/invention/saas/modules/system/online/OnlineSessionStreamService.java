@@ -2,6 +2,7 @@ package com.legendary.invention.saas.modules.system.online;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
@@ -32,17 +33,18 @@ public class OnlineSessionStreamService {
     }
 
     public SseEmitter openStream(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getSessionId() == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null || currentUser.getSessionId() == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "缺少在线会话上下文");
         }
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
         String subscriberId = UUID.randomUUID().toString();
-        Subscriber subscriber = new Subscriber(subscriberId, currentUser.getSessionId(), currentUser.getCurrentTenantId(), emitter);
+        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        Subscriber subscriber = new Subscriber(subscriberId, currentUser.getSessionId(), tenantId, emitter);
 
         subscribers.put(subscriberId, subscriber);
         subscriberIdsBySessionId.computeIfAbsent(currentUser.getSessionId(), key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
-        subscriberIdsByTenantId.computeIfAbsent(currentUser.getCurrentTenantId(), key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
+        subscriberIdsByTenantId.computeIfAbsent(tenantId, key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
 
         emitter.onCompletion(() -> removeSubscriber(subscriberId));
         emitter.onTimeout(() -> {

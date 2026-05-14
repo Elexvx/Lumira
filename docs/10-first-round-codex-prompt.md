@@ -125,7 +125,7 @@ src/
 - `responsive/`：断点常量、设备判断 hook、布局断点策略
 - `cache/`：本地缓存封装，要求支持 key 规范和租户维度预留
 - `access.ts`：权限表达层骨架
-- `hooks/`：至少放入 `useResponsive`、`usePermission`、`useTenantContext` 等基础 hooks 占位
+- `hooks/`：至少放入 `useResponsive`、`usePermission` 等基础 hooks 占位
 
 ### 2.6 建立前端基础页面占位
 
@@ -256,7 +256,7 @@ src/main/java/com/yourcompany/saas/
 
 至少需要：
 
-- `TenantContext` 上下文类
+- 平台上下文类
 - 请求中解析 tenant 的拦截器/过滤器骨架
 - tenant header 常量
 - 自动注入租户维度设计预留

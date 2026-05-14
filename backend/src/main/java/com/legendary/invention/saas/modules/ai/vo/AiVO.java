@@ -505,6 +505,7 @@ public final class AiVO {
         private Long id;
         private Long tenantId;
         private Long employeeId;
+        private Long ownerUserId;
         private String employeeName;
         private String conversationCode;
         private String title;
@@ -537,6 +538,14 @@ public final class AiVO {
 
         public void setEmployeeId(Long employeeId) {
             this.employeeId = employeeId;
+        }
+
+        public Long getOwnerUserId() {
+            return ownerUserId;
+        }
+
+        public void setOwnerUserId(Long ownerUserId) {
+            this.ownerUserId = ownerUserId;
         }
 
         public String getEmployeeName() {

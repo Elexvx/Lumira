@@ -12,7 +12,6 @@ import com.legendary.invention.saas.infrastructure.security.service.SecuritySett
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
-import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +34,6 @@ class AuthAppServiceSessionInvalidationTest {
         StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
 
         AuthAppService service = new AuthAppService(
-                null,
                 null,
                 null,
                 authSessionStore,

@@ -256,7 +256,6 @@ public class OnlineSessionManagementAppService {
         vo.setUsername(session.getUsername());
         vo.setNickname(userRow != null && userRow.getNickname() != null ? userRow.getNickname() : null);
         vo.setRealName(userRow != null && userRow.getRealName() != null ? userRow.getRealName() : null);
-        vo.setCurrentTenantId(session.getCurrentTenantId());
         vo.setLoginTime(toLocalDateTime(session.getLoginTime()));
         vo.setLastActivityAt(toLocalDateTime(session.getLastActivityAt()));
         vo.setExpireTime(toLocalDateTime(session.getExpireTime()));
@@ -271,14 +270,11 @@ public class OnlineSessionManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private void ensureTenantMatch(Long currentTenantId, AuthSession session) {
-        if (session.getCurrentTenantId() == null || !currentTenantId.equals(session.getCurrentTenantId())) {
+        if (!currentTenantId.equals(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID)) {
             throw new BizException(ErrorCode.FORBIDDEN, "只能操作当前平台会话");
         }
     }

@@ -1,6 +1,7 @@
 import { Button, Drawer, Form, Input, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultFormSchemaJson, siteService, type SiteForm } from '@/services/site';
 import './site.css';
 
@@ -11,6 +12,7 @@ const FormsPage = () => {
   const [editing, setEditing] = useState<Partial<SiteForm> | null>(null);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<Partial<SiteForm>>();
+  const actionPermission = useActionPermission();
 
   const load = async (nextPage = pageNo) => {
     setLoading(true);
@@ -48,7 +50,7 @@ const FormsPage = () => {
           <h1 className="site-admin-title">表单管理</h1>
           <p className="site-admin-desc">配置官网公开表单和登录后提交策略。</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增表单</Button>
+        {actionPermission.can('site:form:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增表单</Button> : null}
       </div>
       <div className="site-admin-card">
         <Table
@@ -66,10 +68,10 @@ const FormsPage = () => {
               width: 150,
               render: (_, record) => (
                 <Space>
-                  <Button type="link" onClick={() => open(record)}>编辑</Button>
-                  <Popconfirm title="确认删除？" onConfirm={async () => { await siteService.deleteForm(record.id); await load(); }}>
+                  {actionPermission.can('site:form:update') ? <Button type="link" onClick={() => open(record)}>编辑</Button> : null}
+                  {actionPermission.can('site:form:delete') ? <Popconfirm title="确认删除？" onConfirm={async () => { await siteService.deleteForm(record.id); await load(); }}>
                     <Button type="link" danger>删除</Button>
-                  </Popconfirm>
+                  </Popconfirm> : null}
                 </Space>
               ),
             },

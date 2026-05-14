@@ -88,8 +88,6 @@ saas:
       - /api/uploads/**
       - /actuator/health
       - /api/health
-  tenant:
-    header-name: X-Tenant-Id
   auth:
     wechat:
       enabled: ${WECHAT_LOGIN_ENABLED:false}

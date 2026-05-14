@@ -2,9 +2,9 @@ package com.legendary.invention.message.app;
 
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
-import com.legendary.invention.common.vo.PageResponse;
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.CurrentUser;
-import com.legendary.invention.message.app.OperationAuditService;
+import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.message.dto.MessageDTO;
 import com.legendary.invention.message.service.MessagePushService;
 import com.legendary.invention.message.vo.MessageVO;
@@ -21,6 +21,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class MessageAppService {
@@ -48,11 +49,11 @@ public class MessageAppService {
     }
 
     public PageResponse<MessageVO.NoticeVO> listMessages(CurrentUser currentUser, long pageNo, long pageSize) {
-        return listNotices(currentUser.getCurrentTenantId(), currentUser.getUserId(), pageNo, pageSize);
+        return listNotices(tenantId(currentUser), currentUser.getUserId(), pageNo, pageSize);
     }
 
     public PageResponse<MessageVO.NoticeVO> listArchive(CurrentUser currentUser, MessageDTO.MessageArchiveQueryRequest request) {
-        Long tenantId = currentUser.getCurrentTenantId();
+        Long tenantId = tenantId(currentUser);
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
@@ -63,6 +64,16 @@ public class MessageAppService {
                 """);
         List<Object> params = new ArrayList<>();
         params.add(tenantId);
+        if (!canManageArchive(currentUser)) {
+            whereClause.append("""
+                      and (
+                            n.created_by = ?
+                         or %s
+                      )
+                    """.formatted(buildVisibleNoticePredicate("n")));
+            params.add(currentUser.getUserId());
+            addVisibleNoticeParams(params, currentUser.getUserId());
+        }
 
         if (StringUtils.hasText(request.getKeyword())) {
             whereClause.append("""
@@ -201,6 +212,17 @@ public class MessageAppService {
         params.add(userId);
     }
 
+    private boolean canManageArchive(CurrentUser currentUser) {
+        Set<String> permissions = currentUser.getPermissions();
+        if (permissions == null || permissions.isEmpty()) {
+            return false;
+        }
+        return permissions.contains("*")
+                || permissions.contains("message:message:write")
+                || permissions.contains("message:message:retract")
+                || permissions.contains("system:notification:write");
+    }
+
     public Long countUnread(CurrentUser currentUser) {
         Long count = jdbcTemplate.queryForObject(
                 """
@@ -220,7 +242,7 @@ public class MessageAppService {
                           )
                 """.formatted(buildVisibleNoticePredicate("n")),
                 Long.class,
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 STATUS_PUBLISHED,
                 TARGET_SCOPE_TENANT,
                 TARGET_SCOPE_USER,
@@ -235,7 +257,7 @@ public class MessageAppService {
     @Transactional
     public MessageVO.NoticeVO createMessage(CurrentUser currentUser, MessageDTO.MessageCreateRequest request) {
         MessageVO.NoticeVO notice = insertInboxNotice(
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 currentUser.getUserId(),
                 request.getTargetScope(),
                 request.getTargetUserId(),
@@ -245,7 +267,7 @@ public class MessageAppService {
         );
         messagePushService.publishCreated(notice);
         operationAuditService.log(
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 "message",
@@ -262,7 +284,7 @@ public class MessageAppService {
         MessageVO.NoticeVO notice = retractNotice(currentUser, noticeId);
         messagePushService.publishRetracted(notice);
         operationAuditService.log(
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 "message",
@@ -277,7 +299,7 @@ public class MessageAppService {
     @Transactional
     public MessageVO.NoticeVO markMessageRead(CurrentUser currentUser, Long noticeId) {
         MessageVO.NoticeVO notice = markRead(currentUser, noticeId);
-        messagePushService.publishRead(currentUser.getCurrentTenantId(), currentUser.getUserId(), notice, countUnread(currentUser).intValue());
+        messagePushService.publishRead(tenantId(currentUser), currentUser.getUserId(), notice, countUnread(currentUser).intValue());
         return notice;
     }
 
@@ -314,7 +336,7 @@ public class MessageAppService {
                 now,
                 currentUser.getUserId(),
                 currentUser.getUserId(),
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 STATUS_PUBLISHED,
                 TARGET_SCOPE_TENANT,
                 TARGET_SCOPE_USER,
@@ -326,7 +348,7 @@ public class MessageAppService {
 
         Long unreadCount = countUnread(currentUser);
         messagePushService.publishUnreadCount(
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 currentUser.getUserId(),
                 unreadCount.intValue()
         );
@@ -498,7 +520,7 @@ public class MessageAppService {
         if (noticeId == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "通知ID不能为空");
         }
-        MessageVO.NoticeVO notice = findNoticeById(currentUser.getCurrentTenantId(), noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO notice = findNoticeById(tenantId(currentUser), noticeId, currentUser.getUserId());
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
@@ -512,12 +534,12 @@ public class MessageAppService {
                 currentUser.getUserId(),
                 LocalDateTime.now(),
                 noticeId,
-                currentUser.getCurrentTenantId()
+                tenantId(currentUser)
         );
         if (updated <= 0) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
-        MessageVO.NoticeVO retractedNotice = findNoticeById(currentUser.getCurrentTenantId(), noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO retractedNotice = findNoticeById(tenantId(currentUser), noticeId, currentUser.getUserId());
         if (retractedNotice == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "通知撤回后读取失败");
         }
@@ -525,7 +547,7 @@ public class MessageAppService {
     }
 
     private MessageVO.NoticeVO markRead(CurrentUser currentUser, Long noticeId) {
-        MessageVO.NoticeVO notice = findVisibleNoticeById(currentUser.getCurrentTenantId(), noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO notice = findVisibleNoticeById(tenantId(currentUser), noticeId, currentUser.getUserId());
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
@@ -536,7 +558,7 @@ public class MessageAppService {
                         values (?, ?, ?, ?, ?, ?, 0)
                         on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
                         """,
-                currentUser.getCurrentTenantId(),
+                tenantId(currentUser),
                 noticeId,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
@@ -688,5 +710,9 @@ public class MessageAppService {
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    private Long tenantId(CurrentUser currentUser) {
+        return PlatformConstants.PLATFORM_TENANT_ID;
     }
 }

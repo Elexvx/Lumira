@@ -1,6 +1,7 @@
 package com.legendary.invention.message.service;
 
 import com.legendary.invention.api.message.MessageEventDTO;
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.message.app.MessageAppService;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -27,14 +28,15 @@ public class MessageConnectionSnapshotService {
     }
 
     public void emitSnapshot(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null || currentUser.getUserId() == null) {
+        if (currentUser == null || currentUser.getUserId() == null) {
             return;
         }
 
         Integer unreadCount = messageAppService.countUnread(currentUser).intValue();
-        Long latestVersion = latestVersion(currentUser.getCurrentTenantId());
+        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        Long latestVersion = latestVersion(tenantId);
         MessageEventDTO event = messageEventFactory.createSyncStateEvent(
-                currentUser.getCurrentTenantId(),
+                tenantId,
                 currentUser.getUserId(),
                 unreadCount,
                 latestVersion,

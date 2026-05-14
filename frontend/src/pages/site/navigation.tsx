@@ -1,6 +1,7 @@
 import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Table, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteNavigation } from '@/services/site';
 import './site.css';
 
@@ -9,6 +10,7 @@ const NavigationPage = () => {
   const [editing, setEditing] = useState<Partial<SiteNavigation> | null>(null);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm<Partial<SiteNavigation>>();
+  const actionPermission = useActionPermission();
 
   const load = async () => {
     setLoading(true);
@@ -45,9 +47,9 @@ const NavigationPage = () => {
           <h1 className="site-admin-title">导航管理</h1>
           <p className="site-admin-desc">维护官网头部导航、外链和排序。</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>
+        {actionPermission.can('site:navigation:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>
           新增导航
-        </Button>
+        </Button> : null}
       </div>
       <div className="site-admin-card">
         <Table
@@ -66,10 +68,10 @@ const NavigationPage = () => {
               width: 160,
               render: (_, record) => (
                 <Space>
-                  <Button type="link" onClick={() => open(record)}>编辑</Button>
-                  <Popconfirm title="确认删除？" onConfirm={async () => { await siteService.deleteNavigation(record.id); await load(); }}>
+                  {actionPermission.can('site:navigation:update') ? <Button type="link" onClick={() => open(record)}>编辑</Button> : null}
+                  {actionPermission.can('site:navigation:delete') ? <Popconfirm title="确认删除？" onConfirm={async () => { await siteService.deleteNavigation(record.id); await load(); }}>
                     <Button type="link" danger>删除</Button>
-                  </Popconfirm>
+                  </Popconfirm> : null}
                 </Space>
               ),
             },

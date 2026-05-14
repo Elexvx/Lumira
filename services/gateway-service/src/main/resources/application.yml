@@ -74,11 +74,6 @@ spring:
               uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
               predicates:
                 - Path=/api/v1/system/**
-            - id: tenant-service
-              uri: ${GATEWAY_TENANT_SERVICE_URI:http://localhost:8083}
-              predicates:
-                - Path=/api/v1/tenant/**
-
 server:
   port: ${SERVER_PORT:8081}
 

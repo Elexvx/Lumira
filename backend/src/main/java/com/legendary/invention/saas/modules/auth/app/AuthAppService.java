@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.auth.app;
 
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
@@ -28,9 +29,6 @@ import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.WechatAuthorizeUrlVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
-import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
-import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
-import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.dao.DuplicateKeyException;
@@ -58,7 +56,6 @@ public class AuthAppService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final UserDomainService userDomainService;
-    private final TenantDomainService tenantDomainService;
     private final LoginAuditService loginAuditService;
     private final AuthSessionStore authSessionStore;
     private final CaptchaService captchaService;
@@ -75,7 +72,6 @@ public class AuthAppService {
 
     public AuthAppService(
             UserDomainService userDomainService,
-            TenantDomainService tenantDomainService,
             LoginAuditService loginAuditService,
             AuthSessionStore authSessionStore,
             CaptchaService captchaService,
@@ -91,7 +87,6 @@ public class AuthAppService {
             JdbcTemplate jdbcTemplate
     ) {
         this.userDomainService = userDomainService;
-        this.tenantDomainService = tenantDomainService;
         this.loginAuditService = loginAuditService;
         this.authSessionStore = authSessionStore;
         this.captchaService = captchaService;
@@ -145,12 +140,9 @@ public class AuthAppService {
             );
         }
 
-        TenantInfoEntity currentTenant = platformTenant();
-        Long tenantId = currentTenant == null ? null : currentTenant.getId();
+        Long tenantId = PLATFORM_TENANT_ID;
         LoginResponseVO response = new LoginResponseVO();
         response.setUser(toAuthUser(user, tenantId));
-        response.setTenants(List.of());
-        response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
         List<LoginResponseVO.SecondFactorOptionVO> secondFactorOptions = collectSecondFactorOptions(user, tenantId);
         if (!secondFactorOptions.isEmpty()) {
             response.setRequiresSecondFactor(Boolean.TRUE);
@@ -205,8 +197,7 @@ public class AuthAppService {
             );
         }
 
-        TenantInfoEntity currentTenant = platformTenant();
-        Long tenantId = currentTenant == null ? null : currentTenant.getId();
+        Long tenantId = PLATFORM_TENANT_ID;
         LoginCodeChallengeVO challenge = systemVerificationAppService.startLoginCodeChallenge(user, tenantId, request.getLoginType());
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), challenge.getLoginType().toUpperCase(), "PENDING", "LOGIN_CODE_REQUIRED", loginIp, userAgent);
         return challenge;
@@ -221,8 +212,8 @@ public class AuthAppService {
 
         SysUserEntity user = userDomainService.findById(verification.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.getTenantId()).orElse(null);
-        AuthSession session = buildNewSession(user, currentTenant == null ? null : currentTenant.getId(), loginIp, userAgent);
+        Long tenantId = PLATFORM_TENANT_ID;
+        AuthSession session = buildNewSession(user, tenantId, loginIp, userAgent);
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
 
@@ -236,13 +227,11 @@ public class AuthAppService {
         response.setRefreshToken(jwtTokenService.generateRefreshToken(session, refreshTokenId));
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
-        response.setUser(toAuthUser(user, currentTenant == null ? null : currentTenant.getId()));
-        response.setTenants(List.of());
-        response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
+        response.setUser(toAuthUser(user, tenantId));
         response.setRequiresCaptcha(Boolean.FALSE);
         loginAuditService.log(
                 user.getId(),
-                currentTenant == null ? null : currentTenant.getId(),
+                tenantId,
                 user.getUsername(),
                 "LOGIN_CODE",
                 "SUCCESS",
@@ -269,9 +258,8 @@ public class AuthAppService {
             );
         }
 
-        TenantInfoEntity currentTenant = platformTenant();
-        Long tenantId = currentTenant == null ? null : currentTenant.getId();
-        LoginResponseVO response = issueLoginTokens(user, currentTenant, loginIp, userAgent);
+        Long tenantId = PLATFORM_TENANT_ID;
+        LoginResponseVO response = issueLoginTokens(user, tenantId, loginIp, userAgent);
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return response;
     }
@@ -304,8 +292,8 @@ public class AuthAppService {
         }
         SysUserEntity user = userDomainService.findById(verification.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        TenantInfoEntity currentTenant = tenantDomainService.findTenantById(verification.getTenantId()).orElse(null);
-        AuthSession session = buildNewSession(user, currentTenant == null ? null : currentTenant.getId(), loginIp, userAgent);
+        Long tenantId = PLATFORM_TENANT_ID;
+        AuthSession session = buildNewSession(user, tenantId, loginIp, userAgent);
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
 
@@ -319,11 +307,9 @@ public class AuthAppService {
         response.setRefreshToken(jwtTokenService.generateRefreshToken(session, refreshTokenId));
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
-        response.setUser(toAuthUser(user, currentTenant == null ? null : currentTenant.getId()));
-        response.setTenants(List.of());
-        response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
+        response.setUser(toAuthUser(user, tenantId));
         response.setRequiresCaptcha(Boolean.FALSE);
-        loginAuditService.log(user.getId(), currentTenant == null ? null : currentTenant.getId(), user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
+        loginAuditService.log(user.getId(), tenantId, user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
         return response;
     }
 
@@ -334,7 +320,7 @@ public class AuthAppService {
         authSessionStore.findBySessionId(currentUser.getSessionId()).ifPresent(session -> authSessionStore.remove(session, true));
         loginAuditService.log(
                 currentUser.getUserId(),
-                currentUser.getCurrentTenantId(),
+                PlatformConstants.PLATFORM_TENANT_ID,
                 currentUser.getUsername(),
                 "LOGOUT",
                 "SUCCESS",
@@ -659,8 +645,7 @@ public class AuthAppService {
         return StringUtils.hasText(account) && EMAIL_PATTERN.matcher(account.trim()).matches();
     }
 
-    private LoginResponseVO issueLoginTokens(SysUserEntity user, TenantInfoEntity currentTenant, String loginIp, String userAgent) {
-        Long tenantId = currentTenant == null ? null : currentTenant.getId();
+    private LoginResponseVO issueLoginTokens(SysUserEntity user, Long tenantId, String loginIp, String userAgent) {
         AuthSession session = buildNewSession(user, tenantId, loginIp, userAgent);
         String refreshTokenId = UUID.randomUUID().toString();
         session.setRefreshTokenId(refreshTokenId);
@@ -676,8 +661,6 @@ public class AuthAppService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
         response.setUser(toAuthUser(user, tenantId));
-        response.setTenants(List.of());
-        response.setCurrentTenant(tenantDomainService.toTenantSummary(currentTenant));
         response.setRequiresCaptcha(Boolean.FALSE);
         return response;
     }
@@ -713,7 +696,7 @@ public class AuthAppService {
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
         response.setSessionVersion(session.getSessionVersion());
-        response.setPermissionsVersion(resolvePermissionSnapshot(session.getCurrentTenantId(), session.getUserId(), session.getSimulatedRoleId()).getVersion());
+        response.setPermissionsVersion(resolvePermissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, session.getUserId(), session.getSimulatedRoleId()).getVersion());
         return response;
     }
 
@@ -726,9 +709,6 @@ public class AuthAppService {
                 ));
 
         Long tenantId = currentTenantId(currentUser);
-        TenantSummaryVO currentTenant = tenantDomainService.findTenantById(tenantId)
-                .map(tenantDomainService::toTenantSummary)
-                .orElse(null);
         PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(tenantId, currentUser.getUserId(), currentUser.getSimulatedRoleId());
 
         CurrentUserVO response = new CurrentUserVO();
@@ -745,7 +725,6 @@ public class AuthAppService {
         response.setAvailableTime(user.getAvailableTime());
         response.setIdCardNumber(user.getIdCardNumber());
         response.setLocale(resolveLocale(tenantId, user.getId()));
-        response.setCurrentTenant(currentTenant);
         response.setSimulatedRoleId(currentUser.getSimulatedRoleId());
         response.setAvailableRoles(listAvailableRoles(currentUser.getUserId(), tenantId));
         response.setSessionId(currentUser.getSessionId());
@@ -822,10 +801,6 @@ public class AuthAppService {
             return;
         }
         captchaService.validateCaptcha(request.getCaptchaId(), request.getCaptchaCode(), request.getCaptchaProof());
-    }
-
-    private TenantInfoEntity platformTenant() {
-        return tenantDomainService.findTenantById(PLATFORM_TENANT_ID).orElse(null);
     }
 
     private AuthSession buildNewSession(SysUserEntity user, Long currentTenantId, String loginIp, String userAgent) {
@@ -953,9 +928,6 @@ public class AuthAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            return PLATFORM_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return PLATFORM_TENANT_ID;
     }
 }

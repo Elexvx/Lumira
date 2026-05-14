@@ -87,12 +87,6 @@ export const performLogout = async (options: { reason?: LogoutReason; hardReload
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {
   beginBootstrapFlow();
   try {
-    const previousTenantId = getStoredCurrentUser()?.currentTenant?.tenantId ?? null;
-    const nextTenantId = loginResponse.currentTenant?.tenantId ?? null;
-    if (previousTenantId != null && previousTenantId !== nextTenantId) {
-      clearClientRuntimeState({ tenantId: previousTenantId });
-    }
-
     tokenManager.setTokens({
       accessToken: loginResponse.accessToken,
       refreshToken: loginResponse.refreshToken,
@@ -121,7 +115,6 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
       return null;
     }
 
-    const previousTenantId = getStoredCurrentUser()?.currentTenant?.tenantId ?? null;
     const currentUser = await loadCurrentUserOrFallback();
     if (!currentUser) {
       const refreshed = await tryRefreshToken();
@@ -136,21 +129,11 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
         return null;
       }
 
-      const nextTenantId = refreshedCurrentUser.currentTenant?.tenantId ?? null;
-      if (previousTenantId != null && previousTenantId !== nextTenantId) {
-        clearClientRuntimeState({ tenantId: previousTenantId });
-      }
-
       applyLocalePreference(refreshedCurrentUser.locale, false);
       const persistedCurrentUser = persistCurrentUser(refreshedCurrentUser);
       persistSessionActivity(Date.now());
       const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
       return { currentUser: persistedCurrentUser, securitySettings };
-    }
-
-    const nextTenantId = currentUser.currentTenant?.tenantId ?? null;
-    if (previousTenantId != null && previousTenantId !== nextTenantId) {
-      clearClientRuntimeState({ tenantId: previousTenantId });
     }
 
     applyLocalePreference(currentUser.locale, false);
@@ -265,7 +248,6 @@ const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => 
     availableTime: loginResponse.user.availableTime ?? null,
     idCardNumber: loginResponse.user.idCardNumber ?? null,
     locale: loginResponse.user.locale ?? null,
-    currentTenant: loginResponse.currentTenant || null,
     simulatedRoleId: null,
     availableRoles: [],
     sessionId,

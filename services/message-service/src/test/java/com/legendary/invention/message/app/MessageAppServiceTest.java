@@ -8,6 +8,7 @@ import com.legendary.invention.message.vo.MessageVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class MessageAppServiceTest {
@@ -69,6 +71,24 @@ class MessageAppServiceTest {
         Long unreadCount = messageAppService.countUnread(currentUser());
 
         assertThat(unreadCount).isZero();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void listArchive_shouldScopeRegularUsersToOwnedOrVisibleMessages() {
+        doReturn(0L).when(jdbcTemplate).queryForObject(anyString(), eq(Long.class), any(Object[].class));
+        doReturn(List.of())
+                .when(jdbcTemplate)
+                .query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class));
+
+        messageAppService.listArchive(currentUser(), new MessageDTO.MessageArchiveQueryRequest());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), eq(Long.class), any(Object[].class));
+        assertThat(sqlCaptor.getValue())
+                .contains("n.created_by = ?")
+                .contains("n.target_user_id = ?")
+                .contains("sys_user_role ur");
     }
 
     private CurrentUser currentUser() {

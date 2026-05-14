@@ -2,14 +2,12 @@ package com.legendary.invention.saas.modules.system.profile.vo;
 
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.system.audit.vo.AuditLogVO;
-import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
 
 import java.util.List;
 
 public class ProfileSummaryVO {
 
     private CurrentUserVO currentUser;
-    private TenantSummaryVO currentTenant;
     private List<String> roleNames;
     private Integer permissionCount;
     private List<AuditLogVO> recentLoginLogs;
@@ -22,8 +20,6 @@ public class ProfileSummaryVO {
 
     public CurrentUserVO getCurrentUser() { return currentUser; }
     public void setCurrentUser(CurrentUserVO currentUser) { this.currentUser = currentUser; }
-    public TenantSummaryVO getCurrentTenant() { return currentTenant; }
-    public void setCurrentTenant(TenantSummaryVO currentTenant) { this.currentTenant = currentTenant; }
     public List<String> getRoleNames() { return roleNames; }
     public void setRoleNames(List<String> roleNames) { this.roleNames = roleNames; }
     public Integer getPermissionCount() { return permissionCount; }

@@ -14,6 +14,7 @@ const buildInitialThemeRuntimeSnapshot = (): ThemeRuntimeSnapshot => ({
 });
 
 let themeRuntimeSnapshot = buildInitialThemeRuntimeSnapshot();
+let themeRuntimeSnapshotSynced = false;
 
 const getDocumentResolvedColorMode = () => {
   if (typeof document === 'undefined') {
@@ -28,18 +29,25 @@ const getDocumentResolvedColorMode = () => {
   return null;
 };
 
-export const syncThemeRuntimeSnapshot = (themePreference: ThemePreference, systemDarkMode: boolean) => {
+export const syncThemeRuntimeSnapshot = (themePreference: ThemePreference, systemDarkMode: boolean): ThemeRuntimeSnapshot => {
   // Layout config is built outside React, so it reads from this runtime bridge.
+  themeRuntimeSnapshotSynced = true;
   themeRuntimeSnapshot = {
     themePreference,
     systemDarkMode,
     resolvedColorMode: resolveThemeColorMode(themePreference, systemDarkMode),
   };
+
+  return themeRuntimeSnapshot;
 };
 
 export const getThemeRuntimeSnapshot = () => themeRuntimeSnapshot;
 
 export const resolveLayoutNavTheme = () => {
+  if (themeRuntimeSnapshotSynced) {
+    return themeRuntimeSnapshot.resolvedColorMode === 'dark' ? 'realDark' : 'light';
+  }
+
   const documentResolvedColorMode = getDocumentResolvedColorMode();
   if (documentResolvedColorMode) {
     return documentResolvedColorMode === 'dark' ? 'realDark' : 'light';

@@ -428,10 +428,7 @@ public class FileManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private String readableSize(Long bytes) {

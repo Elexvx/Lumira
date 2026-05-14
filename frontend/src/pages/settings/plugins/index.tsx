@@ -436,7 +436,7 @@ const PluginsPage = () => {
             {formatMessage({ id: 'page.plugins.confirmUninstall', defaultMessage: 'You are about to uninstall {name}.' }, { name: uninstallTarget?.pluginName || uninstallTarget?.pluginCode || '-' })}
           </Typography.Paragraph>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            {formatMessage({ id: 'page.plugins.uninstallDesc', defaultMessage: 'You can choose whether to delete the plugin-related database data as well. If selected, plugin runtime logs, tenant bindings, version records, and plugin definitions will be removed.' })}
+            {formatMessage({ id: 'page.plugins.uninstallDesc', defaultMessage: 'You can choose whether to delete the plugin-related database data as well. If selected, plugin runtime logs, platform bindings, version records, and plugin definitions will be removed.' })}
           </Typography.Paragraph>
           <Radio.Group
             value={removePluginData}

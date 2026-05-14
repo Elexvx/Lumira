@@ -2,6 +2,8 @@ package com.legendary.invention.saas.modules.plugin.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
+import com.legendary.invention.saas.common.enums.ErrorCode;
+import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
@@ -116,6 +118,7 @@ public class PluginManagementController {
     @RepeatSubmit
     public ApiResponse<Boolean> enable(@Valid @RequestBody PluginDTO.EnableRequest request) {
         require("plugin:management:enable");
+        requireCurrentTenant(request.getTenantId());
         pluginManagementAppService.enable(request, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
@@ -124,6 +127,7 @@ public class PluginManagementController {
     @RepeatSubmit
     public ApiResponse<Boolean> disable(@Valid @RequestBody PluginDTO.DisableRequest request) {
         require("plugin:management:disable");
+        requireCurrentTenant(request.getTenantId());
         pluginManagementAppService.disable(request, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
@@ -147,9 +151,8 @@ public class PluginManagementController {
 
     @GetMapping("/current/available")
     public ApiResponse<List<PluginVO.TenantPluginVO>> currentAvailable() {
-        CurrentUser currentUser = currentUser();
         return ApiResponse.success(
-                pluginManagementAppService.availablePlugins(currentUser.getCurrentTenantId()),
+                pluginManagementAppService.availablePlugins(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID),
                 TraceContext.getRequestId()
         );
     }
@@ -159,7 +162,7 @@ public class PluginManagementController {
         CurrentUser currentUser = currentUser();
         List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                platformMenuService.buildTenantMenuTree(currentUser.getCurrentTenantId(), permissions),
+                platformMenuService.buildTenantMenuTree(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID, permissions),
                 TraceContext.getRequestId()
         );
     }
@@ -172,7 +175,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/manifest")
     public ResponseEntity<Resource> currentManifest(@PathVariable("pluginCode") String pluginCode) {
-        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentUser().getCurrentTenantId()).stream()
+        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID).stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .orElseThrow();
@@ -184,7 +187,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/assets/**")
     public ResponseEntity<Resource> currentAsset(@PathVariable("pluginCode") String pluginCode, HttpServletRequest request) {
-        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentUser().getCurrentTenantId()).stream()
+        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID).stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .orElseThrow();
@@ -202,5 +205,11 @@ public class PluginManagementController {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(currentUser(), permissionKey);
+    }
+
+    private void requireCurrentTenant(Long tenantId) {
+        if (tenantId == null || !tenantId.equals(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "只能管理当前平台的插件");
+        }
     }
 }

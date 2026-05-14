@@ -72,6 +72,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在创建会话并保存用户消息"));
         Long conversationId = aiConversationService.ensureConversation(
                 tenantId,
+                currentUser.getUserId(),
                 employee.getId(),
                 request.getConversationId(),
                 buildConversationTitle(request.getMessage())
@@ -227,9 +228,6 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            throw new com.legendary.invention.saas.common.exception.BizException(com.legendary.invention.saas.common.enums.ErrorCode.TENANT_ERROR, "租户上下文无效");
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 }

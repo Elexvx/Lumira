@@ -1,8 +1,5 @@
 package com.legendary.invention.saas.modules.auth.vo;
 
-import com.legendary.invention.saas.modules.tenant.vo.MyTenantVO;
-import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
-
 import java.util.List;
 
 public class LoginResponseVO {
@@ -12,8 +9,6 @@ public class LoginResponseVO {
     private String tokenType;
     private Long expiresIn;
     private AuthUserVO user;
-    private List<MyTenantVO> tenants;
-    private TenantSummaryVO currentTenant;
     private Boolean requiresSecondFactor;
     private List<SecondFactorOptionVO> secondFactorOptions;
     private Boolean requiresCaptcha;
@@ -56,22 +51,6 @@ public class LoginResponseVO {
 
     public void setUser(AuthUserVO user) {
         this.user = user;
-    }
-
-    public List<MyTenantVO> getTenants() {
-        return tenants;
-    }
-
-    public void setTenants(List<MyTenantVO> tenants) {
-        this.tenants = tenants;
-    }
-
-    public TenantSummaryVO getCurrentTenant() {
-        return currentTenant;
-    }
-
-    public void setCurrentTenant(TenantSummaryVO currentTenant) {
-        this.currentTenant = currentTenant;
     }
 
     public Boolean getRequiresSecondFactor() {

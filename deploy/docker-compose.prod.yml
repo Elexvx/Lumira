@@ -134,13 +134,11 @@ services:
       GATEWAY_PLUGIN_SERVICE_URI: http://plugin-service:8086
       GATEWAY_LOCALIZATION_SERVICE_URI: http://localization-service:8088
       GATEWAY_SYSTEM_SERVICE_URI: http://system-service:8080
-      GATEWAY_TENANT_SERVICE_URI: http://tenant-service:8083
     ports:
       - "127.0.0.1:8081:8081"
     depends_on:
       - system-service
       - auth-service
-      - tenant-service
       - file-service
       - message-service
       - plugin-service
@@ -161,27 +159,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8082
       SYSTEM_SERVICE_BASE_URL: http://system-service:8080
-      TENANT_SERVICE_BASE_URL: http://tenant-service:8083
     depends_on:
       - system-service
-      - tenant-service
-      - redis
-    networks:
-      - default
-      - 1panel-network
-
-  tenant-service:
-    build:
-      <<: *backend-build
-      args:
-        SERVICE_DIR: services/tenant-service
-    image: legendary/tenant-service:0.1.0
-    container_name: legendary-tenant-service
-    restart: unless-stopped
-    environment:
-      <<: *common-env
-      SERVER_PORT: 8083
-    depends_on:
       - redis
     networks:
       - default

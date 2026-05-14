@@ -61,7 +61,7 @@ backend/
 backend/src/main/java/com/legendary/invention/saas/
 ├─ SaasApplication.java      后端启动类
 ├─ common/                   通用响应、异常、分页、常量
-├─ infrastructure/           安全、租户、Redis、Trace、任务、上传等基础设施
+├─ infrastructure/           安全、Redis、Trace、任务、上传等基础设施
 └─ modules/                  业务模块
 ```
 
@@ -88,7 +88,6 @@ backend/src/main/java/com/legendary/invention/saas/
 - `repeatsubmit/`：防重复提交切面。
 - `security/`：认证过滤器、权限上下文、安全配置、JWT 逻辑。
 - `sentinel/`：限流与熔断相关配置。
-- `tenant/`：租户上下文、租户过滤器。
 - `upload/`：上传相关能力。
 
 #### `modules/`
@@ -172,17 +171,6 @@ backend/src/main/java/com/legendary/invention/saas/
 - `verification/`：系统验证、TOTP、Base32 编解码等。
 - `vo/`：系统页面返回对象。
 - 作用：后台系统管理主模块。
-
-##### `tenant/`
-
-- `app/`：租户相关应用逻辑。
-- `controller/`：租户相关接口。
-- `domain/`：租户领域规则。
-- `dto/`：租户请求对象。
-- `entity/`：租户实体。
-- `mapper/`：租户数据库映射。
-- `vo/`：租户展示对象。
-- 作用：租户生命周期、租户查询、租户切换等。
 
 ##### `user/`
 
@@ -298,7 +286,6 @@ frontend/src/
 - `PermissionButton/`：权限按钮
 - `QueryPanel/`：查询区
 - `ResponsiveTable/`：响应式表格
-- `TenantSelector/`：租户切换器
 - `captcha/`：验证码组件
 - `common/`：通用小组件
 - `message-center/`：消息中心相关组件
@@ -363,7 +350,6 @@ frontend/src/
 - `profile/`：个人中心
 - `settings/`：系统设置中心
 - `system/`：系统管理页面
-- `tenant/`：租户相关页面
 - `user/`：登录页
 - `user-center/`：用户中心
 
@@ -394,11 +380,6 @@ frontend/src/
 - `users/`：用户管理
 - `online-users.tsx`：在线用户管理
 - `smtp.tsx`：SMTP 配置
-
-##### `pages/tenant/`
-
-- `overview/`：租户概览
-- `overview/components/`：租户概览卡片、表格、操作组件等
 
 ##### `pages/user/`
 
@@ -436,12 +417,7 @@ frontend/src/
 - `profile/`：个人中心接口
 - `secondFactor/`：二次验证接口
 - `system/`：系统管理接口
-- `tenant/`：租户接口
 - `user/`：用户接口
-
-#### `tenant/`
-
-- 租户上下文、租户选择、租户缓存清理等前端逻辑。
 
 #### `theme/`
 
@@ -467,7 +443,6 @@ frontend/src/
 services/
 ├─ gateway-service/          统一网关
 ├─ auth-service/             认证服务
-├─ tenant-service/           租户服务
 ├─ file-service/             文件服务
 ├─ message-service/          消息服务
 ├─ plugin-service/           插件服务
@@ -488,12 +463,7 @@ services/
 - `src/main/resources/`：认证服务配置。
 - 负责登录、会话、刷新、认证内部能力。
 
-### 4.3 tenant-service
-
-- `src/main/java/com/legendary/invention/tenant/`：租户服务启动类、控制器、领域服务。
-- 负责租户查询、租户切换、租户可见性等。
-
-### 4.4 file-service
+### 4.3 file-service
 
 - `src/main/java/com/legendary/invention/file/`：文件服务启动类、文件控制器、安全过滤器。
 - 负责文件上传、下载、公开资源和文件鉴权。
@@ -532,7 +502,6 @@ libs/
 ├─ common-core/
 ├─ common-web/
 ├─ common-security/
-├─ common-tenant/
 └─ legendary-api/
 ```
 
@@ -552,18 +521,13 @@ libs/
 
 - `src/main/java/com/legendary/invention/common/security/`：当前用户对象、内部令牌过滤器、权限守卫、安全上下文。
 
-### 5.4 common-tenant
-
-- `src/main/java/com/legendary/invention/common/tenant/`：租户上下文对象。
-
-### 5.5 legendary-api
+### 5.4 legendary-api
 
 - `src/main/java/com/legendary/invention/api/auth/`：认证 DTO。
 - `src/main/java/com/legendary/invention/api/client/`：内部 Feign 接口。
 - `src/main/java/com/legendary/invention/api/file/`：文件 DTO。
 - `src/main/java/com/legendary/invention/api/message/`：消息 DTO。
 - `src/main/java/com/legendary/invention/api/system/`：系统侧 DTO、菜单树、权限快照、验证能力。
-- `src/main/java/com/legendary/invention/api/tenant/`：租户 DTO。
 - 作用：服务之间共享的契约和数据对象。
 
 ## 6. docs/

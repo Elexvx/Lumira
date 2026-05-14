@@ -8,7 +8,6 @@ public class OnlineSessionVO {
     private String username;
     private String nickname;
     private String realName;
-    private Long currentTenantId;
     private LocalDateTime loginTime;
     private LocalDateTime lastActivityAt;
     private LocalDateTime expireTime;
@@ -35,10 +34,6 @@ public class OnlineSessionVO {
     public String getRealName() { return realName; }
 
     public void setRealName(String realName) { this.realName = realName; }
-
-    public Long getCurrentTenantId() { return currentTenantId; }
-
-    public void setCurrentTenantId(Long currentTenantId) { this.currentTenantId = currentTenantId; }
 
     public LocalDateTime getLoginTime() { return loginTime; }
 

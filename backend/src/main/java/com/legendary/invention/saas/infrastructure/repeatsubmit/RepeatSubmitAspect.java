@@ -115,7 +115,7 @@ public class RepeatSubmitAspect {
     private String resolveScope(HttpServletRequest request) {
         CurrentUser currentUser = securityContextFacade.getCurrentUserOrNull();
         if (currentUser != null && currentUser.isAuthenticated() && currentUser.getUserId() != null) {
-            String tenantPart = currentUser.getCurrentTenantId() == null ? "" : String.valueOf(currentUser.getCurrentTenantId());
+            String tenantPart = String.valueOf(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
             return String.join(":", "user", String.valueOf(currentUser.getUserId()), tenantPart);
         }
 

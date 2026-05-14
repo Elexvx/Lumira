@@ -1,7 +1,6 @@
 package com.legendary.invention.message.service;
 
 import com.legendary.invention.api.auth.CurrentUserDTO;
-import com.legendary.invention.api.tenant.TenantSummaryDTO;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.message.infrastructure.security.MessageSessionAuthenticationService;
 import org.junit.jupiter.api.Test;
@@ -14,7 +13,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.socket.WebSocketHandler;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +67,6 @@ class MessageSessionHandshakeInterceptorTest {
     }
 
     private CurrentUserDTO snapshot() {
-        TenantSummaryDTO currentTenant = new TenantSummaryDTO(1001L, "platform", "平台租户", "平台", "ENABLED", LocalDateTime.now(), LocalDateTime.now());
         return new CurrentUserDTO(
                 1001L,
                 "alice",
@@ -84,7 +81,6 @@ class MessageSessionHandshakeInterceptorTest {
                 null,
                 null,
                 "zh-CN",
-                currentTenant,
                 "session-1",
                 "v1",
                 3,

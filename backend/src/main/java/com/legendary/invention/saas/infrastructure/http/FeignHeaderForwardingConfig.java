@@ -32,7 +32,6 @@ public class FeignHeaderForwardingConfig {
                 return;
             }
             copyHeader(request, template, HeaderConstants.REQUEST_ID);
-            copyHeader(request, template, HeaderConstants.TENANT_ID);
             copyHeader(request, template, HeaderConstants.TRACE_ID);
             if (internalRequest) {
                 template.removeHeader(HeaderConstants.AUTHORIZATION);

@@ -81,7 +81,6 @@ public class SentinelGatewayConfig {
         rules.add(routeRule("plugin-service", 120));
         rules.add(routeRule("localization-service", 120));
         rules.add(routeRule("system-service", 500));
-        rules.add(routeRule("tenant-service", 120));
         return rules;
     }
 

@@ -504,7 +504,6 @@ async function main() {
     { name: 'system-service', port: 8080, command: 'mvn', args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
     { name: 'gateway-service', port: 8081, command: 'mvn', args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
     { name: 'auth-service', port: 8082, command: 'mvn', args: ['-f', 'services/auth-service/pom.xml', 'spring-boot:run'] },
-    { name: 'tenant-service', port: 8083, command: 'mvn', args: ['-f', 'services/tenant-service/pom.xml', 'spring-boot:run'] },
     { name: 'file-service', port: 8084, command: 'mvn', args: ['-f', 'services/file-service/pom.xml', 'spring-boot:run'] },
     { name: 'message-service', port: 8085, command: 'mvn', args: ['-f', 'services/message-service/pom.xml', 'spring-boot:run'] },
     { name: 'plugin-service', port: 8086, command: 'mvn', args: ['-f', 'services/plugin-service/pom.xml', 'spring-boot:run'] },

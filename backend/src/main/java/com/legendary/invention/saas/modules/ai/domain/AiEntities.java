@@ -574,6 +574,7 @@ public final class AiEntities {
         private Long id;
         private Long tenantId;
         private Long employeeId;
+        private Long ownerUserId;
         private String conversationCode;
         private String title;
         private String status;
@@ -604,6 +605,14 @@ public final class AiEntities {
 
         public void setEmployeeId(Long employeeId) {
             this.employeeId = employeeId;
+        }
+
+        public Long getOwnerUserId() {
+            return ownerUserId;
+        }
+
+        public void setOwnerUserId(Long ownerUserId) {
+            this.ownerUserId = ownerUserId;
         }
 
         public String getConversationCode() {

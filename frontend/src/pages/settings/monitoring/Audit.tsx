@@ -68,13 +68,6 @@ const AuditOverviewPage = () => {
     if (logType === 'login') {
       return [
           { title: '用户名', dataIndex: 'username', importance: 1 },
-          {
-            title: '租户 ID',
-            dataIndex: 'tenantId',
-            importance: 2,
-            responsiveLevel: ['tablet', 'desktop'],
-            renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
-          },
           timeRangeColumn,
           {
             title: '结果',
@@ -131,13 +124,6 @@ const AuditOverviewPage = () => {
 
     if (logType === 'ai') {
       return [
-        {
-          title: '租户 ID',
-          dataIndex: 'tenantId',
-          importance: 2,
-          responsiveLevel: ['tablet', 'desktop'],
-          renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
-        },
         {
           title: '数字员工 ID',
           dataIndex: 'employeeId',
@@ -219,13 +205,6 @@ const AuditOverviewPage = () => {
 
     return [
           { title: '用户名', dataIndex: 'username', importance: 1 },
-          {
-            title: '租户 ID',
-            dataIndex: 'tenantId',
-            importance: 2,
-            responsiveLevel: ['tablet', 'desktop'],
-            renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
-          },
           timeRangeColumn,
           { title: '模块', dataIndex: 'moduleName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
           { title: '操作', dataIndex: 'actionName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
@@ -322,7 +301,6 @@ const AuditOverviewPage = () => {
               {...detailProps}
               columns={[
                 { title: '用户名', dataIndex: 'username', renderText: (value) => value || '-' },
-                { title: '租户 ID', dataIndex: 'tenantId', renderText: (value) => value ?? '-' },
                 { title: '会话 ID', dataIndex: 'conversationId', renderText: (value) => value ?? '-' },
                 { title: '数字员工 ID', dataIndex: 'employeeId', renderText: (value) => value ?? '-' },
                 { title: '类型', dataIndex: 'logType', renderText: (value) => value || selectedRecord.operationType || '-' },

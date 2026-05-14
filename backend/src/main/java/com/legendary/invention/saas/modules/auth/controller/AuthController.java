@@ -236,9 +236,6 @@ public class AuthController {
     }
 
     private Long requireTenantId(com.legendary.invention.saas.infrastructure.security.CurrentUser currentUser) {
-        if (currentUser.getCurrentTenantId() == null) {
-            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 }

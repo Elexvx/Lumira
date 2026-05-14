@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class EvaluationAppService {
@@ -107,6 +108,7 @@ public class EvaluationAppService {
             where += " and object_type = ?";
             params.add(objectType);
         }
+        where += evaluationVisibilityWhere(currentUser, params);
         return pageQuery(
                 "select id, template_id as templateId, object_type as objectType, object_id as objectId, object_title as objectTitle, status, creator_id as creatorId, reviewer_user_id as reviewerUserId, final_score as finalScore, final_grade as finalGrade, archive_comment as archiveComment, create_time as createTime from evaluation_instance where " + where + " order by id desc",
                 "select count(1) from evaluation_instance where " + where,
@@ -118,7 +120,7 @@ public class EvaluationAppService {
     }
 
     public EvaluationVO.InstanceVO getInstance(CurrentUser currentUser, Long id) {
-        EvaluationVO.InstanceVO instance = requireInstance(tenantId(currentUser), id);
+        EvaluationVO.InstanceVO instance = requireVisibleInstance(currentUser, id);
         instance.setScoreTasks(listScoreTasks(tenantId(currentUser), id));
         return instance;
     }
@@ -153,7 +155,7 @@ public class EvaluationAppService {
         jdbcTemplate.update("delete from evaluation_score_detail where tenant_id = ? and score_task_id = ?", tenantId, taskId);
         BigDecimal total = BigDecimal.ZERO;
         for (EvaluationDTO.ScoreDetailRequest detail : request.getDetails()) {
-            EvaluationVO.DimensionVO dimension = requireDimension(tenantId, detail.getDimensionId());
+            EvaluationVO.DimensionVO dimension = requireDimensionForInstance(tenantId, task.getInstanceId(), detail.getDimensionId());
             total = total.add(detail.getScore().multiply(dimension.getWeight()).divide(BigDecimal.valueOf(100)));
             jdbcTemplate.update(
                     "insert into evaluation_score_detail (tenant_id, score_task_id, dimension_id, score, comment) values (?, ?, ?, ?, ?)",
@@ -180,8 +182,8 @@ public class EvaluationAppService {
     @Transactional
     public EvaluationVO.InstanceVO review(CurrentUser currentUser, Long instanceId, EvaluationDTO.ReviewRequest request) {
         Long tenantId = tenantId(currentUser);
-        EvaluationVO.InstanceVO instance = requireInstance(tenantId, instanceId);
-        if (instance.getReviewerUserId() != null && !instance.getReviewerUserId().equals(currentUser.getUserId())) {
+        EvaluationVO.InstanceVO instance = requireVisibleInstance(currentUser, instanceId);
+        if (!canReviewInstance(currentUser, instance)) {
             throw new BizException(ErrorCode.FORBIDDEN, "当前账号不是该评审复核人");
         }
         jdbcTemplate.update(
@@ -199,7 +201,7 @@ public class EvaluationAppService {
     @Transactional
     public EvaluationVO.InstanceVO archive(CurrentUser currentUser, Long instanceId, EvaluationDTO.ArchiveRequest request) {
         Long tenantId = tenantId(currentUser);
-        EvaluationVO.InstanceVO instance = requireInstance(tenantId, instanceId);
+        EvaluationVO.InstanceVO instance = requireVisibleInstance(currentUser, instanceId);
         if (instance.getFinalScore() == null || !StringUtils.hasText(instance.getFinalGrade())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "请先完成复核再归档");
         }
@@ -261,6 +263,58 @@ public class EvaluationAppService {
         }
     }
 
+    private EvaluationVO.InstanceVO requireVisibleInstance(CurrentUser currentUser, Long id) {
+        Long tenantId = tenantId(currentUser);
+        List<Object> params = new ArrayList<>(List.of(tenantId, id));
+        String where = "tenant_id = ? and id = ?" + evaluationVisibilityWhere(currentUser, params);
+        try {
+            return jdbcTemplate.queryForObject(
+                    "select id, template_id as templateId, object_type as objectType, object_id as objectId, object_title as objectTitle, status, creator_id as creatorId, reviewer_user_id as reviewerUserId, final_score as finalScore, final_grade as finalGrade, archive_comment as archiveComment, create_time as createTime from evaluation_instance where " + where,
+                    new BeanPropertyRowMapper<>(EvaluationVO.InstanceVO.class),
+                    params.toArray()
+            );
+        } catch (EmptyResultDataAccessException ex) {
+            throw new BizException(ErrorCode.NOT_FOUND, "评审实例不存在或无权访问");
+        }
+    }
+
+    private String evaluationVisibilityWhere(CurrentUser currentUser, List<Object> params) {
+        if (hasAnyPermission(currentUser.getPermissions(), Set.of("evaluation:template:manage", "evaluation:archive", "*"))) {
+            return "";
+        }
+        params.add(currentUser.getUserId());
+        params.add(currentUser.getUserId());
+        params.add(currentUser.getUserId());
+        return """
+                 and (
+                   creator_id = ?
+                   or reviewer_user_id = ?
+                   or exists (
+                     select 1
+                     from evaluation_score_task st
+                     where st.tenant_id = evaluation_instance.tenant_id
+                       and st.instance_id = evaluation_instance.id
+                       and st.assignee_user_id = ?
+                   )
+                 )
+                """;
+    }
+
+    private boolean hasAnyPermission(Set<String> permissions, Set<String> expected) {
+        if (permissions == null || permissions.isEmpty()) {
+            return false;
+        }
+        return expected.stream().anyMatch(permissions::contains);
+    }
+
+    private boolean canReviewInstance(CurrentUser currentUser, EvaluationVO.InstanceVO instance) {
+        if (instance.getReviewerUserId() != null) {
+            return instance.getReviewerUserId().equals(currentUser.getUserId())
+                    || hasAnyPermission(currentUser.getPermissions(), Set.of("evaluation:archive", "evaluation:template:manage", "*"));
+        }
+        return hasAnyPermission(currentUser.getPermissions(), Set.of("evaluation:archive", "evaluation:template:manage", "*"));
+    }
+
     private EvaluationVO.ScoreTaskVO requireScoreTask(Long tenantId, Long id) {
         try {
             return jdbcTemplate.queryForObject("select id, instance_id as instanceId, assignee_user_id as assigneeUserId, status, total_score as totalScore, comment, submitted_at as submittedAt, create_time as createTime from evaluation_score_task where tenant_id = ? and id = ?", new BeanPropertyRowMapper<>(EvaluationVO.ScoreTaskVO.class), tenantId, id);
@@ -269,9 +323,24 @@ public class EvaluationAppService {
         }
     }
 
-    private EvaluationVO.DimensionVO requireDimension(Long tenantId, Long id) {
+    private EvaluationVO.DimensionVO requireDimensionForInstance(Long tenantId, Long instanceId, Long dimensionId) {
         try {
-            return jdbcTemplate.queryForObject("select id, dimension_name as dimensionName, weight, max_score as maxScore, sort_order as sortOrder from evaluation_dimension where tenant_id = ? and id = ?", new BeanPropertyRowMapper<>(EvaluationVO.DimensionVO.class), tenantId, id);
+            return jdbcTemplate.queryForObject(
+                    """
+                            select d.id, d.dimension_name as dimensionName, d.weight, d.max_score as maxScore, d.sort_order as sortOrder
+                            from evaluation_dimension d
+                            join evaluation_instance i
+                              on i.tenant_id = d.tenant_id
+                             and i.template_id = d.template_id
+                            where d.tenant_id = ?
+                              and i.id = ?
+                              and d.id = ?
+                            """,
+                    new BeanPropertyRowMapper<>(EvaluationVO.DimensionVO.class),
+                    tenantId,
+                    instanceId,
+                    dimensionId
+            );
         } catch (EmptyResultDataAccessException ex) {
             throw new BizException(ErrorCode.NOT_FOUND, "评分维度不存在");
         }
@@ -303,7 +372,7 @@ public class EvaluationAppService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return currentUser.getCurrentTenantId() == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private String clean(String value) {

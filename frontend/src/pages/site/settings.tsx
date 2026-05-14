@@ -1,12 +1,15 @@
 import { Button, Form, Input, Select, message } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteSettings } from '@/services/site';
 import './site.css';
 
 const SiteSettingsPage = () => {
   const [form] = Form.useForm<SiteSettings>();
   const [loading, setLoading] = useState(false);
+  const actionPermission = useActionPermission();
+  const canUpdate = actionPermission.can('site:settings:update');
 
   const load = async () => {
     setLoading(true);
@@ -39,12 +42,12 @@ const SiteSettingsPage = () => {
           <h1 className="site-admin-title">站点设置</h1>
           <p className="site-admin-desc">管理官网基础信息、域名、品牌素材和 SEO 默认配置。</p>
         </div>
-        <Button type="primary" icon={<SaveOutlined />} loading={loading} onClick={save}>
+        {canUpdate ? <Button type="primary" icon={<SaveOutlined />} loading={loading} onClick={save}>
           保存
-        </Button>
+        </Button> : null}
       </div>
       <div className="site-admin-card">
-        <Form form={form} layout="vertical" disabled={loading} initialValues={{ code: 'main', name: '官网', status: 'ENABLED' }}>
+        <Form form={form} layout="vertical" disabled={loading || !canUpdate} initialValues={{ code: 'main', name: '官网', status: 'ENABLED' }}>
           <Form.Item name="code" label="站点编码" rules={[{ required: true }]}>
             <Input />
           </Form.Item>

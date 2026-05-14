@@ -1,4 +1,4 @@
-import type { CurrentUser, TenantSummary } from '@/types/api';
+import type { CurrentUser } from '@/types/api';
 
 export interface PluginManifest {
   pluginCode: string;
@@ -15,7 +15,6 @@ export interface PluginContext {
   version: string;
   routePath: string;
   currentUser?: CurrentUser;
-  currentTenant?: TenantSummary | null;
   requestId: string;
 }
 

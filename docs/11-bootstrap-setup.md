@@ -9,7 +9,7 @@
 - `tenant/`：租户上下文管理与租户切换。
 - `responsive/`：断点与响应式策略。
 - `cache/`：本地缓存封装与租户维度 key 组合。
-- `hooks/`：`useResponsive`、`usePermission`、`useTenantContext`。
+- `hooks/`：`useResponsive`、`usePermission`。
 - `constants/enums/types`：常量、错误码、接口模型。
 
 ## 后端目录说明（backend/src/main/java/com/legendary/invention/saas）
@@ -25,7 +25,7 @@
 3. 前端三类布局与基础路由。
 4. 后端统一响应结构、错误码、全局异常处理。
 5. Spring Security、JWT 过滤器、当前用户上下文骨架。
-6. TenantContext + TenantFilter 及 trace/requestId 透传。
+6. 平台上下文及 trace/requestId 透传。
 7. Redis 配置与缓存封装模板。
 8. Flyway 初始化脚本，落地第一阶段核心底座表。
 9. file/task/audit 模块骨架与占位接口。

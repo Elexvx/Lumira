@@ -17,14 +17,39 @@ public final class SystemPermissionTreeAssembler {
     private static final String NODE_TYPE_CATALOG = "CATALOG";
     private static final String NODE_TYPE_PAGE = "PAGE";
     private static final String NODE_TYPE_ALIAS = "ALIAS";
-    private static final Map<String, List<String>> EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION = Map.of(
-            "ai:view", List.of("ai:employee:", "ai:llm:"),
-            "audit:view", List.of("audit:"),
-            "plugin:management:view", List.of("plugin:management:"),
-            "system:file:manage", List.of("system:file:manage:"),
-            "system:monitor:view", List.of("system:monitor:"),
-            "system:notification:view", List.of("system:notification:", "message:message:"),
-            "system:verification:view", List.of("system:verification:")
+    private static final Set<String> NON_PAGE_ACTION_SUFFIXES = Set.of(
+            "create",
+            "update",
+            "delete",
+            "status",
+            "manage",
+            "submit",
+            "approve",
+            "score",
+            "review",
+            "archive",
+            "publish",
+            "offline",
+            "grant-menu",
+            "permissions",
+            "write",
+            "kick",
+            "ban"
+    );
+    private static final Map<String, List<String>> EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION = Map.ofEntries(
+            Map.entry("ai:view", List.of("ai:employee:", "ai:llm:")),
+            Map.entry("audit:view", List.of("audit:")),
+            Map.entry("site:settings", List.of("site:settings:")),
+            Map.entry("site:navigation", List.of("site:navigation:")),
+            Map.entry("site:page", List.of("site:page:")),
+            Map.entry("site:content", List.of("site:content:")),
+            Map.entry("site:form", List.of("site:form:")),
+            Map.entry("site:submission", List.of("site:submission:")),
+            Map.entry("plugin:management:view", List.of("plugin:management:")),
+            Map.entry("system:file:manage", List.of("system:file:manage:")),
+            Map.entry("system:monitor:view", List.of("system:monitor:")),
+            Map.entry("system:notification:view", List.of("system:notification:", "message:message:")),
+            Map.entry("system:verification:view", List.of("system:verification:"))
     );
     private static final Set<String> LEGACY_PERMISSION_TREE_ALIAS_PATHS = Set.of(
             "/audit/overview",
@@ -59,10 +84,6 @@ public final class SystemPermissionTreeAssembler {
         if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
             return null;
         }
-        if (isAdminOnlySettingsPath(menu.getPath())) {
-            return null;
-        }
-
         List<SystemVO.PermissionTreeVO> children = new ArrayList<>();
         if (!CollectionUtils.isEmpty(menu.getChildren())) {
             for (SystemVO.MenuVO child : menu.getChildren()) {
@@ -140,7 +161,7 @@ public final class SystemPermissionTreeAssembler {
             if (!StringUtils.hasText(permissionKey)) {
                 continue;
             }
-            String pagePermissionKey = resolvePagePermissionKey(permissionKey);
+            String pagePermissionKey = resolvePagePermissionKey(permissionKey, permissionMap);
             if (!StringUtils.hasText(pagePermissionKey)) {
                 continue;
             }
@@ -178,20 +199,35 @@ public final class SystemPermissionTreeAssembler {
         return false;
     }
 
-    private String resolvePagePermissionKey(String permissionKey) {
-        if (!StringUtils.hasText(permissionKey) || !permissionKey.endsWith(":view")) {
+    private String resolvePagePermissionKey(String permissionKey, Map<String, SystemVO.PermissionVO> permissionMap) {
+        if (!StringUtils.hasText(permissionKey)) {
             return null;
         }
-        return permissionKey;
+        if (permissionKey.endsWith(":view") || EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION.containsKey(permissionKey)) {
+            return permissionKey;
+        }
+        int lastColon = permissionKey.lastIndexOf(':');
+        if (lastColon <= 0) {
+            return null;
+        }
+        String suffix = permissionKey.substring(lastColon + 1);
+        if (!NON_PAGE_ACTION_SUFFIXES.contains(suffix)) {
+            return permissionKey;
+        }
+        String candidate = permissionKey.substring(0, lastColon);
+        return permissionMap.containsKey(candidate) ? null : permissionKey;
     }
 
     private List<String> resolveActionPrefixes(String pagePermissionKey) {
-        if (!StringUtils.hasText(pagePermissionKey) || !pagePermissionKey.endsWith(":view")) {
+        if (!StringUtils.hasText(pagePermissionKey)) {
             return List.of();
         }
         List<String> explicitPrefixes = EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION.get(pagePermissionKey);
         if (!CollectionUtils.isEmpty(explicitPrefixes)) {
             return explicitPrefixes;
+        }
+        if (!pagePermissionKey.endsWith(":view")) {
+            return List.of(pagePermissionKey + ":");
         }
         return List.of(pagePermissionKey.substring(0, pagePermissionKey.length() - ":view".length()) + ":");
     }

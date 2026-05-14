@@ -18,7 +18,6 @@ api.elexvx.com / HTTPS / CDN / WAF
   -> gateway-service
     -> auth-service
     -> system-service
-    -> tenant-service
     -> file-service
     -> message-service
     -> plugin-service
@@ -37,7 +36,6 @@ api.elexvx.com / HTTPS / CDN / WAF
 - gateway-service：统一后端网关
 - system-service：系统核心服务
 - auth-service：认证服务
-- tenant-service：租户服务
 - file-service：文件服务
 - message-service：消息服务
 - plugin-service：插件服务

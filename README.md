@@ -1,16 +1,16 @@
 # legendary-invention
 
-企业级多租户 SaaS 平台底座仓库。
+企业级 SaaS 平台底座仓库。
 
-这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施。当前阶段已经从模块化单体演进到微服务平台骨架，重点覆盖多租户、认证授权、统一请求链路、网关入口、配置中心、服务治理、定时任务、分布式事务和插件化扩展能力。
+这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施。当前阶段已经从模块化单体演进到微服务平台骨架，重点覆盖认证授权、统一请求链路、网关入口、配置中心、服务治理、定时任务、分布式事务和插件化扩展能力。
 
 ## 仓库概览
 
 - `frontend/`：基于 `React 19.2.5`、`TypeScript`、`Umi Max`、`Ant Design 6.3.7` 和 `Ant Design Pro` 的前端工程。
 - `backend/`：当前作为 `system-service` 的后端工程，承载原有核心业务与底层能力。
 - `services/gateway-service/`：统一入口网关。
-- `services/auth-service/`、`services/tenant-service/`、`services/file-service/`、`services/message-service/`、`services/plugin-service/`、`services/localization-service/`、`services/job-executor/`：服务拆分骨架。审计能力目前保留在 `backend/system-service` 内部模块，不再单独拆成独立服务。
-- `libs/common-core/`、`libs/common-web/`、`libs/common-security/`、`libs/common-tenant/`、`libs/legendary-api/`：公共契约和基础能力模块。
+- `services/auth-service/`、`services/file-service/`、`services/message-service/`、`services/plugin-service/`、`services/localization-service/`、`services/job-executor/`：服务拆分骨架。审计能力目前保留在 `backend/system-service` 内部模块，不再单独拆成独立服务。
+- `libs/common-core/`、`libs/common-web/`、`libs/common-security/`、`libs/legendary-api/`：公共契约和基础能力模块。
 - `docs/`：技术方案、前后端架构、数据库设计、权限模型和初始化说明。
 - `database/`：数据库相关资源。
 - `examples/`：示例文件。
@@ -51,7 +51,7 @@
 - 前后端分离
 - 微服务平台优先
 - 统一网关入口
-- 多租户逻辑隔离
+- 单平台默认数据域
 - 统一响应结构和错误码
 - 统一日志、审计和可观测上下文
 - 插件运行时扩展
@@ -66,7 +66,6 @@ flowchart LR
   F --> G[gateway-service<br/>Spring Cloud Gateway]
   G --> A[auth-service]
   G --> S[system-service]
-  G --> T[tenant-service]
   G --> Fi[file-service]
   G --> M[message-service]
   G --> P[plugin-service]
@@ -83,7 +82,7 @@ flowchart LR
 前端按三层组织：
 
 1. `layouts/` 壳层负责主布局、用户布局、空白布局和顶部交互区。
-2. `services/`、`auth/`、`tenant/`、`cache/`、`responsive/`、`hooks/` 负责通用能力。
+2. `services/`、`auth/`、`cache/`、`responsive/`、`hooks/` 负责通用能力。
 3. `pages/`、`components/` 负责业务页面和可复用组件。
 
 ### 后端分层
@@ -93,14 +92,14 @@ flowchart LR
 1. 接口接入层：控制器、参数校验、返回封装。
 2. 应用服务层：用例编排和流程控制。
 3. 领域规则层：业务规则、状态流转和约束判断。
-4. 基础设施层：数据库、缓存、鉴权、租户、日志、Trace、任务和文件等通用能力。
+4. 基础设施层：数据库、缓存、鉴权、日志、Trace、任务和文件等通用能力。
 
 ### 关键工作链路
 
-- 前端启动时会恢复登录态和租户上下文。
+- 前端启动时会恢复登录态和用户上下文。
 - 路由守卫会拦截未登录访问，并重定向到登录页。
-- 请求层会统一注入 `Authorization`、`X-Tenant-Id`、`X-Request-Id` 等头信息。
-- 后端会通过安全过滤器、租户过滤器和 Trace 过滤器建立上下文。
+- 请求层会统一注入 `Authorization`、`X-Request-Id` 等头信息。
+- 后端会通过安全过滤器和 Trace 过滤器建立上下文。
 - 后端统一返回 `ApiResponse` 结构，前端统一处理错误码、登录失效和提示信息。
 
 ## 工作方式
@@ -110,16 +109,16 @@ flowchart LR
 ### 1. 前端如何工作
 
 - 入口在 `frontend/src/app.ts`。
-- `getInitialState()` 会尝试恢复会话、当前用户、当前租户、菜单树和可用插件。
+- `getInitialState()` 会尝试恢复会话、当前用户、菜单树和可用插件。
 - `onRouteChange()` 负责路由守卫和登录跳转。
 - `frontend/src/services/common/request.ts` 负责统一请求封装。
-- 登录态、租户上下文和错误提示都由公共层处理，业务页面尽量只关注页面本身。
+- 登录态、用户上下文和错误提示都由公共层处理，业务页面尽量只关注页面本身。
 
 ### 2. 后端如何工作
 
 - 外部请求先进入 `services/gateway-service`，再进入具体业务服务。
 - `backend/` 目前承担 `system-service` 的职责，是当前系统管理核心业务承载点。
-- 认证、租户、权限、审计、配置、文件、任务等能力逐步拆成独立服务。
+- 认证、权限、审计、配置、文件、任务等能力逐步拆成独立服务。
 - `Nacos` 负责注册与配置，`Sentinel` 负责治理，`XXL-Job` 负责调度，`Seata` 负责少量强一致事务。
 - `Redis` 负责会话、缓存和部分上下文数据，`Flyway` 负责数据库初始化和演进。
 
@@ -127,8 +126,8 @@ flowchart LR
 
 1. 用户从前端发起请求。
 2. 请求先到 `gateway-service`，统一做 CORS、路由、基础鉴权和限流。
-3. 网关透传 token、租户、TraceId，转发到目标服务。
-4. 业务服务完成二次鉴权、租户解析和业务编排。
+3. 网关透传 token 和 TraceId，转发到目标服务。
+4. 业务服务完成二次鉴权和业务编排。
 5. 数据层访问 MySQL / Redis / 文件服务等资源。
 6. 需要调度或补偿的动作写入 `XXL-Job` 或 Outbox。
 7. 后端返回统一响应，前端根据错误码决定提示、跳转或重新登录。
@@ -143,7 +142,6 @@ flowchart LR
 - 三类布局骨架
 - 统一响应结构和错误码
 - Spring Security + JWT 认证骨架
-- TenantContext + TenantFilter
 - Trace / requestId 透传
 - Redis 配置与缓存封装
 - Flyway 初始化脚本
@@ -266,7 +264,6 @@ pnpm typecheck
 - `src/pages/`：业务页面和异常页。
 - `src/components/`：查询区、表格、抽屉、按钮等通用组件。
 - `src/auth/`：token 和会话管理。
-- `src/tenant/`：租户上下文。
 - `src/responsive/`：响应式策略。
 
 ### 后端
@@ -287,5 +284,5 @@ pnpm typecheck
 
 - 新增功能优先放入对应业务模块，不要把业务逻辑堆到控制器里。
 - 前端请求优先复用 `services/common/request.ts`。
-- 涉及租户、权限、审计、错误码和缓存的改动，尽量先对齐统一约定。
+- 涉及权限、审计、错误码和缓存的改动，尽量先对齐统一约定。
 - 文档更新要和代码同步，避免 README 和实际启动方式不一致。

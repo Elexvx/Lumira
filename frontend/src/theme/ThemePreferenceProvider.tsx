@@ -3,9 +3,8 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveAntdLocale } from '@/i18n/antdLocale';
 import { buildAntdThemeConfig, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
-import { syncThemeRuntimeSnapshot } from '@/theme/runtime';
+import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
 import {
-  applyThemePreferenceToDocument,
   getStoredThemePreference,
   normalizeThemePreference,
   persistThemePreference,
@@ -20,14 +19,6 @@ interface ThemePreferenceContextValue {
 }
 
 const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null);
-
-const getSystemDarkMode = () => {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return false;
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
-};
 
 export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) => {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() =>
@@ -64,7 +55,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     return () => mediaQueryList.removeListener(updateSystemMode);
   }, []);
 
-  const resolvedColorMode = themePreference === 'dark' || (themePreference === 'system' && systemDarkMode) ? 'dark' : 'light';
+  // Keep the non-React layout config in sync with the current theme snapshot.
+  const themeSnapshot = syncThemePreferenceRuntime(themePreference, systemDarkMode);
+  const resolvedColorMode = themeSnapshot.resolvedColorMode;
 
   const themeConfig = useMemo(
     () =>
@@ -75,20 +68,14 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     [resolvedColorMode, themePreference],
   );
 
-  // Keep the non-React layout config in sync with the current theme snapshot.
-  syncThemeRuntimeSnapshot(themePreference, systemDarkMode);
-
   useLayoutEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-
-    const root = document.documentElement;
-    applyThemePreferenceToDocument(root, themePreference, systemDarkMode, document.body);
+    commitThemePreference(themePreference, { systemDarkMode, persist: false });
   }, [systemDarkMode, themePreference]);
 
   const setThemePreference = (value: ThemePreference) => {
-    setThemePreferenceState(normalizeThemePreference(value));
+    const nextThemePreference = normalizeThemePreference(value);
+    commitThemePreference(nextThemePreference);
+    setThemePreferenceState(nextThemePreference);
   };
 
   const contextValue = useMemo<ThemePreferenceContextValue>(
