@@ -69,6 +69,8 @@ const PROFILE_PATH = '/user-center/profile';
 const LEGACY_SETTING_ROUTE_PREFIXES = ['/system'];
 const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/localization': '/settings/localization',
+  '/settings/monitoring/api-docs': '/settings/api-docs',
+  '/settings/monitoring/audit': '/settings/audit',
 };
 
 export const SETTINGS_PROFILE_PATH = PROFILE_PATH;

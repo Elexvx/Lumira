@@ -253,16 +253,16 @@ const Login = () => {
 
   useEffect(() => {
     const alreadyAuthenticated = isLoggedIn() || Boolean(initialState?.currentUser?.sessionId);
-    if (!alreadyAuthenticated) {
+    if (!alreadyAuthenticated || submitting) {
       return;
     }
 
     if (initialState?.currentUser) {
-      window.location.replace(resolveAuthorizedLoginRedirectTarget(location.search, initialState.currentUser, initialState.menuTree));
+      history.replace(resolveAuthorizedLoginRedirectTarget(location.search, initialState.currentUser, initialState.menuTree));
     } else {
-      window.location.replace(redirectTarget);
+      history.replace(redirectTarget);
     }
-  }, [initialState?.currentUser, initialState?.menuTree, location.search, redirectTarget]);
+  }, [initialState?.currentUser, initialState?.menuTree, location.search, redirectTarget, submitting]);
 
   useEffect(() => {
     const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
