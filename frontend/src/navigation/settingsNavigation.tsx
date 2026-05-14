@@ -65,7 +65,7 @@ const ANT_DESIGN_ICONS: Record<string, AntdIconComponent> = {
 };
 const OUTLINED_ICON_SUFFIX = 'Outlined';
 const SETTINGS_ROUTE_PREFIX = '/settings';
-const PROFILE_PATH = '/user-center/profile';
+const PROFILE_PATH = '/user-center/personal-center/profile';
 const LEGACY_SETTING_ROUTE_PREFIXES = ['/system'];
 const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/localization': '/settings/localization',
