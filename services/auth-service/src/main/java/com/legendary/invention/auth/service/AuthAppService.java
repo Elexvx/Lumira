@@ -2,13 +2,11 @@ package com.legendary.invention.auth.service;
 
 import com.legendary.invention.api.auth.*;
 import com.legendary.invention.api.client.SystemInternalApi;
-import com.legendary.invention.api.client.TenantInternalApi;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
-import com.legendary.invention.api.tenant.MyTenantDTO;
-import com.legendary.invention.api.tenant.TenantSummaryDTO;
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.auth.model.AuthSession;
 import com.legendary.invention.auth.support.ClientIpResolver;
 import com.legendary.invention.common.enums.ErrorCode;
@@ -31,7 +29,6 @@ import java.util.UUID;
 public class AuthAppService {
 
     private final SystemInternalApi systemInternalApi;
-    private final TenantInternalApi tenantInternalApi;
     private final LoginEncryptionService loginEncryptionService;
     private final LoginProtectionService loginProtectionService;
     private final AuthSessionStore authSessionStore;
@@ -43,7 +40,6 @@ public class AuthAppService {
 
     public AuthAppService(
             SystemInternalApi systemInternalApi,
-            TenantInternalApi tenantInternalApi,
             LoginEncryptionService loginEncryptionService,
             LoginProtectionService loginProtectionService,
             AuthSessionStore authSessionStore,
@@ -54,7 +50,6 @@ public class AuthAppService {
             WechatLoginService wechatLoginService
     ) {
         this.systemInternalApi = systemInternalApi;
-        this.tenantInternalApi = tenantInternalApi;
         this.loginEncryptionService = loginEncryptionService;
         this.loginProtectionService = loginProtectionService;
         this.authSessionStore = authSessionStore;
@@ -101,17 +96,13 @@ public class AuthAppService {
             throw new BizException(ErrorCode.PASSWORD_ERROR, "登录失败，密码错误: " + user.username(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
 
-        List<MyTenantDTO> visibleTenants = tenantInternalApi.listVisibleTenants(user.userId());
-        TenantSummaryDTO currentTenant = resolveCurrentTenant(visibleTenants);
-        if (currentTenant == null) {
-            throw new BizException(ErrorCode.TENANT_NOT_BOUND, "当前账号未绑定可用租户");
-        }
+        Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
 
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenant.tenantId(), user.userId());
-        LoginCapabilitiesDTO loginCapabilities = systemInternalApi.loginCapabilities(currentTenant.tenantId());
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
+        LoginCapabilitiesDTO loginCapabilities = systemInternalApi.loginCapabilities(currentTenantId);
         List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = new ArrayList<>();
         if (loginCapabilities != null && (loginCapabilities.smsLoginAvailable() || loginCapabilities.emailLoginAvailable())) {
-            List<com.legendary.invention.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenant.tenantId(), user.userId());
+            List<com.legendary.invention.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenantId, user.userId());
             if (providers == null) {
                 providers = List.of();
             }
@@ -130,19 +121,17 @@ public class AuthAppService {
 
         if (!secondFactorOptions.isEmpty()) {
             LoginResponseDTO pending = new LoginResponseDTO();
-            pending.setUser(toAuthUser(user, currentTenant, snapshot, null));
-            pending.setTenants(visibleTenants == null ? List.of() : visibleTenants);
-            pending.setCurrentTenant(currentTenant);
+            pending.setUser(toAuthUser(user, snapshot, null));
             pending.setRequiresSecondFactor(Boolean.TRUE);
             pending.setSecondFactorOptions(secondFactorOptions);
             pending.setRequiresCaptcha(Boolean.FALSE);
             return pending;
         }
 
-        AuthSession session = buildSession(user, currentTenant, loginIp, userAgent, snapshot);
+        AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         authSessionStore.save(session, true);
         loginProtectionService.clearFailureState(account, loginIp);
-        return toLoginResponse(session, user, currentTenant, snapshot);
+        return toLoginResponse(session, user, snapshot);
     }
 
     @SentinelResource(value = "auth-login-code-challenge", blockHandler = "loginCodeChallengeBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
@@ -153,11 +142,8 @@ public class AuthAppService {
         if (user == null) {
             throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在: " + request.account(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
-        TenantSummaryDTO tenant = resolveCurrentTenant(tenantInternalApi.listVisibleTenants(user.userId()));
-        if (tenant == null) {
-            throw new BizException(ErrorCode.TENANT_NOT_BOUND, "当前账号未绑定可用租户");
-        }
-        LoginCodeChallengeDTO challenge = systemInternalApi.loginCodeChallenge(tenant.tenantId(), user.userId(), request.account(), request.loginType());
+        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        LoginCodeChallengeDTO challenge = systemInternalApi.loginCodeChallenge(tenantId, user.userId(), request.account(), request.loginType());
         return challenge;
     }
 
@@ -185,15 +171,11 @@ public class AuthAppService {
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
-        List<MyTenantDTO> visibleTenants = tenantInternalApi.listVisibleTenants(user.userId());
-        TenantSummaryDTO currentTenant = resolveCurrentTenant(visibleTenants);
-        if (currentTenant == null) {
-            throw new BizException(ErrorCode.TENANT_NOT_BOUND, "当前账号未绑定可用租户");
-        }
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenant.tenantId(), user.userId());
-        AuthSession session = buildSession(user, currentTenant, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"), snapshot);
+        Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
+        AuthSession session = buildSession(user, currentTenantId, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"), snapshot);
         authSessionStore.save(session, true);
-        return toLoginResponse(session, user, currentTenant, snapshot);
+        return toLoginResponse(session, user, snapshot);
     }
 
     @SentinelResource(value = "auth-second-factor-complete", blockHandler = "completeSecondFactorLoginBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
@@ -253,8 +235,8 @@ public class AuthAppService {
 
     public List<LoginResponseDTO.SecondFactorOptionDTO> verificationProviders() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        TenantSummaryDTO currentTenant = currentTenantOrThrow(currentUser);
-        List<com.legendary.invention.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenant.tenantId(), currentUser.getUserId());
+        Long currentTenantId = platformTenantId();
+        List<com.legendary.invention.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenantId, currentUser.getUserId());
         if (providers == null) {
             return List.of();
         }
@@ -263,52 +245,47 @@ public class AuthAppService {
 
     public com.legendary.invention.api.system.VerificationProviderDTO verificationProvider(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        TenantSummaryDTO currentTenant = currentTenantOrThrow(currentUser);
-        return systemInternalApi.verificationProvider(currentTenant.tenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.verificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
     }
 
     public com.legendary.invention.api.system.VerificationChallengeDTO verificationBind(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        TenantSummaryDTO currentTenant = currentTenantOrThrow(currentUser);
-        return systemInternalApi.bindVerificationProvider(currentTenant.tenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.bindVerificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
     }
 
     public Boolean verificationUnbind(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        TenantSummaryDTO currentTenant = currentTenantOrThrow(currentUser);
-        return systemInternalApi.unbindVerificationProvider(currentTenant.tenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.unbindVerificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
     }
 
     public com.legendary.invention.api.system.VerificationChallengeDTO verificationChallenge(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        TenantSummaryDTO currentTenant = currentTenantOrThrow(currentUser);
-        return systemInternalApi.verificationChallenge(currentTenant.tenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.verificationChallenge(platformTenantId(), currentUser.getUserId(), factorCode);
     }
 
     public com.legendary.invention.api.system.VerificationVerificationDTO verificationVerify(String factorCode, SecondFactorCompleteRequest request) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        TenantSummaryDTO currentTenant = currentTenantOrThrow(currentUser);
         if (!factorCode.equalsIgnoreCase(request.factorCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
         }
-        return systemInternalApi.verificationVerify(currentTenant.tenantId(), currentUser.getUserId(), factorCode, request.challengeId(), request.verificationCode());
+        return systemInternalApi.verificationVerify(platformTenantId(), currentUser.getUserId(), factorCode, request.challengeId(), request.verificationCode());
     }
 
     private LoginResponseDTO completeVerifiedLogin(Long userId, Long tenantId, HttpServletRequest request) {
         SystemUserSnapshotDTO user = systemInternalApi.findUserById(userId);
-        TenantSummaryDTO tenant = tenantId == null ? null : tenantInternalApi.findTenantSummary(tenantId);
-        PermissionSnapshotDTO snapshot = tenant == null ? new PermissionSnapshotDTO("0", List.of()) : systemInternalApi.permissionSnapshot(tenant.tenantId(), userId);
-        AuthSession session = buildSession(user, tenant, clientIpResolver.resolve(request), request.getHeader("User-Agent"), snapshot);
+        Long platformTenantId = platformTenantId();
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(platformTenantId, userId);
+        AuthSession session = buildSession(user, platformTenantId, clientIpResolver.resolve(request), request.getHeader("User-Agent"), snapshot);
         authSessionStore.save(session, true);
-        return toLoginResponse(session, user, tenant, snapshot);
+        return toLoginResponse(session, user, snapshot);
     }
 
-    private AuthSession buildSession(SystemUserSnapshotDTO user, TenantSummaryDTO currentTenant, String loginIp, String userAgent, PermissionSnapshotDTO snapshot) {
+    private AuthSession buildSession(SystemUserSnapshotDTO user, Long currentTenantId, String loginIp, String userAgent, PermissionSnapshotDTO snapshot) {
         AuthSession session = new AuthSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(user.userId());
         session.setUsername(user.username());
-        session.setCurrentTenantId(currentTenant == null ? null : currentTenant.tenantId());
+        session.setCurrentTenantId(currentTenantId);
         session.setLoginTime(Instant.now());
         session.setLastActivityAt(Instant.now());
         session.setExpireTime(Instant.now().plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
@@ -319,21 +296,19 @@ public class AuthAppService {
         return session;
     }
 
-    private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, TenantSummaryDTO tenant, PermissionSnapshotDTO snapshot) {
+    private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {
         LoginResponseDTO response = new LoginResponseDTO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
         response.setRefreshToken(jwtTokenService.generateRefreshToken(session, session.getRefreshTokenId()));
         response.setTokenType("Bearer");
         response.setExpiresIn(jwtTokenService.getAccessTokenExpireSeconds());
-        response.setUser(toAuthUser(user, tenant, snapshot, session.getSessionId()));
-        response.setTenants(resolveTenants(user.userId()));
-        response.setCurrentTenant(tenant);
+        response.setUser(toAuthUser(user, snapshot, session.getSessionId()));
         response.setRequiresSecondFactor(Boolean.FALSE);
         response.setRequiresCaptcha(Boolean.FALSE);
         return response;
     }
 
-    private AuthUserDTO toAuthUser(SystemUserSnapshotDTO user, TenantSummaryDTO tenant, PermissionSnapshotDTO snapshot, String sessionId) {
+    private AuthUserDTO toAuthUser(SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot, String sessionId) {
         return new AuthUserDTO(
                 user.userId(),
                 user.username(),
@@ -348,7 +323,6 @@ public class AuthAppService {
                 user.availableTime(),
                 user.idCardNumber(),
                 user.locale(),
-                tenant,
                 sessionId,
                 snapshot.version(),
                 1,
@@ -356,32 +330,8 @@ public class AuthAppService {
         );
     }
 
-    private List<MyTenantDTO> resolveTenants(Long userId) {
-        List<MyTenantDTO> tenants = tenantInternalApi.listVisibleTenants(userId);
-        return tenants == null ? List.of() : tenants;
-    }
-
-    private TenantSummaryDTO resolveCurrentTenant(List<MyTenantDTO> visibleTenants) {
-        if (visibleTenants == null || visibleTenants.isEmpty()) {
-            return null;
-        }
-        for (MyTenantDTO tenant : visibleTenants) {
-            if (Boolean.TRUE.equals(tenant.getIsDefault())) {
-                return toTenantSummaryDTO(tenant);
-            }
-        }
-        return toTenantSummaryDTO(visibleTenants.get(0));
-    }
-
-    private TenantSummaryDTO currentTenantOrThrow(CurrentUser currentUser) {
-        if (currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "未找到当前租户");
-        }
-        TenantSummaryDTO tenant = tenantInternalApi.findTenantSummary(currentUser.getCurrentTenantId());
-        if (tenant == null) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "租户不存在");
-        }
-        return tenant;
+    private Long platformTenantId() {
+        return PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private LoginResponseDTO.SecondFactorOptionDTO toOption(com.legendary.invention.api.system.VerificationProviderDTO provider) {
@@ -395,8 +345,7 @@ public class AuthAppService {
     }
 
     private CurrentUserDTO currentUserBySession(AuthSession session, SystemUserSnapshotDTO user) {
-        TenantSummaryDTO currentTenant = session.getCurrentTenantId() == null ? null : tenantInternalApi.findTenantSummary(session.getCurrentTenantId());
-        PermissionSnapshotDTO snapshot = currentTenant == null ? new PermissionSnapshotDTO("0", List.of()) : systemInternalApi.permissionSnapshot(currentTenant.tenantId(), session.getUserId());
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(platformTenantId(), session.getUserId());
         return new CurrentUserDTO(
                 user.userId(),
                 user.username(),
@@ -411,7 +360,6 @@ public class AuthAppService {
                 user.availableTime(),
                 user.idCardNumber(),
                 user.locale(),
-                currentTenant,
                 session.getSessionId(),
                 snapshot.version(),
                 session.getSessionVersion(),
@@ -419,18 +367,4 @@ public class AuthAppService {
         );
     }
 
-    private TenantSummaryDTO toTenantSummaryDTO(MyTenantDTO tenant) {
-        if (tenant == null) {
-            return null;
-        }
-        return new TenantSummaryDTO(
-                tenant.getTenantId(),
-                tenant.getTenantCode(),
-                tenant.getTenantName(),
-                tenant.getTenantShortName(),
-                tenant.getStatus(),
-                tenant.getCreatedAt(),
-                tenant.getUpdatedAt()
-        );
-    }
 }

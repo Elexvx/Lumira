@@ -515,10 +515,7 @@ public class SystemPlatformSettingsAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            return DEFAULT_PUBLIC_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return DEFAULT_PUBLIC_TENANT_ID;
     }
 
     private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {

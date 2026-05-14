@@ -46,7 +46,7 @@ public class SiteController {
     @PutMapping("/settings")
     @RepeatSubmit
     public ApiResponse<SiteVO.SiteSettingsVO> updateSettings(@Valid @RequestBody SiteDTO.SiteSettingsRequest request) {
-        require("site:settings");
+        require("site:settings:update");
         return ApiResponse.success(siteManagementAppService.updateSettings(currentUser(), request), TraceContext.getRequestId());
     }
 
@@ -59,20 +59,20 @@ public class SiteController {
     @PostMapping("/navigation")
     @RepeatSubmit
     public ApiResponse<SiteVO.NavigationVO> createNavigation(@Valid @RequestBody SiteDTO.NavigationRequest request) {
-        require("site:navigation");
+        require("site:navigation:create");
         return ApiResponse.success(siteManagementAppService.createNavigation(currentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/navigation/{id}")
     @RepeatSubmit
     public ApiResponse<SiteVO.NavigationVO> updateNavigation(@PathVariable Long id, @Valid @RequestBody SiteDTO.NavigationRequest request) {
-        require("site:navigation");
+        require("site:navigation:update");
         return ApiResponse.success(siteManagementAppService.updateNavigation(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/navigation/{id}")
     public ApiResponse<Boolean> deleteNavigation(@PathVariable Long id) {
-        require("site:navigation");
+        require("site:navigation:delete");
         return ApiResponse.success(siteManagementAppService.deleteNavigation(currentUser(), id), TraceContext.getRequestId());
     }
 
@@ -172,19 +172,19 @@ public class SiteController {
 
     @PostMapping("/forms")
     public ApiResponse<SiteVO.FormVO> createForm(@Valid @RequestBody SiteDTO.FormRequest request) {
-        require("site:form");
+        require("site:form:create");
         return ApiResponse.success(siteManagementAppService.createForm(currentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/forms/{id}")
     public ApiResponse<SiteVO.FormVO> updateForm(@PathVariable Long id, @Valid @RequestBody SiteDTO.FormRequest request) {
-        require("site:form");
+        require("site:form:update");
         return ApiResponse.success(siteManagementAppService.updateForm(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/forms/{id}")
     public ApiResponse<Boolean> deleteForm(@PathVariable Long id) {
-        require("site:form");
+        require("site:form:delete");
         return ApiResponse.success(siteManagementAppService.deleteForm(currentUser(), id), TraceContext.getRequestId());
     }
 

@@ -118,7 +118,7 @@ public class TaskCenterAppService {
     }
 
     private String assignmentWhere(CurrentUser currentUser, List<Object> params) {
-        Long tenantId = currentUser.getCurrentTenantId() == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : currentUser.getCurrentTenantId();
+        Long tenantId = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
         Long userId = currentUser.getUserId();
         params.add(tenantId);
         params.add(userId);

@@ -939,10 +939,7 @@ public class SystemVerificationAppService {
     }
 
     private Long requireTenantId(CurrentUser currentUser) {
-        if (currentUser.getCurrentTenantId() == null) {
-            return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private void persistBinding(

@@ -441,10 +441,7 @@ public class SystemProfileSettingsAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            return DEFAULT_PUBLIC_TENANT_ID;
-        }
-        return currentUser.getCurrentTenantId();
+        return DEFAULT_PUBLIC_TENANT_ID;
     }
 
     private static final class EvaluatedField {

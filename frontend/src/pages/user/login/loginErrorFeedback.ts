@@ -6,7 +6,6 @@ const LOGIN_WARNING_CODES = new Set<string>([
   ErrorCode.ACCOUNT_NOT_FOUND,
   ErrorCode.PASSWORD_ERROR,
   ErrorCode.ACCOUNT_DISABLED,
-  ErrorCode.TENANT_NOT_BOUND,
 ]);
 
 export const resolveLoginErrorFeedback = (error: ApiErrorLike): ErrorFeedback => {

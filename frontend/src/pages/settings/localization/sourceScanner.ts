@@ -9,7 +9,7 @@ const NAMESPACE_LABELS: Record<string, string> = {
   page: '页面',
   message: '消息',
   theme: '主题',
-  tenant: '租户',
+  tenant: '平台',
   auth: '认证',
   system: '系统',
   app: '应用',

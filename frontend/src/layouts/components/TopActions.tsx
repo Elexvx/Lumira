@@ -313,7 +313,6 @@ export const TopActions = () => {
           ? {
               ...prev,
               currentUser: updatedUser,
-              currentTenant: updatedUser.currentTenant || prev.currentTenant || null,
             }
           : prev,
       );
@@ -333,6 +332,14 @@ export const TopActions = () => {
     } finally {
       setSwitchingRole(false);
     }
+  };
+
+  const handleSwitchTheme = (nextThemePreference: ThemePreference) => {
+    if (nextThemePreference === themePreference) {
+      return;
+    }
+
+    setThemePreference(nextThemePreference);
   };
 
   const handlePasswordFinish = async (values: { currentPassword?: string; newPassword?: string; confirmPassword?: string }) => {
@@ -399,7 +406,7 @@ export const TopActions = () => {
           menu={{
             items: themeMenuItems,
             selectedKeys: [themePreference],
-            onClick: ({ key }) => setThemePreference(key as ThemePreference),
+            onClick: ({ key }) => handleSwitchTheme(key as ThemePreference),
           }}
         >
           <Button

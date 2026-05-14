@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class ApprovalAppService implements WorkflowEngineAdapter {
@@ -161,7 +162,7 @@ public class ApprovalAppService implements WorkflowEngineAdapter {
     public ApprovalVO.InstanceVO cancel(CurrentUser currentUser, Long instanceId) {
         Long tenantId = tenantId(currentUser);
         ApprovalVO.InstanceVO instance = requireInstance(tenantId, instanceId);
-        if (!currentUser.getUserId().equals(instance.getApplicantId()) && !hasPermission(currentUser, "approval:approve")) {
+        if (!currentUser.getUserId().equals(instance.getApplicantId()) && !hasPermission(currentUser, "approval:template:manage")) {
             throw new BizException(ErrorCode.FORBIDDEN, "只能撤回自己发起的审批");
         }
         jdbcTemplate.update("update approval_instance set status = 'CANCELLED', update_time = ? where tenant_id = ? and id = ?", LocalDateTime.now(), tenantId, instanceId);
@@ -177,6 +178,8 @@ public class ApprovalAppService implements WorkflowEngineAdapter {
         if ("submitted".equals(scope)) {
             where += " and applicant_id = ?";
             params.add(currentUser.getUserId());
+        } else {
+            where += approvalInstanceVisibilityWhere(currentUser, params);
         }
         PageResponse<ApprovalVO.InstanceVO> page = pageQuery(
                 """
@@ -265,6 +268,44 @@ public class ApprovalAppService implements WorkflowEngineAdapter {
             }
         }
         return hasPermission(currentUser, "approval:template:manage");
+    }
+
+    private String approvalInstanceVisibilityWhere(CurrentUser currentUser, List<Object> params) {
+        if (hasAnyPermission(currentUser.getPermissions(), Set.of("approval:template:manage", "*"))) {
+            return "";
+        }
+        Long userId = currentUser.getUserId();
+        params.add(userId);
+        params.add(userId);
+        params.add(userId);
+        params.add(userId);
+        String deptVisibility = hasPermission(currentUser, "approval:approve")
+                ? " or t.assignee_dept_id is not null"
+                : "";
+        return """
+                 and (
+                        applicant_id = ?
+                     or exists (
+                            select 1
+                            from approval_task t
+                            where t.tenant_id = approval_instance.tenant_id
+                              and t.instance_id = approval_instance.id
+                              and (
+                                     t.assignee_user_id = ?
+                                  or t.handled_by = ?
+                                  or exists (
+                                        select 1
+                                        from sys_user_role ur
+                                        where ur.tenant_id = t.tenant_id
+                                          and ur.user_id = ?
+                                          and ur.role_id = t.assignee_role_id
+                                          and ur.deleted = 0
+                                  )
+                                  %s
+                              )
+                        )
+                 )
+                """.formatted(deptVisibility);
     }
 
     private void advanceOrFinish(CurrentUser currentUser, ApprovalVO.TaskVO task) {
@@ -506,11 +547,18 @@ public class ApprovalAppService implements WorkflowEngineAdapter {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return currentUser.getCurrentTenantId() == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private boolean hasPermission(CurrentUser currentUser, String permission) {
         return currentUser.getPermissions() != null && (currentUser.getPermissions().contains("*") || currentUser.getPermissions().contains(permission));
+    }
+
+    private boolean hasAnyPermission(Set<String> permissions, Set<String> expected) {
+        if (permissions == null || permissions.isEmpty()) {
+            return false;
+        }
+        return expected.stream().anyMatch(permissions::contains);
     }
 
     private String clean(String value) {

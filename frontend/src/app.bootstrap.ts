@@ -118,8 +118,6 @@ const buildAuthenticatedInitialState = async (
 
   return {
     currentUser,
-    currentTenant: currentUser.currentTenant || null,
-    myTenants: [],
     menuTree,
     menuVersion: 0,
     availablePlugins,
@@ -162,8 +160,6 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
 
   return {
     currentUser: undefined,
-    currentTenant: null,
-    myTenants: [],
     menuTree: [],
     menuVersion: 0,
     availablePlugins: [],

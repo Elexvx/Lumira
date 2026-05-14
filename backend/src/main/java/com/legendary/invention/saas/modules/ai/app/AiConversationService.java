@@ -17,7 +17,7 @@ import java.util.UUID;
 
 public interface AiConversationService {
 
-    Long ensureConversation(Long tenantId, Long employeeId, Long conversationId, String title);
+    Long ensureConversation(Long tenantId, Long ownerUserId, Long employeeId, Long conversationId, String title);
 
     Long recordMessage(Long tenantId, Long conversationId, String role, String content);
 
@@ -36,13 +36,14 @@ class JdbcAiConversationService implements AiConversationService {
 
     @Override
     @Transactional
-    public Long ensureConversation(Long tenantId, Long employeeId, Long conversationId, String title) {
+    public Long ensureConversation(Long tenantId, Long ownerUserId, Long employeeId, Long conversationId, String title) {
         if (conversationId != null) {
             Long foundId = jdbcTemplate.query(
                     """
                             select id
                             from ai_conversation
                             where tenant_id = ?
+                              and owner_user_id = ?
                               and employee_id = ?
                               and id = ?
                               and is_deleted = 0
@@ -50,6 +51,7 @@ class JdbcAiConversationService implements AiConversationService {
                             """,
                     (rs, rowNum) -> rs.getLong("id"),
                     tenantId,
+                    ownerUserId,
                     employeeId,
                     conversationId
             ).stream().findFirst().orElse(null);
@@ -63,10 +65,11 @@ class JdbcAiConversationService implements AiConversationService {
         jdbcTemplate.update(
                 """
                         insert into ai_conversation (
-                            tenant_id, employee_id, conversation_code, title, status, latest_message_at, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, 'ACTIVE', null, 0, ?, ?)
+                            tenant_id, owner_user_id, employee_id, conversation_code, title, status, latest_message_at, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, ?, ?, 'ACTIVE', null, 0, ?, ?)
                         """,
                 tenantId,
+                ownerUserId,
                 employeeId,
                 conversationCode,
                 resolvedTitle,

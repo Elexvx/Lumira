@@ -8,20 +8,6 @@ export interface ApiResponse<T> {
   path?: string;
 }
 
-export interface TenantSummary {
-  tenantId: number;
-  tenantCode: string;
-  tenantName: string;
-  tenantShortName?: string;
-  status: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface MyTenant extends TenantSummary {
-  isDefault: boolean;
-}
-
 export interface AuthUser {
   userId: number;
   username: string;
@@ -52,8 +38,6 @@ export interface LoginResponse {
   tokenType: string;
   expiresIn: number;
   user: AuthUser;
-  tenants: MyTenant[];
-  currentTenant?: TenantSummary | null;
   requiresSecondFactor?: boolean;
   secondFactorOptions?: SecondFactorLoginOption[];
   requiresCaptcha?: boolean | null;
@@ -191,7 +175,6 @@ export interface CurrentUser {
   availableTime?: string | null;
   idCardNumber?: string | null;
   locale?: string | null;
-  currentTenant?: TenantSummary | null;
   simulatedRoleId?: number | null;
   availableRoles?: CurrentUserRoleOption[];
   sessionId: string;
@@ -206,20 +189,6 @@ export interface CurrentUserRoleOption {
   roleName: string;
   roleType: string;
   permissionCount?: number;
-}
-
-export interface CurrentTenantResponse {
-  hasCurrentTenant: boolean;
-  currentTenant?: TenantSummary | null;
-}
-
-export interface SwitchTenantResponse {
-  currentTenant: TenantSummary;
-  accessToken: string;
-  tokenType: string;
-  expiresIn: number;
-  sessionVersion?: number;
-  permissionsVersion?: string;
 }
 
 export interface MenuNode {
@@ -773,7 +742,6 @@ export interface SmtpTestResult {
 
 export interface DashboardSummary {
   currentUser: CurrentUser;
-  currentTenant: TenantSummary | null;
   tenantPlugins: TenantPlugin[];
   menuCount: number;
   permissionCount: number;
@@ -1037,17 +1005,8 @@ export interface RedisMonitorSnapshot {
   sampleTime?: string | null;
 }
 
-export interface TenantOverview {
-  currentTenant: TenantSummary | null;
-  myTenants: MyTenant[];
-  tenantPlugins: TenantPlugin[];
-  switchHistory: AuditLogRecord[];
-}
-
 export interface ProfileSummary {
   currentUser: CurrentUser;
-  currentTenant: TenantSummary | null;
-  myTenants: MyTenant[];
   roleNames: string[];
   permissionCount: number;
   recentLoginLogs: AuditLogRecord[];
@@ -1121,16 +1080,13 @@ export interface UserRecord {
   region?: string | null;
   availableTime?: string | null;
   status: string;
-  tenantNames?: string[];
   roleNames?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface UserDetail extends UserRecord {
-  currentTenantId?: number | null;
   roleIds?: number[];
-  tenantIds?: number[];
 }
 
 export interface OnlineSessionRecord {
@@ -1139,7 +1095,6 @@ export interface OnlineSessionRecord {
   username: string;
   nickname?: string | null;
   realName?: string | null;
-  currentTenantId?: number | null;
   loginTime?: string | null;
   lastActivityAt?: string | null;
   expireTime?: string | null;

@@ -86,8 +86,6 @@ saas:
       - /api/uploads/**
       - /actuator/health
       - /api/health
-  tenant:
-    header-name: X-Tenant-Id
   event:
     outbox:
       relay-enabled: false

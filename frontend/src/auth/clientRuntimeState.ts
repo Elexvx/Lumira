@@ -4,10 +4,7 @@ import { clearBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/set
 import { clearSecuritySettings, DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettings';
 import { clearWatermarkSettings, DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settings';
 
-export const clearClientRuntimeState = (options: { tenantId?: number | null } = {}) => {
-  if (options.tenantId != null) {
-    storage.clearTenant(String(options.tenantId));
-  }
+export const clearClientRuntimeState = () => {
   clearSecuritySettings();
   clearBrandingSettings();
   clearWatermarkSettings();
@@ -15,8 +12,6 @@ export const clearClientRuntimeState = (options: { tenantId?: number | null } = 
 
 export const buildLoggedOutInitialState = (): AppInitialState => ({
   currentUser: undefined,
-  currentTenant: null,
-  myTenants: [],
   menuTree: [],
   menuVersion: 0,
   availablePlugins: [],

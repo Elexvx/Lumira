@@ -210,7 +210,7 @@ public class PluginManagementAppService {
                 pluginPersistenceService.registerTenantPermissions(request.getTenantId(), request.getPluginCode(), version);
             });
             permissionSnapshotService.invalidateTenant(request.getTenantId());
-            safeLog(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "租户插件已启用", null, currentUser.getUserId());
+            safeLog(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "平台插件已启用", null, currentUser.getUserId());
         } catch (BizException exception) {
             throw exception;
         } catch (Throwable throwable) {
@@ -224,7 +224,7 @@ public class PluginManagementAppService {
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前尚未启用该插件"));
         pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());
         permissionSnapshotService.invalidateTenant(request.getTenantId());
-        safeLog(request.getTenantId(), request.getPluginCode(), tenantEntity.getPluginVersion(), "DISABLE", "DISABLED", "SUCCESS", "租户插件已停用", null, currentUser.getUserId());
+        safeLog(request.getTenantId(), request.getPluginCode(), tenantEntity.getPluginVersion(), "DISABLE", "DISABLED", "SUCCESS", "平台插件已停用", null, currentUser.getUserId());
     }
 
     public List<PluginVO.PluginDefinitionVO> listDefinitions() {

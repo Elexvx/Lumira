@@ -23,11 +23,9 @@ COPY pom.xml ./
 COPY backend/pom.xml backend/pom.xml
 COPY libs/common-core/pom.xml libs/common-core/pom.xml
 COPY libs/common-security/pom.xml libs/common-security/pom.xml
-COPY libs/common-tenant/pom.xml libs/common-tenant/pom.xml
 COPY libs/common-web/pom.xml libs/common-web/pom.xml
 COPY libs/legendary-api/pom.xml libs/legendary-api/pom.xml
 COPY services/auth-service/pom.xml services/auth-service/pom.xml
-COPY services/tenant-service/pom.xml services/tenant-service/pom.xml
 COPY services/file-service/pom.xml services/file-service/pom.xml
 COPY services/message-service/pom.xml services/message-service/pom.xml
 COPY services/plugin-service/pom.xml services/plugin-service/pom.xml

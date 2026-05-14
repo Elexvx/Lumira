@@ -2,6 +2,7 @@ package com.legendary.invention.file.infrastructure.security;
 
 import com.legendary.invention.api.auth.CurrentUserDTO;
 import com.legendary.invention.api.client.AuthInternalApi;
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.security.JwtTokenClaims;
 import com.legendary.invention.common.security.JwtTokenType;
@@ -62,7 +63,7 @@ public class FileJwtAuthFilter extends OncePerRequestFilter {
                         CurrentUser currentUser = new CurrentUser(
                                 snapshot.userId(),
                                 snapshot.username(),
-                                snapshot.currentTenant() == null ? claims.getCurrentTenantId() : snapshot.currentTenant().tenantId(),
+                                PlatformConstants.PLATFORM_TENANT_ID,
                                 snapshot.sessionId(),
                                 snapshot.sessionVersion(),
                                 true,

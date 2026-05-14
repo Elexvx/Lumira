@@ -2,6 +2,7 @@ package com.legendary.invention.message.infrastructure.security;
 
 import com.legendary.invention.api.auth.CurrentUserDTO;
 import com.legendary.invention.api.client.AuthInternalApi;
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
@@ -68,7 +69,7 @@ public class MessageSessionAuthenticationService {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(snapshot.userId());
         currentUser.setUsername(snapshot.username());
-        currentUser.setCurrentTenantId(snapshot.currentTenant() == null ? claims == null ? null : claims.getCurrentTenantId() : snapshot.currentTenant().tenantId());
+        currentUser.setCurrentTenantId(PlatformConstants.PLATFORM_TENANT_ID);
         currentUser.setSessionId(snapshot.sessionId());
         currentUser.setSessionVersion(snapshot.sessionVersion());
         currentUser.setAuthenticated(true);

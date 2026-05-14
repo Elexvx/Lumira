@@ -20,9 +20,6 @@ import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettin
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
-import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
-import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
-import com.legendary.invention.saas.modules.tenant.vo.MyTenantVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
@@ -149,7 +146,6 @@ public class SystemManagementAppService {
     );
     private final JdbcTemplate jdbcTemplate;
     private final AuthAppService authAppService;
-    private final TenantDomainService tenantDomainService;
     private final UserDomainService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final PluginManagementAppService pluginManagementAppService;
@@ -170,7 +166,6 @@ public class SystemManagementAppService {
     public SystemManagementAppService(
             JdbcTemplate jdbcTemplate,
             AuthAppService authAppService,
-            TenantDomainService tenantDomainService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             PluginManagementAppService pluginManagementAppService,
@@ -188,7 +183,6 @@ public class SystemManagementAppService {
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.authAppService = authAppService;
-        this.tenantDomainService = tenantDomainService;
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.pluginManagementAppService = pluginManagementAppService;
@@ -208,7 +202,6 @@ public class SystemManagementAppService {
     public SystemManagementAppService(
             JdbcTemplate jdbcTemplate,
             AuthAppService authAppService,
-            TenantDomainService tenantDomainService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             PluginManagementAppService pluginManagementAppService,
@@ -226,7 +219,6 @@ public class SystemManagementAppService {
         this(
                 jdbcTemplate,
                 authAppService,
-                tenantDomainService,
                 userDomainService,
                 permissionSnapshotService,
                 pluginManagementAppService,
@@ -247,8 +239,6 @@ public class SystemManagementAppService {
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
         SystemVO.DashboardSummaryVO summary = new SystemVO.DashboardSummaryVO();
         summary.setCurrentUser(authAppService.currentUser(currentUser));
-        TenantInfoEntity tenantInfo = tenantDomainService.findTenantById(currentTenantId(currentUser)).orElse(null);
-        summary.setCurrentTenant(tenantDomainService.toTenantSummary(tenantInfo));
         summary.setTenantPlugins(pluginManagementAppService.availablePlugins(currentTenantId(currentUser)));
         summary.setMenuCount(countMenus(currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
@@ -264,8 +254,6 @@ public class SystemManagementAppService {
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {
         SystemVO.ProfileSummaryVO summary = new SystemVO.ProfileSummaryVO();
         summary.setCurrentUser(authAppService.currentUser(currentUser));
-        TenantInfoEntity tenantInfo = tenantDomainService.findTenantById(currentTenantId(currentUser)).orElse(null);
-        summary.setCurrentTenant(tenantDomainService.toTenantSummary(tenantInfo));
         summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
         summary.setRecentLoginLogs(new ArrayList<>(listLoginLogs(
@@ -1712,14 +1700,7 @@ public class SystemManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser.getCurrentTenantId() != null) {
-            return currentUser.getCurrentTenantId();
-        }
-        return tenantDomainService.listVisibleTenants(currentUser.getUserId()).stream()
-                .filter(access -> access.getTenantId() != null)
-                .findFirst()
-                .map(MyTenantVO::getTenantId)
-                .orElse(DEFAULT_PUBLIC_TENANT_ID);
+        return DEFAULT_PUBLIC_TENANT_ID;
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
@@ -1742,17 +1723,7 @@ public class SystemManagementAppService {
     }
 
     private List<String> listUserTenantNames(Long userId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select t.tenant_name
-                        from sys_user_tenant ut
-                        join tenant_info t on t.id = ut.tenant_id and t.deleted = 0
-                        where ut.user_id = ? and ut.deleted = 0
-                        order by t.id asc
-                        """,
-                String.class,
-                userId
-        );
+        return List.of();
     }
 
     private void decorateUsers(List<SystemVO.UserVO> users, Long tenantId) {
@@ -1765,47 +1736,19 @@ public class SystemManagementAppService {
             return;
         }
 
-        Map<Long, List<String>> tenantNames = listUserTenantNames(userIds);
         Map<Long, List<String>> roleNames = listUserRoleNames(userIds, tenantId);
         users.forEach(user -> {
-            user.setTenantNames(tenantNames.getOrDefault(user.getId(), List.of()));
+            user.setTenantNames(List.of());
             user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
         });
     }
 
     private Map<Long, List<String>> listUserTenantNames(List<Long> userIds) {
-        String placeholders = placeholders(userIds.size());
-        return jdbcTemplate.query(
-                """
-                        select ut.user_id as userId, t.tenant_name as tenantName
-                        from sys_user_tenant ut
-                        join tenant_info t on t.id = ut.tenant_id and t.deleted = 0
-                        where ut.user_id in (%s) and ut.deleted = 0
-                        order by ut.user_id asc, t.id asc
-                        """.formatted(placeholders),
-                rs -> {
-                    Map<Long, List<String>> result = new LinkedHashMap<>();
-                    while (rs.next()) {
-                        result.computeIfAbsent(rs.getLong("userId"), ignored -> new ArrayList<>())
-                                .add(rs.getString("tenantName"));
-                    }
-                    return result;
-                },
-                userIds.toArray()
-        );
+        return Map.of();
     }
 
     private List<Long> listUserTenantIds(Long userId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select ut.tenant_id
-                        from sys_user_tenant ut
-                        where ut.user_id = ? and ut.deleted = 0
-                        order by ut.tenant_id asc
-                        """,
-                Long.class,
-                userId
-        );
+        return List.of();
     }
 
     private List<Long> listUserRoleIds(Long userId, Long tenantId) {

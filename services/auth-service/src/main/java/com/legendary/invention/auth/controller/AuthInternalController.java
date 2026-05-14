@@ -8,9 +8,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,11 +29,4 @@ public class AuthInternalController {
         return authAppService.currentUserBySessionId(session.getSessionId());
     }
 
-    @PostMapping("/sessions/{sessionId}/tenant")
-    public Boolean switchSessionTenant(@PathVariable String sessionId, @RequestParam("tenantId") Long tenantId) {
-        AuthSession session = authSessionStore.findBySessionId(sessionId).orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
-        session.setCurrentTenantId(tenantId);
-        authSessionStore.save(session, true);
-        return Boolean.TRUE;
-    }
 }

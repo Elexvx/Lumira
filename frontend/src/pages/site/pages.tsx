@@ -1,6 +1,7 @@
 import { Button, Drawer, Form, Input, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultBlocksJson, siteService, type SitePage } from '@/services/site';
 import './site.css';
 
@@ -11,6 +12,7 @@ const PageManagement = () => {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Partial<SitePage> | null>(null);
   const [form] = Form.useForm<Partial<SitePage>>();
+  const actionPermission = useActionPermission();
 
   const load = async (nextPage = pageNo) => {
     setLoading(true);
@@ -56,7 +58,7 @@ const PageManagement = () => {
           <h1 className="site-admin-title">页面管理</h1>
           <p className="site-admin-desc">以区块 JSON 管理官网页面草稿、发布和下线。</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增页面</Button>
+        {actionPermission.can('site:page:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增页面</Button> : null}
       </div>
       <div className="site-admin-card">
         <Table
@@ -74,12 +76,12 @@ const PageManagement = () => {
               width: 260,
               render: (_, record) => (
                 <Space>
-                  <Button type="link" onClick={() => open(record)}>编辑</Button>
-                  <Button type="link" onClick={() => publish(record)}>发布</Button>
-                  <Button type="link" onClick={async () => { await siteService.offlinePage(record.id); await load(); }}>下线</Button>
-                  <Popconfirm title="确认删除？" onConfirm={async () => { await siteService.deletePage(record.id); await load(); }}>
+                  {actionPermission.can('site:page:update') ? <Button type="link" onClick={() => open(record)}>编辑</Button> : null}
+                  {actionPermission.can('site:page:publish') ? <Button type="link" onClick={() => publish(record)}>发布</Button> : null}
+                  {actionPermission.can('site:page:publish') ? <Button type="link" onClick={async () => { await siteService.offlinePage(record.id); await load(); }}>下线</Button> : null}
+                  {actionPermission.can('site:page:update') ? <Popconfirm title="确认删除？" onConfirm={async () => { await siteService.deletePage(record.id); await load(); }}>
                     <Button type="link" danger>删除</Button>
-                  </Popconfirm>
+                  </Popconfirm> : null}
                 </Space>
               ),
             },

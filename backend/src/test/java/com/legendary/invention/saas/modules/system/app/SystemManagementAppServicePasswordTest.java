@@ -12,7 +12,6 @@ import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotServic
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
-import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,6 @@ class SystemManagementAppServicePasswordTest {
         RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
         SystemManagementAppService service = new SystemManagementAppService(
                 jdbcTemplate,
-                null,
                 null,
                 new StubUserDomainService(user),
                 null,
@@ -83,7 +81,6 @@ class SystemManagementAppServicePasswordTest {
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
         SystemManagementAppService service = new SystemManagementAppService(
                 jdbcTemplate,
-                null,
                 null,
                 new StubUserDomainService(user),
                 null,

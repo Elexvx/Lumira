@@ -1,7 +1,5 @@
 package com.legendary.invention.saas.modules.auth.vo;
 
-import com.legendary.invention.saas.modules.tenant.vo.TenantSummaryVO;
-
 import java.util.List;
 
 public class CurrentUserVO {
@@ -19,7 +17,6 @@ public class CurrentUserVO {
     private String availableTime;
     private String idCardNumber;
     private String locale;
-    private TenantSummaryVO currentTenant;
     private Long simulatedRoleId;
     private List<RoleOptionVO> availableRoles;
     private String sessionId;
@@ -129,14 +126,6 @@ public class CurrentUserVO {
 
     public void setLocale(String locale) {
         this.locale = locale;
-    }
-
-    public TenantSummaryVO getCurrentTenant() {
-        return currentTenant;
-    }
-
-    public void setCurrentTenant(TenantSummaryVO currentTenant) {
-        this.currentTenant = currentTenant;
     }
 
     public Long getSimulatedRoleId() {

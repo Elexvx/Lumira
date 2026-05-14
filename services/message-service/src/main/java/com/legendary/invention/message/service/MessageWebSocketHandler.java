@@ -1,5 +1,6 @@
 package com.legendary.invention.message.service;
 
+import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.CurrentUser;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
@@ -29,11 +30,11 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
             session.close();
             return;
         }
-        if (currentUser.getCurrentTenantId() == null || currentUser.getUserId() == null) {
+        if (currentUser.getUserId() == null) {
             session.close();
             return;
         }
-        webSocketRegistry.register(session, currentUser.getCurrentTenantId(), currentUser.getUserId());
+        webSocketRegistry.register(session, PlatformConstants.PLATFORM_TENANT_ID, currentUser.getUserId());
         connectionSnapshotService.emitSnapshot(currentUser);
     }
 

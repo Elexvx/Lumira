@@ -32,10 +32,10 @@ public class AiManagementAppService {
 
     private static final String DEFAULT_SYSTEM_PROMPT_TEMPLATE = """
             你是一名企业级 SaaS 平台中的数字员工。
-            你的目标是：基于当前租户的授权范围，稳妥、专业、清晰地完成用户交办的任务。
+            你的目标是：基于当前平台的授权范围，稳妥、专业、清晰地完成用户交办的任务。
             你必须遵循以下要求：
             1. 先确认上下文，再执行任务。
-            2. 遵守租户隔离和权限边界，不越权访问数据。
+            2. 遵守平台权限边界，不越权访问数据。
             3. 当任务涉及高风险操作时，先请求二次确认。
             4. 输出尽量简洁、结构清晰，优先给出可执行结论。
             """;
@@ -410,6 +410,7 @@ public class AiManagementAppService {
         return pageQuery(
                 """
                         select c.id, c.tenant_id as tenantId, c.employee_id as employeeId,
+                               c.owner_user_id as ownerUserId,
                                coalesce(e.nickname, e.username) as employeeName,
                                c.conversation_code as conversationCode, c.title, c.status,
                                c.is_pinned as pinned,
@@ -431,6 +432,7 @@ public class AiManagementAppService {
                          and e.tenant_id = c.tenant_id
                          and e.is_deleted = 0
                         where c.tenant_id = ?
+                          and c.owner_user_id = ?
                           and c.employee_id = ?
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
@@ -439,19 +441,20 @@ public class AiManagementAppService {
                         select count(1)
                         from ai_conversation c
                         where c.tenant_id = ?
+                          and c.owner_user_id = ?
                           and c.employee_id = ?
                           and c.is_deleted = 0
                         """,
                 AiVO.ConversationVO.class,
                 pageNo,
                 pageSize,
-                List.of(tenantId, employeeId)
+                List.of(tenantId, currentUser.getUserId(), employeeId)
         );
     }
 
     public List<AiVO.MessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
         Long tenantId = currentTenantId(currentUser);
-        requireConversation(tenantId, conversationId);
+        requireConversation(tenantId, currentUser.getUserId(), conversationId);
         List<AiVO.MessageVO> messages = jdbcTemplate.query(
                 """
                         select id, conversation_id as conversationId, role, content, create_time as createTime
@@ -475,7 +478,7 @@ public class AiManagementAppService {
     @Transactional
     public boolean updateConversation(CurrentUser currentUser, Long conversationId, AiDTO.ConversationUpdateRequest request) {
         Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
         String title = request == null ? null : request.getTitle();
         Boolean pinned = request == null ? null : request.getPinned();
         jdbcTemplate.update(
@@ -508,7 +511,7 @@ public class AiManagementAppService {
     @Transactional
     public boolean deleteConversation(CurrentUser currentUser, Long conversationId) {
         Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
@@ -566,7 +569,7 @@ public class AiManagementAppService {
     @Transactional
     public AiVO.ConversationShareVO createConversationShare(CurrentUser currentUser, Long conversationId) {
         Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusDays(30);
         String shareToken = "share_" + UUID.randomUUID().toString().replace("-", "");
@@ -607,7 +610,7 @@ public class AiManagementAppService {
     public AiVO.ConversationShareDetailVO getConversationShare(CurrentUser currentUser, String shareToken) {
         Long tenantId = currentTenantId(currentUser);
         AiVO.ConversationShareVO share = requireConversationShare(tenantId, shareToken);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, share.getConversationId());
+        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), share.getConversationId());
         AiVO.ConversationShareDetailVO detail = new AiVO.ConversationShareDetailVO();
         detail.setShare(share);
         detail.setConversation(conversation);
@@ -617,7 +620,7 @@ public class AiManagementAppService {
 
     public AiVO.ConversationExportVO exportConversation(CurrentUser currentUser, Long conversationId, String format) {
         Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, conversationId);
+        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
         List<AiVO.MessageVO> messages = listConversationMessages(currentUser, conversationId);
         String normalizedFormat = normalizeExportFormat(format);
         String content = buildConversationExportContent(conversation, messages, normalizedFormat);
@@ -885,12 +888,13 @@ public class AiManagementAppService {
         }
     }
 
-    private AiVO.ConversationVO requireConversation(Long tenantId, Long conversationId) {
+    private AiVO.ConversationVO requireConversation(Long tenantId, Long ownerUserId, Long conversationId) {
         AiVO.ConversationVO conversation = jdbcTemplate.query(
                 """
                         select c.id,
                                c.tenant_id as tenantId,
                                c.employee_id as employeeId,
+                               c.owner_user_id as ownerUserId,
                                coalesce(e.nickname, e.username) as employeeName,
                                c.conversation_code as conversationCode,
                                c.title,
@@ -914,12 +918,14 @@ public class AiManagementAppService {
                          and e.tenant_id = c.tenant_id
                          and e.is_deleted = 0
                         where c.tenant_id = ?
+                          and c.owner_user_id = ?
                           and c.id = ?
                           and c.is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ConversationVO.class),
                 tenantId,
+                ownerUserId,
                 conversationId
         ).stream().findFirst().orElse(null);
         if (conversation == null) {
@@ -1125,10 +1131,7 @@ public class AiManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "租户上下文无效");
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private String cleanNullable(String value) {

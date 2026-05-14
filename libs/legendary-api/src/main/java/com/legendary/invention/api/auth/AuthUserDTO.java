@@ -1,7 +1,5 @@
 package com.legendary.invention.api.auth;
 
-import com.legendary.invention.api.tenant.TenantSummaryDTO;
-
 import java.util.List;
 
 public record AuthUserDTO(
@@ -18,7 +16,6 @@ public record AuthUserDTO(
         String availableTime,
         String idCardNumber,
         String locale,
-        TenantSummaryDTO currentTenant,
         String sessionId,
         String permissionsVersion,
         Integer sessionVersion,

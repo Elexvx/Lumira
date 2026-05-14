@@ -311,6 +311,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         pathname: currentPathname,
         siderMenuMode,
         menuVersion: initialState?.menuVersion ?? 0,
+        themeRevision: initialState?.themeRevision ?? 0,
       },
     },
     menuDataRender: (menuData) => {

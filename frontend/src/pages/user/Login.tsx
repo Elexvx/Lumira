@@ -370,8 +370,6 @@ const Login = () => {
         setInitialState((prev: AppInitialState | undefined) => ({
           ...prev,
           currentUser: sessionResult.currentUser,
-          currentTenant: sessionResult.currentUser.currentTenant || null,
-          myTenants: [],
           menuTree,
           menuVersion: (prev?.menuVersion ?? 0) + 1,
           availablePlugins,

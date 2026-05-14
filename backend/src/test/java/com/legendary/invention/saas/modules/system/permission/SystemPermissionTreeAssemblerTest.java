@@ -39,6 +39,42 @@ class SystemPermissionTreeAssemblerTest {
         assertFalse(actionKeys.contains("ai:skill:view"));
     }
 
+    @Test
+    void shouldKeepSettingsPagesInPermissionTree() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(menu("系统设置", "/settings/menus", "system:menu:view")),
+                List.of(permission("system:menu:view", "查看菜单"))
+        );
+
+        assertFalse(tree.isEmpty());
+        assertTrue(tree.getFirst().isSelectable());
+    }
+
+    @Test
+    void shouldAttachSiteActionsToNonViewPagePermissions() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(menu("页面管理", "/site/pages", "site:page")),
+                List.of(
+                        permission("site:page", "查看官网页面"),
+                        permission("site:page:create", "新增官网页面"),
+                        permission("site:page:update", "编辑官网页面"),
+                        permission("site:page:publish", "发布官网页面")
+                )
+        );
+
+        Set<String> actionKeys = tree.getFirst().getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet());
+
+        assertTrue(actionKeys.contains("site:page:create"));
+        assertTrue(actionKeys.contains("site:page:update"));
+        assertTrue(actionKeys.contains("site:page:publish"));
+    }
+
     private SystemVO.MenuVO menu(String name, String path, String permissionKey) {
         SystemVO.MenuVO menu = new SystemVO.MenuVO();
         menu.setId(1L);

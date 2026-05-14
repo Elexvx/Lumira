@@ -47,14 +47,15 @@ public class PluginGatewayController {
     public ResponseEntity<Object> dispatch(HttpServletRequest request) throws Exception {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         String pluginCode = resolvePluginCode(request.getRequestURI());
-        PluginRuntimeDescriptor runtimeDescriptor = pluginManagementAppService.requireTenantRuntime(currentUser.getCurrentTenantId(), pluginCode);
+        Long tenantId = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        PluginRuntimeDescriptor runtimeDescriptor = pluginManagementAppService.requireTenantRuntime(tenantId, pluginCode);
         PluginHttpRequest pluginRequest = new PluginHttpRequest(
                 request.getMethod(),
                 resolvePluginPath(pluginCode, request.getRequestURI()),
                 resolveQueryParameters(request),
                 resolveHeaders(request),
                 resolveBody(request),
-                currentUser.getCurrentTenantId(),
+                tenantId,
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 TraceContext.getRequestId(),

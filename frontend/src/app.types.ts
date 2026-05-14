@@ -4,17 +4,13 @@ import type {
   CurrentUser,
   LoginCapabilities,
   MenuNode,
-  MyTenant,
   SecuritySettings,
   TenantPlugin,
-  TenantSummary,
   WatermarkSettings,
 } from '@/types/api';
 
 export interface AppInitialState {
   currentUser?: CurrentUser;
-  currentTenant?: TenantSummary | null;
-  myTenants: MyTenant[];
   menuTree: MenuNode[];
   menuVersion: number;
   themeRevision?: number;

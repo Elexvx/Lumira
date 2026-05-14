@@ -7,7 +7,6 @@ import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.web.TraceIdFilter;
 import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
-import com.legendary.invention.saas.infrastructure.tenant.TenantFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -29,7 +28,6 @@ import java.io.IOException;
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
     private final TraceIdFilter traceIdFilter;
-    private final TenantFilter tenantFilter;
     private final JwtAuthFilter jwtAuthFilter;
     private final InternalServiceTokenAuthFilter internalServiceTokenAuthFilter;
     private final SecurityProperties securityProperties;
@@ -37,14 +35,12 @@ public class SecurityConfig {
 
     public SecurityConfig(
             TraceIdFilter traceIdFilter,
-            TenantFilter tenantFilter,
             JwtAuthFilter jwtAuthFilter,
             InternalServiceTokenAuthFilter internalServiceTokenAuthFilter,
             SecurityProperties securityProperties,
             ObjectMapper objectMapper
     ) {
         this.traceIdFilter = traceIdFilter;
-        this.tenantFilter = tenantFilter;
         this.jwtAuthFilter = jwtAuthFilter;
         this.internalServiceTokenAuthFilter = internalServiceTokenAuthFilter;
         this.securityProperties = securityProperties;
@@ -71,8 +67,7 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .addFilterBefore(traceIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(internalServiceTokenAuthFilter, TraceIdFilter.class)
-                .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class)
-                .addFilterAfter(tenantFilter, JwtAuthFilter.class);
+                .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class);
         return http.build();
     }
 

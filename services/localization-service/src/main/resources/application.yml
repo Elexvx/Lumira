@@ -60,8 +60,6 @@ saas:
       - /api/uploads/**
       - /actuator/health
       - /api/health
-  tenant:
-    header-name: X-Tenant-Id
   job:
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
 

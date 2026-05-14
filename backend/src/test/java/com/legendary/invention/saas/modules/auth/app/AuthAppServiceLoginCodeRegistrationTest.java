@@ -6,8 +6,6 @@ import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.auth.dto.LoginCodeChallengeRequest;
 import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
-import com.legendary.invention.saas.modules.tenant.domain.TenantDomainService;
-import com.legendary.invention.saas.modules.tenant.entity.TenantInfoEntity;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
@@ -31,7 +29,6 @@ class AuthAppServiceLoginCodeRegistrationTest {
     void smsLoginCodeChallengeShouldAutoRegisterMissingMobileUser() {
         String mobile = "13405825198";
         UserDomainService userDomainService = mock(UserDomainService.class);
-        TenantDomainService tenantDomainService = mock(TenantDomainService.class);
         LoginAuditService loginAuditService = mock(LoginAuditService.class);
         LoginProtectionService loginProtectionService = mock(LoginProtectionService.class);
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
@@ -46,10 +43,6 @@ class AuthAppServiceLoginCodeRegistrationTest {
         registeredUser.setNickname(mobile);
         registeredUser.setStatus("ENABLED");
 
-        TenantInfoEntity platformTenant = new TenantInfoEntity();
-        platformTenant.setId(1001L);
-        platformTenant.setTenantName("平台租户");
-
         LoginCodeChallengeVO expectedChallenge = new LoginCodeChallengeVO();
         expectedChallenge.setLoginType("sms");
         expectedChallenge.setChallengeId("challenge-1");
@@ -57,13 +50,11 @@ class AuthAppServiceLoginCodeRegistrationTest {
         when(userDomainService.findLoginUser(mobile))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(registeredUser));
-        when(tenantDomainService.findTenantById(1001L)).thenReturn(Optional.of(platformTenant));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded-password");
         when(verificationAppService.startLoginCodeChallenge(registeredUser, 1001L, "sms")).thenReturn(expectedChallenge);
 
         AuthAppService service = new AuthAppService(
                 userDomainService,
-                tenantDomainService,
                 loginAuditService,
                 null,
                 null,

@@ -138,11 +138,6 @@ export const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
     dataIndex: 'roleNames',
     renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
   },
-  {
-    title: '租户',
-    dataIndex: 'tenantNames',
-    renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
-  },
   { title: '创建时间', dataIndex: 'createdAt', renderText: (value) => value || '-' },
   { title: '更新时间', dataIndex: 'updatedAt', renderText: (value) => value || '-' },
 ];

@@ -133,4 +133,4 @@ CREATE TABLE IF NOT EXISTS `sys_plugin_version` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT IGNORE INTO `sys_plugin_definition` (`id`, `plugin_code`, `plugin_name`, `plugin_type`, `description`, `author`, `plugin_api_version`, `builtin_flag`, `status`, `sort_no`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES
-(1, 'sms', '短信验证码插件', 'BUSINESS', '为租户提供短信验证码登录与验证能力', 'legendary-invention', '1.0.0', 0, 'DISABLED', 0, 0, CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, 0);
+(1, 'sms', '短信验证码插件', 'BUSINESS', '为平台提供短信验证码登录与验证能力', 'legendary-invention', '1.0.0', 0, 'DISABLED', 0, 0, CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, 0);

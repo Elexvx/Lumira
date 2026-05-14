@@ -999,7 +999,7 @@ public class LocalizationManagementAppService {
             case "page" -> "页面";
             case "message" -> "消息";
             case "theme" -> "主题";
-            case "tenant" -> "租户";
+            case "tenant" -> "平台";
             case "auth" -> "认证";
             case "system" -> "系统";
             default -> StringUtils.hasText(sourceType) ? namespaceCode.trim() + " · " + normalizeSourceType(sourceType) : namespaceCode.trim();

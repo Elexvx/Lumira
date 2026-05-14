@@ -417,10 +417,7 @@ public class SiteManagementAppService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.TENANT_ERROR, "租户上下文无效");
-        }
-        return currentUser.getCurrentTenantId();
+        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private Long createPageVersion(Long tenantId, Long siteId, Long pageId, Long versionNo, String blocksJson, String status, Long operatorId) {

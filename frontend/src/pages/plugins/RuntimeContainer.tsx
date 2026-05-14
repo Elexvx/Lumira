@@ -51,7 +51,6 @@ const RuntimeContainer = () => {
       version: plugin.version,
       routePath: location.pathname,
       currentUser: initialState?.currentUser,
-      currentTenant: initialState?.currentTenant,
       requestId: crypto.randomUUID(),
     })
       .then((result) => {
@@ -80,7 +79,7 @@ const RuntimeContainer = () => {
         mountedRef.current = null;
       }
     };
-  }, [initialState?.currentTenant, initialState?.currentUser, location.pathname, plugin]);
+  }, [initialState?.currentUser, location.pathname, plugin]);
 
   if (error) {
     return (

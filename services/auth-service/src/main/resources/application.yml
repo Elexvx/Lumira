@@ -11,8 +11,6 @@ spring:
           instances:
             system-service:
               - uri: ${SYSTEM_SERVICE_BASE_URL:http://localhost:8080}
-            tenant-service:
-              - uri: ${TENANT_SERVICE_BASE_URL:http://localhost:8083}
     nacos:
       config:
         server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
