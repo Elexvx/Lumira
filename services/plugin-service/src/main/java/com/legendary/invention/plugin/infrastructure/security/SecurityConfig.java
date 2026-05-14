@@ -27,12 +27,10 @@ import java.io.IOException;
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
 
-    private final TraceIdFilter traceIdFilter;
     private final PluginJwtAuthFilter pluginJwtAuthFilter;
     private final ObjectMapper objectMapper;
 
-    public SecurityConfig(TraceIdFilter traceIdFilter, PluginJwtAuthFilter pluginJwtAuthFilter, ObjectMapper objectMapper) {
-        this.traceIdFilter = traceIdFilter;
+    public SecurityConfig(PluginJwtAuthFilter pluginJwtAuthFilter, ObjectMapper objectMapper) {
         this.pluginJwtAuthFilter = pluginJwtAuthFilter;
         this.objectMapper = objectMapper;
     }
@@ -43,7 +41,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProperties securityProperties) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProperties securityProperties, TraceIdFilter traceIdFilter) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .formLogin(AbstractHttpConfigurer::disable)
