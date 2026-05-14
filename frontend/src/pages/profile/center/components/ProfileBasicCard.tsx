@@ -1,5 +1,5 @@
-import { EyeInvisibleOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
-import { Avatar, Button, Card, Col, DatePicker, Empty, Form, Input, Row, Select, Space, Tooltip, Upload, type FormProps, type UploadProps } from 'antd';
+import { EditOutlined, EyeInvisibleOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input, Row, Select, Space, Tooltip, Upload, type DescriptionsProps, type FormProps, type UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { useState } from 'react';
 import { GENDER_OPTIONS } from '@/pages/profile/center/constants';
@@ -17,7 +17,9 @@ interface ProfileBasicCardProps {
   avatarUploading: boolean;
   mobileLockedByVerification?: boolean;
   emailLockedByVerification?: boolean;
+  editingOpen: boolean;
   onSave: () => void;
+  onEditOpenChange: (open: boolean) => void;
   onAvatarBeforeCrop: (file: File) => boolean;
   onAvatarUploadRequest: UploadProps['customRequest'];
 }
@@ -58,7 +60,9 @@ export const ProfileBasicCard = ({
   avatarUploading,
   mobileLockedByVerification = false,
   emailLockedByVerification = false,
+  editingOpen,
   onSave,
+  onEditOpenChange,
   onAvatarBeforeCrop,
   onAvatarUploadRequest,
 }: ProfileBasicCardProps) => {
@@ -66,28 +70,106 @@ export const ProfileBasicCard = ({
   const showSensitiveToggle = mobileLockedByVerification || emailLockedByVerification;
   const displayMobile = showSensitiveInfo ? currentUser?.mobile || '-' : maskMobile(currentUser?.mobile);
   const displayEmail = showSensitiveInfo ? currentUser?.email || '-' : maskEmail(currentUser?.email);
+  const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '-';
+  const displayGender = GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-';
+  const visibleField = (fieldKey: string) => visibleProfileFields.has(fieldKey);
+
+  const profileItems: DescriptionsProps['items'] = [
+    { key: 'username', label: '用户名', children: currentUser?.username || '-' },
+  ];
+
+  if (visibleField('nickname')) {
+    profileItems.push({ key: 'nickname', label: '昵称', children: currentUser?.nickname || '-' });
+  }
+  if (visibleField('realName')) {
+    profileItems.push({ key: 'realName', label: '姓名', children: currentUser?.realName || '-' });
+  }
+  if (visibleField('mobile')) {
+    profileItems.push({ key: 'mobile', label: '手机号', children: displayMobile });
+  }
+  if (visibleField('email')) {
+    profileItems.push({ key: 'email', label: '邮箱', children: displayEmail });
+  }
+  if (visibleField('birthMonth')) {
+    profileItems.push({ key: 'birthMonth', label: '出生年月', children: currentUser?.birthMonth || '-' });
+  }
+  if (visibleField('gender')) {
+    profileItems.push({ key: 'gender', label: '性别', children: displayGender });
+  }
+  if (visibleField('region')) {
+    profileItems.push({ key: 'region', label: '所在地区', children: currentUser?.region || '-' });
+  }
+  if (visibleField('idCardNumber')) {
+    profileItems.push({ key: 'idCardNumber', label: '身份证号码', children: currentUser?.idCardNumber || '-' });
+  }
+  if (visibleField('availableTime')) {
+    profileItems.push({ key: 'availableTime', label: '可工作时间', children: currentUser?.availableTime || '-' });
+  }
 
   return (
-    <Card
-      title="基础资料"
-      loading={loading}
-      style={{ width: '100%' }}
-      extra={
-        showSensitiveToggle ? (
-          <Tooltip title={showSensitiveInfo ? '隐藏敏感信息' : '显示敏感信息'}>
-            <Button
-              type="text"
-              shape="circle"
-              aria-label={showSensitiveInfo ? '隐藏敏感信息' : '显示敏感信息'}
-              icon={showSensitiveInfo ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-              onClick={() => setShowSensitiveInfo((current) => !current)}
-            />
-          </Tooltip>
-        ) : null
-      }
-    >
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Form {...profileFormProps}>
+    <>
+      <Card
+        title="基础资料"
+        loading={loading}
+        style={{ width: '100%' }}
+        extra={(
+          <Space size={4}>
+            {showSensitiveToggle ? (
+              <Tooltip title={showSensitiveInfo ? '隐藏敏感信息' : '显示敏感信息'}>
+                <Button
+                  type="text"
+                  shape="circle"
+                  aria-label={showSensitiveInfo ? '隐藏敏感信息' : '显示敏感信息'}
+                  icon={showSensitiveInfo ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                  onClick={() => setShowSensitiveInfo((current) => !current)}
+                />
+              </Tooltip>
+            ) : null}
+            <Tooltip title="编辑资料">
+              <Button
+                type="text"
+                shape="circle"
+                aria-label="编辑资料"
+                icon={<EditOutlined />}
+                disabled={!hasVisibleProfileFields}
+                onClick={() => onEditOpenChange(true)}
+              />
+            </Tooltip>
+          </Space>
+        )}
+      >
+        {hasVisibleProfileFields ? (
+          <Space direction="vertical" size={24} style={{ width: '100%' }}>
+            <Space size={16} align="center" className="saas-profile-page__identity">
+              <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+              <Space direction="vertical" size={2}>
+                <span className="saas-profile-page__name">{displayName}</span>
+                <span className="saas-profile-page__meta">{currentUser?.currentTenant?.tenantName || '暂无所属主体'}</span>
+              </Space>
+            </Space>
+            <Descriptions className="saas-profile-page__descriptions" colon={false} column={{ xs: 1, sm: 2, lg: 2 }} items={profileItems} />
+          </Space>
+        ) : (
+          <Empty description="当前未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+      </Card>
+
+      <Drawer
+        title="编辑个人资料"
+        open={editingOpen}
+        width={560}
+        destroyOnClose={false}
+        onClose={() => onEditOpenChange(false)}
+        extra={(
+          <Space>
+            <Button onClick={() => onEditOpenChange(false)}>取消</Button>
+            <Button type="primary" loading={profileSaving} onClick={onSave}>
+              保存资料
+            </Button>
+          </Space>
+        )}
+      >
+        <Form {...profileFormProps} layout="vertical">
           <Form.Item name="avatarUrl" hidden>
             <Input />
           </Form.Item>
@@ -186,15 +268,7 @@ export const ProfileBasicCard = ({
             <Empty description="当前未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
           )}
         </Form>
-
-        {hasVisibleProfileFields ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button type="primary" loading={profileSaving} onClick={onSave}>
-              保存资料
-            </Button>
-          </div>
-        ) : null}
-      </Space>
-    </Card>
+      </Drawer>
+    </>
   );
 };
