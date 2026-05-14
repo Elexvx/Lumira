@@ -197,3 +197,4 @@ const collectRealPageRouteMeta = (routes: BackendRouteRecord[], result = new Map
 export const realPageRouteMetaMap = collectRealPageRouteMeta(backendRoutes);
 export const realPageRouteMetaList = Array.from(realPageRouteMetaMap.values());
 export const realPageRoutePaths = new Set(realPageRouteMetaMap.keys());
+export const backendRouteMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
