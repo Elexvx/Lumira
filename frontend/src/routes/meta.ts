@@ -109,9 +109,9 @@ export const backendRoutes: BackendRouteRecord[] = [
     icon: 'IdcardOutlined',
     access: 'canVisitPersonalCenter',
     routes: [
-      { path: '/user-center/personal-center', redirect: '/user-center/personal-center/profile' },
+      { path: '/user-center/personal-center', redirect: '/user-center/personal-center/profile', hideInMenu: true },
       { path: '/user-center/personal-center/profile', component: '@/pages/profile/Center', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
-      { path: '/user-center/personal-center/files', redirect: '/user-center/files' },
+      { path: '/user-center/personal-center/files', redirect: '/user-center/files', hideInMenu: true },
     ],
   },
   { path: '/user-center/files', component: '@/pages/files/Center', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },

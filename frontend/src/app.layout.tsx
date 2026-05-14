@@ -28,6 +28,7 @@ import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { BreadcrumbProps } from 'antd';
 
 type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
+type LocalRuntimeMenuDataItem = RuntimeMenuDataItem & { redirect?: string };
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
@@ -40,7 +41,8 @@ const resolveSiderMenuMode = (pathname: string) => (isSettingsShellPath(pathname
 
 const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string, RuntimeMenuDataItem>()) => {
   items.forEach((item) => {
-    if (item.path) {
+    const localItem = item as LocalRuntimeMenuDataItem;
+    if (item.path && !localItem.redirect) {
       map.set(item.path, item);
     }
     if (item.children?.length) {
@@ -111,6 +113,11 @@ const translateVisibleLocalMenuData = (
   const access = buildAccess({ currentUser: initialState?.currentUser }) as Record<string, unknown>;
 
   return items.map((item) => {
+    const localItem = item as LocalRuntimeMenuDataItem;
+    if (localItem.redirect) {
+      return null;
+    }
+
     const routeMeta = item.path ? routeMetaMap.get(item.path) : undefined;
     const hasRealPageRoute = item.path ? realPagePathSet.has(item.path) : false;
     const children = item.children?.length ? translateVisibleLocalMenuData(initialState, item.children) : [];
