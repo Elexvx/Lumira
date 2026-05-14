@@ -70,7 +70,6 @@ export const ProfileBasicCard = ({
   const showSensitiveToggle = mobileLockedByVerification || emailLockedByVerification;
   const displayMobile = showSensitiveInfo ? currentUser?.mobile || '-' : maskMobile(currentUser?.mobile);
   const displayEmail = showSensitiveInfo ? currentUser?.email || '-' : maskEmail(currentUser?.email);
-  const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '-';
   const displayGender = GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-';
   const visibleField = (fieldKey: string) => visibleProfileFields.has(fieldKey);
 
@@ -109,8 +108,9 @@ export const ProfileBasicCard = ({
   return (
     <>
       <Card
-        title="基础资料"
+        title="个人信息"
         loading={loading}
+        className="saas-profile-page__personal-card"
         style={{ width: '100%' }}
         extra={(
           <Space size={4}>
@@ -139,16 +139,7 @@ export const ProfileBasicCard = ({
         )}
       >
         {hasVisibleProfileFields ? (
-          <Space direction="vertical" size={24} style={{ width: '100%' }}>
-            <Space size={16} align="center" className="saas-profile-page__identity">
-              <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
-              <Space direction="vertical" size={2}>
-                <span className="saas-profile-page__name">{displayName}</span>
-                <span className="saas-profile-page__meta">{currentUser?.currentTenant?.tenantName || '暂无所属主体'}</span>
-              </Space>
-            </Space>
-            <Descriptions className="saas-profile-page__descriptions" colon={false} column={{ xs: 1, sm: 2, lg: 2 }} items={profileItems} />
-          </Space>
+          <Descriptions className="saas-profile-page__descriptions" colon={false} column={{ xs: 1, sm: 2, lg: 4 }} items={profileItems} />
         ) : (
           <Empty description="当前未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
