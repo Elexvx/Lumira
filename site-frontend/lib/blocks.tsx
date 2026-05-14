@@ -68,15 +68,22 @@ export function Insights({ contents }: { contents: ContentRecord[] }) {
         <h2>最新内容</h2>
         <p>以清晰列表承载资讯、公告和申请说明。</p>
       </div>
-      <div className="insight-list">
-        {contents.map((item) => (
-          <a href={item.slug} key={item.id}>
-            <span>{item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('zh-CN') : '更新'}</span>
-            <strong>{item.title}</strong>
-            <p>{item.summary}</p>
-          </a>
-        ))}
-      </div>
+      {contents.length ? (
+        <div className="insight-list">
+          {contents.map((item) => (
+            <a href={item.slug} key={item.id}>
+              <span>{item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('zh-CN') : '更新'}</span>
+              <strong>{item.title}</strong>
+              <p>{item.summary}</p>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <strong>暂无已发布内容</strong>
+          <p>这里会显示后台发布后的文章、公告和动态。</p>
+        </div>
+      )}
     </section>
   );
 }
