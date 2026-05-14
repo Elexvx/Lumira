@@ -62,13 +62,6 @@ export function renderBlock(block: PageBlock, contents: ContentRecord[]) {
 }
 
 export function Insights({ contents }: { contents: ContentRecord[] }) {
-  const items = contents.length
-    ? contents
-    : [
-        { id: 1, title: '官网内容即将接入 CMS', slug: '/news/cms', summary: '后台发布后，官网自动读取已发布快照。' },
-        { id: 2, title: '页面区块模型已准备', slug: '/news/pages', summary: '用更少的固定模板承载更多业务形态。' },
-      ];
-
   return (
     <section className="section" id="insights">
       <div className="section-heading">
@@ -76,7 +69,7 @@ export function Insights({ contents }: { contents: ContentRecord[] }) {
         <p>以清晰列表承载资讯、公告和申请说明。</p>
       </div>
       <div className="insight-list">
-        {items.map((item) => (
+        {contents.map((item) => (
           <a href={item.slug} key={item.id}>
             <span>{item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('zh-CN') : '更新'}</span>
             <strong>{item.title}</strong>

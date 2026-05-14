@@ -41,6 +41,9 @@ export interface ContentRecord {
   summary?: string;
   coverUrl?: string;
   bodyText?: string;
+  bodyJson?: string;
+  seoJson?: string;
+  tagsJson?: string;
   publishedAt?: string;
 }
 
@@ -76,7 +79,13 @@ export async function getPage(slug = '/') {
 
 export async function getContents() {
   const result = await fetchJson<PagedResult<ContentRecord>>('/v1/public/site/contents?pageNo=1&pageSize=6');
-  return result?.records || [];
+  return result?.records?.length ? result.records : defaultContents;
+}
+
+export async function getContent(slug: string) {
+  const normalized = slug.startsWith('/') ? slug : `/${slug}`;
+  const remote = await fetchJson<ContentRecord>(`/v1/public/site/contents/${encodeURIComponent(normalized)}`);
+  return remote || defaultContents.find((item) => item.slug === normalized) || null;
 }
 
 export function parseBlocks(page: PublicPage | null): PageBlock[] {
@@ -114,5 +123,26 @@ export const defaultBlocks: PageBlock[] = [
     id: 'contact',
     type: 'contact',
     props: {},
+  },
+];
+
+export const defaultContents: ContentRecord[] = [
+  {
+    id: 1,
+    title: '官网内容即将接入 CMS',
+    slug: '/news/cms',
+    summary: '后台发布后，官网自动读取已发布快照。',
+    bodyText:
+      '官网已经与统一后台的内容模型对齐。运营人员可以在管理端维护文章、公告与页面内容，发布后由公开站点读取已发布快照。\n\n第一阶段会保持内容结构简洁，优先覆盖品牌展示、资讯发布和申请入口，后续再逐步扩展为更细的专题页和活动页。',
+    publishedAt: '2026-05-14T00:00:00+08:00',
+  },
+  {
+    id: 2,
+    title: '页面区块模型已准备',
+    slug: '/news/pages',
+    summary: '用更少的固定模板承载更多业务形态。',
+    bodyText:
+      '页面以区块方式组织，而不是写死成单一模板。这样既能保持官网视觉统一，也能让不同页面根据业务需要组合展示模块。\n\n目前已经准备了首页、能力展示、内容列表和联系入口等基础区块，适合先上线一个简洁大气的公开站点。',
+    publishedAt: '2026-05-14T00:00:00+08:00',
   },
 ];
