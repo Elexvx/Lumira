@@ -239,6 +239,24 @@ nav a:hover {
   border-top: 1px solid var(--line);
 }
 
+.empty-state {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 30px 0;
+}
+
+.empty-state strong {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 .insight-list a {
   display: grid;
   grid-template-columns: 140px minmax(180px, 0.8fr) minmax(0, 1fr);
@@ -268,6 +286,39 @@ nav a:hover {
   justify-content: space-between;
   gap: 48px;
   align-items: center;
+}
+
+.site-empty {
+  width: min(1160px, calc(100% - 48px));
+  min-height: calc(100vh - 76px);
+  margin: 0 auto;
+  padding: 96px 0;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  border-bottom: 1px solid var(--line);
+}
+
+.site-empty span {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.site-empty h1 {
+  max-width: 760px;
+  margin: 0;
+  font-size: clamp(42px, 6vw, 78px);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.site-empty p {
+  max-width: 640px;
+  margin: 28px 0 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.75;
 }
 
 .article-shell {
