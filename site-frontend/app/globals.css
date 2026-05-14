@@ -56,6 +56,13 @@ main {
   background: linear-gradient(135deg, #101418, #1d4ed8);
 }
 
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
 nav {
   display: flex;
   gap: 28px;
