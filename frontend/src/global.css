@@ -467,6 +467,52 @@ body,
     width: 100%;
   }
 
+  .saas-profile-page__welcome-card,
+  .saas-profile-page__personal-card,
+  .saas-profile-page__account-card {
+    border-radius: 8px;
+  }
+
+  .saas-profile-page__welcome-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    min-width: 0;
+  }
+
+  .saas-profile-page__tenant-mark {
+    margin: 0 !important;
+    color: #1677ff;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .saas-profile-page__account-card {
+    background: #0958d9;
+    color: #fff;
+  }
+
+  .saas-profile-page__account-card .ant-typography {
+    color: inherit;
+  }
+
+  .saas-profile-page__account-card .ant-avatar {
+    background: #d6e4ff;
+    color: #0958d9;
+  }
+
+  @media (max-width: 767px) {
+    .saas-profile-page__welcome-content {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .saas-profile-page__tenant-mark {
+      text-align: left;
+    }
+  }
+
   .saas-profile-page__identity {
     width: 100%;
     min-width: 0;
