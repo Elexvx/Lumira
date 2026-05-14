@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { UserOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
+import { Avatar, Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
@@ -469,6 +470,13 @@ const ProfileCenterPage = () => {
       ? formatMessage({ id: 'page.profile.contact.confirm', defaultMessage: 'Confirm bind' })
       : formatMessage({ id: 'page.profile.contact.sendCode', defaultMessage: 'Send code' })
     : formatMessage({ id: 'page.profile.contact.save', defaultMessage: 'Save' });
+  const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '-';
+  const tenantName = currentUser?.currentTenant?.tenantName || '暂无所属主体';
+  const roleNames = currentUser?.availableRoles?.map((role) => role.roleName).filter(Boolean) || [];
+  const activeRoleName =
+    currentUser?.availableRoles?.find((role) => role.id === currentUser.simulatedRoleId)?.roleName || roleNames[0] || '暂无角色';
+  const nowHour = dayjs().hour();
+  const greetingText = nowHour < 6 ? '夜深了' : nowHour < 12 ? '上午好' : nowHour < 18 ? '下午好' : '晚上好';
 
   const handleSaveProfile = async () => {
     try {
@@ -531,6 +539,23 @@ const ProfileCenterPage = () => {
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         {responsive.isMobile ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Card className="saas-profile-page__welcome-card">
+              <Space direction="vertical" size={6}>
+                <Typography.Title level={3} style={{ margin: 0 }}>
+                  Hi，{displayName}
+                </Typography.Title>
+                <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
+              </Space>
+            </Card>
+            <Card className="saas-profile-page__account-card">
+              <Space direction="vertical" size={18} style={{ width: '100%' }}>
+                <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                <Space direction="vertical" size={6}>
+                  <Typography.Title level={3} style={{ margin: 0 }}>My Account</Typography.Title>
+                  <Typography.Text>{tenantName} · {activeRoleName}</Typography.Text>
+                </Space>
+              </Space>
+            </Card>
             <div ref={profileBasicCardRef}>
               <ProfileBasicCard
                 loading={profileQuery.isLoading}
@@ -550,22 +575,49 @@ const ProfileCenterPage = () => {
                 onAvatarUploadRequest={handleAvatarUploadRequest}
               />
             </div>
-            <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
-            <BoundProviderCard
-              canManageSecondFactor
-              loading={providersQuery.isLoading}
-              providers={providersQuery.data || []}
-              bindingLoading={bindingLoading}
-              bindingSubmitting={bindingSubmitting}
-              supplementalItems={supplementalItems}
-              onBind={(provider) => void openBindModal(provider)}
-              onUnbind={handleUnbind}
-            />
+            <section className="saas-profile-page__side-section" aria-label="团队与账户">
+              <Typography.Title level={4} style={{ margin: 0 }}>团队与账户</Typography.Title>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Card>
+                  <Space align="center" size={12}>
+                    <Avatar size={48} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                    <Space direction="vertical" size={2}>
+                      <Typography.Text strong>{displayName}</Typography.Text>
+                      <Typography.Text type="secondary">{tenantName} · {activeRoleName}</Typography.Text>
+                    </Space>
+                  </Space>
+                </Card>
+                <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+                <BoundProviderCard
+                  canManageSecondFactor
+                  loading={providersQuery.isLoading}
+                  providers={providersQuery.data || []}
+                  bindingLoading={bindingLoading}
+                  bindingSubmitting={bindingSubmitting}
+                  supplementalItems={supplementalItems}
+                  onBind={(provider) => void openBindModal(provider)}
+                  onUnbind={handleUnbind}
+                />
+              </Space>
+            </section>
           </Space>
         ) : (
           <Row gutter={[16, 16]} align="top">
-            <Col xs={24} xl={12}>
+            <Col xs={24} xl={18}>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Card className="saas-profile-page__welcome-card">
+                  <div className="saas-profile-page__welcome-content">
+                    <Space align="baseline" size={24}>
+                      <Typography.Title level={2} style={{ margin: 0 }}>
+                        Hi，{displayName}
+                      </Typography.Title>
+                      <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
+                    </Space>
+                    <Typography.Title level={2} className="saas-profile-page__tenant-mark">
+                      {tenantName}
+                    </Typography.Title>
+                  </div>
+                </Card>
                 <div ref={profileBasicCardRef}>
                   <ProfileBasicCard
                     loading={profileQuery.isLoading}
@@ -585,22 +637,46 @@ const ProfileCenterPage = () => {
                     onAvatarUploadRequest={handleAvatarUploadRequest}
                   />
                 </div>
-                <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
               </Space>
             </Col>
 
-            <Col xs={24} xl={12}>
+            <Col xs={24} xl={6}>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <BoundProviderCard
-                  canManageSecondFactor
-                  loading={providersQuery.isLoading}
-                  providers={providersQuery.data || []}
-                  bindingLoading={bindingLoading}
-                  bindingSubmitting={bindingSubmitting}
-                  supplementalItems={supplementalItems}
-                  onBind={(provider) => void openBindModal(provider)}
-                  onUnbind={handleUnbind}
-                />
+                <Card className="saas-profile-page__account-card">
+                  <Space direction="vertical" size={18} style={{ width: '100%' }}>
+                    <Avatar size={96} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                    <Space direction="vertical" size={8}>
+                      <Typography.Title level={3} style={{ margin: 0 }}>My Account</Typography.Title>
+                      <Typography.Text>{tenantName}</Typography.Text>
+                      <Typography.Text>{activeRoleName}</Typography.Text>
+                    </Space>
+                  </Space>
+                </Card>
+                <section className="saas-profile-page__side-section" aria-label="团队与账户">
+                  <Typography.Title level={4} style={{ margin: 0 }}>团队与账户</Typography.Title>
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Card>
+                      <Space align="center" size={12}>
+                        <Avatar size={48} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                        <Space direction="vertical" size={2}>
+                          <Typography.Text strong>{displayName}</Typography.Text>
+                          <Typography.Text type="secondary">{roleNames.join('、') || activeRoleName}</Typography.Text>
+                        </Space>
+                      </Space>
+                    </Card>
+                    <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+                    <BoundProviderCard
+                      canManageSecondFactor
+                      loading={providersQuery.isLoading}
+                      providers={providersQuery.data || []}
+                      bindingLoading={bindingLoading}
+                      bindingSubmitting={bindingSubmitting}
+                      supplementalItems={supplementalItems}
+                      onBind={(provider) => void openBindModal(provider)}
+                      onUnbind={handleUnbind}
+                    />
+                  </Space>
+                </section>
               </Space>
             </Col>
           </Row>
