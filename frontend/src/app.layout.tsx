@@ -171,10 +171,11 @@ const composeMenuItem = (
     (localMeta || {}) as RuntimeMenuDataItem & { routes?: RuntimeMenuDataItem[] };
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
   const menuLabelId = mergedMeta?.name || backendNode.name || backendNode.menuCode;
+  const isRedirectGroup = children.length > 0 && Boolean(backendNode.component?.startsWith('redirect:'));
 
   return {
     ...localItemMeta,
-    path: backendNode.path || localMeta?.path,
+    path: isRedirectGroup ? undefined : backendNode.path || localMeta?.path,
     name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
     locale: false as const,
     icon,
