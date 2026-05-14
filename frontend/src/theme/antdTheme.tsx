@@ -1,4 +1,4 @@
-import { ConfigProvider, theme as antdTheme } from 'antd';
+import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
 import type { ReactNode } from 'react';
 import { resolveAntdLocale } from '@/i18n/antdLocale';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
@@ -68,7 +68,7 @@ export const syncAntdStaticThemeHolder = () => {
   ConfigProvider.config({
     holderRender: (children: ReactNode) => (
       <ConfigProvider locale={resolveAntdLocale()} theme={buildAntdThemeConfig()}>
-        {children}
+        <AntdApp>{children}</AntdApp>
       </ConfigProvider>
     ),
   });
