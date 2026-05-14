@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
-import { realPageRouteMetaMap, realPageRoutePaths } from '@/routes/meta';
+import { backendRouteMetaMap, realPageRouteMetaMap, realPageRoutePaths } from '@/routes/meta';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { PermissionActionRecord, PermissionRecord, PermissionTreeRecord } from '@/types/api';
 
 export interface NormalizedPermissionTreeRecord extends Omit<PermissionTreeRecord, 'children'> {
@@ -28,9 +29,25 @@ export interface RolePermissionDisplayGroup {
 
 const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType'] => node.nodeType || 'PAGE';
 
-const isAdminOnlySettingsPath = (path?: string | null) => {
-  const normalizedPath = path?.trim() || '';
-  return normalizedPath === '/settings' || normalizedPath.startsWith('/settings/');
+const CATALOG_LABEL_BY_PERMISSION_KEY = new Map<string, string>([
+  ['site:view', 'nav.site.root'],
+  ['system:view', 'nav.system.root'],
+  ['user:center:view', 'nav.user.center'],
+  ['profile:view', 'nav.user.personalCenter'],
+]);
+
+const resolveCanonicalPageName = (node: PermissionTreeRecord, routePath: string) => {
+  const routeMeta = routePath ? realPageRouteMetaMap.get(routePath) ?? backendRouteMetaMap.get(routePath) : undefined;
+  if (routeMeta?.name) {
+    return resolveBuiltinMessage(routeMeta.name, node.pageName);
+  }
+
+  const catalogMessageKey = node.permissionKey ? CATALOG_LABEL_BY_PERMISSION_KEY.get(node.permissionKey) : undefined;
+  if (catalogMessageKey) {
+    return resolveBuiltinMessage(catalogMessageKey, node.pageName);
+  }
+
+  return node.pageName;
 };
 
 export const normalizePermissionTree = (
@@ -41,9 +58,6 @@ export const normalizePermissionTree = (
   const result: NormalizedPermissionTreeRecord[] = [];
 
   nodes.forEach((node) => {
-    if (isAdminOnlySettingsPath(node.routePath)) {
-      return;
-    }
     const nodeType = getNodeType(node);
     const children = node.children?.length
       ? normalizePermissionTree(node.children, allowedRoutePaths, seenRoutePaths)
@@ -60,6 +74,13 @@ export const normalizePermissionTree = (
     const routeMeta = routePath ? realPageRouteMetaMap.get(routePath) : undefined;
     const routeMatched = Boolean(routeMeta) || nodeType === 'CATALOG';
     const routeMismatch = nodeType === 'PAGE' && (!routePath || !allowedRoutePaths.has(routePath));
+    if (routeMismatch) {
+      if (children.length) {
+        result.push(...children);
+      }
+      return;
+    }
+
     const selectablePage = nodeType === 'PAGE' && Boolean(node.selectable && node.permissionKey && !routeMismatch);
 
     if (selectablePage && routePath) {
@@ -69,13 +90,14 @@ export const normalizePermissionTree = (
       seenRoutePaths.add(routePath);
     }
 
-    if (!selectablePage && !children.length && nodeType !== 'CATALOG' && !routeMismatch) {
+    if (!selectablePage && !children.length) {
       return;
     }
 
     result.push({
       ...node,
       nodeType,
+      pageName: resolveCanonicalPageName(node, routePath),
       selectable: selectablePage,
       routePath: nodeType === 'PAGE' ? routePath : undefined,
       routeMatched,
