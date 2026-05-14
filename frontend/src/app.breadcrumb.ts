@@ -8,6 +8,33 @@ type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 
+const resolveRouteMetaTitle = (path: string) => {
+  const meta = routeMetaMap.get(path);
+  if (!meta) {
+    return path;
+  }
+
+  return resolveBuiltinMessage(
+    meta.name,
+    formatMessage({
+      id: meta.name,
+      defaultMessage: meta.name,
+    }),
+  );
+};
+
+const buildRouteMetaTrail = (pathname: string): BreadcrumbItem[] => {
+  const matchedRoutes = backendRouteMeta
+    .filter((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))
+    .sort((left, right) => left.path.length - right.path.length);
+
+  return matchedRoutes.map((item, index) => ({
+    key: item.path,
+    title: resolveRouteMetaTitle(item.path),
+    path: index === matchedRoutes.length - 1 ? undefined : item.path,
+  }));
+};
+
 const findMenuTrail = (menuNodes: MenuNode[], pathname: string): MenuNode[] => {
   for (const node of menuNodes) {
     const children = node.children || [];
@@ -27,16 +54,17 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
   if (pathname.startsWith('/settings')) {
     return [];
   }
+  const routeMetaTrail = buildRouteMetaTrail(pathname);
   if (!menuNodes?.length) {
-    return [];
+    return routeMetaTrail;
   }
 
   const trail = findMenuTrail(menuNodes, pathname);
   if (!trail.length) {
-    return [];
+    return routeMetaTrail;
   }
 
-  return trail.map((node, index) => {
+  const menuTrail = trail.map((node, index) => {
     const messageId = routeMetaMap.get(node.path || '')?.name || node.name || node.path || '';
     const fallback = node.name || node.path || '';
     return {
@@ -51,4 +79,6 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
       path: index === trail.length - 1 ? undefined : node.path,
     };
   });
+
+  return menuTrail.length >= routeMetaTrail.length ? menuTrail : routeMetaTrail;
 };
