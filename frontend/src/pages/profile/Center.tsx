@@ -602,9 +602,9 @@ const ProfileCenterPage = () => {
             </section>
           </Space>
         ) : (
-          <Row gutter={[16, 16]} align="top">
-            <Col xs={24} xl={18}>
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Row gutter={[16, 16]} align="stretch" className="saas-profile-page__three-blocks">
+            <Col xs={24} xl={18} className="saas-profile-page__main-column">
+              <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
                 <Card className="saas-profile-page__welcome-card">
                   <div className="saas-profile-page__welcome-content">
                     <Space align="baseline" size={24}>
@@ -640,30 +640,35 @@ const ProfileCenterPage = () => {
               </Space>
             </Col>
 
-            <Col xs={24} xl={6}>
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Card className="saas-profile-page__account-card">
+            <Col xs={24} xl={6} className="saas-profile-page__rail-column">
+              <section className="saas-profile-page__rail-block" aria-label="账户与团队">
+                <Card className="saas-profile-page__account-card" bordered={false}>
                   <Space direction="vertical" size={18} style={{ width: '100%' }}>
-                    <Avatar size={96} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
-                    <Space direction="vertical" size={8}>
-                      <Typography.Title level={3} style={{ margin: 0 }}>My Account</Typography.Title>
+                    <Avatar size={96} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+                    <Space direction="vertical" size={8} className="saas-profile-page__account-copy">
+                      <Typography.Title level={3} style={{ margin: 0 }}>
+                        My Account
+                      </Typography.Title>
                       <Typography.Text>{tenantName}</Typography.Text>
                       <Typography.Text>{activeRoleName}</Typography.Text>
                     </Space>
                   </Space>
                 </Card>
-                <section className="saas-profile-page__side-section" aria-label="团队与账户">
-                  <Typography.Title level={4} style={{ margin: 0 }}>团队与账户</Typography.Title>
+                <div className="saas-profile-page__team-panel">
+                  <div className="saas-profile-page__team-header">
+                    <Typography.Title level={4} style={{ margin: 0 }}>
+                      团队成员
+                    </Typography.Title>
+                    <Typography.Text strong>...</Typography.Text>
+                  </div>
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Card>
-                      <Space align="center" size={12}>
-                        <Avatar size={48} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
-                        <Space direction="vertical" size={2}>
-                          <Typography.Text strong>{displayName}</Typography.Text>
-                          <Typography.Text type="secondary">{roleNames.join('、') || activeRoleName}</Typography.Text>
-                        </Space>
+                    <div className="saas-profile-page__team-member">
+                      <Avatar size={48} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                      <Space direction="vertical" size={2} style={{ minWidth: 0 }}>
+                        <Typography.Text strong>{displayName}</Typography.Text>
+                        <Typography.Text type="secondary">{roleNames.join('、') || activeRoleName}</Typography.Text>
                       </Space>
-                    </Card>
+                    </div>
                     <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
                     <BoundProviderCard
                       canManageSecondFactor
@@ -676,8 +681,8 @@ const ProfileCenterPage = () => {
                       onUnbind={handleUnbind}
                     />
                   </Space>
-                </section>
-              </Space>
+                </div>
+              </section>
             </Col>
           </Row>
         )}
