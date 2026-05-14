@@ -36,6 +36,7 @@ const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/tasks', '/approvals', '/evaluations'];
+const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 const resolveSiderMenuMode = (pathname: string) => (isSettingsShellPath(pathname) ? 'settings' : 'main');
 
@@ -105,6 +106,30 @@ const buildMainMenuData = (
     return 0;
   });
 };
+
+const removeRedundantParentPathItems = (
+  items: RuntimeMenuDataItem[],
+  ancestorGroupPaths = new Set<string>(),
+): RuntimeMenuDataItem[] =>
+  items
+    .map((item) => {
+      const nextAncestorGroupPaths = new Set(ancestorGroupPaths);
+      if (item.path && item.children?.length) {
+        nextAncestorGroupPaths.add(item.path);
+      }
+
+      const children = item.children?.length ? removeRedundantParentPathItems(item.children, nextAncestorGroupPaths) : [];
+      return {
+        ...item,
+        children: children.length ? children : undefined,
+      };
+    })
+    .filter((item) => {
+      if (!item.path || item.children?.length) {
+        return true;
+      }
+      return !ancestorGroupPaths.has(item.path) && !HIDDEN_MAIN_MENU_LEAF_PATHS.has(item.path);
+    });
 
 const translateVisibleLocalMenuData = (
   initialState: AppInitialState | undefined,
@@ -303,7 +328,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         .map((node) => composeMenuItem(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
 
-      return buildMainMenuData(initialState, composedMenus);
+      return removeRedundantParentPathItems(buildMainMenuData(initialState, composedMenus));
     },
     onPageChange: () => {
       const { location } = history;
