@@ -241,8 +241,74 @@
 }
 
 .saas-ai-assistant-markdown {
-  white-space: pre-wrap;
   word-break: break-word;
+  line-height: 1.75;
+}
+
+.saas-ai-assistant-markdown > :first-child {
+  margin-top: 0;
+}
+
+.saas-ai-assistant-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.saas-ai-assistant-markdown p,
+.saas-ai-assistant-markdown ul,
+.saas-ai-assistant-markdown ol,
+.saas-ai-assistant-markdown blockquote,
+.saas-ai-assistant-markdown pre,
+.saas-ai-assistant-markdown table {
+  margin: 0 0 12px;
+}
+
+.saas-ai-assistant-markdown ul,
+.saas-ai-assistant-markdown ol {
+  padding-left: 1.5em;
+}
+
+.saas-ai-assistant-markdown li + li {
+  margin-top: 4px;
+}
+
+.saas-ai-assistant-markdown blockquote {
+  padding-left: 12px;
+  color: var(--ant-color-text-secondary);
+  border-left: 3px solid var(--ant-color-border);
+}
+
+.saas-ai-assistant-markdown code {
+  padding: 2px 5px;
+  font-size: 0.92em;
+  background: var(--ant-color-fill-tertiary);
+  border-radius: 4px;
+}
+
+.saas-ai-assistant-markdown pre {
+  overflow: auto;
+  padding: 12px;
+  background: var(--ant-color-fill-quaternary);
+  border-radius: 6px;
+}
+
+.saas-ai-assistant-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.saas-ai-assistant-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.saas-ai-assistant-markdown th,
+.saas-ai-assistant-markdown td {
+  padding: 6px 8px;
+  border: 1px solid var(--ant-color-border-secondary);
+}
+
+.saas-ai-assistant-markdown th {
+  background: var(--ant-color-fill-quaternary);
 }
 
 .saas-ai-assistant-ai-content {

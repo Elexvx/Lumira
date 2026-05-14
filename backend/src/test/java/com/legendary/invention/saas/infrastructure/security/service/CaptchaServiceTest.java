@@ -63,7 +63,7 @@ class CaptchaServiceTest {
         SystemDTO.CaptchaSliderVerifyRequest request = new SystemDTO.CaptchaSliderVerifyRequest();
         request.setCaptchaId(challenge.getCaptchaId());
         request.setX(record.getExpectedX().doubleValue());
-        request.setY(record.getExpectedY().doubleValue());
+        request.setY(18d);
         request.setSliderOffsetX(0d);
         request.setDuration(240L);
         request.setTrail(List.of(List.of(0d, 0d), List.of(12d, 1d), List.of(24d, 2d), List.of(36d, 2d)));

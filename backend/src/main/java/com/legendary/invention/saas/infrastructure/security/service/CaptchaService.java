@@ -188,11 +188,10 @@ public class CaptchaService {
         double actualX = request.getX() == null ? Double.NaN : request.getX();
         double actualY = request.getY() == null ? Double.NaN : request.getY();
         double expectedX = record.getExpectedX();
-        double expectedY = record.getExpectedY();
         if (Double.isNaN(actualX) || Double.isNaN(actualY)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "拖动验证失败，请重新尝试");
         }
-        if (Math.abs(actualX - expectedX) > SLIDER_TOLERANCE_PX || Math.abs(actualY - expectedY) > SLIDER_TOLERANCE_PX) {
+        if (Math.abs(actualX - expectedX) > SLIDER_TOLERANCE_PX) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "拖动验证失败，请重新尝试");
         }
     }

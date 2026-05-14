@@ -18,6 +18,8 @@ import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { aiService } from '@/services/ai';
 import { fileService } from '@/services/file';
 import type {
@@ -498,6 +500,21 @@ const renderThinkingContent = (item: ChatBubble) => {
   );
 };
 
+const MarkdownMessage = ({ content }: { content: string }) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    components={{
+      a: ({ children, ...props }) => (
+        <a {...props} target="_blank" rel="noreferrer">
+          {children}
+        </a>
+      ),
+    }}
+  >
+    {content}
+  </ReactMarkdown>
+);
+
 const renderMessageContent = (item: ChatBubble, visibleReplyText?: string) => {
   const content = visibleReplyText ?? item.content;
   if (item.role === 'ai') {
@@ -505,7 +522,11 @@ const renderMessageContent = (item: ChatBubble, visibleReplyText?: string) => {
     return (
       <div className="saas-ai-assistant-ai-content">
         {thinking}
-        {content ? <div className="saas-ai-assistant-markdown">{content}</div> : null}
+        {content ? (
+          <div className="saas-ai-assistant-markdown">
+            <MarkdownMessage content={content} />
+          </div>
+        ) : null}
       </div>
     );
   }

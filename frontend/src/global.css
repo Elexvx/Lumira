@@ -466,6 +466,42 @@ body,
   .saas-profile-page__descriptions {
     width: 100%;
   }
+
+  .saas-profile-page__identity {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .saas-profile-page__name {
+    color: var(--saas-text-primary);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .saas-profile-page__meta {
+    color: var(--saas-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .saas-profile-page__descriptions .ant-descriptions-item {
+    padding-bottom: 18px;
+  }
+
+  .saas-profile-page__descriptions .ant-descriptions-item-label {
+    color: var(--saas-text-secondary);
+    font-size: 14px;
+  }
+
+  .saas-profile-page__descriptions .ant-descriptions-item-content {
+    color: var(--saas-text-primary);
+    font-size: 15px;
+    font-weight: 500;
+    word-break: break-word;
+  }
 }
 
 .saas-drawer-footer {

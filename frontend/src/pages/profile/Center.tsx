@@ -60,6 +60,7 @@ const ProfileCenterPage = () => {
     enabled: Boolean(currentUser),
   });
   const [profileSaving, setProfileSaving] = useState(false);
+  const [profileEditingOpen, setProfileEditingOpen] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [bindModalOpen, setBindModalOpen] = useState(false);
   const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
@@ -492,6 +493,7 @@ const ProfileCenterPage = () => {
       );
       message.success(formatMessage({ id: 'page.profile.bind.updateSuccess', defaultMessage: 'Profile updated' }));
       await profileQuery.refetch();
+      setProfileEditingOpen(false);
     } finally {
       setProfileSaving(false);
     }
@@ -512,11 +514,13 @@ const ProfileCenterPage = () => {
     }
 
     if (item.actionTarget === 'avatarUrl') {
+      setProfileEditingOpen(true);
       profileBasicCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
 
     if (item.actionTarget) {
+      setProfileEditingOpen(true);
       profileForm.scrollToField([item.actionTarget]);
       profileBasicCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -539,7 +543,9 @@ const ProfileCenterPage = () => {
                 avatarUploading={avatarUploading}
                 mobileLockedByVerification
                 emailLockedByVerification
+                editingOpen={profileEditingOpen}
                 onSave={() => void handleSaveProfile()}
+                onEditOpenChange={setProfileEditingOpen}
                 onAvatarBeforeCrop={handleAvatarBeforeCrop}
                 onAvatarUploadRequest={handleAvatarUploadRequest}
               />
@@ -572,7 +578,9 @@ const ProfileCenterPage = () => {
                     avatarUploading={avatarUploading}
                     mobileLockedByVerification
                     emailLockedByVerification
+                    editingOpen={profileEditingOpen}
                     onSave={() => void handleSaveProfile()}
+                    onEditOpenChange={setProfileEditingOpen}
                     onAvatarBeforeCrop={handleAvatarBeforeCrop}
                     onAvatarUploadRequest={handleAvatarUploadRequest}
                   />
