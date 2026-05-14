@@ -534,6 +534,28 @@ const ProfileCenterPage = () => {
     }
   };
 
+  const recentLoginCard = (
+    <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={profileQuery.isLoading}>
+      {recentLoginLogs.length ? (
+        <Timeline
+          items={recentLoginLogs.map((item: ProfileSummary['recentLoginLogs'][number]) => ({
+            children: (
+              <Space direction="vertical" size={0}>
+                <Typography.Text strong>{item.username || formatMessage({ id: 'page.profile.recentLogins.unknownUser', defaultMessage: 'Unknown user' })}</Typography.Text>
+                <Typography.Text type="secondary">
+                  {item.logResult || item.failReason || formatMessage({ id: 'page.profile.recentLogins.record', defaultMessage: 'Login record' })} · {item.createdAt}
+                </Typography.Text>
+              </Space>
+            ),
+            color: item.logResult === 'SUCCESS' ? 'green' : 'red',
+          }))}
+        />
+      ) : (
+        <Empty description={formatMessage({ id: 'page.profile.recentLogins.none', defaultMessage: 'No recent login records' })} />
+      )}
+    </Card>
+  );
+
   return (
     <ManagementPage className="saas-profile-page" title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -575,19 +597,10 @@ const ProfileCenterPage = () => {
                 onAvatarUploadRequest={handleAvatarUploadRequest}
               />
             </div>
-            <section className="saas-profile-page__side-section" aria-label="团队与账户">
-              <Typography.Title level={4} style={{ margin: 0 }}>团队与账户</Typography.Title>
+            <section className="saas-profile-page__side-section" aria-label="账户状态">
+              <Typography.Title level={4} style={{ margin: 0 }}>账户状态</Typography.Title>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Card>
-                  <Space align="center" size={12}>
-                    <Avatar size={48} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
-                    <Space direction="vertical" size={2}>
-                      <Typography.Text strong>{displayName}</Typography.Text>
-                      <Typography.Text type="secondary">{tenantName} · {activeRoleName}</Typography.Text>
-                    </Space>
-                  </Space>
-                </Card>
-                <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+                <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
                 <BoundProviderCard
                   canManageSecondFactor
                   loading={providersQuery.isLoading}
@@ -600,6 +613,7 @@ const ProfileCenterPage = () => {
                 />
               </Space>
             </section>
+            {recentLoginCard}
           </Space>
         ) : (
           <Row gutter={[16, 16]} align="stretch" className="saas-profile-page__three-blocks">
@@ -637,15 +651,16 @@ const ProfileCenterPage = () => {
                     onAvatarUploadRequest={handleAvatarUploadRequest}
                   />
                 </div>
+                {recentLoginCard}
               </Space>
             </Col>
 
             <Col xs={24} xl={6} className="saas-profile-page__rail-column">
-              <section className="saas-profile-page__rail-block" aria-label="账户与团队">
+              <section className="saas-profile-page__rail-block" aria-label="账户状态">
                 <Card className="saas-profile-page__account-card" bordered={false}>
-                  <Space direction="vertical" size={18} style={{ width: '100%' }}>
-                    <Avatar size={96} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
-                    <Space direction="vertical" size={8} className="saas-profile-page__account-copy">
+                  <Space align="center" size={16} style={{ width: '100%' }}>
+                    <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+                    <Space direction="vertical" size={6} className="saas-profile-page__account-copy">
                       <Typography.Title level={3} style={{ margin: 0 }}>
                         My Account
                       </Typography.Title>
@@ -654,58 +669,21 @@ const ProfileCenterPage = () => {
                     </Space>
                   </Space>
                 </Card>
-                <div className="saas-profile-page__team-panel">
-                  <div className="saas-profile-page__team-header">
-                    <Typography.Title level={4} style={{ margin: 0 }}>
-                      团队成员
-                    </Typography.Title>
-                    <Typography.Text strong>...</Typography.Text>
-                  </div>
-                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <div className="saas-profile-page__team-member">
-                      <Avatar size={48} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
-                      <Space direction="vertical" size={2} style={{ minWidth: 0 }}>
-                        <Typography.Text strong>{displayName}</Typography.Text>
-                        <Typography.Text type="secondary">{roleNames.join('、') || activeRoleName}</Typography.Text>
-                      </Space>
-                    </div>
-                    <ProfileCompletionCard loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
-                    <BoundProviderCard
-                      canManageSecondFactor
-                      loading={providersQuery.isLoading}
-                      providers={providersQuery.data || []}
-                      bindingLoading={bindingLoading}
-                      bindingSubmitting={bindingSubmitting}
-                      supplementalItems={supplementalItems}
-                      onBind={(provider) => void openBindModal(provider)}
-                      onUnbind={handleUnbind}
-                    />
-                  </Space>
-                </div>
+                <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+                <BoundProviderCard
+                  canManageSecondFactor
+                  loading={providersQuery.isLoading}
+                  providers={providersQuery.data || []}
+                  bindingLoading={bindingLoading}
+                  bindingSubmitting={bindingSubmitting}
+                  supplementalItems={supplementalItems}
+                  onBind={(provider) => void openBindModal(provider)}
+                  onUnbind={handleUnbind}
+                />
               </section>
             </Col>
           </Row>
         )}
-
-        <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={profileQuery.isLoading}>
-          {recentLoginLogs.length ? (
-            <Timeline
-              items={recentLoginLogs.map((item: ProfileSummary['recentLoginLogs'][number]) => ({
-                children: (
-                  <Space direction="vertical" size={0}>
-                    <Typography.Text strong>{item.username || formatMessage({ id: 'page.profile.recentLogins.unknownUser', defaultMessage: 'Unknown user' })}</Typography.Text>
-                    <Typography.Text type="secondary">
-                      {item.logResult || item.failReason || formatMessage({ id: 'page.profile.recentLogins.record', defaultMessage: 'Login record' })} · {item.createdAt}
-                    </Typography.Text>
-                  </Space>
-                ),
-                color: item.logResult === 'SUCCESS' ? 'green' : 'red',
-              }))}
-            />
-          ) : (
-            <Empty description={formatMessage({ id: 'page.profile.recentLogins.none', defaultMessage: 'No recent login records' })} />
-          )}
-        </Card>
       </Space>
 
       <BindSecondFactorModal

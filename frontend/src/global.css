@@ -464,7 +464,7 @@ body,
   }
 
   .saas-profile-page__three-blocks {
-    min-height: 680px;
+    align-items: flex-start;
   }
 
   .saas-profile-page__main-column,
@@ -484,10 +484,10 @@ body,
   }
 
   .saas-profile-page__welcome-card .ant-card-body {
-    min-height: 128px;
+    min-height: 112px;
     display: flex;
     align-items: center;
-    padding: 32px 40px;
+    padding: 28px 32px;
   }
 
   .saas-profile-page__welcome-content {
@@ -507,12 +507,12 @@ body,
   }
 
   .saas-profile-page__personal-card {
-    flex: 1;
+    flex: none;
   }
 
   .saas-profile-page__personal-card .ant-card-body {
-    min-height: 520px;
-    padding: 56px 40px 40px;
+    min-height: 280px;
+    padding: 32px;
   }
 
   .saas-profile-page__descriptions {
@@ -605,7 +605,6 @@ body,
     display: flex;
     flex-direction: column;
     gap: 16px;
-    height: 100%;
   }
 
   .saas-profile-page__account-card {
@@ -614,10 +613,10 @@ body,
   }
 
   .saas-profile-page__account-card .ant-card-body {
-    min-height: 360px;
+    min-height: 160px;
     display: flex;
     align-items: center;
-    padding: 32px;
+    padding: 28px;
   }
 
   .saas-profile-page__account-card .ant-typography {
@@ -630,31 +629,34 @@ body,
   }
 
   .saas-profile-page__account-copy {
+    min-width: 0;
     max-width: 100%;
   }
 
-  .saas-profile-page__team-panel {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    border-radius: 8px;
-    background: var(--ant-color-bg-container);
-    padding: 28px;
-  }
-
-  .saas-profile-page__team-header {
+  .saas-profile-page__completion-summary {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
     gap: 16px;
-    margin-bottom: 28px;
+    min-width: 0;
+    align-items: center;
   }
 
-  .saas-profile-page__team-member {
+  .saas-profile-page__completion-group-row,
+  .saas-profile-page__completion-action-row {
     display: flex;
     min-width: 0;
     align-items: center;
-    gap: 16px;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .saas-profile-page__completion-group-progress {
+    width: 72px;
+    flex: none;
+  }
+
+  .saas-profile-page__completion-action-row .ant-btn-link {
+    flex: none;
+    padding-inline: 0;
   }
 }
 
