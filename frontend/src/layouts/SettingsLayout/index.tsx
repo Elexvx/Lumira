@@ -47,7 +47,7 @@ const SettingsLayout = () => {
     }
 
     if (pathname === '/user-center/personal-center') {
-      history.replace('/user-center/profile');
+      history.replace(SETTINGS_PROFILE_PATH);
       return;
     }
 

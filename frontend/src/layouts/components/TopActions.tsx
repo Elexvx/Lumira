@@ -282,7 +282,7 @@ export const TopActions = () => {
   };
 
   const handleOpenProfile = () => {
-    history.push('/user-center/profile');
+    history.push('/user-center/personal-center/profile');
   };
 
   const handleOpenPasswordDrawer = () => {

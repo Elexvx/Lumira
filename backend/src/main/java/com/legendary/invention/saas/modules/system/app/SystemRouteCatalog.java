@@ -59,7 +59,7 @@ public final class SystemRouteCatalog {
             "/user-center/online-users",
             "/user-center/roles",
             "/user-center/personal-center",
-            "/user-center/profile",
+            "/user-center/personal-center/profile",
             "/user-center/files"
     );
 
@@ -176,9 +176,9 @@ public final class SystemRouteCatalog {
                 menu(-952L, -950L, "system.online-users", "在线用户", "MENU", "/user-center/online-users", "@/pages/system/online-users", "UserSwitchOutlined", 22, "system:online-user:view"),
                 menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 23, "system:role:view")
         )));
-        SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", "/user-center/personal-center", "redirect:/user-center/profile", "IdcardOutlined", 19, "profile:view");
+        SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", "/user-center/personal-center", "redirect:/user-center/personal-center/profile", "IdcardOutlined", 19, "profile:view");
         personalCenterRoot.setChildren(new ArrayList<>(List.of(
-                menu(-941L, -940L, "profile.center", "个人资料", "MENU", "/user-center/profile", "@/pages/profile/Center", "UserOutlined", 1, "profile:view"),
+                menu(-941L, -940L, "profile.center", "个人资料", "MENU", "/user-center/personal-center/profile", "@/pages/profile/Center", "UserOutlined", 1, "profile:view"),
                 menu(-942L, -940L, "files.my", "我的文件", "MENU", "/user-center/files", "@/pages/files/Center", "FileOutlined", 2, "system:file:view")
         )));
         roots.add(userCenterRoot);
