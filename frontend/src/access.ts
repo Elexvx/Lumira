@@ -5,7 +5,6 @@ import { isProtectedAdminAccount } from '@/auth/admin';
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
 
 const SYSTEM_MANAGEMENT_PERMISSIONS = [
-  'system:view',
   'system:menu:view',
   'system:dict:view',
   'system:config:view',

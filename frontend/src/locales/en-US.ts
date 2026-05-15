@@ -61,6 +61,7 @@ export default {
   'nav.user.password.policy.lowercase': 'include lowercase letters',
   'nav.user.password.policy.special': 'include special characters',
   'nav.system.root': 'System Overview',
+  'nav.settings.root': 'Settings',
   'nav.system.plugins': 'Plugins',
   'nav.system.menus': 'Menus',
   'nav.system.dicts': 'Dictionaries',

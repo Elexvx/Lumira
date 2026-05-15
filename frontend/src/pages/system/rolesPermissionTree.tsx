@@ -31,7 +31,6 @@ const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType
 
 const CATALOG_LABEL_BY_PERMISSION_KEY = new Map<string, string>([
   ['site:view', 'nav.site.root'],
-  ['system:view', 'nav.system.root'],
   ['user:center:view', 'nav.user.center'],
   ['profile:view', 'nav.user.personalCenter'],
 ]);

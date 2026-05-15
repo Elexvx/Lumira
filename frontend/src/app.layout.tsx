@@ -7,6 +7,7 @@ import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BR
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { isLoggedIn } from '@/auth/session';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
+import { GlobalFloatActions } from '@/layouts/components/GlobalFloatActions';
 import { TopActions } from '@/layouts/components/TopActions';
 import {
   buildVisibleSettingsNavigationItems,
@@ -292,7 +293,12 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     menuExtraRender: false,
     collapsedButtonRender: (_, defaultDom) => <CollapsedButtonWithReturn defaultDom={defaultDom} />,
     menuRender: (_, defaultDom) => defaultDom,
-    childrenRender: (dom) => <SessionActivityGuard>{dom}</SessionActivityGuard>,
+    childrenRender: (dom) => (
+      <SessionActivityGuard>
+        {dom}
+        <GlobalFloatActions />
+      </SessionActivityGuard>
+    ),
     headerContentRender: () => null,
     rightContentRender: () => <TopActions />,
     actionsRender: () => <TopActions />,

@@ -20,7 +20,7 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/site/contents', name: 'nav.site.contents', icon: 'ReadOutlined', access: 'canVisitSiteContents' },
   { path: '/site/forms', name: 'nav.site.forms', icon: 'FormOutlined', access: 'canVisitSiteForms' },
   { path: '/site/submissions', name: 'nav.site.submissions', icon: 'InboxOutlined', access: 'canVisitSiteSubmissions' },
-  { path: '/settings', name: 'nav.system.root', icon: 'SettingOutlined', access: 'canVisitSystemSettings', hideInMenu: true },
+  { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', access: 'canVisitSystemSettings', hideInMenu: true },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
   { path: '/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
   { path: '/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
@@ -140,7 +140,7 @@ export const backendRoutes: BackendRouteRecord[] = [
   {
     path: '/settings',
     component: '@/layouts/SettingsLayout',
-    name: 'nav.system.root',
+    name: 'nav.settings.root',
     icon: 'SettingOutlined',
     access: 'canVisitSystemSettings',
     routes: [
