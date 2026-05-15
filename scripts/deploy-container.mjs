@@ -124,6 +124,38 @@ function ensureEnvFile() {
   log('Generated deploy/.env with random local deployment secrets.');
 }
 
+function parseEnvFile(filePath) {
+  if (!existsSync(filePath)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    readFileSync(filePath, 'utf8')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#') && line.includes('='))
+      .map((line) => {
+        const separatorIndex = line.indexOf('=');
+        const key = line.slice(0, separatorIndex).trim();
+        const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, '');
+        return [key, value];
+      })
+  );
+}
+
+function ensureWritableDirectory(hostPath, label) {
+  run('mkdir', ['-p', hostPath]);
+  run('chmod', ['-R', 'a+rwX', hostPath]);
+  log(`${label} is writable at ${hostPath}`);
+}
+
+function ensureHostMountedDirectories() {
+  const env = parseEnvFile(envPath);
+  const xxlJobLogPath = env.XXL_JOB_EXECUTOR_LOG_HOST_PATH || '/opt/legendary-invention/data/xxl-job/logs';
+  const resolvedXxlJobLogPath = path.isAbsolute(xxlJobLogPath) ? xxlJobLogPath : path.resolve(repoRoot, xxlJobLogPath);
+  ensureWritableDirectory(resolvedXxlJobLogPath, 'XXL-Job executor log directory');
+}
+
 function composeArgs(...extraArgs) {
   return ['compose', '--env-file', 'deploy/.env', '-f', composeFile, ...extraArgs];
 }
@@ -198,6 +230,7 @@ if (help) {
 
 ensureDockerReady();
 ensureEnvFile();
+ensureHostMountedDirectories();
 
 if (reset) {
   run('docker', composeArgs('down', '-v', '--remove-orphans'));

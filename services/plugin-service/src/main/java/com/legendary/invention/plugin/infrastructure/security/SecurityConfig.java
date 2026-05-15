@@ -6,6 +6,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.web.TraceIdFilter;
+import com.legendary.invention.common.web.WebProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Configuration
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({SecurityProperties.class, WebProperties.class})
 public class SecurityConfig {
 
     private final PluginJwtAuthFilter pluginJwtAuthFilter;
