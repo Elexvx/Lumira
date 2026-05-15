@@ -225,6 +225,7 @@ public class AiController {
     }
 
     @PostMapping(value = "/chat/stream", produces = "text/event-stream")
+    @RepeatSubmit
     public SseEmitter streamChat(@Valid @RequestBody AiDTO.ChatRequest request) {
         require("ai:chat:send");
         var currentUser = currentUser();

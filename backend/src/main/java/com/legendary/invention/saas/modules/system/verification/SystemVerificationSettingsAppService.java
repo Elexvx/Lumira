@@ -30,6 +30,13 @@ public class SystemVerificationSettingsAppService {
     private static final String SMS_CONFIG_ACCESS_KEY_SECRET_KEY = "verification.sms.access-key-secret";
     private static final String SMS_CONFIG_ENDPOINT_KEY = "verification.sms.endpoint";
     private static final String SMS_CONFIG_REGION_KEY = "verification.sms.region";
+    private static final String PASSKEY_ENABLED_KEY = "verification.passkey.enabled";
+    private static final String PASSKEY_PASSWORDLESS_ENABLED_KEY = "verification.passkey.passwordless-enabled";
+    private static final String PASSKEY_SELF_BINDING_ENABLED_KEY = "verification.passkey.self-binding-enabled";
+    private static final String PASSKEY_RP_ID_KEY = "verification.passkey.rp-id";
+    private static final String PASSKEY_RP_NAME_KEY = "verification.passkey.rp-name";
+    private static final String PASSKEY_ALLOWED_ORIGINS_KEY = "verification.passkey.allowed-origins";
+    private static final String PASSKEY_CHALLENGE_TTL_KEY = "verification.passkey.challenge-ttl-seconds";
 
     private final JdbcTemplate jdbcTemplate;
     private final SystemVerificationProperties properties;
@@ -77,11 +84,27 @@ public class SystemVerificationSettingsAppService {
         capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
         capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
         capabilities.setWechatLoginAvailable(wechatLoginSettingsService.isAvailable(tenantId));
+        SystemVO.PasskeySettingsVO passkey = getPasskeySettings(tenantId);
+        capabilities.setPasskeyLoginAvailable(Boolean.TRUE.equals(passkey.getEnabled()));
+        capabilities.setPasskeyPasswordlessAvailable(Boolean.TRUE.equals(passkey.getEnabled()) && Boolean.TRUE.equals(passkey.getPasswordlessEnabled()));
         return capabilities;
     }
 
     public SystemVO.WechatLoginSettingsVO getWechatSettings(Long tenantId) {
         return wechatLoginSettingsService.getSettings(tenantId);
+    }
+
+    public SystemVO.PasskeySettingsVO getPasskeySettings(Long tenantId) {
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, passkeyConfigKeys());
+        SystemVO.PasskeySettingsVO settings = new SystemVO.PasskeySettingsVO();
+        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "true")));
+        settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "true")));
+        settings.setSelfBindingEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_SELF_BINDING_ENABLED_KEY), "true")));
+        settings.setRpId(defaultIfBlank(values.get(PASSKEY_RP_ID_KEY), "elexvx.com"));
+        settings.setRpName(defaultIfBlank(values.get(PASSKEY_RP_NAME_KEY), "宏翔商道后台管理系统"));
+        settings.setAllowedOrigins(splitLines(defaultIfBlank(values.get(PASSKEY_ALLOWED_ORIGINS_KEY), "https://test.elexvx.com")));
+        settings.setChallengeTtlSeconds(parseInt(defaultIfBlank(values.get(PASSKEY_CHALLENGE_TTL_KEY), "120"), 120));
+        return settings;
     }
 
     public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
@@ -123,6 +146,32 @@ public class SystemVerificationSettingsAppService {
     public SystemVO.WechatLoginSettingsVO updateWechatSettings(CurrentUser currentUser, SystemDTO.WechatLoginSettingsRequest request) {
         Long tenantId = requireTenantId(currentUser);
         return wechatLoginSettingsService.updateSettings(tenantId, currentUser.getUserId(), request);
+    }
+
+    public SystemVO.PasskeySettingsVO updatePasskeySettings(CurrentUser currentUser, SystemDTO.PasskeySettingsRequest request) {
+        Long tenantId = requireTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        SystemVO.PasskeySettingsVO current = getPasskeySettings(tenantId);
+        boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : request.getEnabled();
+        boolean passwordless = request.getPasswordlessEnabled() == null ? Boolean.TRUE.equals(current.getPasswordlessEnabled()) : request.getPasswordlessEnabled();
+        boolean selfBinding = request.getSelfBindingEnabled() == null ? Boolean.TRUE.equals(current.getSelfBindingEnabled()) : request.getSelfBindingEnabled();
+        String rpId = sanitizeText(request.getRpId(), current.getRpId());
+        String rpName = sanitizeText(request.getRpName(), current.getRpName());
+        List<String> origins = request.getAllowedOrigins() == null ? current.getAllowedOrigins() : request.getAllowedOrigins().stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .distinct()
+                .toList();
+        int ttl = request.getChallengeTtlSeconds() == null ? current.getChallengeTtlSeconds() : request.getChallengeTtlSeconds();
+
+        upsertPlatformConfigValue(tenantId, PASSKEY_ENABLED_KEY, "通行密钥启用", String.valueOf(enabled), "是否启用通行密钥登录", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", String.valueOf(passwordless), "是否允许发现式凭据无账号登录", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", String.valueOf(selfBinding), "是否允许用户在个人中心自助绑定通行密钥", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_RP_ID_KEY, "通行密钥 RP ID", rpId, "WebAuthn RP ID", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", rpName, "WebAuthn RP 显示名称", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", String.join("\n", origins), "WebAuthn 允许的前端 Origin", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", String.valueOf(ttl), "WebAuthn challenge 有效期秒数", operatorId);
+        return getPasskeySettings(tenantId);
     }
 
     private SmsVerificationSettingsRecord loadSmsSettingsRecord(Long tenantId) {
@@ -218,6 +267,18 @@ public class SystemVerificationSettingsAppService {
         );
     }
 
+    private List<String> passkeyConfigKeys() {
+        return List.of(
+                PASSKEY_ENABLED_KEY,
+                PASSKEY_PASSWORDLESS_ENABLED_KEY,
+                PASSKEY_SELF_BINDING_ENABLED_KEY,
+                PASSKEY_RP_ID_KEY,
+                PASSKEY_RP_NAME_KEY,
+                PASSKEY_ALLOWED_ORIGINS_KEY,
+                PASSKEY_CHALLENGE_TTL_KEY
+        );
+    }
+
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
         Long effectiveTenantId = tenantId == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
@@ -250,6 +311,21 @@ public class SystemVerificationSettingsAppService {
 
     private String defaultIfBlank(String value, String fallback) {
         return StringUtils.hasText(value) ? value : fallback;
+    }
+
+    private List<String> splitLines(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        return value.lines().map(String::trim).filter(StringUtils::hasText).distinct().toList();
+    }
+
+    private int parseInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(value);
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
     private Long requireTenantId(CurrentUser currentUser) {

@@ -1,4 +1,4 @@
-import type { CurrentUser, LoginCodeChallenge, LoginEncryptionKey, LoginResponse, RefreshTokenResponse, WechatAuthorizeUrl } from '@/types/api';
+import type { CurrentUser, LoginCodeChallenge, LoginEncryptionKey, LoginResponse, PasskeyCredentialRecord, PasskeyOptions, RefreshTokenResponse, WechatAuthorizeUrl } from '@/types/api';
 import { request, type RequestOptions } from '@/services/common/request';
 
 export interface LoginPayload {
@@ -34,6 +34,34 @@ export interface LoginCodeCompletePayload {
 export interface WechatLoginPayload {
   code: string;
   state: string;
+}
+
+export interface PasskeyRegistrationCompletePayload {
+  challengeId: string;
+  id: string;
+  rawId: string;
+  type: string;
+  response: {
+    clientDataJSON: string;
+    attestationObject: string;
+  };
+  authenticatorAttachment?: string | null;
+  transports?: string[];
+  label?: string;
+}
+
+export interface PasskeyAuthenticationCompletePayload {
+  challengeId: string;
+  id: string;
+  rawId: string;
+  type: string;
+  response: {
+    clientDataJSON: string;
+    authenticatorData: string;
+    signature: string;
+    userHandle?: string | null;
+  };
+  authenticatorAttachment?: string | null;
 }
 
 export interface SimulatedRolePayload {
@@ -85,6 +113,48 @@ export const authService = {
       data: payload,
       skipAuth: true,
       silent: true,
+      ...options,
+    }),
+  passkeyAuthenticationOptions: (options: RequestOptions = {}) =>
+    request<PasskeyOptions>('/v1/auth/passkeys/authentication/options', {
+      method: 'POST',
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  passkeyAuthenticationComplete: (payload: PasskeyAuthenticationCompletePayload, options: RequestOptions = {}) =>
+    request<LoginResponse>('/v1/auth/passkeys/authentication/complete', {
+      method: 'POST',
+      data: payload,
+      skipAuth: true,
+      silent: true,
+      ...options,
+    }),
+  passkeyRegistrationOptions: (options: RequestOptions = {}) =>
+    request<PasskeyOptions>('/v1/auth/passkeys/registration/options', {
+      method: 'POST',
+      ...options,
+    }),
+  passkeyRegistrationComplete: (payload: PasskeyRegistrationCompletePayload, options: RequestOptions = {}) =>
+    request<PasskeyCredentialRecord>('/v1/auth/passkeys/registration/complete', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  passkeyCredentials: (options: RequestOptions = {}) =>
+    request<PasskeyCredentialRecord[]>('/v1/auth/passkeys', {
+      method: 'GET',
+      ...options,
+    }),
+  renamePasskeyCredential: (id: number, label: string, options: RequestOptions = {}) =>
+    request<PasskeyCredentialRecord>(`/v1/auth/passkeys/${id}`, {
+      method: 'PATCH',
+      data: { label },
+      ...options,
+    }),
+  deletePasskeyCredential: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/auth/passkeys/${id}`, {
+      method: 'DELETE',
       ...options,
     }),
   logout: (options: RequestOptions = {}) =>

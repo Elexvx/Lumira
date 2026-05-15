@@ -21,12 +21,14 @@ import type {
   WatermarkSettings,
   WechatLoginSettings,
   WechatLoginSettingsPayload,
+  PasskeySettings,
 } from '@/types/api';
 
 export interface SecuritySettingsPayload extends SecuritySettings {}
 export interface BrandingSettingsPayload extends BrandingSettings {}
 export interface AgreementSettingsPayload extends AgreementSettings {}
 export interface WatermarkSettingsPayload extends WatermarkSettings {}
+export interface PasskeySettingsPayload extends PasskeySettings {}
 export interface ProfileFieldSettingsPayload {
   items: Array<{
     fieldKey: string;
@@ -208,6 +210,17 @@ export const systemService = {
     }),
   updateWechatLoginSettings: (payload: WechatLoginSettingsPayload, options: RequestOptions = {}) =>
     request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  passkeySettings: (options: RequestOptions = {}) =>
+    request<PasskeySettings>('/v1/system/verification/passkey-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updatePasskeySettings: (payload: PasskeySettingsPayload, options: RequestOptions = {}) =>
+    request<PasskeySettings>('/v1/system/verification/passkey-settings', {
       method: 'PUT',
       data: payload,
       ...options,

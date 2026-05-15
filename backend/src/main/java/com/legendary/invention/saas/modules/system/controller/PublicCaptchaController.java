@@ -2,6 +2,7 @@ package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.common.web.TraceContext;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
@@ -32,6 +33,7 @@ public class PublicCaptchaController {
 
     @SentinelResource(value = "public-captcha-slider-verify", blockHandler = "verifySliderBlocked", blockHandlerClass = PublicCaptchaSentinelBlockHandler.class)
     @PostMapping("/slider/verify")
+    @RepeatSubmit
     public ApiResponse<SystemVO.CaptchaVerifyVO> verifySlider(@Valid @RequestBody SystemDTO.CaptchaSliderVerifyRequest request) {
         return ApiResponse.success(captchaService.verifySliderChallenge(request), TraceContext.getRequestId());
     }

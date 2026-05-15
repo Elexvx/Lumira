@@ -4,6 +4,7 @@ import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
+import com.legendary.invention.common.web.repeatsubmit.RepeatSubmit;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.common.security.PermissionGuard;
@@ -61,6 +62,7 @@ public class PluginManagementController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
     public ApiResponse<PluginVO.PluginUploadVO> upload(@RequestParam("file") MultipartFile file) {
         require("plugin:management:upload");
         return ApiResponse.success(pluginManagementAppService.upload(file, currentUser()), TraceContext.getRequestId());
@@ -73,6 +75,7 @@ public class PluginManagementController {
     }
 
     @PostMapping("/install")
+    @RepeatSubmit
     public ApiResponse<PluginVO.PluginVersionVO> install(@Valid @RequestBody PluginDTO.InstallRequest request) {
         require("plugin:management:install");
         return ApiResponse.success(
@@ -82,6 +85,7 @@ public class PluginManagementController {
     }
 
     @PostMapping("/upgrade")
+    @RepeatSubmit
     public ApiResponse<PluginVO.PluginVersionVO> upgrade(@Valid @RequestBody PluginDTO.InstallRequest request) {
         require("plugin:management:upgrade");
         return ApiResponse.success(
@@ -91,6 +95,7 @@ public class PluginManagementController {
     }
 
     @PostMapping("/rollback")
+    @RepeatSubmit
     public ApiResponse<PluginVO.PluginVersionVO> rollback(@Valid @RequestBody PluginDTO.RollbackRequest request) {
         require("plugin:management:rollback");
         return ApiResponse.success(
@@ -100,6 +105,7 @@ public class PluginManagementController {
     }
 
     @PostMapping("/enable")
+    @RepeatSubmit
     public ApiResponse<Boolean> enable(@Valid @RequestBody PluginDTO.EnableRequest request) {
         require("plugin:management:enable");
         requireCurrentTenant(request.getTenantId());
@@ -108,6 +114,7 @@ public class PluginManagementController {
     }
 
     @PostMapping("/disable")
+    @RepeatSubmit
     public ApiResponse<Boolean> disable(@Valid @RequestBody PluginDTO.DisableRequest request) {
         require("plugin:management:disable");
         requireCurrentTenant(request.getTenantId());
@@ -116,6 +123,7 @@ public class PluginManagementController {
     }
 
     @PostMapping("/{pluginCode}/uninstall")
+    @RepeatSubmit
     public ApiResponse<Boolean> uninstall(
             @PathVariable("pluginCode") String pluginCode,
             @RequestBody(required = false) PluginDTO.UninstallRequest request

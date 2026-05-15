@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { UserOutlined } from '@ant-design/icons';
+import { KeyOutlined, UserOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Avatar, Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
+import { Avatar, Button, Card, Col, Empty, Form, List, Popconfirm, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementPage } from '@/features/management';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { isPasskeySupported, toPublicKeyCreationOptions, toRegistrationPayload } from '@/auth/passkey';
+import { authService } from '@/services/auth';
 import { profileService } from '@/services/profile';
 import { secondFactorService } from '@/services/secondFactor';
 import { systemService } from '@/services/system';
@@ -58,6 +60,11 @@ const ProfileCenterPage = () => {
   const providersQuery = useQuery({
     queryKey: ['profile-second-factor-providers', currentUser?.userId],
     queryFn: async () => secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }),
+    enabled: Boolean(currentUser),
+  });
+  const passkeyQuery = useQuery({
+    queryKey: ['profile-passkeys', currentUser?.userId],
+    queryFn: async () => authService.passkeyCredentials({ autoRedirectOnUnauthorized: false }),
     enabled: Boolean(currentUser),
   });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -533,6 +540,91 @@ const ProfileCenterPage = () => {
     }
   };
 
+  const handleBindPasskey = async () => {
+    if (!isPasskeySupported()) {
+      message.warning(formatMessage({ id: 'page.profile.passkey.unsupported', defaultMessage: '当前浏览器不支持通行密钥' }));
+      return;
+    }
+    try {
+      const options = await authService.passkeyRegistrationOptions({ autoRedirectOnUnauthorized: false, silent: true });
+      const credential = await navigator.credentials.create({
+        publicKey: toPublicKeyCreationOptions(options),
+      });
+      if (!credential) {
+        return;
+      }
+      await authService.passkeyRegistrationComplete(toRegistrationPayload(options.challengeId, credential as PublicKeyCredential), {
+        autoRedirectOnUnauthorized: false,
+      });
+      message.success(formatMessage({ id: 'page.profile.passkey.bound', defaultMessage: '通行密钥已绑定' }));
+      await passkeyQuery.refetch();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        message.info(formatMessage({ id: 'page.profile.passkey.cancelled', defaultMessage: '已取消通行密钥绑定' }));
+        return;
+      }
+      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥绑定失败' }));
+    }
+  };
+
+  const handleRenamePasskey = async (id: number, currentLabel?: string) => {
+    const label = window.prompt(formatMessage({ id: 'page.profile.passkey.renamePrompt', defaultMessage: '请输入通行密钥名称' }), currentLabel || '通行密钥');
+    if (!label?.trim()) {
+      return;
+    }
+    await authService.renamePasskeyCredential(id, label.trim(), { autoRedirectOnUnauthorized: false });
+    message.success(formatMessage({ id: 'page.profile.passkey.renamed', defaultMessage: '通行密钥已重命名' }));
+    await passkeyQuery.refetch();
+  };
+
+  const passkeyCard = (
+    <Card
+      title={formatMessage({ id: 'page.profile.passkey.title', defaultMessage: '我的通行密钥' })}
+      extra={
+        <Button icon={<KeyOutlined />} onClick={() => void handleBindPasskey()}>
+          {formatMessage({ id: 'page.profile.passkey.add', defaultMessage: '新增' })}
+        </Button>
+      }
+      loading={passkeyQuery.isLoading}
+    >
+      {passkeyQuery.data?.length ? (
+        <List
+          dataSource={passkeyQuery.data}
+          renderItem={(item) => (
+            <List.Item
+              actions={[
+                <Button key="rename" type="link" onClick={() => void handleRenamePasskey(item.id, item.label)}>
+                  {formatMessage({ id: 'common.rename', defaultMessage: '重命名' })}
+                </Button>,
+                <Popconfirm
+                  key="delete"
+                  title={formatMessage({ id: 'page.profile.passkey.deleteConfirm', defaultMessage: '确认删除该通行密钥？' })}
+                  onConfirm={async () => {
+                    await authService.deletePasskeyCredential(item.id, { autoRedirectOnUnauthorized: false });
+                    message.success(formatMessage({ id: 'common.deleted', defaultMessage: '已删除' }));
+                    await passkeyQuery.refetch();
+                  }}
+                >
+                  <Button type="link" danger>
+                    {formatMessage({ id: 'common.delete', defaultMessage: '删除' })}
+                  </Button>
+                </Popconfirm>,
+              ]}
+            >
+              <List.Item.Meta
+                avatar={<KeyOutlined />}
+                title={item.label || formatMessage({ id: 'page.profile.passkey.defaultLabel', defaultMessage: '通行密钥' })}
+                description={`${formatMessage({ id: 'page.profile.passkey.createdAt', defaultMessage: '创建时间' })}: ${item.createdAt || '-'} · ${formatMessage({ id: 'page.profile.passkey.lastUsedAt', defaultMessage: '最后使用' })}: ${item.lastUsedAt || '-'}`}
+              />
+            </List.Item>
+          )}
+        />
+      ) : (
+        <Empty description={formatMessage({ id: 'page.profile.passkey.empty', defaultMessage: '还没有绑定通行密钥' })} />
+      )}
+    </Card>
+  );
+
   const recentLoginCard = (
     <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={profileQuery.isLoading}>
       {recentLoginLogs.length ? (
@@ -613,6 +705,7 @@ const ProfileCenterPage = () => {
                   onBind={(provider) => void openBindModal(provider)}
                   onUnbind={handleUnbind}
                 />
+                {passkeyCard}
               </Space>
             </section>
             {recentLoginCard}
@@ -681,6 +774,7 @@ const ProfileCenterPage = () => {
                   onBind={(provider) => void openBindModal(provider)}
                   onUnbind={handleUnbind}
                 />
+                {passkeyCard}
               </section>
             </Col>
           </Row>

@@ -1,4 +1,4 @@
-import { CheckOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
+import { CheckOutlined, KeyOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
 import { Alert, Button, Checkbox, Form, Image, Input, Modal, Skeleton, Space, Tabs, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
@@ -37,9 +37,12 @@ interface LoginFormFieldsProps {
   sendingLoginType: LoginMode | null;
   loginCodeChallenges: Partial<Record<Exclude<LoginMode, 'password'>, LoginCodeChallenge | null>>;
   wechatLoginAvailable?: boolean;
+  passkeyLoginAvailable?: boolean;
+  passkeyLoading?: boolean;
   onModeChange: (mode: LoginMode) => void;
   onSendLoginCode: (mode: Exclude<LoginMode, 'password'>) => void;
   onWechatLogin: () => void;
+  onPasskeyLogin: () => void;
   onRefreshCaptcha: () => void;
   onCaptchaImageError: () => void;
   onSliderCaptchaChallengeChange: (challenge: CaptchaChallenge | null) => void;
@@ -85,9 +88,12 @@ export const LoginFormFields = ({
   sendingLoginType,
   loginCodeChallenges,
   wechatLoginAvailable,
+  passkeyLoginAvailable,
+  passkeyLoading,
   onModeChange,
   onSendLoginCode,
   onWechatLogin,
+  onPasskeyLogin,
   onRefreshCaptcha,
   onCaptchaImageError,
   onSliderCaptchaChallengeChange,
@@ -371,6 +377,18 @@ export const LoginFormFields = ({
               className="saas-login-page__wechat-button"
             >
               {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
+            </Button>
+          ) : null}
+          {passkeyLoginAvailable ? (
+            <Button
+              block
+              size="large"
+              icon={<KeyOutlined />}
+              loading={passkeyLoading}
+              onClick={onPasskeyLogin}
+              className="saas-login-page__wechat-button"
+            >
+              {formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })}
             </Button>
           ) : null}
           <div className="saas-login-page__agreement">

@@ -48,6 +48,37 @@ export interface LoginCapabilities {
   smsLoginAvailable: boolean;
   emailLoginAvailable: boolean;
   wechatLoginAvailable?: boolean;
+  passkeyLoginAvailable?: boolean;
+  passkeyPasswordlessAvailable?: boolean;
+}
+
+export interface PasskeyOptions {
+  challengeId: string;
+  publicKey: Record<string, unknown>;
+}
+
+export interface PasskeyCredentialRecord {
+  id: number;
+  tenantId: number;
+  userId: number;
+  username?: string;
+  credentialId: string;
+  transports?: string;
+  backupEligible?: boolean;
+  backupState?: boolean;
+  label?: string;
+  createdAt?: string;
+  lastUsedAt?: string | null;
+}
+
+export interface PasskeySettings {
+  enabled: boolean;
+  passwordlessEnabled: boolean;
+  selfBindingEnabled: boolean;
+  rpId: string;
+  rpName: string;
+  allowedOrigins: string[];
+  challengeTtlSeconds: number;
 }
 
 export interface LoginCodeChallenge {

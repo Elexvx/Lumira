@@ -272,7 +272,17 @@ public class AuthAppService {
     }
 
     private LoginResponseDTO completeVerifiedLogin(Long userId, Long tenantId, HttpServletRequest request) {
+        return loginVerifiedUser(userId, tenantId, request);
+    }
+
+    public LoginResponseDTO loginVerifiedUser(Long userId, Long tenantId, HttpServletRequest request) {
         SystemUserSnapshotDTO user = systemInternalApi.findUserById(userId);
+        if (user == null) {
+            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在");
+        }
+        if (!"ENABLED".equalsIgnoreCase(user.status())) {
+            throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
+        }
         Long platformTenantId = platformTenantId();
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(platformTenantId, userId);
         AuthSession session = buildSession(user, platformTenantId, clientIpResolver.resolve(request), request.getHeader("User-Agent"), snapshot);

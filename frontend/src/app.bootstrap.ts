@@ -76,6 +76,8 @@ const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
     smsLoginAvailable: false,
     emailLoginAvailable: false,
     wechatLoginAvailable: false,
+    passkeyLoginAvailable: false,
+    passkeyPasswordlessAvailable: false,
   }));
 
 const buildAuthenticatedInitialState = async (

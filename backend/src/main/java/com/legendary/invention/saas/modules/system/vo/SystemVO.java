@@ -237,6 +237,9 @@ public final class SystemVO {
     public static class WechatLoginSettingsVO extends com.legendary.invention.saas.modules.system.verification.vo.WechatLoginSettingsVO {
     }
 
+    public static class PasskeySettingsVO extends com.legendary.invention.saas.modules.system.verification.vo.PasskeySettingsVO {
+    }
+
     public static class LoginCodeChallengeVO extends com.legendary.invention.saas.modules.system.verification.vo.LoginCodeChallengeVO {
     }
 

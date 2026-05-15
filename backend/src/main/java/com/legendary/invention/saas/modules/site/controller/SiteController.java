@@ -71,6 +71,7 @@ public class SiteController {
     }
 
     @DeleteMapping("/navigation/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deleteNavigation(@PathVariable Long id) {
         require("site:navigation:delete");
         return ApiResponse.success(siteManagementAppService.deleteNavigation(currentUser(), id), TraceContext.getRequestId());
@@ -97,18 +98,21 @@ public class SiteController {
     }
 
     @PostMapping("/pages/{id}/publish")
+    @RepeatSubmit
     public ApiResponse<SiteVO.PageVO> publishPage(@PathVariable Long id) {
         require("site:page:publish");
         return ApiResponse.success(siteManagementAppService.publishPage(currentUser(), id), TraceContext.getRequestId());
     }
 
     @PostMapping("/pages/{id}/offline")
+    @RepeatSubmit
     public ApiResponse<SiteVO.PageVO> offlinePage(@PathVariable Long id) {
         require("site:page:publish");
         return ApiResponse.success(siteManagementAppService.offlinePage(currentUser(), id), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/pages/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deletePage(@PathVariable Long id) {
         require("site:page:update");
         return ApiResponse.success(siteManagementAppService.deletePage(currentUser(), id), TraceContext.getRequestId());
@@ -135,18 +139,21 @@ public class SiteController {
     }
 
     @PostMapping("/contents/{id}/publish")
+    @RepeatSubmit
     public ApiResponse<SiteVO.ContentVO> publishContent(@PathVariable Long id) {
         require("site:content:publish");
         return ApiResponse.success(siteManagementAppService.publishContent(currentUser(), id), TraceContext.getRequestId());
     }
 
     @PostMapping("/contents/{id}/offline")
+    @RepeatSubmit
     public ApiResponse<SiteVO.ContentVO> offlineContent(@PathVariable Long id) {
         require("site:content:publish");
         return ApiResponse.success(siteManagementAppService.offlineContent(currentUser(), id), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/contents/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deleteContent(@PathVariable Long id) {
         require("site:content:update");
         return ApiResponse.success(siteManagementAppService.deleteContent(currentUser(), id), TraceContext.getRequestId());
@@ -159,6 +166,7 @@ public class SiteController {
     }
 
     @PostMapping("/categories")
+    @RepeatSubmit
     public ApiResponse<SiteVO.ContentCategoryVO> createCategory(@Valid @RequestBody SiteDTO.CategoryRequest request) {
         require("site:content:create");
         return ApiResponse.success(siteManagementAppService.createCategory(currentUser(), request), TraceContext.getRequestId());
@@ -171,18 +179,21 @@ public class SiteController {
     }
 
     @PostMapping("/forms")
+    @RepeatSubmit
     public ApiResponse<SiteVO.FormVO> createForm(@Valid @RequestBody SiteDTO.FormRequest request) {
         require("site:form:create");
         return ApiResponse.success(siteManagementAppService.createForm(currentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/forms/{id}")
+    @RepeatSubmit
     public ApiResponse<SiteVO.FormVO> updateForm(@PathVariable Long id, @Valid @RequestBody SiteDTO.FormRequest request) {
         require("site:form:update");
         return ApiResponse.success(siteManagementAppService.updateForm(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/forms/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deleteForm(@PathVariable Long id) {
         require("site:form:delete");
         return ApiResponse.success(siteManagementAppService.deleteForm(currentUser(), id), TraceContext.getRequestId());
@@ -195,6 +206,7 @@ public class SiteController {
     }
 
     @PutMapping("/submissions/{id}/review")
+    @RepeatSubmit
     public ApiResponse<SiteVO.SubmissionVO> reviewSubmission(@PathVariable Long id, @Valid @RequestBody SiteDTO.ReviewRequest request) {
         require("site:submission:review");
         return ApiResponse.success(siteManagementAppService.reviewSubmission(currentUser(), id, request), TraceContext.getRequestId());

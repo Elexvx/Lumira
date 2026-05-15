@@ -20,6 +20,8 @@ public class SecurityConfig {
             "/api/v1/auth/login/code/complete",
             "/api/v1/auth/wechat/authorize-url",
             "/api/v1/auth/wechat/login",
+            "/api/v1/auth/passkeys/authentication/options",
+            "/api/v1/auth/passkeys/authentication/complete",
             "/api/v1/auth/second-factor/complete",
             "/api/v1/auth/refresh-token",
             "/actuator/health"
