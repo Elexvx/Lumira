@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class XxlJobExecutorConfig {
 
-    @Bean(initMethod = "start", destroyMethod = "destroy")
+    @Bean
     public XxlJobSpringExecutor xxlJobSpringExecutor(
             @Value("${xxl.job.admin.addresses}") String adminAddresses,
             @Value("${xxl.job.accessToken:}") String accessToken,
