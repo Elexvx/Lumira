@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-@Component
+@Component("repeatSubmitClientIpResolver")
 public class ClientIpResolver {
 
     private final WebProperties webProperties;
