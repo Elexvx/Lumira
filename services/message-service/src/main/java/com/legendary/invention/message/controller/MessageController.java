@@ -5,6 +5,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.common.web.TraceContext;
+import com.legendary.invention.common.web.repeatsubmit.RepeatSubmit;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.message.app.MessageAppService;
 import com.legendary.invention.message.dto.MessageDTO;
@@ -47,24 +48,28 @@ public class MessageController {
     }
 
     @PostMapping("/messages")
+    @RepeatSubmit
     public ApiResponse<MessageVO.NoticeVO> createMessage(@Valid @RequestBody MessageDTO.MessageCreateRequest request) {
         requireAny("message:message:write", "system:notification:write");
         return ApiResponse.success(messageAppService.createMessage(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @PostMapping("/messages/{id}/retract")
+    @RepeatSubmit
     public ApiResponse<MessageVO.NoticeVO> retractMessage(@PathVariable("id") Long id) {
         requireAny("message:message:retract", "system:notification:write");
         return ApiResponse.success(messageAppService.retractMessage(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
     @PostMapping("/messages/{id}/read")
+    @RepeatSubmit
     public ApiResponse<MessageVO.NoticeVO> readMessage(@PathVariable("id") Long id) {
         requireAny("message:message:read", "system:notification:view");
         return ApiResponse.success(messageAppService.markMessageRead(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
     @PostMapping("/read-all")
+    @RepeatSubmit
     public ApiResponse<MessageVO.UnreadCountVO> readAll() {
         requireAny("message:message:read", "system:notification:view");
         return ApiResponse.success(messageAppService.markAllRead(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
@@ -79,6 +84,7 @@ public class MessageController {
     }
 
     @PostMapping("/ws-ticket")
+    @RepeatSubmit
     public ApiResponse<MessageVO.WebSocketTicketVO> issueWebSocketTicket() {
         requireAny("message:message:view", "system:notification:view");
         return ApiResponse.success(webSocketTicketService.issue(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());

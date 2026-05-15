@@ -81,6 +81,16 @@ public class SystemVerificationController {
         );
     }
 
+    @GetMapping("/passkey-settings")
+    public ApiResponse<SystemVO.PasskeySettingsVO> passkeySettings() {
+        CurrentUser currentUser = currentUser();
+        requireView();
+        return ApiResponse.success(
+                verificationAppService.getPasskeySettings(requireTenantId(currentUser)),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/settings")
     public ApiResponse<SystemVO.VerificationSettingsVO> verificationSettings() {
         CurrentUser currentUser = currentUser();
@@ -165,6 +175,17 @@ public class SystemVerificationController {
         require("system:verification:manage");
         return ApiResponse.success(
                 verificationAppService.updateWechatSettings(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/passkey-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.PasskeySettingsVO> updatePasskeySettings(@Valid @RequestBody SystemDTO.PasskeySettingsRequest request) {
+        CurrentUser currentUser = currentUser();
+        require("system:verification:manage");
+        return ApiResponse.success(
+                verificationAppService.updatePasskeySettings(currentUser, request),
                 TraceContext.getRequestId()
         );
     }

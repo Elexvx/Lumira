@@ -32,14 +32,26 @@ export interface RequestOptions {
   allowUnauthorizedWithoutRedirect?: boolean;
   skipAuth?: boolean;
   silent?: boolean;
+  allowDuplicate?: boolean;
 }
 
 export interface StreamRequestOptions extends RequestOptions {
   onEvent?: (event: { event: string; data: string }) => void;
 }
 
+const activeWriteRequests = new Set<string>();
+
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+  const duplicateKey = buildDuplicateRequestKey(url, options);
+  if (duplicateKey && activeWriteRequests.has(duplicateKey)) {
+    const duplicateError = buildDuplicateRequestError();
+    handleApiError(duplicateError, options, authSnapshot);
+    throw duplicateError;
+  }
+  if (duplicateKey) {
+    activeWriteRequests.add(duplicateKey);
+  }
   try {
     const response = await fetch(buildRequestUrl(url, options.params), {
       method: options.method || 'GET',
@@ -77,11 +89,24 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     const fallbackError = buildUnexpectedError(error, authSnapshot.hasAuthToken);
     handleApiError(fallbackError, options, authSnapshot);
     throw fallbackError;
+  } finally {
+    if (duplicateKey) {
+      activeWriteRequests.delete(duplicateKey);
+    }
   }
 };
 
 export const requestEventStream = async (url: string, options: StreamRequestOptions = {}) => {
   const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+  const duplicateKey = buildDuplicateRequestKey(url, { ...options, method: options.method || 'POST' });
+  if (duplicateKey && activeWriteRequests.has(duplicateKey)) {
+    const duplicateError = buildDuplicateRequestError();
+    handleApiError(duplicateError, options, authSnapshot);
+    throw duplicateError;
+  }
+  if (duplicateKey) {
+    activeWriteRequests.add(duplicateKey);
+  }
   try {
     const response = await fetch(buildRequestUrl(url, options.params), {
       method: options.method || 'POST',
@@ -106,11 +131,24 @@ export const requestEventStream = async (url: string, options: StreamRequestOpti
     const fallbackError = buildUnexpectedError(error, authSnapshot.hasAuthToken);
     handleApiError(fallbackError, options, authSnapshot);
     throw fallbackError;
+  } finally {
+    if (duplicateKey) {
+      activeWriteRequests.delete(duplicateKey);
+    }
   }
 };
 
 export const requestFile = async (url: string, options: RequestOptions = {}) => {
   const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+  const duplicateKey = buildDuplicateRequestKey(url, options);
+  if (duplicateKey && activeWriteRequests.has(duplicateKey)) {
+    const duplicateError = buildDuplicateRequestError();
+    handleApiError(duplicateError, options, authSnapshot);
+    throw duplicateError;
+  }
+  if (duplicateKey) {
+    activeWriteRequests.add(duplicateKey);
+  }
   try {
     const response = await fetch(buildRequestUrl(url, options.params), {
       method: options.method || 'GET',
@@ -131,6 +169,10 @@ export const requestFile = async (url: string, options: RequestOptions = {}) => 
     const fallbackError = buildUnexpectedError(error, authSnapshot.hasAuthToken);
     handleApiError(fallbackError, options, authSnapshot);
     throw fallbackError;
+  } finally {
+    if (duplicateKey) {
+      activeWriteRequests.delete(duplicateKey);
+    }
   }
 };
 
@@ -216,6 +258,78 @@ const buildRequestBody = (data: unknown, method?: RequestOptions['method']) => {
     return data;
   }
   return JSON.stringify(data);
+};
+
+const buildDuplicateRequestKey = (url: string, options: RequestOptions) => {
+  const method = options.method || 'GET';
+  if (options.allowDuplicate || !isWriteMethod(method)) {
+    return '';
+  }
+  return [
+    method,
+    url,
+    stableSerialize(options.params || {}),
+    stableSerialize(options.data),
+  ].join('|');
+};
+
+const isWriteMethod = (method: RequestOptions['method']) => {
+  return method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+};
+
+const stableSerialize = (value: unknown): string => {
+  return JSON.stringify(toStableValue(value));
+};
+
+const toStableValue = (value: unknown): unknown => {
+  if (value === undefined) {
+    return { __type: 'undefined' };
+  }
+  if (value === null) {
+    return null;
+  }
+  if (value instanceof FormData) {
+    return Array.from(value.entries()).map(([key, entry]) => [key, serializeFormDataEntry(entry)]);
+  }
+  if (value instanceof Blob) {
+    return serializeBlob(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(toStableValue);
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const sorted: Record<string, unknown> = {};
+    Object.keys(record).sort().forEach((key) => {
+      sorted[key] = toStableValue(record[key]);
+    });
+    return sorted;
+  }
+  return value;
+};
+
+const serializeFormDataEntry = (entry: FormDataEntryValue) => {
+  if (entry instanceof File) {
+    return {
+      name: entry.name,
+      size: entry.size,
+      type: entry.type,
+      lastModified: entry.lastModified,
+    };
+  }
+  return entry;
+};
+
+const serializeBlob = (value: Blob) => ({
+  size: value.size,
+  type: value.type,
+});
+
+const buildDuplicateRequestError = () => {
+  return new ApiRequestError(ErrorCode.REPEAT_SUBMIT, '请求正在处理中，请勿重复提交', {
+    userMessage: '请求正在处理中，请勿重复提交',
+    httpStatus: 429,
+  });
 };
 
 const readEventStream = async (

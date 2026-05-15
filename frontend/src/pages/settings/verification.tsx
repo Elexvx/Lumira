@@ -1,10 +1,16 @@
+import { DeleteOutlined, DownOutlined, LoginOutlined, PlusOutlined, HolderOutlined, CheckOutlined } from '@ant-design/icons';
+import type { ProColumns } from '@ant-design/pro-components';
 import { history, useLocation } from '@umijs/max';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, Divider, Form, Input, InputNumber, Select, Space, Switch, Tabs, Typography, message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import type { MenuProps } from 'antd';
+import { Button, Card, Divider, Dropdown, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, Tabs, Tag, Typography, message } from 'antd';
+import type { Key } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
-import { ManagementPage } from '@/features/management';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { useResponsive } from '@/hooks/useResponsive';
 import { systemService } from '@/services/system';
 import type {
   SmsVerificationSettings,
@@ -12,12 +18,15 @@ import type {
   SmtpTestPayload,
   VerificationSettings,
   WechatLoginSettings,
+  PasskeySettings,
 } from '@/types/api';
 
-const TAB_KEYS = ['totp', 'sms', 'email', 'wechat'] as const;
+const TAB_KEYS = ['totp', 'sms', 'email', 'wechat', 'passkey'] as const;
 
 type VerificationTabKey = (typeof TAB_KEYS)[number];
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
+type AuthenticatorCode = 'sms_login' | 'passkey_login' | 'basic';
+type ConfigDrawerMode = VerificationTabKey | 'basic';
 
 interface SmsProviderFieldConfig {
   name: keyof SmsVerificationSettings;
@@ -29,6 +38,16 @@ interface SmsProviderFieldConfig {
 
 interface SmsProviderSchema {
   fields: SmsProviderFieldConfig[];
+}
+
+interface AuthenticatorRecord {
+  key: AuthenticatorCode;
+  order: number;
+  identifier: string;
+  type: string;
+  title: string;
+  description: string;
+  enabled: boolean;
 }
 
 const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
@@ -84,11 +103,33 @@ const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
   return 'aliyun';
 };
 
-const normalizeTabKey = (value?: string | null): VerificationTabKey => {
-  if (value === 'sms' || value === 'email' || value === 'wechat') {
+const normalizeDrawerMode = (value?: string | null): ConfigDrawerMode | null => {
+  if (value === 'basic') {
+    return 'basic';
+  }
+  if (value === 'totp' || value === 'sms' || value === 'email' || value === 'wechat' || value === 'passkey') {
     return value;
   }
-  return 'totp';
+  return null;
+};
+
+const resolveDrawerTitle = (mode: ConfigDrawerMode | null) => {
+  if (mode === 'sms') {
+    return '配置短信认证器';
+  }
+  if (mode === 'email') {
+    return '配置邮箱认证';
+  }
+  if (mode === 'wechat') {
+    return '配置微信登录';
+  }
+  if (mode === 'passkey') {
+    return '配置通行密钥';
+  }
+  if (mode === 'totp') {
+    return '配置 2FA';
+  }
+  return '配置密码认证器';
 };
 
 const verificationFormInitialValues: VerificationSettings = {
@@ -119,6 +160,7 @@ const WECHAT_APP_SECRET_MASK = '********';
 
 const SystemVerificationPage = () => {
   const actionPermission = useActionPermission();
+  const responsive = useResponsive();
   const canViewVerification =
     actionPermission.can('system:verification:view') ||
     actionPermission.can('system:verification:manage') ||
@@ -131,12 +173,17 @@ const SystemVerificationPage = () => {
   const [smtpSettingsForm] = Form.useForm<SmtpSettings>();
   const [smtpTestForm] = Form.useForm<SmtpTestPayload>();
   const [wechatSettingsForm] = Form.useForm<WechatLoginSettings>();
+  const [passkeySettingsForm] = Form.useForm<PasskeySettings & { allowedOriginsText?: string }>();
   const [providerDrafts, setProviderDrafts] = useState<Partial<Record<SmsProviderCode, SmsVerificationSettings>>>({});
-  const [activeTab, setActiveTab] = useState<VerificationTabKey>(() => normalizeTabKey(new URLSearchParams(location.search).get('tab')));
+  const [configDrawerMode, setConfigDrawerMode] = useState<ConfigDrawerMode | null>(() =>
+    normalizeDrawerMode(new URLSearchParams(location.search).get('tab')),
+  );
+  const [selectedAuthenticatorKeys, setSelectedAuthenticatorKeys] = useState<Key[]>([]);
   const [verificationSaving, setVerificationSaving] = useState(false);
   const [savingSmsSettings, setSavingSmsSettings] = useState(false);
   const [savingEmailSettings, setSavingEmailSettings] = useState(false);
   const [savingWechatSettings, setSavingWechatSettings] = useState(false);
+  const [savingPasskeySettings, setSavingPasskeySettings] = useState(false);
   const [testingSmtpSettings, setTestingSmtpSettings] = useState(false);
 
   const verificationSettingsQuery = useQuery({
@@ -157,6 +204,11 @@ const SystemVerificationPage = () => {
   const wechatSettingsQuery = useQuery({
     queryKey: ['wechat-login-settings'],
     queryFn: async () => systemService.wechatLoginSettings({ autoRedirectOnUnauthorized: false }),
+    enabled: canViewVerification,
+  });
+  const passkeySettingsQuery = useQuery({
+    queryKey: ['passkey-settings'],
+    queryFn: async () => systemService.passkeySettings({ autoRedirectOnUnauthorized: false }),
     enabled: canViewVerification,
   });
   const verificationFormProps = useStandardFormProps({
@@ -188,18 +240,37 @@ const SystemVerificationPage = () => {
       stateExpireMinutes: 10,
     },
   });
+  const passkeyFormProps = useStandardFormProps({
+    form: passkeySettingsForm,
+    initialValues: {
+      enabled: true,
+      passwordlessEnabled: true,
+      selfBindingEnabled: true,
+      rpId: 'elexvx.com',
+      rpName: '宏翔商道后台管理系统',
+      allowedOrigins: ['https://test.elexvx.com'],
+      allowedOriginsText: 'https://test.elexvx.com',
+      challengeTtlSeconds: 120,
+    },
+  });
 
   const currentProvider = Form.useWatch('provider', smsSettingsForm);
   const smsEnabled = Form.useWatch('enabled', smsSettingsForm) ?? false;
   const wechatEnabled = Form.useWatch('enabled', wechatSettingsForm) ?? false;
+  const passkeyEnabled = Form.useWatch('enabled', passkeySettingsForm) ?? false;
 
   const updateTabInUrl = useCallback(
-    (nextTab: VerificationTabKey) => {
+    (nextTab?: ConfigDrawerMode | null) => {
       const searchParams = new URLSearchParams(location.search);
-      searchParams.set('tab', nextTab);
+      if (nextTab) {
+        searchParams.set('tab', nextTab);
+      } else {
+        searchParams.delete('tab');
+      }
+      const nextSearch = searchParams.toString();
       history.replace({
         pathname: location.pathname,
-        search: `?${searchParams.toString()}`,
+        search: nextSearch ? `?${nextSearch}` : '',
       });
     },
     [location.pathname, location.search],
@@ -207,11 +278,7 @@ const SystemVerificationPage = () => {
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-    const normalizedTab = normalizeTabKey(searchParams.get('tab'));
-    setActiveTab(normalizedTab);
-    if (searchParams.get('tab') !== normalizedTab) {
-      updateTabInUrl(normalizedTab);
-    }
+    setConfigDrawerMode(normalizeDrawerMode(searchParams.get('tab')));
   }, [location.search, updateTabInUrl]);
 
   useEffect(() => {
@@ -256,6 +323,15 @@ const SystemVerificationPage = () => {
       });
     }
   }, [wechatSettingsForm, wechatSettingsQuery.data]);
+
+  useEffect(() => {
+    if (passkeySettingsQuery.data) {
+      passkeySettingsForm.setFieldsValue({
+        ...passkeySettingsQuery.data,
+        allowedOriginsText: passkeySettingsQuery.data.allowedOrigins?.join('\n') || '',
+      });
+    }
+  }, [passkeySettingsForm, passkeySettingsQuery.data]);
 
   const handleSmsProviderChange = (nextProvider: string) => {
     const currentValues = smsSettingsForm.getFieldsValue(true) as Partial<SmsVerificationSettings>;
@@ -395,6 +471,31 @@ const SystemVerificationPage = () => {
     }
   };
 
+  const handleSavePasskeySettings = async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setSavingPasskeySettings(true);
+    try {
+      const values = await passkeySettingsForm.validateFields();
+      const result = await systemService.updatePasskeySettings(
+        {
+          ...values,
+          allowedOrigins: values.allowedOriginsText?.split('\n').map((item) => item.trim()).filter(Boolean) || [],
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
+      passkeySettingsForm.setFieldsValue({
+        ...result,
+        allowedOriginsText: result.allowedOrigins?.join('\n') || '',
+      });
+      message.success('通行密钥配置已保存');
+      await passkeySettingsQuery.refetch();
+    } finally {
+      setSavingPasskeySettings(false);
+    }
+  };
+
   const handleTestSmtpSettings = async () => {
     if (!canManageSettings) {
       return;
@@ -409,13 +510,205 @@ const SystemVerificationPage = () => {
     }
   };
 
+  const openConfigDrawer = useCallback((mode: ConfigDrawerMode) => {
+    setConfigDrawerMode(mode);
+    updateTabInUrl(mode);
+  }, [updateTabInUrl]);
+
+  const closeConfigDrawer = useCallback(() => {
+    setConfigDrawerMode(null);
+    updateTabInUrl(null);
+  }, [updateTabInUrl]);
+
+  const disableSmsAuthenticator = useCallback(async () => {
+    if (!canManageSettings) {
+      return;
+    }
+    setSavingSmsSettings(true);
+    try {
+      const currentValues = smsSettingsForm.getFieldsValue(true) as SmsVerificationSettings;
+      const accessKeySecret = currentValues.accessKeySecret === SMS_ACCESS_KEY_SECRET_MASK ? undefined : currentValues.accessKeySecret;
+      await systemService.updateSmsVerificationSettings(
+        {
+          ...currentValues,
+          enabled: false,
+          accessKeySecret,
+        },
+        { autoRedirectOnUnauthorized: false },
+      );
+      message.success('短信认证器已停用');
+      setSelectedAuthenticatorKeys((keys) => keys.filter((key) => key !== 'sms_login'));
+      await smsSettingsQuery.refetch();
+    } finally {
+      setSavingSmsSettings(false);
+    }
+  }, [canManageSettings, smsSettingsForm, smsSettingsQuery]);
+
+  const handleDeleteAuthenticator = useCallback(async (key: AuthenticatorCode) => {
+    if (key === 'basic') {
+      message.warning('密码认证器是系统基础登录方式，不能删除。');
+      return;
+    }
+    if (key === 'sms_login') {
+      await disableSmsAuthenticator();
+      return;
+    }
+    if (key === 'passkey_login') {
+      passkeySettingsForm.setFieldValue('enabled', false);
+      await handleSavePasskeySettings();
+    }
+  }, [disableSmsAuthenticator, handleSavePasskeySettings, passkeySettingsForm]);
+
+  const handleDeleteSelectedAuthenticators = useCallback(async () => {
+    if (!selectedAuthenticatorKeys.length) {
+      message.info('请先选择要删除的认证器');
+      return;
+    }
+    if (selectedAuthenticatorKeys.includes('basic')) {
+      message.warning('密码认证器是系统基础登录方式，不能删除。');
+    }
+    if (selectedAuthenticatorKeys.includes('sms_login')) {
+      await disableSmsAuthenticator();
+    }
+    if (selectedAuthenticatorKeys.includes('passkey_login')) {
+      passkeySettingsForm.setFieldValue('enabled', false);
+      await handleSavePasskeySettings();
+    }
+  }, [disableSmsAuthenticator, handleSavePasskeySettings, passkeySettingsForm, selectedAuthenticatorKeys]);
+
   const activeProvider = normalizeProviderCode(currentProvider);
   const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
   const verificationLoading =
-    verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading || wechatSettingsQuery.isLoading;
+    verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading || wechatSettingsQuery.isLoading || passkeySettingsQuery.isLoading;
   const emailLoginEnabled = Form.useWatch('emailLoginEnabled', verificationForm) ?? false;
   const smsAccessKeySecretConfigured = smsSettingsQuery.data?.accessKeySecretConfigured ?? false;
   const wechatAppSecretConfigured = wechatSettingsQuery.data?.appSecretConfigured ?? false;
+  const authenticatorRows = useMemo<AuthenticatorRecord[]>(
+    () => [
+      {
+        key: 'sms_login',
+        order: 1,
+        identifier: 'sms_login',
+        type: '短信',
+        title: '短信验证',
+        description: '使用短信验证码登录',
+        enabled: Boolean(smsSettingsQuery.data?.enabled),
+      },
+      {
+        key: 'passkey_login',
+        order: 2,
+        identifier: 'passkey_login',
+        type: '通行密钥',
+        title: '通行密钥',
+        description: '使用系统钥匙串或密码管理器进行 WebAuthn 验证',
+        enabled: Boolean(passkeySettingsQuery.data?.enabled),
+      },
+      {
+        key: 'basic',
+        order: 3,
+        identifier: 'basic',
+        type: '密码',
+        title: '账号密码登录',
+        description: '使用账号密码登录',
+        enabled: true,
+      },
+    ],
+    [passkeySettingsQuery.data?.enabled, smsSettingsQuery.data?.enabled],
+  );
+
+  const addAuthenticatorItems = useMemo<MenuProps['items']>(
+    () => [
+      {
+        key: 'basic',
+        label: '密码',
+        onClick: () => openConfigDrawer('basic'),
+      },
+      {
+        key: 'sms',
+        label: '短信',
+        onClick: () => openConfigDrawer('sms'),
+      },
+      {
+        key: 'passkey',
+        label: '通行密钥',
+        onClick: () => openConfigDrawer('passkey'),
+      },
+    ],
+    [openConfigDrawer],
+  );
+
+  const authenticatorColumns = useMemo<ProColumns<AuthenticatorRecord>[]>(
+    () => [
+      {
+        title: '',
+        dataIndex: 'order',
+        width: 96,
+        search: false,
+        render: (_, record) => (
+          <Space size={16}>
+            <HolderOutlined style={{ color: 'rgba(0, 0, 0, 0.65)' }} />
+            <Typography.Text>{record.order}</Typography.Text>
+          </Space>
+        ),
+      },
+      {
+        title: '认证标识',
+        dataIndex: 'identifier',
+        search: false,
+      },
+      {
+        title: '认证类型',
+        dataIndex: 'type',
+        width: 160,
+        search: false,
+        render: (_, record) => <Tag>{record.type}</Tag>,
+      },
+      {
+        title: '标题',
+        dataIndex: 'title',
+        search: false,
+      },
+      {
+        title: '描述',
+        dataIndex: 'description',
+        search: false,
+      },
+      {
+        title: '启用',
+        dataIndex: 'enabled',
+        width: 120,
+        align: 'center',
+        search: false,
+        render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: '#52c41a' }} /> : null),
+      },
+      {
+        title: '操作',
+        valueType: 'option',
+        width: 160,
+        render: (_, record) => (
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={[
+              {
+                key: 'config',
+                label: '配置',
+                disabled: !canManageSettings,
+                onClick: () => openConfigDrawer(record.key === 'sms_login' ? 'sms' : record.key === 'passkey_login' ? 'passkey' : 'basic'),
+              },
+              {
+                key: 'delete',
+                label: '删除',
+                danger: true,
+                disabled: !canManageSettings,
+                onClick: () => void handleDeleteAuthenticator(record.key),
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [canManageSettings, handleDeleteAuthenticator, openConfigDrawer, responsive.isMobile],
+  );
 
   const renderVerificationTab = () => (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -624,27 +917,129 @@ const SystemVerificationPage = () => {
     </Space>
   );
 
+  const renderPasskeyTab = () => (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Form {...passkeyFormProps}>
+        <Form.Item name="enabled" label="启用通行密钥登录" valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item name="passwordlessEnabled" label="允许无账号登录" valuePropName="checked" extra="开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。">
+          <Switch disabled={!canManageSettings || !passkeyEnabled} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item name="selfBindingEnabled" label="允许用户自助绑定" valuePropName="checked">
+          <Switch disabled={!canManageSettings || !passkeyEnabled} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item name="rpId" label="RP ID" rules={passkeyEnabled ? [{ required: true, message: '请输入 RP ID' }] : undefined}>
+          <Input disabled={!canManageSettings || !passkeyEnabled} placeholder="elexvx.com" />
+        </Form.Item>
+        <Form.Item name="rpName" label="RP 名称" rules={passkeyEnabled ? [{ required: true, message: '请输入 RP 名称' }] : undefined}>
+          <Input disabled={!canManageSettings || !passkeyEnabled} placeholder="宏翔商道后台管理系统" />
+        </Form.Item>
+        <Form.Item name="allowedOriginsText" label="允许的 Origin" rules={passkeyEnabled ? [{ required: true, message: '请输入允许的 Origin' }] : undefined} extra="每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。">
+          <Input.TextArea disabled={!canManageSettings || !passkeyEnabled} rows={4} placeholder="https://test.elexvx.com" />
+        </Form.Item>
+        <Form.Item name="challengeTtlSeconds" label="Challenge 有效期">
+          <InputNumber disabled={!canManageSettings || !passkeyEnabled} style={{ width: '100%' }} min={30} max={600} addonAfter="秒" />
+        </Form.Item>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button type="primary" loading={savingPasskeySettings} disabled={!canManageSettings} onClick={() => void handleSavePasskeySettings()}>
+            保存配置
+          </Button>
+        </div>
+      </Form>
+    </Space>
+  );
+
+  const renderBasicConfig = () => (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Typography.Paragraph style={{ marginBottom: 0 }}>
+        密码认证器是系统内置的基础登录方式，当前始终启用。密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。
+      </Typography.Paragraph>
+      <Button type="primary" onClick={() => history.push('/settings/security')}>
+        前往安全设置
+      </Button>
+    </Space>
+  );
+
+  const renderConfigDrawerContent = () => {
+    if (configDrawerMode === 'sms') {
+      return renderSmsTab();
+    }
+    if (configDrawerMode === 'email') {
+      return renderEmailTab();
+    }
+    if (configDrawerMode === 'wechat') {
+      return renderWechatTab();
+    }
+    if (configDrawerMode === 'passkey') {
+      return renderPasskeyTab();
+    }
+    if (configDrawerMode === 'totp') {
+      return renderVerificationTab();
+    }
+    return renderBasicConfig();
+  };
+
   return (
-    <ManagementPage title="验证管理">
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Card loading={verificationLoading}>
-          <Tabs
-            activeKey={activeTab}
-            items={[
-              { key: 'totp', label: '2FA', children: renderVerificationTab() },
-              { key: 'sms', label: '短信验证码', children: renderSmsTab() },
-              { key: 'email', label: '邮箱与 SMTP', children: renderEmailTab() },
-              { key: 'wechat', label: '微信登录', children: renderWechatTab() },
-            ]}
-            onChange={(key) => {
-              const nextTab = normalizeTabKey(key);
-              setActiveTab(nextTab);
-              updateTabInUrl(nextTab);
-            }}
-            destroyInactiveTabPane
-          />
-        </Card>
-      </Space>
+    <ManagementPage title="用户认证">
+      <Tabs
+        activeKey="authenticators"
+        items={[
+          {
+            key: 'authenticators',
+            label: (
+              <Space size={8}>
+                <LoginOutlined />
+                认证器
+              </Space>
+            ),
+            children: (
+              <ManagementTable<AuthenticatorRecord>
+                rowKey="key"
+                columns={authenticatorColumns}
+                isMobile={responsive.isMobile}
+                search={false}
+                loading={verificationLoading}
+                dataSource={authenticatorRows}
+                pagination={{ pageSize: 50, showSizeChanger: true }}
+                tableAlertRender={false}
+                rowSelection={{
+                  selectedRowKeys: selectedAuthenticatorKeys,
+                  onChange: setSelectedAuthenticatorKeys,
+                }}
+                toolBarRender={() => [
+                  <Popconfirm
+                    key="delete"
+                    title="删除认证器"
+                    description="可删除的认证器会被停用，基础密码认证器会保留。"
+                    okText="确认"
+                    cancelText="取消"
+                    onConfirm={() => void handleDeleteSelectedAuthenticators()}
+                  >
+                    <Button disabled={!canManageSettings} icon={<DeleteOutlined />}>
+                      删除
+                    </Button>
+                  </Popconfirm>,
+                  <Dropdown key="add" trigger={['click']} menu={{ items: addAuthenticatorItems }} placement="bottomRight">
+                    <Button type="primary" disabled={!canManageSettings} icon={<PlusOutlined />}>
+                      添加 <DownOutlined />
+                    </Button>
+                  </Dropdown>,
+                ]}
+              />
+            ),
+          },
+        ]}
+      />
+
+      <ManagementDrawer
+        title={resolveDrawerTitle(configDrawerMode)}
+        open={Boolean(configDrawerMode)}
+        onClose={closeConfigDrawer}
+        footer={null}
+      >
+        {configDrawerMode ? renderConfigDrawerContent() : null}
+      </ManagementDrawer>
     </ManagementPage>
   );
 };

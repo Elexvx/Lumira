@@ -3,6 +3,10 @@ package com.legendary.invention.api.client;
 import com.legendary.invention.api.system.CaptchaValidationRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.MenuNodeDTO;
+import com.legendary.invention.api.system.PasskeyCredentialDTO;
+import com.legendary.invention.api.system.PasskeyCredentialSaveRequestDTO;
+import com.legendary.invention.api.system.PasskeyCredentialUsageRequestDTO;
+import com.legendary.invention.api.system.PasskeySettingsDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
@@ -45,6 +49,32 @@ public interface SystemInternalApi {
 
     @GetMapping("/verification/wechat-settings")
     WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId);
+
+    @GetMapping("/verification/passkey-settings")
+    PasskeySettingsDTO passkeySettings(@RequestParam("tenantId") Long tenantId);
+
+    @GetMapping("/passkeys/credential")
+    PasskeyCredentialDTO passkeyCredentialByCredentialId(@RequestParam("credentialId") String credentialId);
+
+    @GetMapping("/passkeys")
+    List<PasskeyCredentialDTO> passkeyCredentials(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
+
+    @PostMapping("/passkeys")
+    PasskeyCredentialDTO savePasskeyCredential(@RequestBody PasskeyCredentialSaveRequestDTO request);
+
+    @PostMapping("/passkeys/usage")
+    Boolean updatePasskeyCredentialUsage(@RequestBody PasskeyCredentialUsageRequestDTO request);
+
+    @PostMapping("/passkeys/{id}/label")
+    PasskeyCredentialDTO renamePasskeyCredential(
+            @PathVariable("id") Long id,
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("label") String label
+    );
+
+    @PostMapping("/passkeys/{id}/delete")
+    Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
 
     @GetMapping("/verification/providers")
     List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);

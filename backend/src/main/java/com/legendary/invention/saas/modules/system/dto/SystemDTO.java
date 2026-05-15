@@ -144,6 +144,9 @@ public final class SystemDTO {
     public static class WechatLoginSettingsRequest extends com.legendary.invention.saas.modules.system.verification.dto.WechatLoginSettingsRequest {
     }
 
+    public static class PasskeySettingsRequest extends com.legendary.invention.saas.modules.system.verification.dto.PasskeySettingsRequest {
+    }
+
     public static class SmtpTestRequest extends com.legendary.invention.saas.modules.system.smtp.dto.SmtpTestRequest {
     }
 

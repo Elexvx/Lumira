@@ -7,6 +7,7 @@ import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.common.security.PermissionGuard;
 import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.common.web.TraceContext;
+import com.legendary.invention.common.web.repeatsubmit.RepeatSubmit;
 import com.legendary.invention.file.app.FileManagementAppService;
 import jakarta.validation.constraints.Positive;
 import org.springframework.core.io.FileSystemResource;
@@ -115,6 +116,7 @@ public class FileController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
     public ApiResponse<FileObjectDTO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(name = "category", required = false) String category,
@@ -129,6 +131,7 @@ public class FileController {
     }
 
     @DeleteMapping("/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> delete(
             @PathVariable("id") @Positive Long id,
             @RequestParam(name = "scope", required = false) String scope

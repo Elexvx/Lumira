@@ -1,6 +1,6 @@
 import { LoginFormPage } from '@ant-design/pro-components';
 import { formatMessage, history, useLocation } from '@umijs/max';
-import { Form, message } from 'antd';
+import { Form, message, type FormProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
@@ -10,6 +10,7 @@ import { loadCaptchaChallenge } from '@/auth/captcha';
 import { createCaptchaRefreshController } from '@/auth/captchaRefreshController';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { encryptLoginPassword } from '@/auth/loginEncryption';
+import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
 import { initializeAfterLogin } from '@/auth/session';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
@@ -39,6 +40,8 @@ const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
   smsLoginAvailable: false,
   emailLoginAvailable: false,
   wechatLoginAvailable: false,
+  passkeyLoginAvailable: false,
+  passkeyPasswordlessAvailable: false,
 };
 
 const getAvailableLoginModes = (capabilities: LoginCapabilities): LoginMode[] => {
@@ -64,6 +67,7 @@ const defaultLoginMode = (capabilities: LoginCapabilities): LoginMode => {
 
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
+  const [passkeySubmitting, setPasskeySubmitting] = useState(false);
   const [sendingLoginType, setSendingLoginType] = useState<Exclude<LoginMode, 'password'> | null>(null);
   const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
   const [activeLoginMode, setActiveLoginMode] = useState<LoginMode>('password');
@@ -415,6 +419,50 @@ const Login = () => {
     }
   }, [agreementSettings.privacyAgreementMarkdown, agreementSettings.userAgreementMarkdown, loginForm]);
 
+  const handlePasskeyLogin = useCallback(async () => {
+    if (!isPasskeySupported()) {
+      message.warning(formatMessage({ id: 'page.login.passkey.unsupported', defaultMessage: '当前浏览器不支持通行密钥' }));
+      return;
+    }
+    if (agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown) {
+      const accepted = loginForm.getFieldValue('agreementAccepted');
+      if (!accepted) {
+        message.warning(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
+        return;
+      }
+    }
+
+    setPasskeySubmitting(true);
+    try {
+      const options = await authService.passkeyAuthenticationOptions({
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      });
+      const credential = await navigator.credentials.get({
+        publicKey: toPublicKeyRequestOptions(options),
+      });
+      if (!credential) {
+        return;
+      }
+      const loginResponse = await authService.passkeyAuthenticationComplete(
+        toAuthenticationPayload(options.challengeId, credential as PublicKeyCredential),
+        {
+          autoRedirectOnUnauthorized: false,
+          silent: true,
+        },
+      );
+      await completeSuccessfulLogin(loginResponse);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        message.info(formatMessage({ id: 'page.login.passkey.cancelled', defaultMessage: '已取消通行密钥验证' }));
+        return;
+      }
+      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+    } finally {
+      setPasskeySubmitting(false);
+    }
+  }, [agreementSettings.privacyAgreementMarkdown, agreementSettings.userAgreementMarkdown, completeSuccessfulLogin, loginForm]);
+
   useEffect(() => {
     if (wechatCallbackHandledRef.current) {
       return;
@@ -584,6 +632,15 @@ const Login = () => {
     }
   };
 
+  const handleFinishFailed: FormProps<LoginFormValues>['onFinishFailed'] = ({ errorFields }) => {
+    const hasSliderCaptchaError = errorFields.some((field) => field.name.includes('captchaProof'));
+    if (!hasSliderCaptchaError) {
+      return;
+    }
+
+    message.warning(formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }));
+  };
+
   const agreementPreviewTitle = agreementPreviewKind === 'user'
     ? formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })
     : formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' });
@@ -606,6 +663,7 @@ const Login = () => {
         initialValues={{ remember: true }}
         message={false}
         onFinish={handleSubmit}
+        onFinishFailed={handleFinishFailed}
         submitter={{
           submitButtonProps: {
             children: pendingSecondFactorLogin
@@ -643,9 +701,12 @@ const Login = () => {
           sendingLoginType={sendingLoginType}
           loginCodeChallenges={loginCodeChallenges}
           wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
+          passkeyLoginAvailable={Boolean(loginCapabilities.passkeyLoginAvailable && loginCapabilities.passkeyPasswordlessAvailable)}
+          passkeyLoading={passkeySubmitting}
           onModeChange={setActiveLoginMode}
           onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
           onWechatLogin={() => void handleWechatLogin()}
+          onPasskeyLogin={() => void handlePasskeyLogin()}
           onRefreshCaptcha={() => void refreshCaptcha()}
           onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
           onSliderCaptchaChallengeChange={setCaptchaChallenge}

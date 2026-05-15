@@ -6,6 +6,10 @@ import com.legendary.invention.api.auth.SecondFactorCompleteRequest;
 import com.legendary.invention.api.system.CaptchaValidationRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.MenuNodeDTO;
+import com.legendary.invention.api.system.PasskeyCredentialDTO;
+import com.legendary.invention.api.system.PasskeyCredentialSaveRequestDTO;
+import com.legendary.invention.api.system.PasskeyCredentialUsageRequestDTO;
+import com.legendary.invention.api.system.PasskeySettingsDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
@@ -17,6 +21,7 @@ import com.legendary.invention.saas.modules.system.verification.WechatLoginSetti
 import com.legendary.invention.saas.modules.system.app.SystemRouteCatalog;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
+import com.legendary.invention.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
@@ -44,6 +49,7 @@ public class InternalSystemController {
     private final CaptchaService captchaService;
     private final SystemVerificationAppService verificationAppService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
+    private final PasskeyCredentialAppService passkeyCredentialAppService;
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
 
@@ -53,6 +59,7 @@ public class InternalSystemController {
             CaptchaService captchaService,
             SystemVerificationAppService verificationAppService,
             WechatLoginSettingsService wechatLoginSettingsService,
+            PasskeyCredentialAppService passkeyCredentialAppService,
             JdbcTemplate jdbcTemplate,
             PasswordEncoder passwordEncoder
     ) {
@@ -61,6 +68,7 @@ public class InternalSystemController {
         this.captchaService = captchaService;
         this.verificationAppService = verificationAppService;
         this.wechatLoginSettingsService = wechatLoginSettingsService;
+        this.passkeyCredentialAppService = passkeyCredentialAppService;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
     }
@@ -110,13 +118,64 @@ public class InternalSystemController {
                 Boolean.TRUE.equals(capabilities.getPasswordLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getSmsLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getEmailLoginAvailable()),
-                Boolean.TRUE.equals(capabilities.getWechatLoginAvailable())
+                Boolean.TRUE.equals(capabilities.getWechatLoginAvailable()),
+                Boolean.TRUE.equals(capabilities.getPasskeyLoginAvailable()),
+                Boolean.TRUE.equals(capabilities.getPasskeyPasswordlessAvailable())
         );
     }
 
     @GetMapping("/verification/wechat-settings")
     public WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId) {
         return wechatLoginSettingsService.getInternalSettings(tenantId);
+    }
+
+    @GetMapping("/verification/passkey-settings")
+    public PasskeySettingsDTO passkeySettings(@RequestParam("tenantId") Long tenantId) {
+        var settings = verificationAppService.getPasskeySettings(tenantId);
+        return new PasskeySettingsDTO(
+                settings.getEnabled(),
+                settings.getPasswordlessEnabled(),
+                settings.getSelfBindingEnabled(),
+                settings.getRpId(),
+                settings.getRpName(),
+                settings.getAllowedOrigins(),
+                settings.getChallengeTtlSeconds()
+        );
+    }
+
+    @GetMapping("/passkeys/credential")
+    public PasskeyCredentialDTO passkeyCredentialByCredentialId(@RequestParam("credentialId") String credentialId) {
+        return passkeyCredentialAppService.findByCredentialId(credentialId);
+    }
+
+    @GetMapping("/passkeys")
+    public List<PasskeyCredentialDTO> passkeyCredentials(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
+        return passkeyCredentialAppService.list(tenantId, userId);
+    }
+
+    @PostMapping("/passkeys")
+    public PasskeyCredentialDTO savePasskeyCredential(@RequestBody PasskeyCredentialSaveRequestDTO request) {
+        return passkeyCredentialAppService.create(request);
+    }
+
+    @PostMapping("/passkeys/usage")
+    public Boolean updatePasskeyCredentialUsage(@RequestBody PasskeyCredentialUsageRequestDTO request) {
+        return passkeyCredentialAppService.updateUsage(request);
+    }
+
+    @PostMapping("/passkeys/{id}/label")
+    public PasskeyCredentialDTO renamePasskeyCredential(
+            @PathVariable("id") Long id,
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("label") String label
+    ) {
+        return passkeyCredentialAppService.rename(id, tenantId, userId, label);
+    }
+
+    @PostMapping("/passkeys/{id}/delete")
+    public Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
+        return passkeyCredentialAppService.delete(id, tenantId, userId);
     }
 
     @GetMapping("/verification/providers")
