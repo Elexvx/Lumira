@@ -73,6 +73,7 @@ export default {
   'nav.user.password.policy.lowercase': '需包含小写字母',
   'nav.user.password.policy.special': '需包含特殊字符',
   'nav.system.root': '系统总览',
+  'nav.settings.root': '系统设置',
   'nav.system.plugins': '插件管理',
   'nav.system.menus': '菜单管理',
   'nav.system.dicts': '字典管理',

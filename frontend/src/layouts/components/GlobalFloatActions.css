@@ -1,0 +1,18 @@
+.saas-global-float-actions {
+  z-index: 1090;
+}
+
+.saas-global-float-actions .ant-float-btn {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='dark'] .saas-global-float-actions .ant-float-btn {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+}
+
+@media (max-width: 767px) {
+  .saas-global-float-actions .ant-float-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
