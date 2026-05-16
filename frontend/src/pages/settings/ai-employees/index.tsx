@@ -32,6 +32,7 @@ import {
   message,
 } from 'antd';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { ManagementDrawer, ManagementPage, ManagementPageBody, ManagementTable } from '@/features/management';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
@@ -692,7 +693,7 @@ const AiEmployeesPage = () => {
         onClose={() => {
           employeeState.drawer.reset();
         }}
-        width="min(960px, 100vw)"
+        width={STANDARD_DRAWER_WIDTH}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: () => employeeState.drawer.reset() },
           { key: 'save', label: '保存', type: 'primary', loading: employeeSaving, onClick: () => void saveEmployee() },
@@ -838,7 +839,7 @@ const AiEmployeesPage = () => {
           llmState.drawer.reset();
           setSelectedLlmService(null);
         }}
-        width="min(920px, 100vw)"
+        width={STANDARD_DRAWER_WIDTH}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: () => llmState.drawer.reset() },
           { key: 'save', label: '保存', type: 'primary', loading: llmSaving, onClick: () => void saveLlmService() },

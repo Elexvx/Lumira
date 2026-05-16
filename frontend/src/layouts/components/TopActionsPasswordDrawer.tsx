@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Button, Drawer, Form, Input, Space } from 'antd';
 import { useIntl } from '@umijs/max';
 import type { FormInstance } from 'antd';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import type { SecuritySettings } from '@/types/api';
 
 interface TopActionsPasswordDrawerProps {
@@ -63,7 +64,7 @@ export const TopActionsPasswordDrawer = ({
     <Drawer
       title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: '修改密码' })}
       open={open}
-      width={isMobile ? '100%' : 420}
+      width={isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
       destroyOnHidden
       onClose={onClose}
       footer={

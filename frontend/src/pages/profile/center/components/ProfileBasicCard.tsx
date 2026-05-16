@@ -2,6 +2,7 @@ import { EditOutlined, EyeInvisibleOutlined, EyeOutlined, UserOutlined } from '@
 import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input, Row, Select, Space, Tooltip, Upload, type DescriptionsProps, type FormProps, type UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { GENDER_OPTIONS } from '@/pages/profile/center/constants';
 import type { CurrentUser } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
@@ -148,7 +149,7 @@ export const ProfileBasicCard = ({
       <Drawer
         title="编辑个人资料"
         open={editingOpen}
-        width={560}
+        width={STANDARD_DRAWER_WIDTH}
         destroyOnClose={false}
         onClose={() => onEditOpenChange(false)}
         extra={(

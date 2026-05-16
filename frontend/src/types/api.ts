@@ -629,7 +629,7 @@ export interface FileObjectRecord {
   updatedAt?: string;
 }
 
-export type FileStorageProvider = 'LOCAL' | 'ALIYUN_OSS' | 'AWS_S3' | 'TENCENT_COS';
+export type FileStorageProvider = 'LOCAL' | 'ALIYUN_OSS' | 'TENCENT_COS';
 export type FileRenameStrategy = 'APPEND_RANDOM_ID' | 'RANDOM_STRING' | 'KEEP_ORIGINAL';
 
 export interface FileStorageSpaceRecord {
