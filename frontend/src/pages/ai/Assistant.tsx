@@ -1090,75 +1090,132 @@ const AiAssistantPage = () => {
         replyText: '',
       };
 
-      await aiService.streamChat(
-        {
-          employeeId: selectedEmployee.id,
-          conversationId: activeSession.conversationId ?? null,
-          message: trimmed,
-          attachments: draftAttachments.map((attachment) => ({ fileId: attachment.fileId })),
-        },
-        (event) => {
-          if (event.type === 'status' && event.message) {
-            updateSession(activeSession.id, (session) => ({
-              ...session,
-              messages: session.messages.map((item) =>
-                item.key === assistantPlaceholder.key
-                  ? {
-                    ...item,
-                    thinkingContent: [item.thinkingContent, event.message].filter(Boolean).join('\n'),
-                    thinkingLoading: true,
-                  }
-                  : item,
-              ),
-            }));
+      const recoverPersistedReply = async () => {
+        if (!streamState.replyText) {
+          return false;
+        }
+
+        const conversations = await aiService.conversations(
+          {
+            employeeId: selectedEmployee.id,
+            pageNo: 1,
+            pageSize: 1,
+          },
+          { autoRedirectOnUnauthorized: false, silent: true },
+        );
+        const latestConversation = conversations.records?.[0];
+        if (!latestConversation) {
+          return false;
+        }
+
+        const persistedMessages = await aiService.conversationMessages(latestConversation.id, {
+          autoRedirectOnUnauthorized: false,
+          silent: true,
+        });
+        const hasAssistantReply = persistedMessages.some((record) => record.role.trim().toUpperCase() === 'ASSISTANT');
+        if (!hasAssistantReply) {
+          return false;
+        }
+
+        const recoveredSession = buildSessionFromConversation(latestConversation, selectedEmployee);
+        setSessions((currentSessions) =>
+          sortSessions(
+            currentSessions.map((session) =>
+              session.id === activeSession.id
+                ? {
+                  ...recoveredSession,
+                  messages: persistedMessages.map(mapMessageRecord),
+                }
+                : session,
+            ),
+          ),
+        );
+        setActiveSessionId(String(latestConversation.id));
+        void queryClient.invalidateQueries({
+          queryKey: ['ai-assistant-conversations', selectedEmployee.id],
+        });
+        return true;
+      };
+
+      try {
+        await aiService.streamChat(
+          {
+            employeeId: selectedEmployee.id,
+            conversationId: activeSession.conversationId ?? null,
+            message: trimmed,
+            attachments: draftAttachments.map((attachment) => ({ fileId: attachment.fileId })),
+          },
+          (event) => {
+            if (event.type === 'status' && event.message) {
+              updateSession(activeSession.id, (session) => ({
+                ...session,
+                messages: session.messages.map((item) =>
+                  item.key === assistantPlaceholder.key
+                    ? {
+                      ...item,
+                      thinkingContent: [item.thinkingContent, event.message].filter(Boolean).join('\n'),
+                      thinkingLoading: true,
+                    }
+                    : item,
+                ),
+              }));
+              return;
+            }
+
+            if (event.type === 'thinking' && event.delta) {
+              updateSession(activeSession.id, (session) => ({
+                ...session,
+                messages: session.messages.map((item) =>
+                  item.key === assistantPlaceholder.key
+                    ? {
+                      ...item,
+                      thinkingContent: `${item.thinkingContent || ''}${event.delta}`,
+                      thinkingLoading: true,
+                    }
+                    : item,
+                ),
+              }));
+              return;
+            }
+
+            if (event.type === 'delta' && event.delta) {
+              streamState.replyText += event.delta;
+              updateSession(activeSession.id, (session) => ({
+                ...session,
+                preview: streamState.replyText || session.preview,
+                messages: session.messages.map((item) =>
+                  item.key === assistantPlaceholder.key
+                    ? {
+                      ...item,
+                      content: streamState.replyText,
+                      thinkingLoading: false,
+                    }
+                    : item,
+                ),
+              }));
+              return;
+            }
+
+            if (event.type === 'done' && event.response) {
+              streamState.response = event.response;
+              return;
+            }
+
+            if (event.type === 'error') {
+              streamState.error = new Error(event.message || '发送失败，请稍后重试');
+            }
+          },
+          { autoRedirectOnUnauthorized: false, silent: true },
+        );
+      } catch (streamError) {
+        if (!streamState.response) {
+          const recovered = await recoverPersistedReply().catch(() => false);
+          if (recovered) {
             return;
           }
-
-          if (event.type === 'thinking' && event.delta) {
-            updateSession(activeSession.id, (session) => ({
-              ...session,
-              messages: session.messages.map((item) =>
-                item.key === assistantPlaceholder.key
-                  ? {
-                    ...item,
-                    thinkingContent: `${item.thinkingContent || ''}${event.delta}`,
-                    thinkingLoading: true,
-                  }
-                  : item,
-              ),
-            }));
-            return;
-          }
-
-          if (event.type === 'delta' && event.delta) {
-            streamState.replyText += event.delta;
-            updateSession(activeSession.id, (session) => ({
-              ...session,
-              preview: streamState.replyText || session.preview,
-              messages: session.messages.map((item) =>
-                item.key === assistantPlaceholder.key
-                  ? {
-                    ...item,
-                    content: streamState.replyText,
-                    thinkingLoading: false,
-                  }
-                  : item,
-              ),
-            }));
-            return;
-          }
-
-          if (event.type === 'done' && event.response) {
-            streamState.response = event.response;
-            return;
-          }
-
-          if (event.type === 'error') {
-            streamState.error = new Error(event.message || '发送失败，请稍后重试');
-          }
-        },
-        { autoRedirectOnUnauthorized: false, silent: true },
-      );
+          throw streamError;
+        }
+      }
 
       if (streamState.error) {
         throw streamState.error;
