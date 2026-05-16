@@ -42,7 +42,7 @@ export interface StreamRequestOptions extends RequestOptions {
 const activeWriteRequests = new Set<string>();
 
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
-  const authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+  let authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
   const duplicateKey = buildDuplicateRequestKey(url, options);
   if (duplicateKey && activeWriteRequests.has(duplicateKey)) {
     const duplicateError = buildDuplicateRequestError();
@@ -53,34 +53,56 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     activeWriteRequests.add(duplicateKey);
   }
   try {
-    const response = await fetch(buildRequestUrl(url, options.params), {
-      method: options.method || 'GET',
-      headers: buildRequestHeaders(options, authSnapshot),
-      body: buildRequestBody(options.data, options.method),
-    });
-    const responseData = await parseResponseData(response);
-    const httpStatus = response.status;
-    const requestId = getResponseRequestId(response.headers, responseData);
-    const apiResponse = withRequestId(responseData, requestId);
+    let refreshedAfterUnauthorized = false;
 
-    if (isApiResponse<T>(apiResponse)) {
-      if (apiResponse.code === ErrorCode.SUCCESS) {
-        return apiResponse.data;
+    while (true) {
+      const response = await fetch(buildRequestUrl(url, options.params), {
+        method: options.method || 'GET',
+        headers: buildRequestHeaders(options, authSnapshot),
+        body: buildRequestBody(options.data, options.method),
+      });
+      const responseData = await parseResponseData(response);
+      const httpStatus = response.status;
+      const requestId = getResponseRequestId(response.headers, responseData);
+      const apiResponse = withRequestId(responseData, requestId);
+
+      if (isApiResponse<T>(apiResponse)) {
+        if (apiResponse.code === ErrorCode.SUCCESS) {
+          return apiResponse.data;
+        }
+
+        if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, apiResponse.code, refreshedAfterUnauthorized, authSnapshot)) {
+          refreshedAfterUnauthorized = true;
+          const refreshed = await refreshAuthSession();
+          if (refreshed) {
+            authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+            continue;
+          }
+        }
+
+        const apiError = new ApiRequestError(apiResponse.code, apiResponse.message, {
+          userMessage: apiResponse.userMessage || apiResponse.message,
+          requestId: apiResponse.requestId,
+          httpStatus,
+        });
+
+        handleApiError(apiError, options, authSnapshot);
+        throw apiError;
       }
 
-      const apiError = new ApiRequestError(apiResponse.code, apiResponse.message, {
-        userMessage: apiResponse.userMessage || apiResponse.message,
-        requestId: apiResponse.requestId,
-        httpStatus,
-      });
+      if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, undefined, refreshedAfterUnauthorized, authSnapshot)) {
+        refreshedAfterUnauthorized = true;
+        const refreshed = await refreshAuthSession();
+        if (refreshed) {
+          authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
+          continue;
+        }
+      }
 
-      handleApiError(apiError, options, authSnapshot);
-      throw apiError;
+      const fallbackError = buildFallbackError(httpStatus, requestId, authSnapshot.hasAuthToken);
+      handleApiError(fallbackError, options, authSnapshot);
+      throw fallbackError;
     }
-
-    const fallbackError = buildFallbackError(httpStatus, requestId, authSnapshot.hasAuthToken);
-    handleApiError(fallbackError, options, authSnapshot);
-    throw fallbackError;
   } catch (error) {
     if (error instanceof ApiRequestError) {
       throw error;
@@ -178,6 +200,31 @@ export const requestFile = async (url: string, options: RequestOptions = {}) => 
 
 const buildAuthorization = (accessToken: string) => {
   return accessToken ? `Bearer ${accessToken}` : '';
+};
+
+const refreshAuthSession = async () => {
+  const { tryRefreshToken } = await import('@/auth/session');
+  return tryRefreshToken();
+};
+
+const shouldRefreshAndRetryUnauthorized = (
+  url: string,
+  options: RequestOptions,
+  httpStatus: number,
+  apiCode: string | undefined,
+  alreadyRetried: boolean,
+  authSnapshot: AuthRequestSnapshot,
+) => {
+  if (alreadyRetried || options.skipAuth || !authSnapshot.hasAuthToken) {
+    return false;
+  }
+  if (options.allowUnauthorizedWithoutRedirect === true) {
+    return false;
+  }
+  if (url.includes('/v1/auth/refresh-token') || url.includes('/v1/auth/logout')) {
+    return false;
+  }
+  return httpStatus === 401 || apiCode === ErrorCode.UNAUTHORIZED || apiCode === ErrorCode.SESSION_EXPIRED;
 };
 
 const handleApiError = (error: ApiRequestError, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {

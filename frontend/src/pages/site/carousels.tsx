@@ -4,7 +4,6 @@ import type { UploadProps } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { fileService } from '@/services/file';
 import { siteService, type SiteCarousel } from '@/services/site';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import SiteAdminPage from './SiteAdminPage';
@@ -108,11 +107,7 @@ const CarouselManagement = () => {
 
       setUploading(true);
       try {
-        const uploaded = await fileService.upload(file, {
-          category: 'site-carousel',
-          tags: 'site,carousel',
-          remark: '官网轮播图片',
-        });
+        const uploaded = await siteService.uploadImage(file, 'carousel');
         form.setFieldsValue({
           imageFileId: uploaded.id,
           imageUrl: normalizeUploadUrl(uploaded.publicUrl),

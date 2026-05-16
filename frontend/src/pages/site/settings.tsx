@@ -3,7 +3,6 @@ import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { fileService } from '@/services/file';
 import { siteService, type SiteSettings } from '@/services/site';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import SiteAdminPage from './SiteAdminPage';
@@ -60,11 +59,7 @@ const SiteSettingsPage = () => {
 
     setUploadingTarget(target);
     try {
-      const uploaded = await fileService.upload(file, {
-        category: target === 'logo' ? 'site-logo' : 'site-favicon',
-        tags: target === 'logo' ? 'site,logo' : 'site,favicon',
-        remark: target === 'logo' ? '官网 Logo' : '官网 Favicon',
-      });
+      const uploaded = await siteService.uploadImage(file, 'settings');
       form.setFieldsValue(
         target === 'logo'
           ? { logoFileId: uploaded.id, logoUrl: normalizeUploadUrl(uploaded.publicUrl) }

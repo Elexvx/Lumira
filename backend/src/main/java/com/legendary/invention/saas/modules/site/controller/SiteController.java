@@ -6,6 +6,8 @@ import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
+import com.legendary.invention.saas.modules.file.app.FileManagementAppService;
+import com.legendary.invention.saas.modules.file.vo.FileVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.site.app.SiteManagementAppService;
 import com.legendary.invention.saas.modules.site.dto.SiteDTO;
@@ -13,6 +15,7 @@ import com.legendary.invention.saas.modules.site.vo.SiteVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,19 +23,28 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/site")
 public class SiteController {
 
     private final SiteManagementAppService siteManagementAppService;
+    private final FileManagementAppService fileManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
 
-    public SiteController(SiteManagementAppService siteManagementAppService, SecurityContextFacade securityContextFacade, PermissionGuard permissionGuard) {
+    public SiteController(
+            SiteManagementAppService siteManagementAppService,
+            FileManagementAppService fileManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard
+    ) {
         this.siteManagementAppService = siteManagementAppService;
+        this.fileManagementAppService = fileManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
     }
@@ -48,6 +60,26 @@ public class SiteController {
     public ApiResponse<SiteVO.SiteSettingsVO> updateSettings(@Valid @RequestBody SiteDTO.SiteSettingsRequest request) {
         require("site:settings:update");
         return ApiResponse.success(siteManagementAppService.updateSettings(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
+    public ApiResponse<FileVO.FileObjectVO> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "usage", required = false) String usage
+    ) {
+        requireSiteUploadPermission(usage);
+        String normalizedUsage = normalizeSiteUploadUsage(usage);
+        return ApiResponse.success(
+                fileManagementAppService.uploadFile(
+                        currentUser(),
+                        file,
+                        "site-" + normalizedUsage,
+                        "site," + normalizedUsage,
+                        siteUploadRemark(normalizedUsage)
+                ),
+                TraceContext.getRequestId()
+        );
     }
 
     @GetMapping("/navigation")
@@ -244,5 +276,34 @@ public class SiteController {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(currentUser(), permissionKey);
+    }
+
+    private void requireSiteUploadPermission(String usage) {
+        String normalizedUsage = normalizeSiteUploadUsage(usage);
+        if ("carousel".equals(normalizedUsage)) {
+            requireAny("site:carousel:create", "site:carousel:update", "site:carousel");
+            return;
+        }
+        requireAny("site:settings:update", "site:settings");
+    }
+
+    private void requireAny(String... permissionKeys) {
+        CurrentUser user = currentUser();
+        Set<String> permissions = user == null ? Set.of() : user.getPermissions();
+        if (permissions != null && (permissions.contains("*") || java.util.Arrays.stream(permissionKeys).anyMatch(permissions::contains))) {
+            return;
+        }
+        permissionGuard.requirePermission(user, permissionKeys.length == 0 ? null : permissionKeys[0]);
+    }
+
+    private String normalizeSiteUploadUsage(String usage) {
+        if (usage == null || usage.isBlank()) {
+            return "settings";
+        }
+        return "carousel".equalsIgnoreCase(usage.trim()) ? "carousel" : "settings";
+    }
+
+    private String siteUploadRemark(String usage) {
+        return "carousel".equals(usage) ? "官网轮播图片" : "官网设置图片";
     }
 }

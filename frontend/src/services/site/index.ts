@@ -1,4 +1,5 @@
 import { request, type RequestOptions } from '@/services/common/request';
+import type { FileObjectRecord } from '@/types/api';
 
 export interface PagedResult<T> {
   records: T[];
@@ -147,6 +148,17 @@ export const siteService = {
   settings: (options: RequestOptions = {}) => request<SiteSettings>('/v1/site/settings', { method: 'GET', ...options }),
   updateSettings: (payload: Partial<SiteSettings>, options: RequestOptions = {}) =>
     request<SiteSettings>('/v1/site/settings', { method: 'PUT', data: payload, ...options }),
+  uploadImage: (file: File, usage: 'settings' | 'carousel', options: RequestOptions = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('usage', usage);
+    return request<FileObjectRecord>('/v1/site/uploads/image', {
+      method: 'POST',
+      headers: {},
+      data: formData,
+      ...options,
+    });
+  },
   navigation: (options: RequestOptions = {}) => request<SiteNavigation[]>('/v1/site/navigation', { method: 'GET', ...options }),
   createNavigation: (payload: Partial<SiteNavigation>, options: RequestOptions = {}) =>
     request<SiteNavigation>('/v1/site/navigation', { method: 'POST', data: payload, ...options }),
