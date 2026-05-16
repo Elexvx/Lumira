@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultFormSchemaJson, siteService, type SiteForm } from '@/services/site';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const FormsPage = () => {
@@ -45,14 +46,11 @@ const FormsPage = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">表单管理</h1>
-          <p className="site-admin-desc">配置官网公开表单和登录后提交策略。</p>
-        </div>
-        {actionPermission.can('site:form:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增表单</Button> : null}
-      </div>
+    <SiteAdminPage
+      title="表单管理"
+      description="配置官网公开表单和登录后提交策略。"
+      extra={actionPermission.can('site:form:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增表单</Button> : null}
+    >
       <div className="site-admin-card">
         <Table
           rowKey="id"
@@ -89,7 +87,7 @@ const FormsPage = () => {
           <Form.Item name="notificationJson" label="通知配置 JSON"><Input.TextArea className="site-admin-json" rows={4} /></Form.Item>
         </Form>
       </Drawer>
-    </div>
+    </SiteAdminPage>
   );
 };
 

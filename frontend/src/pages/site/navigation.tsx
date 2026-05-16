@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteNavigation } from '@/services/site';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const NavigationPage = () => {
@@ -42,16 +43,13 @@ const NavigationPage = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">导航管理</h1>
-          <p className="site-admin-desc">维护官网头部导航、外链和排序。</p>
-        </div>
-        {actionPermission.can('site:navigation:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>
+    <SiteAdminPage
+      title="导航管理"
+      description="维护官网头部导航、外链和排序。"
+      extra={actionPermission.can('site:navigation:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>
           新增导航
         </Button> : null}
-      </div>
+    >
       <div className="site-admin-card">
         <Table
           rowKey="id"
@@ -89,7 +87,7 @@ const NavigationPage = () => {
           <Form.Item name="status" label="状态"><Select options={[{ value: 'VISIBLE', label: '显示' }, { value: 'HIDDEN', label: '隐藏' }]} /></Form.Item>
         </Form>
       </Drawer>
-    </div>
+    </SiteAdminPage>
   );
 };
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteSubmission } from '@/services/site';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const SubmissionsPage = () => {
@@ -43,13 +44,10 @@ const SubmissionsPage = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">提交记录</h1>
-          <p className="site-admin-desc">查看官网表单提交内容并完成审核归档。</p>
-        </div>
-      </div>
+    <SiteAdminPage
+      title="提交记录"
+      description="查看官网表单提交内容并完成审核归档。"
+    >
       <div className="site-admin-card">
         <Table
           rowKey="id"
@@ -78,7 +76,7 @@ const SubmissionsPage = () => {
           </Form>
         </Space>
       </Drawer>
-    </div>
+    </SiteAdminPage>
   );
 };
 

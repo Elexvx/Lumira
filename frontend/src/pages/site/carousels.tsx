@@ -7,6 +7,7 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { fileService } from '@/services/file';
 import { siteService, type SiteCarousel } from '@/services/site';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const MAX_CAROUSEL_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -127,14 +128,11 @@ const CarouselManagement = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">轮播管理</h1>
-          <p className="site-admin-desc">维护官网首页首屏轮播图片、文案、跳转链接和展示顺序。</p>
-        </div>
-        {canCreate ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增轮播</Button> : null}
-      </div>
+    <SiteAdminPage
+      title="轮播管理"
+      description="维护官网首页首屏轮播图片、文案、跳转链接和展示顺序。"
+      extra={canCreate ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增轮播</Button> : null}
+    >
       <div className="site-admin-card">
         <Table
           rowKey="id"
@@ -227,7 +225,7 @@ const CarouselManagement = () => {
           </Form.Item>
         </Form>
       </Drawer>
-    </div>
+    </SiteAdminPage>
   );
 };
 

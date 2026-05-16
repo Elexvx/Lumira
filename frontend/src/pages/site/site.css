@@ -4,25 +4,6 @@
   gap: 16px;
 }
 
-.site-admin-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.site-admin-title {
-  margin: 0;
-  color: var(--saas-text-heading);
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.site-admin-desc {
-  margin: 6px 0 0;
-  color: var(--saas-text-secondary);
-}
-
 .site-admin-card {
   color: var(--saas-text-primary);
   background: var(--saas-surface-bg);
@@ -77,7 +58,6 @@ html[data-theme='dark'] .site-admin-card .ant-input-affix-wrapper {
 }
 
 @media (max-width: 640px) {
-  .site-admin-header,
   .site-admin-carousel-uploader {
     flex-direction: column;
     align-items: stretch;

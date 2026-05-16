@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultBlocksJson, siteService, type SitePage } from '@/services/site';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const PageManagement = () => {
@@ -53,14 +54,11 @@ const PageManagement = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">页面管理</h1>
-          <p className="site-admin-desc">以区块 JSON 管理官网页面草稿、发布和下线。</p>
-        </div>
-        {actionPermission.can('site:page:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增页面</Button> : null}
-      </div>
+    <SiteAdminPage
+      title="页面管理"
+      description="以区块 JSON 管理官网页面草稿、发布和下线。"
+      extra={actionPermission.can('site:page:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增页面</Button> : null}
+    >
       <div className="site-admin-card">
         <Table
           rowKey="id"
@@ -98,7 +96,7 @@ const PageManagement = () => {
           <Form.Item name="blocksJson" label="区块 JSON" rules={[{ required: true }]}><Input.TextArea className="site-admin-json" rows={14} /></Form.Item>
         </Form>
       </Drawer>
-    </div>
+    </SiteAdminPage>
   );
 };
 
