@@ -1,5 +1,5 @@
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Empty, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
+import { Button, Card, Empty, Form, Image, Input, Space, Switch, Upload } from 'antd';
 import type { FormProps } from 'antd';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { FloatingWindowSettings } from '@/types/api';
@@ -57,30 +57,6 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
         </Space>
       </Form.Item>
     </Form>
-
-    <Card title="悬浮窗预览">
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div
-          style={{
-            width: 280,
-            border: '1px solid rgba(0,0,0,0.08)',
-            borderRadius: 16,
-            padding: 16,
-            textAlign: 'center',
-            boxShadow: '0 20px 45px rgba(15,23,42,0.12)',
-          }}
-        >
-          <Typography.Text type="secondary">{preview.apiDocsQrTitle || '微信扫码联系我们'}</Typography.Text>
-          <div style={{ height: 220, marginTop: 12, display: 'grid', placeItems: 'center' }}>
-            {preview.apiDocsQrImageUrl ? (
-              <Image width={220} height={220} preview={false} src={normalizeUploadUrl(preview.apiDocsQrImageUrl)} style={{ objectFit: 'contain' }} />
-            ) : (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传二维码" />
-            )}
-          </div>
-        </div>
-      </div>
-    </Card>
 
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
       <Button type="primary" loading={saving} onClick={onSave}>

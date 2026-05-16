@@ -46,17 +46,22 @@
 .agreement-markdown-editor__input {
   border: 0;
   border-radius: 0;
+  background: #fff;
   box-shadow: none !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   line-height: 1.7;
   resize: vertical;
 }
 
+.agreement-markdown-editor__input textarea {
+  background: #fff;
+}
+
 .agreement-markdown-editor__preview {
   overflow: auto;
   min-height: 360px;
   padding: 18px 20px;
-  background: #fcfcfd;
+  background: #fff;
 }
 
 .agreement-markdown-editor__preview-empty {
