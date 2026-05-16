@@ -48,7 +48,6 @@ const ContentManagement = () => {
   return (
     <SiteAdminPage
       title="内容管理"
-      description="维护新闻、公告、文章等官网内容。"
       extra={actionPermission.can('site:content:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增内容</Button> : null}
     >
       <div className="site-admin-card">

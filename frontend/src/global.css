@@ -511,8 +511,8 @@ body,
   }
 
   .saas-profile-page__personal-card .ant-card-body {
-    min-height: 280px;
-    padding: 32px;
+    min-height: unset;
+    padding: 28px 32px 20px;
   }
 
   .saas-profile-page__descriptions {
@@ -586,7 +586,11 @@ body,
   }
 
   .saas-profile-page__descriptions .ant-descriptions-item {
-    padding-bottom: 30px;
+    padding-bottom: 18px;
+  }
+
+  .saas-profile-page__descriptions .ant-descriptions-row:last-child .ant-descriptions-item {
+    padding-bottom: 0;
   }
 
   .saas-profile-page__descriptions .ant-descriptions-item-label {

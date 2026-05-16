@@ -48,7 +48,6 @@ const FormsPage = () => {
   return (
     <SiteAdminPage
       title="表单管理"
-      description="配置官网公开表单和登录后提交策略。"
       extra={actionPermission.can('site:form:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增表单</Button> : null}
     >
       <div className="site-admin-card">

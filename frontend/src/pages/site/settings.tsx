@@ -1,16 +1,28 @@
-import { Button, Form, Input, Select, message } from 'antd';
-import { SaveOutlined } from '@ant-design/icons';
+import { Button, Form, Image, Input, InputNumber, Select, Space, Upload, message } from 'antd';
+import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
+import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { fileService } from '@/services/file';
 import { siteService, type SiteSettings } from '@/services/site';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import SiteAdminPage from './SiteAdminPage';
 import './site.css';
+
+type SiteImageTarget = 'logo' | 'favicon';
+
+const SITE_IMAGE_LIMIT = 5 * 1024 * 1024;
+
+const isImageFile = (file: File) => file.type.startsWith('image/') || /\.(ico|png|jpe?g|svg|webp)$/i.test(file.name);
 
 const SiteSettingsPage = () => {
   const [form] = Form.useForm<SiteSettings>();
   const [loading, setLoading] = useState(false);
+  const [uploadingTarget, setUploadingTarget] = useState<SiteImageTarget | null>(null);
   const actionPermission = useActionPermission();
   const canUpdate = actionPermission.can('site:settings:update');
+  const logoUrl = Form.useWatch('logoUrl', form);
+  const faviconUrl = Form.useWatch('faviconUrl', form);
 
   const load = async () => {
     setLoading(true);
@@ -36,10 +48,48 @@ const SiteSettingsPage = () => {
     }
   };
 
+  const uploadSiteImage = async (target: SiteImageTarget, file: File) => {
+    if (!isImageFile(file)) {
+      message.error('请上传图片文件');
+      return;
+    }
+    if (file.size > SITE_IMAGE_LIMIT) {
+      message.error('图片过大，请上传不超过 5MB 的文件');
+      return;
+    }
+
+    setUploadingTarget(target);
+    try {
+      const uploaded = await fileService.upload(file, {
+        category: target === 'logo' ? 'site-logo' : 'site-favicon',
+        tags: target === 'logo' ? 'site,logo' : 'site,favicon',
+        remark: target === 'logo' ? '官网 Logo' : '官网 Favicon',
+      });
+      form.setFieldsValue(
+        target === 'logo'
+          ? { logoFileId: uploaded.id, logoUrl: normalizeUploadUrl(uploaded.publicUrl) }
+          : { faviconFileId: uploaded.id, faviconUrl: normalizeUploadUrl(uploaded.publicUrl) },
+      );
+      message.success(target === 'logo' ? 'Logo 已上传' : 'Favicon 已上传');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '图片上传失败，请稍后重试');
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
+  const buildUploadProps = (target: SiteImageTarget): UploadProps => ({
+    accept: target === 'favicon' ? 'image/*,.ico' : 'image/*',
+    showUploadList: false,
+    beforeUpload: async (file) => {
+      await uploadSiteImage(target, file);
+      return Upload.LIST_IGNORE;
+    },
+  });
+
   return (
     <SiteAdminPage
       title="站点设置"
-      description="管理官网基础信息、域名、品牌素材和 SEO 默认配置。"
       extra={canUpdate ? <Button type="primary" icon={<SaveOutlined />} loading={loading} onClick={save}>
           保存
         </Button> : null}
@@ -58,12 +108,46 @@ const SiteSettingsPage = () => {
           <Form.Item name="status" label="状态">
             <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
           </Form.Item>
-          <Form.Item name="logoFileId" label="Logo 文件 ID">
-            <Input type="number" />
+          <Form.Item label="Logo 文件 ID">
+            <Space.Compact block>
+              <Form.Item name="logoFileId" noStyle>
+                <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Upload {...buildUploadProps('logo')} disabled={loading || !canUpdate || uploadingTarget !== null}>
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'}>
+                  上传 Logo
+                </Button>
+              </Upload>
+            </Space.Compact>
           </Form.Item>
-          <Form.Item name="faviconFileId" label="Favicon 文件 ID">
-            <Input type="number" />
+          <Form.Item name="logoUrl" hidden>
+            <Input />
           </Form.Item>
+          {logoUrl ? (
+            <div className="site-admin-image-preview">
+              <Image width={160} height={64} preview={false} src={normalizeUploadUrl(logoUrl)} style={{ objectFit: 'contain' }} />
+            </div>
+          ) : null}
+          <Form.Item label="Favicon 文件 ID">
+            <Space.Compact block>
+              <Form.Item name="faviconFileId" noStyle>
+                <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Upload {...buildUploadProps('favicon')} disabled={loading || !canUpdate || uploadingTarget !== null}>
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'}>
+                  上传 Favicon
+                </Button>
+              </Upload>
+            </Space.Compact>
+          </Form.Item>
+          <Form.Item name="faviconUrl" hidden>
+            <Input />
+          </Form.Item>
+          {faviconUrl ? (
+            <div className="site-admin-image-preview">
+              <Image width={48} height={48} preview={false} src={normalizeUploadUrl(faviconUrl)} style={{ objectFit: 'contain' }} />
+            </div>
+          ) : null}
           <Form.Item name="themeJson" label="主题配置 JSON">
             <Input.TextArea className="site-admin-json" rows={6} placeholder='{"primaryColor":"#111827"}' />
           </Form.Item>

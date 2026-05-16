@@ -10,7 +10,7 @@
 
 .role-editor-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -182,10 +182,4 @@
 
 .role-action-grid .ant-checkbox + span {
   padding-inline-start: 8px;
-}
-
-@media (max-width: 960px) {
-  .role-editor-grid {
-    grid-template-columns: 1fr;
-  }
 }
