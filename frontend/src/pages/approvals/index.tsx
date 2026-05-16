@@ -1,6 +1,7 @@
 import { PageContainer, ProCard, StepsForm } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import {
+  Alert,
   Button,
   Descriptions,
   Drawer,
@@ -24,7 +25,14 @@ import type { ApprovalInstanceRecord, ApprovalTaskRecord, ApprovalTemplateRecord
 import { renderStatusTag } from '@/utils/statusTag';
 import { buildTemplateEnabledColumn } from '@/utils/templateColumns';
 
-const defaultNodes = [{ nodeName: '一级审批', sortOrder: 0, approvalPolicy: 'ANY_ONE', approverType: 'USER' as const, approverId: 1001 }];
+const defaultNodes = [{ nodeName: '管理员审批', sortOrder: 0, approvalPolicy: 'ANY_ONE', approverType: 'ROLE' as const, approverId: 2001 }];
+
+const defaultTemplatePayload: ApprovalTemplatePayload = {
+  templateName: '通用审批',
+  businessType: 'GENERAL_APPROVAL',
+  description: '用于日常事项、临时申请等通用审批场景。',
+  nodes: defaultNodes,
+};
 
 const statusMeta: Record<string, { color: string; text: string }> = {
   PENDING: { color: 'processing', text: '审批中' },
@@ -101,8 +109,15 @@ const ApprovalsPage = () => {
     reload();
   };
 
+  const createDefaultTemplate = async () => {
+    await approvalService.createTemplate(defaultTemplatePayload);
+    message.success('默认审批模板已创建');
+    reload();
+  };
+
   const openSubmit = () => {
     setApprovalDraft({});
+    void templates.refetch();
     setSubmitOpen(true);
   };
 
@@ -257,7 +272,7 @@ const ApprovalsPage = () => {
                   <Space key={field.key} align="baseline" wrap>
                     <Form.Item {...field} name={[field.name, 'nodeName']} rules={[{ required: true }]}><Input placeholder="节点名称" /></Form.Item>
                     <Form.Item {...field} name={[field.name, 'approverType']} rules={[{ required: true }]}><Select style={{ width: 140 }} options={[{ label: '用户', value: 'USER' }, { label: '角色', value: 'ROLE' }, { label: '部门', value: 'DEPARTMENT' }]} /></Form.Item>
-                    <Form.Item {...field} name={[field.name, 'approverId']} rules={[{ required: true }]}><InputNumber placeholder="审批人ID" /></Form.Item>
+                    <Form.Item {...field} name={[field.name, 'approverId']} rules={[{ required: true }]}><InputNumber placeholder="审批人/角色/部门ID" /></Form.Item>
                     <Button onClick={() => remove(field.name)}>删除</Button>
                   </Space>
                 ))}
@@ -269,6 +284,30 @@ const ApprovalsPage = () => {
       </Drawer>
 
       <Drawer title="新增审批" open={submitOpen} onClose={() => setSubmitOpen(false)} width={STANDARD_DRAWER_WIDTH} destroyOnHidden>
+        {!templates.isLoading && enabledTemplates.length === 0 ? (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={templates.data?.records?.length ? '审批模板尚未启用' : '暂无审批模板'}
+            description={templates.data?.records?.length ? '请先在审批模板中启用至少一个模板，再发起审批。' : '请先创建并启用一个审批模板，再发起审批。'}
+            action={
+              <Space>
+                {templates.data?.records?.length ? null : (
+                  <Button size="small" type="primary" onClick={createDefaultTemplate}>
+                    创建默认模板
+                  </Button>
+                )}
+                <Button size="small" onClick={() => {
+                  setSubmitOpen(false);
+                  setActiveTab('templates');
+                }}>
+                  审批模板
+                </Button>
+              </Space>
+            }
+          />
+        ) : null}
         <StepsForm
           formProps={{ layout: 'vertical' }}
           stepsProps={{ responsive: false }}
@@ -299,7 +338,7 @@ const ApprovalsPage = () => {
                 loading={templates.isLoading}
                 placeholder="请选择已启用的审批模板"
                 options={enabledTemplates.map((item) => ({ label: `${item.templateName} (${item.businessType})`, value: item.id }))}
-                notFoundContent="暂无已启用审批模板"
+                notFoundContent={<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已启用审批模板" />}
               />
             </Form.Item>
           </StepsForm.StepForm>
