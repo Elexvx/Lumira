@@ -88,7 +88,7 @@ insert into sys_role_permission (
 )
 select 1001, r.id, seed.permission_key, 1, 1, 0
 from sys_role r
-join (
+cross join (
     select 'site:carousel' permission_key
     union all select 'site:carousel:create'
     union all select 'site:carousel:update'
