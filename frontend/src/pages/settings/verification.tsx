@@ -711,10 +711,12 @@ const SystemVerificationPage = () => {
           enabled: Boolean(passwordLoginEnabled),
         },
       };
-      return normalizeLoginModeOrder(configuredLoginModeOrder).map((mode, index) => ({
-        ...rowsByMode[mode],
-        order: index + 1,
-      }));
+      return normalizeLoginModeOrder(configuredLoginModeOrder)
+        .filter((mode) => rowsByMode[mode].enabled)
+        .map((mode, index) => ({
+          ...rowsByMode[mode],
+          order: index + 1,
+        }));
     },
     [configuredLoginModeOrder, emailLoginEnabled, normalizeLoginModeOrder, passkeySettingsQuery.data?.enabled, passwordLoginEnabled, smsSettingsQuery.data?.enabled],
   );
