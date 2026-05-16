@@ -26,7 +26,7 @@ class FileManagementAppServiceTest {
         JdbcTemplate jdbcTemplate = mockJdbcTemplate();
         FileManagementAppService service = newService(jdbcTemplate);
 
-        service.listFiles(currentUser(), null, null, null, null, null, 1, 10, null, null);
+        service.listFiles(currentUser(), null, null, null, null, null, null, 1, 10, null, null);
 
         String countSql = capturedCountSql(jdbcTemplate);
         assertTrue(countSql.contains("f.uploaded_by = ?"));
@@ -37,7 +37,7 @@ class FileManagementAppServiceTest {
         JdbcTemplate jdbcTemplate = mockJdbcTemplate();
         FileManagementAppService service = newService(jdbcTemplate);
 
-        service.listFiles(currentUser(), null, null, null, null, FileManagementAppService.SCOPE_TENANT, 1, 10, null, null);
+        service.listFiles(currentUser(), null, null, null, null, null, FileManagementAppService.SCOPE_TENANT, 1, 10, null, null);
 
         String countSql = capturedCountSql(jdbcTemplate);
         assertFalse(countSql.contains("f.uploaded_by = ?"));
