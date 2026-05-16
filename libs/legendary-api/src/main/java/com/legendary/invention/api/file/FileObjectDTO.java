@@ -9,6 +9,8 @@ public record FileObjectDTO(
         String uploadedByName,
         String originalFileName,
         String storedFileName,
+        String storageType,
+        String bucket,
         String fileExtension,
         String mimeType,
         Long fileSizeBytes,

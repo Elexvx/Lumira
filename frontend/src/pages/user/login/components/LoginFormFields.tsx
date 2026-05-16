@@ -1,12 +1,13 @@
 import { CheckOutlined, KeyOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Checkbox, Form, Image, Input, Modal, Skeleton, Space, Tabs, Typography } from 'antd';
+import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton, Space, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
 import { getCaptchaValueFromEvent, shouldBlockCaptchaKey } from '@/pages/user/login/captchaInput';
 
-export type LoginMode = 'password' | 'sms' | 'email';
+export type LoginMode = 'passkey' | 'sms' | 'email' | 'password';
+type CodeLoginMode = Extract<LoginMode, 'sms' | 'email'>;
 
 export interface LoginFormValues {
   passwordAccount?: string;
@@ -34,13 +35,12 @@ interface LoginFormFieldsProps {
   captchaLoading: boolean;
   captchaImageLoadFailed: boolean;
   loginEncryptionLoading: boolean;
-  sendingLoginType: LoginMode | null;
-  loginCodeChallenges: Partial<Record<Exclude<LoginMode, 'password'>, LoginCodeChallenge | null>>;
+  sendingLoginType: CodeLoginMode | null;
+  loginCodeChallenges: Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>;
   wechatLoginAvailable?: boolean;
-  passkeyLoginAvailable?: boolean;
   passkeyLoading?: boolean;
   onModeChange: (mode: LoginMode) => void;
-  onSendLoginCode: (mode: Exclude<LoginMode, 'password'>) => void;
+  onSendLoginCode: (mode: CodeLoginMode) => void;
   onWechatLogin: () => void;
   onPasskeyLogin: () => void;
   onRefreshCaptcha: () => void;
@@ -54,6 +54,10 @@ interface LoginFormFieldsProps {
 type SliderVerificationStatus = 'idle' | 'verified';
 
 const MODE_META: Record<LoginMode, { label: string; subtitle: string }> = {
+  passkey: {
+    label: formatMessage({ id: 'page.login.passkeyShort', defaultMessage: '通行密钥' }),
+    subtitle: formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' }),
+  },
   password: {
     label: formatMessage({ id: 'page.login.passwordAccount', defaultMessage: '密码登录' }),
     subtitle: formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: '密码登录' }),
@@ -68,7 +72,7 @@ const MODE_META: Record<LoginMode, { label: string; subtitle: string }> = {
   },
 };
 
-const getAccountPlaceholder = (mode: Exclude<LoginMode, 'password'>) =>
+const getAccountPlaceholder = (mode: CodeLoginMode) =>
   mode === 'sms'
     ? formatMessage({ id: 'page.login.error.pleaseEnterMobile', defaultMessage: 'Please enter your mobile number' })
     : formatMessage({ id: 'page.login.error.pleaseEnterEmail', defaultMessage: 'Please enter your email' });
@@ -88,7 +92,6 @@ export const LoginFormFields = ({
   sendingLoginType,
   loginCodeChallenges,
   wechatLoginAvailable,
-  passkeyLoginAvailable,
   passkeyLoading,
   onModeChange,
   onSendLoginCode,
@@ -110,7 +113,7 @@ export const LoginFormFields = ({
   const [sliderCaptchaOpen, setSliderCaptchaOpen] = useState(false);
   const previousPasswordCredentialsRef = useRef<{ account?: string; password?: string } | null>(null);
   const hasAgreement = Boolean(agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown);
-  const showTabs = availableLoginModes.length > 1 || availableLoginModes[0] !== 'password';
+  const showModeControl = availableLoginModes.length > 1 || availableLoginModes[0] !== 'password';
   const pendingChallenge = activeLoginMode === 'sms' ? loginCodeChallenges.sms : activeLoginMode === 'email' ? loginCodeChallenges.email : null;
 
   useEffect(() => {
@@ -299,7 +302,7 @@ export const LoginFormFields = ({
     </div>
   );
 
-  const renderCodeTab = (mode: Exclude<LoginMode, 'password'>) => {
+  const renderCodeTab = (mode: CodeLoginMode) => {
     const accountValue = mode === 'sms' ? smsAccount : emailAccount;
     const challenge = pendingChallenge;
     return (
@@ -347,25 +350,44 @@ export const LoginFormFields = ({
     );
   };
 
-  const tabItems = availableLoginModes.map((mode) => ({
-    key: mode,
+  const renderPasskeyPanel = () => (
+    <div className="saas-login-page__passkey-panel">
+      <Button
+        block
+        size="large"
+        type="primary"
+        icon={<KeyOutlined />}
+        loading={passkeyLoading}
+        onClick={onPasskeyLogin}
+      >
+        {formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })}
+      </Button>
+    </div>
+  );
+
+  const modeOptions = availableLoginModes.map((mode) => ({
+    value: mode,
     label: MODE_META[mode].label,
-    children: mode === 'password' ? renderPasswordTab() : renderCodeTab(mode),
   }));
+  const modeContent =
+    activeLoginMode === 'passkey'
+      ? renderPasskeyPanel()
+      : activeLoginMode === 'password'
+        ? renderPasswordTab()
+        : renderCodeTab(activeLoginMode);
 
   return (
     <>
-      {showTabs ? (
-        <Tabs
-          activeKey={activeLoginMode}
-          items={tabItems}
+      {showModeControl ? (
+        <Segmented
+          block
+          value={activeLoginMode}
+          options={modeOptions}
           onChange={(key) => onModeChange(key as LoginMode)}
-          className="saas-login-page__tabs"
-          destroyInactiveTabPane
+          className="saas-login-page__mode-segmented"
         />
-      ) : (
-        renderPasswordTab()
-      )}
+      ) : null}
+      <div className="saas-login-page__mode-content">{modeContent}</div>
       {!pendingSecondFactorLogin ? (
         <>
           {wechatLoginAvailable ? (
@@ -377,18 +399,6 @@ export const LoginFormFields = ({
               className="saas-login-page__wechat-button"
             >
               {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
-            </Button>
-          ) : null}
-          {passkeyLoginAvailable ? (
-            <Button
-              block
-              size="large"
-              icon={<KeyOutlined />}
-              loading={passkeyLoading}
-              onClick={onPasskeyLogin}
-              className="saas-login-page__wechat-button"
-            >
-              {formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })}
             </Button>
           ) : null}
           <div className="saas-login-page__agreement">

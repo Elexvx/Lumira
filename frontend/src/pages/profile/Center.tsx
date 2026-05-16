@@ -667,7 +667,7 @@ const ProfileCenterPage = () => {
               <Space direction="vertical" size={18} style={{ width: '100%' }}>
                 <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
                 <Space direction="vertical" size={6}>
-                  <Typography.Title level={3} style={{ margin: 0 }}>My Account</Typography.Title>
+                  <Typography.Title level={3} style={{ margin: 0 }}>{displayName}</Typography.Title>
                   <Typography.Text>{activeRoleName}</Typography.Text>
                 </Space>
               </Space>
@@ -722,9 +722,6 @@ const ProfileCenterPage = () => {
                       </Typography.Title>
                       <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
                     </Space>
-                    <Typography.Title level={2} className="saas-profile-page__tenant-mark">
-                      {activeRoleName}
-                    </Typography.Title>
                   </div>
                 </Card>
                 <div ref={profileBasicCardRef}>
@@ -757,7 +754,7 @@ const ProfileCenterPage = () => {
                     <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
                     <Space direction="vertical" size={6} className="saas-profile-page__account-copy">
                       <Typography.Title level={3} style={{ margin: 0 }}>
-                        My Account
+                        {displayName}
                       </Typography.Title>
                       <Typography.Text>{activeRoleName}</Typography.Text>
                     </Space>

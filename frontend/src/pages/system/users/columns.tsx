@@ -13,6 +13,7 @@ interface BuildUserColumnsOptions {
   onOpenDetail: (record: UserRecord) => void;
   onOpenEdit: (record: UserRecord) => void;
   onToggleStatus: (record: UserRecord) => void;
+  onDelete: (record: UserRecord) => void;
   isProtectedAdminAccount: (record?: Pick<UserRecord, 'id' | 'username'> | null) => boolean;
 }
 
@@ -23,6 +24,7 @@ export const buildUserColumns = ({
   onOpenDetail,
   onOpenEdit,
   onToggleStatus,
+  onDelete,
   isProtectedAdminAccount,
 }: BuildUserColumnsOptions): ProColumns<UserRecord>[] => [
   {
@@ -85,7 +87,7 @@ export const buildUserColumns = ({
     title: '操作',
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
-    width: 180,
+    width: 220,
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
@@ -109,6 +111,14 @@ export const buildUserColumns = ({
             hidden: isProtectedAdminAccount(record),
             danger: record.status === 'ENABLED',
             onClick: () => onToggleStatus(record),
+          },
+          {
+            key: 'delete',
+            label: '删除',
+            permission: 'system:user:delete',
+            hidden: isProtectedAdminAccount(record),
+            danger: true,
+            onClick: () => onDelete(record),
           },
         ])}
       />

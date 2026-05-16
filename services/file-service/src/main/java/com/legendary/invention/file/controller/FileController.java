@@ -1,6 +1,7 @@
 package com.legendary.invention.file.controller;
 
 import com.legendary.invention.api.file.FileObjectDTO;
+import com.legendary.invention.api.file.StorageSpaceDTO;
 import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.constant.HeaderConstants;
 import com.legendary.invention.common.security.SecurityContextFacade;
@@ -9,6 +10,7 @@ import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.web.repeatsubmit.RepeatSubmit;
 import com.legendary.invention.file.app.FileManagementAppService;
+import com.legendary.invention.file.dto.FileStorageSpaceRequest;
 import jakarta.validation.constraints.Positive;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -20,6 +22,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,6 +55,7 @@ public class FileController {
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "fileExtension", required = false) String fileExtension,
             @RequestParam(name = "previewMode", required = false) String previewMode,
+            @RequestParam(name = "bucket", required = false) String bucket,
             @RequestParam(name = "scope", required = false) String scope,
             @RequestParam(name = "sortField", required = false) String sortField,
             @RequestParam(name = "sortOrder", required = false) String sortOrder,
@@ -66,6 +71,7 @@ public class FileController {
                         category,
                         fileExtension,
                         previewMode,
+                        bucket,
                         scope,
                         pageNo,
                         pageSize,
@@ -74,6 +80,46 @@ public class FileController {
                 ),
                 TraceContext.getRequestId()
         );
+    }
+
+    @GetMapping("/storage-spaces")
+    public ApiResponse<PageResponse<StorageSpaceDTO>> storageSpaces(
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "50") long pageSize
+    ) {
+        require("system:file:manage");
+        return ApiResponse.success(fileManagementAppService.listStorageSpaces(securityContextFacade.getCurrentUser(), pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/storage-spaces/{storageKey}")
+    public ApiResponse<StorageSpaceDTO> storageSpace(@PathVariable("storageKey") String storageKey) {
+        require("system:file:manage");
+        return ApiResponse.success(fileManagementAppService.getStorageSpace(securityContextFacade.getCurrentUser(), storageKey), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/storage-spaces")
+    @RepeatSubmit
+    public ApiResponse<StorageSpaceDTO> createStorageSpace(@RequestBody FileStorageSpaceRequest request) {
+        require("system:file:manage");
+        return ApiResponse.success(fileManagementAppService.createStorageSpace(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/storage-spaces/{id}")
+    @RepeatSubmit
+    public ApiResponse<StorageSpaceDTO> updateStorageSpace(
+            @PathVariable("id") @Positive Long id,
+            @RequestBody FileStorageSpaceRequest request
+    ) {
+        require("system:file:manage");
+        return ApiResponse.success(fileManagementAppService.updateStorageSpace(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/storage-spaces/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteStorageSpace(@PathVariable("id") @Positive Long id) {
+        require("system:file:manage:delete");
+        fileManagementAppService.deleteStorageSpace(securityContextFacade.getCurrentUser(), id);
+        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
     @GetMapping("/{id}")

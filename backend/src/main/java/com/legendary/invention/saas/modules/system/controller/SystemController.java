@@ -14,6 +14,7 @@ import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.api.file.FileObjectDTO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -100,6 +101,13 @@ public class SystemController {
     public ApiResponse<Boolean> changeUserStatus(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.UserStatusRequest request) {
         require("system:user:status");
         return ApiResponse.success(systemManagementAppService.updateUserStatus(securityContextFacade.getCurrentUser(), id, request.getStatus()), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/users/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteUser(@PathVariable("id") Long id) {
+        require("system:user:delete");
+        return ApiResponse.success(systemManagementAppService.deleteUser(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
     @GetMapping("/users/{id}/roles")
@@ -362,6 +370,18 @@ public class SystemController {
     public ApiResponse<SystemVO.WatermarkSettingsVO> updateWatermarkSettings(@RequestBody SystemDTO.WatermarkSettingsRequest request) {
         require("system:config:update");
         return ApiResponse.success(systemManagementAppService.updateWatermarkSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/floating-window-settings")
+    public ApiResponse<SystemVO.FloatingWindowSettingsVO> floatingWindowSettings() {
+        return ApiResponse.success(systemManagementAppService.getFloatingWindowSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/floating-window-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.FloatingWindowSettingsVO> updateFloatingWindowSettings(@RequestBody SystemDTO.FloatingWindowSettingsRequest request) {
+        require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateFloatingWindowSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @GetMapping("/branding-settings")

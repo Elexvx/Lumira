@@ -316,16 +316,22 @@ html[data-theme='dark'] .saas-login-page__actions {
   color: var(--saas-text-primary);
 }
 
-.saas-login-page__tabs {
-  margin-bottom: 0;
-}
-
-.saas-login-page__tabs .ant-tabs-nav {
+.saas-login-page__mode-segmented {
+  width: 100%;
   margin-bottom: 24px;
 }
 
-.saas-login-page__tabs .ant-tabs-tab {
-  padding-block: 0 12px;
+.saas-login-page__mode-segmented .ant-segmented-item {
+  min-height: 38px;
+  line-height: 38px;
+}
+
+.saas-login-page__mode-content {
+  width: 100%;
+}
+
+.saas-login-page__passkey-panel {
+  width: 100%;
 }
 
 .saas-login-page .ant-pro-form-login-page-main .ant-pro-form-login-page-main-other {

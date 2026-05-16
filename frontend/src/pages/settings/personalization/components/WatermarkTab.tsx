@@ -8,7 +8,7 @@ interface WatermarkTabProps {
   formProps: FormProps;
   watermarkPreview: WatermarkSettings;
   previewState: BrandingSettings;
-  uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | null;
+  uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr' | null;
   watermarkSaving: boolean;
   onUpload: (target: 'watermark', file: File) => Promise<void>;
   onClearWatermarkImage: () => void;

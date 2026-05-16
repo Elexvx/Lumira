@@ -50,6 +50,7 @@ export interface LoginCapabilities {
   wechatLoginAvailable?: boolean;
   passkeyLoginAvailable?: boolean;
   passkeyPasswordlessAvailable?: boolean;
+  loginModeOrder?: string[];
 }
 
 export interface PasskeyOptions {
@@ -181,6 +182,12 @@ export interface WatermarkSettings {
   offsetY: number;
   zIndex: number;
   opacity: number;
+}
+
+export interface FloatingWindowSettings {
+  apiDocsQrEnabled: boolean;
+  apiDocsQrTitle: string;
+  apiDocsQrImageUrl?: string;
 }
 
 export interface RefreshTokenResponse {
@@ -602,6 +609,8 @@ export interface FileObjectRecord {
   uploadedByName?: string | null;
   originalFileName: string;
   storedFileName?: string | null;
+  storageType?: string | null;
+  bucket?: string | null;
   fileExtension: string;
   mimeType?: string | null;
   fileSizeBytes: number;
@@ -618,6 +627,52 @@ export interface FileObjectRecord {
   status: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type FileStorageProvider = 'LOCAL' | 'ALIYUN_OSS' | 'AWS_S3' | 'TENCENT_COS';
+export type FileRenameStrategy = 'APPEND_RANDOM_ID' | 'RANDOM_STRING' | 'KEEP_ORIGINAL';
+
+export interface FileStorageSpaceRecord {
+  id: number;
+  tenantId?: number | null;
+  title: string;
+  storageKey: string;
+  provider: FileStorageProvider;
+  rootPath?: string | null;
+  bucketName?: string | null;
+  endpoint?: string | null;
+  region?: string | null;
+  accessKeyId?: string | null;
+  secretConfigured?: boolean | null;
+  renameStrategy: FileRenameStrategy;
+  maxFileSizeMb: number;
+  allowedMimeTypes: string;
+  defaultStorage?: boolean | null;
+  retainFileOnRecordDelete?: boolean | null;
+  status: 'ENABLED' | 'DISABLED';
+  fileCount?: number | null;
+  totalSizeBytes?: number | null;
+  totalSizeLabel?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FileStorageSpacePayload {
+  title: string;
+  storageKey?: string;
+  provider: FileStorageProvider;
+  rootPath?: string;
+  bucketName?: string;
+  endpoint?: string;
+  region?: string;
+  accessKeyId?: string;
+  accessKeySecret?: string;
+  renameStrategy: FileRenameStrategy;
+  maxFileSizeMb: number;
+  allowedMimeTypes: string;
+  defaultStorage?: boolean;
+  retainFileOnRecordDelete?: boolean;
+  status?: 'ENABLED' | 'DISABLED';
 }
 
 export interface AuditLogRecord {
@@ -752,11 +807,15 @@ export interface WechatLoginSettingsPayload {
 export interface VerificationSettings {
   enabled: boolean;
   emailLoginEnabled: boolean;
+  passwordLoginEnabled?: boolean;
+  loginModeOrder?: string[];
 }
 
 export interface VerificationSettingsPayload {
   enabled?: boolean;
   emailLoginEnabled?: boolean;
+  passwordLoginEnabled?: boolean;
+  loginModeOrder?: string[];
 }
 
 export interface SmtpTestPayload {

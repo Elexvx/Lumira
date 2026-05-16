@@ -21,7 +21,10 @@ import java.util.stream.Collectors;
 public class SystemVerificationSettingsAppService {
 
     private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
+    private static final String PASSWORD_LOGIN_ENABLED_KEY = "verification.password-login.enabled";
     private static final String EMAIL_LOGIN_ENABLED_KEY = "verification.email-login.enabled";
+    private static final String LOGIN_MODE_ORDER_KEY = "verification.login-mode.order";
+    private static final List<String> DEFAULT_LOGIN_MODE_ORDER = List.of("passkey", "sms", "email", "password");
     private static final String SMS_CONFIG_ENABLED_KEY = "verification.sms.enabled";
     private static final String SMS_CONFIG_PROVIDER_KEY = "verification.sms.provider";
     private static final String SMS_CONFIG_SIGN_NAME_KEY = "verification.sms.sign-name";
@@ -75,18 +78,21 @@ public class SystemVerificationSettingsAppService {
         SystemVO.VerificationSettingsVO settings = new SystemVO.VerificationSettingsVO();
         settings.setEnabled(isTotpEnabled(tenantId));
         settings.setEmailLoginEnabled(isEmailLoginEnabled(tenantId));
+        settings.setPasswordLoginEnabled(isPasswordLoginEnabled(tenantId));
+        settings.setLoginModeOrder(loginModeOrder(tenantId));
         return settings;
     }
 
     public SystemVO.LoginCapabilitiesVO loadLoginCapabilities(Long tenantId) {
         SystemVO.LoginCapabilitiesVO capabilities = new SystemVO.LoginCapabilitiesVO();
-        capabilities.setPasswordLoginAvailable(true);
+        capabilities.setPasswordLoginAvailable(isPasswordLoginEnabled(tenantId));
         capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
         capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
         capabilities.setWechatLoginAvailable(wechatLoginSettingsService.isAvailable(tenantId));
         SystemVO.PasskeySettingsVO passkey = getPasskeySettings(tenantId);
         capabilities.setPasskeyLoginAvailable(Boolean.TRUE.equals(passkey.getEnabled()));
         capabilities.setPasskeyPasswordlessAvailable(Boolean.TRUE.equals(passkey.getEnabled()) && Boolean.TRUE.equals(passkey.getPasswordlessEnabled()));
+        capabilities.setLoginModeOrder(loginModeOrder(tenantId));
         return capabilities;
     }
 
@@ -112,8 +118,13 @@ public class SystemVerificationSettingsAppService {
         Long operatorId = currentUser.getUserId();
         boolean enabled = request.getEnabled() == null ? isTotpEnabled(tenantId) : request.getEnabled();
         boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled(tenantId) : request.getEmailLoginEnabled();
+        boolean passwordLoginEnabled = request.getPasswordLoginEnabled() == null ? isPasswordLoginEnabled(tenantId) : request.getPasswordLoginEnabled();
         upsertPlatformConfigValue(tenantId, TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId);
         upsertPlatformConfigValue(tenantId, EMAIL_LOGIN_ENABLED_KEY, "邮箱验证码登录", String.valueOf(emailLoginEnabled), "是否启用邮箱验证码登录", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSWORD_LOGIN_ENABLED_KEY, "密码登录", String.valueOf(passwordLoginEnabled), "是否启用账号密码登录", operatorId);
+        if (request.getLoginModeOrder() != null) {
+            upsertPlatformConfigValue(tenantId, LOGIN_MODE_ORDER_KEY, "登录方式排序", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "登录页分段控制器展示顺序", operatorId);
+        }
         return getVerificationSettings(tenantId);
     }
 
@@ -340,6 +351,39 @@ public class SystemVerificationSettingsAppService {
     private boolean isEmailLoginEnabled(Long tenantId) {
         Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(EMAIL_LOGIN_ENABLED_KEY));
         return Boolean.parseBoolean(defaultIfBlank(values.get(EMAIL_LOGIN_ENABLED_KEY), String.valueOf(properties.isEmailLoginEnabled())));
+    }
+
+    private boolean isPasswordLoginEnabled(Long tenantId) {
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(PASSWORD_LOGIN_ENABLED_KEY));
+        return Boolean.parseBoolean(defaultIfBlank(values.get(PASSWORD_LOGIN_ENABLED_KEY), "true"));
+    }
+
+    private List<String> loginModeOrder(Long tenantId) {
+        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(LOGIN_MODE_ORDER_KEY));
+        String configured = values.get(LOGIN_MODE_ORDER_KEY);
+        if (!StringUtils.hasText(configured)) {
+            return DEFAULT_LOGIN_MODE_ORDER;
+        }
+        return normalizeLoginModeOrder(List.of(configured.split(",")));
+    }
+
+    private List<String> normalizeLoginModeOrder(List<String> values) {
+        List<String> normalized = new ArrayList<>();
+        for (String value : values) {
+            if (!StringUtils.hasText(value)) {
+                continue;
+            }
+            String mode = value.trim();
+            if (("passkey".equals(mode) || "sms".equals(mode) || "email".equals(mode) || "password".equals(mode)) && !normalized.contains(mode)) {
+                normalized.add(mode);
+            }
+        }
+        for (String mode : DEFAULT_LOGIN_MODE_ORDER) {
+            if (!normalized.contains(mode)) {
+                normalized.add(mode);
+            }
+        }
+        return normalized;
     }
 
     private boolean isEmailLoginAvailable(Long tenantId) {

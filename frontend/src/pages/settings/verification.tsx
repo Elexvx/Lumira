@@ -1,10 +1,10 @@
-import { DeleteOutlined, DownOutlined, LoginOutlined, PlusOutlined, HolderOutlined, CheckOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownOutlined, PlusOutlined, HolderOutlined, CheckOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { history, useLocation } from '@umijs/max';
 import { useQuery } from '@tanstack/react-query';
 import type { MenuProps } from 'antd';
-import { Button, Card, Divider, Dropdown, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, Tabs, Tag, Typography, message } from 'antd';
-import type { Key } from 'react';
+import { Button, Card, Divider, Dropdown, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, Tag, Typography, message } from 'antd';
+import type { DragEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
@@ -25,7 +25,8 @@ const TAB_KEYS = ['totp', 'sms', 'email', 'wechat', 'passkey'] as const;
 
 type VerificationTabKey = (typeof TAB_KEYS)[number];
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
-type AuthenticatorCode = 'sms_login' | 'passkey_login' | 'basic';
+type LoginModeCode = 'passkey' | 'sms' | 'email' | 'password';
+type AuthenticatorCode = 'passkey_login' | 'sms_login' | 'email_login' | 'password_login';
 type ConfigDrawerMode = VerificationTabKey | 'basic';
 
 interface SmsProviderFieldConfig {
@@ -135,6 +136,8 @@ const resolveDrawerTitle = (mode: ConfigDrawerMode | null) => {
 const verificationFormInitialValues: VerificationSettings = {
   enabled: true,
   emailLoginEnabled: false,
+  passwordLoginEnabled: true,
+  loginModeOrder: ['passkey', 'sms', 'email', 'password'],
 };
 
 const smtpFormInitialValues: SmtpSettings = {
@@ -179,6 +182,8 @@ const SystemVerificationPage = () => {
     normalizeDrawerMode(new URLSearchParams(location.search).get('tab')),
   );
   const [selectedAuthenticatorKeys, setSelectedAuthenticatorKeys] = useState<Key[]>([]);
+  const [draggedAuthenticatorKey, setDraggedAuthenticatorKey] = useState<AuthenticatorCode | null>(null);
+  const [reorderingAuthenticators, setReorderingAuthenticators] = useState(false);
   const [verificationSaving, setVerificationSaving] = useState(false);
   const [savingSmsSettings, setSavingSmsSettings] = useState(false);
   const [savingEmailSettings, setSavingEmailSettings] = useState(false);
@@ -545,97 +550,250 @@ const SystemVerificationPage = () => {
   }, [canManageSettings, smsSettingsForm, smsSettingsQuery]);
 
   const handleDeleteAuthenticator = useCallback(async (key: AuthenticatorCode) => {
-    if (key === 'basic') {
-      message.warning('密码认证器是系统基础登录方式，不能删除。');
+    const enabledKeys = [
+      passkeySettingsQuery.data?.enabled ? 'passkey_login' : null,
+      smsSettingsQuery.data?.enabled ? 'sms_login' : null,
+      verificationForm.getFieldValue('emailLoginEnabled') ? 'email_login' : null,
+      verificationForm.getFieldValue('passwordLoginEnabled') ? 'password_login' : null,
+    ].filter(Boolean) as AuthenticatorCode[];
+    if (enabledKeys.length <= 1 && enabledKeys.includes(key)) {
+      message.warning('至少需要保留一种可用登录方式');
       return;
     }
     if (key === 'sms_login') {
       await disableSmsAuthenticator();
       return;
     }
+    if (key === 'email_login') {
+      verificationForm.setFieldValue('emailLoginEnabled', false);
+      await handleSaveVerificationSettings();
+      return;
+    }
     if (key === 'passkey_login') {
       passkeySettingsForm.setFieldValue('enabled', false);
       await handleSavePasskeySettings();
+      return;
     }
-  }, [disableSmsAuthenticator, handleSavePasskeySettings, passkeySettingsForm]);
+    if (key === 'password_login') {
+      verificationForm.setFieldValue('passwordLoginEnabled', false);
+      await handleSaveVerificationSettings();
+    }
+  }, [disableSmsAuthenticator, handleSavePasskeySettings, handleSaveVerificationSettings, passkeySettingsForm, passkeySettingsQuery.data?.enabled, smsSettingsQuery.data?.enabled, verificationForm]);
 
   const handleDeleteSelectedAuthenticators = useCallback(async () => {
     if (!selectedAuthenticatorKeys.length) {
       message.info('请先选择要删除的认证器');
       return;
     }
-    if (selectedAuthenticatorKeys.includes('basic')) {
-      message.warning('密码认证器是系统基础登录方式，不能删除。');
+    const selectedKeys = new Set(selectedAuthenticatorKeys);
+    const enabledKeys = [
+      passkeySettingsQuery.data?.enabled ? 'passkey_login' : null,
+      smsSettingsQuery.data?.enabled ? 'sms_login' : null,
+      verificationForm.getFieldValue('emailLoginEnabled') ? 'email_login' : null,
+      verificationForm.getFieldValue('passwordLoginEnabled') ? 'password_login' : null,
+    ].filter(Boolean) as AuthenticatorCode[];
+    if (enabledKeys.length > 0 && enabledKeys.every((key) => selectedKeys.has(key))) {
+      message.warning('至少需要保留一种可用登录方式');
+      return;
     }
     if (selectedAuthenticatorKeys.includes('sms_login')) {
       await disableSmsAuthenticator();
+    }
+    if (selectedAuthenticatorKeys.includes('email_login')) {
+      verificationForm.setFieldValue('emailLoginEnabled', false);
+      await handleSaveVerificationSettings();
     }
     if (selectedAuthenticatorKeys.includes('passkey_login')) {
       passkeySettingsForm.setFieldValue('enabled', false);
       await handleSavePasskeySettings();
     }
-  }, [disableSmsAuthenticator, handleSavePasskeySettings, passkeySettingsForm, selectedAuthenticatorKeys]);
+    if (selectedAuthenticatorKeys.includes('password_login')) {
+      verificationForm.setFieldValue('passwordLoginEnabled', false);
+      await handleSaveVerificationSettings();
+    }
+  }, [disableSmsAuthenticator, handleSavePasskeySettings, handleSaveVerificationSettings, passkeySettingsForm, passkeySettingsQuery.data?.enabled, selectedAuthenticatorKeys, smsSettingsQuery.data?.enabled, verificationForm]);
+
+  const handleEnableAuthenticator = useCallback(async (mode: LoginModeCode) => {
+    if (!canManageSettings) {
+      return;
+    }
+    if (mode === 'sms') {
+      smsSettingsForm.setFieldValue('enabled', true);
+      await handleSaveSmsSettings();
+      openConfigDrawer('sms');
+      return;
+    }
+    if (mode === 'email') {
+      verificationForm.setFieldValue('emailLoginEnabled', true);
+      await handleSaveVerificationSettings();
+      openConfigDrawer('email');
+      return;
+    }
+    if (mode === 'passkey') {
+      passkeySettingsForm.setFieldsValue({ enabled: true, passwordlessEnabled: true });
+      await handleSavePasskeySettings();
+      openConfigDrawer('passkey');
+      return;
+    }
+    verificationForm.setFieldValue('passwordLoginEnabled', true);
+    await handleSaveVerificationSettings();
+    openConfigDrawer('basic');
+  }, [canManageSettings, handleSavePasskeySettings, handleSaveSmsSettings, handleSaveVerificationSettings, openConfigDrawer, passkeySettingsForm, smsSettingsForm, verificationForm]);
 
   const activeProvider = normalizeProviderCode(currentProvider);
   const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
   const verificationLoading =
     verificationSettingsQuery.isLoading || smsSettingsQuery.isLoading || smtpSettingsQuery.isLoading || wechatSettingsQuery.isLoading || passkeySettingsQuery.isLoading;
   const emailLoginEnabled = Form.useWatch('emailLoginEnabled', verificationForm) ?? false;
+  const passwordLoginEnabled = Form.useWatch('passwordLoginEnabled', verificationForm) ?? true;
   const smsAccessKeySecretConfigured = smsSettingsQuery.data?.accessKeySecretConfigured ?? false;
   const wechatAppSecretConfigured = wechatSettingsQuery.data?.appSecretConfigured ?? false;
+  const configuredLoginModeOrder = verificationSettingsQuery.data?.loginModeOrder || verificationForm.getFieldValue('loginModeOrder') || ['passkey', 'sms', 'email', 'password'];
+  const normalizeLoginModeOrder = useCallback((order?: string[]) => {
+    const result: LoginModeCode[] = [];
+    (order || []).forEach((item) => {
+      if ((item === 'passkey' || item === 'sms' || item === 'email' || item === 'password') && !result.includes(item)) {
+        result.push(item);
+      }
+    });
+    (['passkey', 'sms', 'email', 'password'] as LoginModeCode[]).forEach((item) => {
+      if (!result.includes(item)) {
+        result.push(item);
+      }
+    });
+    return result;
+  }, []);
+  const authenticatorKeyToMode = useCallback((key: AuthenticatorCode): LoginModeCode => {
+    if (key === 'passkey_login') {
+      return 'passkey';
+    }
+    if (key === 'sms_login') {
+      return 'sms';
+    }
+    if (key === 'email_login') {
+      return 'email';
+    }
+    return 'password';
+  }, []);
   const authenticatorRows = useMemo<AuthenticatorRecord[]>(
-    () => [
-      {
-        key: 'sms_login',
-        order: 1,
-        identifier: 'sms_login',
-        type: '短信',
-        title: '短信验证',
-        description: '使用短信验证码登录',
-        enabled: Boolean(smsSettingsQuery.data?.enabled),
-      },
-      {
-        key: 'passkey_login',
-        order: 2,
-        identifier: 'passkey_login',
-        type: '通行密钥',
-        title: '通行密钥',
-        description: '使用系统钥匙串或密码管理器进行 WebAuthn 验证',
-        enabled: Boolean(passkeySettingsQuery.data?.enabled),
-      },
-      {
-        key: 'basic',
-        order: 3,
-        identifier: 'basic',
-        type: '密码',
-        title: '账号密码登录',
-        description: '使用账号密码登录',
-        enabled: true,
-      },
-    ],
-    [passkeySettingsQuery.data?.enabled, smsSettingsQuery.data?.enabled],
+    () => {
+      const rowsByMode: Record<LoginModeCode, Omit<AuthenticatorRecord, 'order'>> = {
+        passkey: {
+          key: 'passkey_login',
+          identifier: 'passkey_login',
+          type: '通行密钥',
+          title: '通行密钥',
+          description: '使用系统钥匙串或密码管理器进行 WebAuthn 验证',
+          enabled: Boolean(passkeySettingsQuery.data?.enabled),
+        },
+        sms: {
+          key: 'sms_login',
+          identifier: 'sms_login',
+          type: '短信',
+          title: '短信验证',
+          description: '使用短信验证码登录',
+          enabled: Boolean(smsSettingsQuery.data?.enabled),
+        },
+        email: {
+          key: 'email_login',
+          identifier: 'email_login',
+          type: '邮箱',
+          title: '邮箱验证码',
+          description: '使用邮箱验证码登录',
+          enabled: Boolean(emailLoginEnabled),
+        },
+        password: {
+          key: 'password_login',
+          identifier: 'password_login',
+          type: '密码',
+          title: '账号密码登录',
+          description: '使用账号密码登录',
+          enabled: Boolean(passwordLoginEnabled),
+        },
+      };
+      return normalizeLoginModeOrder(configuredLoginModeOrder).map((mode, index) => ({
+        ...rowsByMode[mode],
+        order: index + 1,
+      }));
+    },
+    [configuredLoginModeOrder, emailLoginEnabled, normalizeLoginModeOrder, passkeySettingsQuery.data?.enabled, passwordLoginEnabled, smsSettingsQuery.data?.enabled],
   );
 
   const addAuthenticatorItems = useMemo<MenuProps['items']>(
-    () => [
-      {
-        key: 'basic',
-        label: '密码',
-        onClick: () => openConfigDrawer('basic'),
-      },
-      {
-        key: 'sms',
-        label: '短信',
-        onClick: () => openConfigDrawer('sms'),
-      },
-      {
-        key: 'passkey',
-        label: '通行密钥',
-        onClick: () => openConfigDrawer('passkey'),
-      },
-    ],
-    [openConfigDrawer],
+    () =>
+      [
+        { key: 'passkey', label: '通行密钥', enabled: Boolean(passkeySettingsQuery.data?.enabled), mode: 'passkey' as const },
+        { key: 'sms', label: '短信', enabled: Boolean(smsSettingsQuery.data?.enabled), mode: 'sms' as const },
+        { key: 'email', label: '邮箱', enabled: Boolean(emailLoginEnabled), mode: 'email' as const },
+        { key: 'password', label: '密码', enabled: Boolean(passwordLoginEnabled), mode: 'password' as const },
+      ]
+        .filter((item) => !item.enabled)
+        .map((item) => ({
+          key: item.key,
+          label: item.label,
+          onClick: () => void handleEnableAuthenticator(item.mode),
+        })),
+    [emailLoginEnabled, handleEnableAuthenticator, passkeySettingsQuery.data?.enabled, passwordLoginEnabled, smsSettingsQuery.data?.enabled],
   );
+
+  const persistLoginModeOrder = useCallback(async (nextRows: AuthenticatorRecord[]) => {
+    if (!canManageSettings) {
+      return;
+    }
+    const loginModeOrder = nextRows.map((row) => authenticatorKeyToMode(row.key));
+    setReorderingAuthenticators(true);
+    try {
+      const result = await systemService.updateVerificationSettings(
+        { loginModeOrder },
+        { autoRedirectOnUnauthorized: false },
+      );
+      verificationForm.setFieldsValue(result);
+      message.success('登录方式顺序已更新');
+      await verificationSettingsQuery.refetch();
+    } finally {
+      setReorderingAuthenticators(false);
+    }
+  }, [authenticatorKeyToMode, canManageSettings, verificationForm, verificationSettingsQuery]);
+
+  const handleAuthenticatorDragStart = (record: AuthenticatorRecord) => (event: DragEvent<HTMLTableRowElement>) => {
+    if (!canManageSettings || reorderingAuthenticators) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', record.key);
+    setDraggedAuthenticatorKey(record.key);
+  };
+
+  const handleAuthenticatorDragOver = (record: AuthenticatorRecord) => (event: DragEvent<HTMLTableRowElement>) => {
+    if (!draggedAuthenticatorKey || draggedAuthenticatorKey === record.key || !canManageSettings || reorderingAuthenticators) {
+      return;
+    }
+    event.preventDefault();
+  };
+
+  const handleAuthenticatorDrop = (record: AuthenticatorRecord) => async (event: DragEvent<HTMLTableRowElement>) => {
+    event.preventDefault();
+    if (!draggedAuthenticatorKey || draggedAuthenticatorKey === record.key || !canManageSettings || reorderingAuthenticators) {
+      setDraggedAuthenticatorKey(null);
+      return;
+    }
+    const currentIndex = authenticatorRows.findIndex((row) => row.key === draggedAuthenticatorKey);
+    const targetIndex = authenticatorRows.findIndex((row) => row.key === record.key);
+    if (currentIndex < 0 || targetIndex < 0) {
+      setDraggedAuthenticatorKey(null);
+      return;
+    }
+    const nextRows = [...authenticatorRows];
+    const [dragged] = nextRows.splice(currentIndex, 1);
+    nextRows.splice(targetIndex, 0, dragged);
+    setDraggedAuthenticatorKey(null);
+    await persistLoginModeOrder(nextRows);
+  };
+
+  const handleAuthenticatorDragEnd = () => {
+    setDraggedAuthenticatorKey(null);
+  };
 
   const authenticatorColumns = useMemo<ProColumns<AuthenticatorRecord>[]>(
     () => [
@@ -693,7 +851,7 @@ const SystemVerificationPage = () => {
                 key: 'config',
                 label: '配置',
                 disabled: !canManageSettings,
-                onClick: () => openConfigDrawer(record.key === 'sms_login' ? 'sms' : record.key === 'passkey_login' ? 'passkey' : 'basic'),
+                onClick: () => openConfigDrawer(record.key === 'sms_login' ? 'sms' : record.key === 'passkey_login' ? 'passkey' : record.key === 'email_login' ? 'email' : 'basic'),
               },
               {
                 key: 'delete',
@@ -952,9 +1110,17 @@ const SystemVerificationPage = () => {
 
   const renderBasicConfig = () => (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Typography.Paragraph style={{ marginBottom: 0 }}>
-        密码认证器是系统内置的基础登录方式，当前始终启用。密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。
-      </Typography.Paragraph>
+      <Form {...verificationFormProps}>
+        <Form.Item name="passwordLoginEnabled" label="启用账号密码登录" valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button type="primary" loading={verificationSaving} disabled={!canManageSettings} onClick={() => void handleSaveVerificationSettings()}>
+            保存设置
+          </Button>
+        </div>
+      </Form>
+      <Typography.Paragraph style={{ marginBottom: 0 }}>密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。</Typography.Paragraph>
       <Button type="primary" onClick={() => history.push('/settings/security')}>
         前往安全设置
       </Button>
@@ -981,54 +1147,49 @@ const SystemVerificationPage = () => {
   };
 
   return (
-    <ManagementPage title="用户认证">
-      <Tabs
-        activeKey="authenticators"
-        items={[
-          {
-            key: 'authenticators',
-            label: (
-              <Space size={8}>
-                <LoginOutlined />
-                认证器
-              </Space>
-            ),
-            children: (
-              <ManagementTable<AuthenticatorRecord>
-                rowKey="key"
-                columns={authenticatorColumns}
-                isMobile={responsive.isMobile}
-                search={false}
-                loading={verificationLoading}
-                dataSource={authenticatorRows}
-                pagination={{ pageSize: 50, showSizeChanger: true }}
-                tableAlertRender={false}
-                rowSelection={{
-                  selectedRowKeys: selectedAuthenticatorKeys,
-                  onChange: setSelectedAuthenticatorKeys,
-                }}
-                toolBarRender={() => [
-                  <Popconfirm
-                    key="delete"
-                    title="删除认证器"
-                    description="可删除的认证器会被停用，基础密码认证器会保留。"
-                    okText="确认"
-                    cancelText="取消"
-                    onConfirm={() => void handleDeleteSelectedAuthenticators()}
-                  >
-                    <Button disabled={!canManageSettings} icon={<DeleteOutlined />}>
-                      删除
-                    </Button>
-                  </Popconfirm>,
-                  <Dropdown key="add" trigger={['click']} menu={{ items: addAuthenticatorItems }} placement="bottomRight">
-                    <Button type="primary" disabled={!canManageSettings} icon={<PlusOutlined />}>
-                      添加 <DownOutlined />
-                    </Button>
-                  </Dropdown>,
-                ]}
-              />
-            ),
+    <ManagementPage title="验证管理">
+      <ManagementTable<AuthenticatorRecord>
+        rowKey="key"
+        columns={authenticatorColumns}
+        isMobile={responsive.isMobile}
+        search={false}
+        loading={verificationLoading}
+        dataSource={authenticatorRows}
+        pagination={{ pageSize: 50, showSizeChanger: true }}
+        tableAlertRender={false}
+        onRow={(record) => ({
+          draggable: canManageSettings && !reorderingAuthenticators,
+          onDragStart: handleAuthenticatorDragStart(record),
+          onDragOver: handleAuthenticatorDragOver(record),
+          onDrop: handleAuthenticatorDrop(record),
+          onDragEnd: handleAuthenticatorDragEnd,
+          style: {
+            cursor: canManageSettings && !reorderingAuthenticators ? 'grab' : undefined,
+            opacity: draggedAuthenticatorKey === record.key ? 0.45 : 1,
           },
+        })}
+        rowSelection={{
+          selectedRowKeys: selectedAuthenticatorKeys,
+          onChange: setSelectedAuthenticatorKeys,
+        }}
+        toolBarRender={() => [
+          <Popconfirm
+            key="delete"
+            title="删除认证器"
+            description="可删除的认证器会被停用，基础密码认证器会保留。"
+            okText="确认"
+            cancelText="取消"
+            onConfirm={() => void handleDeleteSelectedAuthenticators()}
+          >
+            <Button disabled={!canManageSettings} icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>,
+          <Dropdown key="add" trigger={['click']} menu={{ items: addAuthenticatorItems }} placement="bottomRight">
+            <Button type="primary" disabled={!canManageSettings || !addAuthenticatorItems?.length} icon={<PlusOutlined />}>
+              添加 <DownOutlined />
+            </Button>
+          </Dropdown>,
         ]}
       />
 

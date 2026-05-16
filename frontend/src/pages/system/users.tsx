@@ -138,6 +138,20 @@ const UserManagementPage = () => {
     });
   };
 
+  const handleDelete = (record: UserRecord) => {
+    confirmAction({
+      title: '删除用户',
+      content: `确认删除用户「${record.username}」吗？删除后该用户将从当前租户移除，已有会话会被下线。`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await userService.delete(record.id, { autoRedirectOnUnauthorized: false });
+        message.success('用户已删除');
+        reloadTable();
+      },
+    });
+  };
+
   const columns = useMemo(
     () =>
       buildUserColumns({
@@ -147,6 +161,7 @@ const UserManagementPage = () => {
         onOpenDetail: (record) => void openDetail(record),
         onOpenEdit: (record) => void openEdit(record),
         onToggleStatus: (record) => void handleStatusToggle(record),
+        onDelete: (record) => void handleDelete(record),
         isProtectedAdminAccount,
       }),
     [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],

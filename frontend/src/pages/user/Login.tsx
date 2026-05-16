@@ -42,36 +42,38 @@ const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
   wechatLoginAvailable: false,
   passkeyLoginAvailable: false,
   passkeyPasswordlessAvailable: false,
+  loginModeOrder: ['passkey', 'sms', 'email', 'password'],
 };
 
+type CodeLoginMode = Extract<LoginMode, 'sms' | 'email'>;
+const DEFAULT_LOGIN_MODE_ORDER: LoginMode[] = ['passkey', 'sms', 'email', 'password'];
+
 const getAvailableLoginModes = (capabilities: LoginCapabilities): LoginMode[] => {
-  const modes: LoginMode[] = ['password'];
-  if (capabilities.smsLoginAvailable) {
-    modes.push('sms');
-  }
-  if (capabilities.emailLoginAvailable) {
-    modes.push('email');
-  }
-  return modes;
+  const enabled: Record<LoginMode, boolean> = {
+    passkey: Boolean(capabilities.passkeyLoginAvailable && capabilities.passkeyPasswordlessAvailable),
+    sms: Boolean(capabilities.smsLoginAvailable),
+    email: Boolean(capabilities.emailLoginAvailable),
+    password: Boolean(capabilities.passwordLoginAvailable),
+  };
+  const configuredOrder = capabilities.loginModeOrder?.filter((mode): mode is LoginMode =>
+    mode === 'passkey' || mode === 'sms' || mode === 'email' || mode === 'password',
+  ) || [];
+  const order = [...configuredOrder, ...DEFAULT_LOGIN_MODE_ORDER.filter((mode) => !configuredOrder.includes(mode))];
+  const modes = order.filter((mode) => enabled[mode]);
+  return modes.length ? modes : ['password'];
 };
 
 const defaultLoginMode = (capabilities: LoginCapabilities): LoginMode => {
-  if (capabilities.smsLoginAvailable) {
-    return 'sms';
-  }
-  if (capabilities.emailLoginAvailable) {
-    return 'email';
-  }
-  return 'password';
+  return getAvailableLoginModes(capabilities)[0] || 'password';
 };
 
 const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [passkeySubmitting, setPasskeySubmitting] = useState(false);
-  const [sendingLoginType, setSendingLoginType] = useState<Exclude<LoginMode, 'password'> | null>(null);
+  const [sendingLoginType, setSendingLoginType] = useState<CodeLoginMode | null>(null);
   const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
   const [activeLoginMode, setActiveLoginMode] = useState<LoginMode>('password');
-  const [loginCodeChallenges, setLoginCodeChallenges] = useState<Partial<Record<Exclude<LoginMode, 'password'>, LoginCodeChallenge | null>>>({});
+  const [loginCodeChallenges, setLoginCodeChallenges] = useState<Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>>({});
   const [agreementPreviewOpen, setAgreementPreviewOpen] = useState(false);
   const [agreementPreviewKind, setAgreementPreviewKind] = useState<'user' | 'privacy'>('user');
   const [loginForm] = Form.useForm<LoginFormValues>();
@@ -213,7 +215,7 @@ const Login = () => {
     loginForm.setFieldsValue({ verificationCode: undefined });
   }, [loginForm]);
 
-  const resetCodeFlow = useCallback((mode: Exclude<LoginMode, 'password'>) => {
+  const resetCodeFlow = useCallback((mode: CodeLoginMode) => {
     setLoginCodeChallenges((prev) => ({
       ...prev,
       [mode]: null,
@@ -283,7 +285,7 @@ const Login = () => {
   }, []);
 
   const handleSendLoginCode = useCallback(
-    async (mode: Exclude<LoginMode, 'password'>) => {
+    async (mode: CodeLoginMode) => {
       if (!availableLoginModes.includes(mode)) {
         message.warning(
           mode === 'sms'
@@ -506,6 +508,11 @@ const Login = () => {
 
   const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
     if (!pendingSecondFactorLogin) {
+      if (activeLoginMode === 'passkey') {
+        await handlePasskeyLogin();
+        return false;
+      }
+
       if (!availableLoginModes.includes(activeLoginMode)) {
         message.warning(
           activeLoginMode === 'sms'
@@ -559,7 +566,7 @@ const Login = () => {
               });
             })()
           : await (async () => {
-              const mode = activeLoginMode as Exclude<LoginMode, 'password'>;
+              const mode = activeLoginMode as CodeLoginMode;
               const challenge = loginCodeChallenges[mode];
               if (!challenge?.challengeId) {
                 message.warning(formatMessage({ id: 'page.login.error.pleaseSendCode', defaultMessage: 'Please send the verification code first' }));
@@ -655,9 +662,11 @@ const Login = () => {
         subTitle={
           activeLoginMode === 'password'
             ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
-            : activeLoginMode === 'sms'
-              ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
-              : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' })
+            : activeLoginMode === 'passkey'
+              ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
+              : activeLoginMode === 'sms'
+                ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
+                : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' })
         }
         actions={null}
         initialValues={{ remember: true }}
@@ -668,9 +677,12 @@ const Login = () => {
           submitButtonProps: {
             children: pendingSecondFactorLogin
               ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
-              : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' }),
+              : activeLoginMode === 'passkey'
+                ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
+                : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' }),
             loading: submitting,
             block: true,
+            style: activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? { display: 'none' } : undefined,
           },
           resetButtonProps: false,
         }}
@@ -701,7 +713,6 @@ const Login = () => {
           sendingLoginType={sendingLoginType}
           loginCodeChallenges={loginCodeChallenges}
           wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
-          passkeyLoginAvailable={Boolean(loginCapabilities.passkeyLoginAvailable && loginCapabilities.passkeyPasswordlessAvailable)}
           passkeyLoading={passkeySubmitting}
           onModeChange={setActiveLoginMode}
           onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
