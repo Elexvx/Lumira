@@ -144,6 +144,91 @@ public class SiteManagementAppService {
         return true;
     }
 
+    public List<SiteVO.CarouselVO> carousels(CurrentUser currentUser) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        return jdbcTemplate.query(
+                """
+                        select c.*, f.public_url as file_public_url
+                        from site_carousel_item c
+                        left join file_object f on f.tenant_id = c.tenant_id and f.id = c.image_file_id and f.deleted = 0
+                        where c.tenant_id = ? and c.site_id = ? and c.deleted = 0
+                        order by c.sort_order asc, c.id asc
+                        """,
+                (rs, rowNum) -> mapCarousel(rs),
+                tenantId,
+                siteId
+        );
+    }
+
+    @Transactional
+    public SiteVO.CarouselVO createCarousel(CurrentUser currentUser, SiteDTO.CarouselRequest request) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        jdbcTemplate.update(
+                """
+                        insert into site_carousel_item (
+                            tenant_id, site_id, title, subtitle, image_file_id, image_url, link_type, link_target,
+                            open_type, sort_order, status, created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                tenantId,
+                siteId,
+                request.title,
+                cleanNullable(request.subtitle),
+                request.imageFileId,
+                cleanNullable(request.imageUrl),
+                clean(request.linkType, "NONE"),
+                cleanNullable(request.linkTarget),
+                clean(request.openType, "SELF"),
+                defaultInt(request.sortOrder),
+                clean(request.status, SiteEnums.CAROUSEL_VISIBLE),
+                currentUser.getUserId(),
+                currentUser.getUserId()
+        );
+        Long id = lastId();
+        audit(currentUser, "site-carousel-create", "CREATE", "新增官网轮播: " + request.title);
+        return carousel(tenantId, siteId, id);
+    }
+
+    @Transactional
+    public SiteVO.CarouselVO updateCarousel(CurrentUser currentUser, Long id, SiteDTO.CarouselRequest request) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        jdbcTemplate.update(
+                """
+                        update site_carousel_item
+                        set title = ?, subtitle = ?, image_file_id = ?, image_url = ?, link_type = ?, link_target = ?,
+                            open_type = ?, sort_order = ?, status = ?, updated_by = ?, updated_at = now(), version = version + 1
+                        where id = ? and tenant_id = ? and site_id = ? and deleted = 0
+                        """,
+                request.title,
+                cleanNullable(request.subtitle),
+                request.imageFileId,
+                cleanNullable(request.imageUrl),
+                clean(request.linkType, "NONE"),
+                cleanNullable(request.linkTarget),
+                clean(request.openType, "SELF"),
+                defaultInt(request.sortOrder),
+                clean(request.status, SiteEnums.CAROUSEL_VISIBLE),
+                currentUser.getUserId(),
+                id,
+                tenantId,
+                siteId
+        );
+        audit(currentUser, "site-carousel-update", "UPDATE", "更新官网轮播: " + id);
+        return carousel(tenantId, siteId, id);
+    }
+
+    @Transactional
+    public boolean deleteCarousel(CurrentUser currentUser, Long id) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        jdbcTemplate.update("update site_carousel_item set deleted = 1, updated_by = ?, updated_at = now() where id = ? and tenant_id = ? and site_id = ?", currentUser.getUserId(), id, tenantId, siteId);
+        audit(currentUser, "site-carousel-delete", "DELETE", "删除官网轮播: " + id);
+        return true;
+    }
+
     public PageResponse<SiteVO.PageVO> pages(CurrentUser currentUser, String status, long pageNo, long pageSize) {
         Long tenantId = tenantId(currentUser);
         Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
@@ -433,6 +518,21 @@ public class SiteManagementAppService {
         return jdbcTemplate.queryForObject("select * from site_navigation where id = ? and tenant_id = ? and site_id = ? and deleted = 0", (rs, rowNum) -> mapNavigation(rs), id, tenantId, siteId);
     }
 
+    private SiteVO.CarouselVO carousel(Long tenantId, Long siteId, Long id) {
+        return jdbcTemplate.queryForObject(
+                """
+                        select c.*, f.public_url as file_public_url
+                        from site_carousel_item c
+                        left join file_object f on f.tenant_id = c.tenant_id and f.id = c.image_file_id and f.deleted = 0
+                        where c.id = ? and c.tenant_id = ? and c.site_id = ? and c.deleted = 0
+                        """,
+                (rs, rowNum) -> mapCarousel(rs),
+                id,
+                tenantId,
+                siteId
+        );
+    }
+
     private SiteVO.PageVO page(Long tenantId, Long siteId, Long id) {
         return jdbcTemplate.queryForObject("select p.*, pv.blocks_json from site_page p left join site_page_version pv on pv.id = p.current_draft_version where p.id = ? and p.tenant_id = ? and p.site_id = ? and p.deleted = 0", (rs, rowNum) -> mapPage(rs), id, tenantId, siteId);
     }
@@ -499,6 +599,22 @@ public class SiteManagementAppService {
         vo.openType = rs.getString("open_type");
         vo.sortOrder = rs.getInt("sort_order");
         vo.status = rs.getString("status");
+        return vo;
+    }
+
+    private SiteVO.CarouselVO mapCarousel(ResultSet rs) throws SQLException {
+        SiteVO.CarouselVO vo = new SiteVO.CarouselVO();
+        vo.id = rs.getLong("id");
+        vo.title = rs.getString("title");
+        vo.subtitle = rs.getString("subtitle");
+        vo.imageFileId = longObject(rs, "image_file_id");
+        vo.imageUrl = clean(rs.getString("file_public_url"), rs.getString("image_url"));
+        vo.linkType = rs.getString("link_type");
+        vo.linkTarget = rs.getString("link_target");
+        vo.openType = rs.getString("open_type");
+        vo.sortOrder = rs.getInt("sort_order");
+        vo.status = rs.getString("status");
+        vo.updatedAt = localDateTime(rs, "updated_at");
         return vo;
     }
 

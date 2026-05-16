@@ -35,6 +35,20 @@ public final class SiteVO {
         public List<NavigationVO> children;
     }
 
+    public static class CarouselVO {
+        public Long id;
+        public String title;
+        public String subtitle;
+        public Long imageFileId;
+        public String imageUrl;
+        public String linkType;
+        public String linkTarget;
+        public String openType;
+        public Integer sortOrder;
+        public String status;
+        public LocalDateTime updatedAt;
+    }
+
     public static class PageVO {
         public Long id;
         public String title;
@@ -105,6 +119,7 @@ public final class SiteVO {
     public static class PublicRuntimeVO {
         public SiteSettingsVO site;
         public List<NavigationVO> navigation;
+        public List<CarouselVO> carousels;
     }
 
     public static class PublicPageVO {

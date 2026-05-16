@@ -50,3 +50,36 @@ html[data-theme='dark'] .site-admin-card .ant-select-selector,
 html[data-theme='dark'] .site-admin-card .ant-input-affix-wrapper {
   background-color: var(--saas-input-bg);
 }
+
+.site-admin-carousel-thumb,
+.site-admin-carousel-preview {
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--saas-input-bg);
+}
+
+.site-admin-carousel-uploader {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.site-admin-carousel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 280px;
+  height: 158px;
+  color: var(--saas-text-secondary);
+  background: var(--saas-input-bg);
+  border: 1px dashed var(--saas-border-color);
+  border-radius: 6px;
+}
+
+@media (max-width: 640px) {
+  .site-admin-header,
+  .site-admin-carousel-uploader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -6,6 +6,7 @@ public final class SiteEnums {
 
     public static final String SITE_ENABLED = "ENABLED";
     public static final String NAV_VISIBLE = "VISIBLE";
+    public static final String CAROUSEL_VISIBLE = "VISIBLE";
     public static final String DRAFT = "DRAFT";
     public static final String PUBLISHED = "PUBLISHED";
     public static final String OFFLINE = "OFFLINE";

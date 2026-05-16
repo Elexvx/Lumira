@@ -37,7 +37,7 @@ const SYSTEM_MONITORING_PERMISSIONS = [
 ];
 
 const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
-const SITE_PERMISSIONS = ['site:view', 'site:settings', 'site:navigation', 'site:page', 'site:content', 'site:form', 'site:submission'];
+const SITE_PERMISSIONS = ['site:view', 'site:settings', 'site:navigation', 'site:carousel', 'site:page', 'site:content', 'site:form', 'site:submission'];
 
 export default function access(initialState: { currentUser?: CurrentUser }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
@@ -96,6 +96,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSite: isLogin && SITE_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitSiteSettings: isLogin && hasPermission(permissions, 'site:settings'),
     canVisitSiteNavigation: isLogin && hasPermission(permissions, 'site:navigation'),
+    canVisitSiteCarousels: isLogin && hasPermission(permissions, 'site:carousel'),
     canVisitSitePages: isLogin && hasPermission(permissions, 'site:page'),
     canVisitSiteContents: isLogin && hasPermission(permissions, 'site:content'),
     canVisitSiteForms: isLogin && hasPermission(permissions, 'site:form'),
