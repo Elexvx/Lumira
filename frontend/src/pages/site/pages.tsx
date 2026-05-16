@@ -56,7 +56,6 @@ const PageManagement = () => {
   return (
     <SiteAdminPage
       title="页面管理"
-      description="以区块 JSON 管理官网页面草稿、发布和下线。"
       extra={actionPermission.can('site:page:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增页面</Button> : null}
     >
       <div className="site-admin-card">

@@ -46,7 +46,6 @@ const SubmissionsPage = () => {
   return (
     <SiteAdminPage
       title="提交记录"
-      description="查看官网表单提交内容并完成审核归档。"
     >
       <div className="site-admin-card">
         <Table

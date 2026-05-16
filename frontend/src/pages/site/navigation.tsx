@@ -45,7 +45,6 @@ const NavigationPage = () => {
   return (
     <SiteAdminPage
       title="导航管理"
-      description="维护官网头部导航、外链和排序。"
       extra={actionPermission.can('site:navigation:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>
           新增导航
         </Button> : null}

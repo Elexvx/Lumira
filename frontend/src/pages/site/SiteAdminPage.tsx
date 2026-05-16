@@ -3,13 +3,12 @@ import type { ReactNode } from 'react';
 
 interface SiteAdminPageProps {
   title: string;
-  description: string;
   extra?: ReactNode;
   children: ReactNode;
 }
 
-const SiteAdminPage = ({ title, description, extra, children }: SiteAdminPageProps) => (
-  <PageContainer title={title} content={description} extra={extra} className="site-admin-page-container">
+const SiteAdminPage = ({ title, extra, children }: SiteAdminPageProps) => (
+  <PageContainer title={title} extra={extra} className="site-admin-page-container">
     <div className="site-admin-page">{children}</div>
   </PageContainer>
 );

@@ -12,6 +12,17 @@
   padding: 16px;
 }
 
+.site-admin-image-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: -8px 0 18px;
+  padding: 8px 12px;
+  border: 1px solid var(--saas-border-color);
+  border-radius: 8px;
+  background: var(--saas-input-bg);
+}
+
 .site-admin-json {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

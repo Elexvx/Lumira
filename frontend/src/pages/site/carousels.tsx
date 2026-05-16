@@ -130,7 +130,6 @@ const CarouselManagement = () => {
   return (
     <SiteAdminPage
       title="轮播管理"
-      description="维护官网首页首屏轮播图片、文案、跳转链接和展示顺序。"
       extra={canCreate ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增轮播</Button> : null}
     >
       <div className="site-admin-card">

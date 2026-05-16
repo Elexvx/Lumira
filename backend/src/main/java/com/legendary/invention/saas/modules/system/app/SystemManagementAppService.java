@@ -242,7 +242,7 @@ public class SystemManagementAppService {
         summary.setTenantPlugins(pluginManagementAppService.availablePlugins(currentTenantId(currentUser)));
         summary.setMenuCount(countMenus(currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(new ArrayList<>(listLoginLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, null, 1, 5).getRecords()));
+        summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, 5)));
         summary.setRecentOperationLogs(new ArrayList<>(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords()));
         summary.setShortcuts(new ArrayList<>(DASHBOARD_SHORTCUTS));
         if (taskCenterAppService != null) {
@@ -256,16 +256,7 @@ public class SystemManagementAppService {
         summary.setCurrentUser(authAppService.currentUser(currentUser));
         summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(new ArrayList<>(listLoginLogs(
-                currentUser,
-                currentUser.getUsername(),
-                currentTenantId(currentUser),
-                null,
-                null,
-                null,
-                1,
-                RECENT_LOGIN_LOG_LIMIT
-        ).getRecords()));
+        summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, RECENT_LOGIN_LOG_LIMIT)));
         summary.setProfileFieldSettings(new ArrayList<>(systemProfileSettingsAppService.getProfileFieldSettings(currentUser)));
         Long tenantId = currentTenantId(currentUser);
         boolean mobileBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "mobile");
@@ -1357,6 +1348,35 @@ public class SystemManagementAppService {
                        l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
                 """ + baseSql + " order by l.id desc";
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+    }
+
+    private List<SystemVO.AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
+        String selectSql = """
+                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.login_type as logType,
+                       l.login_result as logResult, l.fail_reason as failReason, l.login_ip as loginIp,
+                       l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
+                from audit_login_log l
+                where l.user_id = ?
+                  and l.tenant_id = ?
+                  and l.login_result = 'SUCCESS'
+                  and l.login_type <> 'LOGOUT'
+                order by l.id desc
+                """;
+        return pageQuery(
+                selectSql,
+                """
+                        select count(1)
+                        from audit_login_log l
+                        where l.user_id = ?
+                          and l.tenant_id = ?
+                          and l.login_result = 'SUCCESS'
+                          and l.login_type <> 'LOGOUT'
+                        """,
+                SystemVO.AuditLogVO.class,
+                1,
+                pageSize,
+                List.of(currentUser.getUserId(), currentTenantId(currentUser))
+        ).getRecords();
     }
 
     public PageResponse<SystemVO.AuditLogVO> listOperationLogs(CurrentUser currentUser, String username, Long tenantId, long pageNo, long pageSize) {

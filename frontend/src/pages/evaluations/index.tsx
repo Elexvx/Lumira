@@ -1,6 +1,6 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Table, Tabs, message } from 'antd';
+import { Alert, Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Table, Tabs, message } from 'antd';
 import { useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useRefetchAll } from '@/hooks/useRefetchAll';
@@ -29,6 +29,8 @@ const EvaluationsPage = () => {
   const all = useQuery({ queryKey: ['evaluation-all'], queryFn: () => evaluationService.instances({ pageNo: 1, pageSize: 100 }) });
 
   const reload = useRefetchAll([templates, projects, employees, pending, all]);
+  const enabledTemplates = (templates.data?.records || []).filter((item) => item.enabled);
+  const templateOptions = enabledTemplates.map((item) => ({ label: `${item.templateName} (${item.objectType})`, value: item.id }));
 
   const openTemplate = (record?: EvaluationTemplateRecord) => {
     setActiveTemplate(record || null);
@@ -38,13 +40,17 @@ const EvaluationsPage = () => {
 
   const saveTemplate = async () => {
     const values = await templateForm.validateFields();
+    let savedTemplate: EvaluationTemplateRecord;
     if (activeTemplate) {
-      await evaluationService.updateTemplate(activeTemplate.id, values);
+      savedTemplate = await evaluationService.updateTemplate(activeTemplate.id, values);
     } else {
-      await evaluationService.createTemplate(values);
+      savedTemplate = await evaluationService.createTemplate(values);
     }
     message.success('评分模板已保存');
     setTemplateOpen(false);
+    if (instanceOpen && savedTemplate.enabled) {
+      instanceForm.setFieldsValue({ templateId: savedTemplate.id });
+    }
     reload();
   };
 
@@ -181,7 +187,39 @@ const EvaluationsPage = () => {
 
       <Drawer title="发起评审" open={instanceOpen} onClose={() => setInstanceOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={createInstance}>提交</Button>}>
         <Form form={instanceForm} layout="vertical">
-          <Form.Item name="templateId" label="评分模板" rules={[{ required: true }]}><Select options={(templates.data?.records || []).map((item) => ({ label: `${item.templateName} (${item.objectType})`, value: item.id }))} /></Form.Item>
+          {templateOptions.length === 0 ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="暂无可用评分模板"
+              description="请先新建并启用评分模板，然后再发起评审。"
+              action={<Button size="small" type="primary" onClick={() => openTemplate()}>新建模板</Button>}
+            />
+          ) : null}
+          <Form.Item name="templateId" label="评分模板" rules={[{ required: true }]}>
+            <Select
+              loading={templates.isLoading}
+              options={templateOptions}
+              placeholder="请选择评分模板"
+              notFoundContent={(
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="暂无可用模板"
+                >
+                  <Button type="primary" onClick={() => openTemplate()}>新建模板</Button>
+                </Empty>
+              )}
+              dropdownRender={(menu) => (
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  {menu}
+                  <Button type="link" onClick={() => openTemplate()} style={{ paddingInline: 8 }}>
+                    新建评分模板
+                  </Button>
+                </Space>
+              )}
+            />
+          </Form.Item>
           <Form.Item name="objectId" label="对象ID"><InputNumber style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="objectTitle" label="对象名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="scorerUserIds" label="评分人用户ID" rules={[{ required: true }]}><Input placeholder="多个用户用英文逗号分隔，例如 1001,1002" /></Form.Item>
