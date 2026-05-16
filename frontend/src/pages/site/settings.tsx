@@ -3,6 +3,7 @@ import { SaveOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteSettings } from '@/services/site';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const SiteSettingsPage = () => {
@@ -36,16 +37,13 @@ const SiteSettingsPage = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">站点设置</h1>
-          <p className="site-admin-desc">管理官网基础信息、域名、品牌素材和 SEO 默认配置。</p>
-        </div>
-        {canUpdate ? <Button type="primary" icon={<SaveOutlined />} loading={loading} onClick={save}>
+    <SiteAdminPage
+      title="站点设置"
+      description="管理官网基础信息、域名、品牌素材和 SEO 默认配置。"
+      extra={canUpdate ? <Button type="primary" icon={<SaveOutlined />} loading={loading} onClick={save}>
           保存
         </Button> : null}
-      </div>
+    >
       <div className="site-admin-card">
         <Form form={form} layout="vertical" disabled={loading || !canUpdate} initialValues={{ code: 'main', name: '官网', status: 'ENABLED' }}>
           <Form.Item name="code" label="站点编码" rules={[{ required: true }]}>
@@ -74,7 +72,7 @@ const SiteSettingsPage = () => {
           </Form.Item>
         </Form>
       </div>
-    </div>
+    </SiteAdminPage>
   );
 };
 

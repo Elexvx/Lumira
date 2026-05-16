@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteContent } from '@/services/site';
+import SiteAdminPage from './SiteAdminPage';
 import './site.css';
 
 const ContentManagement = () => {
@@ -45,14 +46,11 @@ const ContentManagement = () => {
   };
 
   return (
-    <div className="site-admin-page">
-      <div className="site-admin-header">
-        <div>
-          <h1 className="site-admin-title">内容管理</h1>
-          <p className="site-admin-desc">维护新闻、公告、文章等官网内容。</p>
-        </div>
-        {actionPermission.can('site:content:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增内容</Button> : null}
-      </div>
+    <SiteAdminPage
+      title="内容管理"
+      description="维护新闻、公告、文章等官网内容。"
+      extra={actionPermission.can('site:content:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增内容</Button> : null}
+    >
       <div className="site-admin-card">
         <Table
           rowKey="id"
@@ -91,7 +89,7 @@ const ContentManagement = () => {
           <Form.Item name="seoJson" label="SEO JSON"><Input.TextArea className="site-admin-json" rows={4} /></Form.Item>
         </Form>
       </Drawer>
-    </div>
+    </SiteAdminPage>
   );
 };
 
