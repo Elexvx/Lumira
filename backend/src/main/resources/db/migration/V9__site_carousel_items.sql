@@ -1,3 +1,5 @@
+drop table if exists `site_carousel_item`;
+
 create table if not exists `site_carousel_item` (
   `id` bigint not null auto_increment,
   `tenant_id` bigint not null,
