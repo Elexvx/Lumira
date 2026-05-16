@@ -15,23 +15,31 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  justify-content: space-between;
   padding: 10px 12px;
   border-bottom: 1px solid #f0f0f0;
   background: #fff;
 }
 
-.agreement-markdown-editor__toolbar .ant-btn {
+.agreement-markdown-editor__tools {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.agreement-markdown-editor__tools .ant-btn {
   width: 32px;
   height: 32px;
 }
 
 .agreement-markdown-editor__mode {
-  min-width: 88px;
+  flex: 0 0 auto;
 }
 
 .agreement-markdown-editor__body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 42%);
   min-height: 360px;
 }
 
@@ -46,8 +54,8 @@
 
 .agreement-markdown-editor__preview {
   overflow: auto;
+  min-height: 360px;
   padding: 18px 20px;
-  border-left: 1px solid #f0f0f0;
   background: #fcfcfd;
 }
 
@@ -131,12 +139,16 @@
 }
 
 @media (max-width: 1024px) {
-  .agreement-markdown-editor__body {
-    grid-template-columns: 1fr;
+  .agreement-markdown-editor__mode {
+    width: 100%;
   }
 
-  .agreement-markdown-editor__preview {
-    border-left: 0;
-    border-top: 1px solid #f0f0f0;
+  .agreement-markdown-editor__mode .ant-btn-group {
+    display: flex;
+    width: 100%;
+  }
+
+  .agreement-markdown-editor__mode .ant-btn {
+    flex: 1;
   }
 }
