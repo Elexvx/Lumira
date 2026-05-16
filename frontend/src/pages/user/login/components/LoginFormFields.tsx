@@ -1,6 +1,6 @@
 import { CheckOutlined, KeyOutlined, LockOutlined, MailOutlined, MobileOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton, Space, Typography } from 'antd';
+import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
@@ -34,7 +34,6 @@ interface LoginFormFieldsProps {
   captchaChallenge: CaptchaChallenge | null;
   captchaLoading: boolean;
   captchaImageLoadFailed: boolean;
-  loginEncryptionLoading: boolean;
   sendingLoginType: CodeLoginMode | null;
   loginCodeChallenges: Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>;
   wechatLoginAvailable?: boolean;
@@ -88,7 +87,6 @@ export const LoginFormFields = ({
   captchaChallenge,
   captchaLoading,
   captchaImageLoadFailed,
-  loginEncryptionLoading,
   sendingLoginType,
   loginCodeChallenges,
   wechatLoginAvailable,
@@ -193,14 +191,6 @@ export const LoginFormFields = ({
           placeholder={formatMessage({ id: 'page.login.error.pleaseEnterPassword', defaultMessage: 'Please enter your password' })}
         />
       </Form.Item>
-      {loginEncryptionLoading ? (
-        <Typography.Text type="secondary">
-          <Space size={8}>
-            <Skeleton.Avatar active size="small" shape="circle" />
-            {formatMessage({ id: 'page.login.loadingEncryption', defaultMessage: 'Loading login encryption info...' })}
-          </Space>
-        </Typography.Text>
-      ) : null}
       {securityCaptchaEnabled && securityCaptchaType !== 'SLIDER' ? (
         <div className="saas-login-page__captcha-row">
           <Form.Item

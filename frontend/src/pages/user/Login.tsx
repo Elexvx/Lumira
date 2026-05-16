@@ -709,7 +709,6 @@ const Login = () => {
           captchaChallenge={captchaChallenge}
           captchaLoading={captchaLoading}
           captchaImageLoadFailed={captchaImageLoadFailed}
-          loginEncryptionLoading={loginEncryptionLoading}
           sendingLoginType={sendingLoginType}
           loginCodeChallenges={loginCodeChallenges}
           wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
