@@ -73,7 +73,7 @@ spring:
             - id: system-service
               uri: ${GATEWAY_SYSTEM_SERVICE_URI:http://localhost:8080}
               predicates:
-                - Path=/api/v1/system/**
+                - Path=/api/v1/system/**,/api/v1/site/**
 server:
   port: ${SERVER_PORT:8081}
 
