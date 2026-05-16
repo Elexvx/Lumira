@@ -33,6 +33,26 @@ export interface SiteNavigation {
   status: string;
 }
 
+export interface SiteCarousel {
+  id: number;
+  title: string;
+  subtitle?: string;
+  imageFileId?: number;
+  imageUrl?: string;
+  linkType: string;
+  linkTarget?: string;
+  openType: string;
+  sortOrder: number;
+  status: string;
+  updatedAt?: string;
+}
+
+export interface PublicSiteRuntime {
+  site?: SiteSettings;
+  navigation?: SiteNavigation[];
+  carousels?: SiteCarousel[];
+}
+
 export interface SitePage {
   id: number;
   title: string;
@@ -134,6 +154,13 @@ export const siteService = {
     request<SiteNavigation>(`/v1/site/navigation/${id}`, { method: 'PUT', data: payload, ...options }),
   deleteNavigation: (id: number, options: RequestOptions = {}) =>
     request<boolean>(`/v1/site/navigation/${id}`, { method: 'DELETE', ...options }),
+  carousels: (options: RequestOptions = {}) => request<SiteCarousel[]>('/v1/site/carousels', { method: 'GET', ...options }),
+  createCarousel: (payload: Partial<SiteCarousel>, options: RequestOptions = {}) =>
+    request<SiteCarousel>('/v1/site/carousels', { method: 'POST', data: payload, ...options }),
+  updateCarousel: (id: number, payload: Partial<SiteCarousel>, options: RequestOptions = {}) =>
+    request<SiteCarousel>(`/v1/site/carousels/${id}`, { method: 'PUT', data: payload, ...options }),
+  deleteCarousel: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/site/carousels/${id}`, { method: 'DELETE', ...options }),
   pages: (params: Record<string, unknown> = {}, options: RequestOptions = {}) =>
     request<PagedResult<SitePage>>('/v1/site/pages', { method: 'GET', params, ...options }),
   createPage: (payload: Partial<SitePage>, options: RequestOptions = {}) =>
@@ -173,4 +200,23 @@ export const siteService = {
     request<PagedResult<SiteSubmission>>('/v1/site/submissions', { method: 'GET', params, ...options }),
   reviewSubmission: (id: number, payload: { status: string; reviewRemark?: string }, options: RequestOptions = {}) =>
     request<SiteSubmission>(`/v1/site/submissions/${id}/review`, { method: 'PUT', data: payload, ...options }),
+};
+
+export const publicSiteService = {
+  runtime: (options: RequestOptions = {}) =>
+    request<PublicSiteRuntime>('/v1/public/site/runtime', {
+      method: 'GET',
+      skipAuth: true,
+      autoRedirectOnUnauthorized: false,
+      silent: true,
+      ...options,
+    }),
+  carousels: (options: RequestOptions = {}) =>
+    request<SiteCarousel[]>('/v1/public/site/carousels', {
+      method: 'GET',
+      skipAuth: true,
+      autoRedirectOnUnauthorized: false,
+      silent: true,
+      ...options,
+    }),
 };

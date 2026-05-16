@@ -42,6 +42,11 @@ public class PublicSiteController {
         return ApiResponse.success(publicSiteAppService.navigation(), TraceContext.getRequestId());
     }
 
+    @GetMapping("/carousels")
+    public ApiResponse<List<SiteVO.CarouselVO>> carousels() {
+        return ApiResponse.success(publicSiteAppService.carousels(), TraceContext.getRequestId());
+    }
+
     @GetMapping("/pages/{slug}")
     public ApiResponse<SiteVO.PublicPageVO> page(@PathVariable String slug) {
         return ApiResponse.success(publicSiteAppService.page(slug), TraceContext.getRequestId());

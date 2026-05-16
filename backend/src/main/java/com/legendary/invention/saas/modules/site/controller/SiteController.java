@@ -77,6 +77,32 @@ public class SiteController {
         return ApiResponse.success(siteManagementAppService.deleteNavigation(currentUser(), id), TraceContext.getRequestId());
     }
 
+    @GetMapping("/carousels")
+    public ApiResponse<List<SiteVO.CarouselVO>> carousels() {
+        require("site:carousel");
+        return ApiResponse.success(siteManagementAppService.carousels(currentUser()), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/carousels")
+    @RepeatSubmit
+    public ApiResponse<SiteVO.CarouselVO> createCarousel(@Valid @RequestBody SiteDTO.CarouselRequest request) {
+        require("site:carousel:create");
+        return ApiResponse.success(siteManagementAppService.createCarousel(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/carousels/{id}")
+    @RepeatSubmit
+    public ApiResponse<SiteVO.CarouselVO> updateCarousel(@PathVariable Long id, @Valid @RequestBody SiteDTO.CarouselRequest request) {
+        require("site:carousel:update");
+        return ApiResponse.success(siteManagementAppService.updateCarousel(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/carousels/{id}")
+    public ApiResponse<Boolean> deleteCarousel(@PathVariable Long id) {
+        require("site:carousel:delete");
+        return ApiResponse.success(siteManagementAppService.deleteCarousel(currentUser(), id), TraceContext.getRequestId());
+    }
+
     @GetMapping("/pages")
     public ApiResponse<PageResponse<SiteVO.PageVO>> pages(@RequestParam(required = false) String status, @RequestParam(defaultValue = "1") long pageNo, @RequestParam(defaultValue = "10") long pageSize) {
         require("site:page");

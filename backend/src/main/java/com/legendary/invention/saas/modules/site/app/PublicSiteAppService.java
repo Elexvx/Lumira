@@ -37,12 +37,18 @@ public class PublicSiteAppService {
         SiteVO.PublicRuntimeVO vo = new SiteVO.PublicRuntimeVO();
         vo.site = publicSite(siteId);
         vo.navigation = navigation(siteId);
+        vo.carousels = carousels(siteId);
         return vo;
     }
 
     public List<SiteVO.NavigationVO> navigation() {
         Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
         return navigation(siteId);
+    }
+
+    public List<SiteVO.CarouselVO> carousels() {
+        Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
+        return carousels(siteId);
     }
 
     public SiteVO.PublicPageVO page(String slug) {
@@ -178,6 +184,21 @@ public class PublicSiteAppService {
         );
     }
 
+    private List<SiteVO.CarouselVO> carousels(Long siteId) {
+        return jdbcTemplate.query(
+                """
+                        select c.*, f.public_url as file_public_url
+                        from site_carousel_item c
+                        left join file_object f on f.tenant_id = c.tenant_id and f.id = c.image_file_id and f.deleted = 0
+                        where c.tenant_id = ? and c.site_id = ? and c.status = 'VISIBLE' and c.deleted = 0
+                        order by c.sort_order asc, c.id asc
+                        """,
+                (rs, rowNum) -> mapCarousel(rs),
+                DEFAULT_TENANT_ID,
+                siteId
+        );
+    }
+
     private SiteVO.SiteSettingsVO mapSite(ResultSet rs) throws SQLException {
         SiteVO.SiteSettingsVO vo = new SiteVO.SiteSettingsVO();
         vo.id = rs.getLong("id");
@@ -204,6 +225,22 @@ public class PublicSiteAppService {
         vo.openType = rs.getString("open_type");
         vo.sortOrder = rs.getInt("sort_order");
         vo.status = rs.getString("status");
+        return vo;
+    }
+
+    private SiteVO.CarouselVO mapCarousel(ResultSet rs) throws SQLException {
+        SiteVO.CarouselVO vo = new SiteVO.CarouselVO();
+        vo.id = rs.getLong("id");
+        vo.title = rs.getString("title");
+        vo.subtitle = rs.getString("subtitle");
+        vo.imageFileId = longObject(rs, "image_file_id");
+        vo.imageUrl = clean(rs.getString("file_public_url"), rs.getString("image_url"));
+        vo.linkType = rs.getString("link_type");
+        vo.linkTarget = rs.getString("link_target");
+        vo.openType = rs.getString("open_type");
+        vo.sortOrder = rs.getInt("sort_order");
+        vo.status = rs.getString("status");
+        vo.updatedAt = localDateTime(rs, "updated_at");
         return vo;
     }
 
@@ -282,6 +319,10 @@ public class PublicSiteAppService {
 
     private String jsonOrNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private String clean(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 
     private Long longObject(ResultSet rs, String column) throws SQLException {

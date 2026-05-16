@@ -33,6 +33,19 @@ public final class SiteDTO {
         public String status;
     }
 
+    public static class CarouselRequest {
+        @NotBlank
+        public String title;
+        public String subtitle;
+        public Long imageFileId;
+        public String imageUrl;
+        public String linkType;
+        public String linkTarget;
+        public String openType;
+        public Integer sortOrder;
+        public String status;
+    }
+
     public static class PageRequest {
         @NotBlank
         public String title;
