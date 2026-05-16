@@ -19,7 +19,7 @@ const SiteSettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [uploadingTarget, setUploadingTarget] = useState<SiteImageTarget | null>(null);
   const actionPermission = useActionPermission();
-  const canUpdate = actionPermission.can('site:settings:update');
+  const canUpdate = actionPermission.can(['site:settings:update', 'site:settings']);
   const logoUrl = Form.useWatch('logoUrl', form);
   const faviconUrl = Form.useWatch('faviconUrl', form);
 

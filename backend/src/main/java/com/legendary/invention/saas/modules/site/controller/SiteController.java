@@ -58,7 +58,7 @@ public class SiteController {
     @PutMapping("/settings")
     @RepeatSubmit
     public ApiResponse<SiteVO.SiteSettingsVO> updateSettings(@Valid @RequestBody SiteDTO.SiteSettingsRequest request) {
-        require("site:settings:update");
+        requireAny("site:settings:update", "site:settings");
         return ApiResponse.success(siteManagementAppService.updateSettings(currentUser(), request), TraceContext.getRequestId());
     }
 
