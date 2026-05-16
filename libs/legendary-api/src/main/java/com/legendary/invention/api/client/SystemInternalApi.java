@@ -1,6 +1,7 @@
 package com.legendary.invention.api.client;
 
 import com.legendary.invention.api.system.CaptchaValidationRequestDTO;
+import com.legendary.invention.api.system.LoginAuditRecordRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.MenuNodeDTO;
 import com.legendary.invention.api.system.PasskeyCredentialDTO;
@@ -43,6 +44,9 @@ public interface SystemInternalApi {
 
     @PostMapping("/captcha/validate")
     Boolean validateCaptcha(@RequestBody CaptchaValidationRequestDTO request);
+
+    @PostMapping("/audit/login")
+    Boolean recordLoginAudit(@RequestBody LoginAuditRecordRequestDTO request);
 
     @GetMapping("/verification/login-capabilities")
     LoginCapabilitiesDTO loginCapabilities(@RequestParam("tenantId") Long tenantId);
