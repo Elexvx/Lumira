@@ -4,6 +4,7 @@ import com.legendary.invention.api.auth.LoginCodeChallengeDTO;
 import com.legendary.invention.api.auth.LoginCodeCompleteRequest;
 import com.legendary.invention.api.auth.SecondFactorCompleteRequest;
 import com.legendary.invention.api.system.CaptchaValidationRequestDTO;
+import com.legendary.invention.api.system.LoginAuditRecordRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.MenuNodeDTO;
 import com.legendary.invention.api.system.PasskeyCredentialDTO;
@@ -20,6 +21,7 @@ import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService;
 import com.legendary.invention.saas.modules.system.app.SystemRouteCatalog;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
+import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
@@ -52,6 +54,7 @@ public class InternalSystemController {
     private final PasskeyCredentialAppService passkeyCredentialAppService;
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAuditService loginAuditService;
 
     public InternalSystemController(
             UserDomainService userDomainService,
@@ -61,7 +64,8 @@ public class InternalSystemController {
             WechatLoginSettingsService wechatLoginSettingsService,
             PasskeyCredentialAppService passkeyCredentialAppService,
             JdbcTemplate jdbcTemplate,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            LoginAuditService loginAuditService
     ) {
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
@@ -71,6 +75,7 @@ public class InternalSystemController {
         this.passkeyCredentialAppService = passkeyCredentialAppService;
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
+        this.loginAuditService = loginAuditService;
     }
 
     @GetMapping("/users/login/{account}")
@@ -108,6 +113,21 @@ public class InternalSystemController {
     @PostMapping("/captcha/validate")
     public Boolean validateCaptcha(@Valid @RequestBody CaptchaValidationRequestDTO request) {
         captchaService.validateCaptcha(request.captchaId(), request.captchaCode(), request.captchaProof());
+        return Boolean.TRUE;
+    }
+
+    @PostMapping("/audit/login")
+    public Boolean recordLoginAudit(@RequestBody LoginAuditRecordRequestDTO request) {
+        loginAuditService.log(
+                request.userId(),
+                request.tenantId(),
+                request.username(),
+                request.loginType(),
+                request.loginResult(),
+                request.failReason(),
+                request.loginIp(),
+                request.userAgent()
+        );
         return Boolean.TRUE;
     }
 

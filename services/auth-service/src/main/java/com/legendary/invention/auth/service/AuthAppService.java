@@ -2,6 +2,7 @@ package com.legendary.invention.auth.service;
 
 import com.legendary.invention.api.auth.*;
 import com.legendary.invention.api.client.SystemInternalApi;
+import com.legendary.invention.api.system.LoginAuditRecordRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
@@ -17,6 +18,8 @@ import com.legendary.invention.common.security.JwtTokenType;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +29,8 @@ import java.util.UUID;
 
 @Service
 public class AuthAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthAppService.class);
 
     private final SystemInternalApi systemInternalApi;
     private final LoginEncryptionService loginEncryptionService;
@@ -75,6 +80,7 @@ public class AuthAppService {
             boolean captchaValid = Boolean.TRUE.equals(systemInternalApi.validateCaptcha(new com.legendary.invention.api.system.CaptchaValidationRequestDTO(request.captchaId(), request.captchaCode(), request.captchaProof())));
             if (!captchaValid) {
                 loginProtectionService.recordFailure(account, loginIp);
+                recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "CAPTCHA", "FAIL", "验证码错误", loginIp, userAgent);
                 throw new BizException(ErrorCode.CAPTCHA_INVALID, "验证码错误，请重新输入");
             }
         }
@@ -83,20 +89,24 @@ public class AuthAppService {
         LoginCapabilitiesDTO loginCapabilities = systemInternalApi.loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID);
         if (loginCapabilities != null && !loginCapabilities.passwordLoginAvailable()) {
             loginProtectionService.recordFailure(account, loginIp);
+            recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "PASSWORD", "FAIL", "账号密码登录未启用", loginIp, userAgent);
             throw new BizException(ErrorCode.FORBIDDEN, "账号密码登录未启用");
         }
         if (user == null) {
             loginProtectionService.recordFailure(account, loginIp);
+            recordLoginAudit(null, null, account, "PASSWORD", "FAIL", "用户不存在", loginIp, userAgent);
             throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在: " + account, ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
             loginProtectionService.recordFailure(account, loginIp);
+            recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "账号已禁用", loginIp, userAgent);
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
 
         String loginPassword = loginEncryptionService.decryptPassword(request.password());
         if (!passwordEncoder.matches(loginPassword, user.passwordHash())) {
             loginProtectionService.recordFailure(account, loginIp);
+            recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
             throw new BizException(ErrorCode.PASSWORD_ERROR, "登录失败，密码错误: " + user.username(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
 
@@ -106,6 +116,7 @@ public class AuthAppService {
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         authSessionStore.save(session, true);
         loginProtectionService.clearFailureState(account, loginIp);
+        recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
 
@@ -128,7 +139,7 @@ public class AuthAppService {
         if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
             throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "验证码校验失败" : verification.message());
         }
-        return completeVerifiedLogin(verification.userId(), verification.tenantId(), httpServletRequest);
+        return loginVerifiedUser(verification.userId(), verification.tenantId(), httpServletRequest, "LOGIN_CODE");
     }
 
     public WechatAuthorizeUrlDTO wechatAuthorizeUrl() {
@@ -148,8 +159,11 @@ public class AuthAppService {
         }
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
-        AuthSession session = buildSession(user, currentTenantId, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"), snapshot);
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String userAgent = httpServletRequest.getHeader("User-Agent");
+        AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         authSessionStore.save(session, true);
+        recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
 
@@ -159,7 +173,7 @@ public class AuthAppService {
         if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
             throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "二次验证失败" : verification.message());
         }
-        return completeVerifiedLogin(verification.userId(), verification.tenantId(), httpServletRequest);
+        return loginVerifiedUser(verification.userId(), verification.tenantId(), httpServletRequest, "SECOND_FACTOR");
     }
 
     public void logout(HttpServletRequest httpServletRequest) {
@@ -246,11 +260,11 @@ public class AuthAppService {
         return systemInternalApi.verificationVerify(platformTenantId(), currentUser.getUserId(), factorCode, request.challengeId(), request.verificationCode());
     }
 
-    private LoginResponseDTO completeVerifiedLogin(Long userId, Long tenantId, HttpServletRequest request) {
-        return loginVerifiedUser(userId, tenantId, request);
+    public LoginResponseDTO loginVerifiedUser(Long userId, Long tenantId, HttpServletRequest request) {
+        return loginVerifiedUser(userId, tenantId, request, "PASSKEY");
     }
 
-    public LoginResponseDTO loginVerifiedUser(Long userId, Long tenantId, HttpServletRequest request) {
+    private LoginResponseDTO loginVerifiedUser(Long userId, Long tenantId, HttpServletRequest request, String loginType) {
         SystemUserSnapshotDTO user = systemInternalApi.findUserById(userId);
         if (user == null) {
             throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在");
@@ -260,9 +274,38 @@ public class AuthAppService {
         }
         Long platformTenantId = platformTenantId();
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(platformTenantId, userId);
-        AuthSession session = buildSession(user, platformTenantId, clientIpResolver.resolve(request), request.getHeader("User-Agent"), snapshot);
+        String loginIp = clientIpResolver.resolve(request);
+        String userAgent = request.getHeader("User-Agent");
+        AuthSession session = buildSession(user, platformTenantId, loginIp, userAgent, snapshot);
         authSessionStore.save(session, true);
+        recordLoginAudit(user.userId(), platformTenantId, user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
+    }
+
+    private void recordLoginAudit(
+            Long userId,
+            Long tenantId,
+            String username,
+            String loginType,
+            String loginResult,
+            String failReason,
+            String loginIp,
+            String userAgent
+    ) {
+        try {
+            systemInternalApi.recordLoginAudit(new LoginAuditRecordRequestDTO(
+                    userId,
+                    tenantId,
+                    username,
+                    loginType,
+                    loginResult,
+                    failReason,
+                    loginIp,
+                    userAgent
+            ));
+        } catch (Exception ex) {
+            log.warn("Failed to record login audit username={} loginType={} loginResult={}", username, loginType, loginResult, ex);
+        }
     }
 
     private AuthSession buildSession(SystemUserSnapshotDTO user, Long currentTenantId, String loginIp, String userAgent, PermissionSnapshotDTO snapshot) {
