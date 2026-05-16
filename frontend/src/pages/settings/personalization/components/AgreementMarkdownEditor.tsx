@@ -12,10 +12,10 @@ import {
   TableOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { Button, Divider, Input, Select, Tooltip } from 'antd';
+import { Button, Divider, Input, Tooltip } from 'antd';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './AgreementMarkdownEditor.css';
@@ -62,6 +62,7 @@ const normalizeValue = (value?: string) => value ?? '';
 
 export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: AgreementMarkdownEditorProps) => {
   const textAreaRef = useRef<TextAreaRef>(null);
+  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const markdown = normalizeValue(value);
 
   const getTextArea = () => textAreaRef.current?.resizableTextArea?.textArea;
@@ -118,41 +119,49 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
   return (
     <div className="agreement-markdown-editor">
       <div className="agreement-markdown-editor__toolbar">
-        <Select
-          className="agreement-markdown-editor__mode"
-          size="small"
-          value="body"
-          options={[{ label: '正文', value: 'body' }]}
-        />
-        <Tooltip title="标题">
-          <Button size="small" icon={<FontSizeOutlined />} onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeading(2)} />
-        </Tooltip>
-        <Tooltip title="段落">
-          <Button size="small" icon={<ProfileOutlined />} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown({ key: 'paragraph', title: '段落', icon: null, before: '\n\n', sample: '', mode: 'block' })} />
-        </Tooltip>
-        <Divider type="vertical" />
-        {toolbarActions.slice(0, 6).map((action) => (
-          <Tooltip title={action.title} key={action.key}>
-            <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown(action)} />
+        <div className="agreement-markdown-editor__tools">
+          <Tooltip title="标题">
+            <Button size="small" icon={<FontSizeOutlined />} onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeading(2)} />
           </Tooltip>
-        ))}
-        <Divider type="vertical" />
-        {toolbarActions.slice(6).map((action) => (
-          <Tooltip title={action.title} key={action.key}>
-            <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown(action)} />
+          <Tooltip title="段落">
+            <Button size="small" icon={<ProfileOutlined />} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown({ key: 'paragraph', title: '段落', icon: null, before: '\n\n', sample: '', mode: 'block' })} />
           </Tooltip>
-        ))}
+          <Divider type="vertical" />
+          {toolbarActions.slice(0, 6).map((action) => (
+            <Tooltip title={action.title} key={action.key}>
+              <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown(action)} />
+            </Tooltip>
+          ))}
+          <Divider type="vertical" />
+          {toolbarActions.slice(6).map((action) => (
+            <Tooltip title={action.title} key={action.key}>
+              <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown(action)} />
+            </Tooltip>
+          ))}
+        </div>
+        <div className="agreement-markdown-editor__mode">
+          <Button.Group size="small">
+            <Button type={mode === 'edit' ? 'primary' : 'default'} onClick={() => setMode('edit')}>
+              编辑
+            </Button>
+            <Button type={mode === 'preview' ? 'primary' : 'default'} onClick={() => setMode('preview')}>
+              预览
+            </Button>
+          </Button.Group>
+        </div>
       </div>
       <div className="agreement-markdown-editor__body">
-        <Input.TextArea
-          ref={textAreaRef}
-          className="agreement-markdown-editor__input"
-          value={markdown}
-          onChange={(event) => onChange?.(event.target.value)}
-          placeholder={placeholder}
-          autoSize={{ minRows: 15, maxRows: 28 }}
-        />
-        <div className="agreement-markdown-editor__preview">
+        {mode === 'edit' ? (
+          <Input.TextArea
+            ref={textAreaRef}
+            className="agreement-markdown-editor__input"
+            value={markdown}
+            onChange={(event) => onChange?.(event.target.value)}
+            placeholder={placeholder}
+            autoSize={{ minRows: 15, maxRows: 28 }}
+          />
+        ) : (
+          <div className="agreement-markdown-editor__preview">
           {markdown.trim() ? (
             <div className="agreement-markdown-editor__preview-content">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -162,7 +171,8 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
           ) : (
             <div className="agreement-markdown-editor__preview-empty">预览会显示在这里</div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
