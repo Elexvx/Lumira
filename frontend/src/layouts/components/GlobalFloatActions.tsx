@@ -57,8 +57,8 @@ export const GlobalFloatActions = () => {
         >
           <FloatButton
             icon={<QrcodeOutlined />}
-            tooltip={intl.formatMessage({ id: 'global.float.apiDocs', defaultMessage: '接口文档' })}
-            aria-label={intl.formatMessage({ id: 'global.float.apiDocs', defaultMessage: '接口文档' })}
+            tooltip={intl.formatMessage({ id: 'global.float.qrCode', defaultMessage: '二维码' })}
+            aria-label={intl.formatMessage({ id: 'global.float.qrCode', defaultMessage: '二维码' })}
           />
         </Popover>
       ) : null}

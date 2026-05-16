@@ -17,7 +17,7 @@ interface FloatingWindowTabProps {
 export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving, onUpload, onClearQrImage, onSave }: FloatingWindowTabProps) => (
   <Space direction="vertical" size={16} style={{ width: '100%' }}>
     <Form {...formProps}>
-      <Form.Item name="apiDocsQrEnabled" label="接口文档二维码" valuePropName="checked">
+      <Form.Item name="apiDocsQrEnabled" label="二维码" valuePropName="checked">
         <Switch />
       </Form.Item>
       <Form.Item name="apiDocsQrTitle" label="弹窗标题" rules={[{ required: true, message: '请输入弹窗标题' }]}>
@@ -26,7 +26,7 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
       <Form.Item name="apiDocsQrImageUrl" hidden>
         <Input />
       </Form.Item>
-      <Form.Item label="二维码图片" extra="用于接口文档悬浮按钮展开后的二维码弹窗。">
+      <Form.Item label="二维码图片" extra="用于悬浮窗按钮展开后的二维码弹窗。">
         <Space align="start" size={16} wrap>
           <Card size="small" style={{ width: 220 }} bodyStyle={{ padding: 12 }}>
             <div style={{ width: '100%', height: 180, display: 'grid', placeItems: 'center' }}>
