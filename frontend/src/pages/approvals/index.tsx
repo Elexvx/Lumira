@@ -17,6 +17,7 @@ import {
   message,
 } from 'antd';
 import { useMemo, useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useRefetchAll } from '@/hooks/useRefetchAll';
 import { approvalService, type ApprovalInstancePayload, type ApprovalTemplatePayload } from '@/services/approval';
 import type { ApprovalInstanceRecord, ApprovalTaskRecord, ApprovalTemplateRecord } from '@/types/api';
@@ -244,7 +245,7 @@ const ApprovalsPage = () => {
         />
       </ProCard>
 
-      <Drawer title={activeTemplate ? '编辑审批模板' : '新建审批模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} width={720} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
+      <Drawer title={activeTemplate ? '编辑审批模板' : '新建审批模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
         <Form form={templateForm} layout="vertical">
           <Form.Item name="templateName" label="模板名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="businessType" label="业务类型" rules={[{ required: true }]}><Input placeholder="例如 PROJECT_CHANGE" /></Form.Item>
@@ -267,7 +268,7 @@ const ApprovalsPage = () => {
         </Form>
       </Drawer>
 
-      <Drawer title="新增审批" open={submitOpen} onClose={() => setSubmitOpen(false)} width={680} destroyOnHidden>
+      <Drawer title="新增审批" open={submitOpen} onClose={() => setSubmitOpen(false)} width={STANDARD_DRAWER_WIDTH} destroyOnHidden>
         <StepsForm
           formProps={{ layout: 'vertical' }}
           stepsProps={{ responsive: false }}
@@ -328,7 +329,7 @@ const ApprovalsPage = () => {
         </StepsForm>
       </Drawer>
 
-      <Drawer title="审批详情" open={detailOpen} onClose={() => setDetailOpen(false)} width={720} destroyOnHidden>
+      <Drawer title="审批详情" open={detailOpen} onClose={() => setDetailOpen(false)} width={STANDARD_DRAWER_WIDTH} destroyOnHidden>
         {detail.isLoading ? (
           <ProCard loading />
         ) : detail.data ? (

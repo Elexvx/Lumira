@@ -16,5 +16,5 @@ export const DETAIL_SECTION_GAP = 16;
 
 export const DETAIL_SECTION_TITLE_LEVEL = 5;
 
-export const STANDARD_DRAWER_WIDTH = 'min(920px, 100vw)';
-export const MESSAGE_CENTER_DRAWER_WIDTH = 'min(720px, 100vw)';
+export const STANDARD_DRAWER_WIDTH = 'min(560px, 100vw)';
+export const MESSAGE_CENTER_DRAWER_WIDTH = STANDARD_DRAWER_WIDTH;

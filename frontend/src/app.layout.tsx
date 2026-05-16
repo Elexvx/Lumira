@@ -36,7 +36,7 @@ const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
-const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/tasks', '/approvals', '/evaluations'];
+const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/tasks', '/approvals', '/evaluations', '/site'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 const resolveSiderMenuMode = (pathname: string) => (isSettingsShellPath(pathname) ? 'settings' : 'main');
@@ -54,6 +54,22 @@ const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string,
 
   return map;
 };
+
+const collectMenuPaths = (items: RuntimeMenuDataItem[], paths = new Set<string>()) => {
+  items.forEach((item) => {
+    if (item.path) {
+      paths.add(item.path);
+    }
+    if (item.children?.length) {
+      collectMenuPaths(item.children, paths);
+    }
+  });
+
+  return paths;
+};
+
+const hasMenuPathOrChild = (paths: Set<string>, targetPath: string) =>
+  paths.has(targetPath) || [...paths].some((path) => path.startsWith(`${targetPath}/`));
 
 const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[] =>
   items.map((item) => {
@@ -78,25 +94,39 @@ const buildSettingsMenuData = (initialState?: AppInitialState) => {
 const buildMainMenuData = (
   initialState: AppInitialState | undefined,
   menuData: RuntimeMenuDataItem[],
+  fallbackSourceMenuData: RuntimeMenuDataItem[] = menuData,
 ) => {
   const access = buildAccess({ currentUser: initialState?.currentUser });
   const visibleMenus = [...menuData] as RuntimeMenuDataItem[];
-  const existingPaths = new Set(visibleMenus.map((item) => item.path).filter(Boolean));
+  const existingPaths = collectMenuPaths(visibleMenus);
+  const fallbackByPath = flattenLocalMenuMap(fallbackSourceMenuData);
   const accessMap = access as Record<string, unknown>;
 
   const fallbackMenus = STABLE_MAIN_ROUTE_PATHS
-    .filter((path) => !existingPaths.has(path))
-    .map((path) => routeMetaMap.get(path))
-    .filter((meta) => meta && (!meta.access || Boolean(accessMap[meta.access]))) as NonNullable<ReturnType<typeof routeMetaMap.get>>[];
+    .filter((path) => !hasMenuPathOrChild(existingPaths, path))
+    .map((path) => {
+      const localMenu = fallbackByPath.get(path);
+      if (localMenu) {
+        return localMenu;
+      }
+
+      const meta = routeMetaMap.get(path);
+      if (!meta || (meta.access && !accessMap[meta.access])) {
+        return null;
+      }
+
+      return {
+        path: meta.path,
+        name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
+        locale: false as const,
+        icon: resolveNavigationIcon(meta.icon),
+        hideInMenu: meta.hideInMenu,
+      };
+    })
+    .filter(Boolean) as RuntimeMenuDataItem[];
 
   return [
-    ...fallbackMenus.map((meta) => ({
-      path: meta.path,
-      name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
-      locale: false as const,
-      icon: resolveNavigationIcon(meta.icon),
-      hideInMenu: meta.hideInMenu,
-    })),
+    ...fallbackMenus,
     ...visibleMenus,
   ].sort((a, b) => {
     const leftIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(a.path || '');
@@ -326,8 +356,9 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       }
 
       const backendMenus = initialState?.menuTree || [];
+      const translatedLocalMenus = translateVisibleLocalMenuData(initialState, menuData as RuntimeMenuDataItem[]);
       if (!backendMenus.length) {
-        return buildMainMenuData(initialState, translateVisibleLocalMenuData(initialState, menuData as RuntimeMenuDataItem[]));
+        return buildMainMenuData(initialState, translatedLocalMenus, translatedLocalMenus);
       }
 
       const localByPath = flattenLocalMenuMap(menuData as RuntimeMenuDataItem[]);
@@ -335,7 +366,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         .map((node) => composeMenuItem(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
 
-      return removeRedundantParentPathItems(buildMainMenuData(initialState, composedMenus));
+      return removeRedundantParentPathItems(buildMainMenuData(initialState, composedMenus, translatedLocalMenus));
     },
     onPageChange: () => {
       const { location } = history;

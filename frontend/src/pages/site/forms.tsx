@@ -1,6 +1,7 @@
 import { Button, Drawer, Form, Input, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultFormSchemaJson, siteService, type SiteForm } from '@/services/site';
 import './site.css';
@@ -78,7 +79,7 @@ const FormsPage = () => {
           ]}
         />
       </div>
-      <Drawer title={editing?.id ? '编辑表单' : '新增表单'} open={Boolean(editing)} width={720} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
+      <Drawer title={editing?.id ? '编辑表单' : '新增表单'} open={Boolean(editing)} width={STANDARD_DRAWER_WIDTH} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="表单名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="code" label="表单编码" rules={[{ required: true }]}><Input /></Form.Item>

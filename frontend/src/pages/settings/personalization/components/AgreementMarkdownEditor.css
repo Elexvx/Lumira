@@ -41,6 +41,7 @@
 
 .agreement-markdown-editor__body {
   min-height: 360px;
+  background: #fff;
 }
 
 .agreement-markdown-editor__input {
@@ -53,8 +54,19 @@
   resize: vertical;
 }
 
+.agreement-markdown-editor__input:hover,
+.agreement-markdown-editor__input:focus,
+.agreement-markdown-editor__input:focus-within {
+  background: #fff !important;
+}
+
 .agreement-markdown-editor__input textarea {
-  background: #fff;
+  background: #fff !important;
+}
+
+.agreement-markdown-editor__input textarea:hover,
+.agreement-markdown-editor__input textarea:focus {
+  background: #fff !important;
 }
 
 .agreement-markdown-editor__preview {

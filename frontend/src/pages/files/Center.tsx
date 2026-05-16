@@ -62,7 +62,6 @@ import {
 const STORAGE_PROVIDER_OPTIONS: Array<{ label: string; value: FileStorageProvider }> = [
   { label: '本地存储', value: 'LOCAL' },
   { label: '阿里云 OSS', value: 'ALIYUN_OSS' },
-  { label: '亚马逊 S3', value: 'AWS_S3' },
   { label: '腾讯云 COS', value: 'TENCENT_COS' },
 ];
 
@@ -75,7 +74,6 @@ const RENAME_STRATEGY_OPTIONS: Array<{ label: string; value: FileRenameStrategy 
 const providerLabelMap: Record<FileStorageProvider, string> = {
   LOCAL: '本地存储',
   ALIYUN_OSS: '阿里云 OSS',
-  AWS_S3: '亚马逊 S3',
   TENCENT_COS: '腾讯云 COS',
 };
 

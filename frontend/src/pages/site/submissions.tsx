@@ -1,5 +1,6 @@
 import { Button, Drawer, Form, Input, Select, Space, Table, Tag, message } from 'antd';
 import { useEffect, useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteSubmission } from '@/services/site';
 import './site.css';
@@ -64,7 +65,7 @@ const SubmissionsPage = () => {
           ]}
         />
       </div>
-      <Drawer title="提交详情" open={Boolean(detail)} width={720} onClose={() => setDetail(null)} extra={canReview ? <Button type="primary" onClick={save}>保存审核</Button> : null}>
+      <Drawer title="提交详情" open={Boolean(detail)} width={STANDARD_DRAWER_WIDTH} onClose={() => setDetail(null)} extra={canReview ? <Button type="primary" onClick={save}>保存审核</Button> : null}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Input.TextArea className="site-admin-json" rows={12} value={detail?.dataJson} readOnly />
           <Form form={form} layout="vertical" disabled={!canReview}>

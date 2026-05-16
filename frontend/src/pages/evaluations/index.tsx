@@ -2,6 +2,7 @@ import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Table, Tabs, message } from 'antd';
 import { useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useRefetchAll } from '@/hooks/useRefetchAll';
 import { evaluationService, type EvaluationTemplatePayload } from '@/services/evaluation';
 import type { EvaluationInstanceRecord, EvaluationScoreTaskRecord, EvaluationTemplateRecord } from '@/types/api';
@@ -139,7 +140,7 @@ const EvaluationsPage = () => {
         />
       </ProCard>
 
-      <Drawer title={activeTemplate ? '编辑评分模板' : '新建评分模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} width={760} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
+      <Drawer title={activeTemplate ? '编辑评分模板' : '新建评分模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
         <Form form={templateForm} layout="vertical">
           <Form.Item name="templateName" label="模板名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="objectType" label="对象类型" rules={[{ required: true }]}><Select options={[{ label: '项目打分', value: 'PROJECT_SCORE' }, { label: '员工评级', value: 'EMPLOYEE_RATING' }]} /></Form.Item>
@@ -178,7 +179,7 @@ const EvaluationsPage = () => {
         </Form>
       </Drawer>
 
-      <Drawer title="发起评审" open={instanceOpen} onClose={() => setInstanceOpen(false)} width={520} extra={<Button type="primary" onClick={createInstance}>提交</Button>}>
+      <Drawer title="发起评审" open={instanceOpen} onClose={() => setInstanceOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={createInstance}>提交</Button>}>
         <Form form={instanceForm} layout="vertical">
           <Form.Item name="templateId" label="评分模板" rules={[{ required: true }]}><Select options={(templates.data?.records || []).map((item) => ({ label: `${item.templateName} (${item.objectType})`, value: item.id }))} /></Form.Item>
           <Form.Item name="objectId" label="对象ID"><InputNumber style={{ width: '100%' }} /></Form.Item>

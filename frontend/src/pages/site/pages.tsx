@@ -1,6 +1,7 @@
 import { Button, Drawer, Form, Input, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultBlocksJson, siteService, type SitePage } from '@/services/site';
 import './site.css';
@@ -88,7 +89,7 @@ const PageManagement = () => {
           ]}
         />
       </div>
-      <Drawer title={editing?.id ? '编辑页面' : '新增页面'} open={Boolean(editing)} width={760} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
+      <Drawer title={editing?.id ? '编辑页面' : '新增页面'} open={Boolean(editing)} width={STANDARD_DRAWER_WIDTH} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
         <Form form={form} layout="vertical">
           <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="slug" label="访问路径" rules={[{ required: true }]}><Input placeholder="/about" /></Form.Item>

@@ -774,8 +774,8 @@ public class FileManagementAppService {
 
     private String normalizeProvider(String provider) {
         String normalized = defaultIfBlank(provider, "LOCAL").toUpperCase(Locale.ROOT);
-        if (!Set.of("LOCAL", "ALIYUN_OSS", "AWS_S3", "TENCENT_COS").contains(normalized)) {
-            return "LOCAL";
+        if (!Set.of("LOCAL", "ALIYUN_OSS", "TENCENT_COS").contains(normalized)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "不支持的存储类型");
         }
         return normalized;
     }
@@ -799,7 +799,6 @@ public class FileManagementAppService {
     private String providerLabel(String provider) {
         return switch (provider) {
             case "ALIYUN_OSS" -> "阿里云 OSS";
-            case "AWS_S3" -> "亚马逊 S3";
             case "TENCENT_COS" -> "腾讯云 COS";
             default -> "Local storage";
         };
