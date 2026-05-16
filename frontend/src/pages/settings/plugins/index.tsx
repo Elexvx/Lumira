@@ -1,6 +1,6 @@
 import { CloudUploadOutlined, SyncOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Button, Card, Descriptions, Input, Modal, Radio, Space, Typography, Upload, message } from 'antd';
+import { Button, Card, Descriptions, Input, Modal, Radio, Space, Typography, Upload, message, theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { ManagementDrawer, ManagementPage, ManagementPageBody, ManagementTable } from '@/features/management';
@@ -16,6 +16,7 @@ import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } 
 const PLATFORM_TENANT_ID = 1001;
 
 const PluginsPage = () => {
+  const { token } = theme.useToken();
   const { initialState, setInitialState } = useInitialStateModel();
   const { responsive } = usePagePermissionActions();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
@@ -453,8 +454,8 @@ const PluginsPage = () => {
                   marginInlineStart: 0,
                   padding: '16px 20px',
                   borderRadius: 10,
-                  border: `1px solid ${removePluginData ? '#f0f0f0' : '#1677ff'}`,
-                  background: removePluginData ? '#fff' : '#f5faff',
+                  border: `1px solid ${removePluginData ? token.colorBorderSecondary : token.colorPrimary}`,
+                  background: removePluginData ? token.colorBgContainer : token.colorPrimaryBg,
                 }}
               >
                 {formatMessage({ id: 'page.plugins.onlyUninstall', defaultMessage: 'Only uninstall the plugin, do not delete database data' })}
@@ -468,8 +469,8 @@ const PluginsPage = () => {
                   marginInlineStart: 0,
                   padding: '16px 20px',
                   borderRadius: 10,
-                  border: `1px solid ${removePluginData ? '#ff4d4f' : '#f0f0f0'}`,
-                  background: removePluginData ? '#fff2f0' : '#fff',
+                  border: `1px solid ${removePluginData ? token.colorError : token.colorBorderSecondary}`,
+                  background: removePluginData ? token.colorErrorBg : token.colorBgContainer,
                 }}
               >
                 {formatMessage({ id: 'page.plugins.uninstallAndDeleteData', defaultMessage: 'Uninstall and delete database data' })}

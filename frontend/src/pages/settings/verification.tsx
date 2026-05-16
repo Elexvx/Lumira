@@ -3,7 +3,7 @@ import type { ProColumns } from '@ant-design/pro-components';
 import { history, useLocation } from '@umijs/max';
 import { useQuery } from '@tanstack/react-query';
 import type { MenuProps } from 'antd';
-import { Button, Card, Divider, Dropdown, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, Tag, Typography, message } from 'antd';
+import { Button, Card, Divider, Dropdown, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, Tag, Typography, message, theme } from 'antd';
 import type { DragEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
@@ -162,6 +162,7 @@ const SMTP_PASSWORD_MASK = '********';
 const WECHAT_APP_SECRET_MASK = '********';
 
 const SystemVerificationPage = () => {
+  const { token } = theme.useToken();
   const actionPermission = useActionPermission();
   const responsive = useResponsive();
   const canViewVerification =
@@ -806,7 +807,7 @@ const SystemVerificationPage = () => {
         search: false,
         render: (_, record) => (
           <Space size={16}>
-            <HolderOutlined style={{ color: 'rgba(0, 0, 0, 0.65)' }} />
+            <HolderOutlined style={{ color: token.colorTextSecondary }} />
             <Typography.Text>{record.order}</Typography.Text>
           </Space>
         ),

@@ -13,22 +13,40 @@
 
 .site-admin-title {
   margin: 0;
+  color: var(--saas-text-heading);
   font-size: 20px;
   font-weight: 600;
 }
 
 .site-admin-desc {
   margin: 6px 0 0;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--saas-text-secondary);
 }
 
 .site-admin-card {
-  background: #fff;
-  border: 1px solid rgba(5, 5, 5, 0.06);
+  color: var(--saas-text-primary);
+  background: var(--saas-surface-bg);
+  border: 1px solid var(--saas-border-color);
   border-radius: 8px;
   padding: 16px;
 }
 
 .site-admin-json {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.site-admin-card .ant-form-item-label > label {
+  color: var(--saas-text-primary);
+}
+
+.site-admin-card .ant-form-item-extra,
+.site-admin-card .ant-form-item-explain {
+  color: var(--saas-text-secondary);
+}
+
+html[data-theme='dark'] .site-admin-card .ant-input,
+html[data-theme='dark'] .site-admin-card .ant-input-number,
+html[data-theme='dark'] .site-admin-card .ant-select-selector,
+html[data-theme='dark'] .site-admin-card .ant-input-affix-wrapper {
+  background-color: var(--saas-input-bg);
 }

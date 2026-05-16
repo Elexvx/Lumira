@@ -29,6 +29,7 @@ import {
   Typography,
   Upload,
   message,
+  theme,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
@@ -96,6 +97,7 @@ const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpaceP
 });
 
 const SystemFilesPage = () => {
+  const { token } = theme.useToken();
   const location = useLocation();
   const actionRef = useRef<ActionType>(null);
   const storageActionRef = useRef<ActionType>(null);
@@ -900,7 +902,7 @@ const SystemFilesPage = () => {
 
             <Card title={formatMessage({ id: 'system.files.preview.onlineTitle', defaultMessage: 'Online preview' })} bodyStyle={{ padding: 0 }} style={{ borderRadius: 8, overflow: 'hidden' }}>
               <Spin spinning={previewLoading || previewTextLoading || pdfPreviewLoading} tip={pdfPreviewLoading ? formatMessage({ id: 'system.files.preview.loadingPdf', defaultMessage: 'Loading PDF preview' }) : previewTextLoading ? formatMessage({ id: 'system.files.preview.loadingText', defaultMessage: 'Loading text content' }) : formatMessage({ id: 'system.files.preview.loadingDetails', defaultMessage: 'Loading file details' })}>
-                <div style={{ minHeight: responsive.isMobile ? 240 : 520, padding: 16, background: 'rgba(0,0,0,0.02)' }}>
+                <div style={{ minHeight: responsive.isMobile ? 240 : 520, padding: 16, background: token.colorFillQuaternary }}>
                   {previewMode === 'IMAGE' ? (
                     <Image
                       src={previewUrl}
@@ -914,7 +916,7 @@ const SystemFilesPage = () => {
                       <iframe
                         title={previewRecord.originalFileName}
                         src={`${pdfPreviewUrl}#view=FitH`}
-                        style={{ width: '100%', height: responsive.isMobile ? 360 : 560, border: 0, background: '#fff' }}
+                        style={{ width: '100%', height: responsive.isMobile ? 360 : 560, border: 0, background: token.colorBgContainer }}
                       />
                     ) : null
                   ) : null}
