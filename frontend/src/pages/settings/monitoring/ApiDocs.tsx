@@ -1,5 +1,5 @@
 import { ReloadOutlined } from '@ant-design/icons';
-import { Button, Card, Result, Space } from 'antd';
+import { Button, Card, Result, Space, theme } from 'antd';
 import { tokenManager } from '@/auth/token';
 import { ManagementPage } from '@/features/management';
 
@@ -55,6 +55,7 @@ const buildSwaggerHtml = () => {
 };
 
 export default () => {
+  const { token } = theme.useToken();
   const isLoggedIn = tokenManager.hasToken();
 
   if (!isLoggedIn) {
@@ -81,7 +82,7 @@ export default () => {
       }
     >
       <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>
-        <div style={{ minHeight: 'calc(100vh - 220px)', background: '#fff' }}>
+        <div style={{ minHeight: 'calc(100vh - 220px)', background: token.colorBgContainer }}>
           <iframe
             title="接口文档"
             srcDoc={buildSwaggerHtml()}
