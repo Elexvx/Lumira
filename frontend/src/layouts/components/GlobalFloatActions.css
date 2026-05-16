@@ -7,9 +7,9 @@
 }
 
 .saas-global-float-actions__qr-popover .ant-popover-inner {
-  border-radius: 18px;
-  padding: 22px 24px;
-  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.16);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
 }
 
 .saas-global-float-actions__qr-popover .ant-popover-arrow {
@@ -17,25 +17,26 @@
 }
 
 .saas-global-float-actions__qr-card {
-  width: 280px;
+  width: min(204px, calc(100vw - 96px));
   text-align: center;
 }
 
 .saas-global-float-actions__qr-title {
   display: block;
-  margin-bottom: 14px;
-  font-size: 16px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .saas-global-float-actions__qr-image-wrap {
-  min-height: 240px;
+  min-height: 172px;
   display: grid;
   place-items: center;
 }
 
 .saas-global-float-actions__qr-image {
-  width: 240px;
-  height: 240px;
+  width: 172px;
+  height: 172px;
   object-fit: contain;
   display: block;
 }
@@ -51,15 +52,15 @@ html[data-theme='dark'] .saas-global-float-actions .ant-float-btn {
   }
 
   .saas-global-float-actions__qr-card {
-    width: 240px;
+    width: min(184px, calc(100vw - 72px));
   }
 
   .saas-global-float-actions__qr-image-wrap {
-    min-height: 210px;
+    min-height: 156px;
   }
 
   .saas-global-float-actions__qr-image {
-    width: 210px;
-    height: 210px;
+    width: 156px;
+    height: 156px;
   }
 }
