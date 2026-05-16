@@ -90,7 +90,7 @@ export default {
   'nav.system.monitoring.audit': '审计中心',
   'nav.files.root': '文件中心',
   'nav.files.my': '我的文件',
-  'nav.files.all': '全站文件管理',
+  'nav.files.all': '文件管理器',
   'nav.localization.root': '本地化中心',
   'page.localization.languageSwitch': '语言切换',
   'page.localization.currentStatus': '当前状态',
@@ -467,5 +467,5 @@ export default {
   'system.files.field.uploadTime': '上传时间',
   'system.files.field.actions': '操作',
   'system.files.title.my': '我的文件',
-  'system.files.title.all': '全站文件管理',
+  'system.files.title.all': '文件管理器',
 };

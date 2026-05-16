@@ -78,7 +78,7 @@ export default {
   'nav.system.monitoring.audit': 'Audit Center',
   'nav.files.root': 'File Center',
   'nav.files.my': 'My Files',
-  'nav.files.all': 'Global File Management',
+  'nav.files.all': 'File Manager',
   'nav.localization.root': 'Localization Center',
   'page.localization.languageSwitch': 'Language switch',
   'page.localization.currentStatus': 'Current status',

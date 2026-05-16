@@ -6,6 +6,40 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
+.saas-global-float-actions__qr-popover .ant-popover-inner {
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.16);
+}
+
+.saas-global-float-actions__qr-popover .ant-popover-arrow {
+  display: none;
+}
+
+.saas-global-float-actions__qr-card {
+  width: 280px;
+  text-align: center;
+}
+
+.saas-global-float-actions__qr-title {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+
+.saas-global-float-actions__qr-image-wrap {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+.saas-global-float-actions__qr-image {
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+  display: block;
+}
+
 html[data-theme='dark'] .saas-global-float-actions .ant-float-btn {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
 }
@@ -14,5 +48,18 @@ html[data-theme='dark'] .saas-global-float-actions .ant-float-btn {
   .saas-global-float-actions .ant-float-btn {
     width: 40px;
     height: 40px;
+  }
+
+  .saas-global-float-actions__qr-card {
+    width: 240px;
+  }
+
+  .saas-global-float-actions__qr-image-wrap {
+    min-height: 210px;
+  }
+
+  .saas-global-float-actions__qr-image {
+    width: 210px;
+    height: 210px;
   }
 }

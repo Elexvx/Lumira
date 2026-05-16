@@ -266,4 +266,7 @@ public final class SystemVO {
     public static class WatermarkSettingsVO extends com.legendary.invention.saas.modules.system.watermark.vo.WatermarkSettingsVO {
     }
 
+    public static class FloatingWindowSettingsVO extends com.legendary.invention.saas.modules.system.floating.vo.FloatingWindowSettingsVO {
+    }
+
 }

@@ -1,9 +1,11 @@
 import {
   CopyOutlined,
   DeleteOutlined,
+  DownOutlined,
   DownloadOutlined,
   FileOutlined,
   InboxOutlined,
+  PlusOutlined,
   ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
@@ -11,11 +13,15 @@ import { type ActionType, type ProColumns } from '@ant-design/pro-components';
 import {
   Button,
   Card,
+  Checkbox,
   Descriptions,
+  Dropdown,
   Empty,
   Form,
   Image,
   Input,
+  InputNumber,
+  Radio,
   Select,
   Space,
   Spin,
@@ -24,8 +30,9 @@ import {
   Upload,
   message,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
-import { formatMessage, useLocation } from '@umijs/max';
+import { formatMessage, history, useLocation } from '@umijs/max';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
@@ -33,7 +40,7 @@ import { adaptPageResult } from '@/features/table/proTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { fileService } from '@/services/file';
-import type { FileObjectRecord } from '@/types/api';
+import type { FileObjectRecord, FileRenameStrategy, FileStorageProvider, FileStorageSpacePayload, FileStorageSpaceRecord } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
 import {
@@ -52,16 +59,63 @@ import {
   resolveSortParams,
 } from '@/pages/files/fileCenter.utils';
 
+const STORAGE_PROVIDER_OPTIONS: Array<{ label: string; value: FileStorageProvider }> = [
+  { label: '本地存储', value: 'LOCAL' },
+  { label: '阿里云 OSS', value: 'ALIYUN_OSS' },
+  { label: '亚马逊 S3', value: 'AWS_S3' },
+  { label: '腾讯云 COS', value: 'TENCENT_COS' },
+];
+
+const RENAME_STRATEGY_OPTIONS: Array<{ label: string; value: FileRenameStrategy }> = [
+  { label: '追加随机 ID', value: 'APPEND_RANDOM_ID' },
+  { label: '随机字符串', value: 'RANDOM_STRING' },
+  { label: '保持原名（同名文件将被覆盖）', value: 'KEEP_ORIGINAL' },
+];
+
+const providerLabelMap: Record<FileStorageProvider, string> = {
+  LOCAL: '本地存储',
+  ALIYUN_OSS: '阿里云 OSS',
+  AWS_S3: '亚马逊 S3',
+  TENCENT_COS: '腾讯云 COS',
+};
+
+const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpacePayload => ({
+  title: providerLabelMap[provider],
+  provider,
+  storageKey: provider === 'LOCAL' ? 'local' : undefined,
+  rootPath: provider === 'LOCAL' ? 'storage/uploads/' : '',
+  bucketName: '',
+  endpoint: '',
+  region: '',
+  accessKeyId: '',
+  accessKeySecret: '',
+  renameStrategy: 'APPEND_RANDOM_ID',
+  maxFileSizeMb: 20,
+  allowedMimeTypes: '*',
+  defaultStorage: false,
+  retainFileOnRecordDelete: false,
+  status: 'ENABLED',
+});
+
 const SystemFilesPage = () => {
   const location = useLocation();
   const actionRef = useRef<ActionType>(null);
+  const storageActionRef = useRef<ActionType>(null);
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const isTenantScope = location.pathname === '/settings/files/all' || location.pathname === '/files/all' || location.pathname === '/system/files/all';
+  const activeBucket = isTenantScope ? new URLSearchParams(location.search).get('bucket') || '' : '';
   const fileScope = isTenantScope ? 'tenant' : 'mine';
   const pageTitle = isTenantScope
-    ? formatMessage({ id: 'system.files.title.all', defaultMessage: 'Global File Management' })
+    ? activeBucket
+      ? `存储空间文件 / ${activeBucket}`
+      : '文件管理器'
     : formatMessage({ id: 'system.files.title.my', defaultMessage: 'My Files' });
+  const [storageDrawerOpen, setStorageDrawerOpen] = useState(false);
+  const [storageDrawerMode, setStorageDrawerMode] = useState<'create' | 'edit'>('create');
+  const [editingStorageSpace, setEditingStorageSpace] = useState<FileStorageSpaceRecord | null>(null);
+  const [storageSaving, setStorageSaving] = useState(false);
+  const [storageForm] = Form.useForm<FileStorageSpacePayload>();
   const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadForm] = Form.useForm<{
@@ -85,6 +139,72 @@ const SystemFilesPage = () => {
     [],
   );
   const scopeParams = useMemo(() => ({ scope: fileScope as 'mine' | 'tenant' }), [fileScope]);
+
+  const openStorageDrawer = (provider: FileStorageProvider, record?: FileStorageSpaceRecord) => {
+    setStorageDrawerMode(record ? 'edit' : 'create');
+    setEditingStorageSpace(record || null);
+    storageForm.setFieldsValue(record ? {
+      title: record.title,
+      storageKey: record.storageKey,
+      provider: record.provider,
+      rootPath: record.rootPath || '',
+      bucketName: record.bucketName || '',
+      endpoint: record.endpoint || '',
+      region: record.region || '',
+      accessKeyId: record.accessKeyId || '',
+      accessKeySecret: '',
+      renameStrategy: record.renameStrategy,
+      maxFileSizeMb: record.maxFileSizeMb,
+      allowedMimeTypes: record.allowedMimeTypes || '*',
+      defaultStorage: Boolean(record.defaultStorage),
+      retainFileOnRecordDelete: Boolean(record.retainFileOnRecordDelete),
+      status: record.status,
+    } : defaultStoragePayload(provider));
+    setStorageDrawerOpen(true);
+  };
+
+  const closeStorageDrawer = () => {
+    setStorageDrawerOpen(false);
+    setEditingStorageSpace(null);
+    setStorageSaving(false);
+    storageForm.resetFields();
+  };
+
+  const handleSaveStorageSpace = async () => {
+    const values = await storageForm.validateFields();
+    setStorageSaving(true);
+    try {
+      if (storageDrawerMode === 'edit' && editingStorageSpace) {
+        await fileService.updateStorageSpace(editingStorageSpace.id, values, requestOptions);
+        message.success('存储空间已更新');
+      } else {
+        await fileService.createStorageSpace(values, requestOptions);
+        message.success('存储空间已创建');
+      }
+      closeStorageDrawer();
+      storageActionRef.current?.reload();
+    } finally {
+      setStorageSaving(false);
+    }
+  };
+
+  const handleDeleteStorageSpace = (record: FileStorageSpaceRecord) => {
+    confirmAction({
+      title: '删除存储空间',
+      content: `确认删除存储空间「${record.title}」吗？仅空存储空间可以删除。`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await fileService.removeStorageSpace(record.id, requestOptions);
+        message.success('存储空间已删除');
+        storageActionRef.current?.reload();
+      },
+    });
+  };
+
+  const enterStorageSpace = (record: FileStorageSpaceRecord) => {
+    history.push(`/settings/files/all?bucket=${encodeURIComponent(record.storageKey)}`);
+  };
 
   const closeUploadDrawer = () => {
     setUploadDrawerOpen(false);
@@ -294,6 +414,78 @@ const SystemFilesPage = () => {
     });
   };
 
+  const storageColumns = useMemo<ProColumns<FileStorageSpaceRecord>[]>(
+    () => [
+      {
+        title: '标题',
+        dataIndex: 'title',
+        width: 260,
+        render: (_, record) => (
+          <Typography.Link onClick={() => enterStorageSpace(record)}>
+            {record.title}
+          </Typography.Link>
+        ),
+      },
+      {
+        title: '存储空间标识',
+        dataIndex: 'storageKey',
+        width: 220,
+      },
+      {
+        title: '类型',
+        dataIndex: 'provider',
+        width: 160,
+        render: (_, record) => <Tag>{providerLabelMap[record.provider] || record.provider}</Tag>,
+      },
+      {
+        title: '默认存储空间',
+        dataIndex: 'defaultStorage',
+        width: 160,
+        render: (_, record) => (record.defaultStorage ? <span style={{ color: '#52c41a', fontSize: 20 }}>✓</span> : '-'),
+      },
+      {
+        title: '文件数',
+        dataIndex: 'fileCount',
+        width: 120,
+        render: (_, record) => record.fileCount ?? 0,
+      },
+      {
+        title: '容量',
+        dataIndex: 'totalSizeLabel',
+        width: 120,
+        render: (_, record) => record.totalSizeLabel || formatFileSize(record.totalSizeBytes),
+      },
+      {
+        title: '操作',
+        valueType: 'option',
+        width: 180,
+        render: (_, record) => (
+          <TableActionBar
+            isMobile={responsive.isMobile}
+            items={[
+              {
+                key: 'edit',
+                label: '编辑',
+                onClick: () => openStorageDrawer(record.provider, record),
+              },
+              ...(actionPermission.can('system:file:manage:delete') && !record.defaultStorage
+                ? [
+                    {
+                      key: 'delete',
+                      label: '删除',
+                      danger: true,
+                      onClick: () => handleDeleteStorageSpace(record),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        ),
+      },
+    ],
+    [actionPermission, responsive.isMobile],
+  );
+
   const columns = useMemo<ProColumns<FileObjectRecord>[]>(
     () => [
       {
@@ -437,6 +629,33 @@ const SystemFilesPage = () => {
     },
   };
 
+  const addStorageItems: MenuProps['items'] = STORAGE_PROVIDER_OPTIONS.map((item) => ({
+    key: item.value,
+    label: item.label,
+    onClick: () => openStorageDrawer(item.value),
+  }));
+
+  const storageToolbar = actionPermission.buildToolbarActions([
+    {
+      permission: 'system:file:manage:delete',
+      value: (
+        <Button key="delete" icon={<DeleteOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled>
+          删除
+        </Button>
+      ),
+    },
+    {
+      permission: 'system:file:manage',
+      value: (
+        <Dropdown key="add" menu={{ items: addStorageItems }} trigger={['click']}>
+          <Button type="primary" icon={<PlusOutlined />} size={responsive.isMobile ? 'small' : 'middle'}>
+            添加 <DownOutlined />
+          </Button>
+        </Dropdown>
+      ),
+    },
+  ]);
+
   const actionToolbar = actionPermission.buildToolbarActions([
     {
       permission: 'system:file:upload',
@@ -454,19 +673,50 @@ const SystemFilesPage = () => {
         </Button>
       ),
     },
+    {
+      hidden: !activeBucket,
+      value: (
+        <Button key="back" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => history.push('/settings/files/all')}>
+          返回存储空间
+        </Button>
+      ),
+    },
   ]);
 
   const previewUrl = previewRecord ? buildPreviewUrl(previewRecord) : '';
   const previewAbsoluteUrl = previewRecord ? buildPreviewAbsoluteUrl(previewRecord) : '';
   const previewMode = previewRecord ? resolvePreviewMode(previewRecord) : 'UNSUPPORTED';
   const previewMeta = previewRecord ? PREVIEW_MODE_LABELS[previewMode] : PREVIEW_MODE_LABELS.UNSUPPORTED;
+  const storageProvider = Form.useWatch('provider', storageForm) as FileStorageProvider | undefined;
+  const showRemoteStorageFields = storageProvider && storageProvider !== 'LOCAL';
 
   return (
     <ManagementPage
       title={pageTitle}
       ghost
     >
-      <ManagementTable<FileObjectRecord>
+      {isTenantScope && !activeBucket ? (
+        <ManagementTable<FileStorageSpaceRecord>
+          actionRef={storageActionRef}
+          rowKey="id"
+          columns={storageColumns}
+          isMobile={responsive.isMobile}
+          search={false}
+          request={async (params) => {
+            const { current, pageSize } = params as Record<string, unknown>;
+            const result = await fileService.storageSpaces(
+              {
+                pageNo: Number(current) || 1,
+                pageSize: Number(pageSize) || 50,
+              },
+              requestOptions,
+            );
+            return adaptPageResult(result);
+          }}
+          toolBarRender={() => storageToolbar}
+        />
+      ) : (
+        <ManagementTable<FileObjectRecord>
           actionRef={actionRef}
           rowKey="id"
           columns={columns}
@@ -480,6 +730,7 @@ const SystemFilesPage = () => {
                 keyword: typeof keyword === 'string' ? keyword : undefined,
                 category: typeof category === 'string' ? category : undefined,
                 previewMode: typeof previewType === 'string' ? previewType : undefined,
+                bucket: activeBucket || undefined,
                 scope: fileScope,
                 pageNo: Number(current) || 1,
                 pageSize: Number(pageSize) || 20,
@@ -490,7 +741,85 @@ const SystemFilesPage = () => {
             return adaptPageResult(result);
           }}
           toolBarRender={() => actionToolbar}
-      />
+        />
+      )}
+
+      <ManagementDrawer
+        title={storageDrawerMode === 'edit' ? `编辑 - ${editingStorageSpace?.title || '存储空间'}` : '新增存储空间'}
+        open={storageDrawerOpen}
+        onClose={closeStorageDrawer}
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: closeStorageDrawer },
+          { key: 'save', label: '保存', type: 'primary', loading: storageSaving, onClick: () => void handleSaveStorageSpace() },
+        ]}
+      >
+        <Form form={storageForm} layout="vertical" initialValues={defaultStoragePayload('LOCAL')}>
+          <Form.Item name="provider" label="存储类型" rules={[{ required: true, message: '请选择存储类型' }]}>
+            <Select options={STORAGE_PROVIDER_OPTIONS} disabled={storageDrawerMode === 'edit'} />
+          </Form.Item>
+          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+            <Input placeholder="Local storage" />
+          </Form.Item>
+          <Form.Item
+            name="storageKey"
+            label="存储空间标识"
+            rules={[
+              { required: true, message: '请输入存储空间标识' },
+              { pattern: /^[a-z][a-z0-9_]*$/, message: '必须以英文字母开头，仅支持英文、数字和下划线' },
+            ]}
+            extra="随机生成，可修改。支持英文、数字和下划线，必须以英文字母开头。"
+          >
+            <Input placeholder="local" disabled={storageDrawerMode === 'edit'} />
+          </Form.Item>
+          {storageProvider === 'LOCAL' ? (
+            <Form.Item name="rootPath" label="路径">
+              <Input addonAfter="/" placeholder="storage/uploads" />
+            </Form.Item>
+          ) : null}
+          {showRemoteStorageFields ? (
+            <>
+              <Form.Item name="bucketName" label="Bucket" rules={[{ required: true, message: '请输入 Bucket' }]}>
+                <Input placeholder="对象存储 Bucket 名称" />
+              </Form.Item>
+              <Form.Item name="endpoint" label="Endpoint" rules={[{ required: true, message: '请输入 Endpoint' }]}>
+                <Input placeholder="https://oss-cn-hangzhou.aliyuncs.com" />
+              </Form.Item>
+              <Form.Item name="region" label="Region">
+                <Input placeholder="cn-hangzhou / ap-guangzhou / us-east-1" />
+              </Form.Item>
+              <Form.Item name="accessKeyId" label="Access Key ID">
+                <Input placeholder="对象存储访问密钥 ID" />
+              </Form.Item>
+              <Form.Item name="accessKeySecret" label="Access Key Secret" extra={editingStorageSpace?.secretConfigured ? '留空则保持现有密钥。' : undefined}>
+                <Input.Password placeholder="留空则不修改已保存密钥" />
+              </Form.Item>
+            </>
+          ) : null}
+          <Form.Item name="renameStrategy" label="重命名" rules={[{ required: true, message: '请选择重命名策略' }]}>
+            <Radio.Group options={RENAME_STRATEGY_OPTIONS} />
+          </Form.Item>
+          <Form.Item name="maxFileSizeMb" label="文件大小限制" rules={[{ required: true, message: '请输入文件大小限制' }]}>
+            <InputNumber min={1} addonAfter="MB" style={{ width: 220 }} />
+          </Form.Item>
+          <Form.Item name="allowedMimeTypes" label="允许的文件类型（MIME 格式）">
+            <Input placeholder="*" />
+          </Form.Item>
+          <Form.Item name="defaultStorage" valuePropName="checked">
+            <Checkbox disabled={Boolean(editingStorageSpace?.defaultStorage)}>默认存储空间</Checkbox>
+          </Form.Item>
+          <Form.Item name="retainFileOnRecordDelete" valuePropName="checked">
+            <Checkbox>删除文件记录时保留文件</Checkbox>
+          </Form.Item>
+          <Form.Item name="status" label="状态">
+            <Select
+              options={[
+                { label: '启用', value: 'ENABLED' },
+                { label: '停用', value: 'DISABLED' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </ManagementDrawer>
 
       <ManagementDrawer
         title={formatMessage({ id: 'system.files.drawer.uploadTitle', defaultMessage: 'Upload document' })}

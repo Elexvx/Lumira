@@ -1,11 +1,12 @@
 import { request, requestFile, type RequestOptions } from '@/services/common/request';
-import type { FileObjectRecord, PagedResult } from '@/types/api';
+import type { FileObjectRecord, FileStorageSpacePayload, FileStorageSpaceRecord, PagedResult } from '@/types/api';
 
 export interface FileListQuery extends Record<string, unknown> {
   keyword?: string;
   category?: string;
   fileExtension?: string;
   previewMode?: string;
+  bucket?: string;
   scope?: 'mine' | 'tenant';
   sortField?: string;
   sortOrder?: string;
@@ -62,6 +63,34 @@ export const fileService = {
     requestFile(`/v1/files/${id}/download`, {
       method: 'GET',
       params,
+      ...options,
+    }),
+  storageSpaces: (params: { pageNo?: number; pageSize?: number } = {}, options: RequestOptions = {}) =>
+    request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  storageSpace: (storageKey: string, options: RequestOptions = {}) =>
+    request<FileStorageSpaceRecord>(`/v1/files/storage-spaces/${storageKey}`, {
+      method: 'GET',
+      ...options,
+    }),
+  createStorageSpace: (payload: FileStorageSpacePayload, options: RequestOptions = {}) =>
+    request<FileStorageSpaceRecord>('/v1/files/storage-spaces', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  updateStorageSpace: (id: number, payload: FileStorageSpacePayload, options: RequestOptions = {}) =>
+    request<FileStorageSpaceRecord>(`/v1/files/storage-spaces/${id}`, {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  removeStorageSpace: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/files/storage-spaces/${id}`, {
+      method: 'DELETE',
       ...options,
     }),
 };

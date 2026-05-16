@@ -580,6 +580,95 @@ public class SystemManagementAppService {
         return true;
     }
 
+    @Transactional
+    public boolean deleteUser(CurrentUser currentUser, Long userId) {
+        if (currentUser.getUserId().equals(userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "不能删除当前登录用户");
+        }
+        if (isProtectedAdminAccount(userId, null)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被删除");
+        }
+        Long tenantId = currentTenantId(currentUser);
+        SystemVO.UserVO user = queryUser(tenantId, userId);
+        LocalDateTime now = LocalDateTime.now();
+
+        int tenantRows = jdbcTemplate.update(
+                """
+                        update sys_user_tenant
+                        set status = 'DISABLED', deleted = 1, updated_by = ?, updated_at = ?
+                        where tenant_id = ? and user_id = ? and deleted = 0
+                        """,
+                currentUser.getUserId(),
+                now,
+                tenantId,
+                userId
+        );
+        if (tenantRows == 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
+        jdbcTemplate.update(
+                "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                now,
+                tenantId,
+                userId
+        );
+        jdbcTemplate.update(
+                "update sys_user_passkey_credential set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                now,
+                tenantId,
+                userId
+        );
+        jdbcTemplate.update(
+                "update sys_verification_binding set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                now,
+                tenantId,
+                userId
+        );
+        jdbcTemplate.update(
+                "update sys_verification_challenge set consumed_flag = 1, deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                now,
+                tenantId,
+                userId
+        );
+
+        Integer activeTenantCount = jdbcTemplate.queryForObject(
+                "select count(1) from sys_user_tenant where user_id = ? and deleted = 0 and status = 'ENABLED'",
+                Integer.class,
+                userId
+        );
+        if (activeTenantCount == null || activeTenantCount == 0) {
+            jdbcTemplate.update(
+                    """
+                            update sys_user
+                            set username = concat(left(username, 32), '#deleted#', id),
+                                status = 'DISABLED',
+                                deleted = 1,
+                                updated_by = ?,
+                                updated_at = ?
+                            where id = ? and deleted = 0
+                            """,
+                    currentUser.getUserId(),
+                    now,
+                    userId
+            );
+            jdbcTemplate.update(
+                    "update sys_user_wechat_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
+                    currentUser.getUserId(),
+                    now,
+                    userId
+            );
+        }
+
+        onlineSessionManagementAppService.revokeUserSessions(userId);
+        permissionSnapshotService.invalidateTenant(tenantId);
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
+        return true;
+    }
+
     public List<SystemVO.RoleVO> listUserRoles(CurrentUser currentUser, Long userId) {
         Long tenantId = currentTenantId(currentUser);
         return jdbcTemplate.query(
@@ -1191,6 +1280,15 @@ public class SystemManagementAppService {
     @Transactional
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         return systemPlatformSettingsAppService.updateWatermarkSettings(currentUser, request);
+    }
+
+    public SystemVO.FloatingWindowSettingsVO getFloatingWindowSettings(CurrentUser currentUser) {
+        return systemPlatformSettingsAppService.getFloatingWindowSettings(currentUser);
+    }
+
+    @Transactional
+    public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
+        return systemPlatformSettingsAppService.updateFloatingWindowSettings(currentUser, request);
     }
 
     private SystemVO.WatermarkSettingsVO loadWatermarkSettings(Long tenantId) {

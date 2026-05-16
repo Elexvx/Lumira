@@ -1,5 +1,7 @@
 package com.legendary.invention.saas.modules.system.verification.vo;
 
+import java.util.List;
+
 public class LoginCapabilitiesVO {
 
     private Boolean passwordLoginAvailable;
@@ -8,6 +10,7 @@ public class LoginCapabilitiesVO {
     private Boolean wechatLoginAvailable;
     private Boolean passkeyLoginAvailable;
     private Boolean passkeyPasswordlessAvailable;
+    private List<String> loginModeOrder;
 
     public Boolean getPasswordLoginAvailable() {
         return passwordLoginAvailable;
@@ -55,5 +58,13 @@ public class LoginCapabilitiesVO {
 
     public void setPasskeyPasswordlessAvailable(Boolean passkeyPasswordlessAvailable) {
         this.passkeyPasswordlessAvailable = passkeyPasswordlessAvailable;
+    }
+
+    public List<String> getLoginModeOrder() {
+        return loginModeOrder;
+    }
+
+    public void setLoginModeOrder(List<String> loginModeOrder) {
+        this.loginModeOrder = loginModeOrder;
     }
 }

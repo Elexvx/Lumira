@@ -1,9 +1,11 @@
 import { history, useLocation } from '@umijs/max';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, Form, Tabs, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_BRANDING_SETTINGS, applyFavicon, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
+import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { ManagementPage, ManagementPageBody } from '@/features/management';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -13,11 +15,12 @@ import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
 import { AgreementTab } from '@/pages/settings/personalization/components/AgreementTab';
 import { BrandingTab } from '@/pages/settings/personalization/components/BrandingTab';
+import { FloatingWindowTab } from '@/pages/settings/personalization/components/FloatingWindowTab';
 import { WatermarkTab } from '@/pages/settings/personalization/components/WatermarkTab';
-import type { AgreementSettings, BrandingSettings, WatermarkSettings } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 
-type PersonalizationTabKey = 'branding' | 'watermark' | 'agreement';
-type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark';
+type PersonalizationTabKey = 'branding' | 'watermark' | 'floating' | 'agreement';
+type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 type BrandingClearField = 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl';
 
 const MAX_IMAGE_UPLOAD_SIZE = 5 * 1024 * 1024;
@@ -35,12 +38,14 @@ const isAllowedImageFile = (target: UploadTarget, file: File) => {
 };
 
 const normalizeTabKey = (value?: string | null): PersonalizationTabKey =>
-  value === 'watermark' ? 'watermark' : value === 'agreement' ? 'agreement' : 'branding';
+  value === 'watermark' ? 'watermark' : value === 'floating' ? 'floating' : value === 'agreement' ? 'agreement' : 'branding';
 
 const PersonalizationSettingsPage = () => {
   const [brandingForm] = Form.useForm<BrandingSettings>();
   const [watermarkForm] = Form.useForm<WatermarkSettings>();
+  const [floatingForm] = Form.useForm<FloatingWindowSettings>();
   const [agreementForm] = Form.useForm<AgreementSettings>();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const { initialState, setInitialState } = useInitialStateModel();
   const actionPermission = useActionPermission();
@@ -48,6 +53,7 @@ const PersonalizationSettingsPage = () => {
   const [activeTab, setActiveTab] = useState<PersonalizationTabKey>(() => normalizeTabKey(new URLSearchParams(location.search).get('tab')));
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [watermarkSaving, setWatermarkSaving] = useState(false);
+  const [floatingSaving, setFloatingSaving] = useState(false);
   const [agreementSaving, setAgreementSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [previewState, setPreviewState] = useState<BrandingSettings>(normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS));
@@ -56,6 +62,7 @@ const PersonalizationSettingsPage = () => {
     ...(initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
     imageUrl: normalizeUploadUrl(initialState?.watermarkSettings?.imageUrl),
   }));
+  const [floatingPreview, setFloatingPreview] = useState<FloatingWindowSettings>(DEFAULT_FLOATING_WINDOW_SETTINGS);
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
 
   const updateTabInUrl = useCallback(
@@ -82,9 +89,10 @@ const PersonalizationSettingsPage = () => {
   const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const [brandingResult, watermarkResult, agreementResult] = await Promise.all([
+      const [brandingResult, watermarkResult, floatingResult, agreementResult] = await Promise.all([
         systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),
         systemService.watermarkSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+        systemService.floatingWindowSettings({ autoRedirectOnUnauthorized: false, silent: true }),
         systemService.agreementSettings({ autoRedirectOnUnauthorized: false, silent: true }),
       ]);
       const normalizedBranding = normalizeBrandingSettings(brandingResult);
@@ -93,19 +101,22 @@ const PersonalizationSettingsPage = () => {
         ...watermarkResult,
         imageUrl: normalizeUploadUrl(watermarkResult.imageUrl),
       };
+      const normalizedFloating = normalizeFloatingWindowSettings(floatingResult);
       const normalizedAgreement = normalizeAgreementSettings(agreementResult);
       brandingForm.setFieldsValue(normalizedBranding);
       watermarkForm.setFieldsValue(normalizedWatermark);
+      floatingForm.setFieldsValue(normalizedFloating);
       agreementForm.setFieldsValue(normalizedAgreement);
       setPreviewState(normalizedBranding);
       setWatermarkPreview(normalizedWatermark);
+      setFloatingPreview(normalizedFloating);
       persistBrandingSettings(normalizedBranding);
       persistWatermarkSettings(normalizedWatermark);
       setInitialState((prev) => (prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: normalizedWatermark } : prev));
     } finally {
       setLoading(false);
     }
-  }, [agreementForm, brandingForm, setInitialState, watermarkForm]);
+  }, [agreementForm, brandingForm, floatingForm, setInitialState, watermarkForm]);
 
   useEffect(() => {
     void loadSettings();
@@ -136,9 +147,12 @@ const PersonalizationSettingsPage = () => {
         } else if (target === 'loginBackground') {
           brandingForm.setFieldValue('loginBackgroundUrl', normalizedUrl);
           setPreviewState((prev) => ({ ...prev, loginBackgroundUrl: normalizedUrl }));
-        } else {
+        } else if (target === 'watermark') {
           watermarkForm.setFieldValue('imageUrl', normalizedUrl);
           setWatermarkPreview((prev) => ({ ...prev, imageUrl: normalizedUrl }));
+        } else {
+          floatingForm.setFieldValue('apiDocsQrImageUrl', normalizedUrl);
+          setFloatingPreview((prev) => ({ ...prev, apiDocsQrImageUrl: normalizedUrl }));
         }
         message.success('图片已上传');
       } catch (error) {
@@ -147,7 +161,7 @@ const PersonalizationSettingsPage = () => {
         setUploadingTarget(null);
       }
     },
-    [brandingForm, watermarkForm],
+    [brandingForm, floatingForm, watermarkForm],
   );
 
   const handleSaveBranding = async () => {
@@ -195,6 +209,25 @@ const PersonalizationSettingsPage = () => {
     }
   };
 
+  const handleSaveFloating = async () => {
+    if (!canUpdate) return;
+    setFloatingSaving(true);
+    try {
+      const floatingValues = await floatingForm.validateFields();
+      const updatedFloating = normalizeFloatingWindowSettings(
+        await systemService.updateFloatingWindowSettings(normalizeFloatingWindowSettings(floatingValues), {
+          autoRedirectOnUnauthorized: false,
+        }),
+      );
+      floatingForm.setFieldsValue(updatedFloating);
+      setFloatingPreview(updatedFloating);
+      await queryClient.invalidateQueries({ queryKey: ['floating-window-settings'] });
+      message.success('悬浮窗设置已保存并即时生效');
+    } finally {
+      setFloatingSaving(false);
+    }
+  };
+
   const handleSaveAgreement = async () => {
     if (!canUpdate) return;
     setAgreementSaving(true);
@@ -236,6 +269,19 @@ const PersonalizationSettingsPage = () => {
     });
   };
 
+  const handleClearFloatingQrImage = () => {
+    confirmAction({
+      title: '清除二维码图片',
+      content: '确认清除二维码图片吗？清除后接口文档悬浮按钮将展示未配置提示。',
+      okText: '确认清除',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        floatingForm.setFieldValue('apiDocsQrImageUrl', '');
+        setFloatingPreview((prev) => ({ ...prev, apiDocsQrImageUrl: '' }));
+      },
+    });
+  };
+
   const handleClearAgreementField = (field: keyof AgreementSettings) => {
     const fieldLabelMap: Record<keyof AgreementSettings, string> = {
       userAgreementMarkdown: '用户协议',
@@ -269,6 +315,11 @@ const PersonalizationSettingsPage = () => {
   const agreementFormProps = useStandardFormProps({
     form: agreementForm,
     initialValues: DEFAULT_AGREEMENT_SETTINGS,
+  });
+  const floatingFormProps = useStandardFormProps({
+    form: floatingForm,
+    initialValues: DEFAULT_FLOATING_WINDOW_SETTINGS,
+    onValuesChange: (_, allValues) => setFloatingPreview(normalizeFloatingWindowSettings(allValues)),
   });
 
   useEffect(() => {
@@ -316,6 +367,21 @@ const PersonalizationSettingsPage = () => {
                     onUpload={(target, file) => handleUpload(target, file)}
                     onClearWatermarkImage={handleClearWatermarkImage}
                     onSave={() => void handleSaveWatermark()}
+                  />
+                ),
+              },
+              {
+                key: 'floating',
+                label: '悬浮窗设置',
+                children: (
+                  <FloatingWindowTab
+                    formProps={floatingFormProps}
+                    preview={floatingPreview}
+                    uploadingTarget={uploadingTarget}
+                    saving={floatingSaving}
+                    onUpload={(target, file) => handleUpload(target, file)}
+                    onClearQrImage={handleClearFloatingQrImage}
+                    onSave={() => void handleSaveFloating()}
                   />
                 ),
               },

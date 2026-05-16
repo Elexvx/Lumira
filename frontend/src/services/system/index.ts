@@ -4,6 +4,7 @@ import type {
   CaptchaVerifyResult,
   AgreementSettings,
   BrandingSettings,
+  FloatingWindowSettings,
   HealthResponse,
   LoginCapabilities,
   OnlineSessionRecord,
@@ -28,6 +29,7 @@ export interface SecuritySettingsPayload extends SecuritySettings {}
 export interface BrandingSettingsPayload extends BrandingSettings {}
 export interface AgreementSettingsPayload extends AgreementSettings {}
 export interface WatermarkSettingsPayload extends WatermarkSettings {}
+export interface FloatingWindowSettingsPayload extends FloatingWindowSettings {}
 export interface PasskeySettingsPayload extends PasskeySettings {}
 export interface ProfileFieldSettingsPayload {
   items: Array<{
@@ -166,6 +168,17 @@ export const systemService = {
     }),
   updateWatermarkSettings: (payload: WatermarkSettingsPayload, options: RequestOptions = {}) =>
     request<WatermarkSettings>('/v1/system/watermark-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  floatingWindowSettings: (options: RequestOptions = {}) =>
+    request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updateFloatingWindowSettings: (payload: FloatingWindowSettingsPayload, options: RequestOptions = {}) =>
+    request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
       method: 'PUT',
       data: payload,
       ...options,

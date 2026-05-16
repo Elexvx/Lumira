@@ -1,28 +1,28 @@
-import {
-  FileTextOutlined,
-  QuestionCircleOutlined,
-  ReloadOutlined,
-  VerticalAlignTopOutlined,
-} from '@ant-design/icons';
-import { history, useAccess, useIntl } from '@umijs/max';
-import { FloatButton } from 'antd';
-import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
+import { QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { useAccess, useIntl } from '@umijs/max';
+import { Empty, FloatButton, Popover, Typography } from 'antd';
 import { isLoggedIn } from '@/auth/session';
-import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { useResponsive } from '@/hooks/useResponsive';
+import { systemService } from '@/services/system';
 import './GlobalFloatActions.css';
 
 export const GlobalFloatActions = () => {
-  const { initialState } = useInitialStateModel();
   const access = useAccess();
   const intl = useIntl();
   const { isMobile } = useResponsive();
-  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
-  const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
+  const floatingSettingsQuery = useQuery({
+    queryKey: ['floating-window-settings'],
+    queryFn: () => systemService.floatingWindowSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+    enabled: isLoggedIn(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);
   const canVisitApiDocs = Boolean((access as Record<string, unknown>).canVisitSystemMonitoringDocs);
-  const visibleActionCount = Number(Boolean(helpLink)) + Number(canVisitApiDocs) + 2;
+  const showApiDocsQr = canVisitApiDocs && floatingSettings.apiDocsQrEnabled;
 
-  if (!isLoggedIn() || visibleActionCount <= 1) {
+  if (!isLoggedIn()) {
     return null;
   }
 
@@ -35,21 +35,32 @@ export const GlobalFloatActions = () => {
         bottom: isMobile ? 24 : 40,
       }}
     >
-      {helpLink ? (
-        <FloatButton
-          icon={<QuestionCircleOutlined />}
-          tooltip={intl.formatMessage({ id: 'global.float.help', defaultMessage: '帮助中心' })}
-          aria-label={intl.formatMessage({ id: 'global.float.help', defaultMessage: '帮助中心' })}
-          onClick={() => openExternalLink(helpLink)}
-        />
-      ) : null}
-      {canVisitApiDocs ? (
-        <FloatButton
-          icon={<FileTextOutlined />}
-          tooltip={intl.formatMessage({ id: 'global.float.apiDocs', defaultMessage: '接口文档' })}
-          aria-label={intl.formatMessage({ id: 'global.float.apiDocs', defaultMessage: '接口文档' })}
-          onClick={() => history.push('/settings/api-docs')}
-        />
+      {showApiDocsQr ? (
+        <Popover
+          overlayClassName="saas-global-float-actions__qr-popover"
+          placement="left"
+          trigger={['hover', 'click']}
+          content={
+            <div className="saas-global-float-actions__qr-card">
+              <Typography.Text className="saas-global-float-actions__qr-title" type="secondary">
+                {floatingSettings.apiDocsQrTitle}
+              </Typography.Text>
+              <div className="saas-global-float-actions__qr-image-wrap">
+                {floatingSettings.apiDocsQrImageUrl ? (
+                  <img className="saas-global-float-actions__qr-image" src={floatingSettings.apiDocsQrImageUrl} alt={floatingSettings.apiDocsQrTitle} />
+                ) : (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在个性化设置上传二维码" />
+                )}
+              </div>
+            </div>
+          }
+        >
+          <FloatButton
+            icon={<QrcodeOutlined />}
+            tooltip={intl.formatMessage({ id: 'global.float.apiDocs', defaultMessage: '接口文档' })}
+            aria-label={intl.formatMessage({ id: 'global.float.apiDocs', defaultMessage: '接口文档' })}
+          />
+        </Popover>
       ) : null}
       <FloatButton
         icon={<ReloadOutlined />}
@@ -61,29 +72,8 @@ export const GlobalFloatActions = () => {
         icon={<VerticalAlignTopOutlined />}
         tooltip={intl.formatMessage({ id: 'global.float.backTop', defaultMessage: '回到顶部' })}
         aria-label={intl.formatMessage({ id: 'global.float.backTop', defaultMessage: '回到顶部' })}
-        visibilityHeight={120}
+        visibilityHeight={0}
       />
     </FloatButton.Group>
   );
-};
-
-const resolveExternalLink = (value?: string | null) => {
-  const trimmed = value?.trim() || '';
-  if (!trimmed) {
-    return '';
-  }
-  if (/^(https?:|mailto:|tel:)/i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('#')) {
-    return trimmed;
-  }
-  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed)) {
-    return '';
-  }
-  return `https://${trimmed}`;
-};
-
-const openExternalLink = (url?: string) => {
-  if (!url || typeof window === 'undefined') {
-    return;
-  }
-  window.open(url, '_blank', 'noopener,noreferrer');
 };

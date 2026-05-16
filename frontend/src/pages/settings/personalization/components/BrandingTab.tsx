@@ -8,7 +8,7 @@ import type { BrandingSettings } from '@/types/api';
 interface BrandingTabProps {
   formProps: FormProps;
   previewState: BrandingSettings;
-  uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | null;
+  uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr' | null;
   brandingSaving: boolean;
   onUpload: (target: 'favicon' | 'logo' | 'loginBackground', file: File) => Promise<void>;
   onClearField: (field: 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl', label: string) => void;

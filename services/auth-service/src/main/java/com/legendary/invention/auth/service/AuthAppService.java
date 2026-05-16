@@ -21,7 +21,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -81,6 +80,11 @@ public class AuthAppService {
         }
 
         SystemUserSnapshotDTO user = systemInternalApi.findLoginUser(account);
+        LoginCapabilitiesDTO loginCapabilities = systemInternalApi.loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID);
+        if (loginCapabilities != null && !loginCapabilities.passwordLoginAvailable()) {
+            loginProtectionService.recordFailure(account, loginIp);
+            throw new BizException(ErrorCode.FORBIDDEN, "账号密码登录未启用");
+        }
         if (user == null) {
             loginProtectionService.recordFailure(account, loginIp);
             throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在: " + account, ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
@@ -99,35 +103,6 @@ public class AuthAppService {
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
 
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
-        LoginCapabilitiesDTO loginCapabilities = systemInternalApi.loginCapabilities(currentTenantId);
-        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = new ArrayList<>();
-        if (loginCapabilities != null && (loginCapabilities.smsLoginAvailable() || loginCapabilities.emailLoginAvailable())) {
-            List<com.legendary.invention.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenantId, user.userId());
-            if (providers == null) {
-                providers = List.of();
-            }
-            for (var provider : providers) {
-                if (provider != null && provider.isEnabled() && provider.isBound()) {
-                    LoginResponseDTO.SecondFactorOptionDTO option = new LoginResponseDTO.SecondFactorOptionDTO();
-                    option.setFactorCode(provider.getFactorCode());
-                    option.setFactorName(provider.getFactorName());
-                    option.setChallengeId(provider.getChallengeId());
-                    option.setMaskedContact(provider.getMaskedContact());
-                    option.setPromptMessage(provider.getPromptMessage());
-                    secondFactorOptions.add(option);
-                }
-            }
-        }
-
-        if (!secondFactorOptions.isEmpty()) {
-            LoginResponseDTO pending = new LoginResponseDTO();
-            pending.setUser(toAuthUser(user, snapshot, null));
-            pending.setRequiresSecondFactor(Boolean.TRUE);
-            pending.setSecondFactorOptions(secondFactorOptions);
-            pending.setRequiresCaptcha(Boolean.FALSE);
-            return pending;
-        }
-
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         authSessionStore.save(session, true);
         loginProtectionService.clearFailureState(account, loginIp);

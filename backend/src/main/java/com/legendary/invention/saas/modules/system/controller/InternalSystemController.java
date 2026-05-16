@@ -120,7 +120,8 @@ public class InternalSystemController {
                 Boolean.TRUE.equals(capabilities.getEmailLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getWechatLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getPasskeyLoginAvailable()),
-                Boolean.TRUE.equals(capabilities.getPasskeyPasswordlessAvailable())
+                Boolean.TRUE.equals(capabilities.getPasskeyPasswordlessAvailable()),
+                capabilities.getLoginModeOrder()
         );
     }
 

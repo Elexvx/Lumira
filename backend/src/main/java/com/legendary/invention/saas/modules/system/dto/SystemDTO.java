@@ -153,4 +153,7 @@ public final class SystemDTO {
     public static class WatermarkSettingsRequest extends com.legendary.invention.saas.modules.system.watermark.dto.WatermarkSettingsRequest {
     }
 
+    public static class FloatingWindowSettingsRequest extends com.legendary.invention.saas.modules.system.floating.dto.FloatingWindowSettingsRequest {
+    }
+
 }

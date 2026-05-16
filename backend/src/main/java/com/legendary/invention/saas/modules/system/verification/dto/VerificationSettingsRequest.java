@@ -1,9 +1,13 @@
 package com.legendary.invention.saas.modules.system.verification.dto;
 
+import java.util.List;
+
 public class VerificationSettingsRequest {
 
     private Boolean enabled;
     private Boolean emailLoginEnabled;
+    private Boolean passwordLoginEnabled;
+    private List<String> loginModeOrder;
 
     public Boolean getEnabled() {
         return enabled;
@@ -19,5 +23,21 @@ public class VerificationSettingsRequest {
 
     public void setEmailLoginEnabled(Boolean emailLoginEnabled) {
         this.emailLoginEnabled = emailLoginEnabled;
+    }
+
+    public Boolean getPasswordLoginEnabled() {
+        return passwordLoginEnabled;
+    }
+
+    public void setPasswordLoginEnabled(Boolean passwordLoginEnabled) {
+        this.passwordLoginEnabled = passwordLoginEnabled;
+    }
+
+    public List<String> getLoginModeOrder() {
+        return loginModeOrder;
+    }
+
+    public void setLoginModeOrder(List<String> loginModeOrder) {
+        this.loginModeOrder = loginModeOrder;
     }
 }

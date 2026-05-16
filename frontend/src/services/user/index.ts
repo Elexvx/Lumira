@@ -61,6 +61,11 @@ export const userService = {
       data: payload,
       ...options,
     }),
+  delete: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/users/${id}`, {
+      method: 'DELETE',
+      ...options,
+    }),
   roles: (id: number, options: RequestOptions = {}) =>
     request<RoleRecord[]>(`/v1/system/users/${id}/roles`, {
       method: 'GET',

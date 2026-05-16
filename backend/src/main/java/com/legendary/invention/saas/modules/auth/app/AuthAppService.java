@@ -104,6 +104,10 @@ public class AuthAppService {
 
     public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent) {
         String account = request.account();
+        if (!Boolean.TRUE.equals(systemVerificationAppService.loadLoginCapabilities(PLATFORM_TENANT_ID).getPasswordLoginAvailable())) {
+            loginAuditService.log(null, PLATFORM_TENANT_ID, account, "PASSWORD", "FAIL", "账号密码登录未启用", loginIp, userAgent);
+            throw new BizException(ErrorCode.FORBIDDEN, "账号密码登录未启用");
+        }
         loginProtectionService.ensureCanAttempt(account, loginIp);
         loginProtectionService.recordAttempt(account, loginIp);
         validateCaptchaIfRequired(request, account, loginIp, userAgent);

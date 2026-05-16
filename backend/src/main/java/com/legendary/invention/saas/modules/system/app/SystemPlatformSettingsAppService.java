@@ -113,6 +113,15 @@ public class SystemPlatformSettingsAppService {
             WATERMARK_OPACITY_KEY
     );
 
+    private static final String FLOATING_API_DOCS_QR_ENABLED_KEY = "floating-window.api-docs-qr-enabled";
+    private static final String FLOATING_API_DOCS_QR_TITLE_KEY = "floating-window.api-docs-qr-title";
+    private static final String FLOATING_API_DOCS_QR_IMAGE_URL_KEY = "floating-window.api-docs-qr-image-url";
+    private static final List<String> FLOATING_WINDOW_CONFIG_KEYS = List.of(
+            FLOATING_API_DOCS_QR_ENABLED_KEY,
+            FLOATING_API_DOCS_QR_TITLE_KEY,
+            FLOATING_API_DOCS_QR_IMAGE_URL_KEY
+    );
+
     private final JdbcTemplate jdbcTemplate;
     private final OperationAuditService operationAuditService;
 
@@ -193,6 +202,10 @@ public class SystemPlatformSettingsAppService {
         return loadWatermarkSettings(currentTenantId(currentUser));
     }
 
+    public SystemVO.FloatingWindowSettingsVO getFloatingWindowSettings(CurrentUser currentUser) {
+        return loadFloatingWindowSettings(currentTenantId(currentUser));
+    }
+
     @Transactional
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         Long tenantId = currentTenantId(currentUser);
@@ -212,6 +225,26 @@ public class SystemPlatformSettingsAppService {
         upsertBrandingConfig(tenantId, WATERMARK_Z_INDEX_KEY, "层级", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "z-index", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_OPACITY_KEY, "透明度", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "透明度", operatorId);
         return loadWatermarkSettings(tenantId);
+    }
+
+    @Transactional
+    public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_ENABLED_KEY, "接口文档二维码开关", String.valueOf(request.getApiDocsQrEnabled() == null || request.getApiDocsQrEnabled()), "是否在全局悬浮窗展示接口文档二维码入口", operatorId);
+        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_TITLE_KEY, "接口文档二维码标题", defaultIfBlank(request.getApiDocsQrTitle(), "微信扫码联系我们"), "接口文档二维码弹层标题", operatorId);
+        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "接口文档二维码图片", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "接口文档悬浮入口展开后展示的二维码图片", operatorId);
+        operationAuditService.log(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                "system",
+                "floating-window-update",
+                "UPDATE",
+                "SUCCESS",
+                "更新悬浮窗设置"
+        );
+        return loadFloatingWindowSettings(tenantId);
     }
 
     public SystemVO.SmtpSettingsVO getSmtpSettings(CurrentUser currentUser) {
@@ -319,6 +352,15 @@ public class SystemPlatformSettingsAppService {
         settings.setOffsetY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_Y_KEY), "0")));
         settings.setZIndex(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_Z_INDEX_KEY), "9")));
         settings.setOpacity(Double.parseDouble(defaultIfBlank(valueByKey.get(WATERMARK_OPACITY_KEY), "0.15")));
+        return settings;
+    }
+
+    private SystemVO.FloatingWindowSettingsVO loadFloatingWindowSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, FLOATING_WINDOW_CONFIG_KEYS);
+        SystemVO.FloatingWindowSettingsVO settings = new SystemVO.FloatingWindowSettingsVO();
+        settings.setApiDocsQrEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_ENABLED_KEY), "true")));
+        settings.setApiDocsQrTitle(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_TITLE_KEY), "微信扫码联系我们"));
+        settings.setApiDocsQrImageUrl(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_IMAGE_URL_KEY), ""));
         return settings;
     }
 
