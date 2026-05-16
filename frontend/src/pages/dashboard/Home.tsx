@@ -53,7 +53,41 @@ const buildGreeting = (hour: number) => {
   return '凌晨好';
 };
 
-const buildLogColumns = (title: string, isMobile: boolean) => [
+const formatLoginType = (value?: string | null) => {
+  const map: Record<string, string> = {
+    PASSWORD: '密码登录',
+    SMS: '短信登录',
+    EMAIL: '邮箱登录',
+    TOTP: '二次验证',
+    PASSKEY: '通行密钥',
+    WECHAT: '微信登录',
+    LOGOUT: '退出登录',
+  };
+  return value ? map[value.toUpperCase()] || value : '-';
+};
+
+const formatLogResult = (value?: string | null) => {
+  const map: Record<string, string> = {
+    SUCCESS: '成功',
+    FAIL: '失败',
+    FAILED: '失败',
+    ERROR: '异常',
+  };
+  return value ? map[value.toUpperCase()] || value : '-';
+};
+
+const logResultColor = (value?: string | null) => {
+  const normalized = value?.toUpperCase();
+  if (normalized === 'SUCCESS') {
+    return 'green';
+  }
+  if (normalized === 'FAIL' || normalized === 'FAILED' || normalized === 'ERROR') {
+    return 'red';
+  }
+  return 'default';
+};
+
+const buildLoginLogColumns = (isMobile: boolean) => [
   {
     title: '时间',
     dataIndex: 'createdAt',
@@ -68,13 +102,55 @@ const buildLogColumns = (title: string, isMobile: boolean) => [
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
-    title: '类型',
+    title: '登录方式',
+    dataIndex: 'logType',
+    width: 120,
+    render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatLoginType(record.logType || record.loginType)}</Typography.Text>,
+  },
+  {
+    title: '结果',
+    dataIndex: 'logResult',
+    width: 100,
+    render: (_: unknown, record: AuditLogRecord) => (
+      <Tag color={logResultColor(record.logResult || record.loginResult)}>
+        {formatLogResult(record.logResult || record.loginResult)}
+      </Tag>
+    ),
+  },
+  {
+    title: '登录信息',
+    dataIndex: 'loginIp',
+    ellipsis: true,
+    render: (_: unknown, record: AuditLogRecord) => {
+      const result = record.logResult || record.loginResult;
+      const content = record.failReason || (record.loginIp ? `登录 IP：${record.loginIp}` : formatLogResult(result));
+      return <Typography.Text ellipsis={{ tooltip: content }}>{content}</Typography.Text>;
+    },
+  },
+];
+
+const buildOperationLogColumns = (title: string, isMobile: boolean) => [
+  {
+    title: '时间',
+    dataIndex: 'createdAt',
+    width: 180,
+    render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatDateTime(record.createdAt)}</Typography.Text>,
+  },
+  {
+    title: '用户',
+    dataIndex: 'username',
+    width: 140,
+    ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
+    render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
+  },
+  {
+    title: '结果',
     dataIndex: 'logResult',
     width: 120,
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => (
-      <Tag color={record.logResult === 'SUCCESS' ? 'green' : record.logResult === 'FAILED' ? 'red' : 'default'}>
-        {record.logResult || '-'}
+      <Tag color={logResultColor(record.logResult)}>
+        {formatLogResult(record.logResult)}
       </Tag>
     ),
   },
@@ -105,8 +181,8 @@ const DashboardHomePage = () => {
   const recentOperationLogs = summary?.recentOperationLogs || [];
   const taskSummary = summary?.taskSummary;
   const latestPendingTasks = taskSummary?.latestPending || [];
-  const loginLogColumns = buildLogColumns('登录记录', responsive.isMobile);
-  const operationLogColumns = buildLogColumns('操作记录', responsive.isMobile);
+  const loginLogColumns = buildLoginLogColumns(responsive.isMobile);
+  const operationLogColumns = buildOperationLogColumns('操作记录', responsive.isMobile);
   const pageContainerToken = {
     paddingInlinePageContainerContent: responsive.isMobile ? 20 : 25,
     paddingBlockPageContainerContent: responsive.isMobile ? 16 : 24,
