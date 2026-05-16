@@ -322,8 +322,16 @@ html[data-theme='dark'] .saas-login-page__actions {
 }
 
 .saas-login-page__mode-segmented .ant-segmented-item {
-  min-height: 38px;
-  line-height: 38px;
+  min-height: 42px;
+}
+
+.saas-login-page__mode-segmented .ant-segmented-item-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  line-height: 1;
 }
 
 .saas-login-page__mode-content {

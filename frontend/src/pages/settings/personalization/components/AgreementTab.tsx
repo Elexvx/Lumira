@@ -1,5 +1,6 @@
-import { Button, Form, Input, Space, Typography } from 'antd';
+import { Button, Form, Space, Typography } from 'antd';
 import type { FormProps } from 'antd';
+import { AgreementMarkdownEditor } from './AgreementMarkdownEditor';
 
 interface AgreementTabProps {
   formProps: FormProps;
@@ -23,18 +24,10 @@ export const AgreementTab = ({
       </Typography.Paragraph>
       <Form {...formProps}>
         <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
-          <Input.TextArea
-            rows={14}
-            placeholder="请输入用户协议 Markdown 内容"
-            showCount
-          />
+          <AgreementMarkdownEditor placeholder="请输入用户协议 Markdown 内容" />
         </Form.Item>
         <Form.Item name="privacyAgreementMarkdown" label="隐私协议" getValueFromEvent={(value) => value ?? ''}>
-          <Input.TextArea
-            rows={14}
-            placeholder="请输入隐私协议 Markdown 内容"
-            showCount
-          />
+          <AgreementMarkdownEditor placeholder="请输入隐私协议 Markdown 内容" />
         </Form.Item>
       </Form>
 
