@@ -9,6 +9,9 @@ import type {
   LoginCapabilities,
   OnlineSessionRecord,
   PagedResult,
+  PlatformModuleRecord,
+  PlatformModuleValidationPayload,
+  PlatformModuleValidationResult,
   ProfileFieldSetting,
   SecuritySettings,
   SmtpSettings,
@@ -87,6 +90,28 @@ export const systemService = {
       method: 'GET',
       skipAuth: true,
       silent: true,
+      ...options,
+    }),
+  modules: (options: RequestOptions = {}) =>
+    request<PlatformModuleRecord[]>('/v1/system/modules', {
+      method: 'GET',
+      ...options,
+    }),
+  module: (moduleCode: string, options: RequestOptions = {}) =>
+    request<PlatformModuleRecord>(`/v1/system/modules/${encodeURIComponent(moduleCode)}`, {
+      method: 'GET',
+      ...options,
+    }),
+  validateModule: (payload: PlatformModuleValidationPayload, options: RequestOptions = {}) =>
+    request<PlatformModuleValidationResult>('/v1/system/modules/validate', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  createModule: (payload: PlatformModuleValidationPayload, options: RequestOptions = {}) =>
+    request<PlatformModuleRecord>('/v1/system/modules', {
+      method: 'POST',
+      data: payload,
       ...options,
     }),
   updateAgreementSettings: (payload: AgreementSettingsPayload, options: RequestOptions = {}) =>

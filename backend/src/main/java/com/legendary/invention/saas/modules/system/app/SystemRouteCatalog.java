@@ -22,6 +22,7 @@ public final class SystemRouteCatalog {
             "/site/submissions",
             "/system",
             "/system/overview",
+            "/settings/modules",
             "/system/menus",
             "/system/dicts",
             "/system/profile-fields",
@@ -80,6 +81,7 @@ public final class SystemRouteCatalog {
             "@/pages/site/contents",
             "@/pages/site/forms",
             "@/pages/site/submissions",
+            "@/pages/settings/modules",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
             "@/pages/settings/profile-fields",
@@ -162,6 +164,7 @@ public final class SystemRouteCatalog {
         );
 
         settingsRoot.setChildren(new ArrayList<>(List.of(
+                menu(-1015L, -1000L, "settings.modules", "模块中心", "MENU", "/settings/modules", "@/pages/settings/modules", "AppstoreOutlined", 0, "system:menu:view"),
                 menu(-1001L, -1000L, "settings.menus", "菜单管理", "MENU", "/settings/menus", "@/pages/settings/menus", "AppstoreOutlined", 1, "system:menu:view"),
                 menu(-1002L, -1000L, "settings.dicts", "字典管理", "MENU", "/settings/dicts", "@/pages/settings/dicts", "DatabaseOutlined", 2, "system:dict:view"),
                 menu(-1003L, -1000L, "settings.profile-fields", "字段管理", "MENU", "/settings/profile-fields", "@/pages/settings/profile-fields", "FormOutlined", 3, "system:config:view"),

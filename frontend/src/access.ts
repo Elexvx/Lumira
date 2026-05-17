@@ -61,6 +61,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemMonitoringDocs: isLogin && hasPermission(permissions, 'system:monitor:docs:view'),
     canVisitSystemUsers: isLogin && hasPermission(permissions, 'system:user:view'),
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
+    canVisitSystemModules: isLogin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemMenus: isLogin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemDicts: isLogin && hasPermission(permissions, 'system:dict:view'),
     canVisitSystemProfileFields: isLogin && hasPermission(permissions, 'system:config:view'),
