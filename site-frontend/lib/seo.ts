@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ContentRecord, PublicPage, SiteSettings } from './api';
+import { publicAssetUrl } from './api';
 
 interface SeoConfig {
   title?: string;
@@ -34,7 +35,7 @@ export function metadataForPage(page: PublicPage | null, fallbackTitle = 'Legend
   const description = pageSeo.description || siteSeo.description || defaultDescription;
   const canonicalPath = pageSeo.canonical || page?.page?.slug || '/';
   const canonical = canonicalPath.startsWith('http') ? canonicalPath : `${siteUrl()}${canonicalPath === '/' ? '' : canonicalPath}`;
-  const image = pageSeo.image || siteSeo.image;
+  const image = publicAssetUrl(pageSeo.image || siteSeo.image);
 
   return {
     title,
@@ -66,7 +67,7 @@ export function metadataForContent(content: ContentRecord | null, site?: SiteSet
   const description = contentSeo.description || content?.summary || siteSeo.description || defaultDescription;
   const canonicalPath = contentSeo.canonical || content?.slug || '/';
   const canonical = canonicalPath.startsWith('http') ? canonicalPath : `${siteUrl()}${canonicalPath === '/' ? '' : canonicalPath}`;
-  const image = contentSeo.image || content?.coverUrl || siteSeo.image;
+  const image = publicAssetUrl(contentSeo.image || content?.coverUrl || siteSeo.image);
 
   return {
     title,
@@ -93,5 +94,6 @@ export function metadataForContent(content: ContentRecord | null, site?: SiteSet
 }
 
 export function faviconFromSite(site?: SiteSettings) {
-  return site?.faviconUrl ? [{ rel: 'icon', url: site.faviconUrl }] : undefined;
+  const faviconUrl = publicAssetUrl(site?.faviconUrl);
+  return faviconUrl ? [{ rel: 'icon', url: faviconUrl }] : undefined;
 }

@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import type { ContentRecord } from '@/lib/api';
+import { publicAssetUrl, type ContentRecord } from '@/lib/api';
 
 function formatDate(value?: string) {
   if (!value) return '更新';
@@ -27,6 +27,7 @@ function plainTextBody(content: ContentRecord) {
 
 export function ArticleView({ content }: { content: ContentRecord }) {
   const body = plainTextBody(content);
+  const coverUrl = publicAssetUrl(content.coverUrl);
 
   return (
     <article className="article-shell">
@@ -39,7 +40,7 @@ export function ArticleView({ content }: { content: ContentRecord }) {
         <h1>{content.title}</h1>
         {content.summary ? <p>{content.summary}</p> : null}
       </header>
-      {content.coverUrl ? <img className="article-cover" src={content.coverUrl} alt="" /> : null}
+      {coverUrl ? <img className="article-cover" src={coverUrl} alt="" /> : null}
       <div className="article-body">
         {body
           .split(/\n{2,}/)

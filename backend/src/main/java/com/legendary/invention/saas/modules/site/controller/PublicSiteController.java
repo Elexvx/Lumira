@@ -67,6 +67,11 @@ public class PublicSiteController {
         return ApiResponse.success(publicSiteAppService.content(slug), TraceContext.getRequestId());
     }
 
+    @GetMapping("/contents/detail")
+    public ApiResponse<SiteVO.ContentVO> contentByQuery(@RequestParam String slug) {
+        return ApiResponse.success(publicSiteAppService.content(slug), TraceContext.getRequestId());
+    }
+
     @GetMapping("/forms/{code}")
     public ApiResponse<SiteVO.FormVO> form(@PathVariable String code) {
         return ApiResponse.success(publicSiteAppService.form(code), TraceContext.getRequestId());

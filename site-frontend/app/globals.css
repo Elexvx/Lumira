@@ -302,6 +302,46 @@ nav a:hover {
   font-size: 17px;
 }
 
+.rich-text-section h2 {
+  margin: 0 0 28px;
+}
+
+.rich-text-body {
+  max-width: 820px;
+  color: #2f3742;
+  font-size: 18px;
+  line-height: 1.9;
+}
+
+.rich-text-body p {
+  margin: 0 0 22px;
+}
+
+.image-text-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(280px, 0.6fr);
+  gap: 48px;
+  align-items: center;
+}
+
+.image-text-section h2 {
+  margin: 0 0 20px;
+}
+
+.image-text-section p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+.image-text-section img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .capability-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -336,6 +376,89 @@ nav a:hover {
 .insight-list {
   display: grid;
   border-top: 1px solid var(--line);
+}
+
+.download-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.download-list a {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.download-list span {
+  color: var(--muted);
+}
+
+.form-section {
+  border-top: 1px solid var(--line);
+}
+
+.public-form {
+  display: grid;
+  gap: 18px;
+  max-width: 720px;
+}
+
+.public-form-heading span {
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.public-form-heading h3 {
+  margin: 8px 0 0;
+  font-size: 28px;
+}
+
+.public-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.public-form label span {
+  color: #2f3742;
+  font-weight: 650;
+}
+
+.public-form input,
+.public-form select,
+.public-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+}
+
+.public-form button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 20px;
+  color: #fff;
+  background: var(--ink);
+  border: 0;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.public-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.public-form-empty,
+.public-form-message {
+  margin: 0;
+  color: var(--muted);
 }
 
 .empty-state {
@@ -520,6 +643,7 @@ footer {
   }
 
   .hero,
+  .image-text-section,
   .section-heading,
   .contact {
     grid-template-columns: 1fr;

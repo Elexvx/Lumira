@@ -4,18 +4,25 @@ export interface ApiResponse<T> {
 }
 
 export interface SiteSettings {
+  id?: number;
+  code?: string;
   name?: string;
+  primaryDomain?: string;
   logoUrl?: string;
   faviconUrl?: string;
+  themeJson?: string;
   seoJson?: string;
+  status?: string;
 }
 
 export interface NavigationItem {
   id: number;
+  parentId?: number | null;
   title: string;
   linkType: string;
-  linkTarget: string;
-  openType: string;
+  linkTarget?: string | null;
+  openType?: string | null;
+  children?: NavigationItem[] | null;
 }
 
 export interface SiteCarousel {
@@ -41,9 +48,14 @@ export interface PageBlock {
 export interface PublicPage {
   site?: SiteSettings;
   page?: {
+    id?: number;
     title?: string;
     slug?: string;
+    pageType?: string;
     seoJson?: string;
+    status?: string;
+    publishedAt?: string;
+    updatedAt?: string;
   };
   blocksJson?: string;
 }
@@ -59,6 +71,32 @@ export interface ContentRecord {
   seoJson?: string;
   tagsJson?: string;
   publishedAt?: string;
+  updatedAt?: string;
+}
+
+export interface PublicFormField {
+  name: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: Array<{ label: string; value: string } | string>;
+}
+
+export interface PublicForm {
+  id: number;
+  code: string;
+  name: string;
+  submitPolicy?: string;
+  schemaJson?: string;
+  status?: string;
+}
+
+export interface PublicSubmission {
+  id: number;
+  formId: number;
+  status: string;
+  createdAt?: string;
 }
 
 export interface PagedResult<T> {
@@ -79,6 +117,10 @@ export function publicAssetUrl(value?: string | null) {
   } catch {
     return normalized;
   }
+}
+
+export function siteApiUrl(path: string) {
+  return `${apiBase}${path}`;
 }
 
 export async function fetchJson<T>(path: string): Promise<T | null> {
@@ -109,7 +151,24 @@ export async function getContents() {
 
 export async function getContent(slug: string) {
   const normalized = slug.startsWith('/') ? slug : `/${slug}`;
-  return fetchJson<ContentRecord>(`/v1/public/site/contents/${encodeURIComponent(normalized)}`);
+  return fetchJson<ContentRecord>(`/v1/public/site/contents/detail?slug=${encodeURIComponent(normalized)}`);
+}
+
+export async function getForm(code: string) {
+  return fetchJson<PublicForm>(`/v1/public/site/forms/${encodeURIComponent(code)}`);
+}
+
+export async function submitForm(code: string, data: Record<string, unknown>) {
+  const response = await fetch(siteApiUrl(`/v1/public/site/forms/${encodeURIComponent(code)}/submissions`), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ dataJson: JSON.stringify(data) }),
+  });
+  const payload = (await response.json()) as ApiResponse<PublicSubmission> & { message?: string; userMessage?: string };
+  if (!response.ok || payload.code !== '0') {
+    throw new Error(payload.userMessage || payload.message || '提交失败，请稍后重试');
+  }
+  return payload.data;
 }
 
 export function parseBlocks(page: PublicPage | null): PageBlock[] {
