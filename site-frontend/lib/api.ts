@@ -8,6 +8,7 @@ export interface SiteSettings {
   code?: string;
   name?: string;
   primaryDomain?: string;
+  loginRoute?: string;
   logoUrl?: string;
   faviconUrl?: string;
   themeJson?: string;

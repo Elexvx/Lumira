@@ -617,6 +617,8 @@ export type MessageNoticeType = 'MESSAGE';
 export type MessageTargetScope = 'TENANT' | 'USER' | 'ROLE';
 export type MessagePublishStatus = 'PUBLISHED' | 'RETRACTED';
 export type MessageSourceType = 'MANUAL';
+export type MessageChannel = 'INBOX' | 'EMAIL';
+export type MessageSendStatus = 'SUCCESS' | 'FAILED' | 'SKIPPED';
 
 export interface MessageNoticeRecord {
   id: number;
@@ -642,6 +644,24 @@ export interface MessageNoticeRecord {
 
 export interface MessageUnreadCount {
   unreadCount: number;
+}
+
+export interface MessageDeliveryLogRecord {
+  id: number;
+  tenantId: number;
+  noticeId?: number | null;
+  channel: MessageChannel;
+  targetScope: MessageTargetScope;
+  targetUserId?: number | null;
+  targetUserName?: string | null;
+  targetEmail?: string | null;
+  title: string;
+  content: string;
+  sendStatus: MessageSendStatus;
+  errorMessage?: string | null;
+  sentAt?: string | null;
+  createdBy?: number | null;
+  createdAt: string;
 }
 
 export interface PagedResult<T> {

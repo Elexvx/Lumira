@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public final class MessageDTO {
 
@@ -23,6 +24,7 @@ public final class MessageDTO {
         @NotBlank
         @Pattern(regexp = "^(TENANT|USER|ROLE)$", message = "targetScope只能是TENANT、USER或ROLE")
         private String targetScope;
+        private List<@Pattern(regexp = "^(INBOX|EMAIL)$", message = "channels只能包含INBOX或EMAIL") String> channels = List.of("INBOX");
         @Positive(message = "targetUserId必须大于0")
         private Long targetUserId;
         @Positive(message = "targetRoleId必须大于0")
@@ -56,6 +58,20 @@ public final class MessageDTO {
             return targetUserId;
         }
 
+        public List<String> getChannels() {
+            return channels;
+        }
+
+        public void setChannels(List<String> channels) {
+            this.channels = channels == null
+                    ? List.of("INBOX")
+                    : channels.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .map(value -> value.trim().toUpperCase())
+                    .distinct()
+                    .toList();
+        }
+
         public void setTargetUserId(Long targetUserId) {
             this.targetUserId = targetUserId;
         }
@@ -84,6 +100,10 @@ public final class MessageDTO {
         private String sourceType;
         @Pattern(regexp = "^(PUBLISHED|RETRACTED)$", message = "publishStatus只能是PUBLISHED或RETRACTED")
         private String publishStatus;
+        @Pattern(regexp = "^(INBOX|EMAIL)$", message = "channel只能是INBOX或EMAIL")
+        private String channel;
+        @Pattern(regexp = "^(SUCCESS|FAILED|SKIPPED)$", message = "sendStatus只能是SUCCESS、FAILED或SKIPPED")
+        private String sendStatus;
         @Pattern(regexp = "^(publishedAt|createdAt|title|sourceType|publishStatus|targetScope|messageType|readFlag)$", message = "sortField不合法")
         private String sortField;
         @Pattern(regexp = "^(ASC|DESC)$", message = "sortOrder只能是ASC或DESC")
@@ -147,6 +167,22 @@ public final class MessageDTO {
 
         public void setPublishStatus(String publishStatus) {
             this.publishStatus = publishStatus == null ? null : publishStatus.trim().toUpperCase();
+        }
+
+        public String getChannel() {
+            return channel;
+        }
+
+        public void setChannel(String channel) {
+            this.channel = channel == null ? null : channel.trim().toUpperCase();
+        }
+
+        public String getSendStatus() {
+            return sendStatus;
+        }
+
+        public void setSendStatus(String sendStatus) {
+            this.sendStatus = sendStatus == null ? null : sendStatus.trim().toUpperCase();
         }
 
         public String getSortField() {

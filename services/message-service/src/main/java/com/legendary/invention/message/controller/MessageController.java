@@ -96,6 +96,12 @@ public class MessageController {
         return ApiResponse.success(messageAppService.listArchive(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
+    @GetMapping("/delivery-logs")
+    public ApiResponse<PageResponse<MessageVO.DeliveryLogVO>> listDeliveryLogs(@Valid MessageDTO.MessageArchiveQueryRequest request) {
+        requireAny("message:message:view", "system:notification:view");
+        return ApiResponse.success(messageAppService.listDeliveryLogs(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
     private void requireAny(String... permissionKeys) {
         var currentUser = securityContextFacade.getCurrentUser();
         if (currentUser != null && currentUser.getPermissions() != null) {

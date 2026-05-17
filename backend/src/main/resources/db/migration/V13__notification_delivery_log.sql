@@ -1,0 +1,45 @@
+CREATE TABLE IF NOT EXISTS `msg_delivery_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `notice_id` bigint DEFAULT NULL,
+  `channel` varchar(32) NOT NULL,
+  `target_scope` varchar(32) NOT NULL,
+  `target_user_id` bigint DEFAULT NULL,
+  `target_user_name` varchar(64) DEFAULT NULL,
+  `target_email` varchar(128) DEFAULT NULL,
+  `title` varchar(128) NOT NULL,
+  `content` text NOT NULL,
+  `send_status` varchar(32) NOT NULL,
+  `error_message` varchar(1024) DEFAULT NULL,
+  `sent_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_msg_delivery_log_tenant_channel_created` (`tenant_id`,`channel`,`created_at`),
+  KEY `idx_msg_delivery_log_tenant_status_created` (`tenant_id`,`send_status`,`created_at`),
+  KEY `idx_msg_delivery_log_notice` (`tenant_id`,`notice_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+UPDATE `sys_menu`
+SET `menu_name` = '通知管理',
+    `updated_at` = now()
+WHERE `tenant_id` = 1001
+  AND `menu_code` = 'settings.notifications'
+  AND `deleted` = 0;
+
+UPDATE `sys_permission`
+SET `permission_name` = '查看通知管理',
+    `updated_at` = now()
+WHERE `tenant_id` = 1001
+  AND `permission_key` = 'system:notification:view'
+  AND `deleted` = 0;
+
+UPDATE `sys_permission`
+SET `permission_name` = '发送系统通知',
+    `updated_at` = now()
+WHERE `tenant_id` = 1001
+  AND `permission_key` = 'system:notification:write'
+  AND `deleted` = 0;

@@ -13,6 +13,7 @@ export interface SiteSettings {
   code: string;
   name: string;
   primaryDomain?: string;
+  loginRoute?: string;
   logoFileId?: number;
   logoUrl?: string;
   faviconFileId?: number;

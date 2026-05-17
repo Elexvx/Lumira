@@ -1,10 +1,9 @@
-import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Table, message } from 'antd';
+import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteNavigation } from '@/services/site';
-import SiteAdminPage from './SiteAdminPage';
+import SiteAdminPage, { SiteAdminDrawer, SiteAdminTable } from './SiteAdminPage';
 import './site.css';
 
 const NavigationPage = () => {
@@ -50,7 +49,7 @@ const NavigationPage = () => {
         </Button> : null}
     >
       <div className="site-admin-card">
-        <Table
+        <SiteAdminTable<SiteNavigation>
           rowKey="id"
           loading={loading}
           dataSource={records}
@@ -76,7 +75,7 @@ const NavigationPage = () => {
           ]}
         />
       </div>
-      <Drawer title={editing?.id ? '编辑导航' : '新增导航'} open={Boolean(editing)} width={STANDARD_DRAWER_WIDTH} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
+      <SiteAdminDrawer title={editing?.id ? '编辑导航' : '新增导航'} open={Boolean(editing)} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
         <Form form={form} layout="vertical">
           <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="linkType" label="链接类型"><Select options={[{ value: 'PAGE', label: '页面' }, { value: 'URL', label: '外链' }]} /></Form.Item>
@@ -85,7 +84,7 @@ const NavigationPage = () => {
           <Form.Item name="sortOrder" label="排序"><InputNumber style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="status" label="状态"><Select options={[{ value: 'VISIBLE', label: '显示' }, { value: 'HIDDEN', label: '隐藏' }]} /></Form.Item>
         </Form>
-      </Drawer>
+      </SiteAdminDrawer>
     </SiteAdminPage>
   );
 };

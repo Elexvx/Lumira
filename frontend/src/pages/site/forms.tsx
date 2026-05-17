@@ -1,10 +1,9 @@
-import { Button, Drawer, Form, Input, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
+import { Button, Form, Input, Popconfirm, Select, Space, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { defaultFormSchemaJson, siteService, type SiteForm } from '@/services/site';
-import SiteAdminPage from './SiteAdminPage';
+import SiteAdminPage, { SiteAdminDrawer, SiteAdminTable } from './SiteAdminPage';
 import './site.css';
 
 const FormsPage = () => {
@@ -51,7 +50,7 @@ const FormsPage = () => {
       extra={actionPermission.can('site:form:create') ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增表单</Button> : null}
     >
       <div className="site-admin-card">
-        <Table
+        <SiteAdminTable<SiteForm>
           rowKey="id"
           loading={loading}
           dataSource={records}
@@ -76,7 +75,7 @@ const FormsPage = () => {
           ]}
         />
       </div>
-      <Drawer title={editing?.id ? '编辑表单' : '新增表单'} open={Boolean(editing)} width={STANDARD_DRAWER_WIDTH} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
+      <SiteAdminDrawer title={editing?.id ? '编辑表单' : '新增表单'} open={Boolean(editing)} onClose={() => setEditing(null)} extra={<Button type="primary" onClick={save}>保存</Button>}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="表单名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="code" label="表单编码" rules={[{ required: true }]}><Input /></Form.Item>
@@ -85,7 +84,7 @@ const FormsPage = () => {
           <Form.Item name="schemaJson" label="字段结构 JSON" rules={[{ required: true }]}><Input.TextArea className="site-admin-json" rows={14} /></Form.Item>
           <Form.Item name="notificationJson" label="通知配置 JSON"><Input.TextArea className="site-admin-json" rows={4} /></Form.Item>
         </Form>
-      </Drawer>
+      </SiteAdminDrawer>
     </SiteAdminPage>
   );
 };

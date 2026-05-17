@@ -1,9 +1,8 @@
-import { Button, Drawer, Form, Input, Select, Space, Table, Tag, message } from 'antd';
+import { Button, Form, Input, Select, Space, Tag, message } from 'antd';
 import { useEffect, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteSubmission } from '@/services/site';
-import SiteAdminPage from './SiteAdminPage';
+import SiteAdminPage, { SiteAdminDrawer, SiteAdminTable } from './SiteAdminPage';
 import './site.css';
 
 const SubmissionsPage = () => {
@@ -48,7 +47,7 @@ const SubmissionsPage = () => {
       title="提交记录"
     >
       <div className="site-admin-card">
-        <Table
+        <SiteAdminTable<SiteSubmission>
           rowKey="id"
           loading={loading}
           dataSource={records}
@@ -62,7 +61,7 @@ const SubmissionsPage = () => {
           ]}
         />
       </div>
-      <Drawer title="提交详情" open={Boolean(detail)} width={STANDARD_DRAWER_WIDTH} onClose={() => setDetail(null)} extra={canReview ? <Button type="primary" onClick={save}>保存审核</Button> : null}>
+      <SiteAdminDrawer title="提交详情" open={Boolean(detail)} onClose={() => setDetail(null)} extra={canReview ? <Button type="primary" onClick={save}>保存审核</Button> : null}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Input.TextArea className="site-admin-json" rows={12} value={detail?.dataJson} readOnly />
           <Form form={form} layout="vertical" disabled={!canReview}>
@@ -74,7 +73,7 @@ const SubmissionsPage = () => {
             </Form.Item>
           </Form>
         </Space>
-      </Drawer>
+      </SiteAdminDrawer>
     </SiteAdminPage>
   );
 };

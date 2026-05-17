@@ -61,7 +61,7 @@ public class SiteManagementAppService {
         jdbcTemplate.update(
                 """
                         update site_site
-                        set code = ?, name = ?, primary_domain = ?, logo_file_id = ?, favicon_file_id = ?,
+                        set code = ?, name = ?, primary_domain = ?, login_route = ?, logo_file_id = ?, favicon_file_id = ?,
                             theme_json = cast(? as json), seo_json = cast(? as json), status = ?,
                             updated_by = ?, updated_at = now(), version = version + 1
                         where tenant_id = ? and code = 'main' and deleted = 0
@@ -69,6 +69,7 @@ public class SiteManagementAppService {
                 clean(request.code, "main"),
                 clean(request.name, "官网"),
                 cleanNullable(request.primaryDomain),
+                clean(request.loginRoute, "/user/login"),
                 request.logoFileId,
                 request.faviconFileId,
                 jsonOrNull(request.themeJson),
@@ -578,6 +579,7 @@ public class SiteManagementAppService {
         vo.code = rs.getString("code");
         vo.name = rs.getString("name");
         vo.primaryDomain = rs.getString("primary_domain");
+        vo.loginRoute = rs.getString("login_route");
         vo.logoFileId = longObject(rs, "logo_file_id");
         vo.logoUrl = safeString(rs, "logo_url");
         vo.faviconFileId = longObject(rs, "favicon_file_id");

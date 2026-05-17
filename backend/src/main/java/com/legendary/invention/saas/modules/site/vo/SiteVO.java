@@ -13,6 +13,7 @@ public final class SiteVO {
         public String code;
         public String name;
         public String primaryDomain;
+        public String loginRoute;
         public Long logoFileId;
         public String logoUrl;
         public Long faviconFileId;

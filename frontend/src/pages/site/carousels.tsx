@@ -1,12 +1,11 @@
-import { Button, Drawer, Form, Image, Input, InputNumber, Popconfirm, Select, Space, Table, Tag, Upload, message } from 'antd';
+import { Button, Form, Image, Input, InputNumber, Popconfirm, Select, Space, Tag, Upload, message } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { siteService, type SiteCarousel } from '@/services/site';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
-import SiteAdminPage from './SiteAdminPage';
+import SiteAdminPage, { SiteAdminDrawer, SiteAdminTable } from './SiteAdminPage';
 import './site.css';
 
 const MAX_CAROUSEL_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -128,7 +127,7 @@ const CarouselManagement = () => {
       extra={canCreate ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增轮播</Button> : null}
     >
       <div className="site-admin-card">
-        <Table
+        <SiteAdminTable<SiteCarousel>
           rowKey="id"
           loading={loading}
           dataSource={records}
@@ -165,10 +164,9 @@ const CarouselManagement = () => {
           ]}
         />
       </div>
-      <Drawer
+      <SiteAdminDrawer
         title={editing?.id ? '编辑轮播' : '新增轮播'}
         open={Boolean(editing)}
-        width={STANDARD_DRAWER_WIDTH}
         onClose={() => setEditing(null)}
         extra={<Button type="primary" loading={saving} disabled={!canSave} onClick={save}>保存</Button>}
       >
@@ -218,7 +216,7 @@ const CarouselManagement = () => {
             <Select options={statusOptions} />
           </Form.Item>
         </Form>
-      </Drawer>
+      </SiteAdminDrawer>
     </SiteAdminPage>
   );
 };

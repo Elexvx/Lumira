@@ -6,9 +6,17 @@ function navigationTarget(item: NavigationItem) {
   return item.linkTarget || '/';
 }
 
+function normalizeLoginRoute(value?: string | null) {
+  const route = value?.trim();
+  if (!route) return '/user/login';
+  if (/^(https?:)?\/\//i.test(route) || route.startsWith('/')) return route;
+  return `/${route}`;
+}
+
 export function SiteHeader({ site, navigation }: { site: SiteSettings; navigation: NavigationItem[] }) {
   const logoUrl = publicAssetUrl(site.logoUrl);
   const siteName = site.name || 'Legendary Invention';
+  const loginRoute = normalizeLoginRoute(site.loginRoute);
 
   return (
     <header className="site-header">
@@ -37,7 +45,7 @@ export function SiteHeader({ site, navigation }: { site: SiteSettings; navigatio
         ))}
       </nav>
       <div className="site-header__actions">
-        <a className="site-login-button" href="/user/login">
+        <a className="site-login-button" href={loginRoute}>
           <LogIn aria-hidden="true" size={16} strokeWidth={2.4} />
           登录
         </a>

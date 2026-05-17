@@ -1,10 +1,11 @@
 import { request, type RequestOptions } from '@/services/common/request';
-import type { MessageNoticeRecord, MessageTargetScope, MessageUnreadCount, PagedResult } from '@/types/api';
+import type { MessageChannel, MessageDeliveryLogRecord, MessageNoticeRecord, MessageTargetScope, MessageUnreadCount, PagedResult } from '@/types/api';
 
 export interface MessagePayload {
   title: string;
   content: string;
   targetScope: MessageTargetScope;
+  channels?: MessageChannel[];
   targetUserId?: number;
   targetRoleId?: number;
 }
@@ -20,6 +21,8 @@ export interface MessageArchiveQuery extends Record<string, unknown> {
   keyword?: string;
   targetScope?: string;
   publishStatus?: string;
+  channel?: string;
+  sendStatus?: string;
   publishedAtStart?: string;
   publishedAtEnd?: string;
   sortField?: string;
@@ -35,6 +38,12 @@ export const messageService = {
     }),
   archiveMessages: (params: MessageArchiveQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<MessageNoticeRecord>>('/v1/message/archive', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  deliveryLogs: (params: MessageArchiveQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<MessageDeliveryLogRecord>>('/v1/message/delivery-logs', {
       method: 'GET',
       params,
       ...options,

@@ -1,8 +1,9 @@
-import { PageContainer, ProCard } from '@ant-design/pro-components';
+import type { ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Table, Tabs, message } from 'antd';
+import { Alert, Button, Empty, Form, Input, InputNumber, Select, Space, Tabs, message } from 'antd';
 import { useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useRefetchAll } from '@/hooks/useRefetchAll';
 import { evaluationService, type EvaluationTemplatePayload } from '@/services/evaluation';
 import type { EvaluationInstanceRecord, EvaluationScoreTaskRecord, EvaluationTemplateRecord } from '@/types/api';
@@ -17,6 +18,8 @@ const defaultGradeRules = [
 ];
 
 const EvaluationsPage = () => {
+  const responsive = useResponsive();
+  const [activeTab, setActiveTab] = useState('project');
   const [templateOpen, setTemplateOpen] = useState(false);
   const [instanceOpen, setInstanceOpen] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState<EvaluationTemplateRecord | null>(null);
@@ -62,7 +65,7 @@ const EvaluationsPage = () => {
     reload();
   };
 
-  const instanceColumns = [
+  const instanceColumns: ProColumns<EvaluationInstanceRecord>[] = [
     { title: '对象', dataIndex: 'objectTitle' },
     { title: '类型', dataIndex: 'objectType', width: 160 },
     { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value) },
@@ -71,82 +74,86 @@ const EvaluationsPage = () => {
     { title: '创建时间', dataIndex: 'createTime', width: 190 },
   ];
 
-  return (
-    <PageContainer title="评审中心" extra={<Button type="primary" onClick={() => setInstanceOpen(true)}>发起评审</Button>}>
-      <ProCard variant="outlined">
-        <Tabs
-          items={[
-            { key: 'project', label: '项目打分', children: <Table<EvaluationInstanceRecord> rowKey="id" loading={projects.isLoading} dataSource={projects.data?.records || []} columns={instanceColumns} pagination={false} /> },
-            { key: 'employee', label: '员工评级', children: <Table<EvaluationInstanceRecord> rowKey="id" loading={employees.isLoading} dataSource={employees.data?.records || []} columns={instanceColumns} pagination={false} /> },
-            {
-              key: 'pending',
-              label: `待评分 (${pending.data?.total || 0})`,
-              children: (
-                <Table<EvaluationScoreTaskRecord>
-                  rowKey="id"
-                  loading={pending.isLoading}
-                  dataSource={pending.data?.records || []}
-                  pagination={false}
-                  columns={[
-                    { title: '任务ID', dataIndex: 'id', width: 100 },
-                    { title: '实例ID', dataIndex: 'instanceId', width: 100 },
-                    { title: '状态', dataIndex: 'status', render: (value?: string | null) => renderStatusTag(value, { PENDING: { color: 'orange', text: value || '-' } }) },
-                    { title: '操作', render: (_, record) => <Button size="small" type="primary" onClick={async () => { await evaluationService.submitScore(record.id, { details: [{ dimensionId: 1, score: 80 }], comment: '默认评分' }); message.success('已提交评分'); reload(); }}>快速提交</Button> },
-                  ]}
-                  locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无评分待办" /> }}
-                />
-              ),
-            },
-            {
-              key: 'templates',
-              label: '评分模板',
-              children: (
-                <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Button type="primary" onClick={() => openTemplate()}>新建模板</Button>
-                  <Table<EvaluationTemplateRecord>
-                    rowKey="id"
-                    loading={templates.isLoading}
-                    dataSource={templates.data?.records || []}
-                    pagination={false}
-                    columns={[
-                      { title: '模板名称', dataIndex: 'templateName' },
-                      { title: '对象类型', dataIndex: 'objectType' },
-                      buildTemplateEnabledColumn<EvaluationTemplateRecord>(evaluationService.updateTemplateEnabled, reload),
-                      { title: '操作', render: (_, record) => <Button size="small" onClick={() => openTemplate(record)}>编辑</Button> },
-                    ]}
-                  />
-                </Space>
-              ),
-            },
-            {
-              key: 'archive',
-              label: '复核归档',
-              children: (
-                <Table<EvaluationInstanceRecord>
-                  rowKey="id"
-                  loading={all.isLoading}
-                  dataSource={all.data?.records || []}
-                  columns={[
-                    ...instanceColumns,
-                    {
-                      title: '操作',
-                      render: (_, record) => (
-                        <Space>
-                          <Button size="small" onClick={async () => { await evaluationService.review(record.id, { finalScore: record.finalScore || 80, finalGrade: record.finalGrade || 'B', comment: '复核确认' }); message.success('已复核'); reload(); }}>复核</Button>
-                          <Button size="small" type="primary" onClick={async () => { await evaluationService.archive(record.id, { comment: '归档' }); message.success('已归档'); reload(); }}>归档</Button>
-                        </Space>
-                      ),
-                    },
-                  ]}
-                  pagination={false}
-                />
-              ),
-            },
-          ]}
-        />
-      </ProCard>
+  const pendingColumns: ProColumns<EvaluationScoreTaskRecord>[] = [
+    { title: '任务ID', dataIndex: 'id', width: 100 },
+    { title: '实例ID', dataIndex: 'instanceId', width: 100 },
+    { title: '状态', dataIndex: 'status', render: (value?: string | null) => renderStatusTag(value, { PENDING: { color: 'orange', text: value || '-' } }) },
+    { title: '操作', render: (_, record) => <Button size="small" type="primary" onClick={async () => { await evaluationService.submitScore(record.id, { details: [{ dimensionId: 1, score: 80 }], comment: '默认评分' }); message.success('已提交评分'); reload(); }}>快速提交</Button> },
+  ];
 
-      <Drawer title={activeTemplate ? '编辑评分模板' : '新建评分模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
+  const templateColumns: ProColumns<EvaluationTemplateRecord>[] = [
+    { title: '模板名称', dataIndex: 'templateName' },
+    { title: '对象类型', dataIndex: 'objectType' },
+    buildTemplateEnabledColumn<EvaluationTemplateRecord>(evaluationService.updateTemplateEnabled, reload),
+    { title: '操作', render: (_, record) => <Button size="small" onClick={() => openTemplate(record)}>编辑</Button> },
+  ];
+
+  const archiveColumns: ProColumns<EvaluationInstanceRecord>[] = [
+    ...instanceColumns,
+    {
+      title: '操作',
+      render: (_, record) => (
+        <Space>
+          <Button size="small" onClick={async () => { await evaluationService.review(record.id, { finalScore: record.finalScore || 80, finalGrade: record.finalGrade || 'B', comment: '复核确认' }); message.success('已复核'); reload(); }}>复核</Button>
+          <Button size="small" type="primary" onClick={async () => { await evaluationService.archive(record.id, { comment: '归档' }); message.success('已归档'); reload(); }}>归档</Button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <ManagementPage title="评审中心">
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        tabBarExtraContent={
+          activeTab === 'templates' ? (
+            <Button type="primary" onClick={() => openTemplate()}>新建模板</Button>
+          ) : (
+            <Button type="primary" onClick={() => setInstanceOpen(true)}>发起评审</Button>
+          )
+        }
+        items={[
+          {
+            key: 'project',
+            label: '项目打分',
+            children: <ManagementTable<EvaluationInstanceRecord> rowKey="id" loading={projects.isLoading} dataSource={projects.data?.records || []} columns={instanceColumns} isMobile={responsive.isMobile} search={false} pagination={false} />,
+          },
+          {
+            key: 'employee',
+            label: '员工评级',
+            children: <ManagementTable<EvaluationInstanceRecord> rowKey="id" loading={employees.isLoading} dataSource={employees.data?.records || []} columns={instanceColumns} isMobile={responsive.isMobile} search={false} pagination={false} />,
+          },
+          {
+            key: 'pending',
+            label: `待评分 (${pending.data?.total || 0})`,
+            children: (
+              <ManagementTable<EvaluationScoreTaskRecord>
+                rowKey="id"
+                loading={pending.isLoading}
+                dataSource={pending.data?.records || []}
+                pagination={false}
+                columns={pendingColumns}
+                isMobile={responsive.isMobile}
+                search={false}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无评分待办" /> }}
+              />
+            ),
+          },
+          {
+            key: 'templates',
+            label: '评分模板',
+            children: <ManagementTable<EvaluationTemplateRecord> rowKey="id" loading={templates.isLoading} dataSource={templates.data?.records || []} pagination={false} columns={templateColumns} isMobile={responsive.isMobile} search={false} />,
+          },
+          {
+            key: 'archive',
+            label: '复核归档',
+            children: <ManagementTable<EvaluationInstanceRecord> rowKey="id" loading={all.isLoading} dataSource={all.data?.records || []} columns={archiveColumns} pagination={false} isMobile={responsive.isMobile} search={false} />,
+          },
+        ]}
+      />
+
+      <ManagementDrawer title={activeTemplate ? '编辑评分模板' : '新建评分模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
         <Form form={templateForm} layout="vertical">
           <Form.Item name="templateName" label="模板名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="objectType" label="对象类型" rules={[{ required: true }]}><Select options={[{ label: '项目打分', value: 'PROJECT_SCORE' }, { label: '员工评级', value: 'EMPLOYEE_RATING' }]} /></Form.Item>
@@ -183,9 +190,9 @@ const EvaluationsPage = () => {
             )}
           </Form.List>
         </Form>
-      </Drawer>
+      </ManagementDrawer>
 
-      <Drawer title="发起评审" open={instanceOpen} onClose={() => setInstanceOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={createInstance}>提交</Button>}>
+      <ManagementDrawer title="发起评审" open={instanceOpen} onClose={() => setInstanceOpen(false)} extra={<Button type="primary" onClick={createInstance}>提交</Button>}>
         <Form form={instanceForm} layout="vertical">
           {templateOptions.length === 0 ? (
             <Alert
@@ -225,8 +232,8 @@ const EvaluationsPage = () => {
           <Form.Item name="scorerUserIds" label="评分人用户ID" rules={[{ required: true }]}><Input placeholder="多个用户用英文逗号分隔，例如 1001,1002" /></Form.Item>
           <Form.Item name="reviewerUserId" label="复核人用户ID"><InputNumber style={{ width: '100%' }} /></Form.Item>
         </Form>
-      </Drawer>
-    </PageContainer>
+      </ManagementDrawer>
+    </ManagementPage>
   );
 };
 
