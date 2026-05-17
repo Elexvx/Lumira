@@ -1,13 +1,13 @@
 package com.legendary.invention.saas.modules.site.controller;
 
+import com.legendary.invention.api.client.FileInternalApi;
+import com.legendary.invention.api.file.FileObjectDTO;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.common.api.ApiResponse;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
-import com.legendary.invention.saas.modules.file.app.FileManagementAppService;
-import com.legendary.invention.saas.modules.file.vo.FileVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.site.app.SiteManagementAppService;
 import com.legendary.invention.saas.modules.site.dto.SiteDTO;
@@ -33,18 +33,18 @@ import java.util.Set;
 public class SiteController {
 
     private final SiteManagementAppService siteManagementAppService;
-    private final FileManagementAppService fileManagementAppService;
+    private final FileInternalApi fileInternalApi;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
 
     public SiteController(
             SiteManagementAppService siteManagementAppService,
-            FileManagementAppService fileManagementAppService,
+            FileInternalApi fileInternalApi,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
         this.siteManagementAppService = siteManagementAppService;
-        this.fileManagementAppService = fileManagementAppService;
+        this.fileInternalApi = fileInternalApi;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
     }
@@ -64,18 +64,16 @@ public class SiteController {
 
     @PostMapping(value = "/uploads/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RepeatSubmit
-    public ApiResponse<FileVO.FileObjectVO> uploadImage(
+    public ApiResponse<FileObjectDTO> uploadImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(name = "usage", required = false) String usage
     ) {
         requireSiteUploadPermission(usage);
         String normalizedUsage = normalizeSiteUploadUsage(usage);
         return ApiResponse.success(
-                fileManagementAppService.uploadFile(
-                        currentUser(),
+                fileInternalApi.uploadImage(
                         file,
                         "site-" + normalizedUsage,
-                        "site," + normalizedUsage,
                         siteUploadRemark(normalizedUsage)
                 ),
                 TraceContext.getRequestId()
