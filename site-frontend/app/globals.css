@@ -57,8 +57,13 @@ main {
   align-items: center;
   gap: 12px;
   max-width: 100%;
+  min-width: 0;
   font-weight: 700;
   letter-spacing: 0;
+}
+
+.brand--logo-only {
+  height: 52px;
 }
 
 .brand span {
@@ -76,10 +81,11 @@ main {
 }
 
 .brand-logo {
-  width: 28px;
-  height: 28px;
+  width: auto;
+  max-width: min(260px, 36vw);
+  height: auto;
+  max-height: 52px;
   flex: 0 0 auto;
-  border-radius: 8px;
   object-fit: contain;
 }
 
