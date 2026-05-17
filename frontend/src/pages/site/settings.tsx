@@ -168,6 +168,9 @@ const SiteSettingsPage = () => {
           <Form.Item name="primaryDomain" label="主域名">
             <Input placeholder="www.example.com" />
           </Form.Item>
+          <Form.Item name="loginRoute" label="登录按钮路由">
+            <Input placeholder="/user/login 或 https://example.com/login" />
+          </Form.Item>
           <Form.Item name="status" label="状态">
             <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
           </Form.Item>

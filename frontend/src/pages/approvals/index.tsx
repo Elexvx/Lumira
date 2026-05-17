@@ -1,24 +1,23 @@
-import { PageContainer, ProCard, StepsForm } from '@ant-design/pro-components';
+import { ProCard, StepsForm, type ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
   Button,
   Descriptions,
-  Drawer,
   Empty,
   Form,
   Input,
   InputNumber,
   Select,
   Space,
-  Table,
   Tabs,
   Timeline,
   Typography,
   message,
 } from 'antd';
 import { useMemo, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useRefetchAll } from '@/hooks/useRefetchAll';
 import { approvalService, type ApprovalInstancePayload, type ApprovalTemplatePayload } from '@/services/approval';
 import type { ApprovalInstanceRecord, ApprovalTaskRecord, ApprovalTemplateRecord } from '@/types/api';
@@ -50,6 +49,7 @@ const actionText: Record<string, string> = {
 };
 
 const ApprovalsPage = () => {
+  const responsive = useResponsive();
   const [activeTab, setActiveTab] = useState('submitted');
   const [templateOpen, setTemplateOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -165,7 +165,7 @@ const ApprovalsPage = () => {
     reload();
   };
 
-  const instanceColumns = [
+  const instanceColumns: ProColumns<ApprovalInstanceRecord>[] = [
     { title: '审批标题', dataIndex: 'businessTitle' },
     { title: '业务类型', dataIndex: 'businessType', width: 160 },
     { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
@@ -186,81 +186,93 @@ const ApprovalsPage = () => {
     },
   ];
 
-  return (
-    <PageContainer title="审批中心" extra={<Button type="primary" onClick={openSubmit}>新增审批</Button>}>
-      <ProCard variant="outlined">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            {
-              key: 'submitted',
-              label: `我发起的审批 (${submitted.data?.total || 0})`,
-              children: (
-                <Table<ApprovalInstanceRecord>
-                  rowKey="id"
-                  loading={submitted.isLoading}
-                  dataSource={submitted.data?.records || []}
-                  columns={instanceColumns}
-                  pagination={false}
-                  locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已提交审批" /> }}
-                />
-              ),
-            },
-            {
-              key: 'pending',
-              label: `待我审批 (${pending.data?.total || 0})`,
-              children: (
-                <Table<ApprovalTaskRecord>
-                  rowKey="id"
-                  loading={pending.isLoading}
-                  dataSource={pending.data?.records || []}
-                  pagination={false}
-                  columns={[
-                    { title: '审批标题', dataIndex: 'businessTitle', render: (value) => value || '-' },
-                    { title: '业务类型', dataIndex: 'businessType', width: 160, render: (value) => value || '-' },
-                    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
-                    { title: '创建时间', dataIndex: 'createTime', width: 190 },
-                    {
-                      title: '操作',
-                      width: 120,
-                      render: (_, record) => (
-                        <Button size="small" type="primary" onClick={() => openDetail(record.instanceId, record.id)}>
-                          查看/处理
-                        </Button>
-                      ),
-                    },
-                  ]}
-                  locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审批待办" /> }}
-                />
-              ),
-            },
-            {
-              key: 'templates',
-              label: '审批模板',
-              children: (
-                <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Button type="primary" onClick={() => openTemplate()}>新建模板</Button>
-                  <Table<ApprovalTemplateRecord>
-                    rowKey="id"
-                    loading={templates.isLoading}
-                    dataSource={templates.data?.records || []}
-                    pagination={false}
-                    columns={[
-                      { title: '模板名称', dataIndex: 'templateName' },
-                      { title: '业务类型', dataIndex: 'businessType' },
-                      buildTemplateEnabledColumn<ApprovalTemplateRecord>(approvalService.updateTemplateEnabled, reload),
-                      { title: '操作', render: (_, record) => <Button size="small" onClick={() => openTemplate(record)}>编辑</Button> },
-                    ]}
-                  />
-                </Space>
-              ),
-            },
-          ]}
-        />
-      </ProCard>
+  const pendingColumns: ProColumns<ApprovalTaskRecord>[] = [
+    { title: '审批标题', dataIndex: 'businessTitle', render: (value) => value || '-' },
+    { title: '业务类型', dataIndex: 'businessType', width: 160, render: (value) => value || '-' },
+    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
+    { title: '创建时间', dataIndex: 'createTime', width: 190 },
+    {
+      title: '操作',
+      width: 120,
+      render: (_, record) => (
+        <Button size="small" type="primary" onClick={() => openDetail(record.instanceId, record.id)}>
+          查看/处理
+        </Button>
+      ),
+    },
+  ];
 
-      <Drawer title={activeTemplate ? '编辑审批模板' : '新建审批模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} width={STANDARD_DRAWER_WIDTH} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
+  const templateColumns: ProColumns<ApprovalTemplateRecord>[] = [
+    { title: '模板名称', dataIndex: 'templateName' },
+    { title: '业务类型', dataIndex: 'businessType' },
+    buildTemplateEnabledColumn<ApprovalTemplateRecord>(approvalService.updateTemplateEnabled, reload),
+    { title: '操作', render: (_, record) => <Button size="small" onClick={() => openTemplate(record)}>编辑</Button> },
+  ];
+
+  return (
+    <ManagementPage title="审批中心">
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        tabBarExtraContent={
+          activeTab === 'templates' ? (
+            <Button type="primary" onClick={() => openTemplate()}>新建模板</Button>
+          ) : (
+            <Button type="primary" onClick={openSubmit}>新增审批</Button>
+          )
+        }
+        items={[
+          {
+            key: 'submitted',
+            label: `我发起的审批 (${submitted.data?.total || 0})`,
+            children: (
+              <ManagementTable<ApprovalInstanceRecord>
+                rowKey="id"
+                loading={submitted.isLoading}
+                dataSource={submitted.data?.records || []}
+                columns={instanceColumns}
+                isMobile={responsive.isMobile}
+                search={false}
+                pagination={false}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已提交审批" /> }}
+              />
+            ),
+          },
+          {
+            key: 'pending',
+            label: `待我审批 (${pending.data?.total || 0})`,
+            children: (
+              <ManagementTable<ApprovalTaskRecord>
+                rowKey="id"
+                loading={pending.isLoading}
+                dataSource={pending.data?.records || []}
+                pagination={false}
+                columns={pendingColumns}
+                isMobile={responsive.isMobile}
+                search={false}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审批待办" /> }}
+              />
+            ),
+          },
+          {
+            key: 'templates',
+            label: '审批模板',
+            children: (
+              <ManagementTable<ApprovalTemplateRecord>
+                rowKey="id"
+                loading={templates.isLoading}
+                dataSource={templates.data?.records || []}
+                pagination={false}
+                columns={templateColumns}
+                isMobile={responsive.isMobile}
+                search={false}
+              />
+            ),
+          },
+        ]}
+      />
+
+      <ManagementDrawer title={activeTemplate ? '编辑审批模板' : '新建审批模板'} open={templateOpen} onClose={() => setTemplateOpen(false)} extra={<Button type="primary" onClick={saveTemplate}>保存</Button>}>
         <Form form={templateForm} layout="vertical">
           <Form.Item name="templateName" label="模板名称" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="businessType" label="业务类型" rules={[{ required: true }]}><Input placeholder="例如 PROJECT_CHANGE" /></Form.Item>
@@ -281,9 +293,9 @@ const ApprovalsPage = () => {
             )}
           </Form.List>
         </Form>
-      </Drawer>
+      </ManagementDrawer>
 
-      <Drawer title="新增审批" open={submitOpen} onClose={() => setSubmitOpen(false)} width={STANDARD_DRAWER_WIDTH} destroyOnHidden>
+      <ManagementDrawer title="新增审批" open={submitOpen} onClose={() => setSubmitOpen(false)} destroyOnHidden>
         {!templates.isLoading && enabledTemplates.length === 0 ? (
           <Alert
             type="warning"
@@ -366,9 +378,9 @@ const ApprovalsPage = () => {
             </Descriptions>
           </StepsForm.StepForm>
         </StepsForm>
-      </Drawer>
+      </ManagementDrawer>
 
-      <Drawer title="审批详情" open={detailOpen} onClose={() => setDetailOpen(false)} width={STANDARD_DRAWER_WIDTH} destroyOnHidden>
+      <ManagementDrawer title="审批详情" open={detailOpen} onClose={() => setDetailOpen(false)} destroyOnHidden>
         {detail.isLoading ? (
           <ProCard loading />
         ) : detail.data ? (
@@ -414,8 +426,8 @@ const ApprovalsPage = () => {
         ) : (
           <Empty description="审批详情不存在或无权查看" />
         )}
-      </Drawer>
-    </PageContainer>
+      </ManagementDrawer>
+    </ManagementPage>
   );
 };
 

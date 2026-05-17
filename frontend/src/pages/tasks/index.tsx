@@ -1,10 +1,12 @@
-import { PageContainer, ProCard } from '@ant-design/pro-components';
+import type { ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Empty, Space, Table, Tag, Typography } from 'antd';
+import { Empty, Space, Tabs, Tag, Typography } from 'antd';
+import { ManagementPage, ManagementTable } from '@/features/management';
+import { useResponsive } from '@/hooks/useResponsive';
 import { taskService } from '@/services/task';
 import type { TaskRecord } from '@/types/api';
 
-const columns = [
+const columns: ProColumns<TaskRecord>[] = [
   { title: '任务', dataIndex: 'title', render: (_: unknown, record: TaskRecord) => <Space direction="vertical" size={0}><Typography.Text strong>{record.title}</Typography.Text><Typography.Text type="secondary">{record.description || record.businessTitle}</Typography.Text></Space> },
   { title: '类型', dataIndex: 'taskType', width: 120, render: (value: string) => <Tag color="blue">{value}</Tag> },
   { title: '业务类型', dataIndex: 'businessType', width: 160 },
@@ -13,34 +15,49 @@ const columns = [
 ];
 
 const TasksPage = () => {
+  const responsive = useResponsive();
   const pendingQuery = useQuery({ queryKey: ['tasks', 'pending'], queryFn: () => taskService.myPending({ pageNo: 1, pageSize: 50 }) });
   const handledQuery = useQuery({ queryKey: ['tasks', 'handled'], queryFn: () => taskService.myHandled({ pageNo: 1, pageSize: 50 }) });
 
   return (
-    <PageContainer title="任务中心">
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <ProCard title="我的待办" variant="outlined">
-          <Table<TaskRecord>
-            rowKey="id"
-            columns={columns}
-            dataSource={pendingQuery.data?.records || []}
-            loading={pendingQuery.isLoading}
-            pagination={false}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办任务" /> }}
-          />
-        </ProCard>
-        <ProCard title="我已处理" variant="outlined">
-          <Table<TaskRecord>
-            rowKey="id"
-            columns={columns}
-            dataSource={handledQuery.data?.records || []}
-            loading={handledQuery.isLoading}
-            pagination={false}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已处理任务" /> }}
-          />
-        </ProCard>
-      </Space>
-    </PageContainer>
+    <ManagementPage title="任务中心">
+      <Tabs
+        items={[
+          {
+            key: 'pending',
+            label: `我的待办 (${pendingQuery.data?.total || 0})`,
+            children: (
+              <ManagementTable<TaskRecord>
+                rowKey="id"
+                columns={columns}
+                isMobile={responsive.isMobile}
+                search={false}
+                dataSource={pendingQuery.data?.records || []}
+                loading={pendingQuery.isLoading}
+                pagination={false}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办任务" /> }}
+              />
+            ),
+          },
+          {
+            key: 'handled',
+            label: `我已处理 (${handledQuery.data?.total || 0})`,
+            children: (
+              <ManagementTable<TaskRecord>
+                rowKey="id"
+                columns={columns}
+                isMobile={responsive.isMobile}
+                search={false}
+                dataSource={handledQuery.data?.records || []}
+                loading={handledQuery.isLoading}
+                pagination={false}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已处理任务" /> }}
+              />
+            ),
+          },
+        ]}
+      />
+    </ManagementPage>
   );
 };
 

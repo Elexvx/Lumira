@@ -13,6 +13,7 @@ public final class SiteDTO {
         @NotBlank
         public String name;
         public String primaryDomain;
+        public String loginRoute;
         public Long logoFileId;
         public Long faviconFileId;
         public String themeJson;

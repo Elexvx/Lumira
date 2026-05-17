@@ -212,6 +212,9 @@ public class PublicSiteAppService {
         if (!StringUtils.hasText(site.faviconUrl)) {
             site.faviconUrl = branding.getWebsiteFaviconUrl();
         }
+        if (!StringUtils.hasText(site.loginRoute)) {
+            site.loginRoute = "/user/login";
+        }
     }
 
     private List<SiteVO.NavigationVO> navigation(Long siteId) {
@@ -249,6 +252,7 @@ public class PublicSiteAppService {
         vo.code = rs.getString("code");
         vo.name = rs.getString("name");
         vo.primaryDomain = rs.getString("primary_domain");
+        vo.loginRoute = rs.getString("login_route");
         vo.logoFileId = longObject(rs, "logo_file_id");
         vo.logoUrl = safeString(rs, "logo_url");
         vo.faviconFileId = longObject(rs, "favicon_file_id");
