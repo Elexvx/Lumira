@@ -1,4 +1,4 @@
-import type { NavigationItem, SiteSettings } from '@/lib/api';
+import { publicAssetUrl, type NavigationItem, type SiteSettings } from '@/lib/api';
 
 function navigationTarget(item: NavigationItem) {
   if (item.linkType === 'EXTERNAL') return item.linkTarget;
@@ -6,10 +6,11 @@ function navigationTarget(item: NavigationItem) {
 }
 
 export function SiteHeader({ site, navigation }: { site: SiteSettings; navigation: NavigationItem[] }) {
+  const logoUrl = publicAssetUrl(site.logoUrl);
   return (
     <header className="site-header">
       <a className="brand" href="/">
-        {site.logoUrl ? <img src={site.logoUrl} alt="" className="brand-logo" /> : <span className="brand-mark" />}
+        {logoUrl ? <img src={logoUrl} alt="" className="brand-logo" /> : <span className="brand-mark" />}
         {site.name || 'Legendary Invention'}
       </a>
       <nav aria-label="主导航">

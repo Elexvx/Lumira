@@ -18,6 +18,20 @@ export interface NavigationItem {
   openType: string;
 }
 
+export interface SiteCarousel {
+  id: number;
+  imageFileId?: number | null;
+  imageUrl?: string | null;
+  title?: string | null;
+  subtitle?: string | null;
+  linkType?: string | null;
+  linkTarget?: string | null;
+  openType?: string | null;
+  sortOrder?: number | null;
+  status?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface PageBlock {
   id: string;
   type: string;
@@ -56,6 +70,17 @@ const apiBase = process.env.SITE_API_BASE_URL || process.env.NEXT_PUBLIC_SITE_AP
 
 const unavailableSite: SiteSettings = { name: 'Legendary Invention' };
 
+export function publicAssetUrl(value?: string | null) {
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  try {
+    return `${new URL(apiBase).origin}${normalized}`;
+  } catch {
+    return normalized;
+  }
+}
+
 export async function fetchJson<T>(path: string): Promise<T | null> {
   try {
     const response = await fetch(`${apiBase}${path}`, { next: { revalidate: 120 } });
@@ -68,8 +93,8 @@ export async function fetchJson<T>(path: string): Promise<T | null> {
 }
 
 export async function getRuntime() {
-  const runtime = await fetchJson<{ site: SiteSettings; navigation: NavigationItem[] }>('/v1/public/site/runtime');
-  return runtime || { site: unavailableSite, navigation: [] };
+  const runtime = await fetchJson<{ site: SiteSettings; navigation: NavigationItem[]; carousels?: SiteCarousel[] }>('/v1/public/site/runtime');
+  return runtime || { site: unavailableSite, navigation: [], carousels: [] };
 }
 
 export async function getPage(slug = '/') {
