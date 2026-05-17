@@ -8,13 +8,20 @@ function navigationTarget(item: NavigationItem) {
 
 export function SiteHeader({ site, navigation }: { site: SiteSettings; navigation: NavigationItem[] }) {
   const logoUrl = publicAssetUrl(site.logoUrl);
+  const siteName = site.name || 'Legendary Invention';
 
   return (
     <header className="site-header">
       <div className="site-header__brand">
-        <a className="brand" href="/">
-          {logoUrl ? <img src={logoUrl} alt="" className="brand-logo" /> : <span className="brand-mark" />}
-          <span>{site.name || 'Legendary Invention'}</span>
+        <a className={logoUrl ? 'brand brand--logo-only' : 'brand'} href="/" aria-label={siteName}>
+          {logoUrl ? (
+            <img src={logoUrl} alt={siteName} className="brand-logo" />
+          ) : (
+            <>
+              <span className="brand-mark" />
+              <span>{siteName}</span>
+            </>
+          )}
         </a>
       </div>
       <nav className="site-header__nav" aria-label="主导航">
