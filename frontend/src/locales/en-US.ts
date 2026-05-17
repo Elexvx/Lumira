@@ -30,7 +30,6 @@ export default {
   'nav.approvals.root': 'Approval Center',
   'nav.evaluations.root': 'Evaluation Center',
   'nav.site.root': 'Website',
-  'nav.site.official': 'Official Site',
   'nav.site.settings': 'Site Settings',
   'nav.site.navigation': 'Navigation',
   'nav.site.carousels': 'Carousels',

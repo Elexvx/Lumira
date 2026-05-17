@@ -170,7 +170,6 @@ export const backendRoutes: BackendRouteRecord[] = [
     ],
   },
   { path: '/plugins/:pluginCode', component: '@/pages/plugins/RuntimeContainer', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
-  { path: '/official', component: '@/pages/public-site/Home', layout: false, name: 'nav.site.official', hideInMenu: true },
   { path: '/blank/workflow', component: '@/pages/exception/BlankFlow', layout: false, name: 'common.failure', hideInMenu: true },
   { path: '/user/login', component: '@/pages/user/Login', layout: false, name: 'page.login.title', hideInMenu: true },
   { path: '/403', component: '@/pages/exception/NoPermission', name: 'common.failure', hideInMenu: true },

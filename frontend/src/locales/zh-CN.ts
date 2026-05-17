@@ -35,7 +35,6 @@ export default {
   'nav.approvals.root': '审批中心',
   'nav.evaluations.root': '评审中心',
   'nav.site.root': '官网管理',
-  'nav.site.official': '官网首页',
   'nav.site.settings': '站点设置',
   'nav.site.navigation': '导航管理',
   'nav.site.carousels': '轮播管理',

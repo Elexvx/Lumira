@@ -48,12 +48,6 @@ export interface SiteCarousel {
   updatedAt?: string;
 }
 
-export interface PublicSiteRuntime {
-  site?: SiteSettings;
-  navigation?: SiteNavigation[];
-  carousels?: SiteCarousel[];
-}
-
 export interface SitePage {
   id: number;
   title: string;
@@ -212,41 +206,4 @@ export const siteService = {
     request<PagedResult<SiteSubmission>>('/v1/site/submissions', { method: 'GET', params, ...options }),
   reviewSubmission: (id: number, payload: { status: string; reviewRemark?: string }, options: RequestOptions = {}) =>
     request<SiteSubmission>(`/v1/site/submissions/${id}/review`, { method: 'PUT', data: payload, ...options }),
-};
-
-export const publicSiteService = {
-  runtime: (options: RequestOptions = {}) =>
-    request<PublicSiteRuntime>('/v1/public/site/runtime', {
-      method: 'GET',
-      skipAuth: true,
-      autoRedirectOnUnauthorized: false,
-      silent: true,
-      ...options,
-    }),
-  carousels: (options: RequestOptions = {}) =>
-    request<SiteCarousel[]>('/v1/public/site/carousels', {
-      method: 'GET',
-      skipAuth: true,
-      autoRedirectOnUnauthorized: false,
-      silent: true,
-      ...options,
-    }),
-  contents: (params: Record<string, unknown> = {}, options: RequestOptions = {}) =>
-    request<PagedResult<SiteContent>>('/v1/public/site/contents', {
-      method: 'GET',
-      params,
-      skipAuth: true,
-      autoRedirectOnUnauthorized: false,
-      silent: true,
-      ...options,
-    }),
-  content: (slug: string, options: RequestOptions = {}) =>
-    request<SiteContent>('/v1/public/site/contents/detail', {
-      method: 'GET',
-      params: { slug },
-      skipAuth: true,
-      autoRedirectOnUnauthorized: false,
-      silent: true,
-      ...options,
-    }),
 };
