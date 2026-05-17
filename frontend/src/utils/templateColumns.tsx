@@ -1,3 +1,4 @@
+import type { ProColumns } from '@ant-design/pro-components';
 import { Switch } from 'antd';
 
 type TemplateEnabledRecord = {
@@ -8,12 +9,12 @@ type TemplateEnabledRecord = {
 export const buildTemplateEnabledColumn = <T extends TemplateEnabledRecord>(
   updateEnabled: (id: number, enabled: boolean) => Promise<unknown>,
   reload: () => void,
-) => ({
+): ProColumns<T> => ({
   title: '启用',
   dataIndex: 'enabled',
-  render: (value: boolean, record: T) => (
+  render: (_, record) => (
     <Switch
-      checked={value}
+      checked={record.enabled}
       onChange={(checked) => {
         void updateEnabled(record.id, checked).then(reload);
       }}

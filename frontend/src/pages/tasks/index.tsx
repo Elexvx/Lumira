@@ -8,9 +8,9 @@ import type { TaskRecord } from '@/types/api';
 
 const columns: ProColumns<TaskRecord>[] = [
   { title: '任务', dataIndex: 'title', render: (_: unknown, record: TaskRecord) => <Space direction="vertical" size={0}><Typography.Text strong>{record.title}</Typography.Text><Typography.Text type="secondary">{record.description || record.businessTitle}</Typography.Text></Space> },
-  { title: '类型', dataIndex: 'taskType', width: 120, render: (value: string) => <Tag color="blue">{value}</Tag> },
+  { title: '类型', dataIndex: 'taskType', width: 120, render: (_, record) => <Tag color="blue">{record.taskType}</Tag> },
   { title: '业务类型', dataIndex: 'businessType', width: 160 },
-  { title: '状态', dataIndex: 'status', width: 120, render: (value: string) => <Tag color={value === 'PENDING' ? 'orange' : 'green'}>{value}</Tag> },
+  { title: '状态', dataIndex: 'status', width: 120, render: (_, record) => <Tag color={record.status === 'PENDING' ? 'orange' : 'green'}>{record.status}</Tag> },
   { title: '创建时间', dataIndex: 'createTime', width: 190 },
 ];
 
