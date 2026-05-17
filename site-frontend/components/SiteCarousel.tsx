@@ -42,7 +42,6 @@ export function SiteCarouselHero({ items }: { items: SiteCarousel[] }) {
           <img src={publicAssetUrl(item.imageUrl)} alt={item.title || '官网轮播'} />
         </article>
       ))}
-      <div className="site-carousel-shade" />
       {hasMultipleItems ? (
         <>
           <button
