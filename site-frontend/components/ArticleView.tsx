@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Newspaper, Tag } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock3 } from 'lucide-react';
 import { publicAssetUrl, type ContentRecord } from '@/lib/api';
 
 function formatDate(value?: string) {
@@ -6,30 +6,6 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '更新';
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
-}
-
-function normalizeArticlePath(value?: string) {
-  if (!value) return '/';
-  return value.startsWith('/') ? value : `/${value}`;
-}
-
-function parseTags(value?: string) {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) {
-      return parsed
-        .map((item) => (typeof item === 'string' ? item : typeof item?.label === 'string' ? item.label : typeof item?.name === 'string' ? item.name : ''))
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-  } catch {
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  return [];
 }
 
 function textFromBlock(block: unknown) {
@@ -116,12 +92,10 @@ function renderBodyBlock(block: Record<string, unknown>, index: number) {
   return content ? <p key={key}>{content}</p> : null;
 }
 
-export function ArticleView({ content, relatedContents = [] }: { content: ContentRecord; relatedContents?: ContentRecord[] }) {
+export function ArticleView({ content }: { content: ContentRecord; relatedContents?: ContentRecord[] }) {
   const bodyBlocks = parseBodyBlocks(content);
   const coverUrl = publicAssetUrl(content.coverUrl);
-  const tags = parseTags(content.tagsJson);
   const readMinutes = estimateReadMinutes(content);
-  const related = relatedContents.filter((item) => item.id !== content.id).slice(0, 3);
 
   return (
     <article className="article-page">
@@ -130,23 +104,12 @@ export function ArticleView({ content, relatedContents = [] }: { content: Conten
           <ArrowLeft size={18} />
           返回内容列表
         </a>
-        <div className="article-kicker">
-          <Newspaper size={18} />
-          文章详情
-        </div>
         <h1>{content.title}</h1>
         {content.summary ? <p>{content.summary}</p> : null}
         <div className="article-meta">
           <span><CalendarDays size={16} />{formatDate(content.publishedAt || content.updatedAt)}</span>
           <span><Clock3 size={16} />约 {readMinutes} 分钟阅读</span>
         </div>
-        {tags.length ? (
-          <div className="article-tags" aria-label="文章标签">
-            {tags.map((item) => (
-              <span key={item}><Tag size={14} />{item}</span>
-            ))}
-          </div>
-        ) : null}
       </section>
 
       {coverUrl ? (
@@ -155,36 +118,10 @@ export function ArticleView({ content, relatedContents = [] }: { content: Conten
         </figure>
       ) : null}
 
-      <div className="article-layout">
-        <aside className="article-side">
-          <span>Published</span>
-          <strong>{formatDate(content.publishedAt || content.updatedAt)}</strong>
-          <a href="/#insights">继续浏览内容</a>
-        </aside>
-        <div className="article-body">
-          {bodyBlocks.map(renderBodyBlock)}
-          {!bodyBlocks.length ? <p>正文内容尚未发布。</p> : null}
-        </div>
+      <div className="article-body">
+        {bodyBlocks.map(renderBodyBlock)}
+        {!bodyBlocks.length ? <p>正文内容尚未发布。</p> : null}
       </div>
-
-      {related.length ? (
-        <section className="related-articles" aria-labelledby="related-articles-title">
-          <div>
-            <span>Next</span>
-            <h2 id="related-articles-title">继续阅读</h2>
-          </div>
-          <div className="related-article-list">
-            {related.map((item) => (
-              <a href={normalizeArticlePath(item.slug)} key={item.id}>
-                <span>{formatDate(item.publishedAt || item.updatedAt)}</span>
-                <strong>{item.title}</strong>
-                {item.summary ? <p>{item.summary}</p> : null}
-                <em>查看详情 <ArrowRight size={16} /></em>
-              </a>
-            ))}
-          </div>
-        </section>
-      ) : null}
     </article>
   );
 }
