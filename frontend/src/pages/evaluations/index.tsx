@@ -68,7 +68,7 @@ const EvaluationsPage = () => {
   const instanceColumns: ProColumns<EvaluationInstanceRecord>[] = [
     { title: '对象', dataIndex: 'objectTitle' },
     { title: '类型', dataIndex: 'objectType', width: 160 },
-    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value) },
+    { title: '状态', dataIndex: 'status', width: 120, render: (_, record) => renderStatusTag(record.status) },
     { title: '最终分', dataIndex: 'finalScore', width: 100 },
     { title: '等级', dataIndex: 'finalGrade', width: 100 },
     { title: '创建时间', dataIndex: 'createTime', width: 190 },
@@ -77,7 +77,7 @@ const EvaluationsPage = () => {
   const pendingColumns: ProColumns<EvaluationScoreTaskRecord>[] = [
     { title: '任务ID', dataIndex: 'id', width: 100 },
     { title: '实例ID', dataIndex: 'instanceId', width: 100 },
-    { title: '状态', dataIndex: 'status', render: (value?: string | null) => renderStatusTag(value, { PENDING: { color: 'orange', text: value || '-' } }) },
+    { title: '状态', dataIndex: 'status', render: (_, record) => renderStatusTag(record.status, { PENDING: { color: 'orange', text: record.status || '-' } }) },
     { title: '操作', render: (_, record) => <Button size="small" type="primary" onClick={async () => { await evaluationService.submitScore(record.id, { details: [{ dimensionId: 1, score: 80 }], comment: '默认评分' }); message.success('已提交评分'); reload(); }}>快速提交</Button> },
   ];
 

@@ -1,10 +1,11 @@
 import { ExperimentOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Checkbox, Col, Descriptions, Empty, Form, Input, Row, Segmented, Select, Space, Spin, Table, Tag, Typography, message } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Alert, Button, Card, Checkbox, Col, Descriptions, Empty, Form, Input, Row, Segmented, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import type { ProColumns } from '@ant-design/pro-components';
 import { formatMessage, history } from '@umijs/max';
 import { useEffect, useMemo, useState } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
-import { ManagementDrawer, ManagementPage, ManagementPageBody } from '@/features/management';
+import { ManagementDrawer, ManagementPage, ManagementPageBody, ManagementTable } from '@/features/management';
+import { useResponsive } from '@/hooks/useResponsive';
 import { systemService } from '@/services/system';
 import type { PlatformModuleRecord, PlatformModuleType, PlatformModuleValidationPayload, PlatformModuleValidationResult } from '@/types/api';
 
@@ -84,6 +85,7 @@ const splitLines = (value?: string) =>
     .filter(Boolean);
 
 const ModulesPage = () => {
+  const responsive = useResponsive();
   const [form] = Form.useForm<ModuleValidationFormValues>();
   const [modules, setModules] = useState<PlatformModuleRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -250,7 +252,7 @@ const ModulesPage = () => {
     [activeSource, activeType, modules],
   );
 
-  const columns: ColumnsType<PlatformModuleRecord> = [
+  const columns: ProColumns<PlatformModuleRecord>[] = [
     {
       title: '模块',
       dataIndex: 'moduleName',
@@ -269,36 +271,36 @@ const ModulesPage = () => {
       title: '类型',
       dataIndex: 'moduleType',
       width: 96,
-      render: (value: PlatformModuleType) => <Tag color={MODULE_TYPE_COLORS[value]}>{MODULE_TYPE_LABELS[value] || value}</Tag>,
+      render: (_, record) => <Tag color={MODULE_TYPE_COLORS[record.moduleType]}>{MODULE_TYPE_LABELS[record.moduleType] || record.moduleType}</Tag>,
     },
     {
       title: '状态',
       dataIndex: 'lifecycleStatus',
       width: 100,
-      render: (value: string) => <Tag color={MODULE_STATUS_COLORS[value] || 'default'}>{value}</Tag>,
+      render: (_, record) => <Tag color={MODULE_STATUS_COLORS[record.lifecycleStatus] || 'default'}>{record.lifecycleStatus}</Tag>,
     },
     {
       title: '来源',
       dataIndex: 'sourceType',
       width: 104,
-      render: (value: string) => (
-        <Tag color={MODULE_SOURCE_COLORS[value] || 'default'}>{MODULE_SOURCE_LABELS[value] || value || '-'}</Tag>
+      render: (_, record) => (
+        <Tag color={MODULE_SOURCE_COLORS[record.sourceType] || 'default'}>{MODULE_SOURCE_LABELS[record.sourceType] || record.sourceType || '-'}</Tag>
       ),
     },
     {
       title: '所属服务',
       dataIndex: 'ownerService',
       width: 180,
-      render: (value?: string) => value || '-',
+      render: (_, record) => record.ownerService || '-',
     },
     {
       title: '管理入口',
       dataIndex: 'adminRoutePath',
       width: 160,
-      render: (value?: string) =>
-        value ? (
-          <Button type="link" size="small" onClick={() => history.push(value)}>
-            {value}
+      render: (_, record) =>
+        record.adminRoutePath ? (
+          <Button type="link" size="small" onClick={() => history.push(record.adminRoutePath as string)}>
+            {record.adminRoutePath}
           </Button>
         ) : (
           '-'
@@ -308,33 +310,33 @@ const ModulesPage = () => {
       title: '依赖',
       dataIndex: 'dependencies',
       width: 220,
-      render: (items: string[]) => renderListTags(items),
+      render: (_, record) => renderListTags(record.dependencies),
     },
     {
       title: 'API 前缀',
       dataIndex: 'apiPrefixes',
       width: 300,
-      render: (items: string[]) => renderListTags(items),
+      render: (_, record) => renderListTags(record.apiPrefixes),
     },
     {
       title: '权限',
       dataIndex: 'permissionKeys',
       width: 120,
-      render: (items: string[]) => `${items?.length || 0} 项`,
+      render: (_, record) => `${record.permissionKeys?.length || 0} 项`,
     },
     {
       title: '依赖健康',
       dataIndex: 'dependencySatisfied',
       width: 112,
-      render: (value: boolean, record) => (
-        <Tag color={value ? 'green' : 'orange'}>{value ? '正常' : `${record.readinessIssues?.length || 0} 项阻塞`}</Tag>
+      render: (_, record) => (
+        <Tag color={record.dependencySatisfied ? 'green' : 'orange'}>{record.dependencySatisfied ? '正常' : `${record.readinessIssues?.length || 0} 项阻塞`}</Tag>
       ),
     },
     {
       title: '说明',
       dataIndex: 'description',
       ellipsis: true,
-      render: (value?: string) => value || '-',
+      render: (_, record) => record.description || '-',
     },
     {
       title: '操作',
@@ -405,9 +407,11 @@ const ModulesPage = () => {
             </Space>
           }
         >
-          <Table<PlatformModuleRecord>
+          <ManagementTable<PlatformModuleRecord>
             rowKey="moduleCode"
             columns={columns}
+            isMobile={responsive.isMobile}
+            search={false}
             dataSource={filteredModules}
             loading={loading}
             pagination={false}

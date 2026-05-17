@@ -168,7 +168,7 @@ const ApprovalsPage = () => {
   const instanceColumns: ProColumns<ApprovalInstanceRecord>[] = [
     { title: '审批标题', dataIndex: 'businessTitle' },
     { title: '业务类型', dataIndex: 'businessType', width: 160 },
-    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
+    { title: '状态', dataIndex: 'status', width: 120, render: (_, record) => renderStatusTag(record.status, statusMeta) },
     { title: '创建时间', dataIndex: 'createTime', width: 190 },
     {
       title: '操作',
@@ -189,7 +189,7 @@ const ApprovalsPage = () => {
   const pendingColumns: ProColumns<ApprovalTaskRecord>[] = [
     { title: '审批标题', dataIndex: 'businessTitle', render: (value) => value || '-' },
     { title: '业务类型', dataIndex: 'businessType', width: 160, render: (value) => value || '-' },
-    { title: '状态', dataIndex: 'status', width: 120, render: (value?: string | null) => renderStatusTag(value, statusMeta) },
+    { title: '状态', dataIndex: 'status', width: 120, render: (_, record) => renderStatusTag(record.status, statusMeta) },
     { title: '创建时间', dataIndex: 'createTime', width: 190 },
     {
       title: '操作',

@@ -137,8 +137,8 @@ const CarouselManagement = () => {
               title: '图片',
               dataIndex: 'imageUrl',
               width: 180,
-              render: (value) => {
-                const url = normalizeUploadUrl(value);
+              render: (_, record) => {
+                const url = normalizeUploadUrl(record.imageUrl);
                 return url ? <Image width={120} height={68} preview={false} src={url} className="site-admin-carousel-thumb" /> : '-';
               },
             },

@@ -161,6 +161,18 @@ export async function getContents() {
   return result?.records || [];
 }
 
+async function findContentBySlug(normalized: string) {
+  const legacySlug = normalized.substring(1);
+  const pageSize = 50;
+  const maxPages = 10;
+  for (let pageNo = 1; pageNo <= maxPages; pageNo += 1) {
+    const result = await fetchJson<PagedResult<ContentRecord>>(`/v1/public/site/contents?pageNo=${pageNo}&pageSize=${pageSize}`);
+    const matched = result?.records?.find((item) => item.slug === normalized || item.slug === legacySlug);
+    if (matched || !result?.records?.length || result.records.length < pageSize) return matched || null;
+  }
+  return null;
+}
+
 export async function getContent(slug: string) {
   const normalized = slug.startsWith('/') ? slug : `/${slug}`;
   const content = await fetchJson<ContentRecord>(`/v1/public/site/contents/detail?slug=${encodeURIComponent(normalized)}`);
@@ -168,8 +180,7 @@ export async function getContent(slug: string) {
   const legacySlug = normalized.substring(1);
   const legacyContent = await fetchJson<ContentRecord>(`/v1/public/site/contents/detail?slug=${encodeURIComponent(legacySlug)}`);
   if (legacyContent) return legacyContent;
-  const result = await fetchJson<PagedResult<ContentRecord>>('/v1/public/site/contents?pageNo=1&pageSize=50');
-  return result?.records?.find((item) => item.slug === normalized || item.slug === legacySlug) || null;
+  return findContentBySlug(normalized);
 }
 
 export async function getForm(code: string) {

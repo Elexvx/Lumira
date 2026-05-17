@@ -1,9 +1,8 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
@@ -11,6 +10,7 @@ import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/ma
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useResponsive } from '@/hooks/useResponsive';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/settings/menus/columns';
 import { MenuEditorForm, buildParentMenuOptions } from '@/pages/settings/menus/components/MenuEditorForm';
 import {
@@ -105,6 +105,7 @@ const SiteNavigationRoutesTab = () => {
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<Partial<SiteNavigation>>();
   const actionPermission = useActionPermission();
+  const responsive = useResponsive();
   const canCreate = actionPermission.can('site:navigation:create');
   const canUpdate = actionPermission.can('site:navigation:update');
   const canDelete = actionPermission.can('site:navigation:delete');
@@ -147,20 +148,22 @@ const SiteNavigationRoutesTab = () => {
 
   return (
     <>
-      <Table<SiteNavigation>
+      <ManagementTable<SiteNavigation>
         rowKey="id"
         loading={loading}
         dataSource={records}
         pagination={false}
         tableLayout="fixed"
-        title={() =>
+        isMobile={responsive.isMobile}
+        search={false}
+        toolBarRender={() =>
           canCreate ? (
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+            [
+              <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
                 新增导航
-              </Button>
-            </Space>
-          ) : null
+              </Button>,
+            ]
+          ) : []
         }
         columns={[
           {
@@ -229,10 +232,9 @@ const SiteNavigationRoutesTab = () => {
         ]}
       />
 
-      <Drawer
+      <ManagementDrawer
         title={editing?.id ? '编辑官网导航' : '新增官网导航'}
         open={Boolean(editing)}
-        width={STANDARD_DRAWER_WIDTH}
         onClose={() => setEditing(null)}
         extra={
           <Button type="primary" loading={saving} onClick={() => void save()}>
@@ -266,13 +268,14 @@ const SiteNavigationRoutesTab = () => {
             <Select options={navigationStatusOptions} />
           </Form.Item>
         </Form>
-      </Drawer>
+      </ManagementDrawer>
     </>
   );
 };
 
 const SettingsRoutesTab = () => {
   const { setInitialState } = useInitialStateModel();
+  const responsive = useResponsive();
   const [routeOrder, setRouteOrder] = useState(() => getStoredSettingRouteOrder());
   const records = useMemo(() => buildSettingsRouteRecords(routeOrder), [routeOrder]);
   const canResetOrder = routeOrder.join('|') !== DEFAULT_SETTING_ROUTE_ORDER.join('|');
@@ -312,17 +315,17 @@ const SettingsRoutesTab = () => {
   };
 
   return (
-    <Table<SettingsRouteRecord>
+    <ManagementTable<SettingsRouteRecord>
       rowKey="id"
       dataSource={records}
       pagination={false}
       tableLayout="fixed"
-      title={() =>
+      isMobile={responsive.isMobile}
+      search={false}
+      toolBarRender={() =>
         canResetOrder ? (
-          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button onClick={resetOrder}>恢复默认顺序</Button>
-          </Space>
-        ) : null
+          [<Button key="reset" onClick={resetOrder}>恢复默认顺序</Button>]
+        ) : []
       }
       columns={[
         {
