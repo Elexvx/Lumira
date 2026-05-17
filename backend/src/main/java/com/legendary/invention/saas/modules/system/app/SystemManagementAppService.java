@@ -16,6 +16,12 @@ import com.legendary.invention.saas.modules.system.permission.SystemPermissionTr
 import com.legendary.invention.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.module.DatabasePlatformModuleRepository;
+import com.legendary.invention.saas.modules.system.module.PlatformModuleDefinitionValidator;
+import com.legendary.invention.saas.modules.system.module.PlatformModuleRegistry;
+import com.legendary.invention.saas.modules.system.module.StaticPlatformModuleRegistry;
+import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
+import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
@@ -160,6 +166,9 @@ public class SystemManagementAppService {
     private final SecuritySettingsService securitySettingsService;
     private final PasswordPolicyService passwordPolicyService;
     private final TaskCenterAppService taskCenterAppService;
+    private final PlatformModuleRegistry platformModuleRegistry;
+    private final PlatformModuleDefinitionValidator platformModuleDefinitionValidator;
+    private final DatabasePlatformModuleRepository databasePlatformModuleRepository;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     @Autowired
@@ -179,7 +188,10 @@ public class SystemManagementAppService {
             OperationAuditService operationAuditService,
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
-            TaskCenterAppService taskCenterAppService
+            TaskCenterAppService taskCenterAppService,
+            PlatformModuleRegistry platformModuleRegistry,
+            PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
+            DatabasePlatformModuleRepository databasePlatformModuleRepository
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.authAppService = authAppService;
@@ -197,6 +209,50 @@ public class SystemManagementAppService {
         this.securitySettingsService = securitySettingsService;
         this.passwordPolicyService = passwordPolicyService;
         this.taskCenterAppService = taskCenterAppService;
+        this.platformModuleRegistry = platformModuleRegistry;
+        this.platformModuleDefinitionValidator = platformModuleDefinitionValidator;
+        this.databasePlatformModuleRepository = databasePlatformModuleRepository;
+    }
+
+    public SystemManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            AuthAppService authAppService,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            PluginManagementAppService pluginManagementAppService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            TaskCenterAppService taskCenterAppService
+    ) {
+        this(
+                jdbcTemplate,
+                authAppService,
+                userDomainService,
+                permissionSnapshotService,
+                pluginManagementAppService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                taskCenterAppService,
+                new StaticPlatformModuleRegistry(),
+                new PlatformModuleDefinitionValidator(),
+                null
+        );
     }
 
     public SystemManagementAppService(
@@ -249,6 +305,38 @@ public class SystemManagementAppService {
             summary.setTaskSummary(taskCenterAppService.summary(currentUser));
         }
         return summary;
+    }
+
+    public List<PlatformModuleVO> listPlatformModules(CurrentUser currentUser) {
+        return platformModuleRegistry.listModules();
+    }
+
+    public PlatformModuleVO getPlatformModule(CurrentUser currentUser, String moduleCode) {
+        return platformModuleRegistry.findModule(moduleCode)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "模块不存在"));
+    }
+
+    public PlatformModuleValidationVO validatePlatformModule(CurrentUser currentUser, SystemDTO.ModuleValidationRequest request) {
+        return platformModuleDefinitionValidator.validate(request, platformModuleRegistry.listModules());
+    }
+
+    @Transactional
+    public PlatformModuleVO createPlatformModule(CurrentUser currentUser, SystemDTO.ModuleValidationRequest request) {
+        if (!"DATABASE".equals(request.getSourceType())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前仅允许创建 DATABASE 来源模块");
+        }
+        if (!"PLANNED".equals(request.getLifecycleStatus())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前仅允许创建 PLANNED 生命周期模块");
+        }
+        PlatformModuleValidationVO validation = validatePlatformModule(currentUser, request);
+        if (!validation.isValid()) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "模块草案校验未通过: " + String.join("; ", validation.getIssues()));
+        }
+        if (databasePlatformModuleRepository == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "数据库模块注册仓储不可用");
+        }
+        databasePlatformModuleRepository.createModule(request, currentUser.getUserId());
+        return getPlatformModule(currentUser, request.getModuleCode());
     }
 
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {

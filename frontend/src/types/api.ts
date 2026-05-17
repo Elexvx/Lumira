@@ -243,6 +243,57 @@ export interface MenuNode {
   children?: MenuNode[];
 }
 
+export type PlatformModuleType = 'FOUNDATION' | 'CAPABILITY' | 'SCENE' | 'ADAPTER' | 'PLUGIN';
+export type PlatformModuleStatus = 'ENABLED' | 'DISABLED' | 'PLANNED' | 'DEPRECATED';
+
+export interface PlatformModuleRecord {
+  moduleCode: string;
+  moduleName: string;
+  moduleType: PlatformModuleType;
+  lifecycleStatus: PlatformModuleStatus;
+  sourceType: string;
+  description?: string;
+  ownerService?: string;
+  adminRoutePath?: string;
+  apiPrefixes: string[];
+  permissionKeys: string[];
+  dependencies: string[];
+  dependencySatisfied: boolean;
+  missingDependencies: string[];
+  inactiveDependencies: string[];
+  readyToEnable: boolean;
+  readinessIssues: string[];
+  overriddenByDatabase: boolean;
+  registrationSourceOrder: string[];
+  registeredAt?: string;
+  builtin: boolean;
+}
+
+export interface PlatformModuleValidationPayload {
+  moduleCode: string;
+  moduleName: string;
+  moduleType: PlatformModuleType;
+  lifecycleStatus: PlatformModuleStatus;
+  sourceType?: string;
+  description?: string;
+  ownerService?: string;
+  adminRoutePath?: string;
+  apiPrefixes?: string[];
+  permissionKeys?: string[];
+  dependencies?: string[];
+  overwriteExisting?: boolean;
+}
+
+export interface PlatformModuleValidationResult {
+  valid: boolean;
+  duplicateModuleCode: boolean;
+  issues: string[];
+  warnings: string[];
+  missingDependencies: string[];
+  inactiveDependencies: string[];
+  cyclePath: string[];
+}
+
 export type AiSkillPermissionMode = 'visit' | 'allow' | 'deny';
 
 export interface AiSkillRecord {
