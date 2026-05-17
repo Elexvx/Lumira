@@ -19,6 +19,10 @@ const skipFrontend = argv.has('--skip-frontend') || argv.has('--no-frontend');
 const skipServices = argv.has('--skip-services') || argv.has('--no-services');
 const verboseLogs = argv.has('--verbose-logs') || argv.has('--verbose');
 let runtimeEnv = process.env;
+const mavenCommand = process.platform === 'win32' ? 'mvn.cmd' : 'mvn';
+const corepackCommand = process.platform === 'win32' ? 'corepack.cmd' : 'corepack';
+const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+const useShell = process.platform === 'win32';
 
 function log(message) {
   console.log(`[launcher] ${message}`);
@@ -44,18 +48,18 @@ function commandExists(command, args = ['--version']) {
   const result = spawnSync(command, args, {
     cwd: repoRoot,
     stdio: 'ignore',
-    shell: false,
+    shell: useShell,
   });
   return result.status === 0;
 }
 
 function pickPackageManager() {
-  if (commandExists('corepack')) {
-    return { command: 'corepack', args: ['pnpm'] };
+  if (commandExists(corepackCommand)) {
+    return { command: corepackCommand, args: ['pnpm'] };
   }
 
-  if (commandExists('pnpm')) {
-    return { command: 'pnpm', args: [] };
+  if (commandExists(pnpmCommand)) {
+    return { command: pnpmCommand, args: [] };
   }
 
   throw new Error('Neither corepack nor pnpm was found in PATH.');
@@ -218,7 +222,7 @@ function runCommand(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? repoRoot,
     stdio: options.stdio ?? 'inherit',
-    shell: false,
+    shell: useShell,
     env: options.env ?? runtimeEnv,
   });
 
@@ -239,7 +243,7 @@ function startComposeServices(services, extraEnv = {}, options = {}) {
   return spawnSync('docker', args, {
     cwd: repoRoot,
     stdio: 'inherit',
-    shell: false,
+    shell: useShell,
     env: {
       ...runtimeEnv,
       ...extraEnv,
@@ -265,7 +269,7 @@ async function ensureFrontendDependencies() {
 
 function ensureSharedLibraries() {
   log('Installing shared library modules from source...');
-  const installResult = runCommand('mvn', ['-f', 'libs/common-web/pom.xml', 'install', '-DskipTests']);
+  const installResult = runCommand(mavenCommand, ['-f', 'libs/common-web/pom.xml', 'install', '-DskipTests']);
   if (installResult.status !== 0) {
     throw new Error('Shared library installation failed.');
   }
@@ -289,7 +293,7 @@ function spawnTask(task) {
   const child = spawn(task.command, task.args, {
     cwd: task.cwd ?? repoRoot,
     env: runtimeEnv,
-    shell: false,
+    shell: useShell,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
@@ -501,14 +505,14 @@ async function main() {
   const tasks = [];
   const reusedEntries = [];
   const backendServices = [
-    { name: 'system-service', port: 8080, command: 'mvn', args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
-    { name: 'gateway-service', port: 8081, command: 'mvn', args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
-    { name: 'auth-service', port: 8082, command: 'mvn', args: ['-f', 'services/auth-service/pom.xml', 'spring-boot:run'] },
-    { name: 'file-service', port: 8084, command: 'mvn', args: ['-f', 'services/file-service/pom.xml', 'spring-boot:run'] },
-    { name: 'message-service', port: 8085, command: 'mvn', args: ['-f', 'services/message-service/pom.xml', 'spring-boot:run'] },
-    { name: 'plugin-service', port: 8086, command: 'mvn', args: ['-f', 'services/plugin-service/pom.xml', 'spring-boot:run'] },
-    { name: 'localization-service', port: 8088, command: 'mvn', args: ['-f', 'services/localization-service/pom.xml', 'spring-boot:run'] },
-    { name: 'job-executor', port: 8089, command: 'mvn', args: ['-f', 'services/job-executor/pom.xml', 'spring-boot:run'] },
+    { name: 'system-service', port: 8080, command: mavenCommand, args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
+    { name: 'gateway-service', port: 8081, command: mavenCommand, args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
+    { name: 'auth-service', port: 8082, command: mavenCommand, args: ['-f', 'services/auth-service/pom.xml', 'spring-boot:run'] },
+    { name: 'file-service', port: 8084, command: mavenCommand, args: ['-f', 'services/file-service/pom.xml', 'spring-boot:run'] },
+    { name: 'message-service', port: 8085, command: mavenCommand, args: ['-f', 'services/message-service/pom.xml', 'spring-boot:run'] },
+    { name: 'plugin-service', port: 8086, command: mavenCommand, args: ['-f', 'services/plugin-service/pom.xml', 'spring-boot:run'] },
+    { name: 'localization-service', port: 8088, command: mavenCommand, args: ['-f', 'services/localization-service/pom.xml', 'spring-boot:run'] },
+    { name: 'job-executor', port: 8089, command: mavenCommand, args: ['-f', 'services/job-executor/pom.xml', 'spring-boot:run'] },
   ];
 
   const backendAvailability = skipServices ? [] : await probeBackendServices(backendServices);
