@@ -7,10 +7,13 @@ import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.modules.site.domain.SiteEnums;
 import com.legendary.invention.saas.modules.site.dto.SiteDTO;
 import com.legendary.invention.saas.modules.site.vo.SiteVO;
+import com.legendary.invention.saas.modules.system.app.SystemPlatformSettingsAppService;
+import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,11 +29,18 @@ public class PublicSiteAppService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final SiteManagementAppService siteManagementAppService;
+    private final SystemPlatformSettingsAppService systemPlatformSettingsAppService;
 
-    public PublicSiteAppService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, SiteManagementAppService siteManagementAppService) {
+    public PublicSiteAppService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            SiteManagementAppService siteManagementAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.siteManagementAppService = siteManagementAppService;
+        this.systemPlatformSettingsAppService = systemPlatformSettingsAppService;
     }
 
     public SiteVO.PublicRuntimeVO runtime() {
@@ -165,7 +175,7 @@ public class PublicSiteAppService {
     }
 
     private SiteVO.SiteSettingsVO publicSite(Long siteId) {
-        return jdbcTemplate.queryForObject(
+        SiteVO.SiteSettingsVO site = jdbcTemplate.queryForObject(
                 """
                         select s.*, lf.public_url as logo_url, ff.public_url as favicon_url
                         from site_site s
@@ -178,6 +188,24 @@ public class PublicSiteAppService {
                 DEFAULT_TENANT_ID,
                 siteId
         );
+        applyBrandingFallback(site);
+        return site;
+    }
+
+    private void applyBrandingFallback(SiteVO.SiteSettingsVO site) {
+        if (site == null) {
+            return;
+        }
+        SystemVO.BrandingSettingsVO branding = systemPlatformSettingsAppService.getPublicBrandingSettings(DEFAULT_TENANT_ID);
+        if (!StringUtils.hasText(site.name)) {
+            site.name = branding.getWebsiteName();
+        }
+        if (!StringUtils.hasText(site.logoUrl)) {
+            site.logoUrl = branding.getWebsiteLogoUrl();
+        }
+        if (!StringUtils.hasText(site.faviconUrl)) {
+            site.faviconUrl = branding.getWebsiteFaviconUrl();
+        }
     }
 
     private List<SiteVO.NavigationVO> navigation(Long siteId) {

@@ -1,11 +1,15 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Form, Spin, message } from 'antd';
+import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Spin, Table, Tabs, Tag, Typography, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
+import { formatMessage } from '@umijs/max';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/settings/menus/columns';
 import { MenuEditorForm, buildParentMenuOptions } from '@/pages/settings/menus/components/MenuEditorForm';
@@ -21,14 +25,67 @@ import {
 } from '@/pages/settings/menus/treeUtils';
 import { buildMenuTableData } from '@/pages/settings/menus/tableData';
 import { iamService } from '@/services/iam';
+import { siteService, type SiteNavigation } from '@/services/site';
+import { backendRouteMeta } from '@/routes/meta';
 import type { MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 
 interface MenuDragState {
   draggedId: number;
   targetId: number;
   position: MenuDropPosition;
 }
+
+const SETTINGS_ROUTE_ORDER = [
+  '/settings/modules',
+  '/settings/menus',
+  '/settings/dicts',
+  '/settings/profile-fields',
+  '/settings/personalization',
+  '/settings/security',
+  '/settings/verification',
+  '/settings/notifications',
+  '/settings/ai-employees',
+  '/settings/plugins',
+  '/settings/files/all',
+  '/settings/localization',
+  '/settings/monitoring',
+  '/settings/api-docs',
+  '/settings/audit',
+];
+
+const formatRouteName = (name: string) =>
+  resolveBuiltinMessage(
+    name,
+    formatMessage({
+      id: name,
+      defaultMessage: name,
+    }),
+  );
+
+interface SettingsRouteRecord {
+  id: string;
+  name: string;
+  path: string;
+  icon?: string;
+  access?: string;
+  sortNo: number;
+  manageMode: string;
+}
+
+const settingsRouteRecords: SettingsRouteRecord[] = SETTINGS_ROUTE_ORDER.map((path, index) => {
+  const meta = backendRouteMeta.find((item) => item.path === path);
+  return {
+    id: path,
+    name: meta ? formatRouteName(meta.name) : path,
+    path,
+    icon: meta?.icon,
+    access: meta?.access,
+    sortNo: index + 1,
+    manageMode: '平台内置',
+  };
+});
 
 const MenuManagementPage = () => {
   const menuCrud = useCrudPageState<MenuRecord>();

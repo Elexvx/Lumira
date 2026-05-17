@@ -106,6 +106,11 @@ export interface PagedResult<T> {
 
 const apiBase = process.env.SITE_API_BASE_URL || process.env.NEXT_PUBLIC_SITE_API_BASE_URL || 'http://localhost:8080/api';
 
+interface FetchJsonOptions {
+  cache?: RequestCache;
+  revalidate?: number | false;
+}
+
 const unavailableSite: SiteSettings = { name: 'Legendary Invention' };
 
 export function publicAssetUrl(value?: string | null) {
@@ -123,9 +128,12 @@ export function siteApiUrl(path: string) {
   return `${apiBase}${path}`;
 }
 
-export async function fetchJson<T>(path: string): Promise<T | null> {
+export async function fetchJson<T>(path: string, options: FetchJsonOptions = {}): Promise<T | null> {
   try {
-    const response = await fetch(`${apiBase}${path}`, { next: { revalidate: 120 } });
+    const init = options.cache
+      ? { cache: options.cache }
+      : { next: { revalidate: options.revalidate ?? 120 } };
+    const response = await fetch(`${apiBase}${path}`, init);
     if (!response.ok) return null;
     const payload = (await response.json()) as ApiResponse<T>;
     return payload?.data ?? null;
@@ -135,7 +143,10 @@ export async function fetchJson<T>(path: string): Promise<T | null> {
 }
 
 export async function getRuntime() {
-  const runtime = await fetchJson<{ site: SiteSettings; navigation: NavigationItem[]; carousels?: SiteCarousel[] }>('/v1/public/site/runtime');
+  const runtime = await fetchJson<{ site: SiteSettings; navigation: NavigationItem[]; carousels?: SiteCarousel[] }>(
+    '/v1/public/site/runtime',
+    { cache: 'no-store' },
+  );
   return runtime || { site: unavailableSite, navigation: [], carousels: [] };
 }
 
