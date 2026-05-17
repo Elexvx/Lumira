@@ -202,6 +202,17 @@
 - 空态与错误态
 - 卡片列表
 
+### 15.1 管理页交互统一规范
+
+后台管理页默认使用 `ManagementPage`、`ManagementTable`、`ManagementDrawer` 和 `TableActionBar` 组合实现，不直接在业务页重复拼装 `PageContainer`、`Table`、`Drawer` 的基础行为。
+
+- 新增、编辑、轻量详情优先使用 `ManagementDrawer`。
+- 抽屉主操作统一放在右上角 `extra` 区域，遵循 Ant Design Drawer 的 Extra Actions 模式；只有步骤流、长流程或需要固定底部操作的场景才使用 footer。
+- 多 Tab 管理页统一采用页面级 Tabs，Tabs 放在页面主体顶部。
+- 当前 Tab 的页面级动作放入 `tabBarExtraContent`；表格自身新增、刷新、批量操作放在当前 Tab 内的表格工具栏。
+- 行操作统一通过 `TableActionBar` 或等价的收纳菜单处理，避免不同页面出现按钮数量、位置和移动端表现不一致。
+- 管理页表格默认通过 `ManagementTable` 继承移动端分页、横向滚动和统一表格外壳。
+
 ## 16. 前端权限接入
 
 - 菜单裁剪基于权限快照统一完成。
