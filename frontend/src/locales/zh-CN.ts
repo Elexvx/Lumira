@@ -83,7 +83,7 @@ export default {
   'nav.system.personalization': '个性化设置',
   'nav.system.security': '安全设置',
   'nav.system.verification': '验证管理',
-  'nav.system.notifications': '通知管理',
+  'nav.system.notifications': '通知中心',
   'nav.system.aiEmployees': '数字员工',
   'nav.system.monitoring.root': '系统监控',
   'nav.system.monitoring.service': '服务监控',
