@@ -17,7 +17,7 @@ export function SiteHeader({ site, navigation }: { site: SiteSettings; navigatio
         {navigation.map((item) => (
           <a
             key={item.id}
-            href={navigationTarget(item)}
+            href={navigationTarget(item) || '/'}
             rel={item.openType === 'BLANK' ? 'noreferrer' : undefined}
             target={item.openType === 'BLANK' ? '_blank' : undefined}
           >

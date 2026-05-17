@@ -1,5 +1,5 @@
-import { Button, Form, Image, Input, InputNumber, Select, Space, Upload, message } from 'antd';
-import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
+import { Button, Card, Empty, Form, Image, Input, Select, Space, Upload, message } from 'antd';
+import { DeleteOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
@@ -82,6 +82,61 @@ const SiteSettingsPage = () => {
     },
   });
 
+  const clearSiteImage = (target: SiteImageTarget) => {
+    form.setFieldsValue(
+      target === 'logo'
+        ? { logoFileId: undefined, logoUrl: undefined }
+        : { faviconFileId: undefined, faviconUrl: undefined },
+    );
+  };
+
+  const renderImageUpload = (
+    target: SiteImageTarget,
+    label: string,
+    imageUrl: string | undefined,
+  ) => {
+    const isLogo = target === 'logo';
+    const previewClassName = isLogo ? 'site-admin-image-card site-admin-image-card--logo' : 'site-admin-image-card site-admin-image-card--favicon';
+    const imageWidth = isLogo ? 180 : 72;
+    const imageHeight = isLogo ? 72 : 72;
+
+    return (
+      <Form.Item label={label}>
+        <Space align="start" size={16} wrap>
+          <Card size="small" className={previewClassName} bodyStyle={{ padding: 12, height: '100%' }}>
+            <div className="site-admin-image-card__body">
+              {imageUrl ? (
+                <Image
+                  width={imageWidth}
+                  height={imageHeight}
+                  preview={false}
+                  src={normalizeUploadUrl(imageUrl)}
+                  style={{ objectFit: 'contain' }}
+                />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
+              )}
+            </div>
+          </Card>
+          <Space direction="vertical" size={8}>
+            <Upload {...buildUploadProps(target)} disabled={loading || !canUpdate || uploadingTarget !== null}>
+              <Button icon={<UploadOutlined />} loading={uploadingTarget === target}>
+                {isLogo ? '上传 Logo' : '上传 Favicon'}
+              </Button>
+            </Upload>
+            <Button
+              icon={<DeleteOutlined />}
+              onClick={() => clearSiteImage(target)}
+              disabled={!imageUrl || loading || !canUpdate || uploadingTarget !== null}
+            >
+              清除
+            </Button>
+          </Space>
+        </Space>
+      </Form.Item>
+    );
+  };
+
   return (
     <SiteAdminPage
       title="站点设置"
@@ -103,46 +158,20 @@ const SiteSettingsPage = () => {
           <Form.Item name="status" label="状态">
             <Select options={[{ label: '启用', value: 'ENABLED' }, { label: '停用', value: 'DISABLED' }]} />
           </Form.Item>
-          <Form.Item label="Logo 文件 ID">
-            <Space.Compact block>
-              <Form.Item name="logoFileId" noStyle>
-                <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-              <Upload {...buildUploadProps('logo')} disabled={loading || !canUpdate || uploadingTarget !== null}>
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'}>
-                  上传 Logo
-                </Button>
-              </Upload>
-            </Space.Compact>
+          <Form.Item name="logoFileId" hidden>
+            <Input />
           </Form.Item>
           <Form.Item name="logoUrl" hidden>
             <Input />
           </Form.Item>
-          {logoUrl ? (
-            <div className="site-admin-image-preview">
-              <Image width={160} height={64} preview={false} src={normalizeUploadUrl(logoUrl)} style={{ objectFit: 'contain' }} />
-            </div>
-          ) : null}
-          <Form.Item label="Favicon 文件 ID">
-            <Space.Compact block>
-              <Form.Item name="faviconFileId" noStyle>
-                <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-              <Upload {...buildUploadProps('favicon')} disabled={loading || !canUpdate || uploadingTarget !== null}>
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'}>
-                  上传 Favicon
-                </Button>
-              </Upload>
-            </Space.Compact>
+          {renderImageUpload('logo', 'Logo（本地上传）', logoUrl)}
+          <Form.Item name="faviconFileId" hidden>
+            <Input />
           </Form.Item>
           <Form.Item name="faviconUrl" hidden>
             <Input />
           </Form.Item>
-          {faviconUrl ? (
-            <div className="site-admin-image-preview">
-              <Image width={48} height={48} preview={false} src={normalizeUploadUrl(faviconUrl)} style={{ objectFit: 'contain' }} />
-            </div>
-          ) : null}
+          {renderImageUpload('favicon', 'Favicon（本地上传）', faviconUrl)}
           <Form.Item name="themeJson" label="主题配置 JSON">
             <Input.TextArea className="site-admin-json" rows={6} placeholder='{"primaryColor":"#111827"}' />
           </Form.Item>

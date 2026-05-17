@@ -7,6 +7,7 @@ import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.modules.site.domain.SiteEnums;
 import com.legendary.invention.saas.modules.site.dto.SiteDTO;
 import com.legendary.invention.saas.modules.site.vo.SiteVO;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,22 +56,26 @@ public class PublicSiteAppService {
         Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
         SiteVO.PublicPageVO vo = new SiteVO.PublicPageVO();
         vo.site = publicSite(siteId);
-        vo.page = jdbcTemplate.queryForObject(
-                """
-                        select p.*, pv.blocks_json
-                        from site_page p
-                        join site_page_version pv
-                          on pv.id = p.current_published_version
-                         and pv.tenant_id = p.tenant_id
-                         and pv.status = 'PUBLISHED'
-                        where p.tenant_id = ? and p.site_id = ? and p.slug = ? and p.status = 'PUBLISHED' and p.deleted = 0
-                        limit 1
-                        """,
-                (rs, rowNum) -> mapPage(rs),
-                DEFAULT_TENANT_ID,
-                siteId,
-                normalizeSlug(slug)
+        vo.page = queryOptional(() -> jdbcTemplate.queryForObject(
+                        """
+                                select p.*, pv.blocks_json
+                                from site_page p
+                                join site_page_version pv
+                                  on pv.id = p.current_published_version
+                                 and pv.tenant_id = p.tenant_id
+                                 and pv.status = 'PUBLISHED'
+                                where p.tenant_id = ? and p.site_id = ? and p.slug = ? and p.status = 'PUBLISHED' and p.deleted = 0
+                                limit 1
+                                """,
+                        (rs, rowNum) -> mapPage(rs),
+                        DEFAULT_TENANT_ID,
+                        siteId,
+                        normalizeSlug(slug)
+                )
         );
+        if (vo.page == null) {
+            return null;
+        }
         vo.blocksJson = vo.page.blocksJson;
         return vo;
     }
@@ -102,29 +107,31 @@ public class PublicSiteAppService {
 
     public SiteVO.ContentVO content(String slug) {
         Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
-        return jdbcTemplate.queryForObject(
-                """
-                        select c.*, f.public_url as cover_url
-                        from site_content c
-                        left join file_object f on f.tenant_id = c.tenant_id and f.id = c.cover_file_id and f.deleted = 0
-                        where c.tenant_id = ? and c.site_id = ? and c.slug = ? and c.status = 'PUBLISHED' and c.deleted = 0
-                        limit 1
-                        """,
-                (rs, rowNum) -> mapContent(rs),
-                DEFAULT_TENANT_ID,
-                siteId,
-                normalizeSlug(slug)
+        return queryOptional(() -> jdbcTemplate.queryForObject(
+                        """
+                                select c.*, f.public_url as cover_url
+                                from site_content c
+                                left join file_object f on f.tenant_id = c.tenant_id and f.id = c.cover_file_id and f.deleted = 0
+                                where c.tenant_id = ? and c.site_id = ? and c.slug = ? and c.status = 'PUBLISHED' and c.deleted = 0
+                                limit 1
+                                """,
+                        (rs, rowNum) -> mapContent(rs),
+                        DEFAULT_TENANT_ID,
+                        siteId,
+                        normalizeSlug(slug)
+                )
         );
     }
 
     public SiteVO.FormVO form(String code) {
         Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
-        return jdbcTemplate.queryForObject(
-                "select * from site_form where tenant_id = ? and site_id = ? and code = ? and status = 'ENABLED' and deleted = 0 limit 1",
-                (rs, rowNum) -> mapForm(rs),
-                DEFAULT_TENANT_ID,
-                siteId,
-                code
+        return queryOptional(() -> jdbcTemplate.queryForObject(
+                        "select * from site_form where tenant_id = ? and site_id = ? and code = ? and status = 'ENABLED' and deleted = 0 limit 1",
+                        (rs, rowNum) -> mapForm(rs),
+                        DEFAULT_TENANT_ID,
+                        siteId,
+                        code
+                )
         );
     }
 
@@ -134,6 +141,9 @@ public class PublicSiteAppService {
         validateJson(request.attachmentFileIdsJson, "附件");
         Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
         SiteVO.FormVO form = form(code);
+        if (form == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "表单不存在或未启用");
+        }
         if ("LOGIN_REQUIRED".equals(form.submitPolicy) && userId == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "该表单需要登录后提交");
         }
@@ -341,5 +351,18 @@ public class PublicSiteAppService {
         } catch (SQLException exception) {
             return null;
         }
+    }
+
+    private <T> T queryOptional(QuerySupplier<T> supplier) {
+        try {
+            return supplier.get();
+        } catch (EmptyResultDataAccessException exception) {
+            return null;
+        }
+    }
+
+    @FunctionalInterface
+    private interface QuerySupplier<T> {
+        T get();
     }
 }

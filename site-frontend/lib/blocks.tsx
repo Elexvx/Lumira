@@ -1,7 +1,10 @@
 import { ArrowRight, FileText, Layers3, ShieldCheck } from 'lucide-react';
-import type { ContentRecord, PageBlock } from './api';
+import { PublicForm } from '@/components/PublicForm';
+import { publicAssetUrl, type ContentRecord, type PageBlock } from './api';
 
 const text = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() ? value : fallback);
+const optionalText = (value: unknown) => (typeof value === 'string' && value.trim() ? value : '');
+const arrayValue = (value: unknown) => (Array.isArray(value) ? value : []);
 
 export function renderBlock(block: PageBlock, contents: ContentRecord[]) {
   if (block.type === 'hero') {
@@ -44,6 +47,84 @@ export function renderBlock(block: PageBlock, contents: ContentRecord[]) {
 
   if (block.type === 'contentList') {
     return <Insights key={block.id} contents={contents} />;
+  }
+
+  if (block.type === 'richText') {
+    const body = text(block.props.body || block.props.content, '');
+    return (
+      <section className="section rich-text-section" key={block.id}>
+        {optionalText(block.props.title) ? <h2>{optionalText(block.props.title)}</h2> : null}
+        <div className="rich-text-body">
+          {body
+            .split(/\n{2,}/)
+            .map((paragraph) => paragraph.trim())
+            .filter(Boolean)
+            .map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        </div>
+      </section>
+    );
+  }
+
+  if (block.type === 'imageText') {
+    const imageUrl = publicAssetUrl(optionalText(block.props.imageUrl));
+    return (
+      <section className="section image-text-section" key={block.id}>
+        <div>
+          <h2>{text(block.props.title, '图文内容')}</h2>
+          <p>{text(block.props.description || block.props.subtitle, '这里展示后台配置的图文内容。')}</p>
+        </div>
+        {imageUrl ? <img src={imageUrl} alt={optionalText(block.props.title)} /> : null}
+      </section>
+    );
+  }
+
+  if (block.type === 'cta') {
+    const href = optionalText(block.props.href || block.props.linkTarget) || '#contact';
+    return (
+      <section className="contact" id={optionalText(block.props.id) || undefined} key={block.id}>
+        <div>
+          <h2>{text(block.props.title, '准备开始？')}</h2>
+          <p>{text(block.props.description || block.props.subtitle, '通过后台配置行动入口，让官网和业务流程连接起来。')}</p>
+        </div>
+        <a className="primary-link dark" href={href}>{text(block.props.buttonText, '立即了解')} <ArrowRight size={18} /></a>
+      </section>
+    );
+  }
+
+  if (block.type === 'form') {
+    return (
+      <section className="section form-section" id={optionalText(block.props.id) || 'form'} key={block.id}>
+        <div className="section-heading">
+          <h2>{text(block.props.title, '在线提交')}</h2>
+          <p>{text(block.props.description || block.props.subtitle, '提交内容会进入后台官网管理的提交记录。')}</p>
+        </div>
+        <PublicForm code={optionalText(block.props.code) || 'contact'} title={optionalText(block.props.formTitle)} />
+      </section>
+    );
+  }
+
+  if (block.type === 'downloadList') {
+    const items = arrayValue(block.props.items);
+    return (
+      <section className="section" key={block.id}>
+        <div className="section-heading">
+          <h2>{text(block.props.title, '资料下载')}</h2>
+          <p>{text(block.props.description, '后台配置的公开资料会显示在这里。')}</p>
+        </div>
+        <div className="download-list">
+          {items.map((item, index) => {
+            const record = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+            const href = publicAssetUrl(optionalText(record.url || record.href));
+            return (
+              <a href={href || '#'} key={`${href}-${index}`}>
+                <strong>{text(record.title, `资料 ${index + 1}`)}</strong>
+                <span>{text(record.description, '查看或下载')}</span>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+    );
   }
 
   if (block.type === 'contact') {
