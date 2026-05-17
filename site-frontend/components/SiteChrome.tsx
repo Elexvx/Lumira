@@ -58,7 +58,6 @@ export function SiteFooter({ site }: { site: SiteSettings }) {
   return (
     <footer>
       <span>{site.name || 'Legendary Invention'}</span>
-      <span>Independent public site powered by CMS.</span>
     </footer>
   );
 }
