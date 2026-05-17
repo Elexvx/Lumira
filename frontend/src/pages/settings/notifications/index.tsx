@@ -1,4 +1,4 @@
-import { Button, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, Select, Space, Switch, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, Select, Space, Switch, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type ActionType, type ProColumns } from '@ant-design/pro-components';
@@ -123,11 +123,12 @@ const NotificationsPage = () => {
   const archiveActionRef = useRef<ActionType | undefined>(undefined);
   const logActionRef = useRef<ActionType | undefined>(undefined);
   const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
-  const [activeTab, setActiveTab] = useState('channels');
   const [detailRecord, setDetailRecord] = useState<MessageNoticeRecord | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [channelDrawerOpen, setChannelDrawerOpen] = useState(false);
   const [channelRecord, setChannelRecord] = useState<ChannelRecord | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings | null>(null);
   const [loadingSmtpSettings, setLoadingSmtpSettings] = useState(false);
   const [savingSmtpSettings, setSavingSmtpSettings] = useState(false);
@@ -446,6 +447,17 @@ const NotificationsPage = () => {
                 label: '配置',
                 onClick: () => handleOpenChannelDrawer(record),
               },
+              {
+                key: 'logs',
+                label: '日志',
+                onClick: () => setLogOpen(true),
+              },
+              {
+                key: 'archive',
+                label: '归档',
+                hidden: record.key !== 'INBOX',
+                onClick: () => setArchiveOpen(true),
+              },
             ]}
           />
         ),
@@ -535,66 +547,24 @@ const NotificationsPage = () => {
   const toolbar = useMemo(
     () =>
       buildToolbarButtons([
-        { key: 'refresh', label: '刷新', onClick: () => (activeTab === 'logs' ? logActionRef.current?.reload() : archiveActionRef.current?.reload()) },
-        { key: 'manual-send', permission: ['message:message:write', 'system:notification:write'], hidden: !canManualPublish, type: 'primary', label: '发送通知', onClick: openPublishDrawer },
+        { key: 'logs', label: '发送日志', onClick: () => setLogOpen(true) },
+        { key: 'archive', label: '通知归档', onClick: () => setArchiveOpen(true) },
+        { key: 'refresh', label: '刷新', onClick: () => void loadSmtpSettings() },
+        { key: 'manual-send', permission: ['message:message:write', 'system:notification:write'], hidden: !canManualPublish, type: 'primary', label: '手动发布', onClick: openPublishDrawer },
       ]),
-    [activeTab, buildToolbarButtons, canManualPublish],
+    [buildToolbarButtons, canManualPublish],
   );
 
   return (
-    <ManagementPage title="通知管理" ghost>
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          {
-            key: 'channels',
-            label: '通知渠道',
-            children: (
-              <ManagementTable<ChannelRecord>
-                rowKey="key"
-                columns={channelColumns}
-                dataSource={channelRecords}
-                isMobile={responsive.isMobile}
-                pagination={false}
-                search={false}
-                toolBarRender={() => toolbar}
-              />
-            ),
-          },
-          {
-            key: 'logs',
-            label: '消息发送日志',
-            children: (
-              <ManagementTable<MessageDeliveryLogRecord>
-                actionRef={logActionRef}
-                rowKey="id"
-                columns={logColumns}
-                isMobile={responsive.isMobile}
-                pagination={{ showSizeChanger: true, pageSize: 10 }}
-                search={searchConfig}
-                request={buildTableRequest((params) => messageService.deliveryLogs(params, requestOptions))}
-                toolBarRender={() => toolbar}
-              />
-            ),
-          },
-          {
-            key: 'archive',
-            label: '站内信归档',
-            children: (
-              <ManagementTable<MessageNoticeRecord>
-                actionRef={archiveActionRef}
-                rowKey="id"
-                columns={archiveColumns}
-                isMobile={responsive.isMobile}
-                pagination={{ showSizeChanger: true, pageSize: 10 }}
-                search={searchConfig}
-                request={buildTableRequest((params, sorter) => messageService.archiveMessages({ ...params, ...resolveSortParams(sorter) }, requestOptions))}
-                toolBarRender={() => toolbar}
-              />
-            ),
-          },
-        ]}
+    <ManagementPage title="通知中心">
+      <ManagementTable<ChannelRecord>
+        rowKey="key"
+        columns={channelColumns}
+        dataSource={channelRecords}
+        isMobile={responsive.isMobile}
+        pagination={{ pageSize: 50, showSizeChanger: true }}
+        search={false}
+        toolBarRender={() => toolbar}
       />
 
       <ManagementDrawer
@@ -670,7 +640,45 @@ const NotificationsPage = () => {
       </ManagementDrawer>
 
       <ManagementDrawer
-        title={detailRecord ? `站内信详情 · ${detailRecord.title}` : '站内信详情'}
+        title="通知发送日志"
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        width={responsive.isMobile ? '100%' : 1100}
+        destroyOnHidden
+      >
+        <ManagementTable<MessageDeliveryLogRecord>
+          actionRef={logActionRef}
+          rowKey="id"
+          columns={logColumns}
+          isMobile={responsive.isMobile}
+          pagination={{ showSizeChanger: true, pageSize: 10 }}
+          search={searchConfig}
+          request={buildTableRequest((params) => messageService.deliveryLogs(params, requestOptions))}
+          toolBarRender={false}
+        />
+      </ManagementDrawer>
+
+      <ManagementDrawer
+        title="通知归档"
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        width={responsive.isMobile ? '100%' : 1100}
+        destroyOnHidden
+      >
+        <ManagementTable<MessageNoticeRecord>
+          actionRef={archiveActionRef}
+          rowKey="id"
+          columns={archiveColumns}
+          isMobile={responsive.isMobile}
+          pagination={{ showSizeChanger: true, pageSize: 10 }}
+          search={searchConfig}
+          request={buildTableRequest((params, sorter) => messageService.archiveMessages({ ...params, ...resolveSortParams(sorter) }, requestOptions))}
+          toolBarRender={false}
+        />
+      </ManagementDrawer>
+
+      <ManagementDrawer
+        title={detailRecord ? `通知详情 · ${detailRecord.title}` : '通知详情'}
         open={detailOpen}
         onClose={() => {
           setDetailOpen(false);
@@ -704,7 +712,7 @@ const NotificationsPage = () => {
       </ManagementDrawer>
 
       <ManagementDrawer
-        title="发送通知"
+        title="手动发布通知"
         open={publishOpen}
         onClose={closePublishDrawer}
         footerActions={[

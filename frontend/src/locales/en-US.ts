@@ -78,7 +78,7 @@ export default {
   'nav.system.personalization': 'Personalization',
   'nav.system.security': 'Security',
   'nav.system.verification': 'Verification',
-  'nav.system.notifications': 'Notifications',
+  'nav.system.notifications': 'Notification Center',
   'nav.system.aiEmployees': 'AI Employees',
   'nav.system.monitoring.root': 'Monitoring',
   'nav.system.monitoring.service': 'Service Monitoring',
