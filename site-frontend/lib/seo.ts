@@ -13,8 +13,14 @@ interface SeoConfig {
 const defaultDescription = '简洁大气的独立官网前端，由统一后台管理页面、内容与提交入口。';
 
 export function siteUrl() {
-  const raw = process.env.SITE_PUBLIC_URL || process.env.NEXT_PUBLIC_SITE_PUBLIC_URL || 'https://site-frontend-nine.vercel.app';
-  return raw.replace(/\/$/, '');
+  const raw =
+    process.env.SITE_PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_SITE_PUBLIC_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL ||
+    'https://legendary-invention-xrrq.vercel.app';
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  return withProtocol.replace(/\/$/, '');
 }
 
 export function parseSeoJson(value?: string): SeoConfig {
@@ -27,6 +33,12 @@ export function parseSeoJson(value?: string): SeoConfig {
   }
 }
 
+function canonicalUrl(path: string) {
+  if (path.startsWith('http')) return path;
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${siteUrl()}${normalized === '/' ? '' : normalized}`;
+}
+
 export function metadataForPage(page: PublicPage | null, fallbackTitle = 'Legendary Invention'): Metadata {
   const site = page?.site || {};
   const siteSeo = parseSeoJson(site.seoJson);
@@ -34,7 +46,7 @@ export function metadataForPage(page: PublicPage | null, fallbackTitle = 'Legend
   const title = pageSeo.title || page?.page?.title || siteSeo.title || site.name || fallbackTitle;
   const description = pageSeo.description || siteSeo.description || defaultDescription;
   const canonicalPath = pageSeo.canonical || page?.page?.slug || '/';
-  const canonical = canonicalPath.startsWith('http') ? canonicalPath : `${siteUrl()}${canonicalPath === '/' ? '' : canonicalPath}`;
+  const canonical = canonicalUrl(canonicalPath);
   const image = publicAssetUrl(pageSeo.image || siteSeo.image);
 
   return {
@@ -66,7 +78,7 @@ export function metadataForContent(content: ContentRecord | null, site?: SiteSet
   const title = contentSeo.title || content?.title || siteSeo.title || site?.name || fallbackTitle;
   const description = contentSeo.description || content?.summary || siteSeo.description || defaultDescription;
   const canonicalPath = contentSeo.canonical || content?.slug || '/';
-  const canonical = canonicalPath.startsWith('http') ? canonicalPath : `${siteUrl()}${canonicalPath === '/' ? '' : canonicalPath}`;
+  const canonical = canonicalUrl(canonicalPath);
   const image = publicAssetUrl(contentSeo.image || content?.coverUrl || siteSeo.image);
 
   return {
