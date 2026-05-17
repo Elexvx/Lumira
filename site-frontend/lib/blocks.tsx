@@ -5,6 +5,7 @@ import { publicAssetUrl, type ContentRecord, type PageBlock } from './api';
 const text = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() ? value : fallback);
 const optionalText = (value: unknown) => (typeof value === 'string' && value.trim() ? value : '');
 const arrayValue = (value: unknown) => (Array.isArray(value) ? value : []);
+const contentHref = (slug?: string) => (slug ? (slug.startsWith('/') ? slug : `/${slug}`) : '#');
 
 export function renderBlock(block: PageBlock, contents: ContentRecord[]) {
   if (block.type === 'hero') {
@@ -152,10 +153,11 @@ export function Insights({ contents }: { contents: ContentRecord[] }) {
       {contents.length ? (
         <div className="insight-list">
           {contents.map((item) => (
-            <a href={item.slug} key={item.id}>
+            <a href={contentHref(item.slug)} key={item.id}>
               <span>{item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('zh-CN') : '更新'}</span>
               <strong>{item.title}</strong>
               <p>{item.summary}</p>
+              <em>查看详情 <ArrowRight size={16} /></em>
             </a>
           ))}
         </div>

@@ -18,6 +18,7 @@ const SiteSettingsPage = () => {
   const [form] = Form.useForm<SiteSettings>();
   const [loading, setLoading] = useState(false);
   const [uploadingTarget, setUploadingTarget] = useState<SiteImageTarget | null>(null);
+  const [savedSettings, setSavedSettings] = useState<SiteSettings | null>(null);
   const actionPermission = useActionPermission();
   const canUpdate = actionPermission.can(['site:settings:update', 'site:settings']);
   const logoUrl = Form.useWatch('logoUrl', form);
@@ -26,7 +27,9 @@ const SiteSettingsPage = () => {
   const load = async () => {
     setLoading(true);
     try {
-      form.setFieldsValue(await siteService.settings());
+      const settings = await siteService.settings();
+      setSavedSettings(settings);
+      form.setFieldsValue(settings);
     } finally {
       setLoading(false);
     }
@@ -40,7 +43,9 @@ const SiteSettingsPage = () => {
     const values = await form.validateFields();
     setLoading(true);
     try {
-      form.setFieldsValue(await siteService.updateSettings(values));
+      const settings = await siteService.updateSettings(values);
+      setSavedSettings(settings);
+      form.setFieldsValue(settings);
       message.success('站点设置已保存');
     } finally {
       setLoading(false);
@@ -60,14 +65,22 @@ const SiteSettingsPage = () => {
     setUploadingTarget(target);
     try {
       const uploaded = await siteService.uploadImage(file, 'settings');
-      form.setFieldsValue(
+      const nextImageFields =
         target === 'logo'
           ? { logoFileId: uploaded.id, logoUrl: normalizeUploadUrl(uploaded.publicUrl) }
-          : { faviconFileId: uploaded.id, faviconUrl: normalizeUploadUrl(uploaded.publicUrl) },
+          : { faviconFileId: uploaded.id, faviconUrl: normalizeUploadUrl(uploaded.publicUrl) };
+      form.setFieldsValue(
+        nextImageFields,
       );
-      message.success(target === 'logo' ? 'Logo 已上传' : 'Favicon 已上传');
+      const settings = await siteService.updateSettings({
+        ...(savedSettings || form.getFieldsValue(true)),
+        ...nextImageFields,
+      });
+      setSavedSettings(settings);
+      form.setFieldsValue(nextImageFields);
+      message.success(target === 'logo' ? 'Logo 已上传并同步到官网' : 'Favicon 已上传并同步到官网');
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '图片上传失败，请稍后重试');
+      message.error(error instanceof Error ? error.message : '图片上传或同步失败，请稍后重试');
     } finally {
       setUploadingTarget(null);
     }

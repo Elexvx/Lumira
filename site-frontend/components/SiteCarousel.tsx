@@ -1,12 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { publicAssetUrl, type SiteCarousel } from '@/lib/api';
-
-function targetFor(item: SiteCarousel) {
-  if (!item.linkTarget || item.linkType === 'NONE') return null;
-  return item.linkTarget;
-}
 
 export function SiteCarouselHero({ items }: { items: SiteCarousel[] }) {
   const visibleItems = useMemo(
@@ -23,12 +19,21 @@ export function SiteCarouselHero({ items }: { items: SiteCarousel[] }) {
     return () => window.clearInterval(timer);
   }, [visibleItems.length]);
 
+  useEffect(() => {
+    setActive((current) => (visibleItems.length ? Math.min(current, visibleItems.length - 1) : 0));
+  }, [visibleItems.length]);
+
   if (!visibleItems.length) {
     return null;
   }
 
-  const activeItem = visibleItems[Math.min(active, visibleItems.length - 1)];
-  const href = targetFor(activeItem);
+  const hasMultipleItems = visibleItems.length > 1;
+  const goToPrevious = () => {
+    setActive((current) => (current - 1 + visibleItems.length) % visibleItems.length);
+  };
+  const goToNext = () => {
+    setActive((current) => (current + 1) % visibleItems.length);
+  };
 
   return (
     <section className="site-carousel-hero" aria-label="官网轮播">
@@ -38,17 +43,27 @@ export function SiteCarouselHero({ items }: { items: SiteCarousel[] }) {
         </article>
       ))}
       <div className="site-carousel-shade" />
-      <div className="site-carousel-copy">
-        <span>Official Site</span>
-        <h1>{activeItem.title || '欢迎访问'}</h1>
-        {activeItem.subtitle ? <p>{activeItem.subtitle}</p> : null}
-        {href ? (
-          <a className="primary-link dark" href={href} target={activeItem.openType === 'BLANK' ? '_blank' : undefined} rel="noreferrer">
-            了解更多
-          </a>
-        ) : null}
-      </div>
-      {visibleItems.length > 1 ? (
+      {hasMultipleItems ? (
+        <>
+          <button
+            type="button"
+            className="site-carousel-arrow site-carousel-arrow-left"
+            aria-label="上一张轮播"
+            onClick={goToPrevious}
+          >
+            <ChevronLeft aria-hidden="true" size={30} strokeWidth={2.4} />
+          </button>
+          <button
+            type="button"
+            className="site-carousel-arrow site-carousel-arrow-right"
+            aria-label="下一张轮播"
+            onClick={goToNext}
+          >
+            <ChevronRight aria-hidden="true" size={30} strokeWidth={2.4} />
+          </button>
+        </>
+      ) : null}
+      {hasMultipleItems ? (
         <div className="site-carousel-controls" aria-label="轮播切换">
           {visibleItems.map((item, index) => (
             <button

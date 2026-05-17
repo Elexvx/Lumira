@@ -32,7 +32,7 @@ export default async function SlugPage({ params }: SlugPageProps) {
   return (
     <main>
       <SiteHeader site={runtime.site} navigation={runtime.navigation} />
-      {page ? blocks.map((block) => renderBlock(block, contents)) : <ArticleView content={content!} />}
+      {page ? blocks.map((block) => renderBlock(block, contents)) : <ArticleView content={content!} relatedContents={contents} />}
       <SiteFooter site={runtime.site} />
     </main>
   );

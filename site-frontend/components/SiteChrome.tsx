@@ -1,3 +1,4 @@
+import { LogIn } from 'lucide-react';
 import { publicAssetUrl, type NavigationItem, type SiteSettings } from '@/lib/api';
 
 function navigationTarget(item: NavigationItem) {
@@ -7,13 +8,16 @@ function navigationTarget(item: NavigationItem) {
 
 export function SiteHeader({ site, navigation }: { site: SiteSettings; navigation: NavigationItem[] }) {
   const logoUrl = publicAssetUrl(site.logoUrl);
+
   return (
     <header className="site-header">
-      <a className="brand" href="/">
-        {logoUrl ? <img src={logoUrl} alt="" className="brand-logo" /> : <span className="brand-mark" />}
-        {site.name || 'Legendary Invention'}
-      </a>
-      <nav aria-label="主导航">
+      <div className="site-header__brand">
+        <a className="brand" href="/">
+          {logoUrl ? <img src={logoUrl} alt="" className="brand-logo" /> : <span className="brand-mark" />}
+          <span>{site.name || 'Legendary Invention'}</span>
+        </a>
+      </div>
+      <nav className="site-header__nav" aria-label="主导航">
         {navigation.map((item) => (
           <a
             key={item.id}
@@ -25,6 +29,12 @@ export function SiteHeader({ site, navigation }: { site: SiteSettings; navigatio
           </a>
         ))}
       </nav>
+      <div className="site-header__actions">
+        <a className="site-login-button" href="/user/login">
+          <LogIn aria-hidden="true" size={16} strokeWidth={2.4} />
+          登录
+        </a>
+      </div>
     </header>
   );
 }

@@ -231,4 +231,22 @@ export const publicSiteService = {
       silent: true,
       ...options,
     }),
+  contents: (params: Record<string, unknown> = {}, options: RequestOptions = {}) =>
+    request<PagedResult<SiteContent>>('/v1/public/site/contents', {
+      method: 'GET',
+      params,
+      skipAuth: true,
+      autoRedirectOnUnauthorized: false,
+      silent: true,
+      ...options,
+    }),
+  content: (slug: string, options: RequestOptions = {}) =>
+    request<SiteContent>('/v1/public/site/contents/detail', {
+      method: 'GET',
+      params: { slug },
+      skipAuth: true,
+      autoRedirectOnUnauthorized: false,
+      silent: true,
+      ...options,
+    }),
 };
