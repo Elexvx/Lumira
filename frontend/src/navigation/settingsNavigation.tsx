@@ -27,6 +27,7 @@ import { backendRouteMeta } from '@/routes/meta';
 import type { RuntimeMenuDataItem } from '@/app.types';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { MenuNode } from '@/types/api';
+import { DEFAULT_SETTING_ROUTE_ORDER, getStoredSettingRouteOrder } from './settingsRouteOrder';
 
 type AntdIconComponent = ComponentType<Record<string, unknown>>;
 
@@ -75,7 +76,7 @@ const LEGACY_PATH_ALIASES: Record<string, string> = {
 
 export const SETTINGS_PROFILE_PATH = PROFILE_PATH;
 
-const SETTINGS_FALLBACK_ITEMS: SettingsNavigationSourceItem[] = [
+const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSourceItem>([
   {
     path: '/settings/modules',
     name: 'nav.system.modules',
@@ -166,10 +167,10 @@ const SETTINGS_FALLBACK_ITEMS: SettingsNavigationSourceItem[] = [
     icon: 'AuditOutlined',
     access: 'canVisitAudit',
   },
-];
+].map((item) => [item.path, item]));
 
 const routeMetaByPath = new Map(backendRouteMeta.map((item) => [item.path, item]));
-const settingsFallbackPathSet = new Set(SETTINGS_FALLBACK_ITEMS.map((item) => item.path));
+const settingsFallbackPathSet = new Set(DEFAULT_SETTING_ROUTE_ORDER);
 
 const normalizeMenuPath = (path?: string) => {
   if (!path) {
@@ -255,7 +256,11 @@ const sortNavigationItems = (items: SettingsNavigationSourceItem[]) =>
     return left.path.localeCompare(right.path);
   });
 
-const cloneSettingsFallbackItems = () => SETTINGS_FALLBACK_ITEMS.map((item) => ({ ...item }));
+const cloneSettingsFallbackItems = () =>
+  getStoredSettingRouteOrder()
+    .map((path) => SETTINGS_FALLBACK_ITEM_MAP.get(path))
+    .filter(Boolean)
+    .map((item) => ({ ...item })) as SettingsNavigationSourceItem[];
 
 const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
   const path = normalizeMenuPath(node.path);

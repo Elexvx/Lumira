@@ -30,30 +30,18 @@ import { backendRouteMeta } from '@/routes/meta';
 import type { MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
 import { resolveBuiltinMessage } from '@/i18n/messages';
+import {
+  DEFAULT_SETTING_ROUTE_ORDER,
+  getStoredSettingRouteOrder,
+  persistSettingRouteOrder,
+  resetSettingRouteOrder,
+} from '@/navigation/settingsRouteOrder';
 
 interface MenuDragState {
   draggedId: number;
   targetId: number;
   position: MenuDropPosition;
 }
-
-const SETTINGS_ROUTE_ORDER = [
-  '/settings/modules',
-  '/settings/menus',
-  '/settings/dicts',
-  '/settings/profile-fields',
-  '/settings/personalization',
-  '/settings/security',
-  '/settings/verification',
-  '/settings/notifications',
-  '/settings/ai-employees',
-  '/settings/plugins',
-  '/settings/files/all',
-  '/settings/localization',
-  '/settings/monitoring',
-  '/settings/api-docs',
-  '/settings/audit',
-];
 
 const formatRouteName = (name: string) =>
   resolveBuiltinMessage(
@@ -74,7 +62,7 @@ interface SettingsRouteRecord {
   manageMode: string;
 }
 
-const settingsRouteRecords: SettingsRouteRecord[] = SETTINGS_ROUTE_ORDER.map((path, index) => {
+const buildSettingsRouteRecords = (routeOrder: string[]): SettingsRouteRecord[] => routeOrder.map((path, index) => {
   const meta = backendRouteMeta.find((item) => item.path === path);
   return {
     id: path,
@@ -86,6 +74,310 @@ const settingsRouteRecords: SettingsRouteRecord[] = SETTINGS_ROUTE_ORDER.map((pa
     manageMode: '平台内置',
   };
 });
+
+const moveArrayItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, movedItem);
+  return nextItems;
+};
+
+const linkTypeOptions = [
+  { value: 'INTERNAL', label: '站内路由' },
+  { value: 'EXTERNAL', label: '外部链接' },
+  { value: 'NONE', label: '无跳转' },
+];
+
+const openTypeOptions = [
+  { value: 'SELF', label: '当前窗口' },
+  { value: 'BLANK', label: '新窗口' },
+];
+
+const navigationStatusOptions = [
+  { value: 'VISIBLE', label: '显示' },
+  { value: 'HIDDEN', label: '隐藏' },
+];
+
+const SiteNavigationRoutesTab = () => {
+  const [records, setRecords] = useState<SiteNavigation[]>([]);
+  const [editing, setEditing] = useState<Partial<SiteNavigation> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form] = Form.useForm<Partial<SiteNavigation>>();
+  const actionPermission = useActionPermission();
+  const canCreate = actionPermission.can('site:navigation:create');
+  const canUpdate = actionPermission.can('site:navigation:update');
+  const canDelete = actionPermission.can('site:navigation:delete');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setRecords(await siteService.navigation({ autoRedirectOnUnauthorized: false }));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const openEditor = (record?: SiteNavigation) => {
+    const next = record || { linkType: 'INTERNAL', openType: 'SELF', status: 'VISIBLE', sortOrder: records.length };
+    setEditing(next);
+    form.setFieldsValue(next);
+  };
+
+  const save = async () => {
+    const values = await form.validateFields();
+    setSaving(true);
+    try {
+      if (editing?.id) {
+        await siteService.updateNavigation(editing.id, values, { autoRedirectOnUnauthorized: false });
+      } else {
+        await siteService.createNavigation(values, { autoRedirectOnUnauthorized: false });
+      }
+      message.success('官网导航已保存');
+      setEditing(null);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Table<SiteNavigation>
+        rowKey="id"
+        loading={loading}
+        dataSource={records}
+        pagination={false}
+        tableLayout="fixed"
+        title={() =>
+          canCreate ? (
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+                新增导航
+              </Button>
+            </Space>
+          ) : null
+        }
+        columns={[
+          {
+            title: '导航标题',
+            dataIndex: 'title',
+            width: 180,
+            ellipsis: true,
+          },
+          {
+            title: '链接类型',
+            dataIndex: 'linkType',
+            width: 120,
+            render: (value) => linkTypeOptions.find((item) => item.value === value)?.label || value,
+          },
+          {
+            title: '链接目标',
+            dataIndex: 'linkTarget',
+            ellipsis: true,
+            render: (value) => value || '-',
+          },
+          {
+            title: '打开方式',
+            dataIndex: 'openType',
+            width: 120,
+            render: (value) => openTypeOptions.find((item) => item.value === value)?.label || value,
+          },
+          {
+            title: '排序',
+            dataIndex: 'sortOrder',
+            width: 88,
+          },
+          {
+            title: '状态',
+            dataIndex: 'status',
+            width: 100,
+            render: (value) => <Tag color={value === 'VISIBLE' ? 'green' : 'default'}>{value === 'VISIBLE' ? '显示' : '隐藏'}</Tag>,
+          },
+          {
+            title: '操作',
+            width: 150,
+            render: (_, record) => (
+              <Space>
+                {canUpdate ? (
+                  <Button type="link" onClick={() => openEditor(record)}>
+                    编辑
+                  </Button>
+                ) : null}
+                {canDelete ? (
+                  <Popconfirm
+                    title="删除官网导航"
+                    description={`确认删除「${record.title}」吗？`}
+                    onConfirm={async () => {
+                      await siteService.deleteNavigation(record.id, { autoRedirectOnUnauthorized: false });
+                      message.success('官网导航已删除');
+                      await load();
+                    }}
+                  >
+                    <Button type="link" danger>
+                      删除
+                    </Button>
+                  </Popconfirm>
+                ) : null}
+              </Space>
+            ),
+          },
+        ]}
+      />
+
+      <Drawer
+        title={editing?.id ? '编辑官网导航' : '新增官网导航'}
+        open={Boolean(editing)}
+        width={STANDARD_DRAWER_WIDTH}
+        onClose={() => setEditing(null)}
+        extra={
+          <Button type="primary" loading={saving} onClick={() => void save()}>
+            保存
+          </Button>
+        }
+      >
+        <Form form={form} layout="vertical" initialValues={{ linkType: 'INTERNAL', openType: 'SELF', status: 'VISIBLE' }}>
+          <Form.Item name="title" label="导航标题" rules={[{ required: true, message: '请输入导航标题' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="linkType" label="链接类型" rules={[{ required: true, message: '请选择链接类型' }]}>
+            <Select options={linkTypeOptions} />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, next) => prev.linkType !== next.linkType}>
+            {({ getFieldValue }) =>
+              getFieldValue('linkType') === 'NONE' ? null : (
+                <Form.Item name="linkTarget" label="链接目标" rules={[{ required: true, message: '请输入链接目标' }]}>
+                  <Input placeholder="/about 或 https://example.com" />
+                </Form.Item>
+              )
+            }
+          </Form.Item>
+          <Form.Item name="openType" label="打开方式" rules={[{ required: true, message: '请选择打开方式' }]}>
+            <Select options={openTypeOptions} />
+          </Form.Item>
+          <Form.Item name="sortOrder" label="排序">
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="status" label="前台状态" rules={[{ required: true, message: '请选择前台状态' }]}>
+            <Select options={navigationStatusOptions} />
+          </Form.Item>
+        </Form>
+      </Drawer>
+    </>
+  );
+};
+
+const SettingsRoutesTab = () => {
+  const { setInitialState } = useInitialStateModel();
+  const [routeOrder, setRouteOrder] = useState(() => getStoredSettingRouteOrder());
+  const records = useMemo(() => buildSettingsRouteRecords(routeOrder), [routeOrder]);
+  const canResetOrder = routeOrder.join('|') !== DEFAULT_SETTING_ROUTE_ORDER.join('|');
+
+  const refreshSettingsNavigation = () => {
+    setInitialState((prev) =>
+      prev
+        ? {
+            ...prev,
+            menuVersion: (prev.menuVersion ?? 0) + 1,
+          }
+        : prev,
+    );
+  };
+
+  const updateRouteOrder = (nextOrder: string[]) => {
+    persistSettingRouteOrder(nextOrder);
+    setRouteOrder(nextOrder);
+    refreshSettingsNavigation();
+    message.success('设置页路由顺序已更新');
+  };
+
+  const moveRoute = (record: SettingsRouteRecord, direction: -1 | 1) => {
+    const currentIndex = routeOrder.indexOf(record.path);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= routeOrder.length) {
+      return;
+    }
+    updateRouteOrder(moveArrayItem(routeOrder, currentIndex, nextIndex));
+  };
+
+  const resetOrder = () => {
+    resetSettingRouteOrder();
+    setRouteOrder(DEFAULT_SETTING_ROUTE_ORDER);
+    refreshSettingsNavigation();
+    message.success('设置页路由顺序已恢复默认');
+  };
+
+  return (
+    <Table<SettingsRouteRecord>
+      rowKey="id"
+      dataSource={records}
+      pagination={false}
+      tableLayout="fixed"
+      title={() =>
+        canResetOrder ? (
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button onClick={resetOrder}>恢复默认顺序</Button>
+          </Space>
+        ) : null
+      }
+      columns={[
+        {
+          title: '显示名称',
+          dataIndex: 'name',
+          width: 180,
+          ellipsis: true,
+        },
+        {
+          title: '路由路径',
+          dataIndex: 'path',
+          width: 240,
+          ellipsis: true,
+        },
+        {
+          title: '访问权限',
+          dataIndex: 'access',
+          width: 220,
+          ellipsis: true,
+        },
+        {
+          title: '图标',
+          dataIndex: 'icon',
+          width: 160,
+          render: (value) => value || '-',
+        },
+        {
+          title: '顺序',
+          dataIndex: 'sortNo',
+          width: 88,
+        },
+        {
+          title: '管理方式',
+          dataIndex: 'manageMode',
+          width: 140,
+          render: (value) => <Tag color="blue">{value}</Tag>,
+        },
+        {
+          title: '操作',
+          width: 150,
+          render: (_, record, index) => (
+            <Space>
+              <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
+                上移
+              </Button>
+              <Button type="link" disabled={index === records.length - 1} onClick={() => moveRoute(record, 1)}>
+                下移
+              </Button>
+            </Space>
+          ),
+        },
+      ]}
+    />
+  );
+};
 
 const MenuManagementPage = () => {
   const menuCrud = useCrudPageState<MenuRecord>();
@@ -365,63 +657,83 @@ const MenuManagementPage = () => {
 
   return (
     <ManagementPage title="菜单管理">
-      <ManagementTable<MenuRecord & { level?: number }>
-          actionRef={menuCrud.actionRef}
-          rowKey="id"
-          columns={columns}
-          isMobile={responsive.isMobile}
-          search={searchConfig}
-          pagination={false}
-          tableLayout="fixed"
-          onRow={(record) => ({
-            draggable: canReorderMenus,
-            onDragStart: handleRowDragStart(record),
-            onDragOver: handleRowDragOver(record),
-            onDrop: handleRowDrop(record),
-            onDragEnd: handleRowDragEnd,
-            style: {
-              cursor: canReorderMenus ? 'grab' : undefined,
-              userSelect: 'none',
-              opacity: dragState?.draggedId === record.id ? 0.35 : 1,
-              backgroundColor:
-                dragState?.targetId === record.id && dragState.position === 'inside'
-                  ? 'rgba(22, 119, 255, 0.08)'
-                  : undefined,
-              boxShadow:
-                dragState?.targetId === record.id && dragState.position === 'before'
-                  ? 'inset 0 2px 0 #1677ff'
-                  : dragState?.targetId === record.id && dragState.position === 'after'
-                    ? 'inset 0 -2px 0 #1677ff'
-                    : undefined,
-            },
-          })}
-          request={async (params) => {
-            const visibleMenus = buildMenuTableData(menuTree, expandedRowKeys, params);
-            return {
-              data: visibleMenus,
-              success: true,
-              total: visibleMenus.length,
-            };
-          }}
-          toolBarRender={() =>
-            buildToolbarButtons([
-              {
-                key: 'create',
-                permission: 'system:menu:create',
-                type: 'primary',
-                label: '新增菜单',
-                onClick: openCreate,
-              },
-              {
-                key: 'refresh',
-                label: '刷新',
-                onClick: async () => {
-                  await loadMenus();
-                  menuCrud.reloadTable();
-                },
-              },
-            ])
-          }
+      <Tabs
+        items={[
+          {
+            key: 'main',
+            label: '主路由菜单',
+            children: (
+              <ManagementTable<MenuRecord & { level?: number }>
+                actionRef={menuCrud.actionRef}
+                rowKey="id"
+                columns={columns}
+                isMobile={responsive.isMobile}
+                search={searchConfig}
+                pagination={false}
+                tableLayout="fixed"
+                onRow={(record) => ({
+                  draggable: canReorderMenus,
+                  onDragStart: handleRowDragStart(record),
+                  onDragOver: handleRowDragOver(record),
+                  onDrop: handleRowDrop(record),
+                  onDragEnd: handleRowDragEnd,
+                  style: {
+                    cursor: canReorderMenus ? 'grab' : undefined,
+                    userSelect: 'none',
+                    opacity: dragState?.draggedId === record.id ? 0.35 : 1,
+                    backgroundColor:
+                      dragState?.targetId === record.id && dragState.position === 'inside'
+                        ? 'rgba(22, 119, 255, 0.08)'
+                        : undefined,
+                    boxShadow:
+                      dragState?.targetId === record.id && dragState.position === 'before'
+                        ? 'inset 0 2px 0 #1677ff'
+                        : dragState?.targetId === record.id && dragState.position === 'after'
+                          ? 'inset 0 -2px 0 #1677ff'
+                          : undefined,
+                  },
+                })}
+                request={async (params) => {
+                  const visibleMenus = buildMenuTableData(menuTree, expandedRowKeys, params);
+                  return {
+                    data: visibleMenus,
+                    success: true,
+                    total: visibleMenus.length,
+                  };
+                }}
+                toolBarRender={() =>
+                  buildToolbarButtons([
+                    {
+                      key: 'create',
+                      permission: 'system:menu:create',
+                      type: 'primary',
+                      label: '新增菜单',
+                      onClick: openCreate,
+                    },
+                    {
+                      key: 'refresh',
+                      label: '刷新',
+                      onClick: async () => {
+                        await loadMenus();
+                        menuCrud.reloadTable();
+                      },
+                    },
+                  ])
+                }
+              />
+            ),
+          },
+          {
+            key: 'site',
+            label: '官网顶部导航',
+            children: <SiteNavigationRoutesTab />,
+          },
+          {
+            key: 'settings',
+            label: '设置页路由',
+            children: <SettingsRoutesTab />,
+          },
+        ]}
       />
 
       <ManagementDrawer
