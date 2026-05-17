@@ -162,7 +162,13 @@ export async function getContents() {
 
 export async function getContent(slug: string) {
   const normalized = slug.startsWith('/') ? slug : `/${slug}`;
-  return fetchJson<ContentRecord>(`/v1/public/site/contents/detail?slug=${encodeURIComponent(normalized)}`);
+  const content = await fetchJson<ContentRecord>(`/v1/public/site/contents/detail?slug=${encodeURIComponent(normalized)}`);
+  if (content || normalized === '/') return content;
+  const legacySlug = normalized.substring(1);
+  const legacyContent = await fetchJson<ContentRecord>(`/v1/public/site/contents/detail?slug=${encodeURIComponent(legacySlug)}`);
+  if (legacyContent) return legacyContent;
+  const result = await fetchJson<PagedResult<ContentRecord>>('/v1/public/site/contents?pageNo=1&pageSize=50');
+  return result?.records?.find((item) => item.slug === normalized || item.slug === legacySlug) || null;
 }
 
 export async function getForm(code: string) {

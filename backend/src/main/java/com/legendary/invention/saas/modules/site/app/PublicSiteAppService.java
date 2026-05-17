@@ -74,12 +74,15 @@ public class PublicSiteAppService {
                                   on pv.id = p.current_published_version
                                  and pv.tenant_id = p.tenant_id
                                  and pv.status = 'PUBLISHED'
-                                where p.tenant_id = ? and p.site_id = ? and p.slug = ? and p.status = 'PUBLISHED' and p.deleted = 0
+                                where p.tenant_id = ? and p.site_id = ? and p.slug in (?, ?) and p.status = 'PUBLISHED' and p.deleted = 0
+                                order by case when p.slug = ? then 0 else 1 end
                                 limit 1
                                 """,
                         (rs, rowNum) -> mapPage(rs),
                         DEFAULT_TENANT_ID,
                         siteId,
+                        normalizeSlug(slug),
+                        legacySlug(slug),
                         normalizeSlug(slug)
                 )
         );
@@ -122,12 +125,15 @@ public class PublicSiteAppService {
                                 select c.*, f.public_url as cover_url
                                 from site_content c
                                 left join file_object f on f.tenant_id = c.tenant_id and f.id = c.cover_file_id and f.deleted = 0
-                                where c.tenant_id = ? and c.site_id = ? and c.slug = ? and c.status = 'PUBLISHED' and c.deleted = 0
+                                where c.tenant_id = ? and c.site_id = ? and c.slug in (?, ?) and c.status = 'PUBLISHED' and c.deleted = 0
+                                order by case when c.slug = ? then 0 else 1 end
                                 limit 1
                                 """,
                         (rs, rowNum) -> mapContent(rs),
                         DEFAULT_TENANT_ID,
                         siteId,
+                        normalizeSlug(slug),
+                        legacySlug(slug),
                         normalizeSlug(slug)
                 )
         );
@@ -353,6 +359,11 @@ public class PublicSiteAppService {
     private String normalizeSlug(String slug) {
         if (slug == null || slug.isBlank() || "/".equals(slug)) return "/";
         return slug.startsWith("/") ? slug : "/" + slug;
+    }
+
+    private String legacySlug(String slug) {
+        String normalized = normalizeSlug(slug);
+        return "/".equals(normalized) ? normalized : normalized.substring(1);
     }
 
     private String jsonOrNull(String value) {
