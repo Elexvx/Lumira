@@ -155,12 +155,6 @@ main {
   object-fit: cover;
 }
 
-.site-carousel-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(0deg, rgba(16, 20, 24, 0.18), rgba(16, 20, 24, 0.04));
-}
-
 .site-carousel-arrow {
   position: absolute;
   top: 50%;
