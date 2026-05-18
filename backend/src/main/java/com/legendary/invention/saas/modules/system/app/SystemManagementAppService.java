@@ -25,6 +25,7 @@ import com.legendary.invention.saas.modules.system.module.StaticPlatformModuleRe
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.legendary.invention.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.legendary.invention.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.legendary.invention.saas.modules.system.user.vo.UserDetailVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
@@ -108,8 +109,6 @@ public class SystemManagementAppService {
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
-    private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
-    private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final List<String> SMTP_CONFIG_KEYS = List.of(
             SMTP_HOST_KEY,
             SMTP_PORT_KEY,
@@ -172,6 +171,7 @@ public class SystemManagementAppService {
     private final TaskCenterAppService taskCenterAppService;
     private final IamUserService iamUserService;
     private final SystemUserManagementAppService systemUserManagementAppService;
+    private final SystemRoleManagementAppService systemRoleManagementAppService;
     private final PlatformModuleRegistry platformModuleRegistry;
     private final PlatformModuleDefinitionValidator platformModuleDefinitionValidator;
     private final DatabasePlatformModuleRepository databasePlatformModuleRepository;
@@ -197,6 +197,7 @@ public class SystemManagementAppService {
             TaskCenterAppService taskCenterAppService,
             IamUserService iamUserService,
             SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService,
             PlatformModuleRegistry platformModuleRegistry,
             PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
             DatabasePlatformModuleRepository databasePlatformModuleRepository
@@ -219,9 +220,59 @@ public class SystemManagementAppService {
         this.taskCenterAppService = taskCenterAppService;
         this.iamUserService = iamUserService;
         this.systemUserManagementAppService = systemUserManagementAppService;
+        this.systemRoleManagementAppService = systemRoleManagementAppService;
         this.platformModuleRegistry = platformModuleRegistry;
         this.platformModuleDefinitionValidator = platformModuleDefinitionValidator;
         this.databasePlatformModuleRepository = databasePlatformModuleRepository;
+    }
+
+    public SystemManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            AuthAppService authAppService,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            PluginManagementAppService pluginManagementAppService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            TaskCenterAppService taskCenterAppService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            PlatformModuleRegistry platformModuleRegistry,
+            PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
+            DatabasePlatformModuleRepository databasePlatformModuleRepository
+    ) {
+        this(
+                jdbcTemplate,
+                authAppService,
+                userDomainService,
+                permissionSnapshotService,
+                pluginManagementAppService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                taskCenterAppService,
+                iamUserService,
+                systemUserManagementAppService,
+                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
+                platformModuleRegistry,
+                platformModuleDefinitionValidator,
+                databasePlatformModuleRepository
+        );
     }
 
     public SystemManagementAppService(
@@ -262,6 +313,7 @@ public class SystemManagementAppService {
                 taskCenterAppService,
                 iamUserService,
                 defaultUserManagementAppService(jdbcTemplate, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
+                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
                 new StaticPlatformModuleRegistry(),
                 new PlatformModuleDefinitionValidator(),
                 null
@@ -287,6 +339,18 @@ public class SystemManagementAppService {
                 operationAuditService,
                 passwordEncoder,
                 passwordPolicyService
+        );
+    }
+
+    private static SystemRoleManagementAppService defaultRoleManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService
+    ) {
+        return new SystemRoleManagementAppService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                operationAuditService
         );
     }
 
@@ -754,160 +818,31 @@ public class SystemManagementAppService {
     }
 
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
-        String baseSql = """
-                from sys_role r
-                where r.tenant_id = ? and r.deleted = 0
-                """;
-        List<Object> params = new ArrayList<>();
-        params.add(tenantId);
-        if (StringUtils.hasText(roleCode)) {
-            baseSql += " and r.role_code like ?";
-            params.add(like(roleCode));
-        }
-        if (StringUtils.hasText(roleName)) {
-            baseSql += " and r.role_name like ?";
-            params.add(like(roleName));
-        }
-        if (StringUtils.hasText(roleType)) {
-            baseSql += " and r.role_type = ?";
-            params.add(roleType);
-        }
-        String selectSql = """
-                select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                       r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
-                """ + baseSql + " order by r.id desc";
-        PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
-        String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode(tenantId);
-        Map<Long, Integer> permissionCounts = countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId);
-        Map<Long, Integer> userCounts = countRoleUsers(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId);
-        page.setRecords(page.getRecords().stream().map(role -> {
-            role.setPermissionCount(permissionCounts.getOrDefault(role.getId(), 0));
-            role.setUserCount(userCounts.getOrDefault(role.getId(), 0));
-            role.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(defaultRegistrationRoleCode));
-            return role;
-        }).toList());
-        return page;
+        return systemRoleManagementAppService.listRoles(currentUser, roleCode, roleName, roleType, pageNo, pageSize);
     }
 
     public SystemVO.RoleDetailVO getRole(CurrentUser currentUser, Long roleId) {
-        Long tenantId = currentTenantId(currentUser);
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.id = ? and r.tenant_id = ? and r.deleted = 0
-                        """,
-                SystemVO.RoleVO.class,
-                roleId,
-                tenantId
-        );
-        if (role == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
-        }
-        SystemVO.RoleDetailVO detail = new SystemVO.RoleDetailVO();
-        copyRole(detail, role);
-        detail.setPermissionCount(countRolePermissions(roleId, tenantId));
-        detail.setUserCount(countRoleUsers(roleId, tenantId));
-        detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode(tenantId)));
-        detail.setPermissionKeys(listRolePermissionKeys(roleId, tenantId));
-        return detail;
+        return systemRoleManagementAppService.getRole(currentUser, roleId);
     }
 
     public SystemVO.DefaultRegistrationRoleVO getDefaultRegistrationRole(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
-        String roleCode = resolveDefaultRegistrationRoleCode(tenantId);
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
-                        order by r.id desc
-                        limit 1
-                        """,
-                SystemVO.RoleVO.class,
-                tenantId,
-                roleCode
-        );
-        if (role == null) {
-            role = queryOne(
-                    """
-                            select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                                   r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
-                            from sys_role r
-                            where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
-                            order by r.id desc
-                            limit 1
-                            """,
-                    SystemVO.RoleVO.class,
-                    tenantId,
-                    DEFAULT_REGISTRATION_ROLE_CODE
-            );
-        }
-        if (role == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
-        }
-        return toDefaultRegistrationRole(tenantId, role);
+        return systemRoleManagementAppService.getDefaultRegistrationRole(currentUser);
     }
 
-    @Transactional
     public SystemVO.DefaultRegistrationRoleVO updateDefaultRegistrationRole(CurrentUser currentUser, Long roleId) {
-        Long tenantId = currentTenantId(currentUser);
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.id = ? and r.tenant_id = ? and r.deleted = 0
-                        """,
-                SystemVO.RoleVO.class,
-                roleId,
-                tenantId
-        );
-        if (role == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
-        }
-        upsertConfigValue(
-                tenantId,
-                DEFAULT_REGISTRATION_ROLE_CODE_KEY,
-                "默认注册角色",
-                role.getRoleCode(),
-                "用户通过注册或验证码自动注册后默认绑定的角色编码",
-                currentUser.getUserId()
-        );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
-        return toDefaultRegistrationRole(tenantId, role);
+        return systemRoleManagementAppService.updateDefaultRegistrationRole(currentUser, roleId);
     }
 
-    @Transactional
     public SystemVO.RoleDetailVO createRole(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long roleId = upsertRole(null, tenantId, request, currentUser.getUserId());
-        replaceRolePermissions(tenantId, roleId, request.getPermissionKeys(), currentUser.getUserId());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
-        return getRole(currentUser, roleId);
+        return systemRoleManagementAppService.createRole(currentUser, request);
     }
 
-    @Transactional
     public SystemVO.RoleDetailVO updateRole(CurrentUser currentUser, Long roleId, SystemDTO.RoleUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        upsertRole(roleId, tenantId, request, currentUser.getUserId());
-        replaceRolePermissions(tenantId, roleId, request.getPermissionKeys(), currentUser.getUserId());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
-        return getRole(currentUser, roleId);
+        return systemRoleManagementAppService.updateRole(currentUser, roleId, request);
     }
 
-    @Transactional
     public boolean updateRolePermissions(CurrentUser currentUser, Long roleId, List<String> permissionKeys) {
-        Long tenantId = currentTenantId(currentUser);
-        replaceRolePermissions(tenantId, roleId, permissionKeys, currentUser.getUserId());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
-        return true;
+        return systemRoleManagementAppService.updateRolePermissions(currentUser, roleId, permissionKeys);
     }
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
@@ -2165,102 +2100,6 @@ public class SystemManagementAppService {
         return String.join(", ", java.util.Collections.nCopies(count, "?"));
     }
 
-    private Integer countRolePermissions(Long roleId, Long tenantId) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_role_permission
-                        where role_id = ? and tenant_id = ? and deleted = 0
-                        """,
-                Long.class,
-                roleId,
-                tenantId
-        );
-        return count == null ? 0 : count.intValue();
-    }
-
-    private Integer countRoleUsers(Long roleId, Long tenantId) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_user_role
-                        where role_id = ? and tenant_id = ? and deleted = 0
-                        """,
-                Long.class,
-                roleId,
-                tenantId
-        );
-        return count == null ? 0 : count.intValue();
-    }
-
-    private Map<Long, Integer> countRolePermissions(List<Long> roleIds, Long tenantId) {
-        List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
-        if (distinctRoleIds.isEmpty()) {
-            return Map.of();
-        }
-        String placeholders = placeholders(distinctRoleIds.size());
-        List<Object> params = new ArrayList<>();
-        params.addAll(distinctRoleIds);
-        params.add(tenantId);
-        return jdbcTemplate.query(
-                """
-                        select role_id as roleId, count(1) as total
-                        from sys_role_permission
-                        where role_id in (%s) and tenant_id = ? and deleted = 0
-                        group by role_id
-                        """.formatted(placeholders),
-                rs -> {
-                    Map<Long, Integer> result = new LinkedHashMap<>();
-                    while (rs.next()) {
-                        result.put(rs.getLong("roleId"), rs.getInt("total"));
-                    }
-                    return result;
-                },
-                params.toArray()
-        );
-    }
-
-    private Map<Long, Integer> countRoleUsers(List<Long> roleIds, Long tenantId) {
-        List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
-        if (distinctRoleIds.isEmpty()) {
-            return Map.of();
-        }
-        String placeholders = placeholders(distinctRoleIds.size());
-        List<Object> params = new ArrayList<>();
-        params.addAll(distinctRoleIds);
-        params.add(tenantId);
-        return jdbcTemplate.query(
-                """
-                        select role_id as roleId, count(1) as total
-                        from sys_user_role
-                        where role_id in (%s) and tenant_id = ? and deleted = 0
-                        group by role_id
-                        """.formatted(placeholders),
-                rs -> {
-                    Map<Long, Integer> result = new LinkedHashMap<>();
-                    while (rs.next()) {
-                        result.put(rs.getLong("roleId"), rs.getInt("total"));
-                    }
-                    return result;
-                },
-                params.toArray()
-        );
-    }
-
-    private List<String> listRolePermissionKeys(Long roleId, Long tenantId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select permission_key
-                        from sys_role_permission
-                        where role_id = ? and tenant_id = ? and deleted = 0
-                        order by permission_key asc
-                        """,
-                String.class,
-                roleId,
-                tenantId
-        );
-    }
-
     private SystemVO.UserVO queryUser(Long tenantId, Long userId) {
         SystemVO.UserVO user = queryOne(
                 """
@@ -2764,19 +2603,6 @@ public class SystemManagementAppService {
         target.setLastLoginAt(source.getLastLoginAt());
         target.setTenantNames(source.getTenantNames());
         target.setRoleNames(source.getRoleNames());
-        target.setCreatedAt(source.getCreatedAt());
-        target.setUpdatedAt(source.getUpdatedAt());
-    }
-
-    private void copyRole(SystemVO.RoleDetailVO target, SystemVO.RoleVO source) {
-        target.setId(source.getId());
-        target.setTenantId(source.getTenantId());
-        target.setRoleCode(source.getRoleCode());
-        target.setRoleName(source.getRoleName());
-        target.setRoleType(source.getRoleType());
-        target.setPermissionCount(source.getPermissionCount());
-        target.setUserCount(source.getUserCount());
-        target.setDefaultRegistrationRole(source.getDefaultRegistrationRole());
         target.setCreatedAt(source.getCreatedAt());
         target.setUpdatedAt(source.getUpdatedAt());
     }
