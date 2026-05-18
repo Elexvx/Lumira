@@ -268,8 +268,15 @@ async function ensureFrontendDependencies() {
 }
 
 function ensureSharedLibraries() {
-  log('Installing shared library modules from source...');
-  const installResult = runCommand(mavenCommand, ['-f', 'libs/common-web/pom.xml', 'install', '-DskipTests']);
+  const sharedModules = [
+    'libs/common-core',
+    'libs/common-security',
+    'libs/common-web',
+    'libs/legendary-api',
+    'libs/plugin-api',
+  ];
+  log('Installing shared local modules: common-core, common-security, common-web, legendary-api, plugin-api...');
+  const installResult = runCommand(mavenCommand, ['-pl', sharedModules.join(','), '-am', 'install', '-DskipTests']);
   if (installResult.status !== 0) {
     throw new Error('Shared library installation failed.');
   }

@@ -98,7 +98,13 @@ public class IamUserService {
         syncSysUser(user, defaultSource(source));
         String identityType = detectIdentityType(rawAccount);
         if (StringUtils.hasText(identityType)) {
-            bindIdentity(user.getId(), identityType, rawAccount, true, true);
+            int deleted = deletedFlag(user.getDeleted());
+            String status = syncStatus(user.getStatus(), deleted);
+            if (deleted == 0 && "ENABLED".equals(status)) {
+                bindIdentity(user.getId(), identityType, rawAccount, true, true);
+            } else {
+                syncIdentityFromSysUser(user.getId(), identityType, rawAccount, true, true, status, deleted);
+            }
         }
     }
 
@@ -272,6 +278,8 @@ public class IamUserService {
             return;
         }
         String displayName = firstText(user.getNickname(), user.getRealName(), user.getUsername(), "用户" + user.getId());
+        int deleted = deletedFlag(user.getDeleted());
+        String status = syncStatus(user.getStatus(), deleted);
         jdbcTemplate.update(
                 """
                         insert into iam_user (
@@ -287,21 +295,21 @@ public class IamUserService {
                 userNo(user.getId()),
                 displayName,
                 user.getAvatarUrl(),
-                defaultStatus(user.getStatus()),
+                status,
                 defaultSource(source),
-                deletedFlag(user.getDeleted())
+                deleted
         );
-        bindIdentity(user.getId(), IDENTITY_USERNAME, user.getUsername(), true, true);
-        bindLegacyIdentityIfAvailable(user.getId(), IDENTITY_MOBILE, user.getMobile());
-        bindLegacyIdentityIfAvailable(user.getId(), IDENTITY_EMAIL, user.getEmail());
-        upsertPasswordCredential(user.getId(), user.getPasswordHash());
+        syncIdentityFromSysUser(user.getId(), IDENTITY_USERNAME, user.getUsername(), true, true, status, deleted);
+        bindLegacyIdentityIfAvailable(user.getId(), IDENTITY_MOBILE, user.getMobile(), status, deleted);
+        bindLegacyIdentityIfAvailable(user.getId(), IDENTITY_EMAIL, user.getEmail(), status, deleted);
+        upsertPasswordCredentialFromSysUser(user.getId(), user.getPasswordHash(), status, deleted);
         upsertProfile(user);
-        upsertSecuritySetting(user.getId());
+        upsertSecuritySetting(user.getId(), deleted);
     }
 
-    private void bindLegacyIdentityIfAvailable(Long userId, String identityType, String identifier) {
+    private void bindLegacyIdentityIfAvailable(Long userId, String identityType, String identifier, String status, int deleted) {
         try {
-            bindIdentity(userId, identityType, identifier, true, false);
+            syncIdentityFromSysUser(userId, identityType, identifier, true, false, status, deleted);
         } catch (BizException exception) {
             recordEvent(
                     userId,
@@ -317,8 +325,64 @@ public class IamUserService {
         }
     }
 
+    private void syncIdentityFromSysUser(Long userId, String identityType, String identifier, boolean verified, boolean primaryIdentity, String status, int deleted) {
+        String normalizedType = normalizeIdentityType(identityType);
+        String normalizedIdentifier = normalizeIdentifier(normalizedType, identifier);
+        if (userId == null || !StringUtils.hasText(normalizedType) || !StringUtils.hasText(normalizedIdentifier)) {
+            return;
+        }
+        IdentityBinding existing = queryIdentityBinding(normalizedType, normalizedIdentifier);
+        if (existing != null && !userId.equals(existing.userId())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "登录身份已被其他用户绑定");
+        }
+        if (existing != null) {
+            jdbcTemplate.update(
+                    """
+                            update iam_user_identity
+                            set identifier = ?,
+                                verified = greatest(verified, ?),
+                                primary_identity = greatest(primary_identity, ?),
+                                status = ?,
+                                deleted = ?,
+                                updated_at = current_timestamp
+                            where id = ?
+                            """,
+                    identifier.trim(),
+                    verified ? 1 : 0,
+                    primaryIdentity ? 1 : 0,
+                    status,
+                    deleted,
+                    existing.id()
+            );
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        insert into iam_user_identity (
+                            user_id, identity_type, identifier, identifier_normalized, verified, primary_identity, status, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                userId,
+                normalizedType,
+                identifier.trim(),
+                normalizedIdentifier,
+                verified ? 1 : 0,
+                primaryIdentity ? 1 : 0,
+                status,
+                deleted
+        );
+    }
+
     @Transactional
     public void upsertPasswordCredential(Long userId, String passwordHash) {
+        upsertPasswordCredential(userId, passwordHash, "ENABLED", 0);
+    }
+
+    private void upsertPasswordCredentialFromSysUser(Long userId, String passwordHash, String status, int deleted) {
+        upsertPasswordCredential(userId, passwordHash, status, deleted);
+    }
+
+    private void upsertPasswordCredential(Long userId, String passwordHash, String status, int deleted) {
         if (userId == null || !StringUtils.hasText(passwordHash)) {
             return;
         }
@@ -326,16 +390,18 @@ public class IamUserService {
                 """
                         insert into iam_user_credential (
                             user_id, credential_type, credential_secret, algorithm, version, last_changed_at, status, deleted
-                        ) values (?, 'PASSWORD', ?, 'BCRYPT', 1, current_timestamp, 'ENABLED', 0)
+                        ) values (?, 'PASSWORD', ?, 'BCRYPT', 1, current_timestamp, ?, ?)
                         on duplicate key update credential_secret = values(credential_secret),
                                                 algorithm = values(algorithm),
                                                 last_changed_at = current_timestamp,
-                                                status = 'ENABLED',
-                                                deleted = 0,
+                                                status = values(status),
+                                                deleted = values(deleted),
                                                 updated_at = current_timestamp
                         """,
                 userId,
-                passwordHash
+                passwordHash,
+                status,
+                deleted
         );
     }
 
@@ -599,14 +665,15 @@ public class IamUserService {
         );
     }
 
-    private void upsertSecuritySetting(Long userId) {
+    private void upsertSecuritySetting(Long userId, int deleted) {
         jdbcTemplate.update(
                 """
-                        insert into iam_user_security_setting (user_id)
-                        values (?)
-                        on duplicate key update updated_at = current_timestamp, deleted = 0
+                        insert into iam_user_security_setting (user_id, deleted)
+                        values (?, ?)
+                        on duplicate key update updated_at = current_timestamp, deleted = values(deleted)
                         """,
-                userId
+                userId,
+                deleted
         );
     }
 
@@ -766,6 +833,13 @@ public class IamUserService {
 
     private String defaultStatus(String status) {
         return StringUtils.hasText(status) ? status.trim().toUpperCase(Locale.ROOT) : "ENABLED";
+    }
+
+    private String syncStatus(String status, int deleted) {
+        if (deleted == 1) {
+            return "DISABLED";
+        }
+        return defaultStatus(status);
     }
 
     private String defaultSource(String source) {
