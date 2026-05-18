@@ -25,6 +25,7 @@ import com.legendary.invention.saas.modules.system.module.StaticPlatformModuleRe
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.legendary.invention.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.legendary.invention.saas.modules.system.user.vo.UserDetailVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
@@ -170,6 +171,7 @@ public class SystemManagementAppService {
     private final PasswordPolicyService passwordPolicyService;
     private final TaskCenterAppService taskCenterAppService;
     private final IamUserService iamUserService;
+    private final SystemUserManagementAppService systemUserManagementAppService;
     private final PlatformModuleRegistry platformModuleRegistry;
     private final PlatformModuleDefinitionValidator platformModuleDefinitionValidator;
     private final DatabasePlatformModuleRepository databasePlatformModuleRepository;
@@ -194,6 +196,7 @@ public class SystemManagementAppService {
             PasswordPolicyService passwordPolicyService,
             TaskCenterAppService taskCenterAppService,
             IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
             PlatformModuleRegistry platformModuleRegistry,
             PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
             DatabasePlatformModuleRepository databasePlatformModuleRepository
@@ -215,6 +218,7 @@ public class SystemManagementAppService {
         this.passwordPolicyService = passwordPolicyService;
         this.taskCenterAppService = taskCenterAppService;
         this.iamUserService = iamUserService;
+        this.systemUserManagementAppService = systemUserManagementAppService;
         this.platformModuleRegistry = platformModuleRegistry;
         this.platformModuleDefinitionValidator = platformModuleDefinitionValidator;
         this.databasePlatformModuleRepository = databasePlatformModuleRepository;
@@ -257,9 +261,32 @@ public class SystemManagementAppService {
                 passwordPolicyService,
                 taskCenterAppService,
                 iamUserService,
+                defaultUserManagementAppService(jdbcTemplate, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
                 new StaticPlatformModuleRegistry(),
                 new PlatformModuleDefinitionValidator(),
                 null
+        );
+    }
+
+    private static SystemUserManagementAppService defaultUserManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            UserDomainService userDomainService,
+            IamUserService iamUserService,
+            PermissionSnapshotService permissionSnapshotService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            OperationAuditService operationAuditService,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService
+    ) {
+        return new SystemUserManagementAppService(
+                jdbcTemplate,
+                userDomainService,
+                iamUserService,
+                permissionSnapshotService,
+                onlineSessionManagementAppService,
+                operationAuditService,
+                passwordEncoder,
+                passwordPolicyService
         );
     }
 
@@ -691,281 +718,39 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long tenantId = currentTenantId(currentUser);
-        String baseSql = """
-                from sys_user u
-                left join iam_user iu
-                  on iu.id = u.id
-                 and iu.deleted = 0
-                join sys_user_tenant ut
-                  on ut.user_id = u.id
-                 and ut.tenant_id = ?
-                 and ut.deleted = 0
-                 and ut.status = 'ENABLED'
-                where u.deleted = 0
-                """;
-        List<Object> params = new ArrayList<>();
-        params.add(tenantId);
-        if (userId != null) {
-            baseSql += " and u.id = ?";
-            params.add(userId);
-        }
-        if (StringUtils.hasText(username)) {
-            baseSql += """
-                     and exists (
-                         select 1 from iam_user_identity ui
-                         where ui.user_id = u.id
-                           and ui.identity_type = 'USERNAME'
-                           and ui.identifier_normalized = ?
-                           and ui.deleted = 0
-                     )
-                    """;
-            params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_USERNAME, username));
-        }
-        if (StringUtils.hasText(mobile)) {
-            baseSql += """
-                     and exists (
-                         select 1 from iam_user_identity ui
-                         where ui.user_id = u.id
-                           and ui.identity_type = 'MOBILE'
-                           and ui.identifier_normalized = ?
-                           and ui.deleted = 0
-                     )
-                    """;
-            params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, mobile));
-        }
-        if (StringUtils.hasText(email)) {
-            baseSql += """
-                     and exists (
-                         select 1 from iam_user_identity ui
-                         where ui.user_id = u.id
-                           and ui.identity_type = 'EMAIL'
-                           and ui.identifier_normalized = ?
-                           and ui.deleted = 0
-                     )
-                    """;
-            params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_EMAIL, email));
-        }
-        if (StringUtils.hasText(status)) {
-            baseSql += " and u.status = ?";
-            params.add(status);
-        }
-        if (StringUtils.hasText(source)) {
-            baseSql += " and iu.source = ?";
-            params.add(source.trim().toUpperCase(Locale.ROOT));
-        }
-        LocalDateTime registeredStartAt = parseDateTimeParam(registeredStart, false);
-        LocalDateTime registeredEndAt = parseDateTimeParam(registeredEnd, true);
-        LocalDateTime lastLoginStartAt = parseDateTimeParam(lastLoginStart, false);
-        LocalDateTime lastLoginEndAt = parseDateTimeParam(lastLoginEnd, true);
-        LocalDateTime cursorCreatedAtValue = parseDateTimeParam(cursorCreatedAt, false);
-        if (registeredStartAt != null) {
-            baseSql += " and coalesce(iu.registered_at, u.created_at) >= ?";
-            params.add(registeredStartAt);
-        }
-        if (registeredEndAt != null) {
-            baseSql += " and coalesce(iu.registered_at, u.created_at) <= ?";
-            params.add(registeredEndAt);
-        }
-        if (lastLoginStartAt != null) {
-            baseSql += " and iu.last_login_at >= ?";
-            params.add(lastLoginStartAt);
-        }
-        if (lastLoginEndAt != null) {
-            baseSql += " and iu.last_login_at <= ?";
-            params.add(lastLoginEndAt);
-        }
-        boolean cursorMode = cursorId != null || cursorCreatedAtValue != null;
-        if (cursorCreatedAtValue != null && cursorId != null) {
-            baseSql += " and (coalesce(iu.registered_at, u.created_at) < ? or (coalesce(iu.registered_at, u.created_at) = ? and u.id < ?))";
-            params.add(cursorCreatedAtValue);
-            params.add(cursorCreatedAtValue);
-            params.add(cursorId);
-        } else if (cursorId != null) {
-            baseSql += " and u.id < ?";
-            params.add(cursorId);
-        } else if (cursorCreatedAtValue != null) {
-            baseSql += " and coalesce(iu.registered_at, u.created_at) < ?";
-            params.add(cursorCreatedAtValue);
-        }
-        String selectSql = """
-                select u.id, iu.user_no as userNo, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
-                       u.avatar_url as avatarUrl, u.email, u.birth_month as birthMonth, u.gender, u.region,
-                       u.available_time as availableTime, u.status, iu.source,
-                       coalesce(iu.registered_at, u.created_at) as registeredAt,
-                       iu.last_login_at as lastLoginAt,
-                       u.created_at as createdAt, u.updated_at as updatedAt
-                """ + baseSql + """
-                order by coalesce(iu.registered_at, u.created_at) desc, u.id desc
-                """;
-        PageResponse<SystemVO.UserVO> page = cursorMode
-                ? cursorQuery(selectSql, SystemVO.UserVO.class, pageSize, params)
-                : pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.UserVO.class, pageNo, pageSize, params);
-        decorateUsers(page.getRecords(), tenantId);
-        maskSensitiveUsers(page.getRecords(), canViewSensitiveUserInfo(currentUser));
-        return page;
+        return systemUserManagementAppService.listUsers(
+                currentUser, userId, username, mobile, email, status, source,
+                registeredStart, registeredEnd, lastLoginStart, lastLoginEnd,
+                cursorId, cursorCreatedAt, pageNo, pageSize
+        );
     }
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
-        SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
-        if (!canViewSensitiveUserInfo(currentUser)) {
-            maskSensitiveUser(user);
-        }
-        SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
-        copyUser(detail, user);
-        Long tenantId = currentTenantId(currentUser);
-        detail.setRoleIds(listUserRoleIds(userId, tenantId));
-        detail.setTenantIds(listUserTenantIds(userId));
-        decorateIamUserDetail(detail, userId, canViewSensitiveUserInfo(currentUser));
-        return detail;
+        return systemUserManagementAppService.getUser(currentUser, userId);
     }
 
     @Transactional
     public SystemVO.UserDetailVO createUser(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long userId = insertOrUpdateUser(null, request, currentUser.getUserId());
-        upsertUserTenantRelation(userId, tenantId, true, currentUser.getUserId());
-        replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
-        return getUser(currentUser, userId);
+        return systemUserManagementAppService.createUser(currentUser, request);
     }
 
     @Transactional
     public SystemVO.UserDetailVO updateUser(CurrentUser currentUser, Long userId, SystemDTO.UserUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        insertOrUpdateUser(userId, request, currentUser.getUserId());
-        replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
-        return getUser(currentUser, userId);
+        return systemUserManagementAppService.updateUser(currentUser, userId, request);
     }
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
-        if (isProtectedAdminAccount(userId, null) && "DISABLED".equalsIgnoreCase(status)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
-        }
-        jdbcTemplate.update(
-                "update sys_user set status = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                status,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                userId
-        );
-        iamUserService.changeUserStatus(userId, status);
-        if ("DISABLED".equalsIgnoreCase(status)) {
-            onlineSessionManagementAppService.revokeUserSessions(userId);
-        }
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + status);
-        return true;
+        return systemUserManagementAppService.updateUserStatus(currentUser, userId, status);
     }
 
     @Transactional
     public boolean deleteUser(CurrentUser currentUser, Long userId) {
-        if (currentUser.getUserId().equals(userId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不能删除当前登录用户");
-        }
-        if (isProtectedAdminAccount(userId, null)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被删除");
-        }
-        Long tenantId = currentTenantId(currentUser);
-        SystemVO.UserVO user = queryUser(tenantId, userId);
-        LocalDateTime now = LocalDateTime.now();
-
-        int tenantRows = jdbcTemplate.update(
-                """
-                        update sys_user_tenant
-                        set status = 'DISABLED', deleted = 1, updated_by = ?, updated_at = ?
-                        where tenant_id = ? and user_id = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                userId
-        );
-        if (tenantRows == 0) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
-        }
-        jdbcTemplate.update(
-                "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_user_passkey_credential set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_verification_binding set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_verification_challenge set consumed_flag = 1, deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                userId
-        );
-
-        Integer activeTenantCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_user_tenant where user_id = ? and deleted = 0 and status = 'ENABLED'",
-                Integer.class,
-                userId
-        );
-        if (activeTenantCount == null || activeTenantCount == 0) {
-            jdbcTemplate.update(
-                    """
-                            update sys_user
-                            set username = concat(left(username, 32), '#deleted#', id),
-                                status = 'DISABLED',
-                                deleted = 1,
-                                updated_by = ?,
-                                updated_at = ?
-                            where id = ? and deleted = 0
-                            """,
-                    currentUser.getUserId(),
-                    now,
-                    userId
-            );
-            jdbcTemplate.update(
-                    "update sys_user_wechat_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                    currentUser.getUserId(),
-                    now,
-                    userId
-            );
-            iamUserService.softDeleteUser(userId);
-        }
-
-        onlineSessionManagementAppService.revokeUserSessions(userId);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
-        return true;
+        return systemUserManagementAppService.deleteUser(currentUser, userId);
     }
 
     public List<SystemVO.RoleVO> listUserRoles(CurrentUser currentUser, Long userId) {
-        Long tenantId = currentTenantId(currentUser);
-        return jdbcTemplate.query(
-                """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.tenant_id = ? and ur.user_id = ? and ur.deleted = 0
-                        order by r.id desc
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.RoleVO.class),
-                tenantId,
-                userId
-        );
+        return systemUserManagementAppService.listUserRoles(currentUser, userId);
     }
 
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
