@@ -32,7 +32,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: true
@@ -53,7 +53,7 @@ management:
 
 saas:
   security:
-    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
+    jwt-secret: ${JWT_SECRET}
     permit-paths:
       - /actuator/health
   plugin:
@@ -61,5 +61,5 @@ saas:
     api-version: ${PLUGIN_API_VERSION:1.0.0}
     storage-root: ${PLUGIN_STORAGE_ROOT:storage/plugins}
     staging-root: ${PLUGIN_STAGING_ROOT:storage/plugin-staging}
-    signature-secret: ${PLUGIN_SIGNATURE_SECRET:change-me-plugin-signature-secret}
+    signature-secret: ${PLUGIN_SIGNATURE_SECRET}
     shared-deps-version: ${PLUGIN_SHARED_DEPS_VERSION:1}

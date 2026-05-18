@@ -1,4 +1,6 @@
 services:
+  # Local development stack only. Production must use docker-compose.prod.yml and
+  # explicitly provide strong secrets through deploy/.env.
   mysql:
     image: mysql:8.4
     container_name: legendary-mysql

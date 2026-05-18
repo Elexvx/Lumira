@@ -69,6 +69,8 @@ saas:
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
     captcha-enabled: ${CAPTCHA_ENABLED:true}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
+    register-ip-max-count: ${REGISTER_IP_MAX_COUNT:20}
+    register-ip-window-minutes: ${REGISTER_IP_WINDOW_MINUTES:10}
     permit-paths:
       - /api/v1/auth/login
       - /api/v1/auth/login/code/challenge

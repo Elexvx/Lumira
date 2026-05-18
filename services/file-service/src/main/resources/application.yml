@@ -30,7 +30,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: true
@@ -53,7 +53,7 @@ saas:
   web:
     cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
   job:
-    internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
+    internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
   security:
     jwt-secret: ${JWT_SECRET}
     permit-paths:

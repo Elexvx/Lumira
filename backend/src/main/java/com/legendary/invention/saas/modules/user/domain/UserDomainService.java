@@ -1,26 +1,36 @@
 package com.legendary.invention.saas.modules.user.domain;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import com.legendary.invention.saas.modules.user.mapper.SysUserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Locale;
 import java.util.Optional;
 
 @Service
 public class UserDomainService {
 
     private final SysUserMapper sysUserMapper;
+    private final IamUserService iamUserService;
+
+    public UserDomainService(SysUserMapper sysUserMapper, IamUserService iamUserService) {
+        this.sysUserMapper = sysUserMapper;
+        this.iamUserService = iamUserService;
+    }
 
     public UserDomainService(SysUserMapper sysUserMapper) {
         this.sysUserMapper = sysUserMapper;
+        this.iamUserService = null;
     }
 
     public Optional<SysUserEntity> findLoginUser(String account) {
         if (!StringUtils.hasText(account)) {
             return Optional.empty();
+        }
+        if (iamUserService != null) {
+            return iamUserService.findByLoginAccount(account);
         }
 
         LambdaQueryWrapper<SysUserEntity> wrapper = new LambdaQueryWrapper<SysUserEntity>()
@@ -29,7 +39,7 @@ public class UserDomainService {
                         .or()
                         .eq(SysUserEntity::getMobile, account)
                         .or()
-                        .apply("lower(email) = {0}", account.trim().toLowerCase(Locale.ROOT)))
+                        .eq(SysUserEntity::getEmail, account.trim().toLowerCase(java.util.Locale.ROOT)))
                 .last("limit 1");
 
         return Optional.ofNullable(sysUserMapper.selectOne(wrapper));

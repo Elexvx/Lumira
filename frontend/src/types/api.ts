@@ -1229,6 +1229,7 @@ export interface ProfileCompletionItem {
 
 export interface UserRecord {
   id: number;
+  userNo?: string | null;
   username: string;
   mobile?: string | null;
   idCardNumber?: string | null;
@@ -1241,6 +1242,9 @@ export interface UserRecord {
   region?: string | null;
   availableTime?: string | null;
   status: string;
+  source?: string | null;
+  registeredAt?: string | null;
+  lastLoginAt?: string | null;
   roleNames?: string[];
   createdAt?: string;
   updatedAt?: string;

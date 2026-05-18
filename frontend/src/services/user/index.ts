@@ -3,9 +3,18 @@ import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/ap
 
 export interface UserListQuery extends Record<string, unknown> {
   keyword?: string;
+  userId?: number;
   username?: string;
   mobile?: string;
+  email?: string;
   status?: string;
+  source?: string;
+  registeredStart?: string;
+  registeredEnd?: string;
+  lastLoginStart?: string;
+  lastLoginEnd?: string;
+  cursorId?: number;
+  cursorCreatedAt?: string;
   pageNo?: number;
   pageSize?: number;
 }

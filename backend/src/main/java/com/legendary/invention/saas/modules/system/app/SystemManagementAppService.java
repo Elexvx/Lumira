@@ -10,6 +10,7 @@ import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.auth.app.AuthAppService;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
+import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.system.permission.SystemPermissionTreeAssembler;
@@ -166,6 +167,7 @@ public class SystemManagementAppService {
     private final SecuritySettingsService securitySettingsService;
     private final PasswordPolicyService passwordPolicyService;
     private final TaskCenterAppService taskCenterAppService;
+    private final IamUserService iamUserService;
     private final PlatformModuleRegistry platformModuleRegistry;
     private final PlatformModuleDefinitionValidator platformModuleDefinitionValidator;
     private final DatabasePlatformModuleRepository databasePlatformModuleRepository;
@@ -189,6 +191,7 @@ public class SystemManagementAppService {
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
             TaskCenterAppService taskCenterAppService,
+            IamUserService iamUserService,
             PlatformModuleRegistry platformModuleRegistry,
             PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
             DatabasePlatformModuleRepository databasePlatformModuleRepository
@@ -209,9 +212,92 @@ public class SystemManagementAppService {
         this.securitySettingsService = securitySettingsService;
         this.passwordPolicyService = passwordPolicyService;
         this.taskCenterAppService = taskCenterAppService;
+        this.iamUserService = iamUserService;
         this.platformModuleRegistry = platformModuleRegistry;
         this.platformModuleDefinitionValidator = platformModuleDefinitionValidator;
         this.databasePlatformModuleRepository = databasePlatformModuleRepository;
+    }
+
+    public SystemManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            AuthAppService authAppService,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            PluginManagementAppService pluginManagementAppService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            TaskCenterAppService taskCenterAppService,
+            IamUserService iamUserService
+    ) {
+        this(
+                jdbcTemplate,
+                authAppService,
+                userDomainService,
+                permissionSnapshotService,
+                pluginManagementAppService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                taskCenterAppService,
+                iamUserService,
+                new StaticPlatformModuleRegistry(),
+                new PlatformModuleDefinitionValidator(),
+                null
+        );
+    }
+
+    public SystemManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            AuthAppService authAppService,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            PluginManagementAppService pluginManagementAppService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService
+    ) {
+        this(
+                jdbcTemplate,
+                authAppService,
+                userDomainService,
+                permissionSnapshotService,
+                pluginManagementAppService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                null,
+                iamUserService
+        );
     }
 
     public SystemManagementAppService(
@@ -249,9 +335,7 @@ public class SystemManagementAppService {
                 securitySettingsService,
                 passwordPolicyService,
                 taskCenterAppService,
-                new StaticPlatformModuleRegistry(),
-                new PlatformModuleDefinitionValidator(),
-                null
+                jdbcTemplate == null ? null : new IamUserService(jdbcTemplate)
         );
     }
 
@@ -288,7 +372,8 @@ public class SystemManagementAppService {
                 operationAuditService,
                 securitySettingsService,
                 passwordPolicyService,
-                null
+                null,
+                jdbcTemplate == null ? null : new IamUserService(jdbcTemplate)
         );
     }
 
@@ -402,6 +487,7 @@ public class SystemManagementAppService {
                 LocalDateTime.now(),
                 user.getId()
         );
+        userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
         return authAppService.currentUser(currentUser);
     }
@@ -437,6 +523,7 @@ public class SystemManagementAppService {
                 LocalDateTime.now(),
                 user.getId()
         );
+        userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         return authAppService.currentUser(currentUser);
     }
 
@@ -497,6 +584,7 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
         }
 
+        userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
         return authAppService.currentUser(currentUser);
     }
@@ -572,10 +660,29 @@ public class SystemManagementAppService {
         return systemProfileSettingsAppService.updateProfileFieldSettings(currentUser, request);
     }
 
-    public PageResponse<SystemVO.UserVO> listUsers(CurrentUser currentUser, String username, String mobile, String status, long pageNo, long pageSize) {
+    public PageResponse<SystemVO.UserVO> listUsers(
+            CurrentUser currentUser,
+            Long userId,
+            String username,
+            String mobile,
+            String email,
+            String status,
+            String source,
+            String registeredStart,
+            String registeredEnd,
+            String lastLoginStart,
+            String lastLoginEnd,
+            Long cursorId,
+            String cursorCreatedAt,
+            long pageNo,
+            long pageSize
+    ) {
         Long tenantId = currentTenantId(currentUser);
         String baseSql = """
                 from sys_user u
+                left join iam_user iu
+                  on iu.id = u.id
+                 and iu.deleted = 0
                 join sys_user_tenant ut
                   on ut.user_id = u.id
                  and ut.tenant_id = ?
@@ -585,32 +692,105 @@ public class SystemManagementAppService {
                 """;
         List<Object> params = new ArrayList<>();
         params.add(tenantId);
+        if (userId != null) {
+            baseSql += " and u.id = ?";
+            params.add(userId);
+        }
         if (StringUtils.hasText(username)) {
-            baseSql += " and u.username like ?";
-            params.add(like(username));
+            baseSql += """
+                     and exists (
+                         select 1 from iam_user_identity ui
+                         where ui.user_id = u.id
+                           and ui.identity_type = 'USERNAME'
+                           and ui.identifier_normalized = ?
+                           and ui.deleted = 0
+                     )
+                    """;
+            params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_USERNAME, username));
         }
         if (StringUtils.hasText(mobile)) {
-            baseSql += " and u.mobile like ?";
-            params.add(like(mobile));
+            baseSql += """
+                     and exists (
+                         select 1 from iam_user_identity ui
+                         where ui.user_id = u.id
+                           and ui.identity_type = 'MOBILE'
+                           and ui.identifier_normalized = ?
+                           and ui.deleted = 0
+                     )
+                    """;
+            params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_MOBILE, mobile));
+        }
+        if (StringUtils.hasText(email)) {
+            baseSql += """
+                     and exists (
+                         select 1 from iam_user_identity ui
+                         where ui.user_id = u.id
+                           and ui.identity_type = 'EMAIL'
+                           and ui.identifier_normalized = ?
+                           and ui.deleted = 0
+                     )
+                    """;
+            params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_EMAIL, email));
         }
         if (StringUtils.hasText(status)) {
             baseSql += " and u.status = ?";
             params.add(status);
         }
+        if (StringUtils.hasText(source)) {
+            baseSql += " and iu.source = ?";
+            params.add(source.trim().toUpperCase(Locale.ROOT));
+        }
+        LocalDateTime registeredStartAt = parseDateTimeParam(registeredStart, false);
+        LocalDateTime registeredEndAt = parseDateTimeParam(registeredEnd, true);
+        LocalDateTime lastLoginStartAt = parseDateTimeParam(lastLoginStart, false);
+        LocalDateTime lastLoginEndAt = parseDateTimeParam(lastLoginEnd, true);
+        LocalDateTime cursorCreatedAtValue = parseDateTimeParam(cursorCreatedAt, false);
+        if (registeredStartAt != null) {
+            baseSql += " and coalesce(iu.registered_at, u.created_at) >= ?";
+            params.add(registeredStartAt);
+        }
+        if (registeredEndAt != null) {
+            baseSql += " and coalesce(iu.registered_at, u.created_at) <= ?";
+            params.add(registeredEndAt);
+        }
+        if (lastLoginStartAt != null) {
+            baseSql += " and iu.last_login_at >= ?";
+            params.add(lastLoginStartAt);
+        }
+        if (lastLoginEndAt != null) {
+            baseSql += " and iu.last_login_at <= ?";
+            params.add(lastLoginEndAt);
+        }
+        if (cursorCreatedAtValue != null && cursorId != null) {
+            baseSql += " and (coalesce(iu.registered_at, u.created_at) < ? or (coalesce(iu.registered_at, u.created_at) = ? and u.id < ?))";
+            params.add(cursorCreatedAtValue);
+            params.add(cursorCreatedAtValue);
+            params.add(cursorId);
+        } else if (cursorId != null) {
+            baseSql += " and u.id < ?";
+            params.add(cursorId);
+        }
         String selectSql = """
-                select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
+                select u.id, iu.user_no as userNo, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
                        u.avatar_url as avatarUrl, u.email, u.birth_month as birthMonth, u.gender, u.region,
-                       u.available_time as availableTime, u.status, u.created_at as createdAt, u.updated_at as updatedAt
+                       u.available_time as availableTime, u.status, iu.source,
+                       coalesce(iu.registered_at, u.created_at) as registeredAt,
+                       iu.last_login_at as lastLoginAt,
+                       u.created_at as createdAt, u.updated_at as updatedAt
                 """ + baseSql + """
-                order by u.id desc
+                order by coalesce(iu.registered_at, u.created_at) desc, u.id desc
                 """;
         PageResponse<SystemVO.UserVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.UserVO.class, pageNo, pageSize, params);
         decorateUsers(page.getRecords(), tenantId);
+        maskSensitiveUsers(page.getRecords(), canViewSensitiveUserInfo(currentUser));
         return page;
     }
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
         SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
+        if (!canViewSensitiveUserInfo(currentUser)) {
+            maskSensitiveUser(user);
+        }
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
         Long tenantId = currentTenantId(currentUser);
@@ -652,6 +832,7 @@ public class SystemManagementAppService {
                 LocalDateTime.now(),
                 userId
         );
+        iamUserService.changeUserStatus(userId, status);
         if ("DISABLED".equalsIgnoreCase(status)) {
             onlineSessionManagementAppService.revokeUserSessions(userId);
         }
@@ -1796,6 +1977,70 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : null;
     }
 
+    private boolean canViewSensitiveUserInfo(CurrentUser currentUser) {
+        return currentUser != null
+                && currentUser.getPermissions() != null
+                && (currentUser.getPermissions().contains("*")
+                || currentUser.getPermissions().contains("system:user:sensitive:view"));
+    }
+
+    private void maskSensitiveUsers(List<SystemVO.UserVO> users, boolean canViewSensitive) {
+        if (canViewSensitive || users == null || users.isEmpty()) {
+            return;
+        }
+        users.forEach(this::maskSensitiveUser);
+    }
+
+    private void maskSensitiveUser(SystemVO.UserVO user) {
+        if (user == null) {
+            return;
+        }
+        user.setMobile(maskMobile(user.getMobile()));
+        user.setEmail(maskEmail(user.getEmail()));
+        user.setIdCardNumber(maskIdCard(user.getIdCardNumber()));
+    }
+
+    private String maskMobile(String mobile) {
+        if (!StringUtils.hasText(mobile) || mobile.length() < 7) {
+            return mobile;
+        }
+        return mobile.substring(0, 3) + "****" + mobile.substring(mobile.length() - 4);
+    }
+
+    private String maskEmail(String email) {
+        if (!StringUtils.hasText(email)) {
+            return email;
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return "***" + (atIndex >= 0 ? email.substring(atIndex) : "");
+        }
+        return email.charAt(0) + "***" + email.substring(atIndex);
+    }
+
+    private String maskIdCard(String idCardNumber) {
+        if (!StringUtils.hasText(idCardNumber) || idCardNumber.length() < 8) {
+            return idCardNumber;
+        }
+        return idCardNumber.substring(0, 4) + "********" + idCardNumber.substring(idCardNumber.length() - 4);
+    }
+
+    private LocalDateTime parseDateTimeParam(String value, boolean endOfDay) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim();
+        try {
+            if (normalized.length() == 10) {
+                LocalDate date = LocalDate.parse(normalized);
+                return endOfDay ? date.atTime(23, 59, 59) : date.atStartOfDay();
+            }
+            return LocalDateTime.parse(normalized.replace(" ", "T"));
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
     private String resolveProfileDisplayName(SysUserEntity user) {
         if (StringUtils.hasText(user.getNickname())) {
             return user.getNickname().trim();
@@ -2116,8 +2361,12 @@ public class SystemManagementAppService {
                 """
                         select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
                                u.email, u.birth_month as birthMonth, u.gender, u.region, u.available_time as availableTime,
-                               u.status, u.created_at as createdAt, u.updated_at as updatedAt
+                               u.status, iu.user_no as userNo, iu.source,
+                               coalesce(iu.registered_at, u.created_at) as registeredAt,
+                               iu.last_login_at as lastLoginAt,
+                               u.created_at as createdAt, u.updated_at as updatedAt
                         from sys_user u
+                        left join iam_user iu on iu.id = u.id and iu.deleted = 0
                         join sys_user_tenant ut on ut.user_id = u.id and ut.tenant_id = ? and ut.deleted = 0
                         where u.id = ? and u.deleted = 0
                         """,
@@ -2167,7 +2416,12 @@ public class SystemManagementAppService {
                     operatorId,
                     operatorId
             );
-            return jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, request.getUsername());
+            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, request.getUsername());
+            userDomainService.findById(createdUserId).ifPresent(user -> {
+                iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
+                iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
+            });
+            return createdUserId;
         }
         jdbcTemplate.update(
                 """
@@ -2195,14 +2449,17 @@ public class SystemManagementAppService {
         );
         if (StringUtils.hasText(request.getPassword())) {
             passwordPolicyService.validatePassword(request.getPassword());
+            String encodedPassword = passwordEncoder.encode(request.getPassword());
             jdbcTemplate.update(
                     "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                    passwordEncoder.encode(request.getPassword()),
+                    encodedPassword,
                     operatorId,
                     LocalDateTime.now(),
                     userId
             );
+            iamUserService.upsertPasswordCredential(userId, encodedPassword);
         }
+        userDomainService.findById(userId).ifPresent(iamUserService::updateProfile);
         return userId;
     }
 
@@ -2562,6 +2819,7 @@ public class SystemManagementAppService {
 
     private void copyUser(SystemVO.UserDetailVO target, SystemVO.UserVO source) {
         target.setId(source.getId());
+        target.setUserNo(source.getUserNo());
         target.setUsername(source.getUsername());
         target.setMobile(source.getMobile());
         target.setIdCardNumber(source.getIdCardNumber());
@@ -2574,6 +2832,9 @@ public class SystemManagementAppService {
         target.setRegion(source.getRegion());
         target.setAvailableTime(source.getAvailableTime());
         target.setStatus(source.getStatus());
+        target.setSource(source.getSource());
+        target.setRegisteredAt(source.getRegisteredAt());
+        target.setLastLoginAt(source.getLastLoginAt());
         target.setTenantNames(source.getTenantNames());
         target.setRoleNames(source.getRoleNames());
         target.setCreatedAt(source.getCreatedAt());

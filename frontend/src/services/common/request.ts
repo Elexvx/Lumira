@@ -40,6 +40,7 @@ export interface StreamRequestOptions extends RequestOptions {
 }
 
 const activeWriteRequests = new Set<string>();
+const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
 
 export const request = async <T>(url: string, options: RequestOptions = {}): Promise<T> => {
   let authSnapshot = captureAuthRequestSnapshot(options.skipAuth === true);
@@ -56,7 +57,7 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     let refreshedAfterUnauthorized = false;
 
     while (true) {
-      const response = await fetch(buildRequestUrl(url, options.params), {
+      const response = await fetchWithTimeout(buildRequestUrl(url, options.params), {
         method: options.method || 'GET',
         headers: buildRequestHeaders(options, authSnapshot),
         body: buildRequestBody(options.data, options.method),
@@ -172,7 +173,7 @@ export const requestFile = async (url: string, options: RequestOptions = {}) => 
     activeWriteRequests.add(duplicateKey);
   }
   try {
-    const response = await fetch(buildRequestUrl(url, options.params), {
+    const response = await fetchWithTimeout(buildRequestUrl(url, options.params), {
       method: options.method || 'GET',
       headers: buildRequestHeaders(options, authSnapshot),
       body: buildRequestBody(options.data, options.method),
@@ -305,6 +306,38 @@ const buildRequestBody = (data: unknown, method?: RequestOptions['method']) => {
     return data;
   }
   return JSON.stringify(data);
+};
+
+const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const timeoutMs = resolveRequestTimeoutMs();
+  if (!timeoutMs || timeoutMs <= 0) {
+    return fetch(input, init);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(buildTimeoutError(timeoutMs)), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
+const resolveRequestTimeoutMs = () => {
+  const raw = process.env.UMI_APP_REQUEST_TIMEOUT;
+  if (!raw) {
+    return DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_REQUEST_TIMEOUT_MS;
+};
+
+const buildTimeoutError = (timeoutMs: number) => {
+  return new DOMException(`Request timed out after ${timeoutMs}ms`, 'TimeoutError');
 };
 
 const buildDuplicateRequestKey = (url: string, options: RequestOptions) => {
@@ -608,7 +641,13 @@ const buildUnexpectedError = (error: unknown, hasAuthToken = true) => {
   const rawMessage = errorLike.message || '';
   const normalizedMessage = rawMessage.toLowerCase();
 
-  if (errorLike.type === 'Timeout' || errorLike.name === 'TimeoutError' || normalizedMessage.includes('timeout')) {
+  if (
+    errorLike.type === 'Timeout'
+    || errorLike.name === 'TimeoutError'
+    || errorLike.name === 'AbortError'
+    || normalizedMessage.includes('timeout')
+    || normalizedMessage.includes('timed out')
+  ) {
     return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '请求超时，请稍后重试', {
       userMessage: '请求超时，请稍后重试',
       requestId,

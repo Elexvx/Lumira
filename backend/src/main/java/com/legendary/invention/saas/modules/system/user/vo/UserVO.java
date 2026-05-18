@@ -6,6 +6,7 @@ import java.util.List;
 public class UserVO {
 
     private Long id;
+    private String userNo;
     private String username;
     private String mobile;
     private String idCardNumber;
@@ -18,6 +19,9 @@ public class UserVO {
     private String region;
     private String availableTime;
     private String status;
+    private String source;
+    private LocalDateTime registeredAt;
+    private LocalDateTime lastLoginAt;
     private List<String> tenantNames;
     private List<String> roleNames;
     private LocalDateTime createdAt;
@@ -25,6 +29,8 @@ public class UserVO {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public String getUserNo() { return userNo; }
+    public void setUserNo(String userNo) { this.userNo = userNo; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getMobile() { return mobile; }
@@ -49,6 +55,12 @@ public class UserVO {
     public void setAvailableTime(String availableTime) { this.availableTime = availableTime; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+    public LocalDateTime getRegisteredAt() { return registeredAt; }
+    public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public List<String> getTenantNames() { return tenantNames; }
     public void setTenantNames(List<String> tenantNames) { this.tenantNames = tenantNames; }
     public List<String> getRoleNames() { return roleNames; }
