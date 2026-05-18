@@ -1,5 +1,7 @@
 package com.legendary.invention.saas.modules.iam.service;
 
+import com.legendary.invention.saas.common.enums.ErrorCode;
+import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -8,7 +10,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -33,33 +39,56 @@ public class IamUserService {
         if (userId == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(querySysUserById(userId));
+        Optional<IamUserAccount> account = findAccountByUserId(userId);
+        return account.map(IamUserAccount::getLegacyUser).or(() -> Optional.ofNullable(querySysUserById(userId)));
+    }
+
+    public Optional<IamUserAccount> findAccountByUserId(Long userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        IamUserAccount account = queryIamAccountById(userId);
+        if (account == null) {
+            return Optional.empty();
+        }
+        account.setIdentities(queryIdentities(userId));
+        account.setPasswordCredential(findActiveCredential(userId, "PASSWORD").orElse(null));
+        account.setLegacyUser(querySysUserById(userId));
+        return Optional.of(account);
     }
 
     public Optional<SysUserEntity> findByIdentity(String identityType, String identifier) {
+        return findAccountByIdentity(identityType, identifier).map(IamUserAccount::getLegacyUser);
+    }
+
+    public Optional<IamUserAccount> findAccountByIdentity(String identityType, String identifier) {
         String normalizedType = normalizeIdentityType(identityType);
         String normalizedIdentifier = normalizeIdentifier(normalizedType, identifier);
         if (!StringUtils.hasText(normalizedType) || !StringUtils.hasText(normalizedIdentifier)) {
             return Optional.empty();
         }
         Long userId = queryIamUserIdByIdentity(normalizedType, normalizedIdentifier);
-        return userId == null ? Optional.empty() : findByUserId(userId);
+        return userId == null ? Optional.empty() : findAccountByUserId(userId);
     }
 
     public Optional<SysUserEntity> findByLoginAccount(String account) {
+        return findAccountByLoginAccount(account).map(IamUserAccount::getLegacyUser);
+    }
+
+    public Optional<IamUserAccount> findAccountByLoginAccount(String account) {
         if (!StringUtils.hasText(account)) {
             return Optional.empty();
         }
         List<String> identityTypes = candidateLoginIdentityTypes(account);
         for (String identityType : identityTypes) {
-            Optional<SysUserEntity> user = findByIdentity(identityType, account);
+            Optional<IamUserAccount> user = findAccountByIdentity(identityType, account);
             if (user.isPresent()) {
                 return user;
             }
         }
         Optional<SysUserEntity> legacy = findLegacySysUser(account);
         legacy.ifPresent(user -> syncSysUser(user, "LEGACY_LOGIN_FALLBACK"));
-        return legacy;
+        return legacy.flatMap(user -> findAccountByUserId(user.getId()));
     }
 
     @Transactional
@@ -83,18 +112,34 @@ public class IamUserService {
         if (userId == null || !StringUtils.hasText(normalizedType) || !StringUtils.hasText(normalizedIdentifier)) {
             return;
         }
+        IdentityBinding existing = queryIdentityBinding(normalizedType, normalizedIdentifier);
+        if (existing != null && !userId.equals(existing.userId())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "登录身份已被其他用户绑定");
+        }
+        if (existing != null) {
+            jdbcTemplate.update(
+                    """
+                            update iam_user_identity
+                            set identifier = ?,
+                                verified = greatest(verified, ?),
+                                primary_identity = greatest(primary_identity, ?),
+                                status = 'ENABLED',
+                                deleted = 0,
+                                updated_at = current_timestamp
+                            where id = ?
+                            """,
+                    identifier.trim(),
+                    verified ? 1 : 0,
+                    primaryIdentity ? 1 : 0,
+                    existing.id()
+            );
+            return;
+        }
         jdbcTemplate.update(
                 """
                         insert into iam_user_identity (
                             user_id, identity_type, identifier, identifier_normalized, verified, primary_identity, status, deleted
                         ) values (?, ?, ?, ?, ?, ?, 'ENABLED', 0)
-                        on duplicate key update user_id = values(user_id),
-                                                identifier = values(identifier),
-                                                verified = greatest(verified, values(verified)),
-                                                primary_identity = greatest(primary_identity, values(primary_identity)),
-                                                status = 'ENABLED',
-                                                deleted = 0,
-                                                updated_at = current_timestamp
                         """,
                 userId,
                 normalizedType,
@@ -102,6 +147,44 @@ public class IamUserService {
                 normalizedIdentifier,
                 verified ? 1 : 0,
                 primaryIdentity ? 1 : 0
+        );
+    }
+
+    @Transactional
+    public void transferIdentity(Long targetUserId, String identityType, String identifier, Long operatorId, String reason, String ip, String userAgent) {
+        String normalizedType = normalizeIdentityType(identityType);
+        String normalizedIdentifier = normalizeIdentifier(normalizedType, identifier);
+        if (targetUserId == null || !StringUtils.hasText(normalizedType) || !StringUtils.hasText(normalizedIdentifier)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "身份转移参数不完整");
+        }
+        IdentityBinding existing = queryIdentityBinding(normalizedType, normalizedIdentifier);
+        Long previousUserId = existing == null ? null : existing.userId();
+        if (existing == null) {
+            bindIdentity(targetUserId, normalizedType, identifier, true, false);
+        } else if (!targetUserId.equals(existing.userId())) {
+            jdbcTemplate.update(
+                    """
+                            update iam_user_identity
+                            set user_id = ?, identifier = ?, verified = 1, status = 'ENABLED', deleted = 0, updated_at = current_timestamp
+                            where id = ?
+                            """,
+                    targetUserId,
+                    identifier.trim(),
+                    existing.id()
+            );
+        }
+        recordEvent(
+                targetUserId,
+                "IDENTITY_TRANSFERRED",
+                "IAM",
+                operatorId,
+                ip,
+                userAgent,
+                "{\"identityType\":\"" + jsonEscape(normalizedType)
+                        + "\",\"identifierNormalized\":\"" + jsonEscape(normalizedIdentifier)
+                        + "\",\"previousUserId\":" + (previousUserId == null ? "null" : previousUserId)
+                        + ",\"targetUserId\":" + targetUserId
+                        + ",\"reason\":\"" + jsonEscape(reason) + "\"}"
         );
     }
 
@@ -175,11 +258,29 @@ public class IamUserService {
                 deletedFlag(user.getDeleted())
         );
         bindIdentity(user.getId(), IDENTITY_USERNAME, user.getUsername(), true, true);
-        bindIdentity(user.getId(), IDENTITY_MOBILE, user.getMobile(), true, false);
-        bindIdentity(user.getId(), IDENTITY_EMAIL, user.getEmail(), true, false);
+        bindLegacyIdentityIfAvailable(user.getId(), IDENTITY_MOBILE, user.getMobile());
+        bindLegacyIdentityIfAvailable(user.getId(), IDENTITY_EMAIL, user.getEmail());
         upsertPasswordCredential(user.getId(), user.getPasswordHash());
         upsertProfile(user);
         upsertSecuritySetting(user.getId());
+    }
+
+    private void bindLegacyIdentityIfAvailable(Long userId, String identityType, String identifier) {
+        try {
+            bindIdentity(userId, identityType, identifier, true, false);
+        } catch (BizException exception) {
+            recordEvent(
+                    userId,
+                    "IDENTITY_SYNC_CONFLICT",
+                    "IAM",
+                    userId,
+                    null,
+                    null,
+                    "{\"identityType\":\"" + jsonEscape(identityType)
+                            + "\",\"identifierNormalized\":\"" + jsonEscape(normalizeIdentifier(identityType, identifier))
+                            + "\"}"
+            );
+        }
     }
 
     @Transactional
@@ -204,8 +305,37 @@ public class IamUserService {
         );
     }
 
+    public Optional<IamUserAccount.CredentialView> findActiveCredential(Long userId, String credentialType) {
+        if (userId == null || !StringUtils.hasText(credentialType)) {
+            return Optional.empty();
+        }
+        List<IamUserAccount.CredentialView> credentials = jdbcTemplate.query(
+                """
+                        select id, user_id as userId, credential_type as credentialType, credential_secret as credentialSecret,
+                               algorithm, version, expire_at as expireAt, last_changed_at as lastChangedAt, status
+                        from iam_user_credential
+                        where user_id = ?
+                          and credential_type = ?
+                          and status = 'ENABLED'
+                          and deleted = 0
+                          and (expire_at is null or expire_at > current_timestamp)
+                        order by version desc, id desc
+                        limit 1
+                        """,
+                new BeanPropertyRowMapper<>(IamUserAccount.CredentialView.class),
+                userId,
+                credentialType.trim().toUpperCase(Locale.ROOT)
+        );
+        return credentials.isEmpty() ? Optional.empty() : Optional.of(credentials.get(0));
+    }
+
     @Transactional
     public void recordLoginSuccess(Long userId, String identityType, String account, String ip, String userAgent) {
+        recordLoginSuccess(userId, identityType, account, ip, userAgent, null);
+    }
+
+    @Transactional
+    public void recordLoginSuccess(Long userId, String identityType, String account, String ip, String userAgent, String deviceId) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update("update iam_user set last_login_at = ?, updated_at = ? where id = ? and deleted = 0", now, now, userId);
         if (StringUtils.hasText(identityType) && StringUtils.hasText(account)) {
@@ -222,6 +352,7 @@ public class IamUserService {
                     normalizeIdentifier(identityType, account)
             );
         }
+        upsertLoginDevice(userId, deviceId, ip, userAgent, now);
         recordEvent(userId, "USER_LOGIN_SUCCESS", "AUTH", userId, ip, userAgent, "{\"result\":\"SUCCESS\"}");
     }
 
@@ -264,6 +395,74 @@ public class IamUserService {
             return value.replace(" ", "").replace("-", "").replace("+86", "");
         }
         return value;
+    }
+
+    private void upsertLoginDevice(Long userId, String rawDeviceId, String ip, String userAgent, LocalDateTime now) {
+        if (userId == null) {
+            return;
+        }
+        String deviceId = StringUtils.hasText(rawDeviceId) ? rawDeviceId.trim() : temporaryDeviceId(ip, userAgent);
+        DeviceInfo deviceInfo = parseDeviceInfo(userAgent);
+        jdbcTemplate.update(
+                """
+                        insert into iam_user_device (
+                            user_id, device_id, device_name, device_type, os, browser, last_ip, last_active_at, trusted, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
+                        on duplicate key update device_name = values(device_name),
+                                                device_type = values(device_type),
+                                                os = values(os),
+                                                browser = values(browser),
+                                                last_ip = values(last_ip),
+                                                last_active_at = values(last_active_at),
+                                                updated_at = current_timestamp,
+                                                deleted = 0
+                        """,
+                userId,
+                deviceId,
+                deviceInfo.deviceName(),
+                deviceInfo.deviceType(),
+                deviceInfo.os(),
+                deviceInfo.browser(),
+                ip,
+                now
+        );
+    }
+
+    private String temporaryDeviceId(String ip, String userAgent) {
+        return "tmp_" + sha256Hex(defaultString(userAgent) + "|" + defaultString(ip)).substring(0, 32);
+    }
+
+    private DeviceInfo parseDeviceInfo(String userAgent) {
+        String ua = defaultString(userAgent);
+        String lower = ua.toLowerCase(Locale.ROOT);
+        String os;
+        if (lower.contains("windows")) {
+            os = "Windows";
+        } else if (lower.contains("mac os") || lower.contains("macintosh")) {
+            os = "macOS";
+        } else if (lower.contains("android")) {
+            os = "Android";
+        } else if (lower.contains("iphone") || lower.contains("ipad") || lower.contains("ios")) {
+            os = "iOS";
+        } else if (lower.contains("linux")) {
+            os = "Linux";
+        } else {
+            os = "Unknown";
+        }
+        String browser;
+        if (lower.contains("edg/")) {
+            browser = "Edge";
+        } else if (lower.contains("chrome/") || lower.contains("crios/")) {
+            browser = "Chrome";
+        } else if (lower.contains("safari/")) {
+            browser = "Safari";
+        } else if (lower.contains("firefox/")) {
+            browser = "Firefox";
+        } else {
+            browser = "Unknown";
+        }
+        String deviceType = lower.contains("mobile") || lower.contains("iphone") || lower.contains("android") ? "MOBILE" : "DESKTOP";
+        return new DeviceInfo(os + " " + browser, deviceType, os, browser);
     }
 
     private void upsertProfile(SysUserEntity user) {
@@ -336,6 +535,61 @@ public class IamUserService {
         } catch (EmptyResultDataAccessException ignored) {
             return null;
         }
+    }
+
+    private IamUserAccount queryIamAccountById(Long userId) {
+        List<IamUserAccount> accounts = jdbcTemplate.query(
+                """
+                        select id as userId, user_no as userNo, display_name as displayName, avatar_url as avatarUrl,
+                               status, user_type as userType, source, registered_at as registeredAt, last_login_at as lastLoginAt
+                        from iam_user
+                        where id = ? and deleted = 0
+                        limit 1
+                        """,
+                new BeanPropertyRowMapper<>(IamUserAccount.class),
+                userId
+        );
+        return accounts.isEmpty() ? null : accounts.get(0);
+    }
+
+    private List<IamUserAccount.IdentityView> queryIdentities(Long userId) {
+        return jdbcTemplate.query(
+                """
+                        select id, user_id as userId, identity_type as identityType, identifier, identifier_normalized as identifierNormalized,
+                               verified, primary_identity as primaryIdentity, status
+                        from iam_user_identity
+                        where user_id = ? and deleted = 0
+                        order by primary_identity desc, id asc
+                        """,
+                (rs, rowNum) -> {
+                    IamUserAccount.IdentityView identity = new IamUserAccount.IdentityView();
+                    identity.setId(rs.getLong("id"));
+                    identity.setUserId(rs.getLong("userId"));
+                    identity.setIdentityType(rs.getString("identityType"));
+                    identity.setIdentifier(rs.getString("identifier"));
+                    identity.setIdentifierNormalized(rs.getString("identifierNormalized"));
+                    identity.setVerified(rs.getInt("verified") == 1);
+                    identity.setPrimaryIdentity(rs.getInt("primaryIdentity") == 1);
+                    identity.setStatus(rs.getString("status"));
+                    return identity;
+                },
+                userId
+        );
+    }
+
+    private IdentityBinding queryIdentityBinding(String identityType, String identifierNormalized) {
+        List<IdentityBinding> bindings = jdbcTemplate.query(
+                """
+                        select id, user_id
+                        from iam_user_identity
+                        where identity_type = ? and identifier_normalized = ?
+                        limit 1
+                        """,
+                (rs, rowNum) -> new IdentityBinding(rs.getLong("id"), rs.getLong("user_id")),
+                identityType,
+                identifierNormalized
+        );
+        return bindings.isEmpty() ? null : bindings.get(0);
     }
 
     private SysUserEntity querySysUserById(Long userId) {
@@ -429,5 +683,25 @@ public class IamUserService {
             return "";
         }
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private String defaultString(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 不可用", ex);
+        }
+    }
+
+    private record IdentityBinding(Long id, Long userId) {
+    }
+
+    private record DeviceInfo(String deviceName, String deviceType, String os, String browser) {
     }
 }

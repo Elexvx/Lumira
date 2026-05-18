@@ -9,6 +9,9 @@ public class PageResponse<T> {
     private long total;
     private long pageNo;
     private long pageSize;
+    private Boolean hasMore;
+    private Long nextCursorId;
+    private String nextCursorCreatedAt;
 
     public List<T> getRecords() {
         return records;
@@ -40,5 +43,29 @@ public class PageResponse<T> {
 
     public void setPageSize(long pageSize) {
         this.pageSize = pageSize;
+    }
+
+    public Boolean getHasMore() {
+        return hasMore;
+    }
+
+    public void setHasMore(Boolean hasMore) {
+        this.hasMore = hasMore;
+    }
+
+    public Long getNextCursorId() {
+        return nextCursorId;
+    }
+
+    public void setNextCursorId(Long nextCursorId) {
+        this.nextCursorId = nextCursorId;
+    }
+
+    public String getNextCursorCreatedAt() {
+        return nextCursorCreatedAt;
+    }
+
+    public void setNextCursorCreatedAt(String nextCursorCreatedAt) {
+        this.nextCursorCreatedAt = nextCursorCreatedAt;
     }
 }
