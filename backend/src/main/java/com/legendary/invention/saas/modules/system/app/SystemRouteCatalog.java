@@ -18,9 +18,7 @@ public final class SystemRouteCatalog {
             "/site/settings",
             "/site/navigation",
             "/site/carousels",
-            "/site/pages",
             "/site/contents",
-            "/site/forms",
             "/site/submissions",
             "/system",
             "/system/overview",
@@ -86,9 +84,7 @@ public final class SystemRouteCatalog {
             "@/pages/site/settings",
             "@/pages/site/navigation",
             "@/pages/site/carousels",
-            "@/pages/site/pages",
             "@/pages/site/contents",
-            "@/pages/site/forms",
             "@/pages/site/submissions",
             "@/layouts/SettingsLayout",
             "@/pages/settings/modules",
@@ -203,10 +199,8 @@ public final class SystemRouteCatalog {
                 menu(-929L, -930L, "site.settings", "站点设置", "MENU", "/site/settings", "@/pages/site/settings", "SettingOutlined", 1, "site:settings"),
                 menu(-928L, -930L, "site.navigation", "导航管理", "MENU", "/site/navigation", "@/pages/site/navigation", "MenuOutlined", 2, "site:navigation"),
                 menu(-923L, -930L, "site.carousels", "轮播管理", "MENU", "/site/carousels", "@/pages/site/carousels", "PictureOutlined", 3, "site:carousel"),
-                menu(-927L, -930L, "site.pages", "页面管理", "MENU", "/site/pages", "@/pages/site/pages", "LayoutOutlined", 4, "site:page"),
-                menu(-926L, -930L, "site.contents", "内容管理", "MENU", "/site/contents", "@/pages/site/contents", "ReadOutlined", 5, "site:content"),
-                menu(-925L, -930L, "site.forms", "表单管理", "MENU", "/site/forms", "@/pages/site/forms", "FormOutlined", 6, "site:form"),
-                menu(-924L, -930L, "site.submissions", "提交记录", "MENU", "/site/submissions", "@/pages/site/submissions", "InboxOutlined", 7, "site:submission")
+                menu(-926L, -930L, "site.contents", "内容管理", "MENU", "/site/contents", "@/pages/site/contents", "ReadOutlined", 4, "site:content"),
+                menu(-924L, -930L, "site.submissions", "提交记录", "MENU", "/site/submissions", "@/pages/site/submissions", "InboxOutlined", 5, "site:submission")
         )));
         roots.add(siteRoot);
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");

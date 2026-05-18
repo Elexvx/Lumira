@@ -21,9 +21,7 @@ class SystemRouteCatalogTest {
                         "site.settings",
                         "site.navigation",
                         "site.carousels",
-                        "site.pages",
                         "site.contents",
-                        "site.forms",
                         "site.submissions",
                         "dashboard.home",
                         "user.center.personal"
@@ -36,9 +34,7 @@ class SystemRouteCatalogTest {
                         "/site/settings",
                         "/site/navigation",
                         "/site/carousels",
-                        "/site/pages",
                         "/site/contents",
-                        "/site/forms",
                         "/site/submissions",
                         "/user-center/personal-center"
                 );
