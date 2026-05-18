@@ -621,22 +621,7 @@ const AiEmployeesPage = () => {
       loading={bootstrapLoading}
       search={false}
       request={buildTableRequest((params) => aiService.employees(params, { autoRedirectOnUnauthorized: false }))}
-      toolBarRender={() =>
-        buildToolbarButtons([
-          {
-            key: 'create-employee',
-            label: '新建 AI 员工',
-            type: 'primary',
-            onClick: openEmployeeCreate,
-            permission: 'ai:employee:create',
-          },
-          {
-            key: 'refresh-employee',
-            label: '刷新',
-            onClick: employeeState.reloadTable,
-          },
-        ])
-      }
+      toolBarRender={false}
     />
   );
 
@@ -649,22 +634,7 @@ const AiEmployeesPage = () => {
       loading={bootstrapLoading}
       search={false}
       request={buildTableRequest((params) => aiService.llmServices(params, { autoRedirectOnUnauthorized: false }))}
-      toolBarRender={() =>
-        buildToolbarButtons([
-          {
-            key: 'create-llm',
-            label: '新增 LLM 服务',
-            type: 'primary',
-            onClick: openLlmCreate,
-            permission: 'ai:llm:create',
-          },
-          {
-            key: 'refresh-llm',
-            label: '刷新',
-            onClick: llmState.reloadTable,
-          },
-        ])
-      }
+      toolBarRender={false}
     />
   );
 
@@ -679,6 +649,39 @@ const AiEmployeesPage = () => {
             activeKey={activeTab}
             destroyInactiveTabPane={false}
             onChange={(key) => syncTab(key as AiPageTabKey)}
+            tabBarExtraContent={
+              <Space wrap>
+                {activeTab === EMPLOYEE_TAB_KEY
+                  ? buildToolbarButtons([
+                      {
+                        key: 'create-employee',
+                        label: '新建 AI 员工',
+                        type: 'primary',
+                        onClick: openEmployeeCreate,
+                        permission: 'ai:employee:create',
+                      },
+                      {
+                        key: 'refresh-employee',
+                        label: '刷新',
+                        onClick: employeeState.reloadTable,
+                      },
+                    ])
+                  : buildToolbarButtons([
+                      {
+                        key: 'create-llm',
+                        label: '新增 LLM 服务',
+                        type: 'primary',
+                        onClick: openLlmCreate,
+                        permission: 'ai:llm:create',
+                      },
+                      {
+                        key: 'refresh-llm',
+                        label: '刷新',
+                        onClick: llmState.reloadTable,
+                      },
+                    ])}
+              </Space>
+            }
             items={[
               { key: EMPLOYEE_TAB_KEY, label: 'AI 员工', children: employeeTab },
               { key: LLM_TAB_KEY, label: 'LLM 服务', children: llmTab },

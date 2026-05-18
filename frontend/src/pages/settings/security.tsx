@@ -110,7 +110,7 @@ const SecuritySettingsPage = () => {
       title={formatMessage({ id: 'page.security.title', defaultMessage: 'Security settings' })}
     >
       <ManagementPageBody>
-        <Card className="saas-crud-form-card" loading={loading} bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <Card className="saas-crud-form-card" loading={loading} bodyStyle={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 20 }}>
           <Form {...formProps}>
             <Tabs
               defaultActiveKey="token"

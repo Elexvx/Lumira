@@ -391,6 +391,7 @@ const MenuManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [dragState, setDragState] = useState<MenuDragState | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [activeTab, setActiveTab] = useState('main');
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([]);
   const editorFormProps = useStandardFormProps({
     form: editorForm,
@@ -661,6 +662,31 @@ const MenuManagementPage = () => {
   return (
     <ManagementPage title="菜单管理">
       <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        tabBarExtraContent={
+          activeTab === 'main' ? (
+            <Space wrap>
+              {buildToolbarButtons([
+                {
+                  key: 'create',
+                  permission: 'system:menu:create',
+                  type: 'primary',
+                  label: '新增菜单',
+                  onClick: openCreate,
+                },
+                {
+                  key: 'refresh',
+                  label: '刷新',
+                  onClick: async () => {
+                    await loadMenus();
+                    menuCrud.reloadTable();
+                  },
+                },
+              ])}
+            </Space>
+          ) : null
+        }
         items={[
           {
             key: 'main',
@@ -704,25 +730,7 @@ const MenuManagementPage = () => {
                     total: visibleMenus.length,
                   };
                 }}
-                toolBarRender={() =>
-                  buildToolbarButtons([
-                    {
-                      key: 'create',
-                      permission: 'system:menu:create',
-                      type: 'primary',
-                      label: '新增菜单',
-                      onClick: openCreate,
-                    },
-                    {
-                      key: 'refresh',
-                      label: '刷新',
-                      onClick: async () => {
-                        await loadMenus();
-                        menuCrud.reloadTable();
-                      },
-                    },
-                  ])
-                }
+                toolBarRender={false}
               />
             ),
           },

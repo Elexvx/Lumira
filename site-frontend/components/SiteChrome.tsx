@@ -1,5 +1,6 @@
 import { LogIn } from 'lucide-react';
 import { publicAssetUrl, type NavigationItem, type SiteSettings } from '@/lib/api';
+import { SiteThemeToggle } from './SiteThemeToggle';
 
 function navigationTarget(item: NavigationItem) {
   if (item.linkType === 'EXTERNAL') return item.linkTarget;
@@ -45,6 +46,7 @@ export function SiteHeader({ site, navigation }: { site: SiteSettings; navigatio
         ))}
       </nav>
       <div className="site-header__actions">
+        <SiteThemeToggle />
         <a className="site-login-button" href={loginRoute}>
           <LogIn aria-hidden="true" size={16} strokeWidth={2.4} />
           登录

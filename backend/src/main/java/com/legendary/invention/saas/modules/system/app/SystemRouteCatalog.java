@@ -9,6 +9,7 @@ import java.util.Set;
 public final class SystemRouteCatalog {
 
     private static final Set<String> BUILT_IN_ROUTE_PATHS = Set.of(
+            "/dashboard/home",
             "/ai",
             "/tasks",
             "/approvals",
@@ -16,6 +17,7 @@ public final class SystemRouteCatalog {
             "/site",
             "/site/settings",
             "/site/navigation",
+            "/site/carousels",
             "/site/pages",
             "/site/contents",
             "/site/forms",
@@ -60,27 +62,35 @@ public final class SystemRouteCatalog {
             "/settings/monitoring/redis",
             "/settings/monitoring/api-docs",
             "/settings/monitoring/audit",
+            "/settings/api-docs",
+            "/settings/audit",
             "/settings/files",
             "/settings/files/all",
             "/user-center",
             "/user-center/users",
             "/user-center/online-users",
             "/user-center/roles",
+            "/user-center/personal-center",
             "/user-center/personal-center/profile",
+            "/user-center/permissions",
             "/user-center/files"
     );
 
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
+            "@/pages/dashboard/Home",
             "@/pages/ai/Assistant",
             "@/pages/tasks",
             "@/pages/approvals",
             "@/pages/evaluations",
+            "redirect:/site/settings",
             "@/pages/site/settings",
             "@/pages/site/navigation",
+            "@/pages/site/carousels",
             "@/pages/site/pages",
             "@/pages/site/contents",
             "@/pages/site/forms",
             "@/pages/site/submissions",
+            "@/layouts/SettingsLayout",
             "@/pages/settings/modules",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
@@ -97,6 +107,8 @@ public final class SystemRouteCatalog {
             "@/pages/settings/monitoring/Audit",
             "@/pages/settings/localization",
             "@/pages/settings/files/Center",
+            "@/pages/user-center/index",
+            "@/pages/iam/Overview",
             "@/pages/system/users",
             "@/pages/system/online-users",
             "@/pages/system/roles",
@@ -181,6 +193,7 @@ public final class SystemRouteCatalog {
                 menu(-1014L, -1000L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 12, "audit:view")
         )));
 
+        roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/Home", "DashboardOutlined", 0, "dashboard:view"));
         roots.add(aiRoot);
         roots.add(menu(-980L, 0L, "tasks.root", "任务中心", "MENU", "/tasks", "@/pages/tasks", "CheckSquareOutlined", 4, "task:view"));
         roots.add(menu(-970L, 0L, "approvals.root", "审批中心", "MENU", "/approvals", "@/pages/approvals", "AuditOutlined", 5, "approval:view"));
@@ -202,7 +215,7 @@ public final class SystemRouteCatalog {
                 menu(-952L, -950L, "system.online-users", "在线用户", "MENU", "/user-center/online-users", "@/pages/system/online-users", "UserSwitchOutlined", 22, "system:online-user:view"),
                 menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 23, "system:role:view")
         )));
-        SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", null, null, "IdcardOutlined", 19, "profile:view");
+        SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", "/user-center/personal-center", "@/layouts/SettingsLayout", "IdcardOutlined", 19, "profile:view");
         personalCenterRoot.setChildren(new ArrayList<>(List.of(
                 menu(-941L, -940L, "profile.center", "个人资料", "MENU", "/user-center/personal-center/profile", "@/pages/profile/Center", "UserOutlined", 1, "profile:view"),
                 menu(-942L, -940L, "files.my", "我的文件", "MENU", "/user-center/files", "@/pages/files/Center", "FileOutlined", 2, "system:file:view")
