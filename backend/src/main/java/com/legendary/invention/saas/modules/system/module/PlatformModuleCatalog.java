@@ -97,11 +97,11 @@ public final class PlatformModuleCatalog {
             capability(
                     "site",
                     "官网与 CMS",
-                    "承载站点、导航、页面、区块、内容、表单、提交记录和公开 API。",
+                    "承载站点、导航、轮播、内容、提交记录和公开 API。",
                     "system-service/site-frontend",
                     "/site",
                     List.of("/api/v1/site/**", "/api/v1/public/site/**"),
-                    List.of("site:view", "site:settings", "site:navigation", "site:page", "site:content", "site:form", "site:submission"),
+                    List.of("site:view", "site:settings", "site:navigation", "site:carousel", "site:content", "site:submission"),
                     List.of("system", "file", "message")
             ),
             capability(

@@ -44,7 +44,6 @@ public final class SystemPermissionTreeAssembler {
             Map.entry("site:carousel", List.of("site:carousel:")),
             Map.entry("site:page", List.of("site:page:")),
             Map.entry("site:content", List.of("site:content:")),
-            Map.entry("site:form", List.of("site:form:")),
             Map.entry("site:submission", List.of("site:submission:")),
             Map.entry("plugin:management:view", List.of("plugin:management:")),
             Map.entry("system:file:manage", List.of("system:file:manage:")),

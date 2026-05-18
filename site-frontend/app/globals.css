@@ -150,7 +150,8 @@ main {
   justify-content: center;
   min-width: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 17px;
+  font-weight: 650;
 }
 
 .site-header__nav a:hover {
@@ -162,10 +163,10 @@ main {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 38px;
-  padding: 0 16px;
+  min-height: 42px;
+  padding: 0 20px;
   color: var(--button-text);
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
   background: var(--button-bg);
   border: 1px solid var(--button-bg);

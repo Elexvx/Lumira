@@ -83,18 +83,6 @@ public final class SiteDTO {
         public String status;
     }
 
-    public static class FormRequest {
-        @NotBlank
-        public String code;
-        @NotBlank
-        public String name;
-        public String submitPolicy;
-        @NotBlank
-        public String schemaJson;
-        public String notificationJson;
-        public String status;
-    }
-
     public static class SubmissionRequest {
         @NotBlank
         public String dataJson;

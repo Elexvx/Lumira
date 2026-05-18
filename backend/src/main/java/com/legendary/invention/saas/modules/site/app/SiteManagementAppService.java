@@ -423,44 +423,6 @@ public class SiteManagementAppService {
         return category(tenantId, siteId, lastId());
     }
 
-    public PageResponse<SiteVO.FormVO> forms(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = tenantId(currentUser);
-        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
-        return page("site_form", "", new ArrayList<>(List.of(tenantId, siteId)), pageNo, pageSize, (rs, rowNum) -> mapForm(rs));
-    }
-
-    @Transactional
-    public SiteVO.FormVO createForm(CurrentUser currentUser, SiteDTO.FormRequest request) {
-        Long tenantId = tenantId(currentUser);
-        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
-        validateJson(request.schemaJson, "表单结构");
-        validateJson(request.notificationJson, "通知配置");
-        jdbcTemplate.update("insert into site_form (tenant_id, site_id, code, name, submit_policy, schema_json, notification_json, status, created_by, updated_by, deleted) values (?, ?, ?, ?, ?, cast(? as json), cast(? as json), ?, ?, ?, 0)", tenantId, siteId, request.code, request.name, clean(request.submitPolicy, SiteEnums.ANONYMOUS), request.schemaJson, jsonOrNull(request.notificationJson), clean(request.status, SiteEnums.FORM_ENABLED), currentUser.getUserId(), currentUser.getUserId());
-        Long id = lastId();
-        audit(currentUser, "site-form-create", "CREATE", "新增官网表单: " + request.name);
-        return form(tenantId, siteId, id);
-    }
-
-    @Transactional
-    public SiteVO.FormVO updateForm(CurrentUser currentUser, Long id, SiteDTO.FormRequest request) {
-        Long tenantId = tenantId(currentUser);
-        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
-        validateJson(request.schemaJson, "表单结构");
-        validateJson(request.notificationJson, "通知配置");
-        jdbcTemplate.update("update site_form set code = ?, name = ?, submit_policy = ?, schema_json = cast(? as json), notification_json = cast(? as json), status = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ? and tenant_id = ? and site_id = ? and deleted = 0", request.code, request.name, clean(request.submitPolicy, SiteEnums.ANONYMOUS), request.schemaJson, jsonOrNull(request.notificationJson), clean(request.status, SiteEnums.FORM_ENABLED), currentUser.getUserId(), id, tenantId, siteId);
-        audit(currentUser, "site-form-update", "UPDATE", "更新官网表单: " + id);
-        return form(tenantId, siteId, id);
-    }
-
-    @Transactional
-    public boolean deleteForm(CurrentUser currentUser, Long id) {
-        Long tenantId = tenantId(currentUser);
-        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
-        jdbcTemplate.update("update site_form set deleted = 1, updated_by = ?, updated_at = now() where id = ? and tenant_id = ? and site_id = ?", currentUser.getUserId(), id, tenantId, siteId);
-        audit(currentUser, "site-form-delete", "DELETE", "删除官网表单: " + id);
-        return true;
-    }
-
     public PageResponse<SiteVO.SubmissionVO> submissions(CurrentUser currentUser, Long formId, String status, long pageNo, long pageSize) {
         Long tenantId = tenantId(currentUser);
         Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
@@ -544,10 +506,6 @@ public class SiteManagementAppService {
 
     private SiteVO.ContentCategoryVO category(Long tenantId, Long siteId, Long id) {
         return jdbcTemplate.queryForObject("select * from site_content_category where id = ? and tenant_id = ? and site_id = ? and deleted = 0", (rs, rowNum) -> mapCategory(rs), id, tenantId, siteId);
-    }
-
-    private SiteVO.FormVO form(Long tenantId, Long siteId, Long id) {
-        return jdbcTemplate.queryForObject("select * from site_form where id = ? and tenant_id = ? and site_id = ? and deleted = 0", (rs, rowNum) -> mapForm(rs), id, tenantId, siteId);
     }
 
     private <T> PageResponse<T> page(String table, String extraFilter, List<Object> args, long pageNo, long pageSize, org.springframework.jdbc.core.RowMapper<T> mapper) {
@@ -663,19 +621,6 @@ public class SiteManagementAppService {
         vo.tagsJson = rs.getString("tags_json");
         vo.status = rs.getString("status");
         vo.publishedAt = localDateTime(rs, "published_at");
-        vo.updatedAt = localDateTime(rs, "updated_at");
-        return vo;
-    }
-
-    private SiteVO.FormVO mapForm(ResultSet rs) throws SQLException {
-        SiteVO.FormVO vo = new SiteVO.FormVO();
-        vo.id = rs.getLong("id");
-        vo.code = rs.getString("code");
-        vo.name = rs.getString("name");
-        vo.submitPolicy = rs.getString("submit_policy");
-        vo.schemaJson = rs.getString("schema_json");
-        vo.notificationJson = rs.getString("notification_json");
-        vo.status = rs.getString("status");
         vo.updatedAt = localDateTime(rs, "updated_at");
         return vo;
     }
