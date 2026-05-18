@@ -79,6 +79,11 @@
             <version>0.1.0</version>
         </dependency>
         <dependency>
+            <groupId>com.legendary.invention</groupId>
+            <artifactId>plugin-api</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
             <version>${jjwt.version}</version>

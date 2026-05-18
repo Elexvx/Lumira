@@ -62,7 +62,12 @@ public class AuthController {
     @PostMapping("/login")
     @RepeatSubmit
     public ApiResponse<LoginResponseVO> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
-        LoginResponseVO response = authAppService.login(request, clientIpResolver.resolve(httpServletRequest), httpServletRequest.getHeader("User-Agent"));
+        LoginResponseVO response = authAppService.login(
+                request,
+                clientIpResolver.resolve(httpServletRequest),
+                httpServletRequest.getHeader("User-Agent"),
+                resolveDeviceId(httpServletRequest)
+        );
         return ApiResponse.success(response, TraceContext.getRequestId());
     }
 
@@ -161,6 +166,14 @@ public class AuthController {
                 verificationAppService.listProviders(requireTenantId(currentUser), currentUser.getUserId()),
                 TraceContext.getRequestId()
         );
+    }
+
+    private String resolveDeviceId(HttpServletRequest request) {
+        String deviceId = request.getHeader("X-Device-Id");
+        if (deviceId == null || deviceId.isBlank()) {
+            deviceId = request.getHeader("X-Client-Device-Id");
+        }
+        return deviceId;
     }
 
     @GetMapping("/verification/providers/{factorCode}")

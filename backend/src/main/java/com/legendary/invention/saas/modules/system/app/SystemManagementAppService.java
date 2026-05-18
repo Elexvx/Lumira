@@ -639,13 +639,15 @@ public class SystemManagementAppService {
         }
 
         passwordPolicyService.validatePassword(newPassword);
+        String encodedPassword = passwordEncoder.encode(newPassword);
         jdbcTemplate.update(
                 "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                passwordEncoder.encode(newPassword),
+                encodedPassword,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
                 user.getId()
         );
+        iamUserService.upsertPasswordCredential(user.getId(), encodedPassword);
         authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getSessionId(), true);
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
         return true;
@@ -761,6 +763,7 @@ public class SystemManagementAppService {
             baseSql += " and iu.last_login_at <= ?";
             params.add(lastLoginEndAt);
         }
+        boolean cursorMode = cursorId != null || cursorCreatedAtValue != null;
         if (cursorCreatedAtValue != null && cursorId != null) {
             baseSql += " and (coalesce(iu.registered_at, u.created_at) < ? or (coalesce(iu.registered_at, u.created_at) = ? and u.id < ?))";
             params.add(cursorCreatedAtValue);
@@ -769,6 +772,9 @@ public class SystemManagementAppService {
         } else if (cursorId != null) {
             baseSql += " and u.id < ?";
             params.add(cursorId);
+        } else if (cursorCreatedAtValue != null) {
+            baseSql += " and coalesce(iu.registered_at, u.created_at) < ?";
+            params.add(cursorCreatedAtValue);
         }
         String selectSql = """
                 select u.id, iu.user_no as userNo, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
@@ -780,7 +786,9 @@ public class SystemManagementAppService {
                 """ + baseSql + """
                 order by coalesce(iu.registered_at, u.created_at) desc, u.id desc
                 """;
-        PageResponse<SystemVO.UserVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.UserVO.class, pageNo, pageSize, params);
+        PageResponse<SystemVO.UserVO> page = cursorMode
+                ? cursorQuery(selectSql, SystemVO.UserVO.class, pageSize, params)
+                : pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.UserVO.class, pageNo, pageSize, params);
         decorateUsers(page.getRecords(), tenantId);
         maskSensitiveUsers(page.getRecords(), canViewSensitiveUserInfo(currentUser));
         return page;
@@ -2774,6 +2782,28 @@ public class SystemManagementAppService {
         response.setTotal(total == null ? 0 : total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
+        return response;
+    }
+
+    private <T> PageResponse<T> cursorQuery(String selectSql, Class<T> voClass, long pageSize, List<Object> params) {
+        long safePageSize = pageSize <= 0 ? 10 : Math.min(pageSize, 100);
+        List<Object> queryParams = new ArrayList<>(params);
+        queryParams.add(safePageSize + 1);
+        List<T> records = jdbcTemplate.query(selectSql + " limit ?", new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
+        boolean hasMore = records.size() > safePageSize;
+        if (hasMore) {
+            records = new ArrayList<>(records.subList(0, (int) safePageSize));
+        }
+        PageResponse<T> response = new PageResponse<>();
+        response.setRecords(records);
+        response.setTotal(-1);
+        response.setPageNo(1);
+        response.setPageSize(safePageSize);
+        response.setHasMore(hasMore);
+        if (!records.isEmpty() && records.get(records.size() - 1) instanceof SystemVO.UserVO user) {
+            response.setNextCursorId(user.getId());
+            response.setNextCursorCreatedAt(user.getRegisteredAt() == null ? null : user.getRegisteredAt().toString());
+        }
         return response;
     }
 

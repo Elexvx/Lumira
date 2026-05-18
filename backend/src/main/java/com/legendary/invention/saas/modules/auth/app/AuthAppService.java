@@ -142,6 +142,10 @@ public class AuthAppService {
     }
 
     public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent) {
+        return login(request, loginIp, userAgent, null);
+    }
+
+    public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent, String deviceId) {
         String account = request.account();
         if (!Boolean.TRUE.equals(systemVerificationAppService.loadLoginCapabilities(PLATFORM_TENANT_ID).getPasswordLoginAvailable())) {
             loginAuditService.log(null, PLATFORM_TENANT_ID, account, "PASSWORD", "FAIL", "账号密码登录未启用", loginIp, userAgent);
@@ -175,7 +179,8 @@ public class AuthAppService {
             );
         }
 
-        if (!passwordEncoder.matches(loginPassword, user.getPasswordHash())) {
+        String credentialSecret = resolvePasswordCredentialSecret(user);
+        if (!passwordEncoder.matches(loginPassword, credentialSecret)) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
             iamUserService.recordLoginFailure(user.getId(), "USER_LOGIN_FAILED", account, loginIp, userAgent);
@@ -214,7 +219,7 @@ public class AuthAppService {
         response.setRequiresCaptcha(Boolean.FALSE);
 
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
-        iamUserService.recordLoginSuccess(user.getId(), iamUserService.detectIdentityType(account), account, loginIp, userAgent);
+        iamUserService.recordLoginSuccess(user.getId(), iamUserService.detectIdentityType(account), account, loginIp, userAgent, deviceId);
         return response;
     }
 
@@ -393,6 +398,17 @@ public class AuthAppService {
             return null;
         }
         return registerLoginUser(account, rawPassword, "PASSWORD", loginIp, userAgent);
+    }
+
+    private String resolvePasswordCredentialSecret(SysUserEntity user) {
+        return iamUserService.findActiveCredential(user.getId(), "PASSWORD")
+                .map(com.legendary.invention.saas.modules.iam.service.IamUserAccount.CredentialView::getCredentialSecret)
+                .orElseGet(() -> {
+                    if (StringUtils.hasText(user.getPasswordHash())) {
+                        iamUserService.upsertPasswordCredential(user.getId(), user.getPasswordHash());
+                    }
+                    return user.getPasswordHash();
+                });
     }
 
     private SysUserEntity resolveLoginUserForCodeChallenge(String loginType, String account, String loginIp, String userAgent) {
@@ -579,6 +595,13 @@ public class AuthAppService {
     }
 
     private void upsertWechatBinding(Long userId, WechatLoginService.WechatOAuthUser wechatUser) {
+        ensureWechatBindingOwner(userId, wechatUser);
+        if (StringUtils.hasText(wechatUser.openid())) {
+            iamUserService.bindIdentity(userId, IamUserService.IDENTITY_WECHAT_OPENID, wechatUser.openid(), true, false);
+        }
+        if (StringUtils.hasText(wechatUser.unionid())) {
+            iamUserService.bindIdentity(userId, IamUserService.IDENTITY_WECHAT_UNIONID, wechatUser.unionid(), true, false);
+        }
         jdbcTemplate.update(
                 """
                         insert into sys_user_wechat_binding (
@@ -598,11 +621,26 @@ public class AuthAppService {
                 0L,
                 0L
         );
-        if (StringUtils.hasText(wechatUser.openid())) {
-            iamUserService.bindIdentity(userId, IamUserService.IDENTITY_WECHAT_OPENID, wechatUser.openid(), true, false);
-        }
-        if (StringUtils.hasText(wechatUser.unionid())) {
-            iamUserService.bindIdentity(userId, IamUserService.IDENTITY_WECHAT_UNIONID, wechatUser.unionid(), true, false);
+    }
+
+    private void ensureWechatBindingOwner(Long userId, WechatLoginService.WechatOAuthUser wechatUser) {
+        Long existingUserId = jdbcTemplate.query(
+                """
+                        select user_id
+                        from sys_user_wechat_binding
+                        where deleted = 0 and (openid = ? or (? <> '' and unionid = ?))
+                        order by case when ? <> '' and unionid = ? then 0 else 1 end, id desc
+                        limit 1
+                        """,
+                rs -> rs.next() ? rs.getLong("user_id") : null,
+                wechatUser.openid(),
+                defaultIfBlank(wechatUserId(wechatUser.unionid()), ""),
+                defaultIfBlank(wechatUserId(wechatUser.unionid()), ""),
+                defaultIfBlank(wechatUserId(wechatUser.unionid()), ""),
+                defaultIfBlank(wechatUserId(wechatUser.unionid()), "")
+        );
+        if (existingUserId != null && !existingUserId.equals(userId)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "微信身份已被其他用户绑定");
         }
     }
 
