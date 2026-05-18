@@ -52,6 +52,8 @@ public class IamUserService {
             return Optional.empty();
         }
         account.setIdentities(queryIdentities(userId));
+        account.setDevices(listRecentDevices(userId, 5));
+        account.setSecuritySetting(findSecuritySetting(userId).orElse(null));
         account.setPasswordCredential(findActiveCredential(userId, "PASSWORD").orElse(null));
         account.setLegacyUser(querySysUserById(userId));
         return Optional.of(account);
@@ -222,6 +224,38 @@ public class IamUserService {
                 status,
                 userId
         );
+        jdbcTemplate.update(
+                "update iam_user_credential set status = ?, updated_at = current_timestamp where user_id = ? and deleted = 0",
+                status,
+                userId
+        );
+    }
+
+    @Transactional
+    public void softDeleteUser(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        jdbcTemplate.update(
+                "update iam_user set status = 'DISABLED', deleted = 1, updated_at = current_timestamp where id = ? and deleted = 0",
+                userId
+        );
+        jdbcTemplate.update(
+                "update iam_user_identity set status = 'DISABLED', deleted = 1, updated_at = current_timestamp where user_id = ? and deleted = 0",
+                userId
+        );
+        jdbcTemplate.update(
+                "update iam_user_credential set status = 'DISABLED', deleted = 1, updated_at = current_timestamp where user_id = ? and deleted = 0",
+                userId
+        );
+        jdbcTemplate.update(
+                "update iam_user_device set deleted = 1, updated_at = current_timestamp where user_id = ? and deleted = 0",
+                userId
+        );
+        jdbcTemplate.update(
+                "update iam_user_security_setting set deleted = 1, updated_at = current_timestamp where user_id = ? and deleted = 0",
+                userId
+        );
     }
 
     @Transactional
@@ -327,6 +361,79 @@ public class IamUserService {
                 credentialType.trim().toUpperCase(Locale.ROOT)
         );
         return credentials.isEmpty() ? Optional.empty() : Optional.of(credentials.get(0));
+    }
+
+    public List<IamUserAccount.IdentityView> listIdentities(Long userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        return queryIdentities(userId);
+    }
+
+    public List<IamUserAccount.DeviceView> listRecentDevices(Long userId, int limit) {
+        if (userId == null) {
+            return List.of();
+        }
+        int safeLimit = limit <= 0 ? 5 : Math.min(limit, 20);
+        return jdbcTemplate.query(
+                """
+                        select id, user_id as userId, device_id as deviceId, device_name as deviceName,
+                               device_type as deviceType, os, browser, last_ip as lastIp,
+                               last_active_at as lastActiveAt, trusted
+                        from iam_user_device
+                        where user_id = ? and deleted = 0
+                        order by last_active_at desc, id desc
+                        limit ?
+                        """,
+                (rs, rowNum) -> {
+                    IamUserAccount.DeviceView device = new IamUserAccount.DeviceView();
+                    device.setId(rs.getLong("id"));
+                    device.setUserId(rs.getLong("userId"));
+                    device.setDeviceId(rs.getString("deviceId"));
+                    device.setDeviceName(rs.getString("deviceName"));
+                    device.setDeviceType(rs.getString("deviceType"));
+                    device.setOs(rs.getString("os"));
+                    device.setBrowser(rs.getString("browser"));
+                    device.setLastIp(rs.getString("lastIp"));
+                    device.setLastActiveAt(rs.getTimestamp("lastActiveAt") == null ? null : rs.getTimestamp("lastActiveAt").toLocalDateTime());
+                    device.setTrusted(rs.getInt("trusted") == 1);
+                    return device;
+                },
+                userId,
+                safeLimit
+        );
+    }
+
+    public Optional<IamUserAccount.SecuritySettingView> findSecuritySetting(Long userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        List<IamUserAccount.SecuritySettingView> settings = jdbcTemplate.query(
+                """
+                        select user_id as userId, mfa_enabled as mfaEnabled,
+                               password_login_enabled as passwordLoginEnabled,
+                               sms_login_enabled as smsLoginEnabled,
+                               email_login_enabled as emailLoginEnabled,
+                               passkey_enabled as passkeyEnabled,
+                               login_notify_enabled as loginNotifyEnabled
+                        from iam_user_security_setting
+                        where user_id = ? and deleted = 0
+                        limit 1
+                        """,
+                (rs, rowNum) -> {
+                    IamUserAccount.SecuritySettingView setting = new IamUserAccount.SecuritySettingView();
+                    setting.setUserId(rs.getLong("userId"));
+                    setting.setMfaEnabled(rs.getInt("mfaEnabled") == 1);
+                    setting.setPasswordLoginEnabled(rs.getInt("passwordLoginEnabled") == 1);
+                    setting.setSmsLoginEnabled(rs.getInt("smsLoginEnabled") == 1);
+                    setting.setEmailLoginEnabled(rs.getInt("emailLoginEnabled") == 1);
+                    setting.setPasskeyEnabled(rs.getInt("passkeyEnabled") == 1);
+                    setting.setLoginNotifyEnabled(rs.getInt("loginNotifyEnabled") == 1);
+                    return setting;
+                },
+                userId
+        );
+        return settings.isEmpty() ? Optional.empty() : Optional.of(settings.get(0));
     }
 
     @Transactional
