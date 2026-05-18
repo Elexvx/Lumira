@@ -8,6 +8,8 @@ import com.legendary.invention.saas.infrastructure.security.service.SecuritySett
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService.SecuritySettingsSnapshot;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.auth.app.AuthAppService;
+import com.legendary.invention.saas.modules.iam.service.IamUserAccount;
+import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
@@ -50,7 +52,8 @@ class SystemManagementAppServicePasswordTest {
                 null,
                 operationAuditService,
                 null,
-                passwordPolicyService
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
         );
 
         CurrentUser currentUser = buildCurrentUser();
@@ -94,7 +97,8 @@ class SystemManagementAppServicePasswordTest {
                 null,
                 new RecordingOperationAuditService(),
                 null,
-                passwordPolicyService
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
         );
 
         CurrentUser currentUser = buildCurrentUser();
@@ -172,6 +176,21 @@ class SystemManagementAppServicePasswordTest {
             this.revokedUserId = userId;
             this.excludedSessionId = excludedSessionId;
             this.publishChange = publishChange;
+        }
+    }
+
+    private static final class StubIamUserService extends IamUserService {
+        private StubIamUserService(JdbcTemplate jdbcTemplate) {
+            super(jdbcTemplate);
+        }
+
+        @Override
+        public Optional<IamUserAccount.CredentialView> findActiveCredential(Long userId, String credentialType) {
+            return Optional.empty();
+        }
+
+        @Override
+        public void upsertPasswordCredential(Long userId, String passwordHash) {
         }
     }
 
