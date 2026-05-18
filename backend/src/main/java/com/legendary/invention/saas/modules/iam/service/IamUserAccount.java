@@ -16,6 +16,8 @@ public class IamUserAccount {
     private LocalDateTime registeredAt;
     private LocalDateTime lastLoginAt;
     private List<IdentityView> identities = List.of();
+    private List<DeviceView> devices = List.of();
+    private SecuritySettingView securitySetting;
     private CredentialView passwordCredential;
     private SysUserEntity legacyUser;
 
@@ -39,6 +41,10 @@ public class IamUserAccount {
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public List<IdentityView> getIdentities() { return identities; }
     public void setIdentities(List<IdentityView> identities) { this.identities = identities == null ? List.of() : identities; }
+    public List<DeviceView> getDevices() { return devices; }
+    public void setDevices(List<DeviceView> devices) { this.devices = devices == null ? List.of() : devices; }
+    public SecuritySettingView getSecuritySetting() { return securitySetting; }
+    public void setSecuritySetting(SecuritySettingView securitySetting) { this.securitySetting = securitySetting; }
     public CredentialView getPasswordCredential() { return passwordCredential; }
     public void setPasswordCredential(CredentialView passwordCredential) { this.passwordCredential = passwordCredential; }
     public SysUserEntity getLegacyUser() { return legacyUser; }
@@ -101,5 +107,64 @@ public class IamUserAccount {
         public void setLastChangedAt(LocalDateTime lastChangedAt) { this.lastChangedAt = lastChangedAt; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+    }
+
+    public static class DeviceView {
+        private Long id;
+        private Long userId;
+        private String deviceId;
+        private String deviceName;
+        private String deviceType;
+        private String os;
+        private String browser;
+        private String lastIp;
+        private LocalDateTime lastActiveAt;
+        private Boolean trusted;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public String getDeviceId() { return deviceId; }
+        public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
+        public String getDeviceName() { return deviceName; }
+        public void setDeviceName(String deviceName) { this.deviceName = deviceName; }
+        public String getDeviceType() { return deviceType; }
+        public void setDeviceType(String deviceType) { this.deviceType = deviceType; }
+        public String getOs() { return os; }
+        public void setOs(String os) { this.os = os; }
+        public String getBrowser() { return browser; }
+        public void setBrowser(String browser) { this.browser = browser; }
+        public String getLastIp() { return lastIp; }
+        public void setLastIp(String lastIp) { this.lastIp = lastIp; }
+        public LocalDateTime getLastActiveAt() { return lastActiveAt; }
+        public void setLastActiveAt(LocalDateTime lastActiveAt) { this.lastActiveAt = lastActiveAt; }
+        public Boolean getTrusted() { return trusted; }
+        public void setTrusted(Boolean trusted) { this.trusted = trusted; }
+    }
+
+    public static class SecuritySettingView {
+        private Long userId;
+        private Boolean mfaEnabled;
+        private Boolean passwordLoginEnabled;
+        private Boolean smsLoginEnabled;
+        private Boolean emailLoginEnabled;
+        private Boolean passkeyEnabled;
+        private Boolean loginNotifyEnabled;
+
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public Boolean getMfaEnabled() { return mfaEnabled; }
+        public void setMfaEnabled(Boolean mfaEnabled) { this.mfaEnabled = mfaEnabled; }
+        public Boolean getPasswordLoginEnabled() { return passwordLoginEnabled; }
+        public void setPasswordLoginEnabled(Boolean passwordLoginEnabled) { this.passwordLoginEnabled = passwordLoginEnabled; }
+        public Boolean getSmsLoginEnabled() { return smsLoginEnabled; }
+        public void setSmsLoginEnabled(Boolean smsLoginEnabled) { this.smsLoginEnabled = smsLoginEnabled; }
+        public Boolean getEmailLoginEnabled() { return emailLoginEnabled; }
+        public void setEmailLoginEnabled(Boolean emailLoginEnabled) { this.emailLoginEnabled = emailLoginEnabled; }
+        public Boolean getPasskeyEnabled() { return passkeyEnabled; }
+        public void setPasskeyEnabled(Boolean passkeyEnabled) { this.passkeyEnabled = passkeyEnabled; }
+        public Boolean getLoginNotifyEnabled() { return loginNotifyEnabled; }
+        public void setLoginNotifyEnabled(Boolean loginNotifyEnabled) { this.loginNotifyEnabled = loginNotifyEnabled; }
     }
 }

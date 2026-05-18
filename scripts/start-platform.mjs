@@ -280,11 +280,32 @@ async function probeBackendServices(services) {
 
   for (const service of services) {
     // eslint-disable-next-line no-await-in-loop
-    const running = await probeTcp({ port: service.port });
-    availability.push({ ...service, running });
+    const portOccupied = await probeTcp({ port: service.port });
+    if (!portOccupied) {
+      availability.push({ ...service, running: false });
+      continue;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    const healthOk = service.healthUrl
+      ? await probeHttpJson({
+          url: service.healthUrl,
+          validate: service.healthValidate ?? validateActuatorHealth,
+        })
+      : true;
+    if (!healthOk) {
+      throw new Error(
+        `${service.name} 端口 ${service.port} 被占用但不是目标服务: ${service.healthUrl ?? 'health check'} 未通过。`,
+      );
+    }
+    availability.push({ ...service, running: true });
   }
 
   return availability;
+}
+
+function validateActuatorHealth(body) {
+  return body?.status === 'UP';
 }
 
 function spawnTask(task) {
@@ -336,6 +357,16 @@ async function waitForTaskReadiness(tasks) {
 
   await Promise.all(
     readyChecks.map(async (task) => {
+      if (task.healthUrl) {
+        await waitForHttpJson({
+          url: task.healthUrl,
+          label: `${task.name} health`,
+          timeoutMs: task.startupTimeoutMs ?? 300_000,
+          intervalMs: 2_000,
+          validate: task.healthValidate ?? validateActuatorHealth,
+        });
+        return;
+      }
       await waitForTcp({
         port: task.port,
         label: `${task.name} startup`,
@@ -505,14 +536,14 @@ async function main() {
   const tasks = [];
   const reusedEntries = [];
   const backendServices = [
-    { name: 'system-service', port: 8080, command: mavenCommand, args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
-    { name: 'gateway-service', port: 8081, command: mavenCommand, args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
-    { name: 'auth-service', port: 8082, command: mavenCommand, args: ['-f', 'services/auth-service/pom.xml', 'spring-boot:run'] },
-    { name: 'file-service', port: 8084, command: mavenCommand, args: ['-f', 'services/file-service/pom.xml', 'spring-boot:run'] },
-    { name: 'message-service', port: 8085, command: mavenCommand, args: ['-f', 'services/message-service/pom.xml', 'spring-boot:run'] },
-    { name: 'plugin-service', port: 8086, command: mavenCommand, args: ['-f', 'services/plugin-service/pom.xml', 'spring-boot:run'] },
-    { name: 'localization-service', port: 8088, command: mavenCommand, args: ['-f', 'services/localization-service/pom.xml', 'spring-boot:run'] },
-    { name: 'job-executor', port: 8089, command: mavenCommand, args: ['-f', 'services/job-executor/pom.xml', 'spring-boot:run'] },
+    { name: 'system-service', port: 8080, healthUrl: 'http://localhost:8080/actuator/health', command: mavenCommand, args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
+    { name: 'gateway-service', port: 8081, healthUrl: 'http://localhost:8081/actuator/health', command: mavenCommand, args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
+    { name: 'auth-service', port: 8082, healthUrl: 'http://localhost:8082/actuator/health', command: mavenCommand, args: ['-f', 'services/auth-service/pom.xml', 'spring-boot:run'] },
+    { name: 'file-service', port: 8084, healthUrl: 'http://localhost:8084/actuator/health', command: mavenCommand, args: ['-f', 'services/file-service/pom.xml', 'spring-boot:run'] },
+    { name: 'message-service', port: 8085, healthUrl: 'http://localhost:8085/actuator/health', command: mavenCommand, args: ['-f', 'services/message-service/pom.xml', 'spring-boot:run'] },
+    { name: 'plugin-service', port: 8086, healthUrl: 'http://localhost:8086/actuator/health', command: mavenCommand, args: ['-f', 'services/plugin-service/pom.xml', 'spring-boot:run'] },
+    { name: 'localization-service', port: 8088, healthUrl: 'http://localhost:8088/actuator/health', command: mavenCommand, args: ['-f', 'services/localization-service/pom.xml', 'spring-boot:run'] },
+    { name: 'job-executor', port: 8089, healthUrl: 'http://localhost:8089/actuator/health', command: mavenCommand, args: ['-f', 'services/job-executor/pom.xml', 'spring-boot:run'] },
   ];
 
   const backendAvailability = skipServices ? [] : await probeBackendServices(backendServices);
@@ -520,13 +551,8 @@ async function main() {
 
   if (!skipServices) {
     for (const service of backendAvailability) {
-      // Skip services that are already listening locally.
-      // The launcher is meant to be idempotent on a shared dev machine.
-      // If the port is free, we start just that missing service.
-      // If the port is occupied, we assume the service is already up.
-      // This keeps the script safe on machines with existing local infra.
       if (service.running) {
-        log(`Reusing existing ${service.name} on 127.0.0.1:${service.port}.`);
+        log(`Reusing existing ${service.name} on 127.0.0.1:${service.port}; health check passed.`);
         reusedEntries.push(service);
         continue;
       }

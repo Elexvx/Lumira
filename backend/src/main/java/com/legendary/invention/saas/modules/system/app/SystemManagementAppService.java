@@ -10,6 +10,7 @@ import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.auth.app.AuthAppService;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
+import com.legendary.invention.saas.modules.iam.service.IamUserAccount;
 import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
@@ -24,6 +25,7 @@ import com.legendary.invention.saas.modules.system.module.StaticPlatformModuleRe
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.legendary.invention.saas.modules.system.user.vo.UserDetailVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
@@ -634,8 +636,18 @@ public class SystemManagementAppService {
         if (!newPassword.equals(confirmPassword)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "两次输入的新密码不一致");
         }
-        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+        String currentPasswordHash = iamUserService.findActiveCredential(user.getId(), "PASSWORD")
+                .map(IamUserAccount.CredentialView::getCredentialSecret)
+                .orElse(null);
+        boolean fallbackToSysUserPassword = !StringUtils.hasText(currentPasswordHash);
+        if (fallbackToSysUserPassword) {
+            currentPasswordHash = user.getPasswordHash();
+        }
+        if (!StringUtils.hasText(currentPasswordHash) || !passwordEncoder.matches(currentPassword, currentPasswordHash)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "当前密码不正确");
+        }
+        if (fallbackToSysUserPassword) {
+            iamUserService.upsertPasswordCredential(user.getId(), user.getPasswordHash());
         }
 
         passwordPolicyService.validatePassword(newPassword);
@@ -804,6 +816,7 @@ public class SystemManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         detail.setRoleIds(listUserRoleIds(userId, tenantId));
         detail.setTenantIds(listUserTenantIds(userId));
+        decorateIamUserDetail(detail, userId, canViewSensitiveUserInfo(currentUser));
         return detail;
     }
 
@@ -929,6 +942,7 @@ public class SystemManagementAppService {
                     now,
                     userId
             );
+            iamUserService.softDeleteUser(userId);
         }
 
         onlineSessionManagementAppService.revokeUserSessions(userId);
@@ -2008,6 +2022,71 @@ public class SystemManagementAppService {
         user.setIdCardNumber(maskIdCard(user.getIdCardNumber()));
     }
 
+    private void decorateIamUserDetail(SystemVO.UserDetailVO detail, Long userId, boolean canViewSensitive) {
+        detail.setIdentities(iamUserService.listIdentities(userId).stream()
+                .map(identity -> toUserIdentityVO(identity, canViewSensitive))
+                .toList());
+        detail.setRecentDevices(iamUserService.listRecentDevices(userId, 10).stream()
+                .map(device -> toUserDeviceVO(device, canViewSensitive))
+                .toList());
+        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId)
+                .map(this::toUserSecuritySettingVO)
+                .orElse(null));
+    }
+
+    private UserDetailVO.UserIdentityVO toUserIdentityVO(IamUserAccount.IdentityView identity, boolean canViewSensitive) {
+        UserDetailVO.UserIdentityVO vo = new UserDetailVO.UserIdentityVO();
+        vo.setId(identity.getId());
+        vo.setIdentityType(identity.getIdentityType());
+        vo.setIdentifier(canViewSensitive ? identity.getIdentifier() : maskIdentity(identity.getIdentityType(), identity.getIdentifier()));
+        vo.setVerified(identity.getVerified());
+        vo.setPrimaryIdentity(identity.getPrimaryIdentity());
+        vo.setStatus(identity.getStatus());
+        return vo;
+    }
+
+    private UserDetailVO.UserDeviceVO toUserDeviceVO(IamUserAccount.DeviceView device, boolean canViewSensitive) {
+        UserDetailVO.UserDeviceVO vo = new UserDetailVO.UserDeviceVO();
+        vo.setId(device.getId());
+        vo.setDeviceId(canViewSensitive ? device.getDeviceId() : maskDeviceId(device.getDeviceId()));
+        vo.setDeviceName(device.getDeviceName());
+        vo.setDeviceType(device.getDeviceType());
+        vo.setOs(device.getOs());
+        vo.setBrowser(device.getBrowser());
+        vo.setLastIp(canViewSensitive ? device.getLastIp() : maskIp(device.getLastIp()));
+        vo.setLastActiveAt(device.getLastActiveAt());
+        vo.setTrusted(device.getTrusted());
+        return vo;
+    }
+
+    private UserDetailVO.UserSecuritySettingVO toUserSecuritySettingVO(IamUserAccount.SecuritySettingView setting) {
+        UserDetailVO.UserSecuritySettingVO vo = new UserDetailVO.UserSecuritySettingVO();
+        vo.setMfaEnabled(setting.getMfaEnabled());
+        vo.setPasswordLoginEnabled(setting.getPasswordLoginEnabled());
+        vo.setSmsLoginEnabled(setting.getSmsLoginEnabled());
+        vo.setEmailLoginEnabled(setting.getEmailLoginEnabled());
+        vo.setPasskeyEnabled(setting.getPasskeyEnabled());
+        vo.setLoginNotifyEnabled(setting.getLoginNotifyEnabled());
+        return vo;
+    }
+
+    private String maskIdentity(String identityType, String identifier) {
+        if (!StringUtils.hasText(identifier)) {
+            return identifier;
+        }
+        String type = identityType == null ? "" : identityType.toUpperCase(Locale.ROOT);
+        if (IamUserService.IDENTITY_MOBILE.equals(type)) {
+            return maskMobile(identifier);
+        }
+        if (IamUserService.IDENTITY_EMAIL.equals(type)) {
+            return maskEmail(identifier);
+        }
+        if (IamUserService.IDENTITY_USERNAME.equals(type)) {
+            return maskUsername(identifier);
+        }
+        return maskLongIdentifier(identifier);
+    }
+
     private String maskMobile(String mobile) {
         if (!StringUtils.hasText(mobile) || mobile.length() < 7) {
             return mobile;
@@ -2031,6 +2110,39 @@ public class SystemManagementAppService {
             return idCardNumber;
         }
         return idCardNumber.substring(0, 4) + "********" + idCardNumber.substring(idCardNumber.length() - 4);
+    }
+
+    private String maskUsername(String username) {
+        if (!StringUtils.hasText(username) || username.length() <= 2) {
+            return "***";
+        }
+        return username.charAt(0) + "***" + username.charAt(username.length() - 1);
+    }
+
+    private String maskLongIdentifier(String identifier) {
+        if (!StringUtils.hasText(identifier) || identifier.length() <= 8) {
+            return "***";
+        }
+        return identifier.substring(0, 4) + "****" + identifier.substring(identifier.length() - 4);
+    }
+
+    private String maskDeviceId(String deviceId) {
+        return maskLongIdentifier(deviceId);
+    }
+
+    private String maskIp(String ip) {
+        if (!StringUtils.hasText(ip)) {
+            return ip;
+        }
+        if (ip.contains(".")) {
+            int lastDot = ip.lastIndexOf('.');
+            return lastDot > 0 ? ip.substring(0, lastDot + 1) + "*" : "*";
+        }
+        if (ip.contains(":")) {
+            int idx = ip.indexOf(':');
+            return idx > 0 ? ip.substring(0, idx) + ":****" : "****";
+        }
+        return "*";
     }
 
     private LocalDateTime parseDateTimeParam(String value, boolean endOfDay) {
