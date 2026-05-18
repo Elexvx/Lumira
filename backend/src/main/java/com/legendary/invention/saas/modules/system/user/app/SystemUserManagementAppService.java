@@ -489,8 +489,13 @@ public class SystemUserManagementAppService {
     }
 
     private void replaceUserRoles(Long userId, Long tenantId, List<Long> roleIds, Long operatorId) {
+        jdbcTemplate.update(
+                "delete from sys_user_role where tenant_id = ? and user_id = ?",
+                tenantId,
+                userId
+        );
         if (CollectionUtils.isEmpty(roleIds)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户角色不能为空");
+            return;
         }
         if (roleIds.stream().anyMatch(roleId -> roleId == null || roleId <= 0)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "用户角色ID必须为正整数");
@@ -504,11 +509,6 @@ public class SystemUserManagementAppService {
         if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
         }
-        jdbcTemplate.update(
-                "delete from sys_user_role where tenant_id = ? and user_id = ?",
-                tenantId,
-                userId
-        );
         for (Long roleId : distinctRoleIds) {
             jdbcTemplate.update(
                     """
@@ -554,11 +554,42 @@ public class SystemUserManagementAppService {
     }
 
     private List<String> listUserTenantNames(Long userId) {
-        return List.of();
+        return jdbcTemplate.queryForList(
+                """
+                        select coalesce(
+                            (
+                                select nullif(c.config_value, '')
+                                from sys_config c
+                                where c.tenant_id = ut.tenant_id
+                                  and c.config_key = 'platform.name'
+                                  and c.deleted = 0
+                                order by c.id asc
+                                limit 1
+                            ),
+                            concat('租户 ', ut.tenant_id)
+                        ) as tenant_name
+                        from sys_user_tenant ut
+                        where ut.user_id = ?
+                          and ut.deleted = 0
+                        order by ut.is_default desc, ut.tenant_id asc
+                        """,
+                String.class,
+                userId
+        );
     }
 
     private List<Long> listUserTenantIds(Long userId) {
-        return List.of();
+        return jdbcTemplate.queryForList(
+                """
+                        select tenant_id
+                        from sys_user_tenant
+                        where user_id = ?
+                          and deleted = 0
+                        order by is_default desc, tenant_id asc
+                        """,
+                Long.class,
+                userId
+        );
     }
 
     private List<Long> listUserRoleIds(Long userId, Long tenantId) {
