@@ -26,7 +26,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
@@ -49,7 +49,7 @@ saas:
   web:
     cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
   security:
-    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
+    jwt-secret: ${JWT_SECRET}
     issuer: saas-foundation
     permit-paths:
       - /ws/message

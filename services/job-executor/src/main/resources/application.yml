@@ -22,11 +22,11 @@ saas:
   job:
     backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:8080}
     message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:http://localhost:8085}
-    internal-token: ${SAAS_JOB_INTERNAL_TOKEN:legendary-job-token}
+    internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
 
 xxl:
   job:
-    accessToken: ${XXL_JOB_ACCESS_TOKEN:${XXL_JOB_ADMIN_ACCESS_TOKEN:legendary-xxl-job-token}}
+    accessToken: ${XXL_JOB_ACCESS_TOKEN:${XXL_JOB_ADMIN_ACCESS_TOKEN}}
     admin:
       addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://localhost:8090/xxl-job-admin}
       timeout: ${XXL_JOB_ADMIN_TIMEOUT:3}

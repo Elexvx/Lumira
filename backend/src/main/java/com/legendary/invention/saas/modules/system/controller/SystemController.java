@@ -91,14 +91,39 @@ public class SystemController {
     @GetMapping("/users")
     public ApiResponse<PageResponse<SystemVO.UserVO>> users(
             @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "userId", required = false) Long userId,
             @RequestParam(name = "mobile", required = false) String mobile,
+            @RequestParam(name = "email", required = false) String email,
+            @RequestParam(name = "source", required = false) String source,
+            @RequestParam(name = "registeredStart", required = false) String registeredStart,
+            @RequestParam(name = "registeredEnd", required = false) String registeredEnd,
+            @RequestParam(name = "lastLoginStart", required = false) String lastLoginStart,
+            @RequestParam(name = "lastLoginEnd", required = false) String lastLoginEnd,
+            @RequestParam(name = "cursorId", required = false) Long cursorId,
+            @RequestParam(name = "cursorCreatedAt", required = false) String cursorCreatedAt,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:user:view");
         return ApiResponse.success(
-                systemManagementAppService.listUsers(securityContextFacade.getCurrentUser(), username, mobile, status, pageNo, pageSize),
+                systemManagementAppService.listUsers(
+                        securityContextFacade.getCurrentUser(),
+                        userId,
+                        username,
+                        mobile,
+                        email,
+                        status,
+                        source,
+                        registeredStart,
+                        registeredEnd,
+                        lastLoginStart,
+                        lastLoginEnd,
+                        cursorId,
+                        cursorCreatedAt,
+                        pageNo,
+                        pageSize
+                ),
                 TraceContext.getRequestId()
         );
     }

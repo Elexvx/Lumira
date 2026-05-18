@@ -20,7 +20,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: true
@@ -46,18 +46,7 @@ saas:
     captcha-enabled: ${CAPTCHA_ENABLED:true}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     permit-paths:
-      - /api/v1/auth/login
-      - /api/v1/auth/login-encryption-key
-      - /api/v1/auth/second-factor/complete
-      - /api/v1/auth/refresh-token
-      - /ws/message
-      - /api/v1/public/branding-settings
-      - /api/v1/public/agreement-settings
-      - /api/v1/public/login-capabilities
-      - /api/v1/public/security-settings
-      - /api/v1/public/captcha/**
       - /api/v1/localization/runtime/**
-      - /api/uploads/**
       - /actuator/health
       - /api/health
   job:

@@ -112,6 +112,15 @@ interface FetchJsonOptions {
   revalidate?: number | false;
 }
 
+interface SiteApiErrorLog {
+  path: string;
+  url: string;
+  kind: 'http' | 'network' | 'json';
+  status?: number;
+  code?: string;
+  message?: string;
+}
+
 const unavailableSite: SiteSettings = { name: 'Legendary Invention' };
 
 export function publicAssetUrl(value?: string | null) {
@@ -130,17 +139,63 @@ export function siteApiUrl(path: string) {
 }
 
 export async function fetchJson<T>(path: string, options: FetchJsonOptions = {}): Promise<T | null> {
+  const url = `${apiBase}${path}`;
   try {
     const init = options.cache
       ? { cache: options.cache }
       : { next: { revalidate: options.revalidate ?? 120 } };
-    const response = await fetch(`${apiBase}${path}`, init);
-    if (!response.ok) return null;
-    const payload = (await response.json()) as ApiResponse<T>;
+    const response = await fetch(url, init);
+    if (!response.ok) {
+      logSiteApiError({
+        path,
+        url,
+        kind: 'http',
+        status: response.status,
+        message: `Site API responded with HTTP ${response.status}`,
+      });
+      return null;
+    }
+
+    let payload: ApiResponse<T> & { message?: string; userMessage?: string };
+    try {
+      payload = (await response.json()) as ApiResponse<T> & { message?: string; userMessage?: string };
+    } catch (error) {
+      logSiteApiError({
+        path,
+        url,
+        kind: 'json',
+        status: response.status,
+        message: error instanceof Error ? error.message : 'Failed to parse Site API JSON response',
+      });
+      return null;
+    }
+
+    if (payload?.code && payload.code !== '0') {
+      logSiteApiError({
+        path,
+        url,
+        kind: 'http',
+        status: response.status,
+        code: payload.code,
+        message: payload.userMessage || payload.message || `Site API returned code ${payload.code}`,
+      });
+      return null;
+    }
     return payload?.data ?? null;
-  } catch {
+  } catch (error) {
+    logSiteApiError({
+      path,
+      url,
+      kind: 'network',
+      message: error instanceof Error ? error.message : 'Site API request failed',
+    });
     return null;
   }
+}
+
+function logSiteApiError(error: SiteApiErrorLog) {
+  const level = error.kind === 'http' && error.status === 404 ? 'warn' : 'error';
+  console[level]('[site-api]', error);
 }
 
 export async function getRuntime() {

@@ -27,6 +27,7 @@ import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.RefreshTokenResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.WechatAuthorizeUrlVO;
+import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
@@ -68,7 +69,42 @@ public class AuthAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemVerificationAppService systemVerificationAppService;
     private final WechatLoginService wechatLoginService;
+    private final IamUserService iamUserService;
     private final JdbcTemplate jdbcTemplate;
+
+    public AuthAppService(
+            UserDomainService userDomainService,
+            LoginAuditService loginAuditService,
+            AuthSessionStore authSessionStore,
+            CaptchaService captchaService,
+            LoginProtectionService loginProtectionService,
+            LoginEncryptionService loginEncryptionService,
+            JwtTokenService jwtTokenService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            PasswordEncoder passwordEncoder,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemVerificationAppService systemVerificationAppService,
+            WechatLoginService wechatLoginService,
+            IamUserService iamUserService,
+            JdbcTemplate jdbcTemplate
+    ) {
+        this.userDomainService = userDomainService;
+        this.loginAuditService = loginAuditService;
+        this.authSessionStore = authSessionStore;
+        this.captchaService = captchaService;
+        this.loginProtectionService = loginProtectionService;
+        this.loginEncryptionService = loginEncryptionService;
+        this.jwtTokenService = jwtTokenService;
+        this.securitySettingsService = securitySettingsService;
+        this.passwordPolicyService = passwordPolicyService;
+        this.passwordEncoder = passwordEncoder;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemVerificationAppService = systemVerificationAppService;
+        this.wechatLoginService = wechatLoginService;
+        this.iamUserService = iamUserService;
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     public AuthAppService(
             UserDomainService userDomainService,
@@ -86,20 +122,23 @@ public class AuthAppService {
             WechatLoginService wechatLoginService,
             JdbcTemplate jdbcTemplate
     ) {
-        this.userDomainService = userDomainService;
-        this.loginAuditService = loginAuditService;
-        this.authSessionStore = authSessionStore;
-        this.captchaService = captchaService;
-        this.loginProtectionService = loginProtectionService;
-        this.loginEncryptionService = loginEncryptionService;
-        this.jwtTokenService = jwtTokenService;
-        this.securitySettingsService = securitySettingsService;
-        this.passwordPolicyService = passwordPolicyService;
-        this.passwordEncoder = passwordEncoder;
-        this.permissionSnapshotService = permissionSnapshotService;
-        this.systemVerificationAppService = systemVerificationAppService;
-        this.wechatLoginService = wechatLoginService;
-        this.jdbcTemplate = jdbcTemplate;
+        this(
+                userDomainService,
+                loginAuditService,
+                authSessionStore,
+                captchaService,
+                loginProtectionService,
+                loginEncryptionService,
+                jwtTokenService,
+                securitySettingsService,
+                passwordPolicyService,
+                passwordEncoder,
+                permissionSnapshotService,
+                systemVerificationAppService,
+                wechatLoginService,
+                jdbcTemplate == null ? null : new IamUserService(jdbcTemplate),
+                jdbcTemplate
+        );
     }
 
     public LoginResponseVO login(LoginRequest request, String loginIp, String userAgent) {
@@ -117,6 +156,7 @@ public class AuthAppService {
         if (user == null) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(null, null, account, "PASSWORD", "FAIL", "用户不存在", loginIp, userAgent);
+            iamUserService.recordLoginFailure(null, "USER_LOGIN_FAILED", account, loginIp, userAgent);
             throw new BizException(
                     ErrorCode.ACCOUNT_NOT_FOUND,
                     "登录失败，账号不存在: " + account,
@@ -127,6 +167,7 @@ public class AuthAppService {
         if (isUserDisabled(user)) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "账号已禁用", loginIp, userAgent);
+            iamUserService.recordLoginFailure(user.getId(), "USER_LOGIN_DISABLED", account, loginIp, userAgent);
             throw new BizException(
                     ErrorCode.ACCOUNT_DISABLED,
                     "登录失败，账号已禁用: " + user.getUsername(),
@@ -137,6 +178,7 @@ public class AuthAppService {
         if (!passwordEncoder.matches(loginPassword, user.getPasswordHash())) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(user.getId(), null, user.getUsername(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
+            iamUserService.recordLoginFailure(user.getId(), "USER_LOGIN_FAILED", account, loginIp, userAgent);
             throw new BizException(
                     ErrorCode.PASSWORD_ERROR,
                     "登录失败，密码错误: " + user.getUsername(),
@@ -172,6 +214,7 @@ public class AuthAppService {
         response.setRequiresCaptcha(Boolean.FALSE);
 
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
+        iamUserService.recordLoginSuccess(user.getId(), iamUserService.detectIdentityType(account), account, loginIp, userAgent);
         return response;
     }
 
@@ -184,6 +227,7 @@ public class AuthAppService {
         if (user == null) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(null, null, account, request.getLoginType().toUpperCase(), "FAIL", "用户不存在", loginIp, userAgent);
+            iamUserService.recordLoginFailure(null, "USER_LOGIN_CODE_FAILED", account, loginIp, userAgent);
             throw new BizException(
                     ErrorCode.ACCOUNT_NOT_FOUND,
                     "登录失败，账号不存在: " + account,
@@ -194,6 +238,7 @@ public class AuthAppService {
         if (isUserDisabled(user)) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(user.getId(), null, user.getUsername(), request.getLoginType().toUpperCase(), "FAIL", "账号已禁用", loginIp, userAgent);
+            iamUserService.recordLoginFailure(user.getId(), "USER_LOGIN_DISABLED", account, loginIp, userAgent);
             throw new BizException(
                     ErrorCode.ACCOUNT_DISABLED,
                     "登录失败，账号已禁用: " + user.getUsername(),
@@ -243,6 +288,7 @@ public class AuthAppService {
                 loginIp,
                 userAgent
         );
+        iamUserService.recordLoginSuccess(user.getId(), null, null, loginIp, userAgent);
         return response;
     }
 
@@ -252,9 +298,10 @@ public class AuthAppService {
 
     public LoginResponseVO wechatLogin(WechatLoginRequest request, String loginIp, String userAgent) {
         WechatLoginService.WechatOAuthUser wechatUser = wechatLoginService.exchangeCode(request.getCode(), request.getState());
-        SysUserEntity user = resolveWechatLoginUser(wechatUser);
+        SysUserEntity user = resolveWechatLoginUser(wechatUser, loginIp, userAgent);
         if (isUserDisabled(user)) {
             loginAuditService.log(user.getId(), null, user.getUsername(), "WECHAT", "FAIL", "账号已禁用", loginIp, userAgent);
+            iamUserService.recordLoginFailure(user.getId(), "USER_LOGIN_DISABLED", user.getUsername(), loginIp, userAgent);
             throw new BizException(
                     ErrorCode.ACCOUNT_DISABLED,
                     "登录失败，账号已禁用: " + user.getUsername(),
@@ -265,6 +312,7 @@ public class AuthAppService {
         Long tenantId = PLATFORM_TENANT_ID;
         LoginResponseVO response = issueLoginTokens(user, tenantId, loginIp, userAgent);
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
+        iamUserService.recordLoginSuccess(user.getId(), IamUserService.IDENTITY_WECHAT_OPENID, wechatUser.openid(), loginIp, userAgent);
         return response;
     }
 
@@ -278,6 +326,7 @@ public class AuthAppService {
         } catch (BizException ex) {
             loginProtectionService.recordFailure(account, loginIp);
             loginAuditService.log(null, null, account, "CAPTCHA", "FAIL", ex.getErrorMessage(), loginIp, userAgent);
+            iamUserService.recordLoginFailure(null, "USER_LOGIN_CAPTCHA_FAILED", account, loginIp, userAgent);
             throw ex;
         }
     }
@@ -314,6 +363,7 @@ public class AuthAppService {
         response.setUser(toAuthUser(user, tenantId));
         response.setRequiresCaptcha(Boolean.FALSE);
         loginAuditService.log(user.getId(), tenantId, user.getUsername(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
+        iamUserService.recordLoginSuccess(user.getId(), null, null, loginIp, userAgent);
         return response;
     }
 
@@ -357,6 +407,7 @@ public class AuthAppService {
     }
 
     private SysUserEntity registerLoginUser(String account, String rawPassword, String loginType, String loginIp, String userAgent) {
+        loginProtectionService.ensureCanRegister(loginIp);
         String normalizedAccount = normalizeRegistrationAccount(account);
         String password = StringUtils.hasText(rawPassword) ? rawPassword : UUID.randomUUID().toString();
         if (StringUtils.hasText(rawPassword)) {
@@ -404,19 +455,22 @@ public class AuthAppService {
 
         SysUserEntity user = userDomainService.findLoginUser(normalizedAccount)
                 .orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR, "自动注册用户失败"));
+        iamUserService.createUserWithIdentity(user, normalizedAccount, loginType);
+        iamUserService.recordUserRegistered(user.getId(), loginType, loginIp, userAgent);
+        loginProtectionService.recordRegistration(loginIp);
         upsertUserTenantRelation(user.getId(), tenantId, true, 0L);
         grantDefaultLoginRole(user.getId(), tenantId, 0L);
         return user;
     }
 
-    private SysUserEntity resolveWechatLoginUser(WechatLoginService.WechatOAuthUser wechatUser) {
+    private SysUserEntity resolveWechatLoginUser(WechatLoginService.WechatOAuthUser wechatUser, String loginIp, String userAgent) {
         SysUserEntity boundUser = findWechatBoundUser(wechatUser.unionid(), wechatUser.openid());
         if (boundUser != null) {
             upsertWechatBinding(boundUser.getId(), wechatUser);
             return boundUser;
         }
 
-        SysUserEntity user = registerWechatUser(wechatUser);
+        SysUserEntity user = registerWechatUser(wechatUser, loginIp, userAgent);
         upsertWechatBinding(user.getId(), wechatUser);
         return user;
     }
@@ -461,7 +515,8 @@ public class AuthAppService {
         return users.isEmpty() ? null : users.get(0);
     }
 
-    private SysUserEntity registerWechatUser(WechatLoginService.WechatOAuthUser wechatUser) {
+    private SysUserEntity registerWechatUser(WechatLoginService.WechatOAuthUser wechatUser, String loginIp, String userAgent) {
+        loginProtectionService.ensureCanRegister(loginIp);
         Long tenantId = PLATFORM_TENANT_ID;
         String username = nextWechatUsername(wechatUser);
         String password = UUID.randomUUID().toString();
@@ -493,6 +548,15 @@ public class AuthAppService {
 
         SysUserEntity user = userDomainService.findLoginUser(username)
                 .orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR, "微信登录自动注册用户失败"));
+        iamUserService.createUserWithIdentity(user, username, "WECHAT");
+        if (StringUtils.hasText(wechatUser.openid())) {
+            iamUserService.bindIdentity(user.getId(), IamUserService.IDENTITY_WECHAT_OPENID, wechatUser.openid(), true, false);
+        }
+        if (StringUtils.hasText(wechatUser.unionid())) {
+            iamUserService.bindIdentity(user.getId(), IamUserService.IDENTITY_WECHAT_UNIONID, wechatUser.unionid(), true, false);
+        }
+        iamUserService.recordUserRegistered(user.getId(), "WECHAT", loginIp, userAgent);
+        loginProtectionService.recordRegistration(loginIp);
         upsertUserTenantRelation(user.getId(), tenantId, true, 0L);
         grantDefaultLoginRole(user.getId(), tenantId, 0L);
         return user;
@@ -534,6 +598,12 @@ public class AuthAppService {
                 0L,
                 0L
         );
+        if (StringUtils.hasText(wechatUser.openid())) {
+            iamUserService.bindIdentity(userId, IamUserService.IDENTITY_WECHAT_OPENID, wechatUser.openid(), true, false);
+        }
+        if (StringUtils.hasText(wechatUser.unionid())) {
+            iamUserService.bindIdentity(userId, IamUserService.IDENTITY_WECHAT_UNIONID, wechatUser.unionid(), true, false);
+        }
     }
 
     private String wechatUserId(String value) {

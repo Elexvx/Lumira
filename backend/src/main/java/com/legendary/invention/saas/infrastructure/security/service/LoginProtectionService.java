@@ -4,6 +4,7 @@ import com.legendary.invention.saas.common.constant.CacheKeyConstants;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.redis.CacheTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -18,10 +19,23 @@ public class LoginProtectionService {
 
     private final CacheTemplate cacheTemplate;
     private final SecuritySettingsService securitySettingsService;
+    private final long registerIpMaxCount;
+    private final long registerIpWindowMinutes;
 
-    public LoginProtectionService(CacheTemplate cacheTemplate, SecuritySettingsService securitySettingsService) {
+    public LoginProtectionService(
+            CacheTemplate cacheTemplate,
+            SecuritySettingsService securitySettingsService,
+            @Value("${saas.security.register-ip-max-count:20}") long registerIpMaxCount,
+            @Value("${saas.security.register-ip-window-minutes:10}") long registerIpWindowMinutes
+    ) {
         this.cacheTemplate = cacheTemplate;
         this.securitySettingsService = securitySettingsService;
+        this.registerIpMaxCount = registerIpMaxCount;
+        this.registerIpWindowMinutes = registerIpWindowMinutes;
+    }
+
+    public LoginProtectionService(CacheTemplate cacheTemplate, SecuritySettingsService securitySettingsService) {
+        this(cacheTemplate, securitySettingsService, 20L, 10L);
     }
 
     public void ensureCanAttempt(String account, String loginIp) {
@@ -30,9 +44,24 @@ public class LoginProtectionService {
         long maxFailureCount = securitySettingsService.getLoginMaxFailureCount();
         long validationAttempts = getCounter(loginAttemptKey(scope));
         long failureCount = getCounter(loginFailureKey(scope));
-        if (validationAttempts >= maxValidationAttempts || failureCount >= maxFailureCount) {
+        long accountFailureCount = getCounter(loginAccountFailureKey(normalize(account)));
+        long ipFailureCount = getCounter(loginIpFailureKey(normalize(loginIp)));
+        if (validationAttempts >= maxValidationAttempts
+                || failureCount >= maxFailureCount
+                || accountFailureCount >= maxFailureCount
+                || ipFailureCount >= maxFailureCount) {
             throw new BizException(ErrorCode.LOGIN_RATE_LIMITED, "登录失败次数过多，请稍后再试", ErrorCode.LOGIN_RATE_LIMITED.getDefaultUserMessage());
         }
+    }
+
+    public void ensureCanRegister(String loginIp) {
+        if (getCounter(registerIpKey(normalize(loginIp))) >= Math.max(1L, registerIpMaxCount)) {
+            throw new BizException(ErrorCode.LOGIN_RATE_LIMITED, "注册过于频繁，请稍后再试", ErrorCode.LOGIN_RATE_LIMITED.getDefaultUserMessage());
+        }
+    }
+
+    public void recordRegistration(String loginIp) {
+        increment(registerIpKey(normalize(loginIp)), Duration.ofMinutes(Math.max(1L, registerIpWindowMinutes)));
     }
 
     public void recordAttempt(String account, String loginIp) {
@@ -41,15 +70,22 @@ public class LoginProtectionService {
 
     public void recordFailure(String account, String loginIp) {
         increment(loginFailureKey(scope(account, loginIp)));
+        increment(loginAccountFailureKey(normalize(account)));
+        increment(loginIpFailureKey(normalize(loginIp)));
     }
 
     public void clearFailureState(String account, String loginIp) {
         String scope = scope(account, loginIp);
         cacheTemplate.remove(loginFailureKey(scope));
+        cacheTemplate.remove(loginAccountFailureKey(normalize(account)));
     }
 
     private long increment(String key) {
         Duration ttl = Duration.ofMinutes(Math.max(1L, securitySettingsService.getLoginDefenseWindowMinutes()));
+        return increment(key, ttl);
+    }
+
+    private long increment(String key, Duration ttl) {
         cacheTemplate.putIfAbsent(key, "0", ttl);
         Long value = cacheTemplate.increment(key);
         return value == null ? 0L : value;
@@ -82,6 +118,18 @@ public class LoginProtectionService {
 
     private String loginFailureKey(String scope) {
         return String.join(":", CacheKeyConstants.PREFIX, CacheKeyConstants.LOGIN_FAILURE, scope);
+    }
+
+    private String loginAccountFailureKey(String account) {
+        return String.join(":", CacheKeyConstants.PREFIX, CacheKeyConstants.LOGIN_FAILURE, "account", sha256Hex(account));
+    }
+
+    private String loginIpFailureKey(String loginIp) {
+        return String.join(":", CacheKeyConstants.PREFIX, CacheKeyConstants.LOGIN_FAILURE, "ip", sha256Hex(loginIp));
+    }
+
+    private String registerIpKey(String loginIp) {
+        return String.join(":", CacheKeyConstants.PREFIX, "register", "ip", sha256Hex(loginIp));
     }
 
     private String sha256Hex(String value) {

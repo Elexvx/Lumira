@@ -24,6 +24,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -34,6 +35,14 @@ public class PluginArtifactLoader {
     private static final TypeReference<LinkedHashMap<String, String>> CHECKSUM_TYPE = new TypeReference<>() {
     };
     private static final String CHECKSUM_ALGORITHM = "SHA-256";
+    private static final long MAX_EXTRACTED_BYTES = 200L * 1024L * 1024L;
+    private static final long MAX_ENTRY_BYTES = 120L * 1024L * 1024L;
+    private static final int MAX_EXTRACTED_FILES = 500;
+    private static final Set<String> BLOCKED_ARCHIVE_EXTENSIONS = Set.of(".zip", ".7z", ".rar", ".tar", ".gz", ".bz2", ".xz");
+    private static final Set<String> ALLOWED_FILE_EXTENSIONS = Set.of(
+            ".json", ".sig", ".jar", ".js", ".mjs", ".cjs", ".css", ".map",
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".txt", ".md"
+    );
     private static final List<String> REQUIRED_PATHS = List.of(
             "plugin.json",
             "checksums.json",
@@ -223,9 +232,13 @@ public class PluginArtifactLoader {
     }
 
     private void unzip(Path zipPath, Path targetDir) throws IOException {
+        long totalBytes = 0L;
+        int fileCount = 0;
+        byte[] buffer = new byte[8192];
         try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(zipPath))) {
             ZipEntry entry;
             while ((entry = zipInputStream.getNextEntry()) != null) {
+                validateZipEntry(entry);
                 Path resolved = targetDir.resolve(entry.getName()).normalize();
                 if (!resolved.startsWith(targetDir)) {
                     throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包存在非法路径");
@@ -233,11 +246,62 @@ public class PluginArtifactLoader {
                 if (entry.isDirectory()) {
                     Files.createDirectories(resolved);
                 } else {
+                    fileCount++;
+                    if (fileCount > MAX_EXTRACTED_FILES) {
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包文件数量超过限制: " + MAX_EXTRACTED_FILES);
+                    }
                     Files.createDirectories(resolved.getParent());
-                    Files.copy(zipInputStream, resolved, StandardCopyOption.REPLACE_EXISTING);
+                    long entryBytes = copyZipEntry(zipInputStream, resolved, buffer);
+                    if (entryBytes > MAX_ENTRY_BYTES) {
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包单文件超过限制: " + entry.getName());
+                    }
+                    totalBytes += entryBytes;
+                    if (totalBytes > MAX_EXTRACTED_BYTES) {
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包解压总大小超过限制");
+                    }
                 }
+                zipInputStream.closeEntry();
             }
         }
+    }
+
+    private void validateZipEntry(ZipEntry entry) {
+        String name = entry.getName();
+        if (!StringUtils.hasText(name)) {
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包存在空文件名");
+        }
+        String normalizedName = name.replace('\\', '/');
+        if (normalizedName.startsWith("/") || normalizedName.contains("../")) {
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包存在非法路径: " + name);
+        }
+        if (entry.isDirectory()) {
+            return;
+        }
+        String lowerName = normalizedName.toLowerCase();
+        if (BLOCKED_ARCHIVE_EXTENSIONS.stream().anyMatch(lowerName::endsWith)) {
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包禁止包含嵌套压缩文件: " + name);
+        }
+        if (ALLOWED_FILE_EXTENSIONS.stream().noneMatch(lowerName::endsWith)) {
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包包含不允许的文件类型: " + name);
+        }
+        if (entry.getSize() > MAX_ENTRY_BYTES) {
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包单文件超过限制: " + name);
+        }
+    }
+
+    private long copyZipEntry(ZipInputStream zipInputStream, Path target, byte[] buffer) throws IOException {
+        long entryBytes = 0L;
+        try (var outputStream = Files.newOutputStream(target)) {
+            int read;
+            while ((read = zipInputStream.read(buffer)) != -1) {
+                entryBytes += read;
+                if (entryBytes > MAX_ENTRY_BYTES) {
+                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包单文件超过限制: " + target.getFileName());
+                }
+                outputStream.write(buffer, 0, read);
+            }
+        }
+        return entryBytes;
     }
 
     private Path resolvePackageRoot(Path extractedDir) throws IOException {

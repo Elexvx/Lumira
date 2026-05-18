@@ -8,7 +8,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "saas.security")
 public class SecurityProperties {
 
-    private String jwtSecret = "saas_foundation_jwt_secret_for_dev_env_please_change_me_2026";
+    private String jwtSecret = "";
     private List<String> permitPaths = new ArrayList<>();
 
     public String getJwtSecret() {

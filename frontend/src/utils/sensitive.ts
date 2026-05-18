@@ -36,3 +36,17 @@ export const maskIdCardNumber = (value?: string | null) => {
   }
   return maskWithEdges(normalizedValue, 6, 4);
 };
+
+export const maskEmail = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+  const normalizedValue = value.trim();
+  const atIndex = normalizedValue.indexOf('@');
+  if (atIndex <= 0) {
+    return maskWithEdges(normalizedValue, 1, 1);
+  }
+  const localPart = normalizedValue.slice(0, atIndex);
+  const domain = normalizedValue.slice(atIndex);
+  return `${maskWithEdges(localPart, 1, localPart.length > 2 ? 1 : 0)}${domain}`;
+};
