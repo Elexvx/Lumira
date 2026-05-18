@@ -4,6 +4,7 @@ import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.message.dto.MessageDTO;
 import com.legendary.invention.message.service.MessagePushService;
+import com.legendary.invention.message.service.SmtpNotificationMailService;
 import com.legendary.invention.message.vo.MessageVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,11 +38,19 @@ class MessageAppServiceTest {
     @Mock
     private MessagePushService messagePushService;
 
+    @Mock
+    private SmtpNotificationMailService smtpNotificationMailService;
+
     private MessageAppService messageAppService;
 
     @BeforeEach
     void setUp() {
-        messageAppService = new MessageAppService(jdbcTemplate, operationAuditService, messagePushService);
+        messageAppService = new MessageAppService(
+                jdbcTemplate,
+                operationAuditService,
+                messagePushService,
+                smtpNotificationMailService
+        );
     }
 
     @Test
