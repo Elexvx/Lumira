@@ -7,29 +7,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
 public class DocumentUploadService {
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx");
-    private static final Set<String> OFFICE_CONTENT_TYPES = Set.of(
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-powerpoint",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    private static final Map<String, String> EXPECTED_CONTENT_TYPES = Map.of(
+            "pdf", "application/pdf",
+            "doc", "application/msword",
+            "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "xls", "application/vnd.ms-excel",
+            "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "ppt", "application/vnd.ms-powerpoint",
+            "pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     );
 
     private final UploadProperties uploadProperties;
@@ -46,11 +48,11 @@ public class DocumentUploadService {
             throw new BizException(ErrorCode.BAD_REQUEST, "文件不能超过 " + readableSize(uploadProperties.getMaxDocumentSizeBytes()));
         }
 
+        byte[] bytes = readBytes(file);
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() == null ? "" : file.getOriginalFilename());
-        String extension = resolveExtension(originalFilename, file.getContentType());
-        if (!StringUtils.hasText(extension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传 PDF、Word、Excel、PPT 文件");
-        }
+        String extension = validateExtension(originalFilename);
+        String contentType = validateContentType(file.getContentType(), extension);
+        validateDocumentContent(bytes, extension);
 
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + extension;
@@ -60,21 +62,19 @@ public class DocumentUploadService {
         Path target = storageRoot.resolve(relativePath).normalize();
         try {
             Files.createDirectories(target.getParent());
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(target, bytes);
         } catch (IOException exception) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传失败: " + exception.getMessage());
         }
 
         String publicUrl = normalizePublicPath(uploadProperties.getPublicPath()) + "/" + relativePath;
-        String previewMode = resolvePreviewMode(extension, file.getContentType());
+        String previewMode = resolvePreviewMode(extension);
 
         return new StoredDocument(
-                originalFilename,
+                StringUtils.hasText(originalFilename) ? originalFilename : generatedName,
                 generatedName,
                 extension,
-                file.getContentType(),
+                contentType,
                 file.getSize(),
                 relativePath,
                 publicUrl,
@@ -83,40 +83,93 @@ public class DocumentUploadService {
         );
     }
 
-    private String resolveExtension(String originalFilename, String contentType) {
-        String extension = StringUtils.getFilenameExtension(originalFilename);
-        if (StringUtils.hasText(extension)) {
-            String normalizedExtension = extension.toLowerCase(Locale.ROOT);
-            if (ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
-                return normalizedExtension;
-            }
-            return "";
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException exception) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "读取文档文件失败");
         }
-        if (!StringUtils.hasText(contentType)) {
-            return "";
-        }
-        String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
-        if ("application/pdf".equals(normalizedContentType)) {
-            return "pdf";
-        }
-        if (OFFICE_CONTENT_TYPES.contains(normalizedContentType)) {
-            return switch (normalizedContentType) {
-                case "application/msword" -> "doc";
-                case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> "docx";
-                case "application/vnd.ms-excel" -> "xls";
-                case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> "xlsx";
-                case "application/vnd.ms-powerpoint" -> "ppt";
-                case "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> "pptx";
-                default -> "";
-            };
-        }
-        return "";
     }
 
-    private String resolvePreviewMode(String extension, String contentType) {
-        String normalizedExtension = extension == null ? "" : extension.toLowerCase(Locale.ROOT);
-        String normalizedContentType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-        if ("pdf".equals(normalizedExtension) || "application/pdf".equals(normalizedContentType)) {
+    private String validateExtension(String originalFilename) {
+        String extension = StringUtils.getFilenameExtension(originalFilename);
+        if (!StringUtils.hasText(extension)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文档文件必须包含格式后缀");
+        }
+        String normalizedExtension = extension.toLowerCase(Locale.ROOT);
+        if (!ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传 PDF、Word、Excel、PPT 文件");
+        }
+        return normalizedExtension;
+    }
+
+    private String validateContentType(String contentType, String extension) {
+        if (!StringUtils.hasText(contentType)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文档 Content-Type 不能为空");
+        }
+        String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
+        String expectedContentType = EXPECTED_CONTENT_TYPES.get(extension);
+        if (!expectedContentType.equals(normalizedContentType)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文档 Content-Type 与文件格式不一致");
+        }
+        return normalizedContentType;
+    }
+
+    private void validateDocumentContent(byte[] bytes, String extension) {
+        boolean valid = switch (extension) {
+            case "pdf" -> startsWith(bytes, 0x25, 0x50, 0x44, 0x46, 0x2D);
+            case "doc", "xls", "ppt" -> isOleCompoundFile(bytes);
+            case "docx" -> isOpenXmlPackage(bytes, "word/");
+            case "xlsx" -> isOpenXmlPackage(bytes, "xl/");
+            case "pptx" -> isOpenXmlPackage(bytes, "ppt/");
+            default -> false;
+        };
+        if (!valid) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文档文件内容与声明格式不一致");
+        }
+    }
+
+    private boolean isOleCompoundFile(byte[] bytes) {
+        return startsWith(bytes, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1);
+    }
+
+    private boolean isOpenXmlPackage(byte[] bytes, String expectedDirectory) {
+        boolean hasContentTypes = false;
+        boolean hasExpectedDirectory = false;
+        try (ZipInputStream zipInputStream = new ZipInputStream(new ByteArrayInputStream(bytes))) {
+            ZipEntry entry;
+            while ((entry = zipInputStream.getNextEntry()) != null) {
+                String name = entry.getName();
+                if ("[Content_Types].xml".equals(name)) {
+                    hasContentTypes = true;
+                }
+                if (name.startsWith(expectedDirectory)) {
+                    hasExpectedDirectory = true;
+                }
+                if (hasContentTypes && hasExpectedDirectory) {
+                    return true;
+                }
+            }
+        } catch (IOException exception) {
+            return false;
+        }
+        return false;
+    }
+
+    private boolean startsWith(byte[] bytes, int... prefix) {
+        if (bytes.length < prefix.length) {
+            return false;
+        }
+        for (int index = 0; index < prefix.length; index++) {
+            if ((bytes[index] & 0xFF) != prefix[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String resolvePreviewMode(String extension) {
+        if ("pdf".equals(extension)) {
             return "PDF";
         }
         return "UNSUPPORTED";

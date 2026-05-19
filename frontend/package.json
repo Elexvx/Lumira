@@ -7,7 +7,12 @@
     "dev": "node scripts/console-banner.mjs && max dev",
     "build": "max setup && max build",
     "start": "node scripts/console-banner.mjs && max preview",
+    "lint": "max lint",
+    "stylelint": "max lint --stylelint-only",
     "typecheck": "max setup && tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:smoke": "pnpm run test:captcha-load && pnpm run test:captcha-refresh && pnpm run test:auth-login-flow && pnpm run test:captcha-input && pnpm run test:theme-nav-sync && pnpm run test:login-error-feedback && pnpm run test:permission-tree && pnpm run test:login-redirect-target && pnpm run test:login-storage-sync && pnpm run test:online-users-session-removal && pnpm run test:antd-static-theme",
     "test:captcha-load": "tsx scripts/captcha-load-smoke.ts",
     "test:captcha-refresh": "tsx scripts/captcha-refresh-smoke.ts",
     "test:auth-login-flow": "tsx scripts/auth-login-flow-smoke.ts",
@@ -38,10 +43,12 @@
     "@types/node": "^25.6.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.1.6",
     "less-loader": "^12.3.2",
     "postcss": "8.5.14",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
   },
   "pnpm": {
     "overrides": {

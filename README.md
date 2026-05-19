@@ -1,16 +1,21 @@
 # legendary-invention
 
-企业级 SaaS 平台底座仓库。
+企业级 SaaS 微服务平台底座仓库。
 
-这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施。当前阶段已经从模块化单体演进到微服务平台骨架，重点覆盖认证授权、统一请求链路、网关入口、配置中心、服务治理、定时任务、分布式事务和插件化扩展能力。
+这个仓库的目标不是做一个普通后台模板，而是沉淀一套可长期演进的前后端基础设施。当前正式运行架构已经收敛为微服务：外部请求统一进入 `services/gateway-service`，业务能力由 `services/*-service` 独立承载，公共能力沉淀到 `libs/*`。历史 `backend` 单体入口不再作为推荐启动、构建或部署入口。
 
 ## 仓库概览
 
 - `frontend/`：基于 `React 19.2.5`、`TypeScript`、`Umi Max`、`Ant Design 6.3.7` 和 `Ant Design Pro` 的前端工程。
-- `backend/`：当前作为 `system-service` 的后端工程，承载原有核心业务与底层能力。
+- `services/system-service/`：系统、配置、菜单、用户、审计、官网管理、任务等核心系统服务。
 - `services/gateway-service/`：统一入口网关。
-- `services/auth-service/`、`services/file-service/`、`services/message-service/`、`services/plugin-service/`、`services/localization-service/`、`services/job-executor/`：服务拆分骨架。审计能力目前保留在 `backend/system-service` 内部模块，不再单独拆成独立服务。
-- `libs/common-core/`、`libs/common-web/`、`libs/common-security/`、`libs/legendary-api/`：公共契约和基础能力模块。
+- `services/auth-service/`：认证、登录、刷新 token、二次验证入口。
+- `services/file-service/`：文件、图片、存储空间和上传安全校验。
+- `services/message-service/`：站内信、消息归档、WebSocket 推送。
+- `services/plugin-service/`：插件管理、插件运行时、插件网关。
+- `services/localization-service/`：本地化语言、命名空间、翻译词条和运行时发布。
+- `services/job-executor/`：XXL-JOB 执行器和后台任务。
+- `libs/common-core/`、`libs/common-domain/`、`libs/common-web/`、`libs/common-security/`、`libs/legendary-api/`、`libs/plugin-api/`：公共契约和基础能力模块。
 - `docs/`：技术方案、前后端架构、数据库设计、权限模型和初始化说明。
 - `database/`：数据库相关资源。
 - `examples/`：示例文件。
@@ -49,7 +54,7 @@
 ### 工程与基础设施
 
 - 前后端分离
-- 微服务平台优先
+- 纯微服务正式架构
 - 统一网关入口
 - 单平台默认数据域
 - 统一响应结构和错误码
@@ -117,7 +122,7 @@ flowchart LR
 ### 2. 后端如何工作
 
 - 外部请求先进入 `services/gateway-service`，再进入具体业务服务。
-- `backend/` 目前承担 `system-service` 的职责，是当前系统管理核心业务承载点。
+- `services/system-service` 承担系统管理核心业务，`backend` 单体入口不再保留为正式架构。
 - 认证、权限、审计、配置、文件、任务等能力逐步拆成独立服务。
 - `Nacos` 负责注册与配置，`Sentinel` 负责治理，`XXL-Job` 负责调度，`Seata` 负责少量强一致事务。
 - `Redis` 负责会话、缓存和部分上下文数据，`Flyway` 负责数据库初始化和演进。
@@ -187,9 +192,21 @@ git clone <repository-url>
 cd legendary-invention
 ```
 
-### 2. 启动后端
+### 2. 构建后端微服务
 
-如果你不打算使用一键脚本，也可以按模块手工启动。后端默认读取 `backend/src/main/resources/application.yml` 中的环境变量，常用配置包括：
+项目使用 Maven Wrapper 作为统一构建入口：
+
+```bash
+./mvnw clean package
+```
+
+如果只构建某个服务，可以使用：
+
+```bash
+./mvnw -pl services/file-service -am package
+```
+
+服务默认读取各自 `services/*/src/main/resources/application.yml` 中的环境变量，常用配置包括：
 
 - `DB_URL`
 - `DB_USERNAME`
@@ -198,10 +215,11 @@ cd legendary-invention
 - `REDIS_PORT`
 - `REDIS_PASSWORD`
 - `JWT_SECRET`
+- `FIELD_SECRET`：字段级敏感配置加密密钥，生产环境必须使用 32 字符以上强随机值。
 
 常用安全相关配置：
 
-- `CORS_ALLOWED_ORIGIN_PATTERNS`：生产/测试环境允许的前端 origin pattern 列表，逗号分隔，例如 `https://*.vercel.app,https://*.elexvx.com`。
+- `CORS_ALLOWED_ORIGIN_PATTERNS`：生产环境允许的前端 origin pattern 列表，逗号分隔，例如 `https://*.vercel.app,https://*.elexvx.com`。
 - `TRUSTED_PROXY_CIDRS`：受信代理网段，逗号分隔。
 - `TRUST_FORWARDED_HEADERS`：是否允许解析代理头，生产环境建议仅在受信代理后开启。
 - `DEFAULT_ADMIN_INIT_ENABLED`：仅 `dev` 环境建议开启默认管理员初始化。
@@ -209,14 +227,34 @@ cd legendary-invention
 
 如果项目提供了 `.env.example`，建议先复制一份再修改本地配置。
 
+手工启动建议按基础设施、system-service、业务服务、gateway-service、frontend 的顺序执行：
+
 ```bash
-mvn -pl backend -am spring-boot:run
+./mvnw -pl services/system-service -am spring-boot:run
+./mvnw -pl services/auth-service -am spring-boot:run
+./mvnw -pl services/file-service -am spring-boot:run
+./mvnw -pl services/message-service -am spring-boot:run
+./mvnw -pl services/plugin-service -am spring-boot:run
+./mvnw -pl services/localization-service -am spring-boot:run
+./mvnw -pl services/job-executor -am spring-boot:run
+./mvnw -pl services/gateway-service -am spring-boot:run
 ```
 
-默认地址：
+默认端口：
 
-- 健康检查：`http://localhost:8080/api/health`
-- OpenAPI：`http://localhost:8080/swagger-ui.html`
+- `system-service`：`8080`
+- `gateway-service`：`8081`
+- `auth-service`：`8082`
+- `file-service`：`8084`
+- `message-service`：`8085`
+- `plugin-service`：`8086`
+- `localization-service`：`8088`
+- `job-executor`：`8089`
+
+网关访问地址：
+
+- 网关：`http://localhost:8081`
+- 健康检查：`http://localhost:8081/actuator/health`
 
 ### 3. 启动前端
 
@@ -238,7 +276,7 @@ pnpm dev
 ### 4. 启动网关
 
 ```bash
-mvn -pl services/gateway-service -am spring-boot:run
+./mvnw -pl services/gateway-service -am spring-boot:run
 ```
 
 默认地址：
@@ -268,10 +306,22 @@ pnpm typecheck
 
 ### 后端
 
-- `backend/`：当前 `system-service` 的代码与数据库迁移。
+- `services/system-service/`：系统核心服务代码与数据库迁移。
 - `services/gateway-service/`：统一入口网关。
-- `common-*`：平台级共享模块。
-- `legendary-api/`：服务间契约。
+- `services/auth-service/`、`services/file-service/`、`services/message-service/`、`services/plugin-service/`、`services/localization-service/`、`services/job-executor/`：独立微服务。
+- `libs/common-*`：平台级共享模块。
+- `libs/legendary-api/`、`libs/plugin-api/`：服务间契约与插件 SPI。
+
+## 数据库初始化
+
+各服务使用各自 `src/main/resources/db/migration` 下的 Flyway 脚本。正式 baseline 不写入默认管理员、手机号、邮箱、头像或密码 hash；生产管理员账号应通过部署初始化流程或安全环境变量创建，开发测试账号应放在 dev profile seed 中。
+
+## 架构约束
+
+- 不再推荐使用 `backend` 单体入口。
+- 新增后端能力优先进入对应 `services/*-service`。
+- 可复用能力沉淀到 `libs/common-core`、`libs/common-domain`、`libs/common-web`、`libs/common-security`、`libs/legendary-api` 或 `libs/plugin-api`。
+- 前端 API 路径保持经由 `gateway-service`，避免直接绑定某个业务服务地址。
 
 ## 推荐阅读
 

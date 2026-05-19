@@ -120,6 +120,8 @@ public class LocalizationManagementAppService {
             String sortField,
             String sortOrder
     ) {
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        long safePage = Math.max(1L, pageNo);
         String targetLocale = normalizeLocale(localeCode);
         String fallbackLocale = resolveFallbackLocale(targetLocale);
         StringBuilder baseSql = new StringBuilder("""
@@ -189,8 +191,8 @@ public class LocalizationManagementAppService {
                 + " limit ? offset ?";
 
         List<Object> pagedParams = new ArrayList<>(params);
-        pagedParams.add(Math.max(1L, pageSize));
-        pagedParams.add(Math.max(0L, pageNo - 1) * Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE)));
+        pagedParams.add(safePageSize);
+        pagedParams.add((safePage - 1) * safePageSize);
 
         List<LocalizationVO.EntryVO> records = jdbcTemplate.query(selectSql, new BeanPropertyRowMapper<>(LocalizationVO.EntryVO.class), pagedParams.toArray());
         Long total = jdbcTemplate.queryForObject("select count(1) " + baseSql, Long.class, params.toArray());
@@ -199,8 +201,8 @@ public class LocalizationManagementAppService {
         PageResponse<LocalizationVO.EntryVO> response = new PageResponse<>();
         response.setRecords(records);
         response.setTotal(total == null ? 0L : total);
-        response.setPageNo(pageNo);
-        response.setPageSize(pageSize);
+        response.setPageNo(safePage);
+        response.setPageSize(safePageSize);
         return response;
     }
 

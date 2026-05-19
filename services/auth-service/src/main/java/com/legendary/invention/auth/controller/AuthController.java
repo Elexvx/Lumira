@@ -57,21 +57,25 @@ public class AuthController {
     }
 
     @PostMapping("/passkeys/authentication/options")
+    @RepeatSubmit
     public ApiResponse<PasskeyOptionsDTO> passkeyAuthenticationOptions() {
         return ApiResponse.success(passkeyAuthService.authenticationOptions(), TraceContext.getRequestId());
     }
 
     @PostMapping("/passkeys/authentication/complete")
+    @RepeatSubmit
     public ApiResponse<LoginResponseDTO> passkeyAuthenticationComplete(@Valid @RequestBody PasskeyAuthenticationCompleteRequest request, HttpServletRequest httpServletRequest) {
         return ApiResponse.success(passkeyAuthService.completeAuthentication(request, httpServletRequest), TraceContext.getRequestId());
     }
 
     @PostMapping("/passkeys/registration/options")
+    @RepeatSubmit
     public ApiResponse<PasskeyOptionsDTO> passkeyRegistrationOptions() {
         return ApiResponse.success(passkeyAuthService.registrationOptions(), TraceContext.getRequestId());
     }
 
     @PostMapping("/passkeys/registration/complete")
+    @RepeatSubmit
     public ApiResponse<com.legendary.invention.api.system.PasskeyCredentialDTO> passkeyRegistrationComplete(@Valid @RequestBody PasskeyRegistrationCompleteRequest request, HttpServletRequest httpServletRequest) {
         return ApiResponse.success(passkeyAuthService.completeRegistration(request, httpServletRequest), TraceContext.getRequestId());
     }
@@ -82,11 +86,13 @@ public class AuthController {
     }
 
     @PatchMapping("/passkeys/{id}")
+    @RepeatSubmit
     public ApiResponse<com.legendary.invention.api.system.PasskeyCredentialDTO> renamePasskeyCredential(@PathVariable Long id, @Valid @RequestBody PasskeyCredentialLabelRequest request) {
         return ApiResponse.success(passkeyAuthService.renameCredential(id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/passkeys/{id}")
+    @RepeatSubmit
     public ApiResponse<Boolean> deletePasskeyCredential(@PathVariable Long id) {
         return ApiResponse.success(passkeyAuthService.deleteCredential(id), TraceContext.getRequestId());
     }

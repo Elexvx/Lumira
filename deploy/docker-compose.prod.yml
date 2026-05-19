@@ -1,6 +1,6 @@
-x-backend-build: &backend-build
+x-service-build: &service-build
   context: ..
-  dockerfile: deploy/docker/backend.Dockerfile
+  dockerfile: deploy/docker/service.Dockerfile
 
 x-common-env: &common-env
   TZ: Asia/Shanghai
@@ -18,11 +18,12 @@ x-common-env: &common-env
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
   REDIS_DATABASE: 0
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+  FIELD_SECRET: ${FIELD_SECRET:?FIELD_SECRET is required}
   PLUGIN_SIGNATURE_SECRET: ${PLUGIN_SIGNATURE_SECRET:?PLUGIN_SIGNATURE_SECRET is required}
   SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN is required}
   TRUST_FORWARDED_HEADERS: "true"
   JAVA_OPTS: ${JAVA_OPTS:-}
-  CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,https://*.vercel.app,https://*.elexvx.com,https://elexvx.com}
+  CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:?CORS_ALLOWED_ORIGIN_PATTERNS is required}
 
 services:
   mysql:
@@ -93,9 +94,9 @@ services:
 
   system-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
-        SERVICE_DIR: backend
+        SERVICE_DIR: services/system-service
     image: legendary/system-service:0.1.0
     container_name: legendary-system-service
     restart: unless-stopped
@@ -119,7 +120,7 @@ services:
 
   gateway-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/gateway-service
     image: legendary/gateway-service:0.1.0
@@ -149,7 +150,7 @@ services:
 
   auth-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/auth-service
     image: legendary/auth-service:0.1.0
@@ -168,7 +169,7 @@ services:
 
   file-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/file-service
     image: legendary/file-service:0.1.0
@@ -187,7 +188,7 @@ services:
 
   message-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/message-service
     image: legendary/message-service:0.1.0
@@ -206,7 +207,7 @@ services:
 
   plugin-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/plugin-service
     image: legendary/plugin-service:0.1.0
@@ -231,7 +232,7 @@ services:
 
   localization-service:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/localization-service
     image: legendary/localization-service:0.1.0
@@ -246,7 +247,7 @@ services:
 
   job-executor:
     build:
-      <<: *backend-build
+      <<: *service-build
       args:
         SERVICE_DIR: services/job-executor
     image: legendary/job-executor:0.1.0
