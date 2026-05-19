@@ -29,13 +29,12 @@ public class ImageUploadService {
     private static final long MAX_IMAGE_PIXELS = 25_000_000L;
     private static final int MAX_IMAGE_WIDTH = 10_000;
     private static final int MAX_IMAGE_HEIGHT = 10_000;
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp");
     private static final Map<String, String> EXTENSION_CONTENT_TYPES = Map.of(
             "png", "image/png",
             "jpg", "image/jpeg",
             "jpeg", "image/jpeg",
             "gif", "image/gif",
-            "webp", "image/webp",
             "bmp", "image/bmp"
     );
 
@@ -106,7 +105,7 @@ public class ImageUploadService {
         }
         String normalizedExtension = extension.toLowerCase(Locale.ROOT);
         if (!ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "仅支持 PNG、JPG、GIF、WEBP、BMP 图片，禁止上传 SVG");
+            throw new BizException(ErrorCode.BAD_REQUEST, "仅支持 PNG、JPG、GIF、BMP 图片，禁止上传 SVG");
         }
         return normalizedExtension;
     }
@@ -129,9 +128,6 @@ public class ImageUploadService {
             case "jpg", "jpeg" -> startsWith(bytes, 0xFF, 0xD8, 0xFF);
             case "gif" -> startsWith(bytes, 0x47, 0x49, 0x46, 0x38, 0x37, 0x61)
                     || startsWith(bytes, 0x47, 0x49, 0x46, 0x38, 0x39, 0x61);
-            case "webp" -> bytes.length >= 12
-                    && startsWith(bytes, 0x52, 0x49, 0x46, 0x46)
-                    && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50;
             case "bmp" -> startsWith(bytes, 0x42, 0x4D);
             default -> false;
         };
@@ -156,7 +152,7 @@ public class ImageUploadService {
                     throw new BizException(ErrorCode.BAD_REQUEST, "图片尺寸超出允许范围");
                 }
                 BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(bytes));
-                if (decoded == null && !"webp".equals(extension)) {
+                if (decoded == null) {
                     throw new BizException(ErrorCode.BAD_REQUEST, "图片内容无法被安全解析");
                 }
             } finally {

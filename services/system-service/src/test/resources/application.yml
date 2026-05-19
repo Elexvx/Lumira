@@ -37,7 +37,7 @@ spring:
       - "*:missing"
     placeholders:
       defaultAdminInitEnabled: false
-      defaultAdminPasswordHash: $2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G
+      defaultAdminPasswordHash: ""
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -83,7 +83,6 @@ saas:
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
-      - /api/v1/localization/runtime/**
       - /api/uploads/**
       - /actuator/health
       - /api/health

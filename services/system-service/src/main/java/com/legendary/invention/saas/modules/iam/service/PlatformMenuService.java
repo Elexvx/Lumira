@@ -1,6 +1,6 @@
 package com.legendary.invention.saas.modules.iam.service;
 
-import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
+import com.legendary.invention.saas.modules.system.plugin.SystemPluginViewService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -20,11 +20,11 @@ public class PlatformMenuService {
     private static final Logger log = LoggerFactory.getLogger(PlatformMenuService.class);
 
     private final MyBatisQueryOperations jdbcTemplate;
-    private final PluginManagementAppService pluginManagementAppService;
+    private final SystemPluginViewService systemPluginViewService;
 
-    public PlatformMenuService(MyBatisQueryOperations jdbcTemplate, PluginManagementAppService pluginManagementAppService) {
+    public PlatformMenuService(MyBatisQueryOperations jdbcTemplate, SystemPluginViewService systemPluginViewService) {
         this.jdbcTemplate = jdbcTemplate;
-        this.pluginManagementAppService = pluginManagementAppService;
+        this.systemPluginViewService = systemPluginViewService;
     }
 
     public List<Map<String, Object>> buildTenantMenuTree(Long tenantId, List<String> permissions) {
@@ -55,7 +55,7 @@ public class PlatformMenuService {
         ));
         List<Map<String, Object>> pluginMenus;
         try {
-            pluginMenus = pluginManagementAppService.tenantPluginMenus(tenantId, permissions);
+            pluginMenus = systemPluginViewService.tenantPluginMenus(tenantId, permissions);
         } catch (Throwable throwable) {
             log.warn("Failed to load plugin menus tenantId={}", tenantId, throwable);
             pluginMenus = List.of();

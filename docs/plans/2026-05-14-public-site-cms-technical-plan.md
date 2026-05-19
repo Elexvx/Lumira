@@ -85,7 +85,7 @@ frontend/src/services/site/
 现有后端新增 `site` 模块：
 
 ```text
-backend/src/main/java/com/legendary/invention/saas/modules/site/
+services/system-service/src/main/java/com/legendary/invention/saas/modules/site/
   controller/
   app/
   domain/
@@ -97,7 +97,7 @@ backend/src/main/java/com/legendary/invention/saas/modules/site/
 数据库迁移继续放在：
 
 ```text
-backend/src/main/resources/db/migration/
+services/system-service/src/main/resources/db/migration/
 ```
 
 ## 4. 领域模型设计
@@ -393,7 +393,7 @@ site:submission:review
 
 **涉及文件：**
 
-- 新建：`backend/src/main/resources/db/migration/VXX__create_site_cms_tables.sql`
+- 新建：`services/system-service/src/main/resources/db/migration/VXX__create_site_cms_tables.sql`
 
 **实施步骤：**
 
@@ -406,7 +406,7 @@ site:submission:review
 **验证命令：**
 
 ```bash
-mvn -pl backend spring-boot:run
+mvn -pl services/system-service spring-boot:run
 ```
 
 预期结果：Flyway 可以正常执行新增迁移，没有校验和、SQL 语法或表结构错误。
@@ -415,9 +415,9 @@ mvn -pl backend spring-boot:run
 
 **涉及文件：**
 
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/dto/SiteDTO.java`
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/vo/SiteVO.java`
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/domain/SiteEnums.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/dto/SiteDTO.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/vo/SiteVO.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/domain/SiteEnums.java`
 
 **实施步骤：**
 
@@ -429,7 +429,7 @@ mvn -pl backend spring-boot:run
 **验证命令：**
 
 ```bash
-mvn -pl backend -DskipTests compile
+mvn -pl services/system-service -DskipTests compile
 ```
 
 预期结果：后端可以编译通过。
@@ -438,9 +438,9 @@ mvn -pl backend -DskipTests compile
 
 **涉及文件：**
 
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/app/SiteManagementAppService.java`
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/app/PublicSiteAppService.java`
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/mapper/SiteMapper.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/app/SiteManagementAppService.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/app/PublicSiteAppService.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/mapper/SiteMapper.java`
 
 **实施步骤：**
 
@@ -454,7 +454,7 @@ mvn -pl backend -DskipTests compile
 **验证命令：**
 
 ```bash
-mvn -pl backend -DskipTests compile
+mvn -pl services/system-service -DskipTests compile
 ```
 
 预期结果：后端可以编译通过。
@@ -463,8 +463,8 @@ mvn -pl backend -DskipTests compile
 
 **涉及文件：**
 
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/controller/SiteController.java`
-- 新建：`backend/src/main/java/com/legendary/invention/saas/modules/site/controller/PublicSiteController.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/controller/SiteController.java`
+- 新建：`services/system-service/src/main/java/com/legendary/invention/saas/modules/site/controller/PublicSiteController.java`
 
 **实施步骤：**
 
@@ -477,7 +477,7 @@ mvn -pl backend -DskipTests compile
 **验证命令：**
 
 ```bash
-mvn -pl backend test
+mvn -pl services/system-service test
 ```
 
 预期结果：测试通过。若存在与本次无关的历史失败，需要记录失败项后再继续。
@@ -727,7 +727,7 @@ site:public:{tenantId}:{siteId}:content:{slug}
 冒烟验证命令：
 
 ```bash
-mvn -pl backend test
+mvn -pl services/system-service test
 corepack pnpm --dir frontend typecheck
 corepack pnpm --dir frontend build
 corepack pnpm --dir site-frontend build

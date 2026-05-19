@@ -8,7 +8,6 @@ public class LoginResponseVO {
     private String refreshToken;
     private String tokenType;
     private Long expiresIn;
-    private AuthUserVO user;
     private Boolean requiresSecondFactor;
     private List<SecondFactorOptionVO> secondFactorOptions;
     private Boolean requiresCaptcha;
@@ -43,14 +42,6 @@ public class LoginResponseVO {
 
     public void setExpiresIn(Long expiresIn) {
         this.expiresIn = expiresIn;
-    }
-
-    public AuthUserVO getUser() {
-        return user;
-    }
-
-    public void setUser(AuthUserVO user) {
-        this.user = user;
     }
 
     public Boolean getRequiresSecondFactor() {
