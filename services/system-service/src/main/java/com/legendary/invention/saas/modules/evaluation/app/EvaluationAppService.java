@@ -23,6 +23,8 @@ import java.util.Set;
 @Service
 public class EvaluationAppService {
 
+    private static final long MAX_PAGE_SIZE = 100L;
+
     private final MyBatisQueryOperations jdbcTemplate;
     private final TaskCenterAppService taskCenterAppService;
 
@@ -357,7 +359,7 @@ public class EvaluationAppService {
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
         long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = pageSize <= 0 ? 10 : pageSize;
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize);
         queryParams.add((safePageNo - 1) * safePageSize);

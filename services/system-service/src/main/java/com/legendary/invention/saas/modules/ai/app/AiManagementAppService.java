@@ -30,6 +30,8 @@ import java.util.UUID;
 @Service
 public class AiManagementAppService {
 
+    private static final long MAX_PAGE_SIZE = 100L;
+
     private static final String DEFAULT_SYSTEM_PROMPT_TEMPLATE = """
             你是一名企业级 SaaS 平台中的数字员工。
             你的目标是：基于当前平台的授权范围，稳妥、专业、清晰地完成用户交办的任务。
@@ -1073,7 +1075,7 @@ public class AiManagementAppService {
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
         long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = pageSize <= 0 ? 10 : pageSize;
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long offset = (safePageNo - 1) * safePageSize;
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize);

@@ -43,6 +43,7 @@ public class SystemUserManagementAppService {
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String RESOURCE_SYSTEM_USER = "system:user";
+    private static final long MAX_PAGE_SIZE = 100L;
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
@@ -985,7 +986,7 @@ public class SystemUserManagementAppService {
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
         long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = pageSize <= 0 ? 10 : pageSize;
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long offset = (safePageNo - 1) * safePageSize;
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize);
@@ -1002,7 +1003,7 @@ public class SystemUserManagementAppService {
     }
 
     private <T> PageResponse<T> cursorQuery(String selectSql, Class<T> voClass, long pageSize, List<Object> params) {
-        long safePageSize = pageSize <= 0 ? 10 : Math.min(pageSize, 100);
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize + 1);
         List<T> records = jdbcTemplate.query(selectSql + " limit ?", new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
