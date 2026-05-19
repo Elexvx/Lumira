@@ -32,7 +32,7 @@ backend/.env.*
 *.pid
 *.seed
 output/
-backend/storage/
+services/*/storage/
 
 # Java
 **/target/

@@ -543,7 +543,7 @@ async function main() {
   const tasks = [];
   const reusedEntries = [];
   const backendServices = [
-    { name: 'system-service', port: 8080, healthUrl: 'http://localhost:8080/actuator/health', command: mavenCommand, args: ['-f', 'backend/pom.xml', 'spring-boot:run'] },
+    { name: 'system-service', port: 8080, healthUrl: 'http://localhost:8080/actuator/health', command: mavenCommand, args: ['-f', 'services/system-service/pom.xml', 'spring-boot:run'] },
     { name: 'gateway-service', port: 8081, healthUrl: 'http://localhost:8081/actuator/health', command: mavenCommand, args: ['-f', 'services/gateway-service/pom.xml', 'spring-boot:run'] },
     { name: 'auth-service', port: 8082, healthUrl: 'http://localhost:8082/actuator/health', command: mavenCommand, args: ['-f', 'services/auth-service/pom.xml', 'spring-boot:run'] },
     { name: 'file-service', port: 8084, healthUrl: 'http://localhost:8084/actuator/health', command: mavenCommand, args: ['-f', 'services/file-service/pom.xml', 'spring-boot:run'] },

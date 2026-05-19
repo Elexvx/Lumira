@@ -7,6 +7,7 @@ import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
+import com.legendary.invention.auth.config.SecurityProperties;
 import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.auth.model.AuthSession;
 import com.legendary.invention.auth.support.ClientIpResolver;
@@ -25,12 +26,15 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AuthAppService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthAppService.class);
+    private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final Set<String> UNSAFE_DEFAULT_ADMIN_PASSWORDS = Set.of("123456", "admin", "password");
 
     private final SystemInternalApi systemInternalApi;
     private final LoginEncryptionService loginEncryptionService;
@@ -41,6 +45,7 @@ public class AuthAppService {
     private final SecurityContextFacade securityContextFacade;
     private final ClientIpResolver clientIpResolver;
     private final WechatLoginService wechatLoginService;
+    private final SecurityProperties securityProperties;
 
     public AuthAppService(
             SystemInternalApi systemInternalApi,
@@ -51,7 +56,8 @@ public class AuthAppService {
             PasswordEncoder passwordEncoder,
             SecurityContextFacade securityContextFacade,
             ClientIpResolver clientIpResolver,
-            WechatLoginService wechatLoginService
+            WechatLoginService wechatLoginService,
+            SecurityProperties securityProperties
     ) {
         this.systemInternalApi = systemInternalApi;
         this.loginEncryptionService = loginEncryptionService;
@@ -62,6 +68,7 @@ public class AuthAppService {
         this.securityContextFacade = securityContextFacade;
         this.clientIpResolver = clientIpResolver;
         this.wechatLoginService = wechatLoginService;
+        this.securityProperties = securityProperties;
     }
 
     public LoginEncryptionKeyDTO loginEncryptionKey() {
@@ -109,6 +116,7 @@ public class AuthAppService {
             recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
             throw new BizException(ErrorCode.PASSWORD_ERROR, "登录失败，密码错误: " + user.username(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
+        rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
 
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
 
@@ -118,6 +126,29 @@ public class AuthAppService {
         loginProtectionService.clearFailureState(account, loginIp);
         recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
+    }
+
+    private void rejectUnsafeDefaultAdminLogin(
+            String account,
+            SystemUserSnapshotDTO user,
+            String loginPassword,
+            String loginIp,
+            String userAgent
+    ) {
+        if (securityProperties.isAllowUnsafeDefaultAdminLogin()) {
+            return;
+        }
+        boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
+        if (!adminAccount || !UNSAFE_DEFAULT_ADMIN_PASSWORDS.contains(loginPassword)) {
+            return;
+        }
+        loginProtectionService.recordFailure(account, loginIp);
+        recordLoginAudit(user.userId(), PlatformConstants.PLATFORM_TENANT_ID, user.username(), "PASSWORD", "FAIL", "默认管理员弱密码已禁用", loginIp, userAgent);
+        throw new BizException(
+                ErrorCode.UNAUTHORIZED,
+                "默认管理员弱密码登录已禁用，请通过部署初始化流程重置管理员密码",
+                ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
+        );
     }
 
     @SentinelResource(value = "auth-login-code-challenge", blockHandler = "loginCodeChallengeBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
@@ -391,7 +422,12 @@ public class AuthAppService {
                 session.getSessionId(),
                 snapshot.version(),
                 session.getSessionVersion(),
-                snapshot.permissions()
+                snapshot.permissions(),
+                snapshot.roleIds(),
+                snapshot.primaryDeptId(),
+                snapshot.deptIds(),
+                snapshot.descendantDeptIds(),
+                snapshot.dataScopes()
         );
     }
 

@@ -13,7 +13,7 @@ import { UserEditorForm } from '@/pages/system/users/components/UserEditorForm';
 import { isProtectedAdminAccount } from '@/pages/system/users/constants';
 import { iamService } from '@/services/iam';
 import { userService } from '@/services/user';
-import type { UserDetail, UserRecord } from '@/types/api';
+import type { DepartmentRecord, UserDetail, UserRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
 
 const UserManagementPage = () => {
@@ -24,10 +24,12 @@ const UserManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ label: string; value: number }[]>([]);
   const [roleOptionsLoaded, setRoleOptionsLoaded] = useState(false);
+  const [departmentOptions, setDepartmentOptions] = useState<{ label: string; value: number }[]>([]);
+  const [departmentOptionsLoaded, setDepartmentOptionsLoaded] = useState(false);
   const protectedAdminSelected = isProtectedAdminAccount(drawer.currentRecord);
   const editorFormProps = useStandardFormProps({
     form: editorForm,
-    initialValues: { status: 'ENABLED', roleIds: [] },
+    initialValues: { status: 'ENABLED', roleIds: [], deptIds: [] },
   });
   const detailProps = useDetailProDescriptionsProps<UserDetail>({
     column: responsive.isMobile ? 1 : 2,
@@ -48,12 +50,27 @@ const UserManagementPage = () => {
     setRoleOptionsLoaded(true);
   };
 
+  const flattenDepartments = (departments: DepartmentRecord[], depth = 0): { label: string; value: number }[] =>
+    departments.flatMap((department) => [
+      { label: `${'　'.repeat(depth)}${department.deptName}`, value: department.id },
+      ...flattenDepartments(department.children || [], depth + 1),
+    ]);
+
+  const ensureDepartmentOptionsLoaded = async () => {
+    if (departmentOptionsLoaded) {
+      return;
+    }
+    const result = await iamService.departments({ autoRedirectOnUnauthorized: false });
+    setDepartmentOptions(flattenDepartments(result));
+    setDepartmentOptionsLoaded(true);
+  };
+
   const openCreate = async () => {
     drawer.openCreate();
     editorForm.resetFields();
-    editorForm.setFieldsValue({ status: 'ENABLED', roleIds: [] });
+    editorForm.setFieldsValue({ status: 'ENABLED', roleIds: [], deptIds: [] });
     try {
-      await ensureRoleOptionsLoaded();
+      await Promise.all([ensureRoleOptionsLoaded(), ensureDepartmentOptionsLoaded()]);
     } catch {
       drawer.reset();
     }
@@ -65,11 +82,14 @@ const UserManagementPage = () => {
       const [detailResult] = await Promise.all([
         userService.detail(record.id, { autoRedirectOnUnauthorized: false }),
         ensureRoleOptionsLoaded(),
+        ensureDepartmentOptionsLoaded(),
       ]);
       editorForm.setFieldsValue({
         ...detailResult,
         birthMonth: detailResult.birthMonth ? dayjs(detailResult.birthMonth, 'YYYY-MM') : null,
         roleIds: detailResult.roleIds || [],
+        deptIds: detailResult.deptIds || [],
+        primaryDeptId: detailResult.primaryDeptId || null,
       });
     } catch {
       drawer.reset();
@@ -98,6 +118,8 @@ const UserManagementPage = () => {
         ...values,
         birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
         roleIds: values.roleIds || [],
+        deptIds: values.deptIds || [],
+        primaryDeptId: values.primaryDeptId || values.deptIds?.[0] || null,
       };
 
       if (drawer.editingId) {
@@ -207,6 +229,7 @@ const UserManagementPage = () => {
           formProps={editorFormProps}
           editingId={drawer.editingId}
           roleOptions={roleOptions}
+          departmentOptions={departmentOptions}
           protectedAdminSelected={protectedAdminSelected}
         />
       </ManagementDrawer>

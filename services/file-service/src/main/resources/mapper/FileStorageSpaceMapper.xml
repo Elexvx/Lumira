@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.legendary.invention.file.mapper.FileStorageSpaceMapper">
+
+    <sql id="storageSpaceWithUsage">
+        select s.*,
+               coalesce(files.file_count, 0) as file_count,
+               coalesce(files.total_size_bytes, 0) as total_size_bytes
+        from file_storage_space s
+        left join (
+            select bucket, count(1) as file_count, sum(file_size) as total_size_bytes
+            from file_object
+            where tenant_id = #{tenantId} and deleted = 0
+            group by bucket
+        ) files on files.bucket = s.storage_key
+    </sql>
+
+    <select id="listWithUsage" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+        <include refid="storageSpaceWithUsage"/>
+        where s.tenant_id = #{tenantId}
+          and s.deleted = 0
+        order by s.default_flag desc, s.id asc
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="findDefault" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+        select s.*, 0 as file_count, 0 as total_size_bytes
+        from file_storage_space s
+        where s.tenant_id = #{tenantId}
+          and s.deleted = 0
+        order by s.default_flag desc, s.id asc
+        limit 1
+    </select>
+
+    <select id="findByStorageKey" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+        <include refid="storageSpaceWithUsage"/>
+        where s.tenant_id = #{tenantId}
+          and s.storage_key = #{storageKey}
+          and s.deleted = 0
+    </select>
+
+    <select id="findByIdWithUsage" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+        <include refid="storageSpaceWithUsage"/>
+        where s.tenant_id = #{tenantId}
+          and s.id = #{id}
+          and s.deleted = 0
+    </select>
+
+    <select id="shouldRetainStoredFile" resultType="java.lang.Boolean">
+        select retain_file_on_record_delete
+        from file_storage_space
+        where tenant_id = #{tenantId}
+          and storage_key = #{storageKey}
+          and deleted = 0
+        limit 1
+    </select>
+
+    <select id="findAccessKeySecret" resultType="java.lang.String">
+        select access_key_secret
+        from file_storage_space
+        where id = #{id}
+          and tenant_id = #{tenantId}
+        limit 1
+    </select>
+
+    <update id="clearDefaultStorage">
+        update file_storage_space
+        set default_flag = 0
+        where tenant_id = #{tenantId}
+          and deleted = 0
+    </update>
+
+    <select id="countDefaultStorage" resultType="java.lang.Long">
+        select count(1)
+        from file_storage_space
+        where tenant_id = #{tenantId}
+          and deleted = 0
+          and default_flag = 1
+    </select>
+
+    <update id="ensureFirstDefaultStorage">
+        update file_storage_space
+        set default_flag = 1
+        where tenant_id = #{tenantId}
+          and deleted = 0
+        order by id asc
+        limit 1
+    </update>
+</mapper>

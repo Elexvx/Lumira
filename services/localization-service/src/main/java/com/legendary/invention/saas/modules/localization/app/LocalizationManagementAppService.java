@@ -3,13 +3,27 @@ package com.legendary.invention.saas.modules.localization.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.legendary.invention.common.vo.PageResponse;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.saas.modules.localization.dto.LocalizationDTO;
+import com.legendary.invention.saas.modules.localization.dto.LocalizationQueryModels.EntryQuery;
+import com.legendary.invention.saas.modules.localization.dto.LocalizationQueryModels.RuntimeMessageRow;
+import com.legendary.invention.saas.modules.localization.entity.LocalizationEntities.EntryEntity;
+import com.legendary.invention.saas.modules.localization.entity.LocalizationEntities.LanguageEntity;
+import com.legendary.invention.saas.modules.localization.entity.LocalizationEntities.NamespaceEntity;
+import com.legendary.invention.saas.modules.localization.entity.LocalizationEntities.ReleaseEntity;
+import com.legendary.invention.saas.modules.localization.entity.LocalizationEntities.TranslationEntity;
+import com.legendary.invention.saas.modules.localization.entity.LocalizationEntities.UsageRefEntity;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationEntryMapper;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationLanguageMapper;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationManagementMapper;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationNamespaceMapper;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationReleaseMapper;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationTranslationMapper;
+import com.legendary.invention.saas.modules.localization.mapper.LocalizationUsageRefMapper;
 import com.legendary.invention.saas.modules.localization.vo.LocalizationVO;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -17,8 +31,6 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -52,32 +64,43 @@ public class LocalizationManagementAppService {
             Map.entry("createdAt", "created_at")
     );
 
-    private final JdbcTemplate jdbcTemplate;
+    private final LocalizationLanguageMapper languageMapper;
+    private final LocalizationNamespaceMapper namespaceMapper;
+    private final LocalizationEntryMapper entryMapper;
+    private final LocalizationTranslationMapper translationMapper;
+    private final LocalizationUsageRefMapper usageRefMapper;
+    private final LocalizationReleaseMapper releaseMapper;
+    private final LocalizationManagementMapper localizationManagementMapper;
     private final ObjectMapper objectMapper;
 
-    public LocalizationManagementAppService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
-        this.jdbcTemplate = jdbcTemplate;
+    public LocalizationManagementAppService(
+            LocalizationLanguageMapper languageMapper,
+            LocalizationNamespaceMapper namespaceMapper,
+            LocalizationEntryMapper entryMapper,
+            LocalizationTranslationMapper translationMapper,
+            LocalizationUsageRefMapper usageRefMapper,
+            LocalizationReleaseMapper releaseMapper,
+            LocalizationManagementMapper localizationManagementMapper,
+            ObjectMapper objectMapper
+    ) {
+        this.languageMapper = languageMapper;
+        this.namespaceMapper = namespaceMapper;
+        this.entryMapper = entryMapper;
+        this.translationMapper = translationMapper;
+        this.usageRefMapper = usageRefMapper;
+        this.releaseMapper = releaseMapper;
+        this.localizationManagementMapper = localizationManagementMapper;
         this.objectMapper = objectMapper;
     }
 
     public List<LocalizationVO.LanguageVO> listLanguages() {
-        List<LocalizationVO.LanguageVO> languages = jdbcTemplate.query(
-                """
-                        select
-                          l.id,
-                          l.locale_code as localeCode,
-                          l.language_name as languageName,
-                          l.native_name as nativeName,
-                          l.fallback_locale as fallbackLocale,
-                          l.sort_no as sortNo,
-                          l.status,
-                          l.is_default as defaultLanguage
-                        from sys_localization_language l
-                        where l.deleted = 0
-                        order by l.is_default desc, l.sort_no asc, l.id asc
-                        """,
-                new BeanPropertyRowMapper<>(LocalizationVO.LanguageVO.class)
-        );
+        List<LocalizationVO.LanguageVO> languages = languageMapper.selectList(new QueryWrapper<LanguageEntity>()
+                        .eq("deleted", 0)
+                        .orderByDesc("is_default")
+                        .orderByAsc("sort_no", "id"))
+                .stream()
+                .map(this::mapLanguage)
+                .toList();
         long totalEntries = countEntries();
         for (LocalizationVO.LanguageVO language : languages) {
             enrichLanguageMetrics(language, totalEntries);
@@ -87,22 +110,12 @@ public class LocalizationManagementAppService {
 
     public List<LocalizationVO.NamespaceVO> listNamespaces(String localeCode) {
         String targetLocale = normalizeLocale(localeCode);
-        List<LocalizationVO.NamespaceVO> namespaces = jdbcTemplate.query(
-                """
-                        select
-                          n.id,
-                          n.namespace_code as namespaceCode,
-                          n.namespace_name as namespaceName,
-                          n.source_type as sourceType,
-                          n.source_ref as sourceRef,
-                          n.sort_no as sortNo,
-                          n.status
-                        from sys_localization_namespace n
-                        where n.deleted = 0
-                        order by n.sort_no asc, n.id asc
-                        """,
-                new BeanPropertyRowMapper<>(LocalizationVO.NamespaceVO.class)
-        );
+        List<LocalizationVO.NamespaceVO> namespaces = namespaceMapper.selectList(new QueryWrapper<NamespaceEntity>()
+                        .eq("deleted", 0)
+                        .orderByAsc("sort_no", "id"))
+                .stream()
+                .map(this::mapNamespace)
+                .toList();
         for (LocalizationVO.NamespaceVO namespace : namespaces) {
             enrichNamespaceMetrics(namespace, targetLocale);
         }
@@ -120,87 +133,47 @@ public class LocalizationManagementAppService {
             String sortField,
             String sortOrder
     ) {
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        long safePage = Math.max(1L, pageNo);
         String targetLocale = normalizeLocale(localeCode);
         String fallbackLocale = resolveFallbackLocale(targetLocale);
-        StringBuilder baseSql = new StringBuilder("""
-                from sys_localization_entry e
-                join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
-                left join sys_localization_translation t_target on t_target.entry_id = e.id and t_target.locale_code = ? and t_target.deleted = 0
-                left join sys_localization_translation t_fallback on t_fallback.entry_id = e.id and t_fallback.locale_code = ? and t_fallback.deleted = 0
-                left join (
-                    select entry_id, count(1) as usageCount
-                    from sys_localization_usage_ref
-                    where deleted = 0
-                    group by entry_id
-                ) u on u.entry_id = e.id
-                where e.deleted = 0
-                """);
-        List<Object> params = new ArrayList<>();
-        params.add(targetLocale);
-        params.add(fallbackLocale);
+        EntryQuery query = new EntryQuery();
+        query.setTargetLocale(targetLocale);
+        query.setFallbackLocale(fallbackLocale);
+        query.setLimit(safePageSize);
+        query.setOffset((safePage - 1) * safePageSize);
         if (StringUtils.hasText(namespaceCode)) {
-            baseSql.append(" and n.namespace_code = ?");
-            params.add(namespaceCode.trim());
+            query.setNamespaceCode(namespaceCode.trim());
         }
         if (StringUtils.hasText(keyword)) {
-            baseSql.append(" and (e.message_key like ? or e.default_message like ? or n.namespace_name like ? or e.source_ref like ?)");
-            String likeKeyword = like(keyword);
-            params.add(likeKeyword);
-            params.add(likeKeyword);
-            params.add(likeKeyword);
-            params.add(likeKeyword);
+            query.setKeywordLike(like(keyword));
         }
         if (StringUtils.hasText(status)) {
-            baseSql.append(" and e.status = ?");
-            params.add(status.trim().toUpperCase(Locale.ROOT));
+            query.setStatus(status.trim().toUpperCase(Locale.ROOT));
         }
         if (StringUtils.hasText(translationStatus)) {
             if ("TRANSLATED".equalsIgnoreCase(translationStatus.trim())) {
-                baseSql.append(" and coalesce(t_target.translated_message, t_fallback.translated_message, '') <> ''");
+                query.setTranslationStatus("TRANSLATED");
             } else if ("PENDING".equalsIgnoreCase(translationStatus.trim())) {
-                baseSql.append(" and coalesce(t_target.translated_message, t_fallback.translated_message, '') = ''");
+                query.setTranslationStatus("PENDING");
             }
         }
         String sortColumn = StringUtils.hasText(sortField)
                 ? SORT_COLUMN_MAPPING.getOrDefault(sortField, "e.updated_at")
                 : "e.updated_at";
         String sortDirection = "ascend".equalsIgnoreCase(sortOrder) ? "asc" : "desc";
-        String selectSql = """
-                select
-                  e.id,
-                  n.namespace_code as namespaceCode,
-                  n.namespace_name as namespaceName,
-                  e.message_key as messageKey,
-                  e.default_message as defaultMessage,
-                  e.source_locale as sourceLocale,
-                  e.source_type as sourceType,
-                  e.source_ref as sourceRef,
-                  e.status,
-                  case
-                    when coalesce(t_target.translated_message, t_fallback.translated_message, '') <> '' then 'TRANSLATED'
-                    else 'PENDING'
-                  end as translationStatus,
-                  coalesce(t_target.translated_message, t_fallback.translated_message, '') as currentTranslation,
-                  coalesce(u.usageCount, 0) as usageCount,
-                  e.created_at as createdAt,
-                  e.updated_at as updatedAt
-                """ + baseSql
-                + " order by " + sortColumn + " " + sortDirection
-                + " limit ? offset ?";
+        query.setSortColumn(sortColumn);
+        query.setSortDirection(sortDirection);
 
-        List<Object> pagedParams = new ArrayList<>(params);
-        pagedParams.add(Math.max(1L, pageSize));
-        pagedParams.add(Math.max(0L, pageNo - 1) * Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE)));
-
-        List<LocalizationVO.EntryVO> records = jdbcTemplate.query(selectSql, new BeanPropertyRowMapper<>(LocalizationVO.EntryVO.class), pagedParams.toArray());
-        Long total = jdbcTemplate.queryForObject("select count(1) " + baseSql, Long.class, params.toArray());
+        List<LocalizationVO.EntryVO> records = localizationManagementMapper.listEntries(query);
+        Long total = localizationManagementMapper.countEntries(query);
         Map<Long, Map<String, String>> translationsByEntry = loadTranslationMaps(records.stream().map(LocalizationVO.EntryVO::getId).toList());
         records.forEach(record -> record.setTranslations(translationsByEntry.getOrDefault(record.getId(), Map.of())));
         PageResponse<LocalizationVO.EntryVO> response = new PageResponse<>();
         response.setRecords(records);
         response.setTotal(total == null ? 0L : total);
-        response.setPageNo(pageNo);
-        response.setPageSize(pageSize);
+        response.setPageNo(safePage);
+        response.setPageSize(safePageSize);
         return response;
     }
 
@@ -209,49 +182,51 @@ public class LocalizationManagementAppService {
         String localeCode = normalizeLocale(request.getLocaleCode());
         boolean isDefault = Boolean.TRUE.equals(request.getDefaultLanguage());
         if (isDefault) {
-            jdbcTemplate.update("update sys_localization_language set is_default = 0, updated_by = 0, updated_at = ? where deleted = 0", LocalDateTime.now());
+            languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
+                    .set("is_default", 0)
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("deleted", 0));
         }
 
         Long existingId = id == null ? queryLanguageId(localeCode).orElse(null) : id;
         if (existingId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_localization_language (
-                              locale_code, language_name, native_name, fallback_locale, sort_no, is_default, status, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
-                            """,
-                    localeCode,
-                    request.getLanguageName().trim(),
-                    normalizeText(request.getNativeName()),
-                    normalizeLocaleOrNull(request.getFallbackLocale()),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
-                    isDefault ? 1 : 0,
-                    normalizeStatus(request.getStatus())
-            );
+            LanguageEntity entity = new LanguageEntity();
+            entity.localeCode = localeCode;
+            entity.languageName = request.getLanguageName().trim();
+            entity.nativeName = normalizeText(request.getNativeName());
+            entity.fallbackLocale = normalizeLocaleOrNull(request.getFallbackLocale());
+            entity.sortNo = request.getSortNo() == null ? 0 : request.getSortNo();
+            entity.isDefault = isDefault ? 1 : 0;
+            entity.status = normalizeStatus(request.getStatus());
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            languageMapper.insert(entity);
         } else {
-            jdbcTemplate.update(
-                    """
-                            update sys_localization_language
-                            set locale_code = ?, language_name = ?, native_name = ?, fallback_locale = ?, sort_no = ?, is_default = ?, status = ?, updated_by = 0, updated_at = ?
-                            where id = ? and deleted = 0
-                            """,
-                    localeCode,
-                    request.getLanguageName().trim(),
-                    normalizeText(request.getNativeName()),
-                    normalizeLocaleOrNull(request.getFallbackLocale()),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
-                    isDefault ? 1 : 0,
-                    normalizeStatus(request.getStatus()),
-                    LocalDateTime.now(),
-                    existingId
-            );
+            languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
+                    .set("locale_code", localeCode)
+                    .set("language_name", request.getLanguageName().trim())
+                    .set("native_name", normalizeText(request.getNativeName()))
+                    .set("fallback_locale", normalizeLocaleOrNull(request.getFallbackLocale()))
+                    .set("sort_no", request.getSortNo() == null ? 0 : request.getSortNo())
+                    .set("is_default", isDefault ? 1 : 0)
+                    .set("status", normalizeStatus(request.getStatus()))
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("id", existingId)
+                    .eq("deleted", 0));
         }
         return getLanguage(localeCode);
     }
 
     @Transactional
     public void deleteLanguage(Long id) {
-        jdbcTemplate.update("update sys_localization_language set deleted = 1, updated_by = 0, updated_at = ? where id = ?", LocalDateTime.now(), id);
+        languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
+                .set("deleted", 1)
+                .set("updated_by", 0)
+                .set("updated_at", LocalDateTime.now())
+                .eq("id", id));
     }
 
     @Transactional
@@ -259,42 +234,40 @@ public class LocalizationManagementAppService {
         String namespaceCode = request.getNamespaceCode().trim();
         Long existingId = id == null ? queryNamespaceId(namespaceCode).orElse(null) : id;
         if (existingId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_localization_namespace (
-                              namespace_code, namespace_name, source_type, source_ref, sort_no, status, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, 0, 0, 0)
-                            """,
-                    namespaceCode,
-                    request.getNamespaceName().trim(),
-                    normalizeSourceType(request.getSourceType()),
-                    normalizeText(request.getSourceRef()),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
-                    normalizeStatus(request.getStatus())
-            );
+            NamespaceEntity entity = new NamespaceEntity();
+            entity.namespaceCode = namespaceCode;
+            entity.namespaceName = request.getNamespaceName().trim();
+            entity.sourceType = normalizeSourceType(request.getSourceType());
+            entity.sourceRef = normalizeText(request.getSourceRef());
+            entity.sortNo = request.getSortNo() == null ? 0 : request.getSortNo();
+            entity.status = normalizeStatus(request.getStatus());
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            namespaceMapper.insert(entity);
         } else {
-            jdbcTemplate.update(
-                    """
-                            update sys_localization_namespace
-                            set namespace_code = ?, namespace_name = ?, source_type = ?, source_ref = ?, sort_no = ?, status = ?, updated_by = 0, updated_at = ?
-                            where id = ? and deleted = 0
-                            """,
-                    namespaceCode,
-                    request.getNamespaceName().trim(),
-                    normalizeSourceType(request.getSourceType()),
-                    normalizeText(request.getSourceRef()),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
-                    normalizeStatus(request.getStatus()),
-                    LocalDateTime.now(),
-                    existingId
-            );
+            namespaceMapper.update(null, new UpdateWrapper<NamespaceEntity>()
+                    .set("namespace_code", namespaceCode)
+                    .set("namespace_name", request.getNamespaceName().trim())
+                    .set("source_type", normalizeSourceType(request.getSourceType()))
+                    .set("source_ref", normalizeText(request.getSourceRef()))
+                    .set("sort_no", request.getSortNo() == null ? 0 : request.getSortNo())
+                    .set("status", normalizeStatus(request.getStatus()))
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("id", existingId)
+                    .eq("deleted", 0));
         }
         return getNamespace(namespaceCode);
     }
 
     @Transactional
     public void deleteNamespace(Long id) {
-        jdbcTemplate.update("update sys_localization_namespace set deleted = 1, updated_by = 0, updated_at = ? where id = ?", LocalDateTime.now(), id);
+        namespaceMapper.update(null, new UpdateWrapper<NamespaceEntity>()
+                .set("deleted", 1)
+                .set("updated_by", 0)
+                .set("updated_at", LocalDateTime.now())
+                .eq("id", id));
     }
 
     @Transactional
@@ -304,9 +277,22 @@ public class LocalizationManagementAppService {
 
     @Transactional
     public void deleteEntry(Long id) {
-        jdbcTemplate.update("update sys_localization_entry set deleted = 1, updated_by = 0, updated_at = ? where id = ?", LocalDateTime.now(), id);
-        jdbcTemplate.update("update sys_localization_translation set deleted = 1, updated_by = 0, updated_at = ? where entry_id = ?", LocalDateTime.now(), id);
-        jdbcTemplate.update("update sys_localization_usage_ref set deleted = 1, updated_by = 0, updated_at = ? where entry_id = ?", LocalDateTime.now(), id);
+        LocalDateTime now = LocalDateTime.now();
+        entryMapper.update(null, new UpdateWrapper<EntryEntity>()
+                .set("deleted", 1)
+                .set("updated_by", 0)
+                .set("updated_at", now)
+                .eq("id", id));
+        translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                .set("deleted", 1)
+                .set("updated_by", 0)
+                .set("updated_at", now)
+                .eq("entry_id", id));
+        usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
+                .set("deleted", 1)
+                .set("updated_by", 0)
+                .set("updated_at", now)
+                .eq("entry_id", id));
     }
 
     @Transactional
@@ -332,24 +318,13 @@ public class LocalizationManagementAppService {
 
     public List<LocalizationVO.ReleaseVO> listReleases(String localeCode) {
         String targetLocale = normalizeLocale(localeCode);
-        return jdbcTemplate.query(
-                """
-                        select
-                          id,
-                          locale_code as localeCode,
-                          release_version as releaseVersion,
-                          fallback_locale as fallbackLocale,
-                          note,
-                          active_flag as active,
-                          published_by as publishedBy,
-                          published_at as publishedAt
-                        from sys_localization_release
-                        where deleted = 0 and locale_code = ?
-                        order by release_version desc, id desc
-                        """,
-                new BeanPropertyRowMapper<>(LocalizationVO.ReleaseVO.class),
-                targetLocale
-        );
+        return releaseMapper.selectList(new QueryWrapper<ReleaseEntity>()
+                        .eq("deleted", 0)
+                        .eq("locale_code", targetLocale)
+                        .orderByDesc("release_version", "id"))
+                .stream()
+                .map(this::mapRelease)
+                .toList();
     }
 
     @Transactional
@@ -361,24 +336,27 @@ public class LocalizationManagementAppService {
         bundle.setReleaseVersion(nextVersion);
 
         try {
-            jdbcTemplate.update("update sys_localization_release set active_flag = 0, updated_by = ?, updated_at = ? where deleted = 0 and locale_code = ?", currentUser.getUserId(), LocalDateTime.now(), localeCode);
+            LocalDateTime now = LocalDateTime.now();
+            releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
+                    .set("active_flag", 0)
+                    .set("updated_by", currentUser.getUserId())
+                    .set("updated_at", now)
+                    .eq("deleted", 0)
+                    .eq("locale_code", localeCode));
             String bundleJson = objectMapper.writeValueAsString(bundle);
-            jdbcTemplate.update(
-                    """
-                            insert into sys_localization_release (
-                              locale_code, release_version, fallback_locale, bundle_json, note, active_flag, published_by, published_at, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 0)
-                            """,
-                    localeCode,
-                    nextVersion,
-                    fallbackLocale,
-                    bundleJson,
-                    StringUtils.hasText(request.getNote()) ? request.getNote().trim() : DEFAULT_RELEASE_NOTE,
-                    currentUser.getUserId(),
-                    LocalDateTime.now(),
-                    currentUser.getUserId(),
-                    LocalDateTime.now()
-            );
+            ReleaseEntity release = new ReleaseEntity();
+            release.localeCode = localeCode;
+            release.releaseVersion = nextVersion;
+            release.fallbackLocale = fallbackLocale;
+            release.bundleJson = bundleJson;
+            release.note = StringUtils.hasText(request.getNote()) ? request.getNote().trim() : DEFAULT_RELEASE_NOTE;
+            release.activeFlag = 1;
+            release.publishedBy = currentUser.getUserId();
+            release.publishedAt = now;
+            release.createdBy = currentUser.getUserId();
+            release.updatedBy = currentUser.getUserId();
+            release.deleted = 0;
+            releaseMapper.insert(release);
         } catch (JsonProcessingException error) {
             throw new IllegalStateException("本地化发布失败", error);
         }
@@ -392,8 +370,19 @@ public class LocalizationManagementAppService {
         if (release == null) {
             throw new IllegalArgumentException("发布版本不存在");
         }
-        jdbcTemplate.update("update sys_localization_release set active_flag = 0, updated_by = ?, updated_at = ? where deleted = 0 and locale_code = ?", currentUser.getUserId(), LocalDateTime.now(), release.getLocaleCode());
-        jdbcTemplate.update("update sys_localization_release set active_flag = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0", currentUser.getUserId(), LocalDateTime.now(), request.getReleaseId());
+        LocalDateTime now = LocalDateTime.now();
+        releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
+                .set("active_flag", 0)
+                .set("updated_by", currentUser.getUserId())
+                .set("updated_at", now)
+                .eq("deleted", 0)
+                .eq("locale_code", release.getLocaleCode()));
+        releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
+                .set("active_flag", 1)
+                .set("updated_by", currentUser.getUserId())
+                .set("updated_at", now)
+                .eq("id", request.getReleaseId())
+                .eq("deleted", 0));
         return getRelease(request.getReleaseId());
     }
 
@@ -408,38 +397,32 @@ public class LocalizationManagementAppService {
         String key = request.getMessageKey().trim();
         Long entryId = request.getId() != null ? request.getId() : queryEntryId(namespaceId, key).orElse(null);
         if (entryId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_localization_entry (
-                              namespace_id, message_key, default_message, source_locale, source_type, source_ref, status, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
-                            """,
-                    namespaceId,
-                    key,
-                    request.getDefaultMessage().trim(),
-                    normalizeLocale(request.getSourceLocale()),
-                    normalizeSourceType(request.getSourceType()),
-                    normalizeText(request.getSourceRef()),
-                    normalizeStatus(request.getStatus())
-            );
-            entryId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+            EntryEntity entity = new EntryEntity();
+            entity.namespaceId = namespaceId;
+            entity.messageKey = key;
+            entity.defaultMessage = request.getDefaultMessage().trim();
+            entity.sourceLocale = normalizeLocale(request.getSourceLocale());
+            entity.sourceType = normalizeSourceType(request.getSourceType());
+            entity.sourceRef = normalizeText(request.getSourceRef());
+            entity.status = normalizeStatus(request.getStatus());
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            entryMapper.insert(entity);
+            entryId = entity.id;
         } else {
-            jdbcTemplate.update(
-                    """
-                            update sys_localization_entry
-                            set namespace_id = ?, message_key = ?, default_message = ?, source_locale = ?, source_type = ?, source_ref = ?, status = ?, updated_by = 0, updated_at = ?
-                            where id = ? and deleted = 0
-                            """,
-                    namespaceId,
-                    key,
-                    request.getDefaultMessage().trim(),
-                    normalizeLocale(request.getSourceLocale()),
-                    normalizeSourceType(request.getSourceType()),
-                    normalizeText(request.getSourceRef()),
-                    normalizeStatus(request.getStatus()),
-                    LocalDateTime.now(),
-                    entryId
-            );
+            entryMapper.update(null, new UpdateWrapper<EntryEntity>()
+                    .set("namespace_id", namespaceId)
+                    .set("message_key", key)
+                    .set("default_message", request.getDefaultMessage().trim())
+                    .set("source_locale", normalizeLocale(request.getSourceLocale()))
+                    .set("source_type", normalizeSourceType(request.getSourceType()))
+                    .set("source_ref", normalizeText(request.getSourceRef()))
+                    .set("status", normalizeStatus(request.getStatus()))
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("id", entryId)
+                    .eq("deleted", 0));
         }
 
         upsertUsageRef(entryId, request.getSourceType(), request.getSourceRef(), request.getDefaultMessage());
@@ -474,29 +457,25 @@ public class LocalizationManagementAppService {
 
         Long translationId = queryTranslationId(entryId, normalizedLocale).orElse(null);
         if (translationId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_localization_translation (
-                              entry_id, locale_code, translated_message, translation_status, machine_generated, review_status, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 0, 'PENDING', 0, 0, 0)
-                            """,
-                    entryId,
-                    normalizedLocale,
-                    value,
-                    DEFAULT_TRANSLATION_STATUS
-            );
+            TranslationEntity entity = new TranslationEntity();
+            entity.entryId = entryId;
+            entity.localeCode = normalizedLocale;
+            entity.translatedMessage = value;
+            entity.translationStatus = DEFAULT_TRANSLATION_STATUS;
+            entity.machineGenerated = 0;
+            entity.reviewStatus = "PENDING";
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            translationMapper.insert(entity);
         } else {
-            jdbcTemplate.update(
-                    """
-                            update sys_localization_translation
-                            set translated_message = ?, translation_status = ?, updated_by = 0, updated_at = ?
-                            where id = ? and deleted = 0
-                            """,
-                    value,
-                    DEFAULT_TRANSLATION_STATUS,
-                    LocalDateTime.now(),
-                    translationId
-            );
+            translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                    .set("translated_message", value)
+                    .set("translation_status", DEFAULT_TRANSLATION_STATUS)
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("id", translationId)
+                    .eq("deleted", 0));
         }
     }
 
@@ -506,31 +485,25 @@ public class LocalizationManagementAppService {
         }
         Long usageId = queryUsageRefId(entryId, normalizeSourceType(sourceType), sourceRef.trim(), null).orElse(null);
         if (usageId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_localization_usage_ref (
-                              entry_id, source_type, source_ref, source_line, source_text, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, 0, 0, 0)
-                            """,
-                    entryId,
-                    normalizeSourceType(sourceType),
-                    sourceRef.trim(),
-                    null,
-                    sourceText
-            );
+            UsageRefEntity entity = new UsageRefEntity();
+            entity.entryId = entryId;
+            entity.sourceType = normalizeSourceType(sourceType);
+            entity.sourceRef = sourceRef.trim();
+            entity.sourceLine = null;
+            entity.sourceText = sourceText;
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            usageRefMapper.insert(entity);
             return;
         }
 
-        jdbcTemplate.update(
-                """
-                        update sys_localization_usage_ref
-                        set source_text = ?, updated_by = 0, updated_at = ?
-                        where id = ? and deleted = 0
-                        """,
-                sourceText,
-                LocalDateTime.now(),
-                usageId
-        );
+        usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
+                .set("source_text", sourceText)
+                .set("updated_by", 0)
+                .set("updated_at", LocalDateTime.now())
+                .eq("id", usageId)
+                .eq("deleted", 0));
     }
 
     private LocalizationVO.RuntimeBundleVO buildRuntimeBundle(String localeCode) {
@@ -544,12 +517,9 @@ public class LocalizationManagementAppService {
         if (release != null) {
             bundle.setReleaseVersion(release.getReleaseVersion());
             try {
+                ReleaseEntity releaseEntity = releaseMapper.selectById(release.getId());
                 LocalizationVO.RuntimeBundleVO storedBundle = objectMapper.readValue(
-                        jdbcTemplate.queryForObject(
-                                "select bundle_json from sys_localization_release where id = ? and deleted = 0",
-                                String.class,
-                                release.getId()
-                        ),
+                        releaseEntity == null ? null : releaseEntity.bundleJson,
                         LocalizationVO.RuntimeBundleVO.class
                 );
                 if (storedBundle != null && storedBundle.getMessages() != null && !storedBundle.getMessages().isEmpty()) {
@@ -566,29 +536,13 @@ public class LocalizationManagementAppService {
     }
 
     private Map<String, String> loadRuntimeMessages(String localeCode, String fallbackLocale) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select
-                          e.message_key as messageKey,
-                          e.default_message as defaultMessage,
-                          t_target.translated_message as targetMessage,
-                          t_fallback.translated_message as fallbackMessage
-                        from sys_localization_entry e
-                        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
-                        left join sys_localization_translation t_target on t_target.entry_id = e.id and t_target.locale_code = ? and t_target.deleted = 0
-                        left join sys_localization_translation t_fallback on t_fallback.entry_id = e.id and t_fallback.locale_code = ? and t_fallback.deleted = 0
-                        where e.deleted = 0 and e.status = 'ENABLED'
-                        order by n.sort_no asc, e.id asc
-                        """,
-                localeCode,
-                fallbackLocale
-        );
+        List<RuntimeMessageRow> rows = localizationManagementMapper.listRuntimeMessages(localeCode, fallbackLocale);
         Map<String, String> messages = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = stringValue(row.get("messageKey"));
-            String defaultMessage = stringValue(row.get("defaultMessage"));
-            String targetMessage = stringValue(row.get("targetMessage"));
-            String fallbackMessage = stringValue(row.get("fallbackMessage"));
+        for (RuntimeMessageRow row : rows) {
+            String key = row.getMessageKey();
+            String defaultMessage = row.getDefaultMessage();
+            String targetMessage = row.getTargetMessage();
+            String fallbackMessage = row.getFallbackMessage();
             String resolved = StringUtils.hasText(targetMessage)
                     ? targetMessage
                     : (StringUtils.hasText(fallbackMessage) ? fallbackMessage : (StringUtils.hasText(defaultMessage) ? defaultMessage : key));
@@ -618,320 +572,218 @@ public class LocalizationManagementAppService {
                 .divide(BigDecimal.valueOf(entryCount), 2, RoundingMode.HALF_UP));
     }
 
+    private LocalizationVO.LanguageVO mapLanguage(LanguageEntity entity) {
+        LocalizationVO.LanguageVO vo = new LocalizationVO.LanguageVO();
+        vo.setId(entity.id);
+        vo.setLocaleCode(entity.localeCode);
+        vo.setLanguageName(entity.languageName);
+        vo.setNativeName(entity.nativeName);
+        vo.setFallbackLocale(entity.fallbackLocale);
+        vo.setSortNo(entity.sortNo);
+        vo.setStatus(entity.status);
+        vo.setDefaultLanguage(entity.isDefault != null && entity.isDefault == 1);
+        return vo;
+    }
+
+    private LocalizationVO.NamespaceVO mapNamespace(NamespaceEntity entity) {
+        LocalizationVO.NamespaceVO vo = new LocalizationVO.NamespaceVO();
+        vo.setId(entity.id);
+        vo.setNamespaceCode(entity.namespaceCode);
+        vo.setNamespaceName(entity.namespaceName);
+        vo.setSourceType(entity.sourceType);
+        vo.setSourceRef(entity.sourceRef);
+        vo.setSortNo(entity.sortNo);
+        vo.setStatus(entity.status);
+        return vo;
+    }
+
+    private LocalizationVO.ReleaseVO mapRelease(ReleaseEntity entity) {
+        LocalizationVO.ReleaseVO vo = new LocalizationVO.ReleaseVO();
+        vo.setId(entity.id);
+        vo.setLocaleCode(entity.localeCode);
+        vo.setReleaseVersion(entity.releaseVersion);
+        vo.setFallbackLocale(entity.fallbackLocale);
+        vo.setNote(entity.note);
+        vo.setActive(entity.activeFlag != null && entity.activeFlag == 1);
+        vo.setPublishedBy(entity.publishedBy);
+        vo.setPublishedAt(entity.publishedAt);
+        return vo;
+    }
+
     private Optional<Long> queryLanguageId(String localeCode) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    "select id from sys_localization_language where locale_code = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    localeCode
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
-        }
+        LanguageEntity entity = languageMapper.selectOne(new QueryWrapper<LanguageEntity>()
+                .select("id")
+                .eq("locale_code", localeCode)
+                .eq("deleted", 0)
+                .orderByDesc("id")
+                .last("limit 1"));
+        return Optional.ofNullable(entity == null ? null : entity.id);
     }
 
     private Optional<Long> queryNamespaceId(String namespaceCode) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    "select id from sys_localization_namespace where namespace_code = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    namespaceCode
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
-        }
+        NamespaceEntity entity = namespaceMapper.selectOne(new QueryWrapper<NamespaceEntity>()
+                .select("id")
+                .eq("namespace_code", namespaceCode)
+                .eq("deleted", 0)
+                .orderByDesc("id")
+                .last("limit 1"));
+        return Optional.ofNullable(entity == null ? null : entity.id);
     }
 
     private Optional<Long> queryEntryId(Long namespaceId, String messageKey) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    "select id from sys_localization_entry where namespace_id = ? and message_key = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    namespaceId,
-                    messageKey
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
-        }
+        EntryEntity entity = entryMapper.selectOne(new QueryWrapper<EntryEntity>()
+                .select("id")
+                .eq("namespace_id", namespaceId)
+                .eq("message_key", messageKey)
+                .eq("deleted", 0)
+                .orderByDesc("id")
+                .last("limit 1"));
+        return Optional.ofNullable(entity == null ? null : entity.id);
     }
 
     private Optional<Long> queryTranslationId(Long entryId, String localeCode) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    "select id from sys_localization_translation where entry_id = ? and locale_code = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    entryId,
-                    localeCode
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
-        }
+        TranslationEntity entity = translationMapper.selectOne(new QueryWrapper<TranslationEntity>()
+                .select("id")
+                .eq("entry_id", entryId)
+                .eq("locale_code", localeCode)
+                .eq("deleted", 0)
+                .orderByDesc("id")
+                .last("limit 1"));
+        return Optional.ofNullable(entity == null ? null : entity.id);
     }
 
     private Optional<Long> queryUsageRefId(Long entryId, String sourceType, String sourceRef, Integer sourceLine) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    """
-                            select id from sys_localization_usage_ref
-                            where entry_id = ? and source_type = ? and source_ref = ? and ((source_line is null and ? is null) or source_line = ?)
-                              and deleted = 0
-                            order by id desc limit 1
-                            """,
-                    Long.class,
-                    entryId,
-                    sourceType,
-                    sourceRef,
-                    sourceLine,
-                    sourceLine
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
+        QueryWrapper<UsageRefEntity> queryWrapper = new QueryWrapper<UsageRefEntity>()
+                .select("id")
+                .eq("entry_id", entryId)
+                .eq("source_type", sourceType)
+                .eq("source_ref", sourceRef)
+                .eq("deleted", 0)
+                .orderByDesc("id")
+                .last("limit 1");
+        if (sourceLine == null) {
+            queryWrapper.isNull("source_line");
+        } else {
+            queryWrapper.eq("source_line", sourceLine);
         }
+        UsageRefEntity entity = usageRefMapper.selectOne(queryWrapper);
+        return Optional.ofNullable(entity == null ? null : entity.id);
     }
 
     private LocalizationVO.LanguageVO getLanguage(String localeCode) {
-        return jdbcTemplate.queryForObject(
-                """
-                        select
-                          id,
-                          locale_code as localeCode,
-                          language_name as languageName,
-                          native_name as nativeName,
-                          fallback_locale as fallbackLocale,
-                          sort_no as sortNo,
-                          status,
-                          is_default as defaultLanguage
-                        from sys_localization_language
-                        where locale_code = ? and deleted = 0
-                        """,
-                new BeanPropertyRowMapper<>(LocalizationVO.LanguageVO.class),
-                localeCode
-        );
+        LanguageEntity entity = languageMapper.selectOne(new QueryWrapper<LanguageEntity>()
+                .eq("locale_code", localeCode)
+                .eq("deleted", 0)
+                .last("limit 1"));
+        return mapLanguage(entity);
     }
 
     private LocalizationVO.NamespaceVO getNamespace(String namespaceCode) {
-        return jdbcTemplate.queryForObject(
-                """
-                        select
-                          id,
-                          namespace_code as namespaceCode,
-                          namespace_name as namespaceName,
-                          source_type as sourceType,
-                          source_ref as sourceRef,
-                          sort_no as sortNo,
-                          status
-                        from sys_localization_namespace
-                        where namespace_code = ? and deleted = 0
-                        """,
-                new BeanPropertyRowMapper<>(LocalizationVO.NamespaceVO.class),
-                namespaceCode
-        );
+        NamespaceEntity entity = namespaceMapper.selectOne(new QueryWrapper<NamespaceEntity>()
+                .eq("namespace_code", namespaceCode)
+                .eq("deleted", 0)
+                .last("limit 1"));
+        return mapNamespace(entity);
     }
 
     private LocalizationVO.EntryVO getEntry(Long entryId, String localeCode) {
         String fallbackLocale = resolveFallbackLocale(localeCode);
-        return jdbcTemplate.queryForObject(
-                """
-                        select
-                          e.id,
-                          n.namespace_code as namespaceCode,
-                          n.namespace_name as namespaceName,
-                          e.message_key as messageKey,
-                          e.default_message as defaultMessage,
-                          e.source_locale as sourceLocale,
-                          e.source_type as sourceType,
-                          e.source_ref as sourceRef,
-                          e.status,
-                          case
-                            when coalesce(t_target.translated_message, t_fallback.translated_message, '') <> '' then 'TRANSLATED'
-                            else 'PENDING'
-                          end as translationStatus,
-                          coalesce(t_target.translated_message, t_fallback.translated_message, '') as currentTranslation,
-                          coalesce(u.usageCount, 0) as usageCount,
-                          e.created_at as createdAt,
-                          e.updated_at as updatedAt
-                        from sys_localization_entry e
-                        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
-                        left join sys_localization_translation t_target on t_target.entry_id = e.id and t_target.locale_code = ? and t_target.deleted = 0
-                        left join sys_localization_translation t_fallback on t_fallback.entry_id = e.id and t_fallback.locale_code = ? and t_fallback.deleted = 0
-                        left join (
-                            select entry_id, count(1) as usageCount
-                            from sys_localization_usage_ref
-                            where deleted = 0
-                            group by entry_id
-                        ) u on u.entry_id = e.id
-                        where e.id = ? and e.deleted = 0
-                        """,
-                new BeanPropertyRowMapper<>(LocalizationVO.EntryVO.class),
-                localeCode,
-                fallbackLocale,
-                entryId
-        );
+        return localizationManagementMapper.findEntry(entryId, localeCode, fallbackLocale);
     }
 
     private LocalizationVO.ReleaseVO getRelease(Long releaseId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select
-                              id,
-                              locale_code as localeCode,
-                              release_version as releaseVersion,
-                              fallback_locale as fallbackLocale,
-                              note,
-                              active_flag as active,
-                              published_by as publishedBy,
-                              published_at as publishedAt
-                            from sys_localization_release
-                            where id = ? and deleted = 0
-                            """,
-                    new BeanPropertyRowMapper<>(LocalizationVO.ReleaseVO.class),
-                    releaseId
-            );
-        } catch (EmptyResultDataAccessException error) {
-            return null;
-        }
+        ReleaseEntity entity = releaseMapper.selectOne(new QueryWrapper<ReleaseEntity>()
+                .eq("id", releaseId)
+                .eq("deleted", 0)
+                .last("limit 1"));
+        return entity == null ? null : mapRelease(entity);
     }
 
     private LocalizationVO.ReleaseVO getActiveRelease(String localeCode) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select
-                              id,
-                              locale_code as localeCode,
-                              release_version as releaseVersion,
-                              fallback_locale as fallbackLocale,
-                              note,
-                              active_flag as active,
-                              published_by as publishedBy,
-                              published_at as publishedAt
-                            from sys_localization_release
-                            where locale_code = ? and active_flag = 1 and deleted = 0
-                            order by release_version desc, id desc
-                            limit 1
-                            """,
-                    new BeanPropertyRowMapper<>(LocalizationVO.ReleaseVO.class),
-                    localeCode
-            );
-        } catch (EmptyResultDataAccessException error) {
-            return null;
-        }
+        ReleaseEntity entity = releaseMapper.selectOne(new QueryWrapper<ReleaseEntity>()
+                .eq("locale_code", localeCode)
+                .eq("active_flag", 1)
+                .eq("deleted", 0)
+                .orderByDesc("release_version", "id")
+                .last("limit 1"));
+        return entity == null ? null : mapRelease(entity);
     }
 
     private Optional<Long> getActiveReleaseVersion(String localeCode) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    "select release_version from sys_localization_release where locale_code = ? and active_flag = 1 and deleted = 0 order by release_version desc, id desc limit 1",
-                    Long.class,
-                    localeCode
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
-        }
+        ReleaseEntity entity = releaseMapper.selectOne(new QueryWrapper<ReleaseEntity>()
+                .select("release_version")
+                .eq("locale_code", localeCode)
+                .eq("active_flag", 1)
+                .eq("deleted", 0)
+                .orderByDesc("release_version", "id")
+                .last("limit 1"));
+        return Optional.ofNullable(entity == null ? null : entity.releaseVersion);
     }
 
     private Optional<LocalDateTime> getLastPublishedAt(String localeCode) {
-        try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(
-                    "select published_at from sys_localization_release where locale_code = ? and deleted = 0 order by published_at desc, id desc limit 1",
-                    LocalDateTime.class,
-                    localeCode
-            ));
-        } catch (EmptyResultDataAccessException error) {
-            return Optional.empty();
-        }
+        ReleaseEntity entity = releaseMapper.selectOne(new QueryWrapper<ReleaseEntity>()
+                .select("published_at")
+                .eq("locale_code", localeCode)
+                .eq("deleted", 0)
+                .orderByDesc("published_at", "id")
+                .last("limit 1"));
+        return Optional.ofNullable(entity == null ? null : entity.publishedAt);
     }
 
     private long nextReleaseVersion(String localeCode) {
-        Long current = jdbcTemplate.queryForObject(
-                "select coalesce(max(release_version), 0) from sys_localization_release where locale_code = ? and deleted = 0",
-                Long.class,
-                localeCode
-        );
-        return (current == null ? 0L : current) + 1L;
+        ReleaseEntity entity = releaseMapper.selectOne(new QueryWrapper<ReleaseEntity>()
+                .select("release_version")
+                .eq("locale_code", localeCode)
+                .eq("deleted", 0)
+                .orderByDesc("release_version")
+                .last("limit 1"));
+        return (entity == null || entity.releaseVersion == null ? 0L : entity.releaseVersion) + 1L;
     }
 
     private long countEntries() {
-        Long count = jdbcTemplate.queryForObject("select count(1) from sys_localization_entry where deleted = 0", Long.class);
-        return count == null ? 0L : count;
+        return count(entryMapper.selectCount(new QueryWrapper<EntryEntity>().eq("deleted", 0)));
     }
 
     private long countNamespaces() {
-        Long count = jdbcTemplate.queryForObject("select count(1) from sys_localization_namespace where deleted = 0", Long.class);
-        return count == null ? 0L : count;
+        return count(namespaceMapper.selectCount(new QueryWrapper<NamespaceEntity>().eq("deleted", 0)));
     }
 
     private long countTranslations() {
-        Long count = jdbcTemplate.queryForObject("select count(1) from sys_localization_translation where deleted = 0", Long.class);
-        return count == null ? 0L : count;
+        return count(translationMapper.selectCount(new QueryWrapper<TranslationEntity>().eq("deleted", 0)));
     }
 
     private long countUsageRefs() {
-        Long count = jdbcTemplate.queryForObject("select count(1) from sys_localization_usage_ref where deleted = 0", Long.class);
+        return count(usageRefMapper.selectCount(new QueryWrapper<UsageRefEntity>().eq("deleted", 0)));
+    }
+
+    private long count(Long count) {
         return count == null ? 0L : count;
     }
 
     private long countTranslations(String localeCode) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_localization_entry e
-                        left join sys_localization_translation t on t.entry_id = e.id and t.locale_code = ? and t.deleted = 0
-                        where e.deleted = 0 and coalesce(t.translated_message, '') <> ''
-                        """,
-                Long.class,
-                localeCode
-        );
+        Long count = localizationManagementMapper.countTranslatedEntries(localeCode);
         return count == null ? 0L : count;
     }
 
     private long countEntriesByNamespace(String namespaceCode) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_localization_entry e
-                        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
-                        where e.deleted = 0 and n.namespace_code = ?
-                        """,
-                Long.class,
-                namespaceCode
-        );
+        Long count = localizationManagementMapper.countEntriesByNamespace(namespaceCode);
         return count == null ? 0L : count;
     }
 
     private long countTranslationsByNamespace(String namespaceCode, String localeCode) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_localization_entry e
-                        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
-                        left join sys_localization_translation t on t.entry_id = e.id and t.locale_code = ? and t.deleted = 0
-                        where e.deleted = 0 and n.namespace_code = ? and coalesce(t.translated_message, '') <> ''
-                        """,
-                Long.class,
-                localeCode,
-                namespaceCode
-        );
+        Long count = localizationManagementMapper.countTranslatedEntriesByNamespace(namespaceCode, localeCode);
         return count == null ? 0L : count;
     }
 
     private Map<String, String> loadTranslationMap(Long entryId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select locale_code as localeCode, translated_message as translatedMessage
-                        from sys_localization_translation
-                        where entry_id = ? and deleted = 0
-                        order by locale_code asc
-                        """,
-                entryId
-        );
         Map<String, String> translations = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String locale = stringValue(row.get("localeCode"));
-            String translation = stringValue(row.get("translatedMessage"));
-            if (StringUtils.hasText(locale) && StringUtils.hasText(translation)) {
-                translations.put(locale, translation);
+        List<TranslationEntity> entities = translationMapper.selectList(new QueryWrapper<TranslationEntity>()
+                .eq("entry_id", entryId)
+                .eq("deleted", 0)
+                .orderByAsc("locale_code"));
+        for (TranslationEntity entity : entities) {
+            if (StringUtils.hasText(entity.localeCode) && StringUtils.hasText(entity.translatedMessage)) {
+                translations.put(entity.localeCode, entity.translatedMessage);
             }
         }
         return translations;
@@ -942,26 +794,17 @@ public class LocalizationManagementAppService {
         if (distinctEntryIds.isEmpty()) {
             return Map.of();
         }
-        String placeholders = String.join(", ", Collections.nCopies(distinctEntryIds.size(), "?"));
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select entry_id as entryId, locale_code as localeCode, translated_message as translatedMessage
-                        from sys_localization_translation
-                        where entry_id in (%s) and deleted = 0
-                        order by entry_id asc, locale_code asc
-                        """.formatted(placeholders),
-                distinctEntryIds.toArray()
-        );
+        List<TranslationEntity> entities = translationMapper.selectList(new QueryWrapper<TranslationEntity>()
+                .in("entry_id", distinctEntryIds)
+                .eq("deleted", 0)
+                .orderByAsc("entry_id", "locale_code"));
         Map<Long, Map<String, String>> result = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            Long entryId = longValue(row.get("entryId"));
-            if (entryId == null) {
+        for (TranslationEntity entity : entities) {
+            if (entity.entryId == null) {
                 continue;
             }
-            String locale = stringValue(row.get("localeCode"));
-            String translation = stringValue(row.get("translatedMessage"));
-            if (StringUtils.hasText(locale) && StringUtils.hasText(translation)) {
-                result.computeIfAbsent(entryId, ignored -> new LinkedHashMap<>()).put(locale, translation);
+            if (StringUtils.hasText(entity.localeCode) && StringUtils.hasText(entity.translatedMessage)) {
+                result.computeIfAbsent(entity.entryId, ignored -> new LinkedHashMap<>()).put(entity.localeCode, entity.translatedMessage);
             }
         }
         return result;
@@ -972,17 +815,14 @@ public class LocalizationManagementAppService {
             return DEFAULT_LOCALE;
         }
         String normalized = normalizeLocale(localeCode);
-        String fallback = jdbcTemplate.query(
-                """
-                        select fallback_locale
-                        from sys_localization_language
-                        where locale_code = ? and deleted = 0
-                        order by is_default desc, sort_no asc, id asc
-                        limit 1
-                        """,
-                rs -> rs.next() ? rs.getString(1) : null,
-                normalized
-        );
+        LanguageEntity language = languageMapper.selectOne(new QueryWrapper<LanguageEntity>()
+                .select("fallback_locale")
+                .eq("locale_code", normalized)
+                .eq("deleted", 0)
+                .orderByDesc("is_default")
+                .orderByAsc("sort_no", "id")
+                .last("limit 1"));
+        String fallback = language == null ? null : language.fallbackLocale;
         if (StringUtils.hasText(fallback)) {
             return normalizeLocale(fallback);
         }
@@ -1058,21 +898,4 @@ public class LocalizationManagementAppService {
         return "%" + value.trim() + "%";
     }
 
-    private String stringValue(Object value) {
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private Long longValue(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        if (value == null) {
-            return null;
-        }
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException error) {
-            return null;
-        }
-    }
 }

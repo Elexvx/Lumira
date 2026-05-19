@@ -1,5 +1,8 @@
 package com.legendary.invention.common.security;
 
+import com.legendary.invention.common.security.data.DataPermissionRule;
+
+import java.util.List;
 import java.util.Set;
 
 public class CurrentUser {
@@ -10,11 +13,33 @@ public class CurrentUser {
     private Integer sessionVersion;
     private boolean authenticated;
     private Set<String> permissions;
+    private Set<Long> roleIds;
+    private Long primaryDeptId;
+    private Set<Long> deptIds;
+    private Set<Long> descendantDeptIds;
+    private List<DataPermissionRule> dataScopes;
 
     public CurrentUser() {
     }
 
     public CurrentUser(Long userId, String username, Long currentTenantId, String sessionId, Integer sessionVersion, boolean authenticated, Set<String> permissions) {
+        this(userId, username, currentTenantId, sessionId, sessionVersion, authenticated, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
+    }
+
+    public CurrentUser(
+            Long userId,
+            String username,
+            Long currentTenantId,
+            String sessionId,
+            Integer sessionVersion,
+            boolean authenticated,
+            Set<String> permissions,
+            Set<Long> roleIds,
+            Long primaryDeptId,
+            Set<Long> deptIds,
+            Set<Long> descendantDeptIds,
+            List<DataPermissionRule> dataScopes
+    ) {
         this.userId = userId;
         this.username = username;
         this.currentTenantId = currentTenantId;
@@ -22,6 +47,11 @@ public class CurrentUser {
         this.sessionVersion = sessionVersion;
         this.authenticated = authenticated;
         this.permissions = permissions;
+        this.roleIds = roleIds;
+        this.primaryDeptId = primaryDeptId;
+        this.deptIds = deptIds;
+        this.descendantDeptIds = descendantDeptIds;
+        this.dataScopes = dataScopes;
     }
 
     public Long getUserId() {
@@ -73,10 +103,50 @@ public class CurrentUser {
     }
 
     public Set<String> getPermissions() {
-        return permissions;
+        return permissions == null ? Set.of() : permissions;
     }
 
     public void setPermissions(Set<String> permissions) {
         this.permissions = permissions;
+    }
+
+    public Set<Long> getRoleIds() {
+        return roleIds == null ? Set.of() : roleIds;
+    }
+
+    public void setRoleIds(Set<Long> roleIds) {
+        this.roleIds = roleIds;
+    }
+
+    public Long getPrimaryDeptId() {
+        return primaryDeptId;
+    }
+
+    public void setPrimaryDeptId(Long primaryDeptId) {
+        this.primaryDeptId = primaryDeptId;
+    }
+
+    public Set<Long> getDeptIds() {
+        return deptIds == null ? Set.of() : deptIds;
+    }
+
+    public void setDeptIds(Set<Long> deptIds) {
+        this.deptIds = deptIds;
+    }
+
+    public Set<Long> getDescendantDeptIds() {
+        return descendantDeptIds == null ? Set.of() : descendantDeptIds;
+    }
+
+    public void setDescendantDeptIds(Set<Long> descendantDeptIds) {
+        this.descendantDeptIds = descendantDeptIds;
+    }
+
+    public List<DataPermissionRule> getDataScopes() {
+        return dataScopes == null ? List.of() : dataScopes;
+    }
+
+    public void setDataScopes(List<DataPermissionRule> dataScopes) {
+        this.dataScopes = dataScopes;
     }
 }

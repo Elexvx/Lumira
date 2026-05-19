@@ -171,7 +171,7 @@ public class FileController {
     ) {
         require("system:file:upload");
         return ApiResponse.success(
-                fileManagementAppService.uploadDocument(securityContextFacade.getCurrentUser(), file, category, tags, remark),
+                fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark),
                 TraceContext.getRequestId()
         );
     }

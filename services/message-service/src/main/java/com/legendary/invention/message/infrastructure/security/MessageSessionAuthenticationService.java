@@ -74,6 +74,11 @@ public class MessageSessionAuthenticationService {
         currentUser.setSessionVersion(snapshot.sessionVersion());
         currentUser.setAuthenticated(true);
         currentUser.setPermissions(permissions);
+        currentUser.setRoleIds(snapshot.roleIds() == null ? Set.of() : Set.copyOf(snapshot.roleIds()));
+        currentUser.setPrimaryDeptId(snapshot.primaryDeptId());
+        currentUser.setDeptIds(snapshot.deptIds() == null ? Set.of() : Set.copyOf(snapshot.deptIds()));
+        currentUser.setDescendantDeptIds(snapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.descendantDeptIds()));
+        currentUser.setDataScopes(snapshot.dataScopes());
         return currentUser;
     }
 

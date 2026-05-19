@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.legendary.invention.saas.modules.localization.mapper.LocalizationManagementMapper">
+
+    <sql id="entryBaseFrom">
+        from sys_localization_entry e
+        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
+        left join sys_localization_translation t_target
+          on t_target.entry_id = e.id
+         and t_target.locale_code = #{query.targetLocale}
+         and t_target.deleted = 0
+        left join sys_localization_translation t_fallback
+          on t_fallback.entry_id = e.id
+         and t_fallback.locale_code = #{query.fallbackLocale}
+         and t_fallback.deleted = 0
+        left join (
+            select entry_id, count(1) as usage_count
+            from sys_localization_usage_ref
+            where deleted = 0
+            group by entry_id
+        ) u on u.entry_id = e.id
+        where e.deleted = 0
+        <if test="query.namespaceCode != null and query.namespaceCode != ''">
+          and n.namespace_code = #{query.namespaceCode}
+        </if>
+        <if test="query.keywordLike != null and query.keywordLike != ''">
+          and (
+                e.message_key like #{query.keywordLike}
+             or e.default_message like #{query.keywordLike}
+             or n.namespace_name like #{query.keywordLike}
+             or e.source_ref like #{query.keywordLike}
+          )
+        </if>
+        <if test="query.status != null and query.status != ''">
+          and e.status = #{query.status}
+        </if>
+        <if test="query.translationStatus == 'TRANSLATED'">
+          and coalesce(t_target.translated_message, t_fallback.translated_message, '') &lt;&gt; ''
+        </if>
+        <if test="query.translationStatus == 'PENDING'">
+          and coalesce(t_target.translated_message, t_fallback.translated_message, '') = ''
+        </if>
+    </sql>
+
+    <sql id="entrySelectColumns">
+        select
+          e.id,
+          n.namespace_code as namespace_code,
+          n.namespace_name as namespace_name,
+          e.message_key as message_key,
+          e.default_message as default_message,
+          e.source_locale as source_locale,
+          e.source_type as source_type,
+          e.source_ref as source_ref,
+          e.status,
+          case
+            when coalesce(t_target.translated_message, t_fallback.translated_message, '') &lt;&gt; '' then 'TRANSLATED'
+            else 'PENDING'
+          end as translation_status,
+          coalesce(t_target.translated_message, t_fallback.translated_message, '') as current_translation,
+          coalesce(u.usage_count, 0) as usage_count,
+          e.created_at as created_at,
+          e.updated_at as updated_at
+    </sql>
+
+    <select id="listEntries" resultType="com.legendary.invention.saas.modules.localization.vo.LocalizationVO$EntryVO">
+        <include refid="entrySelectColumns"/>
+        <include refid="entryBaseFrom"/>
+        order by ${query.sortColumn} ${query.sortDirection}
+        limit #{query.limit} offset #{query.offset}
+    </select>
+
+    <select id="countEntries" resultType="java.lang.Long">
+        select count(1)
+        <include refid="entryBaseFrom"/>
+    </select>
+
+    <select id="findEntry" resultType="com.legendary.invention.saas.modules.localization.vo.LocalizationVO$EntryVO">
+        <include refid="entrySelectColumns"/>
+        from sys_localization_entry e
+        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
+        left join sys_localization_translation t_target
+          on t_target.entry_id = e.id
+         and t_target.locale_code = #{targetLocale}
+         and t_target.deleted = 0
+        left join sys_localization_translation t_fallback
+          on t_fallback.entry_id = e.id
+         and t_fallback.locale_code = #{fallbackLocale}
+         and t_fallback.deleted = 0
+        left join (
+            select entry_id, count(1) as usage_count
+            from sys_localization_usage_ref
+            where deleted = 0
+            group by entry_id
+        ) u on u.entry_id = e.id
+        where e.id = #{entryId}
+          and e.deleted = 0
+        limit 1
+    </select>
+
+    <select id="listRuntimeMessages" resultType="com.legendary.invention.saas.modules.localization.dto.LocalizationQueryModels$RuntimeMessageRow">
+        select
+          e.message_key as message_key,
+          e.default_message as default_message,
+          t_target.translated_message as target_message,
+          t_fallback.translated_message as fallback_message
+        from sys_localization_entry e
+        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
+        left join sys_localization_translation t_target
+          on t_target.entry_id = e.id
+         and t_target.locale_code = #{targetLocale}
+         and t_target.deleted = 0
+        left join sys_localization_translation t_fallback
+          on t_fallback.entry_id = e.id
+         and t_fallback.locale_code = #{fallbackLocale}
+         and t_fallback.deleted = 0
+        where e.deleted = 0
+          and e.status = 'ENABLED'
+        order by n.sort_no asc, e.id asc
+    </select>
+
+    <select id="countTranslatedEntries" resultType="java.lang.Long">
+        select count(1)
+        from sys_localization_entry e
+        left join sys_localization_translation t
+          on t.entry_id = e.id
+         and t.locale_code = #{localeCode}
+         and t.deleted = 0
+        where e.deleted = 0
+          and coalesce(t.translated_message, '') &lt;&gt; ''
+    </select>
+
+    <select id="countEntriesByNamespace" resultType="java.lang.Long">
+        select count(1)
+        from sys_localization_entry e
+        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
+        where e.deleted = 0
+          and n.namespace_code = #{namespaceCode}
+    </select>
+
+    <select id="countTranslatedEntriesByNamespace" resultType="java.lang.Long">
+        select count(1)
+        from sys_localization_entry e
+        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
+        left join sys_localization_translation t
+          on t.entry_id = e.id
+         and t.locale_code = #{localeCode}
+         and t.deleted = 0
+        where e.deleted = 0
+          and n.namespace_code = #{namespaceCode}
+          and coalesce(t.translated_message, '') &lt;&gt; ''
+    </select>
+</mapper>

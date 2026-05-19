@@ -219,6 +219,11 @@ export interface CurrentUser {
   permissionsVersion?: string;
   sessionVersion?: number;
   permissions?: string[];
+  roleIds?: number[];
+  primaryDeptId?: number | null;
+  deptIds?: number[];
+  descendantDeptIds?: number[];
+  dataScopes?: RoleDataScope[];
 }
 
 export interface CurrentUserRoleOption {
@@ -1249,12 +1254,15 @@ export interface UserRecord {
   registeredAt?: string | null;
   lastLoginAt?: string | null;
   roleNames?: string[];
+  deptNames?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface UserDetail extends UserRecord {
   roleIds?: number[];
+  deptIds?: number[];
+  primaryDeptId?: number | null;
 }
 
 export interface OnlineSessionRecord {
@@ -1295,6 +1303,30 @@ export interface RoleRecord {
 
 export interface RoleDetail extends RoleRecord {
   permissionKeys: string[];
+  dataScopes?: RoleDataScope[];
+}
+
+export type DataScopeType = 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM';
+
+export interface RoleDataScope {
+  resourceCode: string;
+  scopeType: DataScopeType;
+  customDeptIds?: number[];
+  customUserIds?: number[];
+}
+
+export interface DepartmentRecord {
+  id: number;
+  tenantId: number;
+  parentId?: number | null;
+  deptCode: string;
+  deptName: string;
+  sortNo?: number;
+  status: string;
+  userCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  children?: DepartmentRecord[];
 }
 
 export interface PermissionRecord {

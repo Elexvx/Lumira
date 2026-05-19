@@ -34,6 +34,8 @@ export interface UserMutationPayload {
   status: string;
   password?: string;
   roleIds?: number[];
+  deptIds?: number[];
+  primaryDeptId?: number | null;
 }
 
 export interface UserStatusPayload {

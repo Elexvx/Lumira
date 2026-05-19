@@ -150,6 +150,17 @@ export const buildUserColumns = ({
     },
   },
   {
+    title: '部门',
+    dataIndex: 'deptNames',
+    search: false,
+    responsive: ['lg', 'xl', 'xxl'],
+    ellipsis: true,
+    render: (_, record) => {
+      const content = record.deptNames?.length ? record.deptNames.join(', ') : '';
+      return content ? <Typography.Text ellipsis={{ tooltip: content }}>{content}</Typography.Text> : '-';
+    },
+  },
+  {
     title: '操作',
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
@@ -217,6 +228,11 @@ export const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
   {
     title: '角色',
     dataIndex: 'roleNames',
+    renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
+  },
+  {
+    title: '部门',
+    dataIndex: 'deptNames',
     renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
   },
   { title: '创建时间', dataIndex: 'createdAt', renderText: (value) => value || '-' },

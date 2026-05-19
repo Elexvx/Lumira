@@ -6,7 +6,7 @@ services:
     container_name: legendary-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-dev-mysql-password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-saas}
       MYSQL_INITDB_SKIP_TZINFO: "1"
     ports:
@@ -53,10 +53,10 @@ services:
         --server.port=8080
         --spring.datasource.url=jdbc:mysql://${XXL_JOB_DB_HOST:-mysql}:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
         --spring.datasource.username=root
-        --spring.datasource.password=${MYSQL_ROOT_PASSWORD:-123456}
+        --spring.datasource.password=${MYSQL_ROOT_PASSWORD:-local-dev-mysql-password}
         --xxl.job.accessToken=${XXL_JOB_ADMIN_ACCESS_TOKEN:-legendary-xxl-job-token}
         --xxl.job.login.username=admin
-        --xxl.job.login.password=123456
+        --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:-local-dev-xxl-password}
     ports:
       - "8090:8080"
     depends_on:

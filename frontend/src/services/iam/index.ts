@@ -1,5 +1,5 @@
 import { request, type RequestOptions } from '@/services/common/request';
-import type { MenuRecord, PagedResult, PermissionRecord, PermissionTreeRecord, RoleDetail, RoleRecord } from '@/types/api';
+import type { DepartmentRecord, MenuRecord, PagedResult, PermissionRecord, PermissionTreeRecord, RoleDataScope, RoleDetail, RoleRecord } from '@/types/api';
 
 export interface RoleListQuery extends Record<string, unknown> {
   keyword?: string;
@@ -15,6 +15,7 @@ export interface RoleMutationPayload {
   roleName: string;
   roleType: string;
   permissionKeys?: string[];
+  dataScopes?: RoleDataScope[];
 }
 
 export interface DefaultRegistrationRolePayload {
@@ -42,6 +43,14 @@ export interface MenuOrderItem {
 
 export interface MenuReorderPayload {
   items: MenuOrderItem[];
+}
+
+export interface DepartmentMutationPayload {
+  parentId?: number | null;
+  deptCode: string;
+  deptName: string;
+  sortNo?: number;
+  status: string;
 }
 
 export const iamService = {
@@ -93,6 +102,33 @@ export const iamService = {
   permissionTree: (options: RequestOptions = {}) =>
     request<PermissionTreeRecord[]>('/v1/system/permissions/tree', {
       method: 'GET',
+      ...options,
+    }),
+  departments: (options: RequestOptions = {}) =>
+    request<DepartmentRecord[]>('/v1/system/departments', {
+      method: 'GET',
+      ...options,
+    }),
+  departmentDetail: (id: number, options: RequestOptions = {}) =>
+    request<DepartmentRecord>(`/v1/system/departments/${id}`, {
+      method: 'GET',
+      ...options,
+    }),
+  createDepartment: (payload: DepartmentMutationPayload, options: RequestOptions = {}) =>
+    request<DepartmentRecord>('/v1/system/departments', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  updateDepartment: (id: number, payload: DepartmentMutationPayload, options: RequestOptions = {}) =>
+    request<DepartmentRecord>(`/v1/system/departments/${id}`, {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  deleteDepartment: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/departments/${id}`, {
+      method: 'DELETE',
       ...options,
     }),
   menus: (options: RequestOptions = {}) =>

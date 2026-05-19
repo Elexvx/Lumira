@@ -13,7 +13,7 @@ frontend/src/.umi-production
 frontend/playwright-report
 frontend/test-results
 
-backend/storage
+services/*/storage
 output
 *.log
 *.tmp

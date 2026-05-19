@@ -37,6 +37,7 @@ export default {
   'nav.site.submissions': 'Submissions',
   'nav.user.center': 'User Center',
   'nav.user.users': 'Users',
+  'nav.user.departments': 'Departments',
   'nav.user.onlineUsers': 'Online Users',
   'nav.user.roles': 'Roles',
   'nav.user.personalCenter': 'Personal Center',
