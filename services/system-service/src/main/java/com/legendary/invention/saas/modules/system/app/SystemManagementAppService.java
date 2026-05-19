@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 public class SystemManagementAppService {
 
     private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    private static final long MAX_PAGE_SIZE = 100L;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
@@ -2456,7 +2457,7 @@ public class SystemManagementAppService {
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
         long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = pageSize <= 0 ? 10 : pageSize;
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long offset = (safePageNo - 1) * safePageSize;
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize);
@@ -2473,7 +2474,7 @@ public class SystemManagementAppService {
     }
 
     private <T> PageResponse<T> cursorQuery(String selectSql, Class<T> voClass, long pageSize, List<Object> params) {
-        long safePageSize = pageSize <= 0 ? 10 : Math.min(pageSize, 100);
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize + 1);
         List<T> records = jdbcTemplate.query(selectSql + " limit ?", new BeanPropertyRowMapper<>(voClass), queryParams.toArray());

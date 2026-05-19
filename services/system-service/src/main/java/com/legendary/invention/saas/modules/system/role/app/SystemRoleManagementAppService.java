@@ -34,6 +34,7 @@ public class SystemRoleManagementAppService {
     private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
+    private static final long MAX_PAGE_SIZE = 100L;
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -590,7 +591,7 @@ public class SystemRoleManagementAppService {
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
         long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = pageSize <= 0 ? 10 : pageSize;
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long offset = (safePageNo - 1) * safePageSize;
         List<Object> queryParams = new ArrayList<>(params);
         queryParams.add(safePageSize);
