@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.infrastructure.persistence.mybatis;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
@@ -16,6 +17,7 @@ public class MyBatisQueryOperations {
     private final RawSqlMapper rawSqlMapper;
     private final Object legacyOperations;
 
+    @Autowired
     public MyBatisQueryOperations(RawSqlMapper rawSqlMapper) {
         this.rawSqlMapper = rawSqlMapper;
         this.legacyOperations = null;
