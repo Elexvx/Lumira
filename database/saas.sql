@@ -1,5 +1,7 @@
--- Consolidated baseline generated from previous V1,V2,V45-V63 migrations.
+-- Consolidated schema sample generated from previous V1,V2,V45-V63 migrations.
 -- Future schema changes should start at V2.
+-- This file is a schema/reference sample only and must not be used as production initialization data.
+-- Account rows and credential-like sample data are intentionally omitted.
 -- Tenant feature tables and unused scaffold tables were removed during consolidation.
 
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1205,7 +1207,6 @@ CREATE TABLE `sys_user` (
   KEY `idx_sys_user_mobile` (`mobile`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1003 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `avatar_url`, `birth_month`, `gender`, `region`, `available_time`, `id_card_number`, `password_hash`, `mobile`, `email`, `status`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES (1001,'admin','管理员','系统管理员','/api/uploads/2026/04/11/1b6cdbc6ef894b8daecb3c5831319b5d.png','2003-01','MALE',NULL,NULL,NULL,'$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G','13800000000','adm222in@example.com','ENABLED',0,'2026-03-29 15:42:53',1001,'2026-04-23 22:24:53',0),(1002,'123456',NULL,NULL,'/api/uploads/2026/04/23/bdde0a68632448d7b6833d9fed698f3e.png',NULL,NULL,NULL,NULL,NULL,'$2a$10$IKPb6SXOgqZSIby5lNfJCOMPkTNRaepbb.2nW8EWHj7HGQxyulGGe','15150587087',NULL,'ENABLED',1001,'2026-04-11 00:27:28',1002,'2026-04-23 02:18:01',0);
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sys_user_role` (
@@ -1222,7 +1223,6 @@ CREATE TABLE `sys_user_role` (
   UNIQUE KEY `uk_sys_user_role_rel` (`tenant_id`,`user_id`,`role_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-INSERT INTO `sys_user_role` (`id`, `tenant_id`, `user_id`, `role_id`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES (1,1001,1001,2001,0,'2026-03-30 14:28:54',0,'2026-03-30 14:28:54',0),(3,1001,1002,2003,1001,'2026-04-23 02:16:13',1001,'2026-04-23 02:16:13',0);
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sys_user_tenant` (
@@ -1242,7 +1242,6 @@ CREATE TABLE `sys_user_tenant` (
   KEY `idx_sys_user_tenant_user_status` (`user_id`,`status`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-INSERT INTO `sys_user_tenant` (`id`, `tenant_id`, `user_id`, `is_default`, `status`, `joined_at`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES (1,1001,1001,1,'ENABLED','2026-03-29 15:42:53',0,'2026-03-29 15:42:53',0,'2026-03-29 15:42:53',0),(3,1001,1002,1,'ENABLED','2026-04-11 00:27:28',1001,'2026-04-11 00:27:28',1001,'2026-04-11 00:27:28',0);
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sys_user_tenant_profile` (

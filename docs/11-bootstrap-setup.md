@@ -12,7 +12,7 @@
 - `hooks/`：`useResponsive`、`usePermission`。
 - `constants/enums/types`：常量、错误码、接口模型。
 
-## 后端目录说明（backend/src/main/java/com/legendary/invention/saas）
+## 后端目录说明（services/system-service/src/main/java/com/legendary/invention/saas）
 
 - `common/`：统一返回体、错误码、异常、常量、公共工具。
 - `infrastructure/`：配置、安全、租户、日志、trace、redis、db、storage 基础设施。
@@ -54,7 +54,7 @@ pnpm dev
 ### 后端
 
 ```bash
-mvn -pl backend -am spring-boot:run
+mvn -pl services/system-service -am spring-boot:run
 ```
 
 默认访问：
@@ -73,6 +73,6 @@ mvn -pl services/gateway-service -am spring-boot:run
 ## 环境变量样例
 
 - 前端：`frontend/.env.example`
-- 后端：`backend/.env.example`
+- 后端：`services/system-service/.env.example`
 
 关键变量：数据库连接、Redis 地址、JWT 秘钥、API 前缀、请求超时。
