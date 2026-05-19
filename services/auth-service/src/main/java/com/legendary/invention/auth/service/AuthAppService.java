@@ -422,7 +422,12 @@ public class AuthAppService {
                 session.getSessionId(),
                 snapshot.version(),
                 session.getSessionVersion(),
-                snapshot.permissions()
+                snapshot.permissions(),
+                snapshot.roleIds(),
+                snapshot.primaryDeptId(),
+                snapshot.deptIds(),
+                snapshot.descendantDeptIds(),
+                snapshot.dataScopes()
         );
     }
 

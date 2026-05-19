@@ -47,6 +47,7 @@ public final class SystemPermissionTreeAssembler {
             Map.entry("site:submission", List.of("site:submission:")),
             Map.entry("plugin:management:view", List.of("plugin:management:")),
             Map.entry("system:file:manage", List.of("system:file:manage:")),
+            Map.entry("system:department:view", List.of("system:department:")),
             Map.entry("system:monitor:view", List.of("system:monitor:")),
             Map.entry("system:notification:view", List.of("system:notification:", "message:message:")),
             Map.entry("system:verification:view", List.of("system:verification:"))
@@ -55,6 +56,7 @@ public final class SystemPermissionTreeAssembler {
             "/audit/overview",
             "/system/overview",
             "/system/users",
+            "/system/departments",
             "/system/online-users",
             "/system/roles",
             "/profile/center",

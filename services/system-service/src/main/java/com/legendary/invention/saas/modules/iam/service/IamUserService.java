@@ -4,8 +4,8 @@ import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -29,9 +29,9 @@ public class IamUserService {
     public static final String IDENTITY_WECHAT_UNIONID = "WECHAT_UNIONID";
     public static final String IDENTITY_PASSKEY = "PASSKEY";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
-    public IamUserService(JdbcTemplate jdbcTemplate) {
+    public IamUserService(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

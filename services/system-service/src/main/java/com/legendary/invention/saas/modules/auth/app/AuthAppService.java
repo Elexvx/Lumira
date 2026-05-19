@@ -35,7 +35,7 @@ import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -71,7 +71,7 @@ public class AuthAppService {
     private final SystemVerificationAppService systemVerificationAppService;
     private final WechatLoginService wechatLoginService;
     private final IamUserService iamUserService;
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
     @Autowired
     public AuthAppService(
@@ -89,7 +89,7 @@ public class AuthAppService {
             SystemVerificationAppService systemVerificationAppService,
             WechatLoginService wechatLoginService,
             IamUserService iamUserService,
-            JdbcTemplate jdbcTemplate
+            MyBatisQueryOperations jdbcTemplate
     ) {
         this.userDomainService = userDomainService;
         this.loginAuditService = loginAuditService;
@@ -122,7 +122,7 @@ public class AuthAppService {
             PermissionSnapshotService permissionSnapshotService,
             SystemVerificationAppService systemVerificationAppService,
             WechatLoginService wechatLoginService,
-            JdbcTemplate jdbcTemplate
+            MyBatisQueryOperations jdbcTemplate
     ) {
         this(
                 userDomainService,

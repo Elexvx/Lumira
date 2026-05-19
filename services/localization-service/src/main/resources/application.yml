@@ -30,6 +30,11 @@ spring:
     ignore-migration-patterns:
       - "*:missing"
 
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
 saas:
   web:
     cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}

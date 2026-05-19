@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.system.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
@@ -50,7 +51,7 @@ class OnlineSessionManagementAppServiceTest {
             }
         };
         service = new OnlineSessionManagementAppService(
-                jdbcTemplate,
+                new MyBatisQueryOperations(jdbcTemplate),
                 authSessionStore,
                 securitySettingsService,
                 new OperationAuditService(null) {
@@ -102,7 +103,7 @@ class OnlineSessionManagementAppServiceTest {
             }
         };
         service = new OnlineSessionManagementAppService(
-                jdbcTemplate,
+                new MyBatisQueryOperations(jdbcTemplate),
                 authSessionStore,
                 securitySettingsService,
                 new OperationAuditService(null) {

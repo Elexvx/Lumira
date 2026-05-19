@@ -1,8 +1,10 @@
 package com.legendary.invention.message.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.legendary.invention.api.message.MessageEventDTO;
 import com.legendary.invention.api.message.MessageNoticeDTO;
+import com.legendary.invention.message.mapper.PlatformEventOutboxMapper;
 import com.legendary.invention.message.service.MessageEventDeliveryService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -10,14 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +24,7 @@ import static org.mockito.Mockito.when;
 class PlatformEventOutboxServiceTest {
 
     @Mock
-    private JdbcTemplate jdbcTemplate;
+    private PlatformEventOutboxMapper outboxMapper;
 
     @Mock
     private MessageEventDeliveryService deliveryService;
@@ -34,8 +33,8 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldPersistUnifiedEventPayload() {
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(jdbcTemplate, objectMapper, new SimpleMeterRegistry());
+        when(outboxMapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
 
         MessageEventDTO event = buildEvent();
         PlatformEventOutboxEntity entity = service.record(event);
@@ -51,10 +50,9 @@ class PlatformEventOutboxServiceTest {
     void dispatchPendingShouldDeliverAndMarkDelivered() throws Exception {
         MessageEventDTO event = buildEvent();
         PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        when(jdbcTemplate.query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class)))
-                .thenReturn(List.of(stored));
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(jdbcTemplate, objectMapper, new SimpleMeterRegistry());
+        when(outboxMapper.selectList(anyWrapper())).thenReturn(List.of(stored));
+        when(outboxMapper.update(any(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
 
         int delivered = service.dispatchPending(deliveryService, 100);
 
@@ -69,10 +67,9 @@ class PlatformEventOutboxServiceTest {
     void replayByIdShouldResetAndRedispatch() throws Exception {
         MessageEventDTO event = buildEvent();
         PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        when(jdbcTemplate.query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class)))
-                .thenReturn(List.of(stored));
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(jdbcTemplate, objectMapper, new SimpleMeterRegistry());
+        when(outboxMapper.selectOne(anyWrapper())).thenReturn(stored);
+        when(outboxMapper.update(any(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
 
         boolean replayed = service.replayById(1L, deliveryService);
 
@@ -117,5 +114,10 @@ class PlatformEventOutboxServiceTest {
         entity.setUpdatedBy(2001L);
         entity.setDeleted(0);
         return entity;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Wrapper<PlatformEventOutboxEntity> anyWrapper() {
+        return any(Wrapper.class);
     }
 }

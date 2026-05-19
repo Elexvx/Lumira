@@ -10,8 +10,8 @@ import com.legendary.invention.saas.infrastructure.security.service.SecuritySett
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.system.online.OnlineSessionStreamService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,14 +35,14 @@ public class OnlineSessionManagementAppService {
 
     private static final int MAX_PAGE_SIZE = 100;
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final AuthSessionStore authSessionStore;
     private final SecuritySettingsService securitySettingsService;
     private final OperationAuditService operationAuditService;
     private final OnlineSessionStreamService onlineSessionStreamService;
 
     public OnlineSessionManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthSessionStore authSessionStore,
             SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,

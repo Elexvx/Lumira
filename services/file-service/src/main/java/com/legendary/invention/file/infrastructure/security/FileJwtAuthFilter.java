@@ -67,7 +67,12 @@ public class FileJwtAuthFilter extends OncePerRequestFilter {
                                 snapshot.sessionId(),
                                 snapshot.sessionVersion(),
                                 true,
-                                snapshot.permissions() == null ? Set.of() : snapshot.permissions().stream().collect(Collectors.toUnmodifiableSet())
+                                snapshot.permissions() == null ? Set.of() : snapshot.permissions().stream().collect(Collectors.toUnmodifiableSet()),
+                                snapshot.roleIds() == null ? Set.of() : snapshot.roleIds().stream().collect(Collectors.toUnmodifiableSet()),
+                                snapshot.primaryDeptId(),
+                                snapshot.deptIds() == null ? Set.of() : snapshot.deptIds().stream().collect(Collectors.toUnmodifiableSet()),
+                                snapshot.descendantDeptIds() == null ? Set.of() : snapshot.descendantDeptIds().stream().collect(Collectors.toUnmodifiableSet()),
+                                snapshot.dataScopes()
                         );
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(currentUser, authorization, List.of());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

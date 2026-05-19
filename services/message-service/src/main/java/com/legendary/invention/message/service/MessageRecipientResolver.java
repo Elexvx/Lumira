@@ -1,7 +1,9 @@
 package com.legendary.invention.message.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.legendary.invention.api.message.MessageNoticeDTO;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.message.entity.SysUserRoleEntity;
+import com.legendary.invention.message.mapper.SysUserRoleMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -13,10 +15,10 @@ import java.util.Set;
 @Component
 public class MessageRecipientResolver {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final SysUserRoleMapper sysUserRoleMapper;
 
-    public MessageRecipientResolver(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public MessageRecipientResolver(SysUserRoleMapper sysUserRoleMapper) {
+        this.sysUserRoleMapper = sysUserRoleMapper;
     }
 
     public List<Long> resolveRecipientUserIds(MessageNoticeDTO notice) {
@@ -31,18 +33,15 @@ public class MessageRecipientResolver {
             return notice.getTargetUserId() == null ? List.of() : List.of(notice.getTargetUserId());
         }
         if ("ROLE".equalsIgnoreCase(targetScope) && notice.getTargetRoleId() != null) {
-            List<Long> userIds = jdbcTemplate.queryForList(
-                    """
-                            select distinct ur.user_id
-                            from sys_user_role ur
-                            where ur.tenant_id = ?
-                              and ur.role_id = ?
-                              and ur.deleted = 0
-                            """,
-                    Long.class,
-                    notice.getTenantId(),
-                    notice.getTargetRoleId()
-            );
+            List<Long> userIds = sysUserRoleMapper.selectList(new QueryWrapper<SysUserRoleEntity>()
+                            .select("user_id")
+                            .eq("tenant_id", notice.getTenantId())
+                            .eq("role_id", notice.getTargetRoleId())
+                            .eq("deleted", 0)
+                            .groupBy("user_id"))
+                    .stream()
+                    .map(SysUserRoleEntity::getUserId)
+                    .toList();
             return deduplicate(userIds);
         }
         return List.of();

@@ -28,7 +28,7 @@ import com.legendary.invention.saas.modules.system.verification.SystemVerificati
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import jakarta.validation.Valid;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,7 +52,7 @@ public class InternalSystemController {
     private final SystemVerificationAppService verificationAppService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
     private final PasskeyCredentialAppService passkeyCredentialAppService;
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
 
@@ -63,7 +63,7 @@ public class InternalSystemController {
             SystemVerificationAppService verificationAppService,
             WechatLoginSettingsService wechatLoginSettingsService,
             PasskeyCredentialAppService passkeyCredentialAppService,
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService
     ) {
@@ -101,7 +101,15 @@ public class InternalSystemController {
     @GetMapping("/permissions/snapshot")
     public PermissionSnapshotDTO permissionSnapshot(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
         PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(tenantId, userId);
-        return new PermissionSnapshotDTO(snapshot.getVersion(), snapshot.getPermissionList());
+        return new PermissionSnapshotDTO(
+                snapshot.getVersion(),
+                snapshot.getPermissionList(),
+                snapshot.getRoleIds().stream().toList(),
+                snapshot.getPrimaryDeptId(),
+                snapshot.getDeptIds().stream().toList(),
+                snapshot.getDescendantDeptIds().stream().toList(),
+                snapshot.getDataScopes()
+        );
     }
 
     @PostMapping("/permissions/invalidate")

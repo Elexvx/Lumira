@@ -136,6 +136,11 @@ public class SessionAuthenticationService {
         currentUser.setSessionVersion(session.getSessionVersion());
         currentUser.setAuthenticated(true);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Collections.emptySet() : snapshot.getPermissions());
+        currentUser.setRoleIds(snapshot.getRoleIds());
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds());
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds());
+        currentUser.setDataScopes(snapshot.getDataScopes());
         return currentUser;
     }
 

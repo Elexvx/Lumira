@@ -17,6 +17,7 @@ public class RoleUpsertRequest {
     @NotBlank
     private String roleType;
     private List<String> permissionKeys;
+    private List<RoleDataScopeRequest> dataScopes;
 
     public String getRoleCode() { return roleCode; }
     public void setRoleCode(String roleCode) { this.roleCode = roleCode == null ? null : roleCode.trim(); }
@@ -26,4 +27,6 @@ public class RoleUpsertRequest {
     public void setRoleType(String roleType) { this.roleType = roleType; }
     public List<String> getPermissionKeys() { return permissionKeys; }
     public void setPermissionKeys(List<String> permissionKeys) { this.permissionKeys = permissionKeys; }
+    public List<RoleDataScopeRequest> getDataScopes() { return dataScopes; }
+    public void setDataScopes(List<RoleDataScopeRequest> dataScopes) { this.dataScopes = dataScopes; }
 }

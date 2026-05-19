@@ -1,26 +1,27 @@
 package com.legendary.invention.message.app;
 
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.message.dto.MessageDTO;
+import com.legendary.invention.message.dto.MessageQueryModels.DeliveryLogQuery;
+import com.legendary.invention.message.dto.MessageQueryModels.NoticeArchiveQuery;
+import com.legendary.invention.message.dto.MessageQueryModels.RecipientRow;
+import com.legendary.invention.message.entity.MessageDeliveryLogEntity;
+import com.legendary.invention.message.entity.MessageNoticeEntity;
+import com.legendary.invention.message.mapper.MessageDeliveryLogMapper;
+import com.legendary.invention.message.mapper.MessageNoticeMapper;
 import com.legendary.invention.message.service.MessagePushService;
 import com.legendary.invention.message.service.SmtpNotificationMailService;
 import com.legendary.invention.message.vo.MessageVO;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,18 +42,21 @@ public class MessageAppService {
     private static final String DELIVERY_FAILED = "FAILED";
     private static final String DELIVERY_SKIPPED = "SKIPPED";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MessageNoticeMapper messageNoticeMapper;
+    private final MessageDeliveryLogMapper messageDeliveryLogMapper;
     private final OperationAuditService operationAuditService;
     private final MessagePushService messagePushService;
     private final SmtpNotificationMailService smtpNotificationMailService;
 
     public MessageAppService(
-            JdbcTemplate jdbcTemplate,
+            MessageNoticeMapper messageNoticeMapper,
+            MessageDeliveryLogMapper messageDeliveryLogMapper,
             OperationAuditService operationAuditService,
             MessagePushService messagePushService,
             SmtpNotificationMailService smtpNotificationMailService
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.messageNoticeMapper = messageNoticeMapper;
+        this.messageDeliveryLogMapper = messageDeliveryLogMapper;
         this.operationAuditService = operationAuditService;
         this.messagePushService = messagePushService;
         this.smtpNotificationMailService = smtpNotificationMailService;
@@ -67,159 +71,15 @@ public class MessageAppService {
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
-
-        StringBuilder whereClause = new StringBuilder("""
-                where n.tenant_id = ?
-                  and n.deleted = 0
-                """);
-        List<Object> params = new ArrayList<>();
-        params.add(tenantId);
-        if (!canManageArchive(currentUser)) {
-            whereClause.append("""
-                      and (
-                            n.created_by = ?
-                         or %s
-                      )
-                    """.formatted(buildVisibleNoticePredicate("n")));
-            params.add(currentUser.getUserId());
-            addVisibleNoticeParams(params, currentUser.getUserId());
-        }
-
-        if (StringUtils.hasText(request.getKeyword())) {
-            whereClause.append("""
-                      and (
-                            n.title like ?
-                         or n.content like ?
-                      )
-                    """);
-            String keywordLike = "%" + request.getKeyword().trim() + "%";
-            params.add(keywordLike);
-            params.add(keywordLike);
-        }
-        if (StringUtils.hasText(request.getMessageType())) {
-            whereClause.append(" and n.notice_type = ?");
-            params.add(request.getMessageType());
-        }
-        if (StringUtils.hasText(request.getTargetScope())) {
-            whereClause.append(" and n.target_scope = ?");
-            params.add(request.getTargetScope());
-        }
-        if (StringUtils.hasText(request.getSourceType())) {
-            whereClause.append(" and n.source_type = ?");
-            params.add(request.getSourceType());
-        }
-        if (StringUtils.hasText(request.getPublishStatus())) {
-            whereClause.append(" and n.publish_status = ?");
-            params.add(request.getPublishStatus());
-        }
-        if (request.getPublishedAtStart() != null) {
-            whereClause.append(" and n.published_at >= ?");
-            params.add(Timestamp.valueOf(request.getPublishedAtStart()));
-        }
-        if (request.getPublishedAtEnd() != null) {
-            whereClause.append(" and n.published_at <= ?");
-            params.add(Timestamp.valueOf(request.getPublishedAtEnd()));
-        }
-
-        Long total = jdbcTemplate.queryForObject("select count(*) from msg_notice n " + whereClause, Long.class, params.toArray());
-
-        List<Object> listParams = new ArrayList<>();
-        listParams.add(currentUser.getUserId());
-        listParams.addAll(params);
-        listParams.add(normalizedPageSize);
-        listParams.add(offset);
-
-        String sortColumn = switch (request.getSortField() == null ? "" : request.getSortField()) {
-            case "publishedAt" -> "n.published_at";
-            case "createdAt" -> "n.created_at";
-            case "title" -> "n.title";
-            case "sourceType" -> "n.source_type";
-            case "publishStatus" -> "n.publish_status";
-            case "targetScope" -> "n.target_scope";
-            case "messageType" -> "n.notice_type";
-            case "readFlag" -> "case when r.id is null then 0 else 1 end";
-            default -> null;
-        };
-        String sortOrder = "ASC".equalsIgnoreCase(request.getSortOrder()) ? "asc" : "desc";
-        String orderBy = sortColumn == null
-                ? """
-                order by n.published_at desc, n.id desc
-                """
-                : " order by " + sortColumn + " " + sortOrder + ", n.id desc";
-
-        String listSql = """
-                select n.id,
-                       n.tenant_id as tenantId,
-                       n.notice_type as messageType,
-                       n.target_scope as targetScope,
-                       n.target_user_id as targetUserId,
-                       n.target_role_id as targetRoleId,
-                       u.username as targetUserName,
-                       role.role_name as targetRoleName,
-                       n.title,
-                       n.content,
-                       n.source_type as sourceType,
-                       n.publish_status as publishStatus,
-                       n.published_at as publishedAt,
-                       n.created_by as createdBy,
-                       n.updated_by as updatedBy,
-                       n.created_at as createdAt,
-                       n.updated_at as updatedAt,
-                       case when r.id is null then 0 else 1 end as readFlag,
-                       r.read_at as readAt
-                from msg_notice n
-                left join msg_notice_read r
-                  on r.tenant_id = n.tenant_id
-                 and r.notice_id = n.id
-                 and r.user_id = ?
-                 and r.deleted = 0
-                left join sys_user_tenant ut
-                  on ut.tenant_id = n.tenant_id
-                 and ut.user_id = n.target_user_id
-                 and ut.deleted = 0
-                left join sys_user u
-                  on u.id = ut.user_id
-                 and u.deleted = 0
-                left join sys_role role
-                  on role.tenant_id = n.tenant_id
-                 and role.id = n.target_role_id
-                 and role.deleted = 0
-                """
-                + whereClause
-                + orderBy
-                + """
-                limit ? offset ?
-                """;
+        NoticeArchiveQuery query = buildNoticeArchiveQuery(currentUser, request, tenantId, normalizedPageSize, offset);
+        Long total = messageNoticeMapper.countArchive(query);
 
         PageResponse<MessageVO.NoticeVO> response = new PageResponse<>();
         response.setPageNo(normalizedPageNo);
         response.setPageSize(normalizedPageSize);
         response.setTotal(total == null ? 0 : total);
-        response.setRecords(jdbcTemplate.query(listSql, this::mapNoticeRow, listParams.toArray()));
+        response.setRecords(messageNoticeMapper.listArchive(query));
         return response;
-    }
-
-    private String buildVisibleNoticePredicate(String noticeAlias) {
-        return """
-                (%s.target_scope = ?
-                 or (%s.target_scope = ? and %s.target_user_id = ?)
-                 or (%s.target_scope = ? and exists (
-                        select 1
-                        from sys_user_role ur
-                        where ur.tenant_id = %s.tenant_id
-                          and ur.user_id = ?
-                          and ur.role_id = %s.target_role_id
-                          and ur.deleted = 0
-                 )))
-                """.formatted(noticeAlias, noticeAlias, noticeAlias, noticeAlias, noticeAlias, noticeAlias);
-    }
-
-    private void addVisibleNoticeParams(List<Object> params, Long userId) {
-        params.add(TARGET_SCOPE_TENANT);
-        params.add(TARGET_SCOPE_USER);
-        params.add(userId);
-        params.add(TARGET_SCOPE_ROLE);
-        params.add(userId);
     }
 
     private boolean canManageArchive(CurrentUser currentUser) {
@@ -234,33 +94,7 @@ public class MessageAppService {
     }
 
     public Long countUnread(CurrentUser currentUser) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(*)
-                        from msg_notice n
-                        where n.tenant_id = ?
-                          and n.deleted = 0
-                          and n.publish_status = ?
-                          and %s
-                          and not exists (
-                                select 1
-                                from msg_notice_read r
-                                where r.notice_id = n.id
-                                  and r.tenant_id = n.tenant_id
-                                  and r.user_id = ?
-                                  and r.deleted = 0
-                          )
-                """.formatted(buildVisibleNoticePredicate("n")),
-                Long.class,
-                tenantId(currentUser),
-                STATUS_PUBLISHED,
-                TARGET_SCOPE_TENANT,
-                TARGET_SCOPE_USER,
-                currentUser.getUserId(),
-                TARGET_SCOPE_ROLE,
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
+        Long count = messageNoticeMapper.countUnread(tenantId(currentUser), currentUser.getUserId());
         return count == null ? 0L : count;
     }
 
@@ -305,83 +139,13 @@ public class MessageAppService {
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
-
-        StringBuilder whereClause = new StringBuilder("""
-                where l.tenant_id = ?
-                  and l.deleted = 0
-                """);
-        List<Object> params = new ArrayList<>();
-        params.add(tenantId);
-        if (StringUtils.hasText(request.getKeyword())) {
-            whereClause.append("""
-                      and (
-                            l.title like ?
-                         or l.content like ?
-                         or l.target_user_name like ?
-                         or l.target_email like ?
-                         or l.error_message like ?
-                      )
-                    """);
-            String keywordLike = "%" + request.getKeyword().trim() + "%";
-            params.add(keywordLike);
-            params.add(keywordLike);
-            params.add(keywordLike);
-            params.add(keywordLike);
-            params.add(keywordLike);
-        }
-        if (StringUtils.hasText(request.getChannel())) {
-            whereClause.append(" and l.channel = ?");
-            params.add(request.getChannel());
-        }
-        if (StringUtils.hasText(request.getTargetScope())) {
-            whereClause.append(" and l.target_scope = ?");
-            params.add(request.getTargetScope());
-        }
-        if (StringUtils.hasText(request.getSendStatus())) {
-            whereClause.append(" and l.send_status = ?");
-            params.add(request.getSendStatus());
-        }
-        if (request.getPublishedAtStart() != null) {
-            whereClause.append(" and l.created_at >= ?");
-            params.add(Timestamp.valueOf(request.getPublishedAtStart()));
-        }
-        if (request.getPublishedAtEnd() != null) {
-            whereClause.append(" and l.created_at <= ?");
-            params.add(Timestamp.valueOf(request.getPublishedAtEnd()));
-        }
-
-        Long total = jdbcTemplate.queryForObject("select count(*) from msg_delivery_log l " + whereClause, Long.class, params.toArray());
-        List<Object> listParams = new ArrayList<>(params);
-        listParams.add(normalizedPageSize);
-        listParams.add(offset);
-        String listSql = """
-                select l.id,
-                       l.tenant_id as tenantId,
-                       l.notice_id as noticeId,
-                       l.channel,
-                       l.target_scope as targetScope,
-                       l.target_user_id as targetUserId,
-                       l.target_user_name as targetUserName,
-                       l.target_email as targetEmail,
-                       l.title,
-                       l.content,
-                       l.send_status as sendStatus,
-                       l.error_message as errorMessage,
-                       l.sent_at as sentAt,
-                       l.created_by as createdBy,
-                       l.created_at as createdAt
-                from msg_delivery_log l
-                """
-                + whereClause
-                + """
-                order by l.created_at desc, l.id desc
-                limit ? offset ?
-                """;
+        DeliveryLogQuery query = buildDeliveryLogQuery(request, tenantId, normalizedPageSize, offset);
+        Long total = messageDeliveryLogMapper.countDeliveryLogs(query);
         PageResponse<MessageVO.DeliveryLogVO> response = new PageResponse<>();
         response.setPageNo(normalizedPageNo);
         response.setPageSize(normalizedPageSize);
         response.setTotal(total == null ? 0 : total);
-        response.setRecords(jdbcTemplate.query(listSql, this::mapDeliveryLogRow, listParams.toArray()));
+        response.setRecords(messageDeliveryLogMapper.listDeliveryLogs(query));
         return response;
     }
 
@@ -412,45 +176,7 @@ public class MessageAppService {
     @Transactional
     public MessageVO.UnreadCountVO markAllRead(CurrentUser currentUser) {
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
-                """
-                        insert into msg_notice_read (
-                            tenant_id, notice_id, user_id, read_at, created_by, updated_by, deleted
-                        )
-                        select n.tenant_id,
-                               n.id,
-                               ?,
-                               ?,
-                               ?,
-                               ?,
-                               0
-                        from msg_notice n
-                        where n.tenant_id = ?
-                          and n.deleted = 0
-                          and n.publish_status = ?
-                          and %s
-                          and not exists (
-                                select 1
-                                from msg_notice_read r
-                                where r.notice_id = n.id
-                                  and r.tenant_id = n.tenant_id
-                                  and r.user_id = ?
-                                  and r.deleted = 0
-                          )
-                        """.formatted(buildVisibleNoticePredicate("n")),
-                currentUser.getUserId(),
-                now,
-                currentUser.getUserId(),
-                currentUser.getUserId(),
-                tenantId(currentUser),
-                STATUS_PUBLISHED,
-                TARGET_SCOPE_TENANT,
-                TARGET_SCOPE_USER,
-                currentUser.getUserId(),
-                TARGET_SCOPE_ROLE,
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
+        messageNoticeMapper.markAllRead(tenantId(currentUser), currentUser.getUserId(), now);
 
         Long unreadCount = countUnread(currentUser);
         messagePushService.publishUnreadCount(
@@ -469,77 +195,13 @@ public class MessageAppService {
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
 
-        String countSql = """
-                select count(*)
-                from msg_notice n
-                where n.tenant_id = ?
-                  and n.deleted = 0
-                  and n.publish_status = ?
-                  and %s
-                """.formatted(buildVisibleNoticePredicate("n"));
-        List<Object> countParams = new ArrayList<>();
-        countParams.add(tenantId);
-        countParams.add(STATUS_PUBLISHED);
-        addVisibleNoticeParams(countParams, userId);
-
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class, countParams.toArray());
-        String listSql = """
-                select n.id,
-                       n.tenant_id as tenantId,
-                       n.notice_type as messageType,
-                       n.target_scope as targetScope,
-                       n.target_user_id as targetUserId,
-                       n.target_role_id as targetRoleId,
-                       u.username as targetUserName,
-                       role.role_name as targetRoleName,
-                       n.title,
-                       n.content,
-                       n.source_type as sourceType,
-                       n.publish_status as publishStatus,
-                       n.published_at as publishedAt,
-                       n.created_by as createdBy,
-                       n.updated_by as updatedBy,
-                       n.created_at as createdAt,
-                       n.updated_at as updatedAt,
-                       case when r.id is null then 0 else 1 end as readFlag,
-                       r.read_at as readAt
-                from msg_notice n
-                left join msg_notice_read r
-                  on r.tenant_id = n.tenant_id
-                 and r.notice_id = n.id
-                 and r.user_id = ?
-                 and r.deleted = 0
-                left join sys_user_tenant ut
-                  on ut.tenant_id = n.tenant_id
-                 and ut.user_id = n.target_user_id
-                 and ut.deleted = 0
-                left join sys_user u
-                  on u.id = ut.user_id
-                 and u.deleted = 0
-                left join sys_role role
-                  on role.tenant_id = n.tenant_id
-                 and role.id = n.target_role_id
-                 and role.deleted = 0
-                where n.tenant_id = ?
-                  and n.deleted = 0
-                  and n.publish_status = ?
-                  and %s
-                order by n.id desc
-                limit ? offset ?
-                """.formatted(buildVisibleNoticePredicate("n"));
-        List<Object> listParams = new ArrayList<>();
-        listParams.add(userId);
-        listParams.add(tenantId);
-        listParams.add(STATUS_PUBLISHED);
-        addVisibleNoticeParams(listParams, userId);
-        listParams.add(normalizedPageSize);
-        listParams.add(offset);
+        Long total = messageNoticeMapper.countVisiblePublished(tenantId, userId);
 
         PageResponse<MessageVO.NoticeVO> response = new PageResponse<>();
         response.setPageNo(normalizedPageNo);
         response.setPageSize(normalizedPageSize);
         response.setTotal(total == null ? 0 : total);
-        response.setRecords(jdbcTemplate.query(listSql, this::mapNoticeRow, listParams.toArray()));
+        response.setRecords(messageNoticeMapper.listVisiblePublished(tenantId, userId, normalizedPageSize, offset));
         return response;
     }
 
@@ -585,36 +247,26 @@ public class MessageAppService {
             throw new BizException(ErrorCode.BAD_REQUEST, "标题和内容不能为空");
         }
 
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        int updated = jdbcTemplate.update(connection -> {
-            PreparedStatement statement = connection.prepareStatement(
-                    """
-                            insert into msg_notice (
-                                tenant_id, notice_type, target_scope, target_user_id, target_role_id, title, content, source_type,
-                                publish_status, published_at, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            statement.setObject(1, tenantId);
-            statement.setString(2, TYPE_MESSAGE);
-            statement.setString(3, targetScope);
-            statement.setObject(4, targetUserId);
-            statement.setObject(5, targetRoleId);
-            statement.setString(6, title);
-            statement.setString(7, content);
-            statement.setString(8, SOURCE_MANUAL);
-            statement.setString(9, STATUS_PUBLISHED);
-            statement.setTimestamp(10, Timestamp.valueOf(LocalDateTime.now()));
-            statement.setObject(11, operatorId);
-            statement.setObject(12, operatorId);
-            return statement;
-        }, keyHolder);
-
-        if (updated <= 0 || keyHolder.getKey() == null) {
+        MessageNoticeEntity entity = new MessageNoticeEntity();
+        LocalDateTime now = LocalDateTime.now();
+        entity.setTenantId(tenantId);
+        entity.setNoticeType(TYPE_MESSAGE);
+        entity.setTargetScope(targetScope);
+        entity.setTargetUserId(targetUserId);
+        entity.setTargetRoleId(targetRoleId);
+        entity.setTitle(title);
+        entity.setContent(content);
+        entity.setSourceType(SOURCE_MANUAL);
+        entity.setPublishStatus(STATUS_PUBLISHED);
+        entity.setPublishedAt(now);
+        entity.setCreatedBy(operatorId);
+        entity.setUpdatedBy(operatorId);
+        entity.setDeleted(0);
+        int updated = messageNoticeMapper.insert(entity);
+        if (updated <= 0 || entity.getId() == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入失败");
         }
-        Long noticeId = keyHolder.getKey().longValue();
+        Long noticeId = entity.getId();
         MessageVO.NoticeVO notice = findNoticeById(tenantId, noticeId, operatorId);
         if (notice == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入后读取失败");
@@ -630,18 +282,13 @@ public class MessageAppService {
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update msg_notice
-                        set publish_status = ?, updated_by = ?, updated_at = ?
-                        where id = ? and tenant_id = ? and deleted = 0
-                        """,
-                STATUS_RETRACTED,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                noticeId,
-                tenantId(currentUser)
-        );
+        int updated = messageNoticeMapper.update(null, new UpdateWrapper<MessageNoticeEntity>()
+                .set("publish_status", STATUS_RETRACTED)
+                .set("updated_by", currentUser.getUserId())
+                .set("updated_at", LocalDateTime.now())
+                .eq("id", noticeId)
+                .eq("tenant_id", tenantId(currentUser))
+                .eq("deleted", 0));
         if (updated <= 0) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
@@ -658,132 +305,19 @@ public class MessageAppService {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
 
-        jdbcTemplate.update(
-                """
-                        insert into msg_notice_read (tenant_id, notice_id, user_id, read_at, created_by, updated_by, deleted)
-                        values (?, ?, ?, ?, ?, ?, 0)
-                        on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
-                        """,
-                tenantId(currentUser),
-                noticeId,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
+        LocalDateTime now = LocalDateTime.now();
+        messageNoticeMapper.upsertRead(tenantId(currentUser), noticeId, currentUser.getUserId(), now);
         notice.setReadFlag(Boolean.TRUE);
-        notice.setReadAt(LocalDateTime.now());
+        notice.setReadAt(now);
         return notice;
     }
 
     private MessageVO.NoticeVO findVisibleNoticeById(Long tenantId, Long noticeId, Long userId) {
-        List<MessageVO.NoticeVO> results = jdbcTemplate.query(
-                """
-                        select n.id,
-                               n.tenant_id as tenantId,
-                               n.notice_type as messageType,
-                               n.target_scope as targetScope,
-                               n.target_user_id as targetUserId,
-                               n.target_role_id as targetRoleId,
-                               u.username as targetUserName,
-                               role.role_name as targetRoleName,
-                               n.title,
-                               n.content,
-                               n.source_type as sourceType,
-                               n.publish_status as publishStatus,
-                               n.published_at as publishedAt,
-                               n.created_by as createdBy,
-                               n.updated_by as updatedBy,
-                               n.created_at as createdAt,
-                               n.updated_at as updatedAt,
-                               case when r.id is null then 0 else 1 end as readFlag,
-                               r.read_at as readAt
-                        from msg_notice n
-                        left join msg_notice_read r
-                          on r.tenant_id = n.tenant_id
-                         and r.notice_id = n.id
-                         and r.user_id = ?
-                         and r.deleted = 0
-                        left join sys_user_tenant ut
-                          on ut.tenant_id = n.tenant_id
-                         and ut.user_id = n.target_user_id
-                         and ut.deleted = 0
-                        left join sys_user u
-                          on u.id = ut.user_id
-                         and u.deleted = 0
-                        left join sys_role role
-                          on role.tenant_id = n.tenant_id
-                         and role.id = n.target_role_id
-                         and role.deleted = 0
-                        where n.tenant_id = ?
-                          and n.id = ?
-                          and n.deleted = 0
-                          and %s
-                        limit 1
-                        """.formatted(buildVisibleNoticePredicate("n")),
-                this::mapNoticeRow,
-                userId,
-                tenantId,
-                noticeId,
-                TARGET_SCOPE_TENANT,
-                TARGET_SCOPE_USER,
-                userId,
-                TARGET_SCOPE_ROLE,
-                userId
-        );
-        return results.isEmpty() ? null : results.get(0);
+        return messageNoticeMapper.findVisibleNoticeById(tenantId, noticeId, userId);
     }
 
     private MessageVO.NoticeVO findNoticeById(Long tenantId, Long noticeId, Long userId) {
-        List<MessageVO.NoticeVO> results = jdbcTemplate.query(
-                """
-                        select n.id,
-                               n.tenant_id as tenantId,
-                               n.notice_type as messageType,
-                               n.target_scope as targetScope,
-                               n.target_user_id as targetUserId,
-                               n.target_role_id as targetRoleId,
-                               u.username as targetUserName,
-                               role.role_name as targetRoleName,
-                               n.title,
-                               n.content,
-                               n.source_type as sourceType,
-                               n.publish_status as publishStatus,
-                               n.published_at as publishedAt,
-                               n.created_by as createdBy,
-                               n.updated_by as updatedBy,
-                               n.created_at as createdAt,
-                               n.updated_at as updatedAt,
-                               case when r.id is null then 0 else 1 end as readFlag,
-                               r.read_at as readAt
-                        from msg_notice n
-                        left join msg_notice_read r
-                          on r.tenant_id = n.tenant_id
-                         and r.notice_id = n.id
-                         and r.user_id = ?
-                         and r.deleted = 0
-                        left join sys_user_tenant ut
-                          on ut.tenant_id = n.tenant_id
-                         and ut.user_id = n.target_user_id
-                         and ut.deleted = 0
-                        left join sys_user u
-                          on u.id = ut.user_id
-                         and u.deleted = 0
-                        left join sys_role role
-                          on role.tenant_id = n.tenant_id
-                         and role.id = n.target_role_id
-                         and role.deleted = 0
-                        where n.tenant_id = ?
-                          and n.id = ?
-                          and n.deleted = 0
-                        limit 1
-                        """,
-                this::mapNoticeRow,
-                userId,
-                tenantId,
-                noticeId
-        );
-        return results.isEmpty() ? null : results.get(0);
+        return messageNoticeMapper.findNoticeById(tenantId, noticeId, userId);
     }
 
     private Set<String> normalizeChannels(List<String> channels) {
@@ -828,59 +362,17 @@ public class MessageAppService {
     }
 
     private List<Recipient> resolveEmailRecipients(Long tenantId, String targetScope, Long targetUserId, Long targetRoleId) {
+        List<RecipientRow> rows;
         if (TARGET_SCOPE_USER.equals(targetScope)) {
-            return jdbcTemplate.query(
-                    """
-                            select u.id as userId, u.username, u.email
-                            from sys_user u
-                            join sys_user_tenant ut
-                              on ut.user_id = u.id
-                             and ut.tenant_id = ?
-                             and ut.deleted = 0
-                            where u.id = ?
-                              and u.deleted = 0
-                              and u.status = 'ENABLED'
-                            limit 1
-                            """,
-                    (rs, rowNum) -> new Recipient(rs.getLong("userId"), rs.getString("username"), rs.getString("email")),
-                    tenantId,
-                    targetUserId
-            );
+            rows = messageNoticeMapper.listUserRecipient(tenantId, targetUserId);
+            return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail())).toList();
         }
         if (TARGET_SCOPE_ROLE.equals(targetScope)) {
-            return jdbcTemplate.query(
-                    """
-                            select distinct u.id as userId, u.username, u.email
-                            from sys_user u
-                            join sys_user_role ur
-                              on ur.user_id = u.id
-                             and ur.tenant_id = ?
-                             and ur.role_id = ?
-                             and ur.deleted = 0
-                            where u.deleted = 0
-                              and u.status = 'ENABLED'
-                            order by u.id asc
-                            """,
-                    (rs, rowNum) -> new Recipient(rs.getLong("userId"), rs.getString("username"), rs.getString("email")),
-                    tenantId,
-                    targetRoleId
-            );
+            rows = messageNoticeMapper.listRoleRecipients(tenantId, targetRoleId);
+            return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail())).toList();
         }
-        return jdbcTemplate.query(
-                """
-                        select distinct u.id as userId, u.username, u.email
-                        from sys_user u
-                        join sys_user_tenant ut
-                          on ut.user_id = u.id
-                         and ut.tenant_id = ?
-                         and ut.deleted = 0
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                        order by u.id asc
-                        """,
-                (rs, rowNum) -> new Recipient(rs.getLong("userId"), rs.getString("username"), rs.getString("email")),
-                tenantId
-        );
+        rows = messageNoticeMapper.listTenantRecipients(tenantId);
+        return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail())).toList();
     }
 
     private void insertDeliveryLog(
@@ -897,79 +389,82 @@ public class MessageAppService {
             String errorMessage,
             Long operatorId
     ) {
-        jdbcTemplate.update(
-                """
-                        insert into msg_delivery_log (
-                            tenant_id, notice_id, channel, target_scope, target_user_id, target_user_name, target_email,
-                            title, content, send_status, error_message, sent_at, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
-                tenantId,
-                noticeId,
-                channel,
-                targetScope,
-                targetUserId,
-                targetUserName,
-                targetEmail,
-                title,
-                content,
-                sendStatus,
-                errorMessage,
-                DELIVERY_SUCCESS.equals(sendStatus) ? LocalDateTime.now() : null,
-                operatorId,
-                operatorId
-        );
+        MessageDeliveryLogEntity entity = new MessageDeliveryLogEntity();
+        entity.setTenantId(tenantId);
+        entity.setNoticeId(noticeId);
+        entity.setChannel(channel);
+        entity.setTargetScope(targetScope);
+        entity.setTargetUserId(targetUserId);
+        entity.setTargetUserName(targetUserName);
+        entity.setTargetEmail(targetEmail);
+        entity.setTitle(title);
+        entity.setContent(content);
+        entity.setSendStatus(sendStatus);
+        entity.setErrorMessage(errorMessage);
+        entity.setSentAt(DELIVERY_SUCCESS.equals(sendStatus) ? LocalDateTime.now() : null);
+        entity.setCreatedBy(operatorId);
+        entity.setUpdatedBy(operatorId);
+        entity.setDeleted(0);
+        messageDeliveryLogMapper.insert(entity);
     }
 
-    private MessageVO.NoticeVO mapNoticeRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-        MessageVO.NoticeVO notice = new MessageVO.NoticeVO();
-        notice.setId(rs.getLong("id"));
-        notice.setTenantId(rs.getLong("tenantId"));
-        notice.setMessageType(rs.getString("messageType"));
-        notice.setTargetScope(rs.getString("targetScope"));
-        long targetUserId = rs.getLong("targetUserId");
-        notice.setTargetUserId(rs.wasNull() ? null : targetUserId);
-        long targetRoleId = rs.getLong("targetRoleId");
-        notice.setTargetRoleId(rs.wasNull() ? null : targetRoleId);
-        notice.setTargetUserName(rs.getString("targetUserName"));
-        notice.setTargetRoleName(rs.getString("targetRoleName"));
-        notice.setTitle(rs.getString("title"));
-        notice.setContent(rs.getString("content"));
-        notice.setSourceType(rs.getString("sourceType"));
-        notice.setPublishStatus(rs.getString("publishStatus"));
-        notice.setPublishedAt(toLocalDateTime(rs.getTimestamp("publishedAt")));
-        long createdBy = rs.getLong("createdBy");
-        notice.setCreatedBy(rs.wasNull() ? null : createdBy);
-        long updatedBy = rs.getLong("updatedBy");
-        notice.setUpdatedBy(rs.wasNull() ? null : updatedBy);
-        notice.setCreatedAt(toLocalDateTime(rs.getTimestamp("createdAt")));
-        notice.setUpdatedAt(toLocalDateTime(rs.getTimestamp("updatedAt")));
-        notice.setReadFlag(rs.getInt("readFlag") == 1);
-        notice.setReadAt(toLocalDateTime(rs.getTimestamp("readAt")));
-        return notice;
+    private NoticeArchiveQuery buildNoticeArchiveQuery(
+            CurrentUser currentUser,
+            MessageDTO.MessageArchiveQueryRequest request,
+            Long tenantId,
+            long limit,
+            long offset
+    ) {
+        NoticeArchiveQuery query = new NoticeArchiveQuery();
+        query.setTenantId(tenantId);
+        query.setUserId(currentUser.getUserId());
+        query.setManageArchive(canManageArchive(currentUser));
+        query.setKeyword(normalizeText(request.getKeyword()));
+        query.setMessageType(normalizeText(request.getMessageType()));
+        query.setTargetScope(normalizeText(request.getTargetScope()));
+        query.setSourceType(normalizeText(request.getSourceType()));
+        query.setPublishStatus(normalizeText(request.getPublishStatus()));
+        query.setPublishedAtStart(request.getPublishedAtStart());
+        query.setPublishedAtEnd(request.getPublishedAtEnd());
+        query.setSortField(normalizeSortField(request.getSortField()));
+        query.setSortOrder("ASC".equalsIgnoreCase(request.getSortOrder()) ? "asc" : "desc");
+        query.setLimit(limit);
+        query.setOffset(offset);
+        return query;
     }
 
-    private MessageVO.DeliveryLogVO mapDeliveryLogRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-        MessageVO.DeliveryLogVO log = new MessageVO.DeliveryLogVO();
-        log.setId(rs.getLong("id"));
-        log.setTenantId(rs.getLong("tenantId"));
-        long noticeId = rs.getLong("noticeId");
-        log.setNoticeId(rs.wasNull() ? null : noticeId);
-        log.setChannel(rs.getString("channel"));
-        log.setTargetScope(rs.getString("targetScope"));
-        long targetUserId = rs.getLong("targetUserId");
-        log.setTargetUserId(rs.wasNull() ? null : targetUserId);
-        log.setTargetUserName(rs.getString("targetUserName"));
-        log.setTargetEmail(rs.getString("targetEmail"));
-        log.setTitle(rs.getString("title"));
-        log.setContent(rs.getString("content"));
-        log.setSendStatus(rs.getString("sendStatus"));
-        log.setErrorMessage(rs.getString("errorMessage"));
-        log.setSentAt(toLocalDateTime(rs.getTimestamp("sentAt")));
-        long createdBy = rs.getLong("createdBy");
-        log.setCreatedBy(rs.wasNull() ? null : createdBy);
-        log.setCreatedAt(toLocalDateTime(rs.getTimestamp("createdAt")));
-        return log;
+    private DeliveryLogQuery buildDeliveryLogQuery(
+            MessageDTO.MessageArchiveQueryRequest request,
+            Long tenantId,
+            long limit,
+            long offset
+    ) {
+        DeliveryLogQuery query = new DeliveryLogQuery();
+        query.setTenantId(tenantId);
+        query.setKeyword(normalizeText(request.getKeyword()));
+        query.setChannel(normalizeText(request.getChannel()));
+        query.setTargetScope(normalizeText(request.getTargetScope()));
+        query.setSendStatus(normalizeText(request.getSendStatus()));
+        query.setCreatedAtStart(request.getPublishedAtStart());
+        query.setCreatedAtEnd(request.getPublishedAtEnd());
+        query.setLimit(limit);
+        query.setOffset(offset);
+        return query;
+    }
+
+    private String normalizeSortField(String sortField) {
+        return switch (sortField == null ? "" : sortField) {
+            case "publishedAt", "createdAt", "title", "sourceType", "publishStatus", "targetScope", "messageType", "readFlag" -> sortField;
+            default -> null;
+        };
+    }
+
+    private String normalizeText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String abbreviate(String value, int maxLength) {
@@ -977,10 +472,6 @@ public class MessageAppService {
             return value;
         }
         return value.substring(0, maxLength);
-    }
-
-    private LocalDateTime toLocalDateTime(Timestamp timestamp) {
-        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
     private Long tenantId(CurrentUser currentUser) {

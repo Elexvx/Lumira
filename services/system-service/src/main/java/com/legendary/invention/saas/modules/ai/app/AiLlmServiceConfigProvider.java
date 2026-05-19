@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.modules.ai.app;
 
 import com.legendary.invention.saas.modules.ai.infrastructure.AiSecretCryptoService;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,10 +21,10 @@ public interface AiLlmServiceConfigProvider {
 @Primary
 class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final AiSecretCryptoService aiSecretCryptoService;
 
-    JdbcAiLlmServiceConfigProvider(JdbcTemplate jdbcTemplate, AiSecretCryptoService aiSecretCryptoService) {
+    JdbcAiLlmServiceConfigProvider(MyBatisQueryOperations jdbcTemplate, AiSecretCryptoService aiSecretCryptoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.aiSecretCryptoService = aiSecretCryptoService;
     }

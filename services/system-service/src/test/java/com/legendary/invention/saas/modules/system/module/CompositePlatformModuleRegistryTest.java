@@ -61,7 +61,7 @@ class CompositePlatformModuleRegistryTest {
         private final List<PlatformModuleVO> modules;
 
         StubDatabasePlatformModuleRepository(List<PlatformModuleVO> modules) {
-            super(null);
+            super(null, null);
             this.modules = modules;
         }
 

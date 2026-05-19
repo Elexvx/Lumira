@@ -9,12 +9,11 @@ import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.site.domain.SiteEnums;
 import com.legendary.invention.saas.modules.site.dto.SiteDTO;
 import com.legendary.invention.saas.modules.site.vo.SiteVO;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.SqlRow;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,11 +24,11 @@ import java.util.Map;
 @Service
 public class SiteManagementAppService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final OperationAuditService operationAuditService;
 
-    public SiteManagementAppService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, OperationAuditService operationAuditService) {
+    public SiteManagementAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, OperationAuditService operationAuditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.operationAuditService = operationAuditService;
@@ -508,7 +507,7 @@ public class SiteManagementAppService {
         return jdbcTemplate.queryForObject("select * from site_content_category where id = ? and tenant_id = ? and site_id = ? and deleted = 0", (rs, rowNum) -> mapCategory(rs), id, tenantId, siteId);
     }
 
-    private <T> PageResponse<T> page(String table, String extraFilter, List<Object> args, long pageNo, long pageSize, org.springframework.jdbc.core.RowMapper<T> mapper) {
+    private <T> PageResponse<T> page(String table, String extraFilter, List<Object> args, long pageNo, long pageSize, com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper<T> mapper) {
         long safePageNo = Math.max(1, pageNo);
         long safePageSize = Math.min(Math.max(1, pageSize), 100);
         String alias = table.equals("site_page") ? "p" : "f";
@@ -530,7 +529,7 @@ public class SiteManagementAppService {
         return response;
     }
 
-    private SiteVO.SiteSettingsVO mapSite(ResultSet rs) throws SQLException {
+    private SiteVO.SiteSettingsVO mapSite(SqlRow rs) {
         SiteVO.SiteSettingsVO vo = new SiteVO.SiteSettingsVO();
         vo.id = rs.getLong("id");
         vo.tenantId = rs.getLong("tenant_id");
@@ -549,7 +548,7 @@ public class SiteManagementAppService {
         return vo;
     }
 
-    private SiteVO.NavigationVO mapNavigation(ResultSet rs) throws SQLException {
+    private SiteVO.NavigationVO mapNavigation(SqlRow rs) {
         SiteVO.NavigationVO vo = new SiteVO.NavigationVO();
         vo.id = rs.getLong("id");
         vo.parentId = longObject(rs, "parent_id");
@@ -562,7 +561,7 @@ public class SiteManagementAppService {
         return vo;
     }
 
-    private SiteVO.CarouselVO mapCarousel(ResultSet rs) throws SQLException {
+    private SiteVO.CarouselVO mapCarousel(SqlRow rs) {
         SiteVO.CarouselVO vo = new SiteVO.CarouselVO();
         vo.id = rs.getLong("id");
         vo.title = rs.getString("title");
@@ -578,7 +577,7 @@ public class SiteManagementAppService {
         return vo;
     }
 
-    private SiteVO.PageVO mapPage(ResultSet rs) throws SQLException {
+    private SiteVO.PageVO mapPage(SqlRow rs) {
         SiteVO.PageVO vo = new SiteVO.PageVO();
         vo.id = rs.getLong("id");
         vo.title = rs.getString("title");
@@ -594,7 +593,7 @@ public class SiteManagementAppService {
         return vo;
     }
 
-    private SiteVO.ContentCategoryVO mapCategory(ResultSet rs) throws SQLException {
+    private SiteVO.ContentCategoryVO mapCategory(SqlRow rs) {
         SiteVO.ContentCategoryVO vo = new SiteVO.ContentCategoryVO();
         vo.id = rs.getLong("id");
         vo.parentId = longObject(rs, "parent_id");
@@ -605,7 +604,7 @@ public class SiteManagementAppService {
         return vo;
     }
 
-    private SiteVO.ContentVO mapContent(ResultSet rs) throws SQLException {
+    private SiteVO.ContentVO mapContent(SqlRow rs) {
         SiteVO.ContentVO vo = new SiteVO.ContentVO();
         vo.id = rs.getLong("id");
         vo.categoryId = longObject(rs, "category_id");
@@ -625,7 +624,7 @@ public class SiteManagementAppService {
         return vo;
     }
 
-    private SiteVO.SubmissionVO mapSubmission(ResultSet rs) throws SQLException {
+    private SiteVO.SubmissionVO mapSubmission(SqlRow rs) {
         SiteVO.SubmissionVO vo = new SiteVO.SubmissionVO();
         vo.id = rs.getLong("id");
         vo.formId = rs.getLong("form_id");
@@ -672,22 +671,18 @@ public class SiteManagementAppService {
         return value == null ? 0 : value;
     }
 
-    private Long longObject(ResultSet rs, String column) throws SQLException {
+    private Long longObject(SqlRow rs, String column) {
         long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
     }
 
-    private LocalDateTime localDateTime(ResultSet rs, String column) throws SQLException {
+    private LocalDateTime localDateTime(SqlRow rs, String column) {
         Timestamp ts = rs.getTimestamp(column);
         return ts == null ? null : ts.toLocalDateTime();
     }
 
-    private String safeString(ResultSet rs, String column) {
-        try {
-            return rs.getString(column);
-        } catch (SQLException exception) {
-            return null;
-        }
+    private String safeString(SqlRow rs, String column) {
+        return rs.getString(column);
     }
 
     private void audit(CurrentUser currentUser, String action, String type, String message) {

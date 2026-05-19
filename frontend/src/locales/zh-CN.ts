@@ -42,6 +42,7 @@ export default {
   'nav.site.submissions': '提交记录',
   'nav.user.center': '用户中心',
   'nav.user.users': '用户管理',
+  'nav.user.departments': '组织部门',
   'nav.user.onlineUsers': '在线用户',
   'nav.user.roles': '角色管理',
   'nav.user.personalCenter': '个人中心',

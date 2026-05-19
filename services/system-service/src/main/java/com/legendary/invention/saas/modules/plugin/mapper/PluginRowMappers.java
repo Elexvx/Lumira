@@ -1,10 +1,9 @@
 package com.legendary.invention.saas.modules.plugin.mapper;
 
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
-import org.springframework.jdbc.core.RowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.SqlRow;
 
 public final class PluginRowMappers {
 
@@ -15,7 +14,7 @@ public final class PluginRowMappers {
         return PluginRowMappers::mapPluginVersion;
     }
 
-    private static PluginVersionEntity mapPluginVersion(ResultSet rs, int rowNum) throws SQLException {
+    private static PluginVersionEntity mapPluginVersion(SqlRow rs, int rowNum) {
         PluginVersionEntity entity = new PluginVersionEntity();
         entity.setId(rs.getLong("id"));
         entity.setPluginCode(rs.getString("plugin_code"));

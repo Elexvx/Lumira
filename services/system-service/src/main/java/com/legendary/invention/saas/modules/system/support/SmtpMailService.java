@@ -2,7 +2,8 @@ package com.legendary.invention.saas.modules.system.support;
 
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
+import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
@@ -27,10 +28,10 @@ public class SmtpMailService {
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final SysConfigMapper sysConfigMapper;
 
-    public SmtpMailService(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public SmtpMailService(SysConfigMapper sysConfigMapper) {
+        this.sysConfigMapper = sysConfigMapper;
     }
 
     public boolean isConfigured(Long tenantId) {
@@ -77,35 +78,16 @@ public class SmtpMailService {
                 SMTP_STARTTLS_ENABLED_KEY,
                 SMTP_SSL_ENABLED_KEY
         );
-        String inClause = String.join(",", keys.stream().map(key -> "?").toList());
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select config_key, config_value
-                        from sys_config
-                        where tenant_id = ? and config_scope = ? and deleted = 0 and config_key in (%s)
-                        order by id desc
-                        """.formatted(inClause),
-                buildArgs(effectiveTenantId, keys)
-        );
+        List<SysConfigEntity> rows = sysConfigMapper.listEffectiveValues(effectiveTenantId, PLATFORM_SCOPE, keys);
         Map<String, String> values = new HashMap<>();
-        for (Map<String, Object> row : rows) {
-            Object key = row.get("config_key");
-            Object value = row.get("config_value");
-            if (key != null && value != null && !values.containsKey(key.toString())) {
-                values.put(key.toString(), value.toString());
+        for (SysConfigEntity row : rows) {
+            String key = row.getConfigKey();
+            String value = row.getConfigValue();
+            if (key != null && value != null && !values.containsKey(key)) {
+                values.put(key, value);
             }
         }
         return values;
-    }
-
-    private Object[] buildArgs(Long tenantId, List<String> keys) {
-        Object[] args = new Object[keys.size() + 2];
-        args[0] = tenantId;
-        args[1] = PLATFORM_SCOPE;
-        for (int i = 0; i < keys.size(); i += 1) {
-            args[i + 2] = keys.get(i);
-        }
-        return args;
     }
 
     private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {

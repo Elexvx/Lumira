@@ -3,6 +3,9 @@ package com.legendary.invention.saas.modules.system.user.app;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
+import com.legendary.invention.common.security.data.DataPermissionDecision;
+import com.legendary.invention.common.security.data.DataPermissionResolver;
+import com.legendary.invention.common.security.data.DataScopeType;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
@@ -15,8 +18,8 @@ import com.legendary.invention.saas.modules.system.user.vo.UserDetailVO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,8 +42,9 @@ public class SystemUserManagementAppService {
     private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final String RESOURCE_SYSTEM_USER = "system:user";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
     private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -50,7 +54,7 @@ public class SystemUserManagementAppService {
     private final PasswordPolicyService passwordPolicyService;
 
     public SystemUserManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             UserDomainService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
@@ -170,6 +174,9 @@ public class SystemUserManagementAppService {
             baseSql += " and iu.last_login_at <= ?";
             params.add(lastLoginEndAt);
         }
+        DataPermissionSql dataPermissionSql = userDataPermissionClause(currentUser, "u");
+        baseSql += dataPermissionSql.sql();
+        params.addAll(dataPermissionSql.params());
         boolean cursorMode = cursorId != null || cursorCreatedAtValue != null;
         if (cursorCreatedAtValue != null && cursorId != null) {
             baseSql += " and (coalesce(iu.registered_at, u.created_at) < ? or (coalesce(iu.registered_at, u.created_at) = ? and u.id < ?))";
@@ -202,6 +209,9 @@ public class SystemUserManagementAppService {
     }
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
+        if (!canAccessUserRecord(currentUser, userId)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
         SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
         if (!canViewSensitiveUserInfo(currentUser)) {
             maskSensitiveUser(user);
@@ -210,6 +220,8 @@ public class SystemUserManagementAppService {
         copyUser(detail, user);
         Long tenantId = currentTenantId(currentUser);
         detail.setRoleIds(listUserRoleIds(userId, tenantId));
+        detail.setDeptIds(listUserDeptIds(userId, tenantId));
+        detail.setPrimaryDeptId(queryPrimaryDeptId(userId, tenantId));
         detail.setTenantIds(listUserTenantIds(userId));
         decorateIamUserDetail(detail, userId, canViewSensitiveUserInfo(currentUser));
         return detail;
@@ -221,6 +233,7 @@ public class SystemUserManagementAppService {
         Long userId = insertOrUpdateUser(null, request, currentUser.getUserId());
         upsertUserTenantRelation(userId, tenantId, true, currentUser.getUserId());
         replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
+        replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), true);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
         return getUser(currentUser, userId);
@@ -231,6 +244,7 @@ public class SystemUserManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         insertOrUpdateUser(userId, request, currentUser.getUserId());
         replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
+        replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
         return getUser(currentUser, userId);
@@ -285,6 +299,13 @@ public class SystemUserManagementAppService {
         }
         jdbcTemplate.update(
                 "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                now,
+                tenantId,
+                userId
+        );
+        jdbcTemplate.update(
+                "update sys_user_department set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
                 currentUser.getUserId(),
                 now,
                 tenantId,
@@ -387,6 +408,7 @@ public class SystemUserManagementAppService {
         }
         user.setTenantNames(listUserTenantNames(user.getId()));
         user.setRoleNames(listUserRoleNames(user.getId(), tenantId));
+        user.setDeptNames(listUserDeptNames(user.getId(), tenantId));
         return user;
     }
 
@@ -524,6 +546,56 @@ public class SystemUserManagementAppService {
         }
     }
 
+    private void replaceUserDepartments(
+            Long userId,
+            Long tenantId,
+            List<Long> deptIds,
+            Long primaryDeptId,
+            Long operatorId,
+            boolean createMode
+    ) {
+        if (deptIds == null && !createMode) {
+            return;
+        }
+        jdbcTemplate.update(
+                "delete from sys_user_department where tenant_id = ? and user_id = ?",
+                tenantId,
+                userId
+        );
+        if (CollectionUtils.isEmpty(deptIds)) {
+            return;
+        }
+        if (deptIds.stream().anyMatch(deptId -> deptId == null || deptId <= 0)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户部门ID必须为正整数");
+        }
+        List<Long> distinctDeptIds = new ArrayList<>(new LinkedHashSet<>(deptIds));
+        Long existingDeptCount = jdbcTemplate.queryForObject(
+                "select count(1) from sys_department where tenant_id = ? and deleted = 0 and status = 'ENABLED' and id in (" + placeholders(distinctDeptIds.size()) + ")",
+                Long.class,
+                buildTenantAndIdsParams(tenantId, distinctDeptIds)
+        );
+        if (existingDeptCount == null || existingDeptCount != distinctDeptIds.size()) {
+            throw new BizException(ErrorCode.NOT_FOUND, "部门不存在或已停用");
+        }
+        Long effectivePrimaryDeptId = primaryDeptId != null && distinctDeptIds.contains(primaryDeptId)
+                ? primaryDeptId
+                : distinctDeptIds.get(0);
+        for (Long deptId : distinctDeptIds) {
+            jdbcTemplate.update(
+                    """
+                            insert into sys_user_department (tenant_id, user_id, dept_id, primary_flag, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, ?, ?, 0)
+                            """,
+                    tenantId,
+                    userId,
+                    deptId,
+                    deptId.equals(effectivePrimaryDeptId) ? 1 : 0,
+                    operatorId,
+                    operatorId
+            );
+        }
+    }
+
     private void decorateUsers(List<SystemVO.UserVO> users, Long tenantId) {
         List<Long> userIds = users.stream()
                 .map(SystemVO.UserVO::getId)
@@ -535,9 +607,11 @@ public class SystemUserManagementAppService {
         }
 
         Map<Long, List<String>> roleNames = listUserRoleNames(userIds, tenantId);
+        Map<Long, List<String>> deptNames = listUserDeptNames(userIds, tenantId);
         users.forEach(user -> {
             user.setTenantNames(List.of());
             user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
+            user.setDeptNames(deptNames.getOrDefault(user.getId(), List.of()));
         });
     }
 
@@ -606,6 +680,48 @@ public class SystemUserManagementAppService {
         );
     }
 
+    private List<Long> listUserDeptIds(Long userId, Long tenantId) {
+        return jdbcTemplate.queryForList(
+                """
+                        select ud.dept_id
+                        from sys_user_department ud
+                        join sys_department d
+                          on d.id = ud.dept_id
+                         and d.tenant_id = ud.tenant_id
+                         and d.deleted = 0
+                        where ud.user_id = ?
+                          and ud.tenant_id = ?
+                          and ud.deleted = 0
+                        order by ud.primary_flag desc, ud.dept_id asc
+                        """,
+                Long.class,
+                userId,
+                tenantId
+        );
+    }
+
+    private Long queryPrimaryDeptId(Long userId, Long tenantId) {
+        List<Long> ids = jdbcTemplate.queryForList(
+                """
+                        select ud.dept_id
+                        from sys_user_department ud
+                        join sys_department d
+                          on d.id = ud.dept_id
+                         and d.tenant_id = ud.tenant_id
+                         and d.deleted = 0
+                        where ud.user_id = ?
+                          and ud.tenant_id = ?
+                          and ud.deleted = 0
+                        order by ud.primary_flag desc, ud.dept_id asc
+                        limit 1
+                        """,
+                Long.class,
+                userId,
+                tenantId
+        );
+        return ids.isEmpty() ? null : ids.get(0);
+    }
+
     private List<String> listUserRoleNames(Long userId, Long tenantId) {
         return jdbcTemplate.queryForList(
                 """
@@ -614,6 +730,26 @@ public class SystemUserManagementAppService {
                         join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
                         where ur.user_id = ? and ur.tenant_id = ? and ur.deleted = 0
                         order by r.id asc
+                        """,
+                String.class,
+                userId,
+                tenantId
+        );
+    }
+
+    private List<String> listUserDeptNames(Long userId, Long tenantId) {
+        return jdbcTemplate.queryForList(
+                """
+                        select d.dept_name
+                        from sys_user_department ud
+                        join sys_department d
+                          on d.id = ud.dept_id
+                         and d.tenant_id = ud.tenant_id
+                         and d.deleted = 0
+                        where ud.user_id = ?
+                          and ud.tenant_id = ?
+                          and ud.deleted = 0
+                        order by ud.primary_flag desc, d.sort_no asc, d.id asc
                         """,
                 String.class,
                 userId,
@@ -639,6 +775,36 @@ public class SystemUserManagementAppService {
                     while (rs.next()) {
                         result.computeIfAbsent(rs.getLong("userId"), ignored -> new ArrayList<>())
                                 .add(rs.getString("roleName"));
+                    }
+                    return result;
+                },
+                params.toArray()
+        );
+    }
+
+    private Map<Long, List<String>> listUserDeptNames(List<Long> userIds, Long tenantId) {
+        String placeholders = placeholders(userIds.size());
+        List<Object> params = new ArrayList<>();
+        params.addAll(userIds);
+        params.add(tenantId);
+        return jdbcTemplate.query(
+                """
+                        select ud.user_id as userId, d.dept_name as deptName
+                        from sys_user_department ud
+                        join sys_department d
+                          on d.id = ud.dept_id
+                         and d.tenant_id = ud.tenant_id
+                         and d.deleted = 0
+                        where ud.user_id in (%s)
+                          and ud.tenant_id = ?
+                          and ud.deleted = 0
+                        order by ud.user_id asc, ud.primary_flag desc, d.sort_no asc, d.id asc
+                        """.formatted(placeholders),
+                rs -> {
+                    Map<Long, List<String>> result = new LinkedHashMap<>();
+                    while (rs.next()) {
+                        result.computeIfAbsent(rs.getLong("userId"), ignored -> new ArrayList<>())
+                                .add(rs.getString("deptName"));
                     }
                     return result;
                 },
@@ -872,6 +1038,78 @@ public class SystemUserManagementAppService {
         return DEFAULT_PUBLIC_TENANT_ID;
     }
 
+    private boolean canAccessUserRecord(CurrentUser currentUser, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        Long tenantId = currentTenantId(currentUser);
+        DataPermissionSql dataPermissionSql = userDataPermissionClause(currentUser, "u");
+        List<Object> params = new ArrayList<>();
+        params.add(tenantId);
+        params.add(userId);
+        params.addAll(dataPermissionSql.params());
+        Long count = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from sys_user u
+                        join sys_user_tenant ut
+                          on ut.user_id = u.id
+                         and ut.tenant_id = ?
+                         and ut.deleted = 0
+                         and ut.status = 'ENABLED'
+                        where u.deleted = 0
+                          and u.id = ?
+                        """ + dataPermissionSql.sql(),
+                Long.class,
+                params.toArray()
+        );
+        return count != null && count > 0;
+    }
+
+    private DataPermissionSql userDataPermissionClause(CurrentUser currentUser, String userAlias) {
+        DataPermissionDecision decision = DataPermissionResolver.resolve(
+                RESOURCE_SYSTEM_USER,
+                currentUser.getUserId(),
+                currentUser.getDeptIds(),
+                currentUser.getDescendantDeptIds(),
+                currentUser.getDataScopes(),
+                currentUser.getPermissions()
+        );
+        if (decision.scopeType() == DataScopeType.ALL || decision.scopeType() == DataScopeType.TENANT) {
+            return DataPermissionSql.empty();
+        }
+        Set<Long> deptIds = new LinkedHashSet<>(decision.deptIds());
+        Set<Long> userIds = new LinkedHashSet<>(decision.userIds());
+        if (decision.hasDeptRestriction() && currentUser.getUserId() != null) {
+            userIds.add(currentUser.getUserId());
+        }
+        if (deptIds.isEmpty() && userIds.isEmpty()) {
+            userIds.add(currentUser.getUserId());
+        }
+
+        List<String> conditions = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+        if (!deptIds.isEmpty()) {
+            conditions.add("""
+                    exists (
+                        select 1
+                        from sys_user_department sud
+                        where sud.tenant_id = ?
+                          and sud.user_id = %s.id
+                          and sud.dept_id in (%s)
+                          and sud.deleted = 0
+                    )
+                    """.formatted(userAlias, placeholders(deptIds.size())));
+            params.add(currentTenantId(currentUser));
+            params.addAll(deptIds);
+        }
+        if (!userIds.isEmpty()) {
+            conditions.add("%s.id in (%s)".formatted(userAlias, placeholders(userIds.size())));
+            params.addAll(userIds);
+        }
+        return new DataPermissionSql(" and (" + String.join(" or ", conditions) + ")", params);
+    }
+
     private <T> T queryOne(String sql, Class<T> voClass, Object... params) {
         try {
             return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(voClass), params);
@@ -902,5 +1140,11 @@ public class SystemUserManagementAppService {
         target.setRoleNames(source.getRoleNames());
         target.setCreatedAt(source.getCreatedAt());
         target.setUpdatedAt(source.getUpdatedAt());
+    }
+
+    private record DataPermissionSql(String sql, List<Object> params) {
+        static DataPermissionSql empty() {
+            return new DataPermissionSql("", List.of());
+        }
     }
 }

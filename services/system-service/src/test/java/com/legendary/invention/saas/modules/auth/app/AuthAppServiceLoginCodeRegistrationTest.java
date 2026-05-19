@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.auth.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.security.service.LoginProtectionService;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
@@ -67,7 +68,7 @@ class AuthAppServiceLoginCodeRegistrationTest {
                 null,
                 verificationAppService,
                 null,
-                jdbcTemplate
+                new MyBatisQueryOperations(jdbcTemplate)
         );
 
         LoginCodeChallengeRequest request = new LoginCodeChallengeRequest();

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.legendary.invention.message.mapper.MessageDeliveryLogMapper">
+
+    <sql id="deliveryFilters">
+        l.tenant_id = #{query.tenantId}
+        and l.deleted = 0
+        <if test="query.keyword != null and query.keyword != ''">
+            and (
+                l.title like concat('%', #{query.keyword}, '%')
+                or l.content like concat('%', #{query.keyword}, '%')
+                or l.target_user_name like concat('%', #{query.keyword}, '%')
+                or l.target_email like concat('%', #{query.keyword}, '%')
+                or l.error_message like concat('%', #{query.keyword}, '%')
+            )
+        </if>
+        <if test="query.channel != null and query.channel != ''">
+            and l.channel = #{query.channel}
+        </if>
+        <if test="query.targetScope != null and query.targetScope != ''">
+            and l.target_scope = #{query.targetScope}
+        </if>
+        <if test="query.sendStatus != null and query.sendStatus != ''">
+            and l.send_status = #{query.sendStatus}
+        </if>
+        <if test="query.createdAtStart != null">
+            and l.created_at &gt;= #{query.createdAtStart}
+        </if>
+        <if test="query.createdAtEnd != null">
+            and l.created_at &lt;= #{query.createdAtEnd}
+        </if>
+    </sql>
+
+    <select id="countDeliveryLogs" resultType="long">
+        select count(*)
+        from msg_delivery_log l
+        where <include refid="deliveryFilters"/>
+    </select>
+
+    <select id="listDeliveryLogs" resultType="com.legendary.invention.message.vo.MessageVO$DeliveryLogVO">
+        select l.id,
+               l.tenant_id as tenantId,
+               l.notice_id as noticeId,
+               l.channel,
+               l.target_scope as targetScope,
+               l.target_user_id as targetUserId,
+               l.target_user_name as targetUserName,
+               l.target_email as targetEmail,
+               l.title,
+               l.content,
+               l.send_status as sendStatus,
+               l.error_message as errorMessage,
+               l.sent_at as sentAt,
+               l.created_by as createdBy,
+               l.created_at as createdAt
+        from msg_delivery_log l
+        where <include refid="deliveryFilters"/>
+        order by l.created_at desc, l.id desc
+        limit #{query.limit} offset #{query.offset}
+    </select>
+</mapper>

@@ -9,8 +9,8 @@ import com.legendary.invention.saas.modules.approval.vo.ApprovalVO;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,11 +24,11 @@ import java.util.Set;
 @Service
 public class ApprovalAppService implements WorkflowEngineAdapter {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final TaskCenterAppService taskCenterAppService;
     private final OperationAuditService operationAuditService;
 
-    public ApprovalAppService(JdbcTemplate jdbcTemplate, TaskCenterAppService taskCenterAppService, OperationAuditService operationAuditService) {
+    public ApprovalAppService(MyBatisQueryOperations jdbcTemplate, TaskCenterAppService taskCenterAppService, OperationAuditService operationAuditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.taskCenterAppService = taskCenterAppService;
         this.operationAuditService = operationAuditService;

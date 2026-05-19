@@ -17,7 +17,7 @@ import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -56,7 +56,7 @@ public class SystemVerificationAppService {
     private static final String SMS_CONFIG_REGION_KEY = "verification.sms.region";
     private static final String EMAIL_LOGIN_ENABLED_KEY = "verification.email-login.enabled";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final UserDomainService userDomainService;
     private final SystemVerificationProperties properties;
@@ -65,7 +65,7 @@ public class SystemVerificationAppService {
     private final TotpService totpService = new TotpService();
 
     public SystemVerificationAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             ObjectMapper objectMapper,
             UserDomainService userDomainService,
             SystemVerificationProperties properties,

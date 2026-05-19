@@ -8,8 +8,8 @@ import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.localization.dto.LocalizationDTO;
 import com.legendary.invention.saas.modules.localization.vo.LocalizationVO;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -52,10 +52,10 @@ public class LocalizationManagementAppService {
             Map.entry("createdAt", "created_at")
     );
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    public LocalizationManagementAppService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public LocalizationManagementAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
     }

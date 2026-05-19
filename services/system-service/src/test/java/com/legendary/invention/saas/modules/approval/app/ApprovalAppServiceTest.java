@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.approval.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
@@ -38,7 +39,7 @@ class ApprovalAppServiceTest {
 
     @BeforeEach
     void setUp() {
-        approvalAppService = new ApprovalAppService(jdbcTemplate, taskCenterAppService, operationAuditService);
+        approvalAppService = new ApprovalAppService(new MyBatisQueryOperations(jdbcTemplate), taskCenterAppService, operationAuditService);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.system.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
@@ -38,7 +39,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
         RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
         SystemManagementAppService service = new SystemManagementAppService(
-                jdbcTemplate,
+                new MyBatisQueryOperations(jdbcTemplate),
                 null,
                 new StubUserDomainService(user),
                 null,
@@ -83,7 +84,7 @@ class SystemManagementAppServicePasswordTest {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
         SystemManagementAppService service = new SystemManagementAppService(
-                jdbcTemplate,
+                new MyBatisQueryOperations(jdbcTemplate),
                 null,
                 new StubUserDomainService(user),
                 null,
@@ -181,7 +182,7 @@ class SystemManagementAppServicePasswordTest {
 
     private static final class StubIamUserService extends IamUserService {
         private StubIamUserService(JdbcTemplate jdbcTemplate) {
-            super(jdbcTemplate);
+            super(new MyBatisQueryOperations(jdbcTemplate));
         }
 
         @Override

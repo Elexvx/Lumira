@@ -4,8 +4,8 @@ import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +28,9 @@ public interface AiConversationService {
 @Primary
 class JdbcAiConversationService implements AiConversationService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
-    JdbcAiConversationService(JdbcTemplate jdbcTemplate) {
+    JdbcAiConversationService(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

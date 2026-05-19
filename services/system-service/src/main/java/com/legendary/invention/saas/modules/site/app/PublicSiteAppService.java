@@ -10,13 +10,12 @@ import com.legendary.invention.saas.modules.site.vo.SiteVO;
 import com.legendary.invention.saas.modules.system.app.SystemPlatformSettingsAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.SqlRow;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,13 +25,13 @@ public class PublicSiteAppService {
 
     private static final long DEFAULT_TENANT_ID = 1001L;
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final SiteManagementAppService siteManagementAppService;
     private final SystemPlatformSettingsAppService systemPlatformSettingsAppService;
 
     public PublicSiteAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             ObjectMapper objectMapper,
             SiteManagementAppService siteManagementAppService,
             SystemPlatformSettingsAppService systemPlatformSettingsAppService
@@ -246,7 +245,7 @@ public class PublicSiteAppService {
         );
     }
 
-    private SiteVO.SiteSettingsVO mapSite(ResultSet rs) throws SQLException {
+    private SiteVO.SiteSettingsVO mapSite(SqlRow rs) {
         SiteVO.SiteSettingsVO vo = new SiteVO.SiteSettingsVO();
         vo.id = rs.getLong("id");
         vo.code = rs.getString("code");
@@ -263,7 +262,7 @@ public class PublicSiteAppService {
         return vo;
     }
 
-    private SiteVO.NavigationVO mapNavigation(ResultSet rs) throws SQLException {
+    private SiteVO.NavigationVO mapNavigation(SqlRow rs) {
         SiteVO.NavigationVO vo = new SiteVO.NavigationVO();
         vo.id = rs.getLong("id");
         vo.parentId = longObject(rs, "parent_id");
@@ -276,7 +275,7 @@ public class PublicSiteAppService {
         return vo;
     }
 
-    private SiteVO.CarouselVO mapCarousel(ResultSet rs) throws SQLException {
+    private SiteVO.CarouselVO mapCarousel(SqlRow rs) {
         SiteVO.CarouselVO vo = new SiteVO.CarouselVO();
         vo.id = rs.getLong("id");
         vo.title = rs.getString("title");
@@ -292,7 +291,7 @@ public class PublicSiteAppService {
         return vo;
     }
 
-    private SiteVO.PageVO mapPage(ResultSet rs) throws SQLException {
+    private SiteVO.PageVO mapPage(SqlRow rs) {
         SiteVO.PageVO vo = new SiteVO.PageVO();
         vo.id = rs.getLong("id");
         vo.title = rs.getString("title");
@@ -306,7 +305,7 @@ public class PublicSiteAppService {
         return vo;
     }
 
-    private SiteVO.ContentVO mapContent(ResultSet rs) throws SQLException {
+    private SiteVO.ContentVO mapContent(SqlRow rs) {
         SiteVO.ContentVO vo = new SiteVO.ContentVO();
         vo.id = rs.getLong("id");
         vo.categoryId = longObject(rs, "category_id");
@@ -326,7 +325,7 @@ public class PublicSiteAppService {
         return vo;
     }
 
-    private SiteVO.FormVO mapForm(ResultSet rs) throws SQLException {
+    private SiteVO.FormVO mapForm(SqlRow rs) {
         SiteVO.FormVO vo = new SiteVO.FormVO();
         vo.id = rs.getLong("id");
         vo.code = rs.getString("code");
@@ -337,7 +336,7 @@ public class PublicSiteAppService {
         return vo;
     }
 
-    private SiteVO.SubmissionVO mapSubmission(ResultSet rs) throws SQLException {
+    private SiteVO.SubmissionVO mapSubmission(SqlRow rs) {
         SiteVO.SubmissionVO vo = new SiteVO.SubmissionVO();
         vo.id = rs.getLong("id");
         vo.formId = rs.getLong("form_id");
@@ -378,22 +377,18 @@ public class PublicSiteAppService {
         return value == null || value.isBlank() ? fallback : value.trim();
     }
 
-    private Long longObject(ResultSet rs, String column) throws SQLException {
+    private Long longObject(SqlRow rs, String column) {
         long value = rs.getLong(column);
         return rs.wasNull() ? null : value;
     }
 
-    private LocalDateTime localDateTime(ResultSet rs, String column) throws SQLException {
+    private LocalDateTime localDateTime(SqlRow rs, String column) {
         Timestamp ts = rs.getTimestamp(column);
         return ts == null ? null : ts.toLocalDateTime();
     }
 
-    private String safeString(ResultSet rs, String column) {
-        try {
-            return rs.getString(column);
-        } catch (SQLException exception) {
-            return null;
-        }
+    private String safeString(SqlRow rs, String column) {
+        return rs.getString(column);
     }
 
     private <T> T queryOptional(QuerySupplier<T> supplier) {

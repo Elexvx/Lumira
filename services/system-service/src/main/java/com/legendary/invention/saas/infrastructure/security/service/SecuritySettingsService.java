@@ -3,11 +3,11 @@ package com.legendary.invention.saas.infrastructure.security.service;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.SecurityProperties;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
+import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
 import java.util.Locale;
 
 @Component
@@ -30,11 +30,11 @@ public class SecuritySettingsService {
     private static final String PASSWORD_REQUIRE_SPECIAL_CHARACTER_KEY = "security.password-require-special-character";
     private static final String PASSWORD_ALLOW_CONSECUTIVE_CHARACTERS_KEY = "security.password-allow-consecutive-characters";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final SysConfigMapper sysConfigMapper;
     private final SecurityProperties securityProperties;
 
-    public SecuritySettingsService(JdbcTemplate jdbcTemplate, SecurityProperties securityProperties) {
-        this.jdbcTemplate = jdbcTemplate;
+    public SecuritySettingsService(SysConfigMapper sysConfigMapper, SecurityProperties securityProperties) {
+        this.sysConfigMapper = sysConfigMapper;
         this.securityProperties = securityProperties;
     }
 
@@ -212,24 +212,7 @@ public class SecuritySettingsService {
     }
 
     private long resolveSeconds(String configKey, long defaultValue) {
-        List<String> values = jdbcTemplate.query(
-                """
-                        select config_value
-                        from sys_config
-                        where tenant_id = ? and config_key = ? and config_scope = ? and deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                (rs, rowNum) -> rs.getString("config_value"),
-                PLATFORM_TENANT_ID,
-                configKey,
-                PLATFORM_SCOPE
-        );
-        if (values.isEmpty()) {
-            return defaultValue;
-        }
-
-        String configValue = values.get(0);
+        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
         if (!StringUtils.hasText(configValue)) {
             return defaultValue;
         }
@@ -243,24 +226,7 @@ public class SecuritySettingsService {
     }
 
     private boolean resolveBoolean(String configKey, boolean defaultValue) {
-        List<String> values = jdbcTemplate.query(
-                """
-                        select config_value
-                        from sys_config
-                        where tenant_id = ? and config_key = ? and config_scope = ? and deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                (rs, rowNum) -> rs.getString("config_value"),
-                PLATFORM_TENANT_ID,
-                configKey,
-                PLATFORM_SCOPE
-        );
-        if (values.isEmpty()) {
-            return defaultValue;
-        }
-
-        String configValue = values.get(0);
+        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
         if (!StringUtils.hasText(configValue)) {
             return defaultValue;
         }
@@ -276,45 +242,16 @@ public class SecuritySettingsService {
     }
 
     private String resolveCaptchaType(String configKey, String defaultValue) {
-        List<String> values = jdbcTemplate.query(
-                """
-                        select config_value
-                        from sys_config
-                        where tenant_id = ? and config_key = ? and config_scope = ? and deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                (rs, rowNum) -> rs.getString("config_value"),
-                PLATFORM_TENANT_ID,
-                configKey,
-                PLATFORM_SCOPE
-        );
-        if (values.isEmpty()) {
+        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
+        if (!StringUtils.hasText(configValue)) {
             return normalizeCaptchaType(defaultValue);
         }
 
-        return normalizeCaptchaType(values.get(0));
+        return normalizeCaptchaType(configValue);
     }
 
     private long resolvePositiveLong(String configKey, long defaultValue) {
-        List<String> values = jdbcTemplate.query(
-                """
-                        select config_value
-                        from sys_config
-                        where tenant_id = ? and config_key = ? and config_scope = ? and deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                (rs, rowNum) -> rs.getString("config_value"),
-                PLATFORM_TENANT_ID,
-                configKey,
-                PLATFORM_SCOPE
-        );
-        if (values.isEmpty()) {
-            return defaultValue;
-        }
-
-        String configValue = values.get(0);
+        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
         if (!StringUtils.hasText(configValue)) {
             return defaultValue;
         }
@@ -342,28 +279,16 @@ public class SecuritySettingsService {
     }
 
     private void upsertConfig(String configKey, String configName, String configValue, String remark) {
-        jdbcTemplate.update(
-                """
-                        insert into sys_config (
-                            tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, 1, ?, 0, 0, 0)
-                        on duplicate key update
-                            config_name = values(config_name),
-                            config_value = values(config_value),
-                            config_scope = values(config_scope),
-                            is_system = values(is_system),
-                            remark = values(remark),
-                            updated_by = values(updated_by),
-                            deleted = 0
-                        """,
-                PLATFORM_TENANT_ID,
-                configKey,
-                configName,
-                configValue,
-                PLATFORM_SCOPE,
-                remark
-        );
+        SysConfigEntity entity = new SysConfigEntity();
+        entity.setTenantId(PLATFORM_TENANT_ID);
+        entity.setConfigKey(configKey);
+        entity.setConfigName(configName);
+        entity.setConfigValue(configValue);
+        entity.setIsSystem(1);
+        entity.setRemark(remark);
+        entity.setCreatedBy(0L);
+        entity.setUpdatedBy(0L);
+        sysConfigMapper.upsertPlatformConfig(entity);
     }
 
     private String normalizeCaptchaType(String value) {
