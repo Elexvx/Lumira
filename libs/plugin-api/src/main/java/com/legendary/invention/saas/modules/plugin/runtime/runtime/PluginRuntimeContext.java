@@ -1,7 +1,6 @@
 package com.legendary.invention.saas.modules.plugin.runtime.runtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.file.Path;
 
@@ -11,7 +10,7 @@ public class PluginRuntimeContext {
     private final String version;
     private final String platformVersion;
     private final Path pluginHome;
-    private final JdbcTemplate jdbcTemplate;
+    private final Object dataOperations;
     private final ObjectMapper objectMapper;
 
     public PluginRuntimeContext(
@@ -19,14 +18,14 @@ public class PluginRuntimeContext {
             String version,
             String platformVersion,
             Path pluginHome,
-            JdbcTemplate jdbcTemplate,
+            Object dataOperations,
             ObjectMapper objectMapper
     ) {
         this.pluginCode = pluginCode;
         this.version = version;
         this.platformVersion = platformVersion;
         this.pluginHome = pluginHome;
-        this.jdbcTemplate = jdbcTemplate;
+        this.dataOperations = dataOperations;
         this.objectMapper = objectMapper;
     }
 
@@ -46,8 +45,8 @@ public class PluginRuntimeContext {
         return pluginHome;
     }
 
-    public JdbcTemplate getJdbcTemplate() {
-        return jdbcTemplate;
+    public Object getDataOperations() {
+        return dataOperations;
     }
 
     public ObjectMapper getObjectMapper() {

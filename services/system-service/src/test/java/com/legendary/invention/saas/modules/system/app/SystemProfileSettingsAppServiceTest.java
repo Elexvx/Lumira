@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.system.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
@@ -113,7 +114,7 @@ class SystemProfileSettingsAppServiceTest {
     }
 
     private static SystemProfileSettingsAppService newService(JdbcTemplate jdbcTemplate) {
-        return new SystemProfileSettingsAppService(jdbcTemplate, new RecordingOperationAuditService());
+        return new SystemProfileSettingsAppService(new MyBatisQueryOperations(jdbcTemplate), new RecordingOperationAuditService());
     }
 
     private static CurrentUser buildCurrentUser() {

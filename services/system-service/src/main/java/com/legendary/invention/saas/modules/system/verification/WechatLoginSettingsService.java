@@ -2,18 +2,16 @@ package com.legendary.invention.saas.modules.system.verification;
 
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.saas.modules.auth.config.WechatLoginProperties;
+import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
+import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class WechatLoginSettingsService {
@@ -24,11 +22,11 @@ public class WechatLoginSettingsService {
     private static final String REDIRECT_URI_KEY = "verification.wechat-login.redirect-uri";
     private static final String STATE_EXPIRE_MINUTES_KEY = "verification.wechat-login.state-expire-minutes";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final SysConfigMapper sysConfigMapper;
     private final WechatLoginProperties properties;
 
-    public WechatLoginSettingsService(JdbcTemplate jdbcTemplate, WechatLoginProperties properties) {
-        this.jdbcTemplate = jdbcTemplate;
+    public WechatLoginSettingsService(SysConfigMapper sysConfigMapper, WechatLoginProperties properties) {
+        this.sysConfigMapper = sysConfigMapper;
         this.properties = properties;
     }
 
@@ -97,81 +95,26 @@ public class WechatLoginSettingsService {
     }
 
     private void upsertConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
-        Long existingId = queryConfigId(configKey, tenantId);
-        if (existingId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_config (
-                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
-                            """,
-                    effectiveTenantId(tenantId),
-                    configKey,
-                    configName,
-                    normalizeConfigText(configValue),
-                    remark,
-                    operatorId,
-                    operatorId
-            );
-            return;
-        }
-        jdbcTemplate.update(
-                """
-                        update sys_config
-                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_at = ?, deleted = 0
-                        where id = ?
-                        """,
-                configName,
-                normalizeConfigText(configValue),
-                remark,
-                operatorId,
-                LocalDateTime.now(),
-                existingId
-        );
-    }
-
-    private Long queryConfigId(String configKey, Long tenantId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select id
-                            from sys_config
-                            where config_key = ? and tenant_id <=> ? and deleted = 0
-                            order by id desc
-                            limit 1
-                            """,
-                    Long.class,
-                    configKey,
-                    effectiveTenantId(tenantId)
-            );
-        } catch (Exception ignored) {
-            return null;
-        }
+        SysConfigEntity entity = new SysConfigEntity();
+        entity.setTenantId(effectiveTenantId(tenantId));
+        entity.setConfigKey(configKey);
+        entity.setConfigName(configName);
+        entity.setConfigValue(normalizeConfigText(configValue));
+        entity.setIsSystem(0);
+        entity.setRemark(remark);
+        entity.setCreatedBy(operatorId);
+        entity.setUpdatedBy(operatorId);
+        sysConfigMapper.upsertPlatformConfig(entity);
     }
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
         Long effectiveTenantId = effectiveTenantId(tenantId);
-        String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
-        String sql = """
-                select tenant_id as tenantId, config_key as configKey, config_value as configValue
-                from sys_config
-                where deleted = 0
-                  and config_scope = 'PLATFORM'
-                  and config_key in (%s)
-                  and (tenant_id = ? or tenant_id is null)
-                order by case when tenant_id = ? then 0 when tenant_id is null then 1 else 2 end, id desc
-                """.formatted(placeholders);
-        List<Object> params = new ArrayList<>(keys);
-        params.add(effectiveTenantId);
-        params.add(effectiveTenantId);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
+        List<SysConfigEntity> rows = sysConfigMapper.listEffectiveValues(effectiveTenantId, "PLATFORM", keys);
         Map<String, String> valueByKey = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String configKey = String.valueOf(row.get("configKey"));
+        for (SysConfigEntity row : rows) {
+            String configKey = row.getConfigKey();
             if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
+                valueByKey.put(configKey, normalizeConfigText(row.getConfigValue()));
             }
         }
         return valueByKey;

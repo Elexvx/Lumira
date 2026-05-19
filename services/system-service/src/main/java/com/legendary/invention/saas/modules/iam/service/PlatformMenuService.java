@@ -3,7 +3,7 @@ package com.legendary.invention.saas.modules.iam.service;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,10 +19,10 @@ public class PlatformMenuService {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformMenuService.class);
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final PluginManagementAppService pluginManagementAppService;
 
-    public PlatformMenuService(JdbcTemplate jdbcTemplate, PluginManagementAppService pluginManagementAppService) {
+    public PlatformMenuService(MyBatisQueryOperations jdbcTemplate, PluginManagementAppService pluginManagementAppService) {
         this.jdbcTemplate = jdbcTemplate;
         this.pluginManagementAppService = pluginManagementAppService;
     }

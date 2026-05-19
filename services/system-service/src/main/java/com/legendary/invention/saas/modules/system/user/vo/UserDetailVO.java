@@ -6,6 +6,8 @@ import java.util.List;
 public class UserDetailVO extends UserVO {
 
     private List<Long> roleIds;
+    private List<Long> deptIds;
+    private Long primaryDeptId;
     private List<Long> tenantIds;
     private List<UserIdentityVO> identities;
     private List<UserDeviceVO> recentDevices;
@@ -13,6 +15,10 @@ public class UserDetailVO extends UserVO {
 
     public List<Long> getRoleIds() { return roleIds; }
     public void setRoleIds(List<Long> roleIds) { this.roleIds = roleIds; }
+    public List<Long> getDeptIds() { return deptIds; }
+    public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
+    public Long getPrimaryDeptId() { return primaryDeptId; }
+    public void setPrimaryDeptId(Long primaryDeptId) { this.primaryDeptId = primaryDeptId; }
     public List<Long> getTenantIds() { return tenantIds; }
     public void setTenantIds(List<Long> tenantIds) { this.tenantIds = tenantIds; }
     public List<UserIdentityVO> getIdentities() { return identities; }

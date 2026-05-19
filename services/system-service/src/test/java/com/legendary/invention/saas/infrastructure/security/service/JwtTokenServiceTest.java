@@ -4,7 +4,6 @@ import com.legendary.invention.saas.infrastructure.security.SecurityProperties;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.saas.infrastructure.security.model.TokenClaims;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -89,7 +88,7 @@ class JwtTokenServiceTest {
 
     private JwtTokenService buildJwtTokenService(String jwtSecret) {
         SecurityProperties securityProperties = buildSecurityProperties(jwtSecret);
-        SecuritySettingsService securitySettingsService = new SecuritySettingsService(new JdbcTemplate(), securityProperties) {
+        SecuritySettingsService securitySettingsService = new SecuritySettingsService(null, securityProperties) {
             @Override
             public long getAccessTokenExpireSeconds() {
                 return 1800L;

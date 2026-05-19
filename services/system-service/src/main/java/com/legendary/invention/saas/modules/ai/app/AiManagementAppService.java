@@ -9,8 +9,8 @@ import com.legendary.invention.saas.modules.ai.infrastructure.AiSecretCryptoServ
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -40,13 +40,13 @@ public class AiManagementAppService {
             4. 输出尽量简洁、结构清晰，优先给出可执行结论。
             """;
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
     private final AiSecretCryptoService aiSecretCryptoService;
     private final AiEmployeeRuntimeService aiEmployeeRuntimeService;
 
     public AiManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             OperationAuditService operationAuditService,
             AiSecretCryptoService aiSecretCryptoService,
             AiEmployeeRuntimeService aiEmployeeRuntimeService

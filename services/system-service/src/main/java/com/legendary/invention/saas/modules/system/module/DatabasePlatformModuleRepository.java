@@ -1,11 +1,15 @@
 package com.legendary.invention.saas.modules.system.module;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.module.entity.PlatformModuleDefinitionEntity;
+import com.legendary.invention.saas.modules.system.module.entity.PlatformModuleDependencyEntity;
+import com.legendary.invention.saas.modules.system.module.mapper.PlatformModuleDefinitionMapper;
+import com.legendary.invention.saas.modules.system.module.mapper.PlatformModuleDependencyMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.LinkedHashMap;
@@ -17,50 +21,46 @@ public class DatabasePlatformModuleRepository {
 
     private static final Logger log = LoggerFactory.getLogger(DatabasePlatformModuleRepository.class);
 
-    private final JdbcTemplate jdbcTemplate;
+    private final PlatformModuleDefinitionMapper definitionMapper;
+    private final PlatformModuleDependencyMapper dependencyMapper;
 
-    public DatabasePlatformModuleRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public DatabasePlatformModuleRepository(PlatformModuleDefinitionMapper definitionMapper, PlatformModuleDependencyMapper dependencyMapper) {
+        this.definitionMapper = definitionMapper;
+        this.dependencyMapper = dependencyMapper;
     }
 
     public List<PlatformModuleVO> listModules() {
         try {
             Map<String, PlatformModuleVO> modules = new LinkedHashMap<>();
-            jdbcTemplate.query("""
-                    select module_code, module_name, module_type, lifecycle_status, source_type,
-                           description, owner_service, admin_route_path, api_prefixes, permission_keys,
-                           builtin, created_at
-                    from platform_module_definition
-                    where deleted = 0
-                    order by sort_no asc, id asc
-                    """, rs -> {
+            definitionMapper.selectList(new LambdaQueryWrapper<PlatformModuleDefinitionEntity>()
+                    .eq(PlatformModuleDefinitionEntity::getDeleted, 0)
+                    .orderByAsc(PlatformModuleDefinitionEntity::getSortNo, PlatformModuleDefinitionEntity::getId)
+            ).forEach(entity -> {
                 PlatformModuleVO module = new PlatformModuleVO();
-                module.setModuleCode(rs.getString("module_code"));
-                module.setModuleName(rs.getString("module_name"));
-                module.setModuleType(rs.getString("module_type"));
-                module.setLifecycleStatus(rs.getString("lifecycle_status"));
-                module.setSourceType(rs.getString("source_type"));
-                module.setDescription(rs.getString("description"));
-                module.setOwnerService(rs.getString("owner_service"));
-                module.setAdminRoutePath(rs.getString("admin_route_path"));
-                module.setApiPrefixes(splitLines(rs.getString("api_prefixes")));
-                module.setPermissionKeys(splitLines(rs.getString("permission_keys")));
+                module.setModuleCode(entity.getModuleCode());
+                module.setModuleName(entity.getModuleName());
+                module.setModuleType(entity.getModuleType());
+                module.setLifecycleStatus(entity.getLifecycleStatus());
+                module.setSourceType(entity.getSourceType());
+                module.setDescription(entity.getDescription());
+                module.setOwnerService(entity.getOwnerService());
+                module.setAdminRoutePath(entity.getAdminRoutePath());
+                module.setApiPrefixes(splitLines(entity.getApiPrefixes()));
+                module.setPermissionKeys(splitLines(entity.getPermissionKeys()));
                 module.setDependencies(List.of());
                 module.setRegistrationSourceOrder(List.of(module.getSourceType()));
-                module.setRegisteredAt(rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime().toString());
-                module.setBuiltin(rs.getBoolean("builtin"));
+                module.setRegisteredAt(entity.getCreatedAt() == null ? null : entity.getCreatedAt().toString());
+                module.setBuiltin(Boolean.TRUE.equals(entity.getBuiltin()));
                 modules.put(module.getModuleCode(), module);
             });
 
-            jdbcTemplate.query("""
-                    select module_code, dependency_module_code
-                    from platform_module_dependency
-                    where deleted = 0
-                    order by sort_no asc, id asc
-                    """, rs -> {
-                PlatformModuleVO module = modules.get(rs.getString("module_code"));
+            dependencyMapper.selectList(new LambdaQueryWrapper<PlatformModuleDependencyEntity>()
+                    .eq(PlatformModuleDependencyEntity::getDeleted, 0)
+                    .orderByAsc(PlatformModuleDependencyEntity::getSortNo, PlatformModuleDependencyEntity::getId)
+            ).forEach(entity -> {
+                PlatformModuleVO module = modules.get(entity.getModuleCode());
                 if (module != null) {
-                    module.setDependencies(append(module.getDependencies(), rs.getString("dependency_module_code")));
+                    module.setDependencies(append(module.getDependencies(), entity.getDependencyModuleCode()));
                 }
             });
             return List.copyOf(modules.values());
@@ -71,26 +71,23 @@ public class DatabasePlatformModuleRepository {
     }
 
     public void createModule(SystemDTO.ModuleValidationRequest request, Long operatorId) {
-        jdbcTemplate.update("""
-                insert into platform_module_definition (
-                    module_code, module_name, module_type, lifecycle_status, source_type,
-                    description, owner_service, admin_route_path, api_prefixes, permission_keys,
-                    builtin, sort_no, created_by, updated_by, deleted
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1000, ?, ?, 0)
-                """,
-                request.getModuleCode(),
-                request.getModuleName(),
-                request.getModuleType(),
-                request.getLifecycleStatus(),
-                request.getSourceType(),
-                request.getDescription(),
-                request.getOwnerService() == null || request.getOwnerService().isBlank() ? "system-service" : request.getOwnerService(),
-                request.getAdminRoutePath(),
-                joinLines(request.getApiPrefixes()),
-                joinLines(request.getPermissionKeys()),
-                operatorId,
-                operatorId
-        );
+        PlatformModuleDefinitionEntity module = new PlatformModuleDefinitionEntity();
+        module.setModuleCode(request.getModuleCode());
+        module.setModuleName(request.getModuleName());
+        module.setModuleType(request.getModuleType());
+        module.setLifecycleStatus(request.getLifecycleStatus());
+        module.setSourceType(request.getSourceType());
+        module.setDescription(request.getDescription());
+        module.setOwnerService(request.getOwnerService() == null || request.getOwnerService().isBlank() ? "system-service" : request.getOwnerService());
+        module.setAdminRoutePath(request.getAdminRoutePath());
+        module.setApiPrefixes(joinLines(request.getApiPrefixes()));
+        module.setPermissionKeys(joinLines(request.getPermissionKeys()));
+        module.setBuiltin(false);
+        module.setSortNo(1000);
+        module.setCreatedBy(operatorId);
+        module.setUpdatedBy(operatorId);
+        module.setDeleted(0);
+        definitionMapper.insert(module);
 
         List<String> dependencies = request.getDependencies() == null ? List.of() : request.getDependencies();
         for (int index = 0; index < dependencies.size(); index++) {
@@ -98,17 +95,14 @@ public class DatabasePlatformModuleRepository {
             if (dependency == null || dependency.isBlank()) {
                 continue;
             }
-            jdbcTemplate.update("""
-                    insert into platform_module_dependency (
-                        module_code, dependency_module_code, sort_no, created_by, updated_by, deleted
-                    ) values (?, ?, ?, ?, ?, 0)
-                    """,
-                    request.getModuleCode(),
-                    dependency.trim(),
-                    index + 1,
-                    operatorId,
-                    operatorId
-            );
+            PlatformModuleDependencyEntity entity = new PlatformModuleDependencyEntity();
+            entity.setModuleCode(request.getModuleCode());
+            entity.setDependencyModuleCode(dependency.trim());
+            entity.setSortNo(index + 1);
+            entity.setCreatedBy(operatorId);
+            entity.setUpdatedBy(operatorId);
+            entity.setDeleted(0);
+            dependencyMapper.insert(entity);
         }
     }
 

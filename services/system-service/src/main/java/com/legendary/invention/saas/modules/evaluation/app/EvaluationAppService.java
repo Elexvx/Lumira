@@ -8,8 +8,8 @@ import com.legendary.invention.saas.modules.evaluation.dto.EvaluationDTO;
 import com.legendary.invention.saas.modules.evaluation.vo.EvaluationVO;
 import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -23,10 +23,10 @@ import java.util.Set;
 @Service
 public class EvaluationAppService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final TaskCenterAppService taskCenterAppService;
 
-    public EvaluationAppService(JdbcTemplate jdbcTemplate, TaskCenterAppService taskCenterAppService) {
+    public EvaluationAppService(MyBatisQueryOperations jdbcTemplate, TaskCenterAppService taskCenterAppService) {
         this.jdbcTemplate = jdbcTemplate;
         this.taskCenterAppService = taskCenterAppService;
     }

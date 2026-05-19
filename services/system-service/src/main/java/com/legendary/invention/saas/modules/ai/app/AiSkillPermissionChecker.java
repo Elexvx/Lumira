@@ -2,7 +2,7 @@ package com.legendary.invention.saas.modules.ai.app;
 
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -22,9 +22,9 @@ public interface AiSkillPermissionChecker {
 @Primary
 class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
-    DefaultAiSkillPermissionChecker(JdbcTemplate jdbcTemplate) {
+    DefaultAiSkillPermissionChecker(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

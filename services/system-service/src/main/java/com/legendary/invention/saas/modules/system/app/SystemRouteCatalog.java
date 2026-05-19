@@ -66,6 +66,7 @@ public final class SystemRouteCatalog {
             "/settings/files/all",
             "/user-center",
             "/user-center/users",
+            "/user-center/departments",
             "/user-center/online-users",
             "/user-center/roles",
             "/user-center/personal-center",
@@ -106,6 +107,7 @@ public final class SystemRouteCatalog {
             "@/pages/user-center/index",
             "@/pages/iam/Overview",
             "@/pages/system/users",
+            "@/pages/system/departments",
             "@/pages/system/online-users",
             "@/pages/system/roles",
             "@/pages/profile/Center",
@@ -206,8 +208,9 @@ public final class SystemRouteCatalog {
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
         userCenterRoot.setChildren(new ArrayList<>(List.of(
                 menu(-951L, -950L, "system.users", "用户管理", "MENU", "/user-center/users", "@/pages/system/users", "TeamOutlined", 21, "system:user:view"),
-                menu(-952L, -950L, "system.online-users", "在线用户", "MENU", "/user-center/online-users", "@/pages/system/online-users", "UserSwitchOutlined", 22, "system:online-user:view"),
-                menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 23, "system:role:view")
+                menu(-954L, -950L, "system.departments", "组织部门", "MENU", "/user-center/departments", "@/pages/system/departments", "ApartmentOutlined", 22, "system:department:view"),
+                menu(-952L, -950L, "system.online-users", "在线用户", "MENU", "/user-center/online-users", "@/pages/system/online-users", "UserSwitchOutlined", 23, "system:online-user:view"),
+                menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 24, "system:role:view")
         )));
         SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", "/user-center/personal-center", "@/layouts/SettingsLayout", "IdcardOutlined", 19, "profile:view");
         personalCenterRoot.setChildren(new ArrayList<>(List.of(

@@ -3,8 +3,8 @@ package com.legendary.invention.saas.modules.task.app;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.task.vo.TaskVO;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,9 +15,9 @@ import java.util.Set;
 @Service
 public class TaskCenterAppService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
-    public TaskCenterAppService(JdbcTemplate jdbcTemplate) {
+    public TaskCenterAppService(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

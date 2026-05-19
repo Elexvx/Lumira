@@ -18,7 +18,7 @@ import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginMenuProvide
 import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginPermissionProvider;
 import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginScheduledTaskProvider;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 
 import java.net.URLClassLoader;
@@ -33,11 +33,11 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PluginRuntimeLoader {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final PluginProperties pluginProperties;
 
-    public PluginRuntimeLoader(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, PluginProperties pluginProperties) {
+    public PluginRuntimeLoader(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, PluginProperties pluginProperties) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.pluginProperties = pluginProperties;

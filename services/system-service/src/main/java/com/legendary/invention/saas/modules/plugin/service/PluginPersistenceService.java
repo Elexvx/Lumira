@@ -6,13 +6,12 @@ import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginP
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
 import com.legendary.invention.saas.modules.plugin.vo.PluginVO;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.SqlRow;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,9 +23,9 @@ import java.util.Optional;
 @Service
 public class PluginPersistenceService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
-    public PluginPersistenceService(JdbcTemplate jdbcTemplate) {
+    public PluginPersistenceService(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -751,7 +750,7 @@ public class PluginPersistenceService {
         );
     }
 
-    private PluginVersionEntity mapVersion(ResultSet rs) throws SQLException {
+    private PluginVersionEntity mapVersion(SqlRow rs) {
         PluginVersionEntity entity = new PluginVersionEntity();
         entity.setId(rs.getLong("id"));
         entity.setPluginCode(rs.getString("plugin_code"));
@@ -775,7 +774,7 @@ public class PluginPersistenceService {
         return entity;
     }
 
-    private PluginVO.PluginVersionVO mapVersionVO(ResultSet rs) throws SQLException {
+    private PluginVO.PluginVersionVO mapVersionVO(SqlRow rs) {
         PluginVO.PluginVersionVO vo = new PluginVO.PluginVersionVO();
         vo.setPluginCode(rs.getString("plugin_code"));
         vo.setVersion(rs.getString("version"));

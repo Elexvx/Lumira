@@ -6,8 +6,8 @@ import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -26,7 +26,7 @@ public interface AiEmployeeRuntimeService {
 @Primary
 class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final AiLlmServiceConfigProvider aiLlmServiceConfigProvider;
     private final AiChatModelFactory aiChatModelFactory;
     private final AiConversationService aiConversationService;
@@ -34,7 +34,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
 
     DefaultAiEmployeeRuntimeService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AiLlmServiceConfigProvider aiLlmServiceConfigProvider,
             AiChatModelFactory aiChatModelFactory,
             AiConversationService aiConversationService,

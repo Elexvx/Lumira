@@ -7,7 +7,7 @@ import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -122,10 +122,10 @@ public class SystemPlatformSettingsAppService {
             FLOATING_API_DOCS_QR_IMAGE_URL_KEY
     );
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
 
-    public SystemPlatformSettingsAppService(JdbcTemplate jdbcTemplate, OperationAuditService operationAuditService) {
+    public SystemPlatformSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
     }

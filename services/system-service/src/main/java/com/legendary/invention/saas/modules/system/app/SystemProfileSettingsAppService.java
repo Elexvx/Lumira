@@ -10,7 +10,7 @@ import com.legendary.invention.saas.modules.system.profile.vo.ProfileCompletionI
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileCompletionSummaryVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -45,10 +45,10 @@ public class SystemProfileSettingsAppService {
             .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey()).stream())
             .toList();
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
 
-    public SystemProfileSettingsAppService(JdbcTemplate jdbcTemplate, OperationAuditService operationAuditService) {
+    public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
     }

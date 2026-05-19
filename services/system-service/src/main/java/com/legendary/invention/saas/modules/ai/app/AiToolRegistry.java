@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.modules.ai.app;
 
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -17,9 +17,9 @@ public interface AiToolRegistry {
 @Primary
 class DefaultAiToolRegistry implements AiToolRegistry {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
 
-    DefaultAiToolRegistry(JdbcTemplate jdbcTemplate) {
+    DefaultAiToolRegistry(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

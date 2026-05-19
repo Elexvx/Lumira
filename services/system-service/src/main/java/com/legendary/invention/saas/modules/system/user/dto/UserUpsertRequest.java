@@ -29,6 +29,9 @@ public class UserUpsertRequest {
     @Pattern(regexp = "^(ENABLED|DISABLED)$", message = "用户状态只能是 ENABLED 或 DISABLED")
     private String status;
     private List<@Positive(message = "角色ID必须为正整数") Long> roleIds;
+    private List<@Positive(message = "部门ID必须为正整数") Long> deptIds;
+    @Positive(message = "主部门ID必须为正整数")
+    private Long primaryDeptId;
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -58,4 +61,8 @@ public class UserUpsertRequest {
     public void setStatus(String status) { this.status = status == null ? null : status.trim().toUpperCase(); }
     public List<Long> getRoleIds() { return roleIds; }
     public void setRoleIds(List<Long> roleIds) { this.roleIds = roleIds; }
+    public List<Long> getDeptIds() { return deptIds; }
+    public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
+    public Long getPrimaryDeptId() { return primaryDeptId; }
+    public void setPrimaryDeptId(Long primaryDeptId) { this.primaryDeptId = primaryDeptId; }
 }

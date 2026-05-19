@@ -7,10 +7,12 @@ import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.role.dto.RoleDataScopeRequest;
+import com.legendary.invention.saas.modules.system.role.vo.RoleDataScopeVO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -21,7 +23,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,12 +35,12 @@ public class SystemRoleManagementAppService {
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
 
     public SystemRoleManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
@@ -104,6 +108,7 @@ public class SystemRoleManagementAppService {
         detail.setUserCount(countRoleUsers(roleId, tenantId));
         detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode(tenantId)));
         detail.setPermissionKeys(listRolePermissionKeys(roleId, tenantId));
+        detail.setDataScopes(listRoleDataScopes(roleId, tenantId));
         return detail;
     }
 
@@ -178,6 +183,7 @@ public class SystemRoleManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         Long roleId = upsertRole(null, tenantId, request, currentUser.getUserId());
         replaceRolePermissions(tenantId, roleId, request.getPermissionKeys(), currentUser.getUserId());
+        replaceRoleDataScopes(tenantId, roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), true);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
         return getRole(currentUser, roleId);
@@ -188,6 +194,7 @@ public class SystemRoleManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         upsertRole(roleId, tenantId, request, currentUser.getUserId());
         replaceRolePermissions(tenantId, roleId, request.getPermissionKeys(), currentUser.getUserId());
+        replaceRoleDataScopes(tenantId, roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), false);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
         return getRole(currentUser, roleId);
@@ -291,6 +298,124 @@ public class SystemRoleManagementAppService {
                 roleId,
                 tenantId
         );
+    }
+
+    private List<RoleDataScopeVO> listRoleDataScopes(Long roleId, Long tenantId) {
+        return jdbcTemplate.query(
+                """
+                        select resource_code as resourceCode, scope_type as scopeType,
+                               custom_dept_ids as customDeptIds, custom_user_ids as customUserIds
+                        from sys_role_data_scope
+                        where role_id = ? and tenant_id = ? and deleted = 0
+                        order by case when resource_code = '*' then 0 else 1 end, resource_code asc
+                        """,
+                (rs, rowNum) -> {
+                    RoleDataScopeVO scope = new RoleDataScopeVO();
+                    scope.setResourceCode(rs.getString("resourceCode"));
+                    scope.setScopeType(rs.getString("scopeType"));
+                    scope.setCustomDeptIds(parseIdList(rs.getString("customDeptIds")));
+                    scope.setCustomUserIds(parseIdList(rs.getString("customUserIds")));
+                    return scope;
+                },
+                roleId,
+                tenantId
+        );
+    }
+
+    private void replaceRoleDataScopes(
+            Long tenantId,
+            Long roleId,
+            List<RoleDataScopeRequest> dataScopes,
+            String roleCode,
+            Long operatorId,
+            boolean createMode
+    ) {
+        if (dataScopes == null && !createMode) {
+            return;
+        }
+        jdbcTemplate.update("delete from sys_role_data_scope where tenant_id = ? and role_id = ?", tenantId, roleId);
+        List<RoleDataScopeRequest> effectiveScopes = CollectionUtils.isEmpty(dataScopes)
+                ? List.of(defaultDataScope(roleCode))
+                : dataScopes;
+        Set<String> seenResources = new LinkedHashSet<>();
+        for (RoleDataScopeRequest request : effectiveScopes) {
+            String resourceCode = normalizeResourceCode(request.getResourceCode());
+            if (!seenResources.add(resourceCode.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            String scopeType = normalizeScopeType(request.getScopeType());
+            jdbcTemplate.update(
+                    """
+                            insert into sys_role_data_scope (
+                                tenant_id, role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
+                                created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            """,
+                    tenantId,
+                    roleId,
+                    resourceCode,
+                    scopeType,
+                    joinIds(request.getCustomDeptIds()),
+                    joinIds(request.getCustomUserIds()),
+                    operatorId,
+                    operatorId
+            );
+        }
+    }
+
+    private RoleDataScopeRequest defaultDataScope(String roleCode) {
+        RoleDataScopeRequest request = new RoleDataScopeRequest();
+        request.setResourceCode("*");
+        request.setScopeType("ADMIN".equalsIgnoreCase(roleCode) ? "ALL" : "SELF");
+        return request;
+    }
+
+    private String normalizeResourceCode(String resourceCode) {
+        if (!StringUtils.hasText(resourceCode)) {
+            return "*";
+        }
+        String normalized = resourceCode.trim();
+        if (normalized.length() > 128) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "数据权限资源编码长度不能超过128个字符");
+        }
+        return normalized;
+    }
+
+    private String normalizeScopeType(String scopeType) {
+        String normalized = StringUtils.hasText(scopeType) ? scopeType.trim().toUpperCase(Locale.ROOT) : "SELF";
+        if (!Set.of("ALL", "TENANT", "DEPT", "DEPT_AND_CHILD", "SELF", "CUSTOM").contains(normalized)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "不支持的数据权限范围");
+        }
+        return normalized;
+    }
+
+    private String joinIds(List<Long> ids) {
+        if (CollectionUtils.isEmpty(ids)) {
+            return null;
+        }
+        return ids.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
+
+    private List<Long> parseIdList(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        for (String part : value.split(",")) {
+            try {
+                long id = Long.parseLong(part.trim());
+                if (id > 0) {
+                    ids.add(id);
+                }
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed legacy values.
+            }
+        }
+        return ids;
     }
 
     private Integer countRolePermissions(Long roleId, Long tenantId) {

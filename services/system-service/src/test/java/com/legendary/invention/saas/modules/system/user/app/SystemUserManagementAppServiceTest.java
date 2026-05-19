@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.system.user.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
@@ -71,6 +72,21 @@ class SystemUserManagementAppServiceTest {
         assertEquals(0, jdbcTemplate.insertedUserRoles);
     }
 
+    @Test
+    void updateUserShouldReplaceDepartmentsWhenDeptIdsProvided() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+        SystemDTO.UserUpsertRequest request = userRequest(List.of());
+        request.setDeptIds(List.of(10L, 11L));
+        request.setPrimaryDeptId(11L);
+
+        assertDoesNotThrow(() -> service.updateUser(currentUser(), 2001L, request));
+
+        assertTrue(jdbcTemplate.deletedUserDepartments);
+        assertEquals(1, jdbcTemplate.departmentExistenceChecks);
+        assertEquals(2, jdbcTemplate.insertedUserDepartments);
+    }
+
     private SystemUserManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate) {
         IamUserService iamUserService = mock(IamUserService.class);
         when(iamUserService.listIdentities(anyLong())).thenReturn(List.of());
@@ -81,7 +97,7 @@ class SystemUserManagementAppServiceTest {
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
 
         return new SystemUserManagementAppService(
-                jdbcTemplate,
+                new MyBatisQueryOperations(jdbcTemplate),
                 userDomainService,
                 iamUserService,
                 mock(PermissionSnapshotService.class),
@@ -112,16 +128,25 @@ class SystemUserManagementAppServiceTest {
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
         private long existingRoleCount = 1L;
         private int roleExistenceChecks;
+        private int departmentExistenceChecks;
         private int insertedUserRoles;
+        private int insertedUserDepartments;
         private boolean deletedUserRoles;
+        private boolean deletedUserDepartments;
 
         @Override
         public int update(String sql, Object... args) {
             if (sql.contains("delete from sys_user_role")) {
                 deletedUserRoles = true;
             }
+            if (sql.contains("delete from sys_user_department")) {
+                deletedUserDepartments = true;
+            }
             if (sql.contains("insert into sys_user_role")) {
                 insertedUserRoles += 1;
+            }
+            if (sql.contains("insert into sys_user_department")) {
+                insertedUserDepartments += 1;
             }
             return 1;
         }
@@ -133,9 +158,16 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            if (sql.contains("from sys_user u")) {
+                return requiredType.cast(1L);
+            }
             if (sql.contains("from sys_role")) {
                 roleExistenceChecks += 1;
                 return requiredType.cast(existingRoleCount);
+            }
+            if (sql.contains("from sys_department")) {
+                departmentExistenceChecks += 1;
+                return requiredType.cast(2L);
             }
             return null;
         }
@@ -153,6 +185,12 @@ class SystemUserManagementAppServiceTest {
             }
             if (sql.contains("from sys_user_role") && String.class.equals(elementType)) {
                 return castList(List.of("管理员"));
+            }
+            if (sql.contains("from sys_user_department") && Long.class.equals(elementType)) {
+                return castList(List.of(10L, 11L));
+            }
+            if (sql.contains("from sys_user_department") && String.class.equals(elementType)) {
+                return castList(List.of("产品部", "研发部"));
             }
             return new ArrayList<>();
         }

@@ -2,13 +2,15 @@ package com.legendary.invention.saas.modules.iam.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.legendary.invention.common.security.data.DataPermissionRule;
+import com.legendary.invention.common.security.data.DataScopeType;
 import com.legendary.invention.saas.common.constant.CacheKeyConstants;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.redis.CacheTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -16,6 +18,8 @@ import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.Collections;
 
 @Service
 public class PermissionSnapshotService {
@@ -25,11 +29,11 @@ public class PermissionSnapshotService {
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
     private static final String VERSION_SUFFIX = "permission_version";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
 
-    public PermissionSnapshotService(JdbcTemplate jdbcTemplate, CacheTemplate cacheTemplate, ObjectMapper objectMapper) {
+    public PermissionSnapshotService(MyBatisQueryOperations jdbcTemplate, CacheTemplate cacheTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.cacheTemplate = cacheTemplate;
         this.objectMapper = objectMapper;
@@ -52,8 +56,19 @@ public class PermissionSnapshotService {
                 // Allow stale or incompatible cache payloads to self-heal from DB state.
             }
         }
+        Set<Long> roleIds = queryRoleIds(tenantId, userId);
+        DepartmentSnapshot departmentSnapshot = queryDepartments(tenantId, userId);
         Set<String> permissions = queryPermissions(tenantId, userId);
-        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions);
+        List<DataPermissionRule> dataScopes = queryDataScopes(tenantId, roleIds);
+        PermissionSnapshot snapshot = new PermissionSnapshot(
+                version,
+                permissions,
+                roleIds,
+                departmentSnapshot.primaryDeptId(),
+                departmentSnapshot.deptIds(),
+                departmentSnapshot.descendantDeptIds(),
+                dataScopes
+        );
         cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
         return snapshot;
     }
@@ -78,7 +93,8 @@ public class PermissionSnapshotService {
         }
 
         Set<String> permissions = queryRolePermissions(tenantId, roleId);
-        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions);
+        List<DataPermissionRule> dataScopes = queryDataScopes(tenantId, Set.of(roleId));
+        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions, Set.of(roleId), null, Set.of(), Set.of(), dataScopes);
         cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
         return snapshot;
     }
@@ -112,13 +128,21 @@ public class PermissionSnapshotService {
                             select concat(
                                 coalesce(date_format(max(updated_at), '%Y%m%d%H%i%s'), '0'),
                                 ':',
-                                count(*)
+                                count(*),
+                                ':',
+                                (
+                                    select count(*)
+                                    from sys_role_data_scope rds
+                                    where rds.tenant_id = ?
+                                      and rds.deleted = 0
+                                )
                             )
                             from sys_role_permission
                             where tenant_id = ?
                               and deleted = 0
                             """,
                     String.class,
+                    tenantId,
                     tenantId
             );
         } catch (Throwable throwable) {
@@ -145,7 +169,15 @@ public class PermissionSnapshotService {
                             select concat(
                                 coalesce(date_format(max(updated_at), '%Y%m%d%H%i%s'), '0'),
                                 ':',
-                                count(*)
+                                count(*),
+                                ':',
+                                (
+                                    select count(*)
+                                    from sys_role_data_scope rds
+                                    where rds.tenant_id = ?
+                                      and rds.role_id = ?
+                                      and rds.deleted = 0
+                                )
                             )
                             from sys_role_permission
                             where tenant_id = ?
@@ -153,6 +185,8 @@ public class PermissionSnapshotService {
                               and deleted = 0
                             """,
                     String.class,
+                    tenantId,
+                    roleId,
                     tenantId,
                     roleId
             );
@@ -180,6 +214,151 @@ public class PermissionSnapshotService {
                 tenantId,
                 userId
         ));
+    }
+
+    private Set<Long> queryRoleIds(Long tenantId, Long userId) {
+        return new LinkedHashSet<>(jdbcTemplate.query(
+                """
+                        select distinct ur.role_id
+                        from sys_user_role ur
+                        where ur.tenant_id = ?
+                          and ur.user_id = ?
+                          and ur.deleted = 0
+                        order by ur.role_id
+                        """,
+                (rs, rowNum) -> rs.getLong("role_id"),
+                tenantId,
+                userId
+        ));
+    }
+
+    private DepartmentSnapshot queryDepartments(Long tenantId, Long userId) {
+        try {
+            List<UserDepartmentRow> rows = jdbcTemplate.query(
+                    """
+                            select ud.dept_id, ud.primary_flag
+                            from sys_user_department ud
+                            join sys_department d
+                              on d.id = ud.dept_id
+                             and d.tenant_id = ud.tenant_id
+                             and d.deleted = 0
+                             and d.status = 'ENABLED'
+                            where ud.tenant_id = ?
+                              and ud.user_id = ?
+                              and ud.deleted = 0
+                            order by ud.primary_flag desc, ud.dept_id asc
+                            """,
+                    (rs, rowNum) -> new UserDepartmentRow(rs.getLong("dept_id"), rs.getInt("primary_flag") == 1),
+                    tenantId,
+                    userId
+            );
+            if (rows.isEmpty()) {
+                return DepartmentSnapshot.empty();
+            }
+            Set<Long> deptIds = new LinkedHashSet<>();
+            Long primaryDeptId = null;
+            for (UserDepartmentRow row : rows) {
+                deptIds.add(row.deptId());
+                if (primaryDeptId == null && row.primary()) {
+                    primaryDeptId = row.deptId();
+                }
+            }
+            if (primaryDeptId == null) {
+                primaryDeptId = rows.get(0).deptId();
+            }
+            Set<Long> descendants = queryDescendantDepartments(tenantId, deptIds);
+            return new DepartmentSnapshot(primaryDeptId, deptIds, descendants);
+        } catch (Throwable throwable) {
+            log.warn("Failed to query user departments tenantId={} userId={}", tenantId, userId, throwable);
+            return DepartmentSnapshot.empty();
+        }
+    }
+
+    private Set<Long> queryDescendantDepartments(Long tenantId, Set<Long> deptIds) {
+        Set<Long> descendants = new LinkedHashSet<>();
+        if (deptIds.isEmpty()) {
+            return descendants;
+        }
+        Set<Long> frontier = new LinkedHashSet<>(deptIds);
+        for (int depth = 0; depth < 8 && !frontier.isEmpty(); depth++) {
+            String placeholders = String.join(", ", Collections.nCopies(frontier.size(), "?"));
+            List<Object> params = new ArrayList<>();
+            params.add(tenantId);
+            params.addAll(frontier);
+            List<Long> children = jdbcTemplate.queryForList(
+                    """
+                            select id
+                            from sys_department
+                            where tenant_id = ?
+                              and parent_id in (%s)
+                              and deleted = 0
+                              and status = 'ENABLED'
+                            """.formatted(placeholders),
+                    Long.class,
+                    params.toArray()
+            );
+            frontier.clear();
+            for (Long child : children) {
+                if (child != null && descendants.add(child)) {
+                    frontier.add(child);
+                }
+            }
+        }
+        return descendants;
+    }
+
+    private List<DataPermissionRule> queryDataScopes(Long tenantId, Set<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            String placeholders = String.join(", ", Collections.nCopies(roleIds.size(), "?"));
+            List<Object> params = new ArrayList<>();
+            params.add(tenantId);
+            params.addAll(roleIds);
+            return jdbcTemplate.query(
+                    """
+                            select resource_code, scope_type, custom_dept_ids, custom_user_ids
+                            from sys_role_data_scope
+                            where tenant_id = ?
+                              and role_id in (%s)
+                              and deleted = 0
+                            order by resource_code asc, id asc
+                            """.formatted(placeholders),
+                    (rs, rowNum) -> new DataPermissionRule(
+                            rs.getString("resource_code"),
+                            DataScopeType.from(rs.getString("scope_type")),
+                            parseIdList(rs.getString("custom_dept_ids")),
+                            parseIdList(rs.getString("custom_user_ids"))
+                    ),
+                    params.toArray()
+            );
+        } catch (Throwable throwable) {
+            log.warn("Failed to query data scopes tenantId={} roleIds={}", tenantId, roleIds, throwable);
+            return List.of();
+        }
+    }
+
+    private List<Long> parseIdList(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        for (String part : value.split(",")) {
+            String normalized = part == null ? "" : part.trim();
+            if (!StringUtils.hasText(normalized)) {
+                continue;
+            }
+            try {
+                long id = Long.parseLong(normalized);
+                if (id > 0) {
+                    ids.add(id);
+                }
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed scope values to keep session construction resilient.
+            }
+        }
+        return ids;
     }
 
     private Set<String> queryRolePermissions(Long tenantId, Long roleId) {
@@ -217,13 +396,34 @@ public class PermissionSnapshotService {
     public static class PermissionSnapshot {
         private String version;
         private Set<String> permissions;
+        private Set<Long> roleIds;
+        private Long primaryDeptId;
+        private Set<Long> deptIds;
+        private Set<Long> descendantDeptIds;
+        private List<DataPermissionRule> dataScopes;
 
         public PermissionSnapshot() {
         }
 
         public PermissionSnapshot(String version, Set<String> permissions) {
+            this(version, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
+        }
+
+        public PermissionSnapshot(
+                String version,
+                Set<String> permissions,
+                Set<Long> roleIds,
+                Long primaryDeptId,
+                Set<Long> deptIds,
+                Set<Long> descendantDeptIds,
+                List<DataPermissionRule> dataScopes) {
             this.version = version;
             this.permissions = permissions;
+            this.roleIds = roleIds;
+            this.primaryDeptId = primaryDeptId;
+            this.deptIds = deptIds;
+            this.descendantDeptIds = descendantDeptIds;
+            this.dataScopes = dataScopes;
         }
 
         public static PermissionSnapshot empty() {
@@ -248,6 +448,55 @@ public class PermissionSnapshotService {
 
         public List<String> getPermissionList() {
             return getPermissions().stream().toList();
+        }
+
+        public Set<Long> getRoleIds() {
+            return roleIds == null ? Set.of() : roleIds;
+        }
+
+        public void setRoleIds(Set<Long> roleIds) {
+            this.roleIds = roleIds;
+        }
+
+        public Long getPrimaryDeptId() {
+            return primaryDeptId;
+        }
+
+        public void setPrimaryDeptId(Long primaryDeptId) {
+            this.primaryDeptId = primaryDeptId;
+        }
+
+        public Set<Long> getDeptIds() {
+            return deptIds == null ? Set.of() : deptIds;
+        }
+
+        public void setDeptIds(Set<Long> deptIds) {
+            this.deptIds = deptIds;
+        }
+
+        public Set<Long> getDescendantDeptIds() {
+            return descendantDeptIds == null ? Set.of() : descendantDeptIds;
+        }
+
+        public void setDescendantDeptIds(Set<Long> descendantDeptIds) {
+            this.descendantDeptIds = descendantDeptIds;
+        }
+
+        public List<DataPermissionRule> getDataScopes() {
+            return dataScopes == null ? List.of() : dataScopes;
+        }
+
+        public void setDataScopes(List<DataPermissionRule> dataScopes) {
+            this.dataScopes = dataScopes;
+        }
+    }
+
+    private record UserDepartmentRow(Long deptId, boolean primary) {
+    }
+
+    private record DepartmentSnapshot(Long primaryDeptId, Set<Long> deptIds, Set<Long> descendantDeptIds) {
+        static DepartmentSnapshot empty() {
+            return new DepartmentSnapshot(null, Set.of(), Set.of());
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.file.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.upload.DocumentUploadService;
 import com.legendary.invention.saas.infrastructure.upload.UploadProperties;
@@ -45,7 +46,7 @@ class FileManagementAppServiceTest {
 
     private FileManagementAppService newService(JdbcTemplate jdbcTemplate) {
         UploadProperties uploadProperties = new UploadProperties();
-        return new FileManagementAppService(jdbcTemplate, uploadProperties, mock(DocumentUploadService.class));
+        return new FileManagementAppService(new MyBatisQueryOperations(jdbcTemplate), uploadProperties, mock(DocumentUploadService.class));
     }
 
     private JdbcTemplate mockJdbcTemplate() {

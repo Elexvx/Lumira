@@ -3,6 +3,9 @@ package com.legendary.invention.message.app;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.vo.PageResponse;
 import com.legendary.invention.message.dto.MessageDTO;
+import com.legendary.invention.message.dto.MessageQueryModels.NoticeArchiveQuery;
+import com.legendary.invention.message.mapper.MessageDeliveryLogMapper;
+import com.legendary.invention.message.mapper.MessageNoticeMapper;
 import com.legendary.invention.message.service.MessagePushService;
 import com.legendary.invention.message.service.SmtpNotificationMailService;
 import com.legendary.invention.message.vo.MessageVO;
@@ -12,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,9 +22,6 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
@@ -30,7 +29,10 @@ import static org.mockito.Mockito.verify;
 class MessageAppServiceTest {
 
     @Mock
-    private JdbcTemplate jdbcTemplate;
+    private MessageNoticeMapper messageNoticeMapper;
+
+    @Mock
+    private MessageDeliveryLogMapper messageDeliveryLogMapper;
 
     @Mock
     private OperationAuditService operationAuditService;
@@ -46,7 +48,8 @@ class MessageAppServiceTest {
     @BeforeEach
     void setUp() {
         messageAppService = new MessageAppService(
-                jdbcTemplate,
+                messageNoticeMapper,
+                messageDeliveryLogMapper,
                 operationAuditService,
                 messagePushService,
                 smtpNotificationMailService
@@ -54,14 +57,10 @@ class MessageAppServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void listMessages_shouldReturnPagedNotices() {
-        doReturn(1L).when(jdbcTemplate).queryForObject(anyString(), eq(Long.class), any(Object[].class));
-
         MessageVO.NoticeVO notice = notice(1001L, "欢迎公告");
-        doReturn(List.of(notice))
-                .when(jdbcTemplate)
-                .query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class));
+        when(messageNoticeMapper.countVisiblePublished(1001L, 1001L)).thenReturn(1L);
+        when(messageNoticeMapper.listVisiblePublished(1001L, 1001L, 20L, 0L)).thenReturn(List.of(notice));
 
         CurrentUser currentUser = currentUser();
         PageResponse<MessageVO.NoticeVO> response = messageAppService.listMessages(currentUser, 1, 20);
@@ -75,7 +74,7 @@ class MessageAppServiceTest {
 
     @Test
     void countUnread_shouldNormalizeNullCountToZero() {
-        doReturn(null).when(jdbcTemplate).queryForObject(anyString(), eq(Long.class), any(Object[].class));
+        when(messageNoticeMapper.countUnread(1001L, 1001L)).thenReturn(null);
 
         Long unreadCount = messageAppService.countUnread(currentUser());
 
@@ -83,21 +82,16 @@ class MessageAppServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void listArchive_shouldScopeRegularUsersToOwnedOrVisibleMessages() {
-        doReturn(0L).when(jdbcTemplate).queryForObject(anyString(), eq(Long.class), any(Object[].class));
-        doReturn(List.of())
-                .when(jdbcTemplate)
-                .query(anyString(), any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class));
+        when(messageNoticeMapper.countArchive(any(NoticeArchiveQuery.class))).thenReturn(0L);
+        when(messageNoticeMapper.listArchive(any(NoticeArchiveQuery.class))).thenReturn(List.of());
 
         messageAppService.listArchive(currentUser(), new MessageDTO.MessageArchiveQueryRequest());
 
-        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), eq(Long.class), any(Object[].class));
-        assertThat(sqlCaptor.getValue())
-                .contains("n.created_by = ?")
-                .contains("n.target_user_id = ?")
-                .contains("sys_user_role ur");
+        ArgumentCaptor<NoticeArchiveQuery> queryCaptor = ArgumentCaptor.forClass(NoticeArchiveQuery.class);
+        verify(messageNoticeMapper).countArchive(queryCaptor.capture());
+        assertThat(queryCaptor.getValue().isManageArchive()).isFalse();
+        assertThat(queryCaptor.getValue().getUserId()).isEqualTo(1001L);
     }
 
     private CurrentUser currentUser() {

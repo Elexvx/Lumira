@@ -39,8 +39,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -153,7 +153,7 @@ public class SystemManagementAppService {
             shortcut("通知中心", "通知归档与手动发布", "/settings/notifications", "system:notification:view"),
             shortcut("插件管理", "插件安装、启用和运行态", "/settings/plugins", "plugin:management:view")
     );
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final AuthAppService authAppService;
     private final UserDomainService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -179,7 +179,7 @@ public class SystemManagementAppService {
 
     @Autowired
     public SystemManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
@@ -227,7 +227,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
@@ -276,7 +276,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
@@ -321,7 +321,7 @@ public class SystemManagementAppService {
     }
 
     private static SystemUserManagementAppService defaultUserManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             UserDomainService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
@@ -343,7 +343,7 @@ public class SystemManagementAppService {
     }
 
     private static SystemRoleManagementAppService defaultRoleManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
@@ -355,7 +355,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
@@ -394,7 +394,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
@@ -433,7 +433,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,

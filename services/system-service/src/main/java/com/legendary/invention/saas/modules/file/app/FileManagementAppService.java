@@ -10,8 +10,8 @@ import com.legendary.invention.saas.modules.file.dto.FileStorageSpaceRequest;
 import com.legendary.invention.saas.modules.file.vo.FileVO;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -45,11 +45,11 @@ public class FileManagementAppService {
             Map.entry("previewMode", "preview_mode")
     );
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final UploadProperties uploadProperties;
     private final DocumentUploadService documentUploadService;
 
-    public FileManagementAppService(JdbcTemplate jdbcTemplate, UploadProperties uploadProperties, DocumentUploadService documentUploadService) {
+    public FileManagementAppService(MyBatisQueryOperations jdbcTemplate, UploadProperties uploadProperties, DocumentUploadService documentUploadService) {
         this.jdbcTemplate = jdbcTemplate;
         this.uploadProperties = uploadProperties;
         this.documentUploadService = documentUploadService;

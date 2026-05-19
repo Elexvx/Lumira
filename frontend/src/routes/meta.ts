@@ -37,6 +37,7 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/settings/localization', name: 'nav.localization.root', icon: 'TranslationOutlined', access: 'canVisitLocalization' },
   { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined', access: 'canVisitUserCenter' },
   { path: '/user-center/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
+  { path: '/user-center/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
   { path: '/user-center/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
   { path: '/user-center/roles', name: 'nav.user.roles', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
   { path: '/user-center/personal-center', name: 'nav.user.personalCenter', icon: 'IdcardOutlined', access: 'canVisitPersonalCenter' },
@@ -91,6 +92,7 @@ export const backendRoutes: BackendRouteRecord[] = [
   { path: '/files/my', redirect: '/user-center/files' },
   { path: '/files/all', redirect: '/settings/files/all' },
   { path: '/system/users', redirect: '/user-center/users' },
+  { path: '/system/departments', redirect: '/user-center/departments' },
   { path: '/system/online-users', redirect: '/user-center/online-users' },
   { path: '/system/roles', redirect: '/user-center/roles' },
   { path: '/profile/center', redirect: '/user-center/personal-center/profile' },
@@ -119,6 +121,7 @@ export const backendRoutes: BackendRouteRecord[] = [
     access: 'canVisitUserCenter',
     routes: [
       { path: '/user-center/users', component: '@/pages/system/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
+      { path: '/user-center/departments', component: '@/pages/system/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
       { path: '/user-center/online-users', component: '@/pages/system/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
       { path: '/user-center/roles', component: '@/pages/system/roles', name: 'nav.user.roles', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
     ],

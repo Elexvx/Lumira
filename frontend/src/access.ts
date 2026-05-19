@@ -8,6 +8,7 @@ const SYSTEM_MANAGEMENT_PERMISSIONS = [
   'system:menu:view',
   'system:dict:view',
   'system:config:view',
+  'system:department:view',
   'system:verification:view',
   'system:verification:manage',
   'system:notification:view',
@@ -51,7 +52,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitPersonalCenter: isLogin && (hasPermission(permissions, 'profile:view') || hasPermission(permissions, 'system:file:view')),
     canVisitUserCenter:
       isLogin &&
-      ['user:center:view', 'system:user:view', 'system:online-user:view', 'system:role:view'].some((item) =>
+      ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'].some((item) =>
         hasPermission(permissions, item),
       ),
     canVisitSystemManagement: isLogin && SYSTEM_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
@@ -60,6 +61,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemMonitoringRedis: isLogin && hasPermission(permissions, 'system:monitor:redis:view'),
     canVisitSystemMonitoringDocs: isLogin && hasPermission(permissions, 'system:monitor:docs:view'),
     canVisitSystemUsers: isLogin && hasPermission(permissions, 'system:user:view'),
+    canVisitSystemDepartments: isLogin && hasPermission(permissions, 'system:department:view'),
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
     canVisitSystemModules: isLogin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemMenus: isLogin && hasPermission(permissions, 'system:menu:view'),

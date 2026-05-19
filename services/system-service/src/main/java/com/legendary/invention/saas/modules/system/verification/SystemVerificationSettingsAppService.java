@@ -6,7 +6,7 @@ import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.system.support.SmtpMailService;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -41,13 +41,13 @@ public class SystemVerificationSettingsAppService {
     private static final String PASSKEY_ALLOWED_ORIGINS_KEY = "verification.passkey.allowed-origins";
     private static final String PASSKEY_CHALLENGE_TTL_KEY = "verification.passkey.challenge-ttl-seconds";
 
-    private final JdbcTemplate jdbcTemplate;
+    private final MyBatisQueryOperations jdbcTemplate;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
 
     public SystemVerificationSettingsAppService(
-            JdbcTemplate jdbcTemplate,
+            MyBatisQueryOperations jdbcTemplate,
             SystemVerificationProperties properties,
             SmtpMailService smtpMailService,
             WechatLoginSettingsService wechatLoginSettingsService

@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.system.role.app;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
@@ -96,7 +97,7 @@ class SystemRoleManagementAppServiceTest {
 
     private SystemRoleManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate, PermissionSnapshotService permissionSnapshotService) {
         return new SystemRoleManagementAppService(
-                jdbcTemplate,
+                new MyBatisQueryOperations(jdbcTemplate),
                 permissionSnapshotService,
                 new RecordingOperationAuditService(jdbcTemplate)
         );

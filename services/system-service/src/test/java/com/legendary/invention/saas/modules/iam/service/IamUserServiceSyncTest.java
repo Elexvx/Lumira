@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.iam.service;
 
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,7 +22,7 @@ class IamUserServiceSyncTest {
     @Test
     void syncEnabledSysUserKeepsIdentityAndCredentialEnabled() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        IamUserService service = new IamUserService(jdbcTemplate);
+        IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
 
         service.syncSysUser(buildUser(1001L, "ENABLED", 0), "SYS_USER_SYNC");
 
@@ -33,7 +34,7 @@ class IamUserServiceSyncTest {
     void syncDisabledSysUserDoesNotReEnableIdentityOrCredential() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 1001L));
-        IamUserService service = new IamUserService(jdbcTemplate);
+        IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
 
         service.syncSysUser(buildUser(1001L, "DISABLED", 0), "SYS_USER_SYNC");
 
@@ -45,7 +46,7 @@ class IamUserServiceSyncTest {
     void syncDeletedSysUserDoesNotRestoreDeletedIamRecords() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 1001L));
-        IamUserService service = new IamUserService(jdbcTemplate);
+        IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
 
         service.syncSysUser(buildUser(1001L, "ENABLED", 1), "SYS_USER_SYNC");
 

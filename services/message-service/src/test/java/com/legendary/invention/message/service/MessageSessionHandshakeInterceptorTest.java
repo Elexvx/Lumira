@@ -84,7 +84,12 @@ class MessageSessionHandshakeInterceptorTest {
                 "session-1",
                 "v1",
                 3,
-                List.of("message:message:view")
+                List.of("message:message:view"),
+                List.of(),
+                null,
+                List.of(),
+                List.of(),
+                List.of()
         );
     }
 }

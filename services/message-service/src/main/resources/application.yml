@@ -42,6 +42,11 @@ spring:
     ignore-migration-patterns:
       - "*:missing"
 
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
 server:
   port: ${SERVER_PORT:8085}
 
