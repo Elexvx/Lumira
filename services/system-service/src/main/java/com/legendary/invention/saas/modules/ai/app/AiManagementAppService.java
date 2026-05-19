@@ -84,6 +84,64 @@ public class AiManagementAppService {
         );
     }
 
+    public AiVO.GovernanceOverviewVO governanceOverview(CurrentUser currentUser) {
+        Long tenantId = currentTenantId(currentUser);
+        AiVO.GovernanceOverviewVO overview = new AiVO.GovernanceOverviewVO();
+        overview.setEmployeeCount(count("""
+                select count(1)
+                from ai_employee
+                where tenant_id = ? and is_deleted = 0
+                """, tenantId));
+        overview.setEnabledEmployeeCount(count("""
+                select count(1)
+                from ai_employee
+                where tenant_id = ? and enabled = 1 and is_deleted = 0
+                """, tenantId));
+        overview.setLlmServiceCount(count("""
+                select count(1)
+                from ai_llm_service
+                where tenant_id = ? and is_deleted = 0
+                """, tenantId));
+        overview.setEnabledLlmServiceCount(count("""
+                select count(1)
+                from ai_llm_service
+                where tenant_id = ? and enabled = 1 and is_deleted = 0
+                """, tenantId));
+        overview.setMissingApiKeyServiceCount(count("""
+                select count(1)
+                from ai_llm_service
+                where tenant_id = ?
+                  and is_deleted = 0
+                  and (api_key_encrypted is null or api_key_encrypted = '')
+                """, tenantId));
+        overview.setSkillCount(count("""
+                select count(1)
+                from ai_skill
+                where enabled = 1 and is_deleted = 0
+                """));
+        overview.setHighRiskSkillCount(count("""
+                select count(1)
+                from ai_skill
+                where enabled = 1 and is_deleted = 0 and risk_level = 'HIGH'
+                """));
+        overview.setConfirmationRequiredSkillCount(count("""
+                select count(1)
+                from ai_skill
+                where enabled = 1 and is_deleted = 0 and need_confirm = 1
+                """));
+        overview.setHighRiskAllowedBindingCount(count("""
+                select count(1)
+                from ai_employee_skill es
+                join ai_skill s on s.skill_code = es.skill_code and s.is_deleted = 0
+                where es.tenant_id = ?
+                  and es.is_deleted = 0
+                  and es.permission_mode = 'allow'
+                  and s.risk_level = 'HIGH'
+                """, tenantId));
+        overview.setSampledAt(LocalDateTime.now());
+        return overview;
+    }
+
     public AiVO.EmployeeDetailVO getEmployee(CurrentUser currentUser, Long id) {
         Long tenantId = currentTenantId(currentUser);
         AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, id);
@@ -1133,7 +1191,15 @@ public class AiManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
+        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
+            return currentUser.getCurrentTenantId();
+        }
         return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    }
+
+    private Long count(String sql, Object... args) {
+        Long count = jdbcTemplate.queryForObject(sql, Long.class, args);
+        return count == null ? 0L : count;
     }
 
     private String cleanNullable(String value) {

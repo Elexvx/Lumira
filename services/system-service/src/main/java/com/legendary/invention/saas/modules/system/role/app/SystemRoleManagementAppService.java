@@ -210,6 +210,31 @@ public class SystemRoleManagementAppService {
         return true;
     }
 
+    @Transactional
+    public boolean deleteRole(CurrentUser currentUser, Long roleId) {
+        Long tenantId = currentTenantId(currentUser);
+        SystemVO.RoleDetailVO role = getRole(currentUser, roleId);
+        if (Boolean.TRUE.equals(role.getDefaultRegistrationRole())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "默认注册角色不允许删除");
+        }
+        int userCount = countRoleUsers(roleId, tenantId);
+        if (userCount > 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "角色已被用户占用，请先移除用户角色关系");
+        }
+        jdbcTemplate.update("delete from sys_role_permission where tenant_id = ? and role_id = ?", tenantId, roleId);
+        jdbcTemplate.update("delete from sys_role_data_scope where tenant_id = ? and role_id = ?", tenantId, roleId);
+        jdbcTemplate.update(
+                "update sys_role set deleted = 1, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                roleId,
+                tenantId
+        );
+        permissionSnapshotService.invalidateTenant(tenantId);
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
+        return true;
+    }
+
     private String resolveDefaultRegistrationRoleCode(Long tenantId) {
         Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(DEFAULT_REGISTRATION_ROLE_CODE_KEY));
         String roleCode = values.get(DEFAULT_REGISTRATION_ROLE_CODE_KEY);

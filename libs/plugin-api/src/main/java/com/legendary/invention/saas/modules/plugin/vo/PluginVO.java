@@ -363,6 +363,45 @@ public final class PluginVO {
         }
     }
 
+    public static class RuntimeSecurityPolicyVO {
+        private Long maxGatewayBodyBytes;
+        private Boolean requireHttpPermission;
+        private java.util.List<String> allowedMethods;
+        private java.util.List<String> blockedHeaders;
+
+        public Long getMaxGatewayBodyBytes() {
+            return maxGatewayBodyBytes;
+        }
+
+        public void setMaxGatewayBodyBytes(Long maxGatewayBodyBytes) {
+            this.maxGatewayBodyBytes = maxGatewayBodyBytes;
+        }
+
+        public Boolean getRequireHttpPermission() {
+            return requireHttpPermission;
+        }
+
+        public void setRequireHttpPermission(Boolean requireHttpPermission) {
+            this.requireHttpPermission = requireHttpPermission;
+        }
+
+        public java.util.List<String> getAllowedMethods() {
+            return allowedMethods;
+        }
+
+        public void setAllowedMethods(java.util.List<String> allowedMethods) {
+            this.allowedMethods = allowedMethods;
+        }
+
+        public java.util.List<String> getBlockedHeaders() {
+            return blockedHeaders;
+        }
+
+        public void setBlockedHeaders(java.util.List<String> blockedHeaders) {
+            this.blockedHeaders = blockedHeaders;
+        }
+    }
+
     public static class TenantPluginVO {
         private String pluginCode;
         private String pluginName;

@@ -475,7 +475,9 @@ public class MessageAppService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return PlatformConstants.PLATFORM_TENANT_ID;
+        return currentUser == null || currentUser.getCurrentTenantId() == null
+                ? PlatformConstants.PLATFORM_TENANT_ID
+                : currentUser.getCurrentTenantId();
     }
 
     private record Recipient(Long userId, String username, String email) {

@@ -57,6 +57,12 @@ public class AiController {
         return ApiResponse.success(aiManagementAppService.listEmployees(currentUser(), pageNo, pageSize), TraceContext.getRequestId());
     }
 
+    @GetMapping("/governance/overview")
+    public ApiResponse<AiVO.GovernanceOverviewVO> governanceOverview() {
+        require("ai:view");
+        return ApiResponse.success(aiManagementAppService.governanceOverview(currentUser()), TraceContext.getRequestId());
+    }
+
     @GetMapping("/employees/{id}")
     public ApiResponse<AiVO.EmployeeDetailVO> employee(@PathVariable("id") Long id) {
         require("ai:view");

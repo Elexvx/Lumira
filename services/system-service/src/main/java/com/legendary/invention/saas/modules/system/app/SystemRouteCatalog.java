@@ -174,15 +174,16 @@ public final class SystemRouteCatalog {
         );
 
         settingsRoot.setChildren(new ArrayList<>(List.of(
-                menu(-1015L, -1000L, "settings.modules", "模块中心", "MENU", "/settings/modules", "@/pages/settings/modules", "AppstoreOutlined", 0, "system:menu:view"),
-                menu(-1001L, -1000L, "settings.menus", "菜单管理", "MENU", "/settings/menus", "@/pages/settings/menus", "AppstoreOutlined", 1, "system:menu:view"),
-                menu(-1002L, -1000L, "settings.dicts", "字典管理", "MENU", "/settings/dicts", "@/pages/settings/dicts", "DatabaseOutlined", 2, "system:dict:view"),
-                menu(-1003L, -1000L, "settings.profile-fields", "字段管理", "MENU", "/settings/profile-fields", "@/pages/settings/profile-fields", "FormOutlined", 3, "system:config:view"),
-                menu(-1004L, -1000L, "settings.personalization", "个性化设置", "MENU", "/settings/personalization", "@/pages/settings/personalization", "SkinOutlined", 4, "system:config:view"),
-                menu(-1005L, -1000L, "settings.security", "安全设置", "MENU", "/settings/security", "@/pages/settings/security", "SafetyOutlined", 5, "system:config:view"),
-                menu(-1006L, -1000L, "settings.verification", "验证管理", "MENU", "/settings/verification", "@/pages/settings/verification", "SafetyOutlined", 6, "system:verification:view"),
-                menu(-1007L, -1000L, "settings.notifications", "通知中心", "MENU", "/settings/notifications", "@/pages/settings/notifications/index", "NotificationOutlined", 7, "system:notification:view"),
-                menu(-1008L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/plugins", "ApiOutlined", 8, "plugin:management:view"),
+                menu(-1016L, -1000L, "settings.tenants", "租户管理", "MENU", "/settings/tenants", "@/pages/settings/tenants", "ApartmentOutlined", 0, "system:tenant:view"),
+                menu(-1015L, -1000L, "settings.modules", "模块中心", "MENU", "/settings/modules", "@/pages/settings/modules", "AppstoreOutlined", 1, "system:menu:view"),
+                menu(-1001L, -1000L, "settings.menus", "菜单管理", "MENU", "/settings/menus", "@/pages/settings/menus", "AppstoreOutlined", 2, "system:menu:view"),
+                menu(-1002L, -1000L, "settings.dicts", "字典管理", "MENU", "/settings/dicts", "@/pages/settings/dicts", "DatabaseOutlined", 3, "system:dict:view"),
+                menu(-1003L, -1000L, "settings.profile-fields", "字段管理", "MENU", "/settings/profile-fields", "@/pages/settings/profile-fields", "FormOutlined", 4, "system:config:view"),
+                menu(-1004L, -1000L, "settings.personalization", "个性化设置", "MENU", "/settings/personalization", "@/pages/settings/personalization", "SkinOutlined", 5, "system:config:view"),
+                menu(-1005L, -1000L, "settings.security", "安全设置", "MENU", "/settings/security", "@/pages/settings/security", "SafetyOutlined", 6, "system:config:view"),
+                menu(-1006L, -1000L, "settings.verification", "验证管理", "MENU", "/settings/verification", "@/pages/settings/verification", "SafetyOutlined", 7, "system:verification:view"),
+                menu(-1007L, -1000L, "settings.notifications", "通知中心", "MENU", "/settings/notifications", "@/pages/settings/notifications/index", "NotificationOutlined", 8, "system:notification:view"),
+                menu(-1008L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/plugins", "ApiOutlined", 9, "plugin:management:view"),
                 menu(-1009L, -1000L, "settings.ai-employees", "数字员工", "MENU", "/settings/ai-employees", "@/pages/settings/ai-employees", "RobotOutlined", 24, "ai:view"),
                 menu(-1010L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
                 menu(-1011L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
@@ -201,8 +202,10 @@ public final class SystemRouteCatalog {
                 menu(-929L, -930L, "site.settings", "站点设置", "MENU", "/site/settings", "@/pages/site/settings", "SettingOutlined", 1, "site:settings"),
                 menu(-928L, -930L, "site.navigation", "导航管理", "MENU", "/site/navigation", "@/pages/site/navigation", "MenuOutlined", 2, "site:navigation"),
                 menu(-923L, -930L, "site.carousels", "轮播管理", "MENU", "/site/carousels", "@/pages/site/carousels", "PictureOutlined", 3, "site:carousel"),
-                menu(-926L, -930L, "site.contents", "内容管理", "MENU", "/site/contents", "@/pages/site/contents", "ReadOutlined", 4, "site:content"),
-                menu(-924L, -930L, "site.submissions", "提交记录", "MENU", "/site/submissions", "@/pages/site/submissions", "InboxOutlined", 5, "site:submission")
+                menu(-927L, -930L, "site.pages", "页面管理", "MENU", "/site/pages", "@/pages/site/pages", "LayoutOutlined", 4, "site:page"),
+                menu(-926L, -930L, "site.contents", "内容管理", "MENU", "/site/contents", "@/pages/site/contents", "ReadOutlined", 5, "site:content"),
+                menu(-925L, -930L, "site.forms", "表单管理", "MENU", "/site/forms", "@/pages/site/forms", "FormOutlined", 6, "site:form"),
+                menu(-924L, -930L, "site.submissions", "提交记录", "MENU", "/site/submissions", "@/pages/site/submissions", "InboxOutlined", 7, "site:submission")
         )));
         roots.add(siteRoot);
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");

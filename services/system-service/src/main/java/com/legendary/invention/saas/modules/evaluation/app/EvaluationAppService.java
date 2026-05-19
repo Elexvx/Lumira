@@ -374,7 +374,9 @@ public class EvaluationAppService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        return currentUser == null || currentUser.getCurrentTenantId() == null
+                ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID
+                : currentUser.getCurrentTenantId();
     }
 
     private String clean(String value) {

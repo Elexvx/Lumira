@@ -328,4 +328,49 @@ public final class MessageVO {
             this.expiresInSeconds = expiresInSeconds;
         }
     }
+
+    public static class WebSocketRuntimeVO {
+        private Integer activeConnections;
+        private Integer tenantCount;
+        private Integer userCount;
+        private LocalDateTime earliestConnectedAt;
+        private LocalDateTime sampledAt;
+        private java.util.List<TenantConnectionVO> tenants;
+        private java.util.List<UserConnectionVO> topUsers;
+
+        public Integer getActiveConnections() { return activeConnections; }
+        public void setActiveConnections(Integer activeConnections) { this.activeConnections = activeConnections; }
+        public Integer getTenantCount() { return tenantCount; }
+        public void setTenantCount(Integer tenantCount) { this.tenantCount = tenantCount; }
+        public Integer getUserCount() { return userCount; }
+        public void setUserCount(Integer userCount) { this.userCount = userCount; }
+        public LocalDateTime getEarliestConnectedAt() { return earliestConnectedAt; }
+        public void setEarliestConnectedAt(LocalDateTime earliestConnectedAt) { this.earliestConnectedAt = earliestConnectedAt; }
+        public LocalDateTime getSampledAt() { return sampledAt; }
+        public void setSampledAt(LocalDateTime sampledAt) { this.sampledAt = sampledAt; }
+        public java.util.List<TenantConnectionVO> getTenants() { return tenants; }
+        public void setTenants(java.util.List<TenantConnectionVO> tenants) { this.tenants = tenants; }
+        public java.util.List<UserConnectionVO> getTopUsers() { return topUsers; }
+        public void setTopUsers(java.util.List<UserConnectionVO> topUsers) { this.topUsers = topUsers; }
+    }
+
+    public static class TenantConnectionVO {
+        private Long tenantId;
+        private Integer connectionCount;
+
+        public Long getTenantId() { return tenantId; }
+        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
+        public Integer getConnectionCount() { return connectionCount; }
+        public void setConnectionCount(Integer connectionCount) { this.connectionCount = connectionCount; }
+    }
+
+    public static class UserConnectionVO {
+        private Long userId;
+        private Integer connectionCount;
+
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public Integer getConnectionCount() { return connectionCount; }
+        public void setConnectionCount(Integer connectionCount) { this.connectionCount = connectionCount; }
+    }
 }
