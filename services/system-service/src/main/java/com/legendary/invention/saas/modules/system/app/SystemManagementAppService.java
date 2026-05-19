@@ -8,12 +8,10 @@ import com.legendary.invention.saas.infrastructure.security.service.AuthSessionS
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
-import com.legendary.invention.saas.modules.auth.app.AuthAppService;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.iam.service.IamUserAccount;
 import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
-import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.system.permission.SystemPermissionTreeAssembler;
 import com.legendary.invention.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
@@ -25,6 +23,7 @@ import com.legendary.invention.saas.modules.system.module.StaticPlatformModuleRe
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
 import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.legendary.invention.saas.modules.system.plugin.SystemPluginViewService;
 import com.legendary.invention.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.legendary.invention.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.legendary.invention.saas.modules.system.user.vo.UserDetailVO;
@@ -155,10 +154,9 @@ public class SystemManagementAppService {
             shortcut("插件管理", "插件安装、启用和运行态", "/settings/plugins", "plugin:management:view")
     );
     private final MyBatisQueryOperations jdbcTemplate;
-    private final AuthAppService authAppService;
     private final UserDomainService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
-    private final PluginManagementAppService pluginManagementAppService;
+    private final SystemPluginViewService systemPluginViewService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final SystemVerificationAppService systemVerificationAppService;
     private final SystemPlatformSettingsAppService systemPlatformSettingsAppService;
@@ -181,10 +179,9 @@ public class SystemManagementAppService {
     @Autowired
     public SystemManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
-            AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService,
+            SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
             SystemPlatformSettingsAppService systemPlatformSettingsAppService,
@@ -204,10 +201,9 @@ public class SystemManagementAppService {
             DatabasePlatformModuleRepository databasePlatformModuleRepository
     ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.authAppService = authAppService;
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
-        this.pluginManagementAppService = pluginManagementAppService;
+        this.systemPluginViewService = systemPluginViewService;
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.systemVerificationAppService = systemVerificationAppService;
         this.systemPlatformSettingsAppService = systemPlatformSettingsAppService;
@@ -229,10 +225,9 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
-            AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService,
+            SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
             SystemPlatformSettingsAppService systemPlatformSettingsAppService,
@@ -252,10 +247,9 @@ public class SystemManagementAppService {
     ) {
         this(
                 jdbcTemplate,
-                authAppService,
                 userDomainService,
                 permissionSnapshotService,
-                pluginManagementAppService,
+                systemPluginViewService,
                 onlineSessionManagementAppService,
                 systemVerificationAppService,
                 systemPlatformSettingsAppService,
@@ -278,10 +272,9 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
-            AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService,
+            SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
             SystemPlatformSettingsAppService systemPlatformSettingsAppService,
@@ -297,10 +290,9 @@ public class SystemManagementAppService {
     ) {
         this(
                 jdbcTemplate,
-                authAppService,
                 userDomainService,
                 permissionSnapshotService,
-                pluginManagementAppService,
+                systemPluginViewService,
                 onlineSessionManagementAppService,
                 systemVerificationAppService,
                 systemPlatformSettingsAppService,
@@ -357,10 +349,9 @@ public class SystemManagementAppService {
 
     public SystemManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
-            AuthAppService authAppService,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService,
+            SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
             SystemPlatformSettingsAppService systemPlatformSettingsAppService,
@@ -375,10 +366,9 @@ public class SystemManagementAppService {
     ) {
         this(
                 jdbcTemplate,
-                authAppService,
                 userDomainService,
                 permissionSnapshotService,
-                pluginManagementAppService,
+                systemPluginViewService,
                 onlineSessionManagementAppService,
                 systemVerificationAppService,
                 systemPlatformSettingsAppService,
@@ -394,87 +384,10 @@ public class SystemManagementAppService {
         );
     }
 
-    public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
-            AuthAppService authAppService,
-            UserDomainService userDomainService,
-            PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService,
-            OnlineSessionManagementAppService onlineSessionManagementAppService,
-            SystemVerificationAppService systemVerificationAppService,
-            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
-            SystemProfileSettingsAppService systemProfileSettingsAppService,
-            PasswordEncoder passwordEncoder,
-            AuthSessionStore authSessionStore,
-            LoginAuditService loginAuditService,
-            OperationAuditService operationAuditService,
-            SecuritySettingsService securitySettingsService,
-            PasswordPolicyService passwordPolicyService,
-            TaskCenterAppService taskCenterAppService
-    ) {
-        this(
-                jdbcTemplate,
-                authAppService,
-                userDomainService,
-                permissionSnapshotService,
-                pluginManagementAppService,
-                onlineSessionManagementAppService,
-                systemVerificationAppService,
-                systemPlatformSettingsAppService,
-                systemProfileSettingsAppService,
-                passwordEncoder,
-                authSessionStore,
-                loginAuditService,
-                operationAuditService,
-                securitySettingsService,
-                passwordPolicyService,
-                taskCenterAppService,
-                jdbcTemplate == null ? null : new IamUserService(jdbcTemplate)
-        );
-    }
-
-    public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
-            AuthAppService authAppService,
-            UserDomainService userDomainService,
-            PermissionSnapshotService permissionSnapshotService,
-            PluginManagementAppService pluginManagementAppService,
-            OnlineSessionManagementAppService onlineSessionManagementAppService,
-            SystemVerificationAppService systemVerificationAppService,
-            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
-            SystemProfileSettingsAppService systemProfileSettingsAppService,
-            PasswordEncoder passwordEncoder,
-            AuthSessionStore authSessionStore,
-            LoginAuditService loginAuditService,
-            OperationAuditService operationAuditService,
-            SecuritySettingsService securitySettingsService,
-            PasswordPolicyService passwordPolicyService
-    ) {
-        this(
-                jdbcTemplate,
-                authAppService,
-                userDomainService,
-                permissionSnapshotService,
-                pluginManagementAppService,
-                onlineSessionManagementAppService,
-                systemVerificationAppService,
-                systemPlatformSettingsAppService,
-                systemProfileSettingsAppService,
-                passwordEncoder,
-                authSessionStore,
-                loginAuditService,
-                operationAuditService,
-                securitySettingsService,
-                passwordPolicyService,
-                null,
-                jdbcTemplate == null ? null : new IamUserService(jdbcTemplate)
-        );
-    }
-
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
         SystemVO.DashboardSummaryVO summary = new SystemVO.DashboardSummaryVO();
-        summary.setCurrentUser(authAppService.currentUser(currentUser));
-        summary.setTenantPlugins(pluginManagementAppService.availablePlugins(currentTenantId(currentUser)));
+        summary.setCurrentUser(buildCurrentUser(currentUser));
+        summary.setTenantPlugins(systemPluginViewService.availablePlugins(currentTenantId(currentUser)));
         summary.setMenuCount(countMenus(currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
         summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, 5)));
@@ -520,7 +433,7 @@ public class SystemManagementAppService {
 
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {
         SystemVO.ProfileSummaryVO summary = new SystemVO.ProfileSummaryVO();
-        summary.setCurrentUser(authAppService.currentUser(currentUser));
+        summary.setCurrentUser(buildCurrentUser(currentUser));
         summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
         summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
         summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, RECENT_LOGIN_LOG_LIMIT)));
@@ -583,7 +496,7 @@ public class SystemManagementAppService {
         );
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
-        return authAppService.currentUser(currentUser);
+        return buildCurrentUser(currentUser);
     }
 
     @Transactional
@@ -618,7 +531,7 @@ public class SystemManagementAppService {
                 user.getId()
         );
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        return authAppService.currentUser(currentUser);
+        return buildCurrentUser(currentUser);
     }
 
     public SystemVO.VerificationChallengeVO startCurrentUserContactBindChallenge(CurrentUser currentUser, ProfileDTO.ContactBindChallengeRequest request) {
@@ -680,7 +593,7 @@ public class SystemManagementAppService {
 
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
-        return authAppService.currentUser(currentUser);
+        return buildCurrentUser(currentUser);
     }
 
     @Transactional
@@ -710,7 +623,7 @@ public class SystemManagementAppService {
                 currentUser.getUserId()
         );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
-        return authAppService.currentUser(currentUser);
+        return buildCurrentUser(currentUser);
     }
 
     @Transactional
@@ -1989,6 +1902,106 @@ public class SystemManagementAppService {
         vo.setPasswordRequireSpecialCharacter(snapshot.isPasswordRequireSpecialCharacter());
         vo.setPasswordAllowConsecutiveCharacters(snapshot.isPasswordAllowConsecutiveCharacters());
         return vo;
+    }
+
+    private CurrentUserVO buildCurrentUser(CurrentUser currentUser) {
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(
+                        ErrorCode.SESSION_EXPIRED,
+                        "会话关联用户不存在: " + currentUser.getUserId(),
+                        ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                ));
+        Long tenantId = currentTenantId(currentUser);
+        PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(
+                tenantId,
+                currentUser.getUserId(),
+                currentUser.getSimulatedRoleId()
+        );
+
+        CurrentUserVO response = new CurrentUserVO();
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setNickname(user.getNickname());
+        response.setRealName(user.getRealName());
+        response.setAvatarUrl(user.getAvatarUrl());
+        response.setMobile(user.getMobile());
+        response.setEmail(user.getEmail());
+        response.setBirthMonth(user.getBirthMonth());
+        response.setGender(user.getGender());
+        response.setRegion(user.getRegion());
+        response.setAvailableTime(user.getAvailableTime());
+        response.setIdCardNumber(user.getIdCardNumber());
+        response.setLocale(resolveLocale(tenantId, user.getId()));
+        response.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        response.setAvailableRoles(listAvailableRoles(currentUser.getUserId(), tenantId));
+        response.setSessionId(currentUser.getSessionId());
+        response.setPermissionsVersion(snapshot.getVersion());
+        response.setSessionVersion(currentUser.getSessionVersion());
+        response.setPermissions(snapshot.getPermissionList());
+        return response;
+    }
+
+    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long tenantId, Long userId, Long simulatedRoleId) {
+        if (tenantId == null || userId == null) {
+            return PermissionSnapshotService.PermissionSnapshot.empty();
+        }
+        if (simulatedRoleId != null) {
+            return permissionSnapshotService.loadRoleSnapshot(tenantId, simulatedRoleId);
+        }
+        return permissionSnapshotService.loadSnapshot(tenantId, userId);
+    }
+
+    private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId, Long tenantId) {
+        if (userId == null || tenantId == null) {
+            return List.of();
+        }
+        return jdbcTemplate.query(
+                """
+                        select r.id as id,
+                               r.role_code as roleCode,
+                               r.role_name as roleName,
+                               r.role_type as roleType,
+                               count(rp.permission_key) as permissionCount
+                        from sys_user_role ur
+                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
+                        left join sys_role_permission rp on rp.role_id = r.id and rp.tenant_id = r.tenant_id and rp.deleted = 0
+                        where ur.tenant_id = ? and ur.user_id = ? and ur.deleted = 0
+                        group by r.id, r.role_code, r.role_name, r.role_type
+                        order by r.id desc
+                        """,
+                (rs, rowNum) -> {
+                    CurrentUserVO.RoleOptionVO role = new CurrentUserVO.RoleOptionVO();
+                    role.setId(rs.getLong("id"));
+                    role.setRoleCode(rs.getString("roleCode"));
+                    role.setRoleName(rs.getString("roleName"));
+                    role.setRoleType(rs.getString("roleType"));
+                    role.setPermissionCount(rs.getInt("permissionCount"));
+                    return role;
+                },
+                tenantId,
+                userId
+        );
+    }
+
+    private String resolveLocale(Long tenantId, Long userId) {
+        if (tenantId == null || userId == null) {
+            return DEFAULT_LOCALE;
+        }
+        try {
+            String locale = jdbcTemplate.queryForObject(
+                    """
+                            select locale
+                            from sys_user_tenant_profile
+                            where tenant_id = ? and user_id = ? and deleted = 0
+                            """,
+                    String.class,
+                    tenantId,
+                    userId
+            );
+            return normalizeLocale(locale);
+        } catch (EmptyResultDataAccessException ex) {
+            return DEFAULT_LOCALE;
+        }
     }
 
     private Long currentTenantId(CurrentUser currentUser) {

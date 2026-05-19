@@ -13,7 +13,7 @@ spring:
     out-of-order: true
     placeholders:
       defaultAdminInitEnabled: true
-      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G}
+      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
 
 saas:
   security:

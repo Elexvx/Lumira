@@ -1,7 +1,6 @@
 package com.legendary.invention.saas.modules.system.verification;
 
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
-import com.legendary.invention.saas.modules.auth.config.WechatLoginProperties;
 import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
 import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;

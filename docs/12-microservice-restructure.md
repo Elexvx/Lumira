@@ -19,8 +19,8 @@
 ## 3. 模块边界
 
 - `services/gateway-service`：统一入口网关。
-- `backend/`：当前作为 `system-service`，承接原有核心业务。
-- `services/auth-service`、`services/file-service`、`services/message-service`、`services/plugin-service`、`services/localization-service`、`services/job-executor`：后续拆分目标服务。审计能力目前仍归入 `backend/system-service` 的内部模块。
+- `services/system-service/`：当前作为 `system-service`，承接原有核心业务。
+- `services/auth-service`、`services/file-service`、`services/message-service`、`services/plugin-service`、`services/localization-service`、`services/job-executor`：后续拆分目标服务。审计能力目前仍归入 `services/system-service/system-service` 的内部模块。
 - `libs/common-core`、`libs/common-web`、`libs/common-security`、`libs/legendary-api`：共享契约和基础能力。
 
 ## 4. 配置规范
@@ -33,7 +33,7 @@
 ## 5. 启动顺序
 
 1. 启动 MySQL、Redis、Nacos。
-2. 启动 `backend` 作为 `system-service`。
+2. 启动 `services/system-service`。
 3. 启动 `services/gateway-service`。
 4. 后续再启用各独立服务模块和 XXL-Job / Seata。
 
@@ -41,7 +41,7 @@
 
 - 第一批：`services/file-service`、`services/message-service`、`services/job-executor`
 - 第二批：`services/plugin-service`
-- 第三批：`services/auth-service`、`backend/`（system-service）
+- 第三批：`services/auth-service`、`services/system-service/`（system-service）
 - 租户服务已从当前阶段剔除，后续如恢复多租户能力需重新设计接入边界。
 
 ## 7. 当前已落地的第一批

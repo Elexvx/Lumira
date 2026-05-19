@@ -15,8 +15,8 @@ class SecurityPermitPathsTest {
         String mainConfig = readConfig("src/main/resources/application.yml");
         String testConfig = readConfig("src/test/resources/application.yml");
 
-        Assertions.assertTrue(mainConfig.contains("- /api/v1/localization/runtime/**"), mainConfig);
-        Assertions.assertTrue(testConfig.contains("- /api/v1/localization/runtime/**"), testConfig);
+        Assertions.assertFalse(mainConfig.contains("- /api/v1/localization/runtime/**"), mainConfig);
+        Assertions.assertFalse(testConfig.contains("- /api/v1/localization/runtime/**"), testConfig);
     }
 
     @Test

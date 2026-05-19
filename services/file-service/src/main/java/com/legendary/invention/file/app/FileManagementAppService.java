@@ -557,7 +557,7 @@ public class FileManagementAppService {
     private String resolvePreviewMode(String extension, String contentType) {
         String normalizedExtension = extension == null ? "" : extension.toLowerCase(Locale.ROOT);
         String normalizedContentType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-        if (List.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "ico").contains(normalizedExtension)
+        if (List.of("png", "jpg", "jpeg", "gif", "bmp", "ico").contains(normalizedExtension)
                 || normalizedContentType.startsWith("image/")) {
             return "IMAGE";
         }
