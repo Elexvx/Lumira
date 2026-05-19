@@ -6,6 +6,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.web.TraceIdFilter;
+import com.legendary.invention.common.web.WebProperties;
 import com.legendary.invention.localization.security.LocalizationJwtAuthFilter;
 import com.legendary.invention.localization.security.SecurityProperties;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.io.IOException;
 
 @Configuration
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({SecurityProperties.class, WebProperties.class})
 public class LocalizationSecurityConfig {
 
     private final TraceIdFilter traceIdFilter;
