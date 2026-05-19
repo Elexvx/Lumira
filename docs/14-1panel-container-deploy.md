@@ -101,7 +101,7 @@ Compose 已使用 Docker volume 保存：
 - 插件文件：`plugin_data`、`plugin_staging`
 - XXL-Job 执行器日志：`xxl_job_executor_logs`，仅启用 `jobs` profile 时使用
 
-不要把本地的 `backend/storage` 直接打包进生产镜像；该目录已经被 `.dockerignore` 排除。
+不要把本地的 `services/system-service/storage` 直接打包进生产镜像；该目录已经被 `.dockerignore` 排除。
 
 ## 生产注意事项
 

@@ -1,4 +1,4 @@
-package com.legendary.invention.saas.modules.auth.config;
+package com.legendary.invention.saas.modules.system.verification;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

@@ -42,8 +42,8 @@
 
 从当前仓库看，平台已经不是普通后台模板，而是已经进入微服务平台骨架阶段：
 
-- 根 `pom.xml` 已聚合 `backend`、`services/*` 和 `libs/*`。
-- `backend/` 当前承担 `system-service`，保留核心管理控制面和一批业务域。
+- 根 `pom.xml` 已聚合 `services/*` 和 `libs/*`，其中 `services/system-service` 是系统管理服务。
+- `services/system-service/` 当前承担 `system-service`，保留核心管理控制面和一批业务域。
 - `services/gateway-service/` 已收口统一入口。
 - `services/auth-service/`、`file-service/`、`message-service/`、`plugin-service/`、`localization-service/`、`job-executor/` 已有独立服务骨架。
 - `libs/common-core/`、`common-web/`、`common-security/`、`legendary-api/` 已承担共享契约和基础能力。
@@ -58,15 +58,15 @@
 
 | 能力 | 当前落点 | 定位 |
 | --- | --- | --- |
-| 审批 | `backend/src/main/java/.../modules/approval`、`approval_*` 表 | 通用流程能力 |
-| 评审 | `backend/src/main/java/.../modules/evaluation`、`evaluation_*` 表 | 通用评分/评审能力 |
-| 官网/CMS | `backend/src/main/java/.../modules/site`、`site_*` 表、`site-frontend/` | 通用内容、页面、表单、提交能力雏形 |
+| 审批 | `services/system-service/src/main/java/.../modules/approval`、`approval_*` 表 | 通用流程能力 |
+| 评审 | `services/system-service/src/main/java/.../modules/evaluation`、`evaluation_*` 表 | 通用评分/评审能力 |
+| 官网/CMS | `services/system-service/src/main/java/.../modules/site`、`site_*` 表、`site-frontend/` | 通用内容、页面、表单、提交能力雏形 |
 | 文件 | `services/file-service`、`file_object` | 平台底座能力 |
 | 消息 | `services/message-service`、站内信、WebSocket/outbox | 平台底座能力 |
-| 任务 | `backend/modules/task`、`services/job-executor` | 通用任务中心和调度能力 |
+| 任务 | `services/system-service/modules/task`、`services/job-executor` | 通用任务中心和调度能力 |
 | 插件 | `services/plugin-service`、`sys_plugin_*` 表、前端运行容器 | 扩展运行时能力 |
 | 本地化 | `services/localization-service`、`frontend/src/services/localization` | 平台底座能力 |
-| AI | `backend/modules/ai`、`frontend/src/pages/ai` | 业务增强能力，可作为可选模块 |
+| AI | `services/system-service/modules/ai`、`frontend/src/pages/ai` | 业务增强能力，可作为可选模块 |
 
 其中 `approval`、`evaluation`、`site_form`、`site_form_submission` 最值得抽象成“业务模块可复用能力”，因为比赛、期刊、活动、会议都会重复使用。
 
@@ -86,7 +86,7 @@
 
 - 上传插件包。
 - 安装、升级、回滚、启用、停用、卸载。
-- 加载 `backend/plugin.jar`。
+- 加载 `services/system-service/plugin.jar`。
 - 通过 `ServiceLoader` 加载 SPI。
 - 插件声明菜单、权限、健康检查、HTTP handler、定时任务、二次验证 provider。
 - `/api/p/{pluginCode}/**` 转发到插件 HTTP handler。
@@ -304,7 +304,7 @@ DRAFT -> INSTALLED -> ENABLED -> DISABLED -> DEPRECATED -> UNINSTALLED
 新内置模块建议遵循：
 
 ```text
-backend/src/main/java/com/legendary/invention/saas/modules/<module>/
+services/system-service/src/main/java/com/legendary/invention/saas/modules/<module>/
   controller/
   app/
   domain/
@@ -683,22 +683,22 @@ DRAFT
 **Files:**
 
 - Create: `docs/plans/2026-05-17-modular-platform-architecture.md`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalog.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleRegistry.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/StaticPlatformModuleRegistry.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/DatabasePlatformModuleRepository.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/CompositePlatformModuleRegistry.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleDefinitionValidator.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/vo/PlatformModuleVO.java`
-- Created: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/vo/PlatformModuleValidationVO.java`
-- Created: `backend/src/test/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalogTest.java`
-- Created: `backend/src/test/java/com/legendary/invention/saas/modules/system/module/StaticPlatformModuleRegistryTest.java`
-- Created: `backend/src/test/java/com/legendary/invention/saas/modules/system/module/CompositePlatformModuleRegistryTest.java`
-- Created: `backend/src/test/java/com/legendary/invention/saas/modules/system/module/PlatformModuleDefinitionValidatorTest.java`
-- Created: `backend/src/main/resources/db/migration/V11__platform_module_registry.sql`
-- Created: `backend/src/main/resources/db/migration/V12__seed_platform_module_journal.sql`
-- Modified: `backend/src/main/java/com/legendary/invention/saas/modules/system/controller/SystemController.java`
-- Modified: `backend/src/main/java/com/legendary/invention/saas/modules/system/app/SystemManagementAppService.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalog.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleRegistry.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/StaticPlatformModuleRegistry.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/DatabasePlatformModuleRepository.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/CompositePlatformModuleRegistry.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleDefinitionValidator.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/vo/PlatformModuleVO.java`
+- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/vo/PlatformModuleValidationVO.java`
+- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalogTest.java`
+- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/StaticPlatformModuleRegistryTest.java`
+- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/CompositePlatformModuleRegistryTest.java`
+- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/PlatformModuleDefinitionValidatorTest.java`
+- Created: `services/system-service/src/main/resources/db/migration/V11__platform_module_registry.sql`
+- Created: `services/system-service/src/main/resources/db/migration/V12__seed_platform_module_journal.sql`
+- Modified: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/controller/SystemController.java`
+- Modified: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/app/SystemManagementAppService.java`
 - Modified: `frontend/src/types/api.ts`
 - Modified: `frontend/src/services/system/index.ts`
 - Created: `frontend/src/pages/settings/modules/index.tsx`
@@ -707,7 +707,7 @@ DRAFT
 - Modified: `frontend/src/access.ts`
 - Modified: `frontend/src/locales/zh-CN.ts`
 - Modified: `frontend/src/locales/en-US.ts`
-- Modified: `backend/src/main/java/com/legendary/invention/saas/modules/system/app/SystemRouteCatalog.java`
+- Modified: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/app/SystemRouteCatalog.java`
 - Created: `docs/15-module-registration-spec.md`
 
 **Steps:**
@@ -726,8 +726,8 @@ rg -n "moduleCode|模块注册|competition|journal" docs
 
 **Files:**
 
-- Later Create: `backend/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalog.java`
-- Later Modify: `backend/src/main/java/com/legendary/invention/saas/modules/system/app/SystemRouteCatalog.java`
+- Later Create: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalog.java`
+- Later Modify: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/app/SystemRouteCatalog.java`
 
 **Steps:**
 
@@ -757,7 +757,7 @@ mvn -q -pl backend -am -DskipTests compile
 **Verify:**
 
 ```bash
-rg -n "@RequestMapping\\(\"/api/(approvals|evaluations|tasks)" backend/src/main/java
+rg -n "@RequestMapping\\(\"/api/(approvals|evaluations|tasks)" services/system-service/src/main/java
 ```
 
 ### Task 4: 提交/表单能力抽象方案
@@ -765,8 +765,8 @@ rg -n "@RequestMapping\\(\"/api/(approvals|evaluations|tasks)" backend/src/main/
 **Files:**
 
 - Later Create: `docs/plans/2026-05-17-form-submission-capability-plan.md`
-- Later Review: `backend/src/main/java/com/legendary/invention/saas/modules/site/app/SiteManagementAppService.java`
-- Later Review: `backend/src/main/resources/db/migration/V1__baseline.sql`
+- Later Review: `services/system-service/src/main/java/com/legendary/invention/saas/modules/site/app/SiteManagementAppService.java`
+- Later Review: `services/system-service/src/main/resources/db/migration/V1__baseline.sql`
 
 **Steps:**
 
@@ -777,7 +777,7 @@ rg -n "@RequestMapping\\(\"/api/(approvals|evaluations|tasks)" backend/src/main/
 **Verify:**
 
 ```bash
-rg -n "site_form|site_form_submission|schema_json|submit_policy" backend/src/main/resources/db/migration backend/src/main/java
+rg -n "site_form|site_form_submission|schema_json|submit_policy" services/system-service/src/main/resources/db/migration services/system-service/src/main/java
 ```
 
 ### Task 5: 选择第一个场景模块

@@ -8,11 +8,9 @@ import com.legendary.invention.saas.infrastructure.security.service.PasswordPoli
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService.SecuritySettingsSnapshot;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
-import com.legendary.invention.saas.modules.auth.app.AuthAppService;
 import com.legendary.invention.saas.modules.iam.service.IamUserAccount;
 import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
-import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
@@ -40,7 +38,6 @@ class SystemManagementAppServicePasswordTest {
         RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                null,
                 new StubUserDomainService(user),
                 null,
                 null,
@@ -85,7 +82,6 @@ class SystemManagementAppServicePasswordTest {
         RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
         SystemManagementAppService service = new SystemManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
-                null,
                 new StubUserDomainService(user),
                 null,
                 null,

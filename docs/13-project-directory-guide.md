@@ -9,7 +9,7 @@
 legendary-invention/
 ├─ README.md                 仓库总说明、启动方式、架构概览
 ├─ pom.xml                   根 Maven 父 POM，聚合 backend / services / libs
-├─ backend/                  主后端 system-service
+├─ services/system-service/                  主后端 system-service
 ├─ frontend/                 前端管理端
 ├─ services/                 独立微服务集合
 ├─ libs/                     共享库与内部契约
@@ -25,7 +25,7 @@ legendary-invention/
 
 - `README.md`：项目的整体入口说明，包含仓库定位、技术栈和启动方式。
 - `pom.xml`：根 Maven 聚合文件，定义了多模块结构和统一依赖版本。
-- `backend/`：当前系统主后端，承载 `system-service` 的核心业务。
+- `services/system-service/`：当前系统主后端，承载 `system-service` 的核心业务。
 - `frontend/`：前端管理台，负责页面、布局、权限、登录态和 API 调用。
 - `services/`：微服务拆分后的独立服务，每个服务都有自己的 `pom.xml` 和 `main` 启动类。
 - `libs/`：共享能力和内部接口契约，供后端各模块与服务复用。
@@ -33,14 +33,14 @@ legendary-invention/
 - `database/`：独立数据库脚本，例如 `saas.sql`。
 - `deploy/`：部署说明和 Docker Compose 相关文件。
 
-## 2. backend/
+## 2. services/system-service/
 
-`backend/` 现在是主后端工程，也就是 `system-service`。它不是“所有服务的容器”，而是一个独立 Spring Boot 应用。
+`services/system-service/` 现在是主后端工程，也就是 `system-service`。它不是“所有服务的容器”，而是一个独立 Spring Boot 应用。
 
 ### 2.1 backend 顶层
 
 ```text
-backend/
+services/system-service/
 ├─ pom.xml
 ├─ src/
 │  ├─ main/java/com/legendary/invention/saas/
@@ -58,7 +58,7 @@ backend/
 ### 2.2 backend 源码分层
 
 ```text
-backend/src/main/java/com/legendary/invention/saas/
+services/system-service/src/main/java/com/legendary/invention/saas/
 ├─ SaasApplication.java      后端启动类
 ├─ common/                   通用响应、异常、分页、常量
 ├─ infrastructure/           安全、Redis、Trace、任务、上传等基础设施
@@ -182,7 +182,7 @@ backend/src/main/java/com/legendary/invention/saas/
 ### 2.3 backend 资源目录
 
 ```text
-backend/src/main/resources/
+services/system-service/src/main/resources/
 ├─ application.yml           主配置
 ├─ application-dev.yml       开发环境配置
 ├─ application-test.yml      测试环境配置
@@ -570,7 +570,7 @@ docs/
 
 从目录结构上看，这个仓库整体是比较工整的，原因是：
 
-- 顶层按职责分成了 `backend/`、`frontend/`、`services/`、`libs/`、`docs/`、`database/`、`deploy/`
+- 顶层按职责分成了 `services/system-service/`、`frontend/`、`services/`、`libs/`、`docs/`、`database/`、`deploy/`
 - 后端按 `common / infrastructure / modules` 分层
 - 前端按 `pages / services / components / layouts / auth / i18n / theme` 分层
 - 独立服务都放在 `services/` 下，边界清楚
@@ -579,7 +579,7 @@ docs/
 比较需要注意的地方是：
 
 - `frontend/src/.umi/` 和 `frontend/src/.umi-production/` 是生成目录，会让树看起来更杂
-- `backend/modules/plugin/runtime/runtime/` 这种重复命名的目录，视觉上会显得有点绕
+- `services/system-service/modules/plugin/runtime/runtime/` 这种重复命名的目录，视觉上会显得有点绕
 - `audit-service` 目录目前已不在主线中，建议后续如果确认不再使用，可以考虑把历史残留再彻底清掉
 
 如果你要继续，我可以下一步把这份文档再整理成“更适合提交到仓库的正式版”，比如：

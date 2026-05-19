@@ -11,7 +11,7 @@ import java.util.Set;
 @Component
 public class UploadResourceSecurityInterceptor implements HandlerInterceptor {
 
-    private static final Set<String> INLINE_IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "ico");
+    private static final Set<String> INLINE_IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "ico");
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
