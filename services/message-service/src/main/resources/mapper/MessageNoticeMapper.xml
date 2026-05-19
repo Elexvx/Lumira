@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.legendary.invention.message.mapper.MessageNoticeMapper">
+
+    <sql id="noticeColumns">
+        n.id,
+        n.tenant_id as tenantId,
+        n.notice_type as messageType,
+        n.target_scope as targetScope,
+        n.target_user_id as targetUserId,
+        n.target_role_id as targetRoleId,
+        u.username as targetUserName,
+        role.role_name as targetRoleName,
+        n.title,
+        n.content,
+        n.source_type as sourceType,
+        n.publish_status as publishStatus,
+        n.published_at as publishedAt,
+        n.created_by as createdBy,
+        n.updated_by as updatedBy,
+        n.created_at as createdAt,
+        n.updated_at as updatedAt,
+        case when r.id is null then 0 else 1 end as readFlag,
+        r.read_at as readAt
+    </sql>
+
+    <sql id="noticeJoins">
+        left join msg_notice_read r
+          on r.tenant_id = n.tenant_id
+         and r.notice_id = n.id
+         and r.user_id = #{userId}
+         and r.deleted = 0
+        left join sys_user_tenant ut
+          on ut.tenant_id = n.tenant_id
+         and ut.user_id = n.target_user_id
+         and ut.deleted = 0
+        left join sys_user u
+          on u.id = ut.user_id
+         and u.deleted = 0
+        left join sys_role role
+          on role.tenant_id = n.tenant_id
+         and role.id = n.target_role_id
+         and role.deleted = 0
+    </sql>
+
+    <sql id="visiblePredicate">
+        (n.target_scope = 'TENANT'
+         or (n.target_scope = 'USER' and n.target_user_id = #{userId})
+         or (n.target_scope = 'ROLE' and exists (
+                select 1
+                from sys_user_role ur
+                where ur.tenant_id = n.tenant_id
+                  and ur.user_id = #{userId}
+                  and ur.role_id = n.target_role_id
+                  and ur.deleted = 0
+         )))
+    </sql>
+
+    <sql id="archiveFilters">
+        n.tenant_id = #{query.tenantId}
+        and n.deleted = 0
+        <if test="!query.manageArchive">
+            and (
+                n.created_by = #{query.userId}
+                or (n.target_scope = 'TENANT'
+                    or (n.target_scope = 'USER' and n.target_user_id = #{query.userId})
+                    or (n.target_scope = 'ROLE' and exists (
+                        select 1
+                        from sys_user_role ur
+                        where ur.tenant_id = n.tenant_id
+                          and ur.user_id = #{query.userId}
+                          and ur.role_id = n.target_role_id
+                          and ur.deleted = 0
+                    ))
+                )
+            )
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            and (n.title like concat('%', #{query.keyword}, '%') or n.content like concat('%', #{query.keyword}, '%'))
+        </if>
+        <if test="query.messageType != null and query.messageType != ''">
+            and n.notice_type = #{query.messageType}
+        </if>
+        <if test="query.targetScope != null and query.targetScope != ''">
+            and n.target_scope = #{query.targetScope}
+        </if>
+        <if test="query.sourceType != null and query.sourceType != ''">
+            and n.source_type = #{query.sourceType}
+        </if>
+        <if test="query.publishStatus != null and query.publishStatus != ''">
+            and n.publish_status = #{query.publishStatus}
+        </if>
+        <if test="query.publishedAtStart != null">
+            and n.published_at &gt;= #{query.publishedAtStart}
+        </if>
+        <if test="query.publishedAtEnd != null">
+            and n.published_at &lt;= #{query.publishedAtEnd}
+        </if>
+    </sql>
+
+    <select id="countVisiblePublished" resultType="long">
+        select count(*)
+        from msg_notice n
+        where n.tenant_id = #{tenantId}
+          and n.deleted = 0
+          and n.publish_status = 'PUBLISHED'
+          and <include refid="visiblePredicate"/>
+    </select>
+
+    <select id="listVisiblePublished" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+        select <include refid="noticeColumns"/>
+        from msg_notice n
+        <include refid="noticeJoins"/>
+        where n.tenant_id = #{tenantId}
+          and n.deleted = 0
+          and n.publish_status = 'PUBLISHED'
+          and <include refid="visiblePredicate"/>
+        order by n.id desc
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countUnread" resultType="long">
+        select count(*)
+        from msg_notice n
+        where n.tenant_id = #{tenantId}
+          and n.deleted = 0
+          and n.publish_status = 'PUBLISHED'
+          and <include refid="visiblePredicate"/>
+          and not exists (
+                select 1
+                from msg_notice_read r
+                where r.notice_id = n.id
+                  and r.tenant_id = n.tenant_id
+                  and r.user_id = #{userId}
+                  and r.deleted = 0
+          )
+    </select>
+
+    <insert id="markAllRead">
+        insert into msg_notice_read (
+            tenant_id, notice_id, user_id, read_at, created_by, updated_by, deleted
+        )
+        select n.tenant_id,
+               n.id,
+               #{userId},
+               #{readAt},
+               #{userId},
+               #{userId},
+               0
+        from msg_notice n
+        where n.tenant_id = #{tenantId}
+          and n.deleted = 0
+          and n.publish_status = 'PUBLISHED'
+          and <include refid="visiblePredicate"/>
+          and not exists (
+                select 1
+                from msg_notice_read r
+                where r.notice_id = n.id
+                  and r.tenant_id = n.tenant_id
+                  and r.user_id = #{userId}
+                  and r.deleted = 0
+          )
+    </insert>
+
+    <select id="countArchive" resultType="long">
+        select count(*)
+        from msg_notice n
+        where <include refid="archiveFilters"/>
+    </select>
+
+    <select id="listArchive" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+        select <include refid="noticeColumns"/>
+        from msg_notice n
+        <include refid="noticeJoins"/>
+        where <include refid="archiveFilters"/>
+        <choose>
+            <when test="query.sortField == 'publishedAt'">order by n.published_at ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'createdAt'">order by n.created_at ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'title'">order by n.title ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'sourceType'">order by n.source_type ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'publishStatus'">order by n.publish_status ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'targetScope'">order by n.target_scope ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'messageType'">order by n.notice_type ${query.sortOrder}, n.id desc</when>
+            <when test="query.sortField == 'readFlag'">order by case when r.id is null then 0 else 1 end ${query.sortOrder}, n.id desc</when>
+            <otherwise>order by n.published_at desc, n.id desc</otherwise>
+        </choose>
+        limit #{query.limit} offset #{query.offset}
+    </select>
+
+    <select id="findNoticeById" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+        select <include refid="noticeColumns"/>
+        from msg_notice n
+        <include refid="noticeJoins"/>
+        where n.tenant_id = #{tenantId}
+          and n.id = #{noticeId}
+          and n.deleted = 0
+        limit 1
+    </select>
+
+    <select id="findVisibleNoticeById" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+        select <include refid="noticeColumns"/>
+        from msg_notice n
+        <include refid="noticeJoins"/>
+        where n.tenant_id = #{tenantId}
+          and n.id = #{noticeId}
+          and n.deleted = 0
+          and <include refid="visiblePredicate"/>
+        limit 1
+    </select>
+
+    <insert id="upsertRead">
+        insert into msg_notice_read (tenant_id, notice_id, user_id, read_at, created_by, updated_by, deleted)
+        values (#{tenantId}, #{noticeId}, #{userId}, #{readAt}, #{userId}, #{userId}, 0)
+        on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
+    </insert>
+
+    <select id="listUserRecipient" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
+        select u.id as userId, u.username, u.email
+        from sys_user u
+        join sys_user_tenant ut
+          on ut.user_id = u.id
+         and ut.tenant_id = #{tenantId}
+         and ut.deleted = 0
+        where u.id = #{userId}
+          and u.deleted = 0
+          and u.status = 'ENABLED'
+        limit 1
+    </select>
+
+    <select id="listRoleRecipients" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
+        select distinct u.id as userId, u.username, u.email
+        from sys_user u
+        join sys_user_role ur
+          on ur.user_id = u.id
+         and ur.tenant_id = #{tenantId}
+         and ur.role_id = #{roleId}
+         and ur.deleted = 0
+        where u.deleted = 0
+          and u.status = 'ENABLED'
+        order by u.id asc
+    </select>
+
+    <select id="listTenantRecipients" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
+        select distinct u.id as userId, u.username, u.email
+        from sys_user u
+        join sys_user_tenant ut
+          on ut.user_id = u.id
+         and ut.tenant_id = #{tenantId}
+         and ut.deleted = 0
+        where u.deleted = 0
+          and u.status = 'ENABLED'
+        order by u.id asc
+    </select>
+</mapper>

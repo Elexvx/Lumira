@@ -32,6 +32,12 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
   flyway:
     enabled: true
     validate-on-migrate: false
@@ -39,6 +45,11 @@ spring:
     locations: classpath:db/migration
     ignore-migration-patterns:
       - "*:missing"
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
 
 server:
   port: ${SERVER_PORT:8084}
@@ -59,6 +70,7 @@ saas:
     permit-paths:
       - /api/uploads/**
       - /actuator/health
+      - /error
   upload:
     storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
     public-path: /api/uploads

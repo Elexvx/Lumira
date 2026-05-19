@@ -14,10 +14,23 @@ import { RolePermissionEditor } from '@/pages/system/roles/components/RolePermis
 import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermissionEditor';
 import { buildRolePermissionDisplayGroups } from '@/pages/system/rolesPermissionTree';
 import { iamService } from '@/services/iam';
-import type { RoleDetail, RoleRecord } from '@/types/api';
+import type { RoleDataScope, RoleDetail, RoleRecord } from '@/types/api';
 import './roles.css';
 
 const ROLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
+const DATA_SCOPE_OPTIONS = [
+  { label: '全部数据', value: 'ALL' },
+  { label: '本租户数据', value: 'TENANT' },
+  { label: '本部门数据', value: 'DEPT' },
+  { label: '本部门及下级', value: 'DEPT_AND_CHILD' },
+  { label: '仅本人数据', value: 'SELF' },
+  { label: '自定义范围', value: 'CUSTOM' },
+];
+const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
 
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
@@ -47,7 +60,7 @@ const RoleManagementPage = () => {
   const [defaultRoleSaving, setDefaultRoleSaving] = useState(false);
   const editorFormProps = useStandardFormProps({
     form: editorForm,
-    initialValues: { roleType: 'CUSTOM', permissionKeys: [] },
+    initialValues: { roleType: 'CUSTOM', permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES },
     onValuesChange: () => setEditorDirty(true),
     className: 'role-editor-form',
   });
@@ -128,7 +141,7 @@ const RoleManagementPage = () => {
     setEditorDirty(false);
     permissionEditor.setEditorLoading(false);
     editorForm.resetFields();
-    editorForm.setFieldsValue({ roleType: 'CUSTOM', permissionKeys: [] });
+    editorForm.setFieldsValue({ roleType: 'CUSTOM', permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES });
   };
 
   const openDefaultRoleModal = async () => {
@@ -175,6 +188,7 @@ const RoleManagementPage = () => {
       editorForm.setFieldsValue({
         ...detail,
         permissionKeys: detail.permissionKeys || [],
+        dataScopes: detail.dataScopes?.length ? detail.dataScopes : DEFAULT_DATA_SCOPES,
       });
       permissionEditor.syncActivePageByPermissionKeys(detail.permissionKeys || []);
     } catch {
@@ -204,6 +218,7 @@ const RoleManagementPage = () => {
         ...values,
         roleCode: typeof values.roleCode === 'string' ? values.roleCode.trim() : values.roleCode,
         permissionKeys: values.permissionKeys || [],
+        dataScopes: values.dataScopes?.length ? values.dataScopes : DEFAULT_DATA_SCOPES,
       };
       if (roleCrud.drawer.editingId) {
         await iamService.updateRole(roleCrud.drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
@@ -349,6 +364,14 @@ const RoleManagementPage = () => {
           <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
             <Select options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
           </Form.Item>
+          <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
+          <Form.Item
+            name={['dataScopes', 0, 'scopeType']}
+            label="数据范围"
+            rules={[{ required: true, message: '请选择数据范围' }]}
+          >
+            <Select options={DATA_SCOPE_OPTIONS} />
+          </Form.Item>
           <RolePermissionEditor
             permissionTree={permissionEditor.permissionTree}
             permissionTreeLoading={permissionEditor.permissionTreeLoading}
@@ -388,6 +411,16 @@ const RoleManagementPage = () => {
         ) : selectedRoleDetail ? (
           <>
             <ProDescriptions<RoleDetail> {...detailProps} columns={roleDetailColumns} />
+            <div style={{ marginTop: 16 }}>
+              <Space wrap size={[8, 8]}>
+                <Typography.Text strong>数据范围</Typography.Text>
+                {(selectedRoleDetail.dataScopes?.length ? selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
+                  <Tag key={`${scope.resourceCode}:${scope.scopeType}`} color="purple">
+                    {scope.resourceCode === '*' ? '全局' : scope.resourceCode} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
+                  </Tag>
+                ))}
+              </Space>
+            </div>
             <div style={{ marginTop: 16 }}>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 <Typography.Text strong>当前权限</Typography.Text>

@@ -18,7 +18,6 @@ import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginMenuProvide
 import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginPermissionProvider;
 import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.legendary.invention.saas.modules.plugin.runtime.spi.PluginScheduledTaskProvider;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.net.URLClassLoader;
@@ -33,12 +32,10 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PluginRuntimeLoader {
 
-    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final PluginProperties pluginProperties;
 
-    public PluginRuntimeLoader(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, PluginProperties pluginProperties) {
-        this.jdbcTemplate = jdbcTemplate;
+    public PluginRuntimeLoader(ObjectMapper objectMapper, PluginProperties pluginProperties) {
         this.objectMapper = objectMapper;
         this.pluginProperties = pluginProperties;
     }
@@ -58,7 +55,7 @@ public class PluginRuntimeLoader {
                     metadata.getVersion(),
                     pluginProperties.getPlatformVersion(),
                     versionHome,
-                    jdbcTemplate,
+                    null,
                     objectMapper
             );
             PluginBootstrap bootstrap = loadRequired(classLoader, PluginBootstrap.class);

@@ -7,35 +7,50 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ImageUploadService {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "ico");
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/png",
-            "image/jpeg",
-            "image/gif",
-            "image/webp",
-            "image/bmp",
-            "image/x-icon",
-            "image/vnd.microsoft.icon"
+    private static final long MAX_IMAGE_PIXELS = 25_000_000L;
+    private static final int MAX_IMAGE_WIDTH = 10_000;
+    private static final int MAX_IMAGE_HEIGHT = 10_000;
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp");
+    private static final Map<String, String> EXTENSION_CONTENT_TYPES = Map.of(
+            "png", "image/png",
+            "jpg", "image/jpeg",
+            "jpeg", "image/jpeg",
+            "gif", "image/gif",
+            "webp", "image/webp",
+            "bmp", "image/bmp"
     );
 
     private final UploadProperties uploadProperties;
 
     public ImageUploadService(UploadProperties uploadProperties) {
         this.uploadProperties = uploadProperties;
+    }
+
+    public static boolean supports(String originalFilename, String contentType) {
+        String extension = StringUtils.getFilenameExtension(originalFilename == null ? "" : originalFilename);
+        if (StringUtils.hasText(extension) && ALLOWED_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        return StringUtils.hasText(contentType) && contentType.toLowerCase(Locale.ROOT).trim().startsWith("image/");
     }
 
     public StoredImage upload(MultipartFile file) {
@@ -45,59 +60,123 @@ public class ImageUploadService {
         if (file.getSize() > uploadProperties.getMaxImageSizeBytes()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "图片不能超过 " + readableSize(uploadProperties.getMaxImageSizeBytes()));
         }
-        String originalFilename = file.getOriginalFilename();
-        String extension = resolveExtension(originalFilename, file.getContentType());
-        if (!StringUtils.hasText(extension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "仅支持常见图片格式");
-        }
+
+        byte[] bytes = readBytes(file);
+        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() == null ? "" : file.getOriginalFilename());
+        String extension = validateExtension(originalFilename);
+        String contentType = validateContentType(file.getContentType(), extension);
+        validateMagicBytes(bytes, extension);
+        validateDecodedImage(bytes, extension);
 
         Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        String generatedName = UUID.randomUUID().toString().replace("-", "") + extension;
+        String normalizedExtension = "jpeg".equals(extension) ? "jpg" : extension;
+        String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + normalizedExtension;
         Path target = storageRoot.resolve(dateFolder).resolve(generatedName).normalize();
         try {
             Files.createDirectories(target.getParent());
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(target, bytes);
         } catch (IOException exception) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "图片上传失败: " + exception.getMessage());
         }
 
         return new StoredImage(
-                StringUtils.cleanPath(originalFilename == null ? generatedName : originalFilename),
+                StringUtils.hasText(originalFilename) ? originalFilename : generatedName,
                 generatedName,
-                extension,
-                file.getContentType(),
+                "." + normalizedExtension,
+                contentType,
                 file.getSize(),
                 dateFolder + "/" + generatedName,
                 normalizePublicPath(uploadProperties.getPublicPath()) + "/" + dateFolder + "/" + generatedName
         );
     }
 
-    private String resolveExtension(String originalFilename, String contentType) {
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException exception) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "读取图片文件失败");
+        }
+    }
+
+    private String validateExtension(String originalFilename) {
         String extension = StringUtils.getFilenameExtension(originalFilename);
-        if (StringUtils.hasText(extension)) {
-            String normalizedExtension = extension.toLowerCase(Locale.ROOT);
-            if (ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
-                return "." + normalizedExtension;
+        if (!StringUtils.hasText(extension)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片文件必须包含格式后缀");
+        }
+        String normalizedExtension = extension.toLowerCase(Locale.ROOT);
+        if (!ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "仅支持 PNG、JPG、GIF、WEBP、BMP 图片，禁止上传 SVG");
+        }
+        return normalizedExtension;
+    }
+
+    private String validateContentType(String contentType, String extension) {
+        if (!StringUtils.hasText(contentType)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片 Content-Type 不能为空");
+        }
+        String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
+        String expectedContentType = EXTENSION_CONTENT_TYPES.get(extension);
+        if (!expectedContentType.equals(normalizedContentType)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片 Content-Type 与文件格式不一致");
+        }
+        return normalizedContentType;
+    }
+
+    private void validateMagicBytes(byte[] bytes, String extension) {
+        boolean valid = switch (extension) {
+            case "png" -> startsWith(bytes, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
+            case "jpg", "jpeg" -> startsWith(bytes, 0xFF, 0xD8, 0xFF);
+            case "gif" -> startsWith(bytes, 0x47, 0x49, 0x46, 0x38, 0x37, 0x61)
+                    || startsWith(bytes, 0x47, 0x49, 0x46, 0x38, 0x39, 0x61);
+            case "webp" -> bytes.length >= 12
+                    && startsWith(bytes, 0x52, 0x49, 0x46, 0x46)
+                    && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50;
+            case "bmp" -> startsWith(bytes, 0x42, 0x4D);
+            default -> false;
+        };
+        if (!valid) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片文件内容与声明格式不一致");
+        }
+    }
+
+    private void validateDecodedImage(byte[] bytes, String extension) {
+        String normalizedExtension = "jpg".equals(extension) ? "jpeg" : extension;
+        try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(normalizedExtension);
+            if (!readers.hasNext()) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "当前运行环境不支持解析该图片格式");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(imageInputStream, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if (width <= 0 || height <= 0 || width > MAX_IMAGE_WIDTH || height > MAX_IMAGE_HEIGHT || (long) width * height > MAX_IMAGE_PIXELS) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "图片尺寸超出允许范围");
+                }
+                BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(bytes));
+                if (decoded == null && !"webp".equals(extension)) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "图片内容无法被安全解析");
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException exception) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片内容无法被安全解析");
+        }
+    }
+
+    private boolean startsWith(byte[] bytes, int... prefix) {
+        if (bytes.length < prefix.length) {
+            return false;
+        }
+        for (int index = 0; index < prefix.length; index++) {
+            if ((bytes[index] & 0xFF) != prefix[index]) {
+                return false;
             }
         }
-        if (!StringUtils.hasText(contentType)) {
-            return "";
-        }
-        String normalizedContentType = contentType.toLowerCase(Locale.ROOT);
-        if (!ALLOWED_CONTENT_TYPES.contains(normalizedContentType)) {
-            return "";
-        }
-        return switch (normalizedContentType) {
-            case "image/jpeg" -> ".jpg";
-            case "image/gif" -> ".gif";
-            case "image/webp" -> ".webp";
-            case "image/bmp" -> ".bmp";
-            case "image/x-icon", "image/vnd.microsoft.icon" -> ".ico";
-            default -> ".png";
-        };
+        return true;
     }
 
     private String normalizePublicPath(String publicPath) {

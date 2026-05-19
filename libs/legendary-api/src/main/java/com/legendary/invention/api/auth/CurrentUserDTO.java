@@ -1,5 +1,7 @@
 package com.legendary.invention.api.auth;
 
+import com.legendary.invention.common.security.data.DataPermissionRule;
+
 import java.util.List;
 
 public record CurrentUserDTO(
@@ -19,6 +21,11 @@ public record CurrentUserDTO(
         String sessionId,
         String permissionsVersion,
         Integer sessionVersion,
-        List<String> permissions
+        List<String> permissions,
+        List<Long> roleIds,
+        Long primaryDeptId,
+        List<Long> deptIds,
+        List<Long> descendantDeptIds,
+        List<DataPermissionRule> dataScopes
 ) {
 }

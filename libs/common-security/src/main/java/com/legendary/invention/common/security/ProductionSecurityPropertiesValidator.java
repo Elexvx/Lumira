@@ -18,6 +18,10 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
             "saas_foundation_jwt_secret_for_dev_env_please_change_me_2026"
     );
     private static final Set<String> UNSAFE_PLUGIN_SECRETS = Set.of("change-me-plugin-signature-secret");
+    private static final Set<String> UNSAFE_FIELD_SECRETS = Set.of(
+            "legendary-invention-ai-secret",
+            "saas_foundation_field_secret_for_dev_env_please_change_me_2026"
+    );
     private static final Set<String> UNSAFE_JOB_TOKENS = Set.of("legendary-job-token", "change-me-internal-job-token");
     private static final Set<String> UNSAFE_XXL_TOKENS = Set.of("legendary-xxl-job-token", "change-me-xxl-job-token");
 
@@ -35,9 +39,11 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
 
         requireSecret("spring.datasource.password", "DB_PASSWORD", UNSAFE_DB_PASSWORDS, 8);
         requireSecret("saas.security.jwt-secret", "JWT_SECRET", UNSAFE_JWT_SECRETS, 32);
+        requireSecret("saas.security.field-secret", "FIELD_SECRET", UNSAFE_FIELD_SECRETS, 32);
         requireSecret("saas.job.internal-token", "SAAS_JOB_INTERNAL_TOKEN", UNSAFE_JOB_TOKENS, 24);
         requireSecret("saas.plugin.signature-secret", "PLUGIN_SIGNATURE_SECRET", UNSAFE_PLUGIN_SECRETS, 32, false);
         requireSecret("xxl.job.accessToken", "XXL_JOB_ACCESS_TOKEN", UNSAFE_XXL_TOKENS, 16, false);
+        requireCorsAllowedOrigins();
     }
 
     private boolean isProductionProfile() {
@@ -61,6 +67,16 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
         }
         if (value.length() < minLength) {
             throw new IllegalStateException("生产环境 " + envName + " 长度不能少于 " + minLength + " 个字符");
+        }
+    }
+
+    private void requireCorsAllowedOrigins() {
+        String value = environment.getProperty("saas.web.cors-allowed-origin-patterns");
+        if (!StringUtils.hasText(value)) {
+            throw new IllegalStateException("生产环境必须配置 CORS_ALLOWED_ORIGIN_PATTERNS，不能使用空白 CORS 白名单");
+        }
+        if (value.contains("localhost") || value.contains("127.0.0.1")) {
+            throw new IllegalStateException("生产环境 CORS_ALLOWED_ORIGIN_PATTERNS 不能包含本地调试地址");
         }
     }
 }

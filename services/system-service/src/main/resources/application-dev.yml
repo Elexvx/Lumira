@@ -1,0 +1,20 @@
+saas:
+  web:
+    cors-allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+    trust-forwarded-headers: false
+    trusted-proxy-cidrs:
+      - 127.0.0.1/32
+      - ::1/128
+
+spring:
+  flyway:
+    out-of-order: true
+    placeholders:
+      defaultAdminInitEnabled: true
+      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:$2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G}
+
+saas:
+  security:
+    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
