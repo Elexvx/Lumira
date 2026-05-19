@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class FileJwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
-    private static final List<String> PUBLIC_PREFIXES = List.of("/api/uploads/**", "/actuator/health");
+    private static final List<String> PUBLIC_PREFIXES = List.of("/api/uploads/**", "/actuator/health", "/error");
 
     private final JwtTokenService jwtTokenService;
     private final AuthInternalApi authInternalApi;

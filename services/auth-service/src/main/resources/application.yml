@@ -49,6 +49,7 @@ saas:
     access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
     captcha-enabled: ${CAPTCHA_ENABLED:true}
+    allow-unsafe-default-admin-login: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:false}
     permit-paths:
       - /api/v1/auth/login
       - /api/v1/auth/login-encryption-key
