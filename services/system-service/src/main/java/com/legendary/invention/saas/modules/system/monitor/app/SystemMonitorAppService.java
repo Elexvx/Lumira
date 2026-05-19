@@ -18,6 +18,10 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,7 +43,18 @@ public class SystemMonitorAppService {
 
     private static final Pattern CMD_STAT_PATTERN = Pattern.compile("^cmdstat_(.+)$");
     private static final Pattern KEYSPACE_PATTERN = Pattern.compile("^(db\\d+)$");
+    private static final List<ServiceEndpoint> SERVICE_ENDPOINTS = List.of(
+            new ServiceEndpoint("gateway-service", "http://localhost:8081"),
+            new ServiceEndpoint("auth-service", "http://localhost:8082"),
+            new ServiceEndpoint("system-service", "http://localhost:8080"),
+            new ServiceEndpoint("file-service", "http://localhost:8084"),
+            new ServiceEndpoint("message-service", "http://localhost:8085"),
+            new ServiceEndpoint("plugin-service", "http://localhost:8086"),
+            new ServiceEndpoint("localization-service", "http://localhost:8088"),
+            new ServiceEndpoint("job-executor", "http://localhost:8090")
+    );
     private final StringRedisTemplate stringRedisTemplate;
+    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
     private final Instant applicationStartInstant = Instant.now();
 
     public SystemMonitorAppService(StringRedisTemplate stringRedisTemplate) {
@@ -112,7 +127,56 @@ public class SystemMonitorAppService {
         serviceMonitorVO.setMemory(memory);
         serviceMonitorVO.setServer(server);
         serviceMonitorVO.setJvm(jvm);
+        serviceMonitorVO.setServices(probeServices());
+        serviceMonitorVO.setApiDocs(serviceMonitorVO.getServices().stream().map(this::toApiDoc).toList());
         return serviceMonitorVO;
+    }
+
+    private List<SystemMonitorVO.ServiceInstanceVO> probeServices() {
+        return SERVICE_ENDPOINTS.stream().map(this::probeService).toList();
+    }
+
+    private SystemMonitorVO.ServiceInstanceVO probeService(ServiceEndpoint endpoint) {
+        String baseUrl = resolveBaseUrl(endpoint);
+        String healthUrl = baseUrl + "/actuator/health";
+        SystemMonitorVO.ServiceInstanceVO service = new SystemMonitorVO.ServiceInstanceVO();
+        service.setServiceName(endpoint.serviceName());
+        service.setBaseUrl(baseUrl);
+        service.setHealthUrl(healthUrl);
+        service.setCheckedAt(LocalDateTime.now());
+        long startedAt = System.nanoTime();
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(healthUrl))
+                    .timeout(Duration.ofSeconds(2))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            service.setResponseTimeMs(Duration.ofNanos(System.nanoTime() - startedAt).toMillis());
+            service.setStatus(response.statusCode() >= 200 && response.statusCode() < 500 ? "UP" : "DOWN");
+            service.setVersion(response.body() != null && response.body().contains("\"UP\"") ? "actuator" : null);
+            if (!"UP".equals(service.getStatus())) {
+                service.setErrorMessage("HTTP " + response.statusCode());
+            }
+        } catch (Exception ex) {
+            service.setResponseTimeMs(Duration.ofNanos(System.nanoTime() - startedAt).toMillis());
+            service.setStatus("DOWN");
+            service.setErrorMessage(ex.getMessage());
+        }
+        return service;
+    }
+
+    private String resolveBaseUrl(ServiceEndpoint endpoint) {
+        String envKey = "GATEWAY_" + endpoint.serviceName().replace("-", "_").toUpperCase(Locale.ROOT) + "_URI";
+        String value = System.getenv(envKey);
+        return value == null || value.isBlank() ? endpoint.defaultBaseUrl() : value.trim();
+    }
+
+    private SystemMonitorVO.ApiDocVO toApiDoc(SystemMonitorVO.ServiceInstanceVO service) {
+        SystemMonitorVO.ApiDocVO doc = new SystemMonitorVO.ApiDocVO();
+        doc.setServiceName(service.getServiceName());
+        doc.setUrl(service.getBaseUrl() + "/api-docs");
+        doc.setStatus(service.getStatus());
+        return doc;
     }
 
     public SystemMonitorVO.RedisMonitorVO getRedisMonitor() {
@@ -339,5 +403,8 @@ public class SystemMonitorAppService {
         } catch (SocketException | java.net.UnknownHostException ignored) {
             return "unknown";
         }
+    }
+
+    private record ServiceEndpoint(String serviceName, String defaultBaseUrl) {
     }
 }

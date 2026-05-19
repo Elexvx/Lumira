@@ -419,7 +419,121 @@ public class SiteManagementAppService {
         Long tenantId = tenantId(currentUser);
         Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
         jdbcTemplate.update("insert into site_content_category (tenant_id, site_id, parent_id, code, name, sort_order, status, created_by, updated_by, deleted) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)", tenantId, siteId, request.parentId, request.code, request.name, defaultInt(request.sortOrder), clean(request.status, "ENABLED"), currentUser.getUserId(), currentUser.getUserId());
-        return category(tenantId, siteId, lastId());
+        Long id = lastId();
+        audit(currentUser, "site-category-create", "CREATE", "新增官网内容分类: " + request.name);
+        return category(tenantId, siteId, id);
+    }
+
+    @Transactional
+    public SiteVO.ContentCategoryVO updateCategory(CurrentUser currentUser, Long id, SiteDTO.CategoryRequest request) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        if (id.equals(request.parentId)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "上级分类不能选择自身");
+        }
+        jdbcTemplate.update(
+                """
+                        update site_content_category
+                        set parent_id = ?, code = ?, name = ?, sort_order = ?, status = ?,
+                            updated_by = ?, updated_at = now(), version = version + 1
+                        where id = ? and tenant_id = ? and site_id = ? and deleted = 0
+                        """,
+                request.parentId,
+                request.code,
+                request.name,
+                defaultInt(request.sortOrder),
+                clean(request.status, "ENABLED"),
+                currentUser.getUserId(),
+                id,
+                tenantId,
+                siteId
+        );
+        audit(currentUser, "site-category-update", "UPDATE", "更新官网内容分类: " + id);
+        return category(tenantId, siteId, id);
+    }
+
+    @Transactional
+    public boolean deleteCategory(CurrentUser currentUser, Long id) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        Long childCount = jdbcTemplate.queryForObject(
+                "select count(1) from site_content_category where tenant_id = ? and site_id = ? and parent_id = ? and deleted = 0",
+                Long.class,
+                tenantId,
+                siteId,
+                id
+        );
+        if (childCount != null && childCount > 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "分类下存在子分类，不能删除");
+        }
+        Long contentCount = jdbcTemplate.queryForObject(
+                "select count(1) from site_content where tenant_id = ? and site_id = ? and category_id = ? and deleted = 0",
+                Long.class,
+                tenantId,
+                siteId,
+                id
+        );
+        if (contentCount != null && contentCount > 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "分类下存在内容，不能删除");
+        }
+        jdbcTemplate.update("update site_content_category set deleted = 1, updated_by = ?, updated_at = now() where id = ? and tenant_id = ? and site_id = ? and deleted = 0", currentUser.getUserId(), id, tenantId, siteId);
+        audit(currentUser, "site-category-delete", "DELETE", "删除官网内容分类: " + id);
+        return true;
+    }
+
+    public PageResponse<SiteVO.FormVO> forms(CurrentUser currentUser, String status, long pageNo, long pageSize) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        String filter = "";
+        List<Object> args = new ArrayList<>(List.of(tenantId, siteId));
+        if (status != null && !status.isBlank()) {
+            filter = " and f.status = ?";
+            args.add(status);
+        }
+        return page("site_form", filter, args, pageNo, pageSize, (rs, rowNum) -> mapForm(rs));
+    }
+
+    @Transactional
+    public SiteVO.FormVO createForm(CurrentUser currentUser, SiteDTO.FormRequest request) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        validateJson(request.schemaJson, "表单结构");
+        validateJson(request.notificationJson, "通知配置");
+        jdbcTemplate.update(
+                "insert into site_form (tenant_id, site_id, code, name, submit_policy, schema_json, notification_json, status, created_by, updated_by, deleted) values (?, ?, ?, ?, ?, cast(? as json), cast(? as json), ?, ?, ?, 0)",
+                tenantId, siteId, request.code, request.name, clean(request.submitPolicy, "PUBLIC"), request.schemaJson,
+                jsonOrNull(request.notificationJson), clean(request.status, "ENABLED"), currentUser.getUserId(), currentUser.getUserId()
+        );
+        audit(currentUser, "site-form-create", "CREATE", "创建官网表单: " + request.name);
+        return form(tenantId, siteId, lastId());
+    }
+
+    @Transactional
+    public SiteVO.FormVO updateForm(CurrentUser currentUser, Long id, SiteDTO.FormRequest request) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        validateJson(request.schemaJson, "表单结构");
+        validateJson(request.notificationJson, "通知配置");
+        jdbcTemplate.update(
+                "update site_form set code = ?, name = ?, submit_policy = ?, schema_json = cast(? as json), notification_json = cast(? as json), status = ?, updated_by = ?, updated_at = now(), version = version + 1 where id = ? and tenant_id = ? and site_id = ? and deleted = 0",
+                request.code, request.name, clean(request.submitPolicy, "PUBLIC"), request.schemaJson, jsonOrNull(request.notificationJson),
+                clean(request.status, "ENABLED"), currentUser.getUserId(), id, tenantId, siteId
+        );
+        audit(currentUser, "site-form-update", "UPDATE", "更新官网表单: " + request.name);
+        return form(tenantId, siteId, id);
+    }
+
+    @Transactional
+    public boolean deleteForm(CurrentUser currentUser, Long id) {
+        Long tenantId = tenantId(currentUser);
+        Long siteId = defaultSiteId(tenantId, currentUser.getUserId());
+        Long submissionCount = jdbcTemplate.queryForObject("select count(1) from site_form_submission where tenant_id = ? and site_id = ? and form_id = ? and deleted = 0", Long.class, tenantId, siteId, id);
+        if (submissionCount != null && submissionCount > 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "表单已有提交记录，请先处理提交记录或停用表单");
+        }
+        jdbcTemplate.update("update site_form set deleted = 1, updated_by = ?, updated_at = now() where id = ? and tenant_id = ? and site_id = ? and deleted = 0", currentUser.getUserId(), id, tenantId, siteId);
+        audit(currentUser, "site-form-delete", "DELETE", "删除官网表单: " + id);
+        return true;
     }
 
     public PageResponse<SiteVO.SubmissionVO> submissions(CurrentUser currentUser, Long formId, String status, long pageNo, long pageSize) {
@@ -464,7 +578,9 @@ public class SiteManagementAppService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        return currentUser == null || currentUser.getCurrentTenantId() == null
+                ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID
+                : currentUser.getCurrentTenantId();
     }
 
     private Long createPageVersion(Long tenantId, Long siteId, Long pageId, Long versionNo, String blocksJson, String status, Long operatorId) {
@@ -505,6 +621,10 @@ public class SiteManagementAppService {
 
     private SiteVO.ContentCategoryVO category(Long tenantId, Long siteId, Long id) {
         return jdbcTemplate.queryForObject("select * from site_content_category where id = ? and tenant_id = ? and site_id = ? and deleted = 0", (rs, rowNum) -> mapCategory(rs), id, tenantId, siteId);
+    }
+
+    private SiteVO.FormVO form(Long tenantId, Long siteId, Long id) {
+        return jdbcTemplate.queryForObject("select * from site_form where id = ? and tenant_id = ? and site_id = ? and deleted = 0", (rs, rowNum) -> mapForm(rs), id, tenantId, siteId);
     }
 
     private <T> PageResponse<T> page(String table, String extraFilter, List<Object> args, long pageNo, long pageSize, com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper<T> mapper) {
@@ -620,6 +740,19 @@ public class SiteManagementAppService {
         vo.tagsJson = rs.getString("tags_json");
         vo.status = rs.getString("status");
         vo.publishedAt = localDateTime(rs, "published_at");
+        vo.updatedAt = localDateTime(rs, "updated_at");
+        return vo;
+    }
+
+    private SiteVO.FormVO mapForm(SqlRow rs) {
+        SiteVO.FormVO vo = new SiteVO.FormVO();
+        vo.id = rs.getLong("id");
+        vo.code = rs.getString("code");
+        vo.name = rs.getString("name");
+        vo.submitPolicy = rs.getString("submit_policy");
+        vo.schemaJson = rs.getString("schema_json");
+        vo.notificationJson = rs.getString("notification_json");
+        vo.status = rs.getString("status");
         vo.updatedAt = localDateTime(rs, "updated_at");
         return vo;
     }

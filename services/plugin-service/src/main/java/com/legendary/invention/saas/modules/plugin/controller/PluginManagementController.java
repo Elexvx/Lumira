@@ -10,6 +10,7 @@ import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.common.security.PermissionGuard;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.plugin.dto.PluginDTO;
+import com.legendary.invention.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
 import com.legendary.invention.saas.modules.plugin.vo.PluginVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -38,15 +39,18 @@ public class PluginManagementController {
     private final PluginManagementAppService pluginManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
 
     public PluginManagementController(
             PluginManagementAppService pluginManagementAppService,
             SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard
+            PermissionGuard permissionGuard,
+            PluginRuntimeSecurityPolicy runtimeSecurityPolicy
     ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.runtimeSecurityPolicy = runtimeSecurityPolicy;
     }
 
     @GetMapping("/definitions")
@@ -65,6 +69,18 @@ public class PluginManagementController {
     public ApiResponse<Map<String, List<PluginVO.PluginVersionVO>>> versions() {
         require("plugin:management:view");
         return ApiResponse.success(pluginManagementAppService.listAllVersions(), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/runtime/security-policy")
+    public ApiResponse<PluginVO.RuntimeSecurityPolicyVO> runtimeSecurityPolicy() {
+        require("plugin:management:view");
+        var snapshot = runtimeSecurityPolicy.snapshot();
+        PluginVO.RuntimeSecurityPolicyVO vo = new PluginVO.RuntimeSecurityPolicyVO();
+        vo.setMaxGatewayBodyBytes(snapshot.maxGatewayBodyBytes());
+        vo.setRequireHttpPermission(snapshot.requireHttpPermission());
+        vo.setAllowedMethods(snapshot.allowedMethods().stream().sorted().toList());
+        vo.setBlockedHeaders(snapshot.blockedHeaders().stream().sorted().toList());
+        return ApiResponse.success(vo, TraceContext.getRequestId());
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -148,7 +164,7 @@ public class PluginManagementController {
     @GetMapping("/current/available")
     public ApiResponse<List<PluginVO.TenantPluginVO>> currentAvailable() {
         return ApiResponse.success(
-                pluginManagementAppService.availablePlugins(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID),
+                pluginManagementAppService.availablePlugins(currentTenantId()),
                 TraceContext.getRequestId()
         );
     }
@@ -158,7 +174,7 @@ public class PluginManagementController {
         CurrentUser currentUser = currentUser();
         List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentMenus(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID, permissions),
+                pluginManagementAppService.currentMenus(currentTenantId(), permissions),
                 TraceContext.getRequestId()
         );
     }
@@ -171,7 +187,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/manifest")
     public ResponseEntity<Resource> currentManifest(@PathVariable("pluginCode") String pluginCode) {
-        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID).stream()
+        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentTenantId()).stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .orElseThrow();
@@ -183,7 +199,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/assets/**")
     public ResponseEntity<Resource> currentAsset(@PathVariable("pluginCode") String pluginCode, HttpServletRequest request) {
-        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID).stream()
+        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentTenantId()).stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .orElseThrow();
@@ -204,8 +220,13 @@ public class PluginManagementController {
     }
 
     private void requireCurrentTenant(Long tenantId) {
-        if (tenantId == null || !tenantId.equals(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "只能管理当前平台的插件");
+        if (tenantId == null || !tenantId.equals(currentTenantId())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "只能管理当前租户的插件");
         }
+    }
+
+    private Long currentTenantId() {
+        Long tenantId = currentUser().getCurrentTenantId();
+        return tenantId == null ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
     }
 }

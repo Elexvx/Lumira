@@ -118,7 +118,7 @@ public class TaskCenterAppService {
     }
 
     private String assignmentWhere(CurrentUser currentUser, List<Object> params) {
-        Long tenantId = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        Long tenantId = tenantId(currentUser);
         Long userId = currentUser.getUserId();
         params.add(tenantId);
         params.add(userId);
@@ -135,9 +135,26 @@ public class TaskCenterAppService {
             }
             where.append(")");
         }
-        if (hasAnyPermission(currentUser.getPermissions(), Set.of("approval:approve", "evaluation:score", "evaluation:review", "*"))) {
-            // Department ownership is modeled now; until employee-department binding exists, privileged handlers can see department tasks.
-            where.append(" or t.assignee_dept_id is not null");
+        Set<Long> deptIds = currentUser.getDeptIds();
+        Set<Long> descendantDeptIds = currentUser.getDescendantDeptIds();
+        Set<Long> visibleDeptIds = new java.util.LinkedHashSet<>();
+        if (deptIds != null) {
+            visibleDeptIds.addAll(deptIds);
+        }
+        if (descendantDeptIds != null) {
+            visibleDeptIds.addAll(descendantDeptIds);
+        }
+        if (!visibleDeptIds.isEmpty()) {
+            where.append(" or t.assignee_dept_id in (");
+            int index = 0;
+            for (Long deptId : visibleDeptIds) {
+                if (index++ > 0) {
+                    where.append(", ");
+                }
+                where.append("?");
+                params.add(deptId);
+            }
+            where.append(")");
         }
         where.append(")");
         return where.toString();
@@ -150,6 +167,12 @@ public class TaskCenterAppService {
                 tenantId,
                 userId
         );
+    }
+
+    private Long tenantId(CurrentUser currentUser) {
+        return currentUser == null || currentUser.getCurrentTenantId() == null
+                ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID
+                : currentUser.getCurrentTenantId();
     }
 
     private boolean hasAnyPermission(Set<String> permissions, Set<String> expected) {

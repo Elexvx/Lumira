@@ -46,6 +46,7 @@ public class AuthAppService {
     private final ClientIpResolver clientIpResolver;
     private final WechatLoginService wechatLoginService;
     private final SecurityProperties securityProperties;
+    private final SecuritySettingsService securitySettingsService;
 
     public AuthAppService(
             SystemInternalApi systemInternalApi,
@@ -57,7 +58,8 @@ public class AuthAppService {
             SecurityContextFacade securityContextFacade,
             ClientIpResolver clientIpResolver,
             WechatLoginService wechatLoginService,
-            SecurityProperties securityProperties
+            SecurityProperties securityProperties,
+            SecuritySettingsService securitySettingsService
     ) {
         this.systemInternalApi = systemInternalApi;
         this.loginEncryptionService = loginEncryptionService;
@@ -69,6 +71,7 @@ public class AuthAppService {
         this.clientIpResolver = clientIpResolver;
         this.wechatLoginService = wechatLoginService;
         this.securityProperties = securityProperties;
+        this.securitySettingsService = securitySettingsService;
     }
 
     public LoginEncryptionKeyDTO loginEncryptionKey() {
@@ -122,7 +125,7 @@ public class AuthAppService {
 
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
-        authSessionStore.save(session, true);
+        saveSessionWithMultiDevicePolicy(session);
         loginProtectionService.clearFailureState(account, loginIp);
         recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
@@ -193,7 +196,7 @@ public class AuthAppService {
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
-        authSessionStore.save(session, true);
+        saveSessionWithMultiDevicePolicy(session);
         recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
@@ -308,7 +311,7 @@ public class AuthAppService {
         String loginIp = clientIpResolver.resolve(request);
         String userAgent = request.getHeader("User-Agent");
         AuthSession session = buildSession(user, platformTenantId, loginIp, userAgent, snapshot);
-        authSessionStore.save(session, true);
+        saveSessionWithMultiDevicePolicy(session);
         recordLoginAudit(user.userId(), platformTenantId, user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
@@ -353,6 +356,13 @@ public class AuthAppService {
         session.setUserAgent(userAgent);
         session.setRefreshTokenId(UUID.randomUUID().toString());
         return session;
+    }
+
+    private void saveSessionWithMultiDevicePolicy(AuthSession session) {
+        if (!securitySettingsService.isAllowMultiDeviceLogin()) {
+            authSessionStore.revokeUserSessions(session.getUserId(), true);
+        }
+        authSessionStore.save(session, true);
     }
 
     private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {

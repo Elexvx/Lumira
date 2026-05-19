@@ -17,7 +17,7 @@ export const resolveBuiltinMessage = (id?: string | null, fallback?: string | nu
     return normalizedFallback || '';
   }
 
-  const locale = normalizeLocale(getLocale());
+  const locale = normalizeLocale(typeof getLocale === 'function' ? getLocale() : 'zh-CN');
   const messages = BUILTIN_MESSAGES[locale] || BUILTIN_MESSAGES['zh-CN'];
   const translated = messages[normalizedId];
   if (translated) {

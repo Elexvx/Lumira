@@ -13,6 +13,7 @@ import { DictItemForm } from '@/pages/settings/dicts/components/DictItemForm';
 import { DictTypeForm } from '@/pages/settings/dicts/components/DictTypeForm';
 import { dictService } from '@/services/dict';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
+import { confirmAction } from '@/utils/confirm';
 
 const DictManagementPage = () => {
   const typeCrud = useCrudPageState<DictTypeRecord>();
@@ -86,6 +87,20 @@ const DictManagementPage = () => {
     }
   };
 
+  const deleteType = (record: DictTypeRecord) => {
+    confirmAction({
+      title: '删除字典类型',
+      content: `确认删除字典类型「${record.dictName}」吗？所属字典项会一并停用。`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await dictService.deleteType(record.id, { autoRedirectOnUnauthorized: false });
+        message.success('字典类型已删除');
+        typeCrud.reloadTable();
+      },
+    });
+  };
+
   const openCreateItem = () => {
     itemDrawer.openCreate();
     itemForm.resetFields();
@@ -120,6 +135,24 @@ const DictManagementPage = () => {
     }
   };
 
+  const deleteItem = (record: DictItemRecord) => {
+    const dictTypeId = typeDetail?.id;
+    if (!dictTypeId) {
+      return;
+    }
+    confirmAction({
+      title: '删除字典项',
+      content: `确认删除字典项「${record.itemLabel}」吗？`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await dictService.deleteItem(dictTypeId, record.id, { autoRedirectOnUnauthorized: false });
+        message.success('字典项已删除');
+        await refreshDictItems(dictTypeId);
+      },
+    });
+  };
+
   const typeColumns = useMemo(
     () =>
       buildDictTypeColumns({
@@ -128,6 +161,7 @@ const DictManagementPage = () => {
         buildRowActions: actionPermission.buildTableActions,
         onOpenDetail: (record) => void openDetail(record),
         onOpenEdit: (record) => void openEditType(record),
+        onDelete: deleteType,
       }),
     [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
   );
@@ -139,6 +173,7 @@ const DictManagementPage = () => {
         isMobile: responsive.isMobile,
         buildRowActions: actionPermission.buildTableActions,
         onOpenEdit: openEditItem,
+        onDelete: deleteItem,
       }),
     [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
   );

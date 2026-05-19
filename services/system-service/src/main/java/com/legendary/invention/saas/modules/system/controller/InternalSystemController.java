@@ -12,6 +12,7 @@ import com.legendary.invention.api.system.PasskeyCredentialSaveRequestDTO;
 import com.legendary.invention.api.system.PasskeyCredentialUsageRequestDTO;
 import com.legendary.invention.api.system.PasskeySettingsDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
+import com.legendary.invention.api.system.SecuritySettingsDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
@@ -19,6 +20,7 @@ import com.legendary.invention.api.system.VerificationVerificationDTO;
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService;
+import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.system.app.SystemRouteCatalog;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
@@ -55,6 +57,7 @@ public class InternalSystemController {
     private final MyBatisQueryOperations jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
+    private final SecuritySettingsService securitySettingsService;
 
     public InternalSystemController(
             UserDomainService userDomainService,
@@ -65,7 +68,8 @@ public class InternalSystemController {
             PasskeyCredentialAppService passkeyCredentialAppService,
             MyBatisQueryOperations jdbcTemplate,
             PasswordEncoder passwordEncoder,
-            LoginAuditService loginAuditService
+            LoginAuditService loginAuditService,
+            SecuritySettingsService securitySettingsService
     ) {
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
@@ -76,6 +80,7 @@ public class InternalSystemController {
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
         this.loginAuditService = loginAuditService;
+        this.securitySettingsService = securitySettingsService;
     }
 
     @GetMapping("/users/login/{account}")
@@ -150,6 +155,22 @@ public class InternalSystemController {
                 Boolean.TRUE.equals(capabilities.getPasskeyLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getPasskeyPasswordlessAvailable()),
                 capabilities.getLoginModeOrder()
+        );
+    }
+
+    @GetMapping("/security/settings")
+    public SecuritySettingsDTO securitySettings(@RequestParam("tenantId") Long tenantId) {
+        var settings = securitySettingsService.loadSettings();
+        return new SecuritySettingsDTO(
+                settings.getIdleTimeoutSeconds(),
+                settings.getAccessTokenExpireSeconds(),
+                settings.getRefreshTokenExpireSeconds(),
+                settings.isAllowMultiDeviceLogin(),
+                settings.isCaptchaEnabled(),
+                settings.getCaptchaType(),
+                settings.getLoginDefenseWindowMinutes(),
+                settings.getLoginMaxValidationAttempts(),
+                settings.getLoginMaxFailureCount()
         );
     }
 

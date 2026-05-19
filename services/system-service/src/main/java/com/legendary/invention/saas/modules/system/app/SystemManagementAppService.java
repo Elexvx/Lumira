@@ -747,6 +747,112 @@ public class SystemManagementAppService {
         return systemRoleManagementAppService.updateDefaultRegistrationRole(currentUser, roleId);
     }
 
+    public PageResponse<SystemVO.TenantVO> listTenants(CurrentUser currentUser, String tenantCode, String tenantName, String status, long pageNo, long pageSize) {
+        List<String> filters = new ArrayList<>(List.of("deleted = 0"));
+        List<Object> params = new ArrayList<>();
+        if (StringUtils.hasText(tenantCode)) {
+            filters.add("tenant_code like ?");
+            params.add(like(tenantCode));
+        }
+        if (StringUtils.hasText(tenantName)) {
+            filters.add("tenant_name like ?");
+            params.add(like(tenantName));
+        }
+        if (StringUtils.hasText(status)) {
+            filters.add("status = ?");
+            params.add(status.trim());
+        }
+        String whereSql = " from sys_tenant where " + String.join(" and ", filters);
+        return pageQuery(
+                """
+                        select id, tenant_code as tenantCode, tenant_name as tenantName, status, remark,
+                               created_at as createdAt, updated_at as updatedAt
+                        """ + whereSql + " order by id asc",
+                "select count(1) " + whereSql,
+                SystemVO.TenantVO.class,
+                pageNo,
+                pageSize,
+                params
+        );
+    }
+
+    public SystemVO.TenantVO getTenant(CurrentUser currentUser, Long tenantId) {
+        SystemVO.TenantVO tenant = queryOne(
+                """
+                        select id, tenant_code as tenantCode, tenant_name as tenantName, status, remark,
+                               created_at as createdAt, updated_at as updatedAt
+                        from sys_tenant
+                        where id = ? and deleted = 0
+                        """,
+                SystemVO.TenantVO.class,
+                tenantId
+        );
+        if (tenant == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "租户不存在");
+        }
+        return tenant;
+    }
+
+    @Transactional
+    public SystemVO.TenantVO createTenant(CurrentUser currentUser, SystemDTO.TenantUpsertRequest request) {
+        String tenantCode = normalizeTenantCode(request.getTenantCode());
+        String status = normalizeTenantStatus(request.getStatus());
+        jdbcTemplate.update(
+                """
+                        insert into sys_tenant (tenant_code, tenant_name, status, remark, created_by, updated_by, deleted)
+                        values (?, ?, ?, ?, ?, ?, 0)
+                        """,
+                tenantCode,
+                request.getTenantName().trim(),
+                status,
+                normalizeNullableText(request.getRemark()),
+                currentUser.getUserId(),
+                currentUser.getUserId()
+        );
+        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "create", "CREATE", "SUCCESS", "创建租户: " + tenantCode);
+        return getTenant(currentUser, id);
+    }
+
+    @Transactional
+    public SystemVO.TenantVO updateTenant(CurrentUser currentUser, Long tenantId, SystemDTO.TenantUpsertRequest request) {
+        getTenant(currentUser, tenantId);
+        String tenantCode = normalizeTenantCode(request.getTenantCode());
+        String status = normalizeTenantStatus(request.getStatus());
+        jdbcTemplate.update(
+                """
+                        update sys_tenant
+                        set tenant_code = ?, tenant_name = ?, status = ?, remark = ?, updated_by = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                tenantCode,
+                request.getTenantName().trim(),
+                status,
+                normalizeNullableText(request.getRemark()),
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                tenantId
+        );
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "update", "UPDATE", "SUCCESS", "更新租户: " + tenantCode);
+        return getTenant(currentUser, tenantId);
+    }
+
+    @Transactional
+    public boolean deleteTenant(CurrentUser currentUser, Long tenantId) {
+        SystemVO.TenantVO tenant = getTenant(currentUser, tenantId);
+        if (DEFAULT_PUBLIC_TENANT_ID.equals(tenantId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "平台默认租户不允许删除");
+        }
+        jdbcTemplate.update(
+                "update sys_tenant set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                tenantId
+        );
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "delete", "DELETE", "SUCCESS", "删除租户: " + tenant.getTenantCode());
+        return true;
+    }
+
     public SystemVO.RoleDetailVO createRole(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
         return systemRoleManagementAppService.createRole(currentUser, request);
     }
@@ -757,6 +863,10 @@ public class SystemManagementAppService {
 
     public boolean updateRolePermissions(CurrentUser currentUser, Long roleId, List<String> permissionKeys) {
         return systemRoleManagementAppService.updateRolePermissions(currentUser, roleId, permissionKeys);
+    }
+
+    public boolean deleteRole(CurrentUser currentUser, Long roleId) {
+        return systemRoleManagementAppService.deleteRole(currentUser, roleId);
     }
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
@@ -905,6 +1015,43 @@ public class SystemManagementAppService {
         return true;
     }
 
+    @Transactional
+    public boolean deleteMenu(CurrentUser currentUser, Long menuId) {
+        Long tenantId = currentTenantId(currentUser);
+        ensureEditableMenu(menuId, tenantId);
+        Long childCount = jdbcTemplate.queryForObject(
+                "select count(1) from sys_menu where tenant_id = ? and parent_id = ? and deleted = 0",
+                Long.class,
+                tenantId,
+                menuId
+        );
+        if (childCount != null && childCount > 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "请先删除子菜单后再删除当前菜单");
+        }
+        SystemVO.MenuVO menu = getMenu(currentUser, menuId);
+        if (StringUtils.hasText(menu.getPermissionKey())) {
+            Long permissionRefCount = jdbcTemplate.queryForObject(
+                    "select count(1) from sys_role_permission where tenant_id = ? and permission_key = ? and deleted = 0",
+                    Long.class,
+                    tenantId,
+                    menu.getPermissionKey()
+            );
+            if (permissionRefCount != null && permissionRefCount > 0) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "菜单权限仍被角色引用，请先调整角色权限");
+            }
+        }
+        jdbcTemplate.update(
+                "update sys_menu set deleted = 1, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                menuId,
+                tenantId
+        );
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
+        permissionSnapshotService.invalidateTenant(tenantId);
+        return true;
+    }
+
     public PageResponse<SystemVO.DictTypeVO> listDictTypes(CurrentUser currentUser, String dictCode, String dictName, String status, long pageNo, long pageSize) {
         Long tenantId = currentTenantId(currentUser);
         String baseSql = """
@@ -968,6 +1115,19 @@ public class SystemManagementAppService {
         return getDictType(currentUser, id);
     }
 
+    @Transactional
+    public boolean deleteDictType(CurrentUser currentUser, Long id) {
+        Long tenantId = currentTenantId(currentUser);
+        SystemVO.DictTypeVO type = getDictType(currentUser, id);
+        if (Boolean.TRUE.equals(type.getIsSystem())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "系统字典不允许删除");
+        }
+        jdbcTemplate.update("update sys_dict_item set deleted = 1, updated_by = ?, updated_at = ? where dict_type_id = ? and deleted = 0", currentUser.getUserId(), LocalDateTime.now(), id);
+        jdbcTemplate.update("update sys_dict_type set deleted = 1, updated_by = ?, updated_at = ? where id = ? and (tenant_id is null or tenant_id = ?) and deleted = 0", currentUser.getUserId(), LocalDateTime.now(), id, tenantId);
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
+        return true;
+    }
+
     public List<SystemVO.DictItemVO> listDictItems(CurrentUser currentUser, Long dictTypeId) {
         return jdbcTemplate.query(
                 """
@@ -1012,6 +1172,20 @@ public class SystemManagementAppService {
         upsertDictItem(itemId, dictTypeId, request, currentUser.getUserId());
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
         return getDictItem(dictTypeId, itemId);
+    }
+
+    @Transactional
+    public boolean deleteDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
+        SystemVO.DictItemVO item = getDictItem(dictTypeId, itemId);
+        jdbcTemplate.update(
+                "update sys_dict_item set deleted = 1, updated_by = ?, updated_at = ? where id = ? and dict_type_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                itemId,
+                dictTypeId
+        );
+        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
+        return true;
     }
 
     public PageResponse<SystemVO.ConfigVO> listConfigs(CurrentUser currentUser, String configKey, String configName, String configScope, long pageNo, long pageSize) {
@@ -2005,7 +2179,7 @@ public class SystemManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return DEFAULT_PUBLIC_TENANT_ID;
+        return currentUser == null || currentUser.getCurrentTenantId() == null ? DEFAULT_PUBLIC_TENANT_ID : currentUser.getCurrentTenantId();
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
@@ -2604,6 +2778,21 @@ public class SystemManagementAppService {
         String normalized = contactType.trim().toLowerCase(Locale.ROOT);
         if (!"mobile".equals(normalized) && !"email".equals(normalized)) {
             throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+        }
+        return normalized;
+    }
+
+    private String normalizeTenantCode(String tenantCode) {
+        if (!StringUtils.hasText(tenantCode)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "租户编码不能为空");
+        }
+        return tenantCode.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeTenantStatus(String status) {
+        String normalized = StringUtils.hasText(status) ? status.trim().toUpperCase(Locale.ROOT) : "ENABLED";
+        if (!"ENABLED".equals(normalized) && !"DISABLED".equals(normalized)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "租户状态只能是 ENABLED 或 DISABLED");
         }
         return normalized;
     }

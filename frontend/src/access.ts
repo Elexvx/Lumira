@@ -25,6 +25,7 @@ const SYSTEM_MANAGEMENT_PERMISSIONS = [
   'audit:operation:view',
   'message:message:view',
   'plugin:management:view',
+  'system:tenant:view',
 ];
 
 const SYSTEM_MONITORING_PERMISSIONS = [
@@ -38,7 +39,7 @@ const SYSTEM_MONITORING_PERMISSIONS = [
 ];
 
 const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
-const SITE_PERMISSIONS = ['site:view', 'site:settings', 'site:navigation', 'site:carousel', 'site:content', 'site:submission'];
+const SITE_PERMISSIONS = ['site:view', 'site:settings', 'site:navigation', 'site:carousel', 'site:page', 'site:content', 'site:form', 'site:submission'];
 
 export default function access(initialState: { currentUser?: CurrentUser }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
@@ -63,6 +64,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemUsers: isLogin && hasPermission(permissions, 'system:user:view'),
     canVisitSystemDepartments: isLogin && hasPermission(permissions, 'system:department:view'),
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
+    canVisitSystemTenants: isLogin && hasPermission(permissions, 'system:tenant:view'),
     canVisitSystemModules: isLogin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemMenus: isLogin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemDicts: isLogin && hasPermission(permissions, 'system:dict:view'),
@@ -100,7 +102,9 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSiteSettings: isLogin && hasPermission(permissions, 'site:settings'),
     canVisitSiteNavigation: isLogin && hasPermission(permissions, 'site:navigation'),
     canVisitSiteCarousels: isLogin && hasPermission(permissions, 'site:carousel'),
+    canVisitSitePages: isLogin && hasPermission(permissions, 'site:page'),
     canVisitSiteContents: isLogin && hasPermission(permissions, 'site:content'),
+    canVisitSiteForms: isLogin && hasPermission(permissions, 'site:form'),
     canVisitSiteSubmissions: isLogin && hasPermission(permissions, 'site:submission'),
     canVisitPluginRuntime: isLogin,
   };

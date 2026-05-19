@@ -24,6 +24,7 @@ import java.util.List;
 public class PublicSiteAppService {
 
     private static final long DEFAULT_TENANT_ID = 1001L;
+    private static final int MAX_SUBMISSION_JSON_LENGTH = 64 * 1024;
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -152,6 +153,10 @@ public class PublicSiteAppService {
 
     @Transactional
     public SiteVO.SubmissionVO submit(String code, SiteDTO.SubmissionRequest request, String ip, Long userId) {
+        if (StringUtils.hasText(request.website)) {
+            throw new BizException(ErrorCode.TRAFFIC_LIMITED, "提交过于频繁，请稍后再试");
+        }
+        guardSubmissionPayloadSize(request);
         validateJson(request.dataJson, "提交内容");
         validateJson(request.attachmentFileIdsJson, "附件");
         Long siteId = siteManagementAppService.defaultSiteId(DEFAULT_TENANT_ID, 0L);
@@ -162,6 +167,7 @@ public class PublicSiteAppService {
         if ("LOGIN_REQUIRED".equals(form.submitPolicy) && userId == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "该表单需要登录后提交");
         }
+        guardSubmissionFrequency(siteId, form.id, ip, userId);
         jdbcTemplate.update(
                 """
                         insert into site_form_submission (
@@ -177,6 +183,53 @@ public class PublicSiteAppService {
                 (rs, rowNum) -> mapSubmission(rs),
                 id
         );
+    }
+
+    private void guardSubmissionPayloadSize(SiteDTO.SubmissionRequest request) {
+        if (request.dataJson != null && request.dataJson.length() > MAX_SUBMISSION_JSON_LENGTH) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "提交内容过大");
+        }
+        if (request.attachmentFileIdsJson != null && request.attachmentFileIdsJson.length() > MAX_SUBMISSION_JSON_LENGTH) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "附件内容过大");
+        }
+    }
+
+    private void guardSubmissionFrequency(Long siteId, Long formId, String ip, Long userId) {
+        Long recentByIp = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from site_form_submission
+                        where tenant_id = ? and site_id = ? and form_id = ? and submitter_ip = ?
+                          and deleted = 0 and created_at >= date_sub(now(), interval 1 minute)
+                        """,
+                Long.class,
+                DEFAULT_TENANT_ID,
+                siteId,
+                formId,
+                ip
+        );
+        if (recentByIp != null && recentByIp >= 3) {
+            throw new BizException(ErrorCode.TRAFFIC_LIMITED, "提交过于频繁，请稍后再试");
+        }
+        if (userId == null) {
+            return;
+        }
+        Long recentByUser = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from site_form_submission
+                        where tenant_id = ? and site_id = ? and form_id = ? and submitter_user_id = ?
+                          and deleted = 0 and created_at >= date_sub(now(), interval 1 minute)
+                        """,
+                Long.class,
+                DEFAULT_TENANT_ID,
+                siteId,
+                formId,
+                userId
+        );
+        if (recentByUser != null && recentByUser >= 3) {
+            throw new BizException(ErrorCode.TRAFFIC_LIMITED, "提交过于频繁，请稍后再试");
+        }
     }
 
     private SiteVO.SiteSettingsVO publicSite(Long siteId) {

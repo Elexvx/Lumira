@@ -9,6 +9,7 @@ import com.legendary.invention.common.web.repeatsubmit.RepeatSubmit;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.message.app.MessageAppService;
 import com.legendary.invention.message.dto.MessageDTO;
+import com.legendary.invention.message.service.MessageWebSocketRegistry;
 import com.legendary.invention.message.service.MessageWebSocketTicketService;
 import com.legendary.invention.message.vo.MessageVO;
 import jakarta.validation.Valid;
@@ -27,15 +28,18 @@ public class MessageController {
     private final MessageAppService messageAppService;
     private final SecurityContextFacade securityContextFacade;
     private final MessageWebSocketTicketService webSocketTicketService;
+    private final MessageWebSocketRegistry webSocketRegistry;
 
     public MessageController(
             MessageAppService messageAppService,
             SecurityContextFacade securityContextFacade,
-            MessageWebSocketTicketService webSocketTicketService
+            MessageWebSocketTicketService webSocketTicketService,
+            MessageWebSocketRegistry webSocketRegistry
     ) {
         this.messageAppService = messageAppService;
         this.securityContextFacade = securityContextFacade;
         this.webSocketTicketService = webSocketTicketService;
+        this.webSocketRegistry = webSocketRegistry;
     }
 
     @GetMapping("/messages")
@@ -90,6 +94,12 @@ public class MessageController {
         return ApiResponse.success(webSocketTicketService.issue(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
     }
 
+    @GetMapping("/ws-runtime")
+    public ApiResponse<MessageVO.WebSocketRuntimeVO> webSocketRuntime() {
+        requireAny("message:message:view", "system:notification:view", "system:monitor:service:view");
+        return ApiResponse.success(toWebSocketRuntimeVO(webSocketRegistry.snapshot()), TraceContext.getRequestId());
+    }
+
     @GetMapping("/archive")
     public ApiResponse<PageResponse<MessageVO.NoticeVO>> listArchive(@Valid MessageDTO.MessageArchiveQueryRequest request) {
         requireAny("message:message:view", "system:notification:view");
@@ -115,6 +125,28 @@ public class MessageController {
             }
         }
         throw new BizException(ErrorCode.FORBIDDEN, "缺少权限: " + String.join(" 或 ", permissionKeys));
+    }
+
+    private MessageVO.WebSocketRuntimeVO toWebSocketRuntimeVO(MessageWebSocketRegistry.Snapshot snapshot) {
+        MessageVO.WebSocketRuntimeVO vo = new MessageVO.WebSocketRuntimeVO();
+        vo.setActiveConnections(snapshot.activeConnections());
+        vo.setTenantCount(snapshot.tenantCount());
+        vo.setUserCount(snapshot.userCount());
+        vo.setEarliestConnectedAt(snapshot.earliestConnectedAt());
+        vo.setSampledAt(snapshot.sampledAt());
+        vo.setTenants(snapshot.tenants().stream().map(item -> {
+            MessageVO.TenantConnectionVO tenant = new MessageVO.TenantConnectionVO();
+            tenant.setTenantId(item.tenantId());
+            tenant.setConnectionCount(item.connectionCount());
+            return tenant;
+        }).toList());
+        vo.setTopUsers(snapshot.topUsers().stream().map(item -> {
+            MessageVO.UserConnectionVO user = new MessageVO.UserConnectionVO();
+            user.setUserId(item.userId());
+            user.setConnectionCount(item.connectionCount());
+            return user;
+        }).toList());
+        return vo;
     }
 
 }

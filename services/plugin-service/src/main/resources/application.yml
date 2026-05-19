@@ -74,3 +74,5 @@ saas:
     staging-root: ${PLUGIN_STAGING_ROOT:storage/plugin-staging}
     signature-secret: ${PLUGIN_SIGNATURE_SECRET}
     shared-deps-version: ${PLUGIN_SHARED_DEPS_VERSION:1}
+    max-gateway-body-bytes: ${PLUGIN_MAX_GATEWAY_BODY_BYTES:1048576}
+    require-http-permission: ${PLUGIN_REQUIRE_HTTP_PERMISSION:true}

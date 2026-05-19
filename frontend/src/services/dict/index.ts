@@ -49,6 +49,11 @@ export const dictService = {
       data: payload,
       ...options,
     }),
+  deleteType: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/dict-types/${id}`, {
+      method: 'DELETE',
+      ...options,
+    }),
   items: (dictTypeId: number, options: RequestOptions = {}) =>
     request<DictItemRecord[]>(`/v1/system/dict-types/${dictTypeId}/items`, {
       method: 'GET',
@@ -64,6 +69,11 @@ export const dictService = {
     request<DictItemRecord>(`/v1/system/dict-types/${dictTypeId}/items/${itemId}`, {
       method: 'PUT',
       data: payload,
+      ...options,
+    }),
+  deleteItem: (dictTypeId: number, itemId: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/dict-types/${dictTypeId}/items/${itemId}`, {
+      method: 'DELETE',
       ...options,
     }),
 };

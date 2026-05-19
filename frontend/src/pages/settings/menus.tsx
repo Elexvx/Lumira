@@ -632,6 +632,21 @@ const MenuManagementPage = () => {
     });
   };
 
+  const deleteMenu = (record: MenuRecord) => {
+    confirmAction({
+      title: '删除菜单',
+      content: `确认删除菜单「${record.menuName}」吗？删除后权限树和运行菜单将不再出现该项。`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await iamService.deleteMenu(record.id, { autoRedirectOnUnauthorized: false });
+        message.success('菜单已删除');
+        await loadMenus();
+        menuCrud.reloadTable();
+      },
+    });
+  };
+
   const columns = useMemo(
     () =>
       buildMenuColumns({
@@ -648,6 +663,7 @@ const MenuManagementPage = () => {
         onOpenDetail: (record) => void openDetail(record),
         onOpenEdit: (record) => void openEdit(record),
         onToggleStatus: (record) => void handleStatusToggle(record),
+        onDelete: deleteMenu,
       }),
     [
       actionPermission.buildTableActions,

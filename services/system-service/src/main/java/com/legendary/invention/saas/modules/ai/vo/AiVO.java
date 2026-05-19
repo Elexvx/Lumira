@@ -168,6 +168,40 @@ public final class AiVO {
         }
     }
 
+    public static class GovernanceOverviewVO {
+        private Long employeeCount;
+        private Long enabledEmployeeCount;
+        private Long llmServiceCount;
+        private Long enabledLlmServiceCount;
+        private Long missingApiKeyServiceCount;
+        private Long skillCount;
+        private Long highRiskSkillCount;
+        private Long highRiskAllowedBindingCount;
+        private Long confirmationRequiredSkillCount;
+        private LocalDateTime sampledAt;
+
+        public Long getEmployeeCount() { return employeeCount; }
+        public void setEmployeeCount(Long employeeCount) { this.employeeCount = employeeCount; }
+        public Long getEnabledEmployeeCount() { return enabledEmployeeCount; }
+        public void setEnabledEmployeeCount(Long enabledEmployeeCount) { this.enabledEmployeeCount = enabledEmployeeCount; }
+        public Long getLlmServiceCount() { return llmServiceCount; }
+        public void setLlmServiceCount(Long llmServiceCount) { this.llmServiceCount = llmServiceCount; }
+        public Long getEnabledLlmServiceCount() { return enabledLlmServiceCount; }
+        public void setEnabledLlmServiceCount(Long enabledLlmServiceCount) { this.enabledLlmServiceCount = enabledLlmServiceCount; }
+        public Long getMissingApiKeyServiceCount() { return missingApiKeyServiceCount; }
+        public void setMissingApiKeyServiceCount(Long missingApiKeyServiceCount) { this.missingApiKeyServiceCount = missingApiKeyServiceCount; }
+        public Long getSkillCount() { return skillCount; }
+        public void setSkillCount(Long skillCount) { this.skillCount = skillCount; }
+        public Long getHighRiskSkillCount() { return highRiskSkillCount; }
+        public void setHighRiskSkillCount(Long highRiskSkillCount) { this.highRiskSkillCount = highRiskSkillCount; }
+        public Long getHighRiskAllowedBindingCount() { return highRiskAllowedBindingCount; }
+        public void setHighRiskAllowedBindingCount(Long highRiskAllowedBindingCount) { this.highRiskAllowedBindingCount = highRiskAllowedBindingCount; }
+        public Long getConfirmationRequiredSkillCount() { return confirmationRequiredSkillCount; }
+        public void setConfirmationRequiredSkillCount(Long confirmationRequiredSkillCount) { this.confirmationRequiredSkillCount = confirmationRequiredSkillCount; }
+        public LocalDateTime getSampledAt() { return sampledAt; }
+        public void setSampledAt(LocalDateTime sampledAt) { this.sampledAt = sampledAt; }
+    }
+
     public static class EmployeeSkillVO {
         private Long id;
         private String skillCode;

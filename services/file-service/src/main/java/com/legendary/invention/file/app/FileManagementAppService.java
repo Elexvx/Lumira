@@ -27,8 +27,13 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -60,6 +65,7 @@ public class FileManagementAppService {
     private final UploadProperties uploadProperties;
     private final DocumentUploadService documentUploadService;
     private final ImageUploadService imageUploadService;
+    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     public FileManagementAppService(
             FileObjectMapper fileObjectMapper,
@@ -143,6 +149,14 @@ public class FileManagementAppService {
     public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
         FileObjectDTO file = queryFile(currentUser, fileId, tenantScope);
         return enrich(file);
+    }
+
+    public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
+        FileObjectDTO file = getFile(currentUser, fileId, tenantScope);
+        if (!Boolean.TRUE.equals(file.previewable()) || "UNSUPPORTED".equalsIgnoreCase(file.previewMode())) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前文件不支持在线预览");
+        }
+        return file;
     }
 
     @Transactional
@@ -251,6 +265,39 @@ public class FileManagementAppService {
 
     public StorageSpaceDTO getStorageSpace(CurrentUser currentUser, String storageKey) {
         return queryStorageSpace(currentTenantId(currentUser), normalizeStorageKey(storageKey));
+    }
+
+    public FileStorageSpaceRequest.TestResult testStorageSpace(CurrentUser currentUser, Long id) {
+        Long tenantId = currentTenantId(currentUser);
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(tenantId, id);
+        if (entity == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "存储空间不存在");
+        }
+        long startedAt = System.nanoTime();
+        FileStorageSpaceRequest.TestResult result = new FileStorageSpaceRequest.TestResult();
+        result.setProvider(entity.getProvider());
+        try {
+            if ("LOCAL".equalsIgnoreCase(entity.getProvider())) {
+                Path root = resolveStorageRoot(entity);
+                Files.createDirectories(root);
+                if (!Files.isDirectory(root) || !Files.isWritable(root)) {
+                    throw new IOException("本地存储目录不可写: " + root);
+                }
+                result.setStatus("UP");
+                result.setMessage("本地存储目录可写: " + root);
+                return result;
+            }
+            validateRemoteStorage(entity);
+            result.setStatus("UP");
+            result.setMessage("对象存储配置完整，Endpoint 可访问");
+            return result;
+        } catch (Exception ex) {
+            result.setStatus("DOWN");
+            result.setMessage(ex.getMessage());
+            return result;
+        } finally {
+            result.setResponseTimeMs(Duration.ofNanos(System.nanoTime() - startedAt).toMillis());
+        }
     }
 
     @Transactional
@@ -409,6 +456,36 @@ public class FileManagementAppService {
             return null;
         }
         return target;
+    }
+
+    private Path resolveStorageRoot(FileStorageSpaceEntity entity) {
+        String rootPath = StringUtils.hasText(entity.getRootPath()) ? entity.getRootPath() : "storage/uploads/";
+        Path root = Path.of(rootPath);
+        if (!root.isAbsolute()) {
+            root = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize().resolve(rootPath).normalize();
+        }
+        return root;
+    }
+
+    private void validateRemoteStorage(FileStorageSpaceEntity entity) throws IOException, InterruptedException {
+        if (!StringUtils.hasText(entity.getBucketName())) {
+            throw new IOException("Bucket 未配置");
+        }
+        if (!StringUtils.hasText(entity.getEndpoint())) {
+            throw new IOException("Endpoint 未配置");
+        }
+        if (!StringUtils.hasText(entity.getAccessKeyId()) || !StringUtils.hasText(entity.getAccessKeySecret())) {
+            throw new IOException("访问密钥未配置完整");
+        }
+        URI endpoint = URI.create(entity.getEndpoint().trim());
+        HttpRequest request = HttpRequest.newBuilder(endpoint)
+                .timeout(Duration.ofSeconds(5))
+                .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+        if (response.statusCode() >= 500) {
+            throw new IOException("Endpoint 服务异常: HTTP " + response.statusCode());
+        }
     }
 
     private Long insertFileObject(
@@ -586,6 +663,9 @@ public class FileManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
+        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
+            return currentUser.getCurrentTenantId();
+        }
         return com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
