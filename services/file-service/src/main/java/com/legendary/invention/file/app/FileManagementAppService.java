@@ -158,6 +158,22 @@ public class FileManagementAppService {
     }
 
     @Transactional
+    public FileObjectDTO uploadFile(CurrentUser currentUser, MultipartFile file, String category, String tags, String remark) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
+        }
+        String originalFilename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+        if (ImageUploadService.supports(originalFilename, contentType)) {
+            return uploadImage(currentUser, file, category, remark);
+        }
+        if (DocumentUploadService.supports(originalFilename, contentType)) {
+            return uploadDocument(currentUser, file, category, tags, remark);
+        }
+        throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT 文件");
+    }
+
+    @Transactional
     public FileObjectDTO uploadDocument(CurrentUser currentUser, MultipartFile file, String category, String tags, String remark) {
         DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file);
         Long tenantId = currentTenantId(currentUser);

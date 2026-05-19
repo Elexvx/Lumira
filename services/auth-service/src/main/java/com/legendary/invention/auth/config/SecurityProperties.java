@@ -19,6 +19,7 @@ public class SecurityProperties {
     private long loginDefenseWindowMinutes = 5;
     private long loginMaxValidationAttempts = 100;
     private long loginMaxFailureCount = 10;
+    private boolean allowUnsafeDefaultAdminLogin = false;
     private List<String> permitPaths = new ArrayList<>();
 
     public String getJwtSecret() {
@@ -107,6 +108,14 @@ public class SecurityProperties {
 
     public void setLoginMaxFailureCount(long loginMaxFailureCount) {
         this.loginMaxFailureCount = loginMaxFailureCount;
+    }
+
+    public boolean isAllowUnsafeDefaultAdminLogin() {
+        return allowUnsafeDefaultAdminLogin;
+    }
+
+    public void setAllowUnsafeDefaultAdminLogin(boolean allowUnsafeDefaultAdminLogin) {
+        this.allowUnsafeDefaultAdminLogin = allowUnsafeDefaultAdminLogin;
     }
 
     public List<String> getPermitPaths() {

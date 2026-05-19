@@ -45,6 +45,14 @@ public class ImageUploadService {
         this.uploadProperties = uploadProperties;
     }
 
+    public static boolean supports(String originalFilename, String contentType) {
+        String extension = StringUtils.getFilenameExtension(originalFilename == null ? "" : originalFilename);
+        if (StringUtils.hasText(extension) && ALLOWED_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        return StringUtils.hasText(contentType) && contentType.toLowerCase(Locale.ROOT).trim().startsWith("image/");
+    }
+
     public StoredImage upload(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择图片文件");

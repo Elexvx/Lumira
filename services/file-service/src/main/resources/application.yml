@@ -59,6 +59,7 @@ saas:
     permit-paths:
       - /api/uploads/**
       - /actuator/health
+      - /error
   upload:
     storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
     public-path: /api/uploads
