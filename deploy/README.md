@@ -140,8 +140,8 @@ node scripts/deploy-container.mjs --reset
 
 - `deploy/.env` 不要提交到 Git。
 - 对外只暴露 `https://api.elexvx.com`，容器内部服务端口只在内网访问。
-- `DB_PASSWORD`、`JWT_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_JOB_INTERNAL_TOKEN` 必须使用强随机值。
-- `CORS_ALLOWED_ORIGIN_PATTERNS` 只保留实际 Vercel 域名、自定义前端域名和必要的本地调试地址。
+- `DB_PASSWORD`、`JWT_SECRET`、`FIELD_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_JOB_INTERNAL_TOKEN` 必须使用强随机值。
+- `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
 - `DEFAULT_ADMIN_INIT_ENABLED` 在正式演示环境建议保持 `false`。
 - HTTPS/CDN/WAF 放在容器前面，API proxy 只承担容器内反向代理。
 - `XXL_JOB_EXECUTOR_LOG_HOST_PATH` 默认使用 `/opt/legendary-invention/data/xxl-job/logs`，部署前会授权给容器内 `app` 用户写入。

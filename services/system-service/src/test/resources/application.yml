@@ -1,0 +1,113 @@
+spring:
+  application:
+    name: system-service
+  config:
+    import:
+      - optional:nacos:system-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  cloud:
+    nacos:
+      config:
+        server-addr: localhost:8848
+        file-extension: yaml
+        namespace: ""
+      discovery:
+        server-addr: localhost:8848
+        namespace: ""
+        enabled: false
+  datasource:
+    url: jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+      database: 0
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    ignore-migration-patterns:
+      - "*:missing"
+    placeholders:
+      defaultAdminInitEnabled: false
+      defaultAdminPasswordHash: $2a$10$ko3RP4YpfVgyQC5pZjq5t.d1TKrqmBGoehczMjqn1k.pLeAAnTI9G
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+saas:
+  web:
+    cors-allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+    trust-forwarded-headers: false
+    trusted-proxy-cidrs:
+      - 127.0.0.1/32
+      - ::1/128
+  security:
+    jwt-secret: saas_foundation_jwt_secret_for_test_env_change_me_2026
+    field-secret: saas_foundation_field_secret_for_test_env_change_me_2026
+    issuer: saas-foundation
+    idle-timeout-seconds: 1800
+    access-token-expire-seconds: 1800
+    refresh-token-expire-seconds: 604800
+    captcha-enabled: true
+    captcha-type: IMAGE
+    permit-paths:
+      - /api/v1/auth/login
+      - /api/v1/auth/login/code/challenge
+      - /api/v1/auth/login/code/complete
+      - /api/v1/auth/login-encryption-key
+      - /api/v1/auth/wechat/authorize-url
+      - /api/v1/auth/wechat/login
+      - /api/v1/auth/second-factor/complete
+      - /api/v1/auth/refresh-token
+      - /ws/message
+      - /api/v1/public/branding-settings
+      - /api/v1/public/agreement-settings
+      - /api/v1/public/login-capabilities
+      - /api/v1/public/security-settings
+      - /api/v1/public/captcha/**
+      - /api/v1/localization/runtime/**
+      - /api/uploads/**
+      - /actuator/health
+      - /api/health
+  event:
+    outbox:
+      relay-enabled: false
+      relay-fixed-delay-ms: 5000
+      batch-size: 100
+      dispatcher: logging
+      redis-stream-key: saas:platform-events
+  plugin:
+    platform-version: 0.1.0
+    api-version: 1.0.0
+    storage-root: storage/plugins
+    staging-root: storage/plugin-staging
+    signature-secret: saas-plugin-signature-secret-test-env-change-me
+    shared-deps-version: 1
+  upload:
+    storage-root: storage/uploads
+    public-path: /api/uploads
+    max-image-size-bytes: 5242880
+    max-document-size-bytes: 52428800
+  job:
+    internal-token: test-job-token
+
+logging:
+  config: classpath:logback-spring.xml

@@ -10,9 +10,10 @@
     <name>legendary-invention-parent</name>
 
     <modules>
-        <module>backend</module>
+        <module>services/system-service</module>
         <module>services/gateway-service</module>
         <module>libs/common-core</module>
+        <module>libs/common-domain</module>
         <module>libs/common-web</module>
         <module>libs/common-security</module>
         <module>libs/legendary-api</module>

@@ -166,7 +166,7 @@ async function main() {
     await killMatchingProcesses({
       name: 'backend services',
       patterns: [
-        /mvn .*backend\/pom\.xml .*spring-boot:run/,
+        /mvn .*services\/system-service\/pom\.xml .*spring-boot:run/,
         /mvn .*services\/gateway-service\/pom\.xml .*spring-boot:run/,
         /mvn .*services\/auth-service\/pom\.xml .*spring-boot:run/,
         /mvn .*services\/file-service\/pom\.xml .*spring-boot:run/,

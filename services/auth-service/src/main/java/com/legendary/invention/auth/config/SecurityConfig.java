@@ -10,10 +10,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.List;
+
 @Configuration
 public class SecurityConfig {
 
-    private static final String[] PUBLIC_PATHS = {
+    private static final String[] DEFAULT_PUBLIC_PATHS = {
             "/api/v1/auth/login",
             "/api/v1/auth/login-encryption-key",
             "/api/v1/auth/login/code/challenge",
@@ -28,12 +30,18 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter, InternalServiceTokenAuthFilter internalServiceTokenAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthFilter jwtAuthFilter,
+            InternalServiceTokenAuthFilter internalServiceTokenAuthFilter,
+            SecurityProperties securityProperties
+    ) throws Exception {
+        String[] publicPaths = resolvePublicPaths(securityProperties.getPermitPaths());
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers(publicPaths).permitAll()
                         .requestMatchers("/internal/**").authenticated()
                         .anyRequest().authenticated())
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -41,5 +49,16 @@ public class SecurityConfig {
                 .addFilterBefore(internalServiceTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class)
                 .build();
+    }
+
+    private String[] resolvePublicPaths(List<String> configuredPaths) {
+        if (configuredPaths == null || configuredPaths.isEmpty()) {
+            return DEFAULT_PUBLIC_PATHS;
+        }
+        return configuredPaths.stream()
+                .filter(path -> path != null && !path.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toArray(String[]::new);
     }
 }

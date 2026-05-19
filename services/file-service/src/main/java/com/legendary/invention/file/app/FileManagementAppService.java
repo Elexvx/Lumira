@@ -194,7 +194,7 @@ public class FileManagementAppService {
                 storageSpace.storageKey(),
                 storedImage.relativePath(),
                 storedImage.originalFileName(),
-                normalizeText(StringUtils.getFilenameExtension(storedImage.originalFileName())),
+                normalizeText(storedImage.fileExtension().replaceFirst("^\\.", "")),
                 storedImage.contentType(),
                 storedImage.fileSizeBytes(),
                 storedImage.publicUrl(),
