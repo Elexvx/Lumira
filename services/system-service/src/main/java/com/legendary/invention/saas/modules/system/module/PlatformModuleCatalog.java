@@ -183,10 +183,13 @@ public final class PlatformModuleCatalog {
     }
 
     public static List<PlatformModuleVO> evaluateReadiness(List<PlatformModuleVO> modules) {
-        Map<String, PlatformModuleVO> moduleMap = modules.stream()
+        List<PlatformModuleVO> safeModules = modules == null ? List.of() : modules.stream()
+                .filter(module -> module != null && module.getModuleCode() != null && !module.getModuleCode().isBlank())
+                .toList();
+        Map<String, PlatformModuleVO> moduleMap = safeModules.stream()
                 .collect(Collectors.toMap(PlatformModuleVO::getModuleCode, item -> item, (left, right) -> left, LinkedHashMap::new));
 
-        return modules.stream()
+        return safeModules.stream()
                 .map(module -> enrichModule(module, moduleMap))
                 .toList();
     }
@@ -197,7 +200,7 @@ public final class PlatformModuleCatalog {
         List<String> inactiveDependencies = new ArrayList<>();
         List<String> readinessIssues = new ArrayList<>();
 
-        for (String dependency : module.getDependencies()) {
+        for (String dependency : defaultList(module.getDependencies())) {
             PlatformModuleVO dependencyModule = moduleMap.get(dependency);
             if (dependencyModule == null) {
                 missingDependencies.add(dependency);
@@ -226,7 +229,7 @@ public final class PlatformModuleCatalog {
         module.setReadinessIssues(List.copyOf(readinessIssues));
         module.setReadyToEnable(readinessIssues.isEmpty());
         if (module.getRegistrationSourceOrder() == null || module.getRegistrationSourceOrder().isEmpty()) {
-            module.setRegistrationSourceOrder(List.of(module.getSourceType()));
+            module.setRegistrationSourceOrder(List.of(defaultText(module.getSourceType(), BUILTIN)));
         }
         return module;
     }
@@ -241,14 +244,33 @@ public final class PlatformModuleCatalog {
         module.setDescription(source.getDescription());
         module.setOwnerService(source.getOwnerService());
         module.setAdminRoutePath(source.getAdminRoutePath());
-        module.setApiPrefixes(List.copyOf(source.getApiPrefixes()));
-        module.setPermissionKeys(List.copyOf(source.getPermissionKeys()));
-        module.setDependencies(List.copyOf(source.getDependencies()));
+        module.setApiPrefixes(defaultList(source.getApiPrefixes()));
+        module.setPermissionKeys(defaultList(source.getPermissionKeys()));
+        module.setDependencies(defaultList(source.getDependencies()));
         module.setOverriddenByDatabase(source.isOverriddenByDatabase());
-        module.setRegistrationSourceOrder(source.getRegistrationSourceOrder() == null ? List.of(source.getSourceType()) : List.copyOf(source.getRegistrationSourceOrder()));
+        module.setRegistrationSourceOrder(defaultList(source.getRegistrationSourceOrder()).isEmpty()
+                ? List.of(defaultText(source.getSourceType(), BUILTIN))
+                : defaultList(source.getRegistrationSourceOrder()));
         module.setRegisteredAt(source.getRegisteredAt());
         module.setBuiltin(source.isBuiltin());
         return module;
+    }
+
+    private static List<String> defaultList(List<String> source) {
+        if (source == null || source.isEmpty()) {
+            return List.of();
+        }
+        return source.stream()
+                .filter(item -> item != null && !item.isBlank())
+                .map(String::trim)
+                .toList();
+    }
+
+    private static String defaultText(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value.trim();
     }
 
     private static PlatformModuleVO foundation(

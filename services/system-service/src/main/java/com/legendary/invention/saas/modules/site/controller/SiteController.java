@@ -229,6 +229,47 @@ public class SiteController {
         return ApiResponse.success(siteManagementAppService.createCategory(currentUser(), request), TraceContext.getRequestId());
     }
 
+    @PutMapping("/categories/{id}")
+    @RepeatSubmit
+    public ApiResponse<SiteVO.ContentCategoryVO> updateCategory(@PathVariable Long id, @Valid @RequestBody SiteDTO.CategoryRequest request) {
+        require("site:content:update");
+        return ApiResponse.success(siteManagementAppService.updateCategory(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/categories/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteCategory(@PathVariable Long id) {
+        require("site:content:update");
+        return ApiResponse.success(siteManagementAppService.deleteCategory(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/forms")
+    public ApiResponse<PageResponse<SiteVO.FormVO>> forms(@RequestParam(required = false) String status, @RequestParam(defaultValue = "1") long pageNo, @RequestParam(defaultValue = "10") long pageSize) {
+        require("site:form");
+        return ApiResponse.success(siteManagementAppService.forms(currentUser(), status, pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/forms")
+    @RepeatSubmit
+    public ApiResponse<SiteVO.FormVO> createForm(@Valid @RequestBody SiteDTO.FormRequest request) {
+        require("site:form:create");
+        return ApiResponse.success(siteManagementAppService.createForm(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/forms/{id}")
+    @RepeatSubmit
+    public ApiResponse<SiteVO.FormVO> updateForm(@PathVariable Long id, @Valid @RequestBody SiteDTO.FormRequest request) {
+        require("site:form:update");
+        return ApiResponse.success(siteManagementAppService.updateForm(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/forms/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteForm(@PathVariable Long id) {
+        require("site:form:delete");
+        return ApiResponse.success(siteManagementAppService.deleteForm(currentUser(), id), TraceContext.getRequestId());
+    }
+
     @GetMapping("/submissions")
     public ApiResponse<PageResponse<SiteVO.SubmissionVO>> submissions(@RequestParam(required = false) Long formId, @RequestParam(required = false) String status, @RequestParam(defaultValue = "1") long pageNo, @RequestParam(defaultValue = "10") long pageSize) {
         require("site:submission");

@@ -1,5 +1,5 @@
 import { request, type RequestOptions } from '@/services/common/request';
-import type { MessageChannel, MessageDeliveryLogRecord, MessageNoticeRecord, MessageTargetScope, MessageUnreadCount, PagedResult } from '@/types/api';
+import type { MessageChannel, MessageDeliveryLogRecord, MessageNoticeRecord, MessageTargetScope, MessageUnreadCount, MessageWebSocketRuntime, PagedResult } from '@/types/api';
 
 export interface MessagePayload {
   title: string;
@@ -71,6 +71,11 @@ export const messageService = {
     }),
   unreadCount: (options: RequestOptions = {}) =>
     request<MessageUnreadCount>('/v1/message/unread-count', {
+      method: 'GET',
+      ...options,
+    }),
+  webSocketRuntime: (options: RequestOptions = {}) =>
+    request<MessageWebSocketRuntime>('/v1/message/ws-runtime', {
       method: 'GET',
       ...options,
     }),

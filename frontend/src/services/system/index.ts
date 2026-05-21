@@ -22,6 +22,7 @@ import type {
   VerificationSettingsPayload,
   SmtpTestPayload,
   SmtpTestResult,
+  TenantRecord,
   WatermarkSettings,
   WechatLoginSettings,
   WechatLoginSettingsPayload,
@@ -44,6 +45,21 @@ export interface ProfileFieldSettingsPayload {
 export interface OnlineSessionListQuery extends Record<string, unknown> {
   pageNo?: number;
   pageSize?: number;
+}
+
+export interface TenantListQuery extends Record<string, unknown> {
+  tenantCode?: string;
+  tenantName?: string;
+  status?: string;
+  pageNo?: number;
+  pageSize?: number;
+}
+
+export interface TenantMutationPayload {
+  tenantCode: string;
+  tenantName: string;
+  status: string;
+  remark?: string | null;
 }
 
 export const systemService = {
@@ -112,6 +128,34 @@ export const systemService = {
     request<PlatformModuleRecord>('/v1/system/modules', {
       method: 'POST',
       data: payload,
+      ...options,
+    }),
+  tenants: (params: TenantListQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<TenantRecord>>('/v1/system/tenants', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  tenantDetail: (id: number, options: RequestOptions = {}) =>
+    request<TenantRecord>(`/v1/system/tenants/${id}`, {
+      method: 'GET',
+      ...options,
+    }),
+  createTenant: (payload: TenantMutationPayload, options: RequestOptions = {}) =>
+    request<TenantRecord>('/v1/system/tenants', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  updateTenant: (id: number, payload: TenantMutationPayload, options: RequestOptions = {}) =>
+    request<TenantRecord>(`/v1/system/tenants/${id}`, {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  deleteTenant: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/tenants/${id}`, {
+      method: 'DELETE',
       ...options,
     }),
   updateAgreementSettings: (payload: AgreementSettingsPayload, options: RequestOptions = {}) =>

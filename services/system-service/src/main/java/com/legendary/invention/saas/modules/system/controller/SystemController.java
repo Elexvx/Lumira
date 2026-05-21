@@ -203,6 +203,45 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.updateDefaultRegistrationRole(securityContextFacade.getCurrentUser(), request.getRoleId()), TraceContext.getRequestId());
     }
 
+    @GetMapping("/tenants")
+    public ApiResponse<PageResponse<SystemVO.TenantVO>> tenants(
+            @RequestParam(name = "tenantCode", required = false) String tenantCode,
+            @RequestParam(name = "tenantName", required = false) String tenantName,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+    ) {
+        require("system:tenant:view");
+        return ApiResponse.success(systemManagementAppService.listTenants(securityContextFacade.getCurrentUser(), tenantCode, tenantName, status, pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/tenants/{id}")
+    public ApiResponse<SystemVO.TenantVO> tenant(@PathVariable("id") Long id) {
+        require("system:tenant:view");
+        return ApiResponse.success(systemManagementAppService.getTenant(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/tenants")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.TenantVO> createTenant(@Valid @RequestBody SystemDTO.TenantUpsertRequest request) {
+        require("system:tenant:create");
+        return ApiResponse.success(systemManagementAppService.createTenant(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/tenants/{id}")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.TenantVO> updateTenant(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.TenantUpsertRequest request) {
+        require("system:tenant:update");
+        return ApiResponse.success(systemManagementAppService.updateTenant(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/tenants/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteTenant(@PathVariable("id") Long id) {
+        require("system:tenant:delete");
+        return ApiResponse.success(systemManagementAppService.deleteTenant(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
     @PostMapping("/roles")
     @RepeatSubmit
     public ApiResponse<SystemVO.RoleDetailVO> createRole(@Valid @RequestBody SystemDTO.RoleUpsertRequest request) {
@@ -215,6 +254,13 @@ public class SystemController {
     public ApiResponse<SystemVO.RoleDetailVO> updateRole(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.RoleUpsertRequest request) {
         require("system:role:update");
         return ApiResponse.success(systemManagementAppService.updateRole(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/roles/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteRole(@PathVariable("id") Long id) {
+        require("system:role:delete");
+        return ApiResponse.success(systemManagementAppService.deleteRole(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
     @PutMapping("/roles/{id}/permissions")
@@ -264,6 +310,13 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.updateMenuStatus(securityContextFacade.getCurrentUser(), id, request.getStatus()), TraceContext.getRequestId());
     }
 
+    @DeleteMapping("/menus/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteMenu(@PathVariable("id") Long id) {
+        require("system:menu:delete");
+        return ApiResponse.success(systemManagementAppService.deleteMenu(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
     @GetMapping("/dict-types")
     public ApiResponse<PageResponse<SystemVO.DictTypeVO>> dictTypes(
             @RequestParam(name = "dictCode", required = false) String dictCode,
@@ -299,6 +352,13 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.updateDictType(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }
 
+    @DeleteMapping("/dict-types/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteDictType(@PathVariable("id") Long id) {
+        require("system:dict:delete");
+        return ApiResponse.success(systemManagementAppService.deleteDictType(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
     @GetMapping("/dict-types/{id}/items")
     public ApiResponse<List<SystemVO.DictItemVO>> dictItems(@PathVariable("id") Long id) {
         require("system:dict:view");
@@ -321,6 +381,16 @@ public class SystemController {
     ) {
         require("system:dict:update");
         return ApiResponse.success(systemManagementAppService.updateDictItem(securityContextFacade.getCurrentUser(), dictTypeId, itemId, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/dict-types/{dictTypeId}/items/{itemId}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteDictItem(
+            @PathVariable("dictTypeId") Long dictTypeId,
+            @PathVariable("itemId") Long itemId
+    ) {
+        require("system:dict:delete");
+        return ApiResponse.success(systemManagementAppService.deleteDictItem(securityContextFacade.getCurrentUser(), dictTypeId, itemId), TraceContext.getRequestId());
     }
 
     @GetMapping("/configs")

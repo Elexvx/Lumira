@@ -15,6 +15,7 @@ import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermi
 import { buildRolePermissionDisplayGroups } from '@/pages/system/rolesPermissionTree';
 import { iamService } from '@/services/iam';
 import type { RoleDataScope, RoleDetail, RoleRecord } from '@/types/api';
+import { confirmAction } from '@/utils/confirm';
 import './roles.css';
 
 const ROLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
@@ -234,6 +235,20 @@ const RoleManagementPage = () => {
     }
   };
 
+  const deleteRole = (record: RoleRecord) => {
+    confirmAction({
+      title: '删除角色',
+      content: `确认删除角色「${record.roleName}」吗？删除后该角色的权限配置会一并移除。`,
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await iamService.deleteRole(record.id, { autoRedirectOnUnauthorized: false });
+        message.success('角色已删除');
+        roleCrud.reloadTable();
+      },
+    });
+  };
+
   const handleEditorClose = () => {
     if (!editorDirty) {
       closeEditorDrawer();
@@ -259,6 +274,7 @@ const RoleManagementPage = () => {
         buildRowActions: actionPermission.buildTableActions,
         onOpenDetail: (record) => void openDetail(record),
         onOpenEdit: (record) => void openEdit(record),
+        onDelete: deleteRole,
       }),
     [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
   );

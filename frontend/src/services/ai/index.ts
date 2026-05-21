@@ -10,6 +10,7 @@ import type {
   AiEmployeeDetailRecord,
   AiEmployeeRecord,
   AiEmployeeUpsertPayload,
+  AiGovernanceOverviewRecord,
   AiLlmServiceRecord,
   AiLlmServiceUpsertPayload,
   AiPromptTemplateRecord,
@@ -31,6 +32,11 @@ export interface AiChatStreamEvent {
 }
 
 export const aiService = {
+  governanceOverview: (options: RequestOptions = {}) =>
+    request<AiGovernanceOverviewRecord>('/ai/governance/overview', {
+      method: 'GET',
+      ...options,
+    }),
   employees: (params: AiPageQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<AiEmployeeRecord>>('/ai/employees', {
       method: 'GET',

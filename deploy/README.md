@@ -100,6 +100,40 @@ API_PROXY_BIND=0.0.0.0:8000
 node scripts/check-deployment.mjs
 ```
 
+## 备份与恢复
+
+生产变更、插件升级和数据迁移前，先创建平台备份：
+
+```bash
+bash deploy/backup-platform.sh
+```
+
+脚本会导出 MySQL、Redis RDB、上传文件目录、插件目录和 `deploy/.env` 快照，默认保存到 `backups/<时间戳>/`。如需指定备份根目录：
+
+```bash
+BACKUP_ROOT=/opt/legendary-invention/backups bash deploy/backup-platform.sh
+```
+
+演练备份命令链但不写入数据、不访问容器：
+
+```bash
+DRY_RUN=1 BACKUP_ROOT=/tmp/legendary-backup-dry-run bash deploy/backup-platform.sh
+```
+
+恢复到测试环境或灾备环境：
+
+```bash
+bash deploy/restore-platform.sh backups/20260520-120000
+```
+
+恢复前请确认目标环境的 `deploy/.env` 已就位，并已启动 MySQL/Redis 容器。恢复脚本会覆盖目标数据库并重启 Redis。
+
+演练恢复命令链但不写入数据库、不重启 Redis：
+
+```bash
+DRY_RUN=1 bash deploy/restore-platform.sh backups/20260520-120000
+```
+
 如果要检查公网后端域名：
 
 ```bash

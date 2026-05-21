@@ -9,6 +9,7 @@ import com.legendary.invention.api.system.PasskeyCredentialSaveRequestDTO;
 import com.legendary.invention.api.system.PasskeyCredentialUsageRequestDTO;
 import com.legendary.invention.api.system.PasskeySettingsDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
+import com.legendary.invention.api.system.SecuritySettingsDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
@@ -50,6 +51,9 @@ public interface SystemInternalApi {
 
     @GetMapping("/verification/login-capabilities")
     LoginCapabilitiesDTO loginCapabilities(@RequestParam("tenantId") Long tenantId);
+
+    @GetMapping("/security/settings")
+    SecuritySettingsDTO securitySettings(@RequestParam("tenantId") Long tenantId);
 
     @GetMapping("/verification/wechat-settings")
     WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId);

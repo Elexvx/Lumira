@@ -3,6 +3,7 @@ import type {
   MenuNode,
   PluginDefinition,
   PluginRuntimeLog,
+  PluginRuntimeSecurityPolicy,
   PluginUploadResult,
   PluginVersion,
   TenantPlugin,
@@ -47,6 +48,11 @@ export const pluginService = {
     }),
   allVersions: (options: RequestOptions = {}) =>
     request<Record<string, PluginVersion[]>>('/v1/plugins/versions', {
+      method: 'GET',
+      ...options,
+    }),
+  runtimeSecurityPolicy: (options: RequestOptions = {}) =>
+    request<PluginRuntimeSecurityPolicy>('/v1/plugins/runtime/security-policy', {
       method: 'GET',
       ...options,
     }),

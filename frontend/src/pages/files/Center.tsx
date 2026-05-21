@@ -47,7 +47,6 @@ import { confirmAction } from '@/utils/confirm';
 import {
   ALLOWED_UPLOAD_EXTENSIONS,
   buildPreviewAbsoluteUrl,
-  buildPreviewUrl,
   FILE_ACCEPT,
   FILE_CATEGORY_OPTIONS,
   formatDateTime,
@@ -129,8 +128,8 @@ const SystemFilesPage = () => {
   const [previewRecord, setPreviewRecord] = useState<FileObjectRecord | null>(null);
   const [previewTextLoading, setPreviewTextLoading] = useState(false);
   const [previewText, setPreviewText] = useState('');
-  const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
+  const [filePreviewLoading, setFilePreviewLoading] = useState(false);
+  const [filePreviewUrl, setFilePreviewUrl] = useState('');
 
   const requestOptions = useMemo(
     () => ({
@@ -202,6 +201,15 @@ const SystemFilesPage = () => {
     });
   };
 
+  const handleTestStorageSpace = async (record: FileStorageSpaceRecord) => {
+    const result = await fileService.testStorageSpace(record.id, requestOptions);
+    if (result.status === 'UP') {
+      message.success(result.message || '存储空间连接正常');
+      return;
+    }
+    message.warning(result.message || '存储空间连接异常');
+  };
+
   const enterStorageSpace = (record: FileStorageSpaceRecord) => {
     history.push(`/settings/files/all?bucket=${encodeURIComponent(record.storageKey)}`);
   };
@@ -223,7 +231,7 @@ const SystemFilesPage = () => {
     setPreviewDrawerOpen(true);
     setPreviewRecord(record);
     setPreviewText('');
-    setPdfPreviewUrl('');
+    setFilePreviewUrl('');
     setPreviewLoading(true);
     try {
       const detail = await fileService.detail(record.id, scopeParams, requestOptions);
@@ -239,12 +247,12 @@ const SystemFilesPage = () => {
     setPreviewDrawerOpen(false);
     setPreviewLoading(false);
     setPreviewTextLoading(false);
-    setPdfPreviewLoading(false);
+    setFilePreviewLoading(false);
     setPreviewText('');
-    if (pdfPreviewUrl) {
-      window.URL.revokeObjectURL(pdfPreviewUrl);
+    if (filePreviewUrl) {
+      window.URL.revokeObjectURL(filePreviewUrl);
     }
-    setPdfPreviewUrl('');
+    setFilePreviewUrl('');
     setPreviewRecord(null);
   };
 
@@ -261,8 +269,9 @@ const SystemFilesPage = () => {
 
     let active = true;
     setPreviewTextLoading(true);
-    void fetch(buildPreviewUrl(previewRecord))
-      .then((response) => response.text())
+    void fileService
+      .preview(previewRecord.id, scopeParams, requestOptions)
+      .then((blob) => blob.text())
       .then((text) => {
         if (active) {
           setPreviewText(text);
@@ -282,43 +291,44 @@ const SystemFilesPage = () => {
     return () => {
       active = false;
     };
-  }, [previewDrawerOpen, previewRecord?.id]);
+  }, [previewDrawerOpen, previewRecord?.id, requestOptions, scopeParams]);
 
   useEffect(() => {
     if (!previewDrawerOpen || !previewRecord) {
       return;
     }
 
-    if (resolvePreviewMode(previewRecord) !== 'PDF') {
-      setPdfPreviewLoading(false);
-      if (pdfPreviewUrl) {
-        window.URL.revokeObjectURL(pdfPreviewUrl);
-        setPdfPreviewUrl('');
+    const mode = resolvePreviewMode(previewRecord);
+    if (mode !== 'PDF' && mode !== 'IMAGE') {
+      setFilePreviewLoading(false);
+      if (filePreviewUrl) {
+        window.URL.revokeObjectURL(filePreviewUrl);
+        setFilePreviewUrl('');
       }
       return;
     }
 
     let active = true;
     let objectUrl = '';
-    setPdfPreviewLoading(true);
+    setFilePreviewLoading(true);
     void fileService
-      .download(previewRecord.id, scopeParams, requestOptions)
+      .preview(previewRecord.id, scopeParams, requestOptions)
       .then((blob) => {
         objectUrl = window.URL.createObjectURL(blob);
         if (active) {
-          setPdfPreviewUrl(objectUrl);
+          setFilePreviewUrl(objectUrl);
         } else {
           window.URL.revokeObjectURL(objectUrl);
         }
       })
       .catch(() => {
         if (active) {
-          message.error(formatMessage({ id: 'system.files.pdfPreviewFailed', defaultMessage: 'PDF preview failed to load' }));
+          message.error(formatMessage({ id: 'system.files.pdfPreviewFailed', defaultMessage: 'File preview failed to load' }));
         }
       })
       .finally(() => {
         if (active) {
-          setPdfPreviewLoading(false);
+          setFilePreviewLoading(false);
         }
       });
 
@@ -467,6 +477,11 @@ const SystemFilesPage = () => {
                 key: 'edit',
                 label: '编辑',
                 onClick: () => openStorageDrawer(record.provider, record),
+              },
+              {
+                key: 'test',
+                label: '测试',
+                onClick: () => void handleTestStorageSpace(record),
               },
               ...(actionPermission.can('system:file:manage:delete') && !record.defaultStorage
                 ? [
@@ -683,7 +698,6 @@ const SystemFilesPage = () => {
     },
   ]);
 
-  const previewUrl = previewRecord ? buildPreviewUrl(previewRecord) : '';
   const previewAbsoluteUrl = previewRecord ? buildPreviewAbsoluteUrl(previewRecord) : '';
   const previewMode = previewRecord ? resolvePreviewMode(previewRecord) : 'UNSUPPORTED';
   const previewMeta = previewRecord ? PREVIEW_MODE_LABELS[previewMode] : PREVIEW_MODE_LABELS.UNSUPPORTED;
@@ -901,21 +915,23 @@ const SystemFilesPage = () => {
             </Descriptions>
 
             <Card title={formatMessage({ id: 'system.files.preview.onlineTitle', defaultMessage: 'Online preview' })} bodyStyle={{ padding: 0 }} style={{ borderRadius: 8, overflow: 'hidden' }}>
-              <Spin spinning={previewLoading || previewTextLoading || pdfPreviewLoading} tip={pdfPreviewLoading ? formatMessage({ id: 'system.files.preview.loadingPdf', defaultMessage: 'Loading PDF preview' }) : previewTextLoading ? formatMessage({ id: 'system.files.preview.loadingText', defaultMessage: 'Loading text content' }) : formatMessage({ id: 'system.files.preview.loadingDetails', defaultMessage: 'Loading file details' })}>
+              <Spin spinning={previewLoading || previewTextLoading || filePreviewLoading} tip={filePreviewLoading ? formatMessage({ id: 'system.files.preview.loadingPdf', defaultMessage: 'Loading file preview' }) : previewTextLoading ? formatMessage({ id: 'system.files.preview.loadingText', defaultMessage: 'Loading text content' }) : formatMessage({ id: 'system.files.preview.loadingDetails', defaultMessage: 'Loading file details' })}>
                 <div style={{ minHeight: responsive.isMobile ? 240 : 520, padding: 16, background: token.colorFillQuaternary }}>
                   {previewMode === 'IMAGE' ? (
-                    <Image
-                      src={previewUrl}
-                      alt={previewRecord.originalFileName}
-                      preview={false}
-                      style={{ width: '100%', maxHeight: responsive.isMobile ? 360 : 560, objectFit: 'contain' }}
-                    />
+                    filePreviewUrl ? (
+                      <Image
+                        src={filePreviewUrl}
+                        alt={previewRecord.originalFileName}
+                        preview={false}
+                        style={{ width: '100%', maxHeight: responsive.isMobile ? 360 : 560, objectFit: 'contain' }}
+                      />
+                    ) : null
                   ) : null}
                   {previewMode === 'PDF' ? (
-                    pdfPreviewUrl ? (
+                    filePreviewUrl ? (
                       <iframe
                         title={previewRecord.originalFileName}
-                        src={`${pdfPreviewUrl}#view=FitH`}
+                        src={`${filePreviewUrl}#view=FitH`}
                         style={{ width: '100%', height: responsive.isMobile ? 360 : 560, border: 0, background: token.colorBgContainer }}
                       />
                     ) : null

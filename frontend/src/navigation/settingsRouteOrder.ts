@@ -1,6 +1,7 @@
 import { storage } from '@/cache/storage';
 
 export const DEFAULT_SETTING_ROUTE_ORDER = [
+  '/settings/tenants',
   '/settings/modules',
   '/settings/menus',
   '/settings/dicts',

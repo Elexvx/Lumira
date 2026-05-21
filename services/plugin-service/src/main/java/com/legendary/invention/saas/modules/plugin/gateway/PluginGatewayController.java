@@ -8,6 +8,7 @@ import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.common.security.PermissionGuard;
 import com.legendary.invention.saas.modules.plugin.app.PluginManagementAppService;
 import com.legendary.invention.saas.modules.plugin.registry.PluginRuntimeDescriptor;
+import com.legendary.invention.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
 import com.legendary.invention.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginHttpRequest;
 import com.legendary.invention.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginHttpResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,28 +33,35 @@ public class PluginGatewayController {
     private final PluginManagementAppService pluginManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
 
     public PluginGatewayController(
             PluginManagementAppService pluginManagementAppService,
             SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard
+            PermissionGuard permissionGuard,
+            PluginRuntimeSecurityPolicy runtimeSecurityPolicy
     ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.runtimeSecurityPolicy = runtimeSecurityPolicy;
     }
 
     @RequestMapping("/api/p/{pluginCode}/**")
     public ResponseEntity<Object> dispatch(HttpServletRequest request) throws Exception {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        runtimeSecurityPolicy.validateMethod(request.getMethod());
+        runtimeSecurityPolicy.validateBodySize(request.getContentLengthLong());
         String pluginCode = resolvePluginCode(request.getRequestURI());
-        Long tenantId = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        Long tenantId = currentUser.getCurrentTenantId() == null
+                ? com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID
+                : currentUser.getCurrentTenantId();
         PluginRuntimeDescriptor runtimeDescriptor = pluginManagementAppService.requireTenantRuntime(tenantId, pluginCode);
         PluginHttpRequest pluginRequest = new PluginHttpRequest(
                 request.getMethod(),
                 resolvePluginPath(pluginCode, request.getRequestURI()),
                 resolveQueryParameters(request),
-                resolveHeaders(request),
+                runtimeSecurityPolicy.filterHeaders(resolveHeaders(request)),
                 resolveBody(request),
                 tenantId,
                 currentUser.getUserId(),
@@ -62,6 +70,7 @@ public class PluginGatewayController {
                 TraceContext.getTraceId()
         );
         String permissionKey = runtimeDescriptor.getHttpHandler().requiredPermission(pluginRequest);
+        runtimeSecurityPolicy.validateRequiredPermission(permissionKey);
         permissionGuard.requirePermission(currentUser, permissionKey);
         try {
             PluginHttpResponse response = runtimeDescriptor.getHttpHandler().handle(pluginRequest, runtimeDescriptor.getRuntimeContext());
@@ -89,7 +98,7 @@ public class PluginGatewayController {
     private String resolvePluginPath(String pluginCode, String requestUri) {
         String prefix = "/api/p/" + pluginCode;
         String remainder = requestUri.substring(requestUri.indexOf(prefix) + prefix.length());
-        return remainder.isBlank() ? "/" : remainder;
+        return runtimeSecurityPolicy.normalizePluginPath(remainder.isBlank() ? "/" : remainder);
     }
 
     private String resolveBody(HttpServletRequest request) {

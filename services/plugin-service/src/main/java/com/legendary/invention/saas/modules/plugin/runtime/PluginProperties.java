@@ -13,6 +13,8 @@ public class PluginProperties {
     private String stagingRoot = "storage/plugin-staging";
     private String signatureSecret = "";
     private String sharedDepsVersion = "1";
+    private long maxGatewayBodyBytes = 1024 * 1024;
+    private boolean requireHttpPermission = true;
 
     public String getPlatformVersion() {
         return platformVersion;
@@ -60,5 +62,21 @@ public class PluginProperties {
 
     public void setSharedDepsVersion(String sharedDepsVersion) {
         this.sharedDepsVersion = sharedDepsVersion;
+    }
+
+    public long getMaxGatewayBodyBytes() {
+        return maxGatewayBodyBytes;
+    }
+
+    public void setMaxGatewayBodyBytes(long maxGatewayBodyBytes) {
+        this.maxGatewayBodyBytes = maxGatewayBodyBytes;
+    }
+
+    public boolean isRequireHttpPermission() {
+        return requireHttpPermission;
+    }
+
+    public void setRequireHttpPermission(boolean requireHttpPermission) {
+        this.requireHttpPermission = requireHttpPermission;
     }
 }

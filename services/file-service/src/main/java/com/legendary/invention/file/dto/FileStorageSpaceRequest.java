@@ -47,4 +47,20 @@ public class FileStorageSpaceRequest {
     public void setRetainFileOnRecordDelete(Boolean retainFileOnRecordDelete) { this.retainFileOnRecordDelete = retainFileOnRecordDelete; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public static class TestResult {
+        private String provider;
+        private String status;
+        private String message;
+        private Long responseTimeMs;
+
+        public String getProvider() { return provider; }
+        public void setProvider(String provider) { this.provider = provider; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
+        public Long getResponseTimeMs() { return responseTimeMs; }
+        public void setResponseTimeMs(Long responseTimeMs) { this.responseTimeMs = responseTimeMs; }
+    }
 }

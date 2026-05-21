@@ -122,6 +122,13 @@ public class FileController {
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
+    @PostMapping("/storage-spaces/{id}/test")
+    @RepeatSubmit
+    public ApiResponse<FileStorageSpaceRequest.TestResult> testStorageSpace(@PathVariable("id") @Positive Long id) {
+        require("system:file:manage");
+        return ApiResponse.success(fileManagementAppService.testStorageSpace(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<FileObjectDTO> detail(
             @PathVariable("id") Long id,
@@ -152,6 +159,35 @@ public class FileController {
         }
 
         ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(file.originalFileName(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(mediaType)
+                .body(new FileSystemResource(path));
+    }
+
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> preview(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "scope", required = false) String scope
+    ) {
+        boolean tenantScope = FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope);
+        require(tenantScope ? "system:file:manage" : "system:file:view");
+        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, tenantScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope);
+        String contentType = file.mimeType();
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (contentType != null && !contentType.isBlank()) {
+            try {
+                mediaType = MediaType.parseMediaType(contentType);
+            } catch (Exception ignored) {
+                mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            }
+        }
+
+        ContentDisposition contentDisposition = ContentDisposition.inline()
                 .filename(file.originalFileName(), StandardCharsets.UTF_8)
                 .build();
         return ResponseEntity.ok()

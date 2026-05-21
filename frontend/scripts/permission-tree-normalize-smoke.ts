@@ -69,11 +69,10 @@ const root = normalized[0];
 
 assert.equal(normalized.length, 1, 'catalog root should be preserved');
 assert.equal(root?.nodeType, 'CATALOG', 'root should remain a catalog node');
-assert.equal(root?.children?.length, 4, 'alias nodes should flatten into children and duplicates should be removed');
+assert.equal(root?.children?.length, 2, 'alias nodes should flatten into valid children and invalid routes should be removed');
 
 const childNames = root?.children?.map((item) => item.pageName) || [];
 assert.ok(childNames.includes('安全设置'), 'valid page should remain');
-assert.ok(childNames.includes('缺失路由'), 'mismatched page should remain visible');
 assert.ok(childNames.includes('在线用户'), 'alias child should be promoted');
 
 const matchedPage = root?.children?.find((item) => item.pageName === '安全设置');
@@ -82,8 +81,7 @@ assert.equal(matchedPage?.selectable, true);
 assert.equal(matchedPage?.routeMatched, true);
 
 const mismatchedPage = root?.children?.find((item) => item.pageName === '缺失路由');
-assert.equal(mismatchedPage?.selectable, false, 'mismatched route should not be selectable');
-assert.equal(mismatchedPage?.routeMatched, false, 'mismatched route should be flagged');
+assert.equal(mismatchedPage, undefined, 'mismatched route should be removed from selectable permission tree');
 
 const selectablePages = collectSelectablePages(normalized);
 assert.equal(selectablePages.length, 2, 'only valid PAGE nodes should be selectable');
