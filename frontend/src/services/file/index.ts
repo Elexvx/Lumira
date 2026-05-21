@@ -1,5 +1,5 @@
 import { request, requestFile, type RequestOptions } from '@/services/common/request';
-import type { FileObjectRecord, FileStorageSpacePayload, FileStorageSpaceRecord, PagedResult } from '@/types/api';
+import type { FileObjectRecord, FileStorageSpacePayload, FileStorageSpaceRecord, FileStorageSpaceTestResult, PagedResult } from '@/types/api';
 
 export interface FileListQuery extends Record<string, unknown> {
   keyword?: string;
@@ -65,6 +65,12 @@ export const fileService = {
       params,
       ...options,
     }),
+  preview: (id: number, params: Pick<FileListQuery, 'scope'> = {}, options: RequestOptions = {}) =>
+    requestFile(`/v1/files/${id}/preview`, {
+      method: 'GET',
+      params,
+      ...options,
+    }),
   storageSpaces: (params: { pageNo?: number; pageSize?: number } = {}, options: RequestOptions = {}) =>
     request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
       method: 'GET',
@@ -91,6 +97,11 @@ export const fileService = {
   removeStorageSpace: (id: number, options: RequestOptions = {}) =>
     request<boolean>(`/v1/files/storage-spaces/${id}`, {
       method: 'DELETE',
+      ...options,
+    }),
+  testStorageSpace: (id: number, options: RequestOptions = {}) =>
+    request<FileStorageSpaceTestResult>(`/v1/files/storage-spaces/${id}/test`, {
+      method: 'POST',
       ...options,
     }),
 };

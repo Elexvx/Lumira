@@ -20,6 +20,10 @@ import java.util.Map;
 public class DatabasePlatformModuleRepository {
 
     private static final Logger log = LoggerFactory.getLogger(DatabasePlatformModuleRepository.class);
+    private static final String DEFAULT_MODULE_TYPE = "CAPABILITY";
+    private static final String DEFAULT_LIFECYCLE_STATUS = "PLANNED";
+    private static final String DEFAULT_SOURCE_TYPE = "DATABASE";
+    private static final String DEFAULT_OWNER_SERVICE = "system-service";
 
     private final PlatformModuleDefinitionMapper definitionMapper;
     private final PlatformModuleDependencyMapper dependencyMapper;
@@ -36,14 +40,18 @@ public class DatabasePlatformModuleRepository {
                     .eq(PlatformModuleDefinitionEntity::getDeleted, 0)
                     .orderByAsc(PlatformModuleDefinitionEntity::getSortNo, PlatformModuleDefinitionEntity::getId)
             ).forEach(entity -> {
+                if (entity.getModuleCode() == null || entity.getModuleCode().isBlank()) {
+                    log.warn("Skip persisted platform module with blank module_code, id={}", entity.getId());
+                    return;
+                }
                 PlatformModuleVO module = new PlatformModuleVO();
-                module.setModuleCode(entity.getModuleCode());
-                module.setModuleName(entity.getModuleName());
-                module.setModuleType(entity.getModuleType());
-                module.setLifecycleStatus(entity.getLifecycleStatus());
-                module.setSourceType(entity.getSourceType());
+                module.setModuleCode(entity.getModuleCode().trim());
+                module.setModuleName(defaultText(entity.getModuleName(), module.getModuleCode()));
+                module.setModuleType(defaultText(entity.getModuleType(), DEFAULT_MODULE_TYPE));
+                module.setLifecycleStatus(defaultText(entity.getLifecycleStatus(), DEFAULT_LIFECYCLE_STATUS));
+                module.setSourceType(defaultText(entity.getSourceType(), DEFAULT_SOURCE_TYPE));
                 module.setDescription(entity.getDescription());
-                module.setOwnerService(entity.getOwnerService());
+                module.setOwnerService(defaultText(entity.getOwnerService(), DEFAULT_OWNER_SERVICE));
                 module.setAdminRoutePath(entity.getAdminRoutePath());
                 module.setApiPrefixes(splitLines(entity.getApiPrefixes()));
                 module.setPermissionKeys(splitLines(entity.getPermissionKeys()));
@@ -66,6 +74,9 @@ public class DatabasePlatformModuleRepository {
             return List.copyOf(modules.values());
         } catch (DataAccessException exception) {
             log.warn("Failed to load persisted platform modules, fallback to static catalog: {}", exception.getMessage());
+            return List.of();
+        } catch (RuntimeException exception) {
+            log.warn("Failed to normalize persisted platform modules, fallback to static catalog: {}", exception.getMessage());
             return List.of();
         }
     }
@@ -114,6 +125,13 @@ public class DatabasePlatformModuleRepository {
                 .map(String::trim)
                 .filter(item -> !item.isEmpty())
                 .toList();
+    }
+
+    private static String defaultText(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value.trim();
     }
 
     private static List<String> append(List<String> source, String value) {

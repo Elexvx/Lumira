@@ -1,6 +1,7 @@
 package com.legendary.invention.saas;
 
 import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
+import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableFeignClients(basePackages = "com.legendary.invention.api.client")
 @EnableScheduling
 @Import(InternalServiceTokenAuthFilter.class)
-@MapperScan("com.legendary.invention.saas")
+@MapperScan(basePackages = "com.legendary.invention.saas", annotationClass = Mapper.class)
 public class SaasApplication {
 
     public static void main(String[] args) {

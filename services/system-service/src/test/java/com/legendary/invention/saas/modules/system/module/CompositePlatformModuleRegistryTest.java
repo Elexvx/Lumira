@@ -37,6 +37,29 @@ class CompositePlatformModuleRegistryTest {
         assertThat(registry.findModule("missing")).isEmpty();
     }
 
+    @Test
+    void shouldIgnoreInvalidDatabaseModulesAndNormalizeNullableLists() {
+        PlatformModuleVO invalid = databaseModule();
+        invalid.setModuleCode(" ");
+        PlatformModuleVO nullable = databaseModule();
+        nullable.setModuleCode("journal-lite");
+        nullable.setApiPrefixes(null);
+        nullable.setPermissionKeys(null);
+        nullable.setDependencies(null);
+        nullable.setRegistrationSourceOrder(null);
+
+        CompositePlatformModuleRegistry registry = new CompositePlatformModuleRegistry(new StubDatabasePlatformModuleRepository(List.of(invalid, nullable)));
+
+        Map<String, PlatformModuleVO> modules = registry.listModules().stream()
+                .collect(Collectors.toMap(PlatformModuleVO::getModuleCode, item -> item));
+
+        assertThat(modules).doesNotContainKey(" ");
+        assertThat(modules.get("journal-lite").getApiPrefixes()).isEmpty();
+        assertThat(modules.get("journal-lite").getPermissionKeys()).isEmpty();
+        assertThat(modules.get("journal-lite").getDependencies()).isEmpty();
+        assertThat(modules.get("journal-lite").getRegistrationSourceOrder()).containsExactly("DATABASE");
+    }
+
     private static PlatformModuleVO databaseModule() {
         PlatformModuleVO module = new PlatformModuleVO();
         module.setModuleCode("journal");

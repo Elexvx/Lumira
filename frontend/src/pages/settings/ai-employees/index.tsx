@@ -25,6 +25,7 @@ import {
   Row,
   Select,
   Space,
+  Statistic,
   Switch,
   Tabs,
   Tag,
@@ -44,6 +45,7 @@ import type {
   AiEmployeeDetailRecord,
   AiEmployeeRecord,
   AiEmployeeSkillRecord,
+  AiGovernanceOverviewRecord,
   AiLlmServiceRecord,
   AiSkillPermissionMode,
   AiSkillRecord,
@@ -223,6 +225,7 @@ const AiEmployeesPage = () => {
   const [llmServiceOptions, setLlmServiceOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [employeeSkillModes, setEmployeeSkillModes] = useState<Record<string, AiSkillPermissionMode>>({});
   const [, setSelectedLlmService] = useState<AiLlmServiceRecord | null>(null);
+  const [governanceOverview, setGovernanceOverview] = useState<AiGovernanceOverviewRecord | null>(null);
   const [employeeSaving, setEmployeeSaving] = useState(false);
   const [llmSaving, setLlmSaving] = useState(false);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
@@ -241,10 +244,11 @@ const AiEmployeesPage = () => {
     const loadBootstrapData = async () => {
       setBootstrapLoading(true);
       try {
-        const [skills, template, services] = await Promise.all([
+        const [skills, template, services, governance] = await Promise.all([
           aiService.skills({ autoRedirectOnUnauthorized: false }),
           aiService.employeePromptTemplate({ autoRedirectOnUnauthorized: false }),
           aiService.llmServices({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false }),
+          aiService.governanceOverview({ autoRedirectOnUnauthorized: false }),
         ]);
 
         if (!active) {
@@ -257,6 +261,7 @@ const AiEmployeesPage = () => {
           label: `${service.title} (${service.code})`,
           value: service.id,
         })));
+        setGovernanceOverview(governance);
       } catch (error) {
         if (active) {
           message.error(error instanceof Error && error.message ? error.message : '加载数字员工基础数据失败');
@@ -645,6 +650,36 @@ const AiEmployeesPage = () => {
     <ManagementPage className="saas-crud-page" ghost title="数字员工" style={{ height: '100%', minHeight: 0 }} content={null}>
       <ManagementPageBody>
         <Card className="saas-ai-employees-card" bodyStyle={{ paddingTop: 8 }}>
+          <Space direction="vertical" size={12} style={{ width: '100%', marginBottom: 16 }}>
+            <Alert
+              showIcon
+              type={governanceOverview?.missingApiKeyServiceCount || governanceOverview?.highRiskAllowedBindingCount ? 'warning' : 'success'}
+              message="AI 能力治理"
+              description={`已启用 ${governanceOverview?.enabledEmployeeCount ?? 0}/${governanceOverview?.employeeCount ?? 0} 个 AI 员工，${governanceOverview?.enabledLlmServiceCount ?? 0}/${governanceOverview?.llmServiceCount ?? 0} 个 LLM 服务。缺少密钥服务 ${governanceOverview?.missingApiKeyServiceCount ?? 0} 个，高风险技能放行绑定 ${governanceOverview?.highRiskAllowedBindingCount ?? 0} 个。`}
+            />
+            <Row gutter={[12, 12]}>
+              <Col xs={12} md={6}>
+                <div className="saas-ai-governance-stat">
+                  <Statistic title="技能总数" value={governanceOverview?.skillCount ?? 0} />
+                </div>
+              </Col>
+              <Col xs={12} md={6}>
+                <div className="saas-ai-governance-stat">
+                  <Statistic title="高风险技能" value={governanceOverview?.highRiskSkillCount ?? 0} />
+                </div>
+              </Col>
+              <Col xs={12} md={6}>
+                <div className="saas-ai-governance-stat">
+                  <Statistic title="需确认技能" value={governanceOverview?.confirmationRequiredSkillCount ?? 0} />
+                </div>
+              </Col>
+              <Col xs={12} md={6}>
+                <div className="saas-ai-governance-stat">
+                  <Statistic title="密钥缺失" value={governanceOverview?.missingApiKeyServiceCount ?? 0} />
+                </div>
+              </Col>
+            </Row>
+          </Space>
           <Tabs
             activeKey={activeTab}
             destroyInactiveTabPane={false}

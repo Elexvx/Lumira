@@ -88,6 +88,11 @@ export const iamService = {
       data: payload,
       ...options,
     }),
+  deleteRole: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/roles/${id}`, {
+      method: 'DELETE',
+      ...options,
+    }),
   updateRolePermissions: (id: number, permissionKeys: string[], options: RequestOptions = {}) =>
     request<boolean>(`/v1/system/roles/${id}/permissions`, {
       method: 'PUT',
@@ -163,6 +168,11 @@ export const iamService = {
     request<boolean>(`/v1/system/menus/${id}/status`, {
       method: 'PATCH',
       data: { status },
+      ...options,
+    }),
+  deleteMenu: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/v1/system/menus/${id}`, {
+      method: 'DELETE',
       ...options,
     }),
 };

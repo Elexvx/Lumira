@@ -11,6 +11,7 @@ interface BuildRoleColumnsOptions {
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenDetail: (record: RoleRecord) => void;
   onOpenEdit: (record: RoleRecord) => void;
+  onDelete: (record: RoleRecord) => void;
 }
 
 const roleTypeValueEnum = ROLE_TYPE_OPTIONS.reduce<Record<string, { text: string }>>((acc, item) => {
@@ -24,6 +25,7 @@ export const buildRoleColumns = ({
   buildRowActions,
   onOpenDetail,
   onOpenEdit,
+  onDelete,
 }: BuildRoleColumnsOptions): ProColumns<RoleRecord>[] => [
   {
     title: '角色编码',
@@ -89,6 +91,14 @@ export const buildRoleColumns = ({
             label: '权限分配',
             permission: 'system:role:permissions',
             onClick: () => onOpenEdit(record),
+          },
+          {
+            key: 'delete',
+            label: '删除',
+            permission: 'system:role:delete',
+            danger: true,
+            disabled: Boolean(record.defaultRegistrationRole) || Number(record.userCount || 0) > 0,
+            onClick: () => onDelete(record),
           },
         ])}
       />

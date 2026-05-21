@@ -11,6 +11,7 @@ interface BuildDictTypeColumnsOptions {
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenDetail: (record: DictTypeRecord) => void;
   onOpenEdit: (record: DictTypeRecord) => void;
+  onDelete: (record: DictTypeRecord) => void;
 }
 
 export const buildDictTypeColumns = ({
@@ -19,6 +20,7 @@ export const buildDictTypeColumns = ({
   buildRowActions,
   onOpenDetail,
   onOpenEdit,
+  onDelete,
 }: BuildDictTypeColumnsOptions): ProColumns<DictTypeRecord>[] => [
   {
     title: '字典编码',
@@ -82,6 +84,14 @@ export const buildDictTypeColumns = ({
             permission: 'system:dict:update',
             onClick: () => onOpenEdit(record),
           },
+          {
+            key: 'delete',
+            label: '删除',
+            permission: 'system:dict:delete',
+            danger: true,
+            disabled: Boolean(record.isSystem),
+            onClick: () => onDelete(record),
+          },
         ])}
       />
     ),
@@ -93,6 +103,7 @@ interface BuildDictItemColumnsOptions {
   isMobile: boolean;
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenEdit: (record: DictItemRecord) => void;
+  onDelete: (record: DictItemRecord) => void;
 }
 
 export const buildDictItemColumns = ({
@@ -100,6 +111,7 @@ export const buildDictItemColumns = ({
   isMobile,
   buildRowActions,
   onOpenEdit,
+  onDelete,
 }: BuildDictItemColumnsOptions): ProColumns<DictItemRecord>[] => [
   { title: '标签', dataIndex: 'itemLabel' },
   { title: '值', dataIndex: 'itemValue' },
@@ -138,6 +150,13 @@ export const buildDictItemColumns = ({
             label: '编辑',
             permission: 'system:dict:update',
             onClick: () => onOpenEdit(record),
+          },
+          {
+            key: 'delete',
+            label: '删除',
+            permission: 'system:dict:delete',
+            danger: true,
+            onClick: () => onDelete(record),
           },
         ])}
       />

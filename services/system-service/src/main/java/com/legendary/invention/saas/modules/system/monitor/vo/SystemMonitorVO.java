@@ -13,6 +13,8 @@ public final class SystemMonitorVO {
         private MemoryVO memory;
         private ServerVO server;
         private JvmVO jvm;
+        private List<ServiceInstanceVO> services;
+        private List<ApiDocVO> apiDocs;
 
         public CpuVO getCpu() {
             return cpu;
@@ -45,6 +47,63 @@ public final class SystemMonitorVO {
         public void setJvm(JvmVO jvm) {
             this.jvm = jvm;
         }
+
+        public List<ServiceInstanceVO> getServices() {
+            return services;
+        }
+
+        public void setServices(List<ServiceInstanceVO> services) {
+            this.services = services;
+        }
+
+        public List<ApiDocVO> getApiDocs() {
+            return apiDocs;
+        }
+
+        public void setApiDocs(List<ApiDocVO> apiDocs) {
+            this.apiDocs = apiDocs;
+        }
+    }
+
+    public static class ServiceInstanceVO {
+        private String serviceName;
+        private String baseUrl;
+        private String healthUrl;
+        private String status;
+        private Long responseTimeMs;
+        private String version;
+        private LocalDateTime checkedAt;
+        private String errorMessage;
+
+        public String getServiceName() { return serviceName; }
+        public void setServiceName(String serviceName) { this.serviceName = serviceName; }
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+        public String getHealthUrl() { return healthUrl; }
+        public void setHealthUrl(String healthUrl) { this.healthUrl = healthUrl; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public Long getResponseTimeMs() { return responseTimeMs; }
+        public void setResponseTimeMs(Long responseTimeMs) { this.responseTimeMs = responseTimeMs; }
+        public String getVersion() { return version; }
+        public void setVersion(String version) { this.version = version; }
+        public LocalDateTime getCheckedAt() { return checkedAt; }
+        public void setCheckedAt(LocalDateTime checkedAt) { this.checkedAt = checkedAt; }
+        public String getErrorMessage() { return errorMessage; }
+        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    }
+
+    public static class ApiDocVO {
+        private String serviceName;
+        private String url;
+        private String status;
+
+        public String getServiceName() { return serviceName; }
+        public void setServiceName(String serviceName) { this.serviceName = serviceName; }
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
     }
 
     public static class CpuVO {

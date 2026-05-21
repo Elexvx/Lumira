@@ -17,6 +17,7 @@ interface BuildMenuColumnsOptions {
   onOpenDetail: (record: MenuRecord) => void;
   onOpenEdit: (record: MenuRecord) => void;
   onToggleStatus: (record: MenuRecord) => void;
+  onDelete: (record: MenuRecord) => void;
 }
 
 export const buildMenuColumns = ({
@@ -30,6 +31,7 @@ export const buildMenuColumns = ({
   onOpenDetail,
   onOpenEdit,
   onToggleStatus,
+  onDelete,
 }: BuildMenuColumnsOptions): ProColumns<MenuTreeRecord>[] => [
   {
     title: '拖拽',
@@ -171,6 +173,14 @@ export const buildMenuColumns = ({
             permission: 'system:menu:status',
             danger: record.status === 'ENABLED',
             onClick: () => onToggleStatus(record),
+          },
+          {
+            key: 'delete',
+            label: '删除',
+            permission: 'system:menu:delete',
+            danger: true,
+            disabled: Boolean(record.children?.length),
+            onClick: () => onDelete(record),
           },
         ])}
       />

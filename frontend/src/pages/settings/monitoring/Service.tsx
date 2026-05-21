@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Card, Col, Descriptions, Row, Space, Statistic } from 'antd';
+import { Button, Card, Col, Descriptions, Row, Space, Statistic, Table, Tag } from 'antd';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { ManagementPage } from '@/features/management';
 import { useResponsive } from '@/hooks/useResponsive';
+import { messageService } from '@/services/message';
 import { monitorService } from '@/services/system/monitor';
-import type { ServiceMonitorSnapshot } from '@/types/api';
+import type { MessageWebSocketRuntime, ServiceMonitorSnapshot } from '@/types/api';
 import { formatBytes, formatDateTime, formatDuration, formatNumber, formatPercent } from './shared';
 
 const valueStyle = { fontSize: 24, fontWeight: 700 };
@@ -55,6 +56,10 @@ export const ServiceMonitorContent = () => {
     queryKey: ['service-monitor'],
     queryFn: async () => monitorService.service({ autoRedirectOnUnauthorized: false }),
   });
+  const webSocketQuery = useQuery<MessageWebSocketRuntime>({
+    queryKey: ['message-websocket-runtime'],
+    queryFn: async () => messageService.webSocketRuntime({ autoRedirectOnUnauthorized: false }),
+  });
   const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
   const fullRowSpan = isMobile ? 1 : 2;
 
@@ -66,10 +71,15 @@ export const ServiceMonitorContent = () => {
   useEffect(() => {
     refreshRef.current = query.refetch;
   }, [query.refetch]);
+  const webSocketRefreshRef = useRef(webSocketQuery.refetch);
+  useEffect(() => {
+    webSocketRefreshRef.current = webSocketQuery.refetch;
+  }, [webSocketQuery.refetch]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       void refreshRef.current();
+      void webSocketRefreshRef.current();
     }, REALTIME_REFRESH_INTERVAL_MS);
     return () => {
       window.clearInterval(timer);
@@ -123,6 +133,72 @@ export const ServiceMonitorContent = () => {
             </Card>
           </Col>
         </Row>
+
+        <Card title="WebSocket 运行监控" loading={webSocketQuery.isLoading && !webSocketQuery.data}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={8}>
+              <Statistic title="当前连接数" value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
+            </Col>
+            <Col xs={24} sm={8}>
+              <Statistic title="在线租户数" value={webSocketQuery.data?.tenantCount ?? 0} valueStyle={valueStyle} />
+            </Col>
+            <Col xs={24} sm={8}>
+              <Statistic title="在线用户数" value={webSocketQuery.data?.userCount ?? 0} valueStyle={valueStyle} />
+            </Col>
+          </Row>
+          <Table
+            rowKey="tenantId"
+            size="small"
+            pagination={false}
+            dataSource={webSocketQuery.data?.tenants || []}
+            style={{ marginTop: 16 }}
+            columns={[
+              { title: '租户', dataIndex: 'tenantId', width: 180 },
+              { title: '连接数', dataIndex: 'connectionCount', width: 120 },
+            ]}
+          />
+        </Card>
+
+        <Card title="基础服务健康" loading={query.isLoading && !service}>
+          <Table
+            rowKey="serviceName"
+            size="small"
+            pagination={false}
+            dataSource={service?.services || []}
+            columns={[
+              { title: '服务', dataIndex: 'serviceName' },
+              { title: '地址', dataIndex: 'baseUrl', ellipsis: true },
+              {
+                title: '状态',
+                dataIndex: 'status',
+                width: 100,
+                render: (value) => <Tag color={value === 'UP' ? 'green' : 'red'}>{value || 'DOWN'}</Tag>,
+              },
+              { title: '响应', dataIndex: 'responseTimeMs', width: 100, render: (value) => (value == null ? '-' : `${value} ms`) },
+              { title: '检测时间', dataIndex: 'checkedAt', width: 180, render: (value) => formatDateTime(value) },
+              { title: '说明', dataIndex: 'errorMessage', ellipsis: true, render: (value) => value || '-' },
+            ]}
+          />
+        </Card>
+
+        <Card title="接口文档入口" loading={query.isLoading && !service}>
+          <Table
+            rowKey="serviceName"
+            size="small"
+            pagination={false}
+            dataSource={service?.apiDocs || []}
+            columns={[
+              { title: '服务', dataIndex: 'serviceName', width: 180 },
+              { title: 'OpenAPI 地址', dataIndex: 'url', ellipsis: true },
+              {
+                title: '服务状态',
+                dataIndex: 'status',
+                width: 120,
+                render: (value) => <Tag color={value === 'UP' ? 'green' : 'red'}>{value || 'DOWN'}</Tag>,
+              },
+            ]}
+          />
+        </Card>
 
         <Card title="服务器信息" loading={query.isLoading && !service}>
           <Descriptions {...detailDescriptionsProps}>

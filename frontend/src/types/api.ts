@@ -342,6 +342,19 @@ export interface AiEmployeeDetailRecord extends AiEmployeeRecord {
   skills?: AiEmployeeSkillRecord[];
 }
 
+export interface AiGovernanceOverviewRecord {
+  employeeCount: number;
+  enabledEmployeeCount: number;
+  llmServiceCount: number;
+  enabledLlmServiceCount: number;
+  missingApiKeyServiceCount: number;
+  skillCount: number;
+  highRiskSkillCount: number;
+  highRiskAllowedBindingCount: number;
+  confirmationRequiredSkillCount: number;
+  sampledAt?: string | null;
+}
+
 export interface AiConversationRecord {
   id: number;
   tenantId?: number | null;
@@ -601,6 +614,13 @@ export interface PluginRuntimeLog {
   createdAt: string;
 }
 
+export interface PluginRuntimeSecurityPolicy {
+  maxGatewayBodyBytes: number;
+  requireHttpPermission: boolean;
+  allowedMethods: string[];
+  blockedHeaders: string[];
+}
+
 export interface TenantPlugin {
   pluginCode: string;
   pluginName: string;
@@ -649,6 +669,26 @@ export interface MessageNoticeRecord {
 
 export interface MessageUnreadCount {
   unreadCount: number;
+}
+
+export interface MessageWebSocketTenantRuntime {
+  tenantId: number;
+  connectionCount: number;
+}
+
+export interface MessageWebSocketUserRuntime {
+  userId: number;
+  connectionCount: number;
+}
+
+export interface MessageWebSocketRuntime {
+  activeConnections: number;
+  tenantCount: number;
+  userCount: number;
+  earliestConnectedAt?: string | null;
+  sampledAt?: string | null;
+  tenants?: MessageWebSocketTenantRuntime[];
+  topUsers?: MessageWebSocketUserRuntime[];
 }
 
 export interface MessageDeliveryLogRecord {
@@ -752,6 +792,13 @@ export interface FileStorageSpacePayload {
   defaultStorage?: boolean;
   retainFileOnRecordDelete?: boolean;
   status?: 'ENABLED' | 'DISABLED';
+}
+
+export interface FileStorageSpaceTestResult {
+  provider: FileStorageProvider;
+  status: 'UP' | 'DOWN';
+  message?: string | null;
+  responseTimeMs?: number | null;
 }
 
 export interface AuditLogRecord {
@@ -1113,11 +1160,30 @@ export interface ServiceMonitorJvm {
   inputArguments?: string[];
 }
 
+export interface ServiceInstanceStatus {
+  serviceName: string;
+  baseUrl: string;
+  healthUrl: string;
+  status: string;
+  responseTimeMs?: number | null;
+  version?: string | null;
+  checkedAt?: string | null;
+  errorMessage?: string | null;
+}
+
+export interface ServiceApiDocStatus {
+  serviceName: string;
+  url: string;
+  status: string;
+}
+
 export interface ServiceMonitorSnapshot {
   cpu: ServiceMonitorCpu;
   memory: ServiceMonitorMemory;
   server: ServiceMonitorServer;
   jvm: ServiceMonitorJvm;
+  services?: ServiceInstanceStatus[];
+  apiDocs?: ServiceApiDocStatus[];
 }
 
 export interface RedisMonitorOverview {
@@ -1304,6 +1370,16 @@ export interface RoleRecord {
 export interface RoleDetail extends RoleRecord {
   permissionKeys: string[];
   dataScopes?: RoleDataScope[];
+}
+
+export interface TenantRecord {
+  id: number;
+  tenantCode: string;
+  tenantName: string;
+  status: string;
+  remark?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type DataScopeType = 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM';
