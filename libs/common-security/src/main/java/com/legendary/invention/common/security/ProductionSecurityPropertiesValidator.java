@@ -78,5 +78,8 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
         if (value.contains("localhost") || value.contains("127.0.0.1")) {
             throw new IllegalStateException("生产环境 CORS_ALLOWED_ORIGIN_PATTERNS 不能包含本地调试地址");
         }
+        if (value.contains("*")) {
+            throw new IllegalStateException("生产环境 CORS_ALLOWED_ORIGIN_PATTERNS 不能包含通配符域名，请配置精确前端 Origin");
+        }
     }
 }
