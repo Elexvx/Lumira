@@ -160,6 +160,7 @@ services:
       <<: *common-env
       SERVER_PORT: 8082
       SYSTEM_SERVICE_BASE_URL: http://system-service:8080
+      ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:-false}
     depends_on:
       - system-service
       - redis
