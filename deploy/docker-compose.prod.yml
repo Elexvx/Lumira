@@ -242,9 +242,12 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8088
+      AUTH_SERVICE_BASE_URL: http://auth-service:8082
     networks:
       - default
       - 1panel-network
+    depends_on:
+      - auth-service
 
   job-executor:
     build:
