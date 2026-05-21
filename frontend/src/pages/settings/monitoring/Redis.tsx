@@ -25,13 +25,13 @@ const TrendAreaChart = ({
   points: Array<{ label: string; value: number }>;
   valueFormatter: (value: number) => string;
 }) => {
-  const width = 360;
-  const height = 180;
-  const padding = { top: 16, right: 16, bottom: 38, left: 48 };
+  const width = 420;
+  const height = 220;
+  const padding = { top: 24, right: 56, bottom: 54, left: 64 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
   const values = points.map((item) => item.value);
-  const maxValue = Math.max(...values, 1);
+  const maxValue = Math.max(...values, 1) * 1.08;
   const normalizedPoints = points.length ? points : [{ label: '-', value: 0 }];
   const coordinates = normalizedPoints.map((item, index) => {
     const x = normalizedPoints.length === 1
@@ -43,27 +43,33 @@ const TrendAreaChart = ({
   const linePath = coordinates.map((item, index) => `${index === 0 ? 'M' : 'L'} ${item.x} ${item.y}`).join(' ');
   const areaPath = `${linePath} L ${coordinates.at(-1)?.x ?? padding.left} ${padding.top + plotHeight} L ${coordinates[0]?.x ?? padding.left} ${padding.top + plotHeight} Z`;
   const yTicks = [maxValue, maxValue / 2, 0];
+  const xAxisLabels = coordinates.filter((_, index) => {
+    if (coordinates.length <= 3) {
+      return true;
+    }
+    return index === 0 || index === Math.floor((coordinates.length - 1) / 2) || index === coordinates.length - 1;
+  });
 
   return (
-    <svg className="saas-redis-trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="趋势图">
+    <svg className="saas-redis-trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="trend chart" style={{ display: 'block', width: '100%', height: '100%' }}>
       {yTicks.map((tick) => {
         const y = padding.top + plotHeight - (tick / maxValue) * plotHeight;
         return (
           <g key={tick}>
-            <line className="saas-redis-trend-chart__grid" x1={padding.left} x2={width - padding.right} y1={y} y2={y} />
-            <text className="saas-redis-trend-chart__axis" x={padding.left - 8} y={y + 4} textAnchor="end">
+            <line className="saas-redis-trend-chart__grid" x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="rgba(0, 0, 0, 0.08)" strokeDasharray="4 4" strokeWidth={1} />
+            <text className="saas-redis-trend-chart__axis" x={padding.left - 8} y={y + 4} textAnchor="end" fill="rgba(0, 0, 0, 0.45)" fontSize={11}>
               {valueFormatter(tick)}
             </text>
           </g>
         );
       })}
-      <path className="saas-redis-trend-chart__area" d={areaPath} />
-      <path className="saas-redis-trend-chart__line" d={linePath} />
+      <path className="saas-redis-trend-chart__area" d={areaPath} fill="rgba(22, 119, 255, 0.16)" stroke="none" />
+      <path className="saas-redis-trend-chart__line" d={linePath} fill="none" stroke="#1677ff" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} />
       {coordinates.map((item) => (
-        <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} />
+        <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} fill="#ffffff" stroke="#1677ff" strokeWidth={2} />
       ))}
-      {coordinates.map((item) => (
-        <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - 10} textAnchor="middle">
+      {xAxisLabels.map((item) => (
+        <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - 10} textAnchor="middle" fill="rgba(0, 0, 0, 0.45)" fontSize={11}>
           {item.label}
         </text>
       ))}
@@ -270,9 +276,6 @@ export const RedisMonitorContent = () => {
         </Card>
 
         <Card title="连接客户端" loading={query.isLoading && !redis}>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-            当前实例已连接的客户端会话列表，取自 Redis `CLIENT LIST`。
-          </Typography.Paragraph>
           <ManagementTable<RedisMonitorClient>
             rowKey={(record) => `${record.addressPort || ''}-${record.name || ''}-${record.databaseId || ''}`}
             search={false}
