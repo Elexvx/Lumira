@@ -700,6 +700,7 @@ body,
 }
 
 .saas-layout-footer {
+  margin-top: auto;
   padding: 8px 12px 16px;
   text-align: center;
   color: var(--saas-text-secondary);
@@ -735,6 +736,8 @@ body,
   min-height: 100dvh;
 
   .ant-pro-layout-container {
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
     min-height: 100dvh;
   }

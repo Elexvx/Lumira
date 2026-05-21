@@ -6,6 +6,7 @@ import { createLayoutConfig } from '@/app.layout';
 import { AppWatermarkLayer } from '@/app.watermark';
 import { queryClient } from '@/query/queryClient';
 import { syncAntdStaticThemeHolder } from '@/theme/antdTheme';
+import './global.css';
 
 export type { AppInitialState } from '@/app.types';
 
