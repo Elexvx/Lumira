@@ -651,12 +651,6 @@ const AiEmployeesPage = () => {
       <ManagementPageBody>
         <Card className="saas-ai-employees-card" bodyStyle={{ paddingTop: 8 }}>
           <Space direction="vertical" size={12} style={{ width: '100%', marginBottom: 16 }}>
-            <Alert
-              showIcon
-              type={governanceOverview?.missingApiKeyServiceCount || governanceOverview?.highRiskAllowedBindingCount ? 'warning' : 'success'}
-              message="AI 能力治理"
-              description={`已启用 ${governanceOverview?.enabledEmployeeCount ?? 0}/${governanceOverview?.employeeCount ?? 0} 个 AI 员工，${governanceOverview?.enabledLlmServiceCount ?? 0}/${governanceOverview?.llmServiceCount ?? 0} 个 LLM 服务。缺少密钥服务 ${governanceOverview?.missingApiKeyServiceCount ?? 0} 个，高风险技能放行绑定 ${governanceOverview?.highRiskAllowedBindingCount ?? 0} 个。`}
-            />
             <Row gutter={[12, 12]}>
               <Col xs={12} md={6}>
                 <div className="saas-ai-governance-stat">

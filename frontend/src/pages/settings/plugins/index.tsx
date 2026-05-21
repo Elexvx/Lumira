@@ -1,6 +1,6 @@
 import { CloudUploadOutlined, SyncOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Card, Descriptions, Input, Modal, Radio, Space, Tag, Typography, Upload, message, theme } from 'antd';
+import { Button, Card, Descriptions, Input, Modal, Radio, Space, Tag, Typography, Upload, message, theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { ManagementDrawer, ManagementPage, ManagementPageBody, ManagementTable } from '@/features/management';
@@ -11,7 +11,7 @@ import { buildVersionColumns, logColumns } from '@/pages/settings/plugins/column
 import { PluginCardsGrid } from '@/pages/settings/plugins/components/PluginCardsGrid';
 import { buildAvailablePluginMap, filterPluginDefinitions, getPreferredEnableVersion } from '@/pages/settings/plugins/utils';
 import { pluginService } from '@/services/plugin';
-import type { PluginDefinition, PluginRuntimeLog, PluginRuntimeSecurityPolicy, PluginVersion, TenantPlugin } from '@/types/api';
+import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 
 const PLATFORM_TENANT_ID = 1001;
 
@@ -31,7 +31,6 @@ const PluginsPage = () => {
   const [uploadVisible, setUploadVisible] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [runtimeLogs, setRuntimeLogs] = useState<PluginRuntimeLog[]>([]);
-  const [runtimeSecurityPolicy, setRuntimeSecurityPolicy] = useState<PluginRuntimeSecurityPolicy | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [mutationLoading, setMutationLoading] = useState(false);
   const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
@@ -49,11 +48,10 @@ const PluginsPage = () => {
   const loadOverview = async () => {
     setLoading(true);
     try {
-      const [definitionList, tenantPlugins, versionResult, securityPolicy] = await Promise.all([
+      const [definitionList, tenantPlugins, versionResult] = await Promise.all([
         pluginService.definitions({ autoRedirectOnUnauthorized: false }),
         pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
         pluginService.allVersions({ autoRedirectOnUnauthorized: false }),
-        pluginService.runtimeSecurityPolicy({ autoRedirectOnUnauthorized: false }),
       ]);
       const nextVersionMap: Record<string, PluginVersion[]> = { ...versionResult };
       definitionList.forEach((plugin) => {
@@ -63,7 +61,6 @@ const PluginsPage = () => {
       setDefinitions(definitionList);
       setAvailablePlugins(tenantPlugins);
       setVersionMap(nextVersionMap);
-      setRuntimeSecurityPolicy(securityPolicy);
       if (!selectedPlugin && definitionList.length > 0) {
         setSelectedPlugin(definitionList[0]);
       }
@@ -322,20 +319,6 @@ const PluginsPage = () => {
     >
       <ManagementPageBody>
         <Card bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {runtimeSecurityPolicy ? (
-            <Alert
-              showIcon
-              type={runtimeSecurityPolicy.requireHttpPermission ? 'success' : 'warning'}
-              message="插件运行时安全策略"
-              description={
-                <Space wrap size={[8, 8]}>
-                  <span>HTTP 权限声明：{runtimeSecurityPolicy.requireHttpPermission ? '强制' : '未强制'}</span>
-                  <span>请求体上限：{Math.round((runtimeSecurityPolicy.maxGatewayBodyBytes / 1024 / 1024) * 100) / 100} MB</span>
-                  {(runtimeSecurityPolicy.allowedMethods || []).map((method) => <Tag key={method}>{method}</Tag>)}
-                </Space>
-              }
-            />
-          ) : null}
           <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
             <Input.Search
               allowClear
@@ -412,9 +395,6 @@ const PluginsPage = () => {
             <Descriptions.Item label={formatMessage({ id: 'page.plugins.enabled', defaultMessage: 'Enabled' })}>{selectedTenantPlugin ? formatMessage({ id: 'page.plugins.enabled.true', defaultMessage: 'Enabled' }) : formatMessage({ id: 'page.plugins.enabled.false', defaultMessage: 'Disabled' })}</Descriptions.Item>
             <Descriptions.Item label={formatMessage({ id: 'page.plugins.menuCount', defaultMessage: 'Menu count' })}>{selectedTenantPlugin?.menus?.length || 0}</Descriptions.Item>
             <Descriptions.Item label={formatMessage({ id: 'page.plugins.routeCount', defaultMessage: 'Route count' })}>{selectedTenantPlugin?.routes?.length || 0}</Descriptions.Item>
-            <Descriptions.Item label="敏感头过滤" span={responsive.isMobile ? 1 : 2}>
-              <Space wrap>{(runtimeSecurityPolicy?.blockedHeaders || []).map((header) => <Tag key={header}>{header}</Tag>)}</Space>
-            </Descriptions.Item>
           </Descriptions>
         ) : null}
       </ManagementDrawer>

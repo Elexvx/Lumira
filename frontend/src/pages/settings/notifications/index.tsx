@@ -438,6 +438,7 @@ const NotificationsPage = () => {
         title: '操作',
         valueType: 'option',
         width: 140,
+        fixed: 'right',
         render: (_, record) => (
           <TableActionBar
             isMobile={responsive.isMobile}
