@@ -34,6 +34,12 @@ export interface AiKnowledgeBasePayload {
   visibilityScope?: string | null;
 }
 
+export interface AiKnowledgeBaseQuery extends AiPageQuery {
+  keyword?: string;
+  status?: string;
+  scope?: string;
+}
+
 export interface AiChatStreamEvent {
   type: 'status' | 'thinking' | 'delta' | 'done' | 'error';
   message?: string | null;
@@ -125,7 +131,7 @@ export const aiService = {
       method: 'GET',
       ...options,
     }),
-  knowledgeBases: (params: AiPageQuery & { keyword?: string; status?: string } = {}, options: RequestOptions = {}) =>
+  knowledgeBases: (params: AiKnowledgeBaseQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
       method: 'GET',
       params,

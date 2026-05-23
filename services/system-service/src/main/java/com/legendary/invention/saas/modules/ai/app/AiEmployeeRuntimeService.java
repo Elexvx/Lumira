@@ -88,7 +88,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 .orElse(null);
         List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在检索知识库"));
-        List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(tenantId, employee.getId(), request);
+        List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(currentUser, employee.getId(), request);
         request.setKnowledgeReferences(references);
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用模型"));
         AiVO.ChatResponseVO response = onEvent == null
@@ -111,14 +111,14 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         return response;
     }
 
-    private List<AiVO.KnowledgeReferenceVO> resolveKnowledgeReferences(Long tenantId, Long employeeId, AiDTO.ChatRequest request) {
+    private List<AiVO.KnowledgeReferenceVO> resolveKnowledgeReferences(CurrentUser currentUser, Long employeeId, AiDTO.ChatRequest request) {
         if (!shouldUseKnowledge(request)) {
             return List.of();
         }
         if (request.getKnowledgeBaseIds() != null && !request.getKnowledgeBaseIds().isEmpty()) {
-            return aiKnowledgeBaseAppService.retrieve(tenantId, request.getMessage(), request.getKnowledgeBaseIds(), 6);
+            return aiKnowledgeBaseAppService.retrieve(currentUser, request.getMessage(), request.getKnowledgeBaseIds(), 6);
         }
-        return aiKnowledgeBaseAppService.retrieveForEmployee(tenantId, employeeId, request.getMessage(), 6);
+        return aiKnowledgeBaseAppService.retrieveForEmployee(currentUser, employeeId, request.getMessage(), 6);
     }
 
     private boolean shouldUseKnowledge(AiDTO.ChatRequest request) {

@@ -724,6 +724,7 @@ public final class AiVO {
         private String description;
         private String status;
         private String visibilityScope;
+        private Long ownerUserId;
         private Long documentCount;
         private Long chunkCount;
         private Long createdBy;
@@ -744,6 +745,8 @@ public final class AiVO {
         public void setStatus(String status) { this.status = status; }
         public String getVisibilityScope() { return visibilityScope; }
         public void setVisibilityScope(String visibilityScope) { this.visibilityScope = visibilityScope; }
+        public Long getOwnerUserId() { return ownerUserId; }
+        public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
         public Long getDocumentCount() { return documentCount; }
         public void setDocumentCount(Long documentCount) { this.documentCount = documentCount; }
         public Long getChunkCount() { return chunkCount; }

@@ -20,7 +20,6 @@ const SYSTEM_MANAGEMENT_PERMISSIONS = [
   'system:monitor:redis:view',
   'system:monitor:docs:view',
   'ai:view',
-  'ai:knowledge:view',
   'audit:view',
   'audit:login:view',
   'audit:operation:view',
@@ -41,6 +40,7 @@ const SYSTEM_MONITORING_PERMISSIONS = [
 
 const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
 const SITE_PERMISSIONS = ['site:view', 'site:settings', 'site:navigation', 'site:carousel', 'site:page', 'site:content', 'site:form', 'site:submission'];
+const AI_PERMISSIONS = ['ai:chat:send', 'ai:knowledge:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
@@ -94,6 +94,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
         SYSTEM_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item))),
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && hasPermission(permissions, 'plugin:management:view'),
+    canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitAiEmployees: isLogin && hasPermission(permissions, 'ai:view'),
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),
     canVisitAiAssistant: isLogin && hasPermission(permissions, 'ai:chat:send'),

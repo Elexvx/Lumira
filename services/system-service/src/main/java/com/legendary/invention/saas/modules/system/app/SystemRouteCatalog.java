@@ -11,6 +11,8 @@ public final class SystemRouteCatalog {
     private static final Set<String> BUILT_IN_ROUTE_PATHS = Set.of(
             "/dashboard/home",
             "/ai",
+            "/ai/assistant",
+            "/ai/knowledge",
             "/tasks",
             "/approvals",
             "/evaluations",
@@ -78,6 +80,7 @@ public final class SystemRouteCatalog {
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
             "@/pages/dashboard/Home",
             "@/pages/ai/Assistant",
+            "@/pages/ai/knowledge",
             "@/pages/tasks",
             "@/pages/approvals",
             "@/pages/evaluations",
@@ -150,15 +153,19 @@ public final class SystemRouteCatalog {
         SystemVO.MenuVO aiRoot = menu(
                 -990L,
                 0L,
-                "ai.assistant",
-                "AI 助手",
-                "MENU",
+                "ai.root",
+                "AI",
+                "CATALOG",
                 "/ai",
-                "@/pages/ai/Assistant",
+                "redirect:/ai/assistant",
                 "RobotOutlined",
                 2,
-                "ai:chat:send"
+                null
         );
+        aiRoot.setChildren(new ArrayList<>(List.of(
+                menu(-989L, -990L, "ai.assistant", "AI 助手", "MENU", "/ai/assistant", "@/pages/ai/Assistant", "RobotOutlined", 1, "ai:chat:send"),
+                menu(-988L, -990L, "ai.knowledge", "知识库", "MENU", "/ai/knowledge", "@/pages/ai/knowledge", "FileSearchOutlined", 2, "ai:knowledge:view")
+        )));
 
         SystemVO.MenuVO settingsRoot = menu(
                 -1000L,
