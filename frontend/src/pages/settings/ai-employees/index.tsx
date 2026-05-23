@@ -89,8 +89,8 @@ const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; defaultModel: string 
     defaultModel: 'qwen-plus',
   },
   deepseek: {
-    baseUrl: 'https://api.deepseek.com/v1',
-    defaultModel: 'deepseek-chat',
+    baseUrl: 'https://api.deepseek.com',
+    defaultModel: 'deepseek-v4-flash',
   },
   'openai-compatible': {
     baseUrl: 'https://api.openai.com/v1',
@@ -870,7 +870,7 @@ const AiEmployeesPage = () => {
               </Col>
               <Col xs={24} md={12}>
                 <Form.Item label="默认模型" name="defaultModel">
-                  <Input placeholder="例如：qwen-plus / qwen-plus-latest / deepseek-chat" />
+                  <Input placeholder="例如：qwen-plus / qwen-plus-latest / deepseek-v4-flash" />
                 </Form.Item>
               </Col>
             </Row>

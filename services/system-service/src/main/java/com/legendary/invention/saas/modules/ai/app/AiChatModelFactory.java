@@ -251,12 +251,12 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             AiVO.EmployeeDetailVO employee,
             HttpResponse<String> httpResponse
     ) throws IOException {
-        JsonNode root = objectMapper.readTree(httpResponse.body());
         if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
-            String errorMessage = extractErrorMessage(root);
+            String errorMessage = extractErrorMessage(httpResponse.body());
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用失败(" + httpResponse.statusCode() + "): " + errorMessage);
         }
 
+        JsonNode root = objectMapper.readTree(httpResponse.body());
         String replyText = extractReplyText(root);
         if (!StringUtils.hasText(replyText)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 返回内容为空");
@@ -283,8 +283,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
     ) throws IOException {
         if (httpResponse.statusCode() < 200 || httpResponse.statusCode() >= 300) {
             String body = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8);
-            JsonNode root = objectMapper.readTree(body);
-            String errorMessage = extractErrorMessage(root);
+            String errorMessage = extractErrorMessage(body);
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 调用失败(" + httpResponse.statusCode() + "): " + errorMessage);
         }
 
@@ -544,6 +543,17 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         return StringUtils.hasText(reasoningContent) ? reasoningContent : null;
     }
 
+    private String extractErrorMessage(String body) {
+        if (!StringUtils.hasText(body)) {
+            return "响应内容为空";
+        }
+        try {
+            return extractErrorMessage(objectMapper.readTree(body));
+        } catch (IOException ignored) {
+            return body.trim();
+        }
+    }
+
     private String extractErrorMessage(JsonNode root) {
         String message = root.path("error").path("message").asText(null);
         if (StringUtils.hasText(message)) {
@@ -562,9 +572,19 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务未配置 Base URL");
         }
 
+        String normalizedProvider = normalizeProvider(config.getProvider());
         String normalizedBaseUrl = stripTrailingSlash(baseUrl);
+        if ("deepseek".equals(normalizedProvider) && "https://api.deepseek.com/v1".equals(normalizedBaseUrl)) {
+            normalizedBaseUrl = "https://api.deepseek.com";
+        }
         if (normalizedBaseUrl.endsWith("/chat/completions")) {
             return normalizedBaseUrl;
+        }
+        if ("deepseek".equals(normalizedProvider)) {
+            if (normalizedBaseUrl.endsWith("/v1")) {
+                return normalizedBaseUrl + "/chat/completions";
+            }
+            return normalizedBaseUrl + "/chat/completions";
         }
         if (normalizedBaseUrl.endsWith("/v1")) {
             return normalizedBaseUrl + "/chat/completions";
@@ -579,7 +599,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         String normalizedProvider = normalizeProvider(provider);
         return switch (normalizedProvider) {
             case "openai", "openai-compatible" -> "https://api.openai.com/v1";
-            case "deepseek" -> "https://api.deepseek.com/v1";
+            case "deepseek" -> "https://api.deepseek.com";
             case "aliyun-bailian", "dashscope" -> "https://dashscope.aliyuncs.com/compatible-mode/v1";
             case "ollama" -> "http://localhost:11434/v1";
             default -> null;
@@ -593,15 +613,30 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
 
     private String resolveModel(AiLlmServiceConfig config, JsonNode root) {
         if (StringUtils.hasText(config.getDefaultModel())) {
-            return config.getDefaultModel().trim();
+            return normalizeModelForProvider(config, config.getDefaultModel().trim());
         }
         if (root != null) {
             String model = root.path("model").asText(null);
             if (StringUtils.hasText(model)) {
-                return model;
+                return normalizeModelForProvider(config, model);
             }
         }
         throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务未配置默认模型");
+    }
+
+    private String normalizeModelForProvider(AiLlmServiceConfig config, String model) {
+        if (!StringUtils.hasText(model)) {
+            return model;
+        }
+        if (!"deepseek".equals(normalizeProvider(config.getProvider()))) {
+            return model;
+        }
+        String normalizedModel = model.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedModel) {
+            case "deepseek-chat" -> "deepseek-v4-flash";
+            case "deepseek-reasoner" -> "deepseek-v4-pro";
+            default -> model.trim();
+        };
     }
 
     private int resolveTimeout(AiLlmServiceConfig config) {
