@@ -29,6 +29,7 @@ import type {
   AiConversationShareDetailRecord,
   AiChatResponseRecord,
   AiEmployeeRecord,
+  AiKnowledgeReferenceRecord,
   FileObjectRecord,
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
@@ -60,6 +61,7 @@ type ChatBubble = {
   thinkingContent?: string | null;
   thinkingLoading?: boolean;
   streamingContent?: string;
+  references?: AiKnowledgeReferenceRecord[] | null;
 };
 
 type ChatSession = {
@@ -1252,6 +1254,7 @@ const AiAssistantPage = () => {
                   attachments: [],
                   thinkingContent: response.thinkingContent,
                   streamingContent: response.replyText || '我已经收到你的消息。',
+                  references: response.references,
                 },
               ],
               updatedAt: dayjs(response.replyAt || undefined).isValid()
@@ -1546,6 +1549,15 @@ const AiAssistantPage = () => {
         footer: (
           <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
             {item.attachments.length ? <Space wrap>{item.attachments.map(renderAttachmentTag)}</Space> : null}
+            {item.references?.length ? (
+              <Space wrap>
+                {item.references.slice(0, 4).map((reference) => (
+                  <Tag key={reference.chunkId} color="cyan">
+                    {reference.documentTitle || reference.originalFileName || reference.knowledgeBaseName || '知识库引用'}
+                  </Tag>
+                ))}
+              </Space>
+            ) : null}
             <div className="saas-ai-assistant-bubble__actions">
               {createActions(activeSession, item, {
                 onCopy: handleCopyMessage,

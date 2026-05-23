@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.ai.dto;
 
+import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -146,6 +147,89 @@ public final class AiDTO {
         }
     }
 
+    public static class EmployeeKnowledgeBasesUpdateRequest {
+        private List<Long> knowledgeBaseIds;
+
+        public List<Long> getKnowledgeBaseIds() {
+            return knowledgeBaseIds;
+        }
+
+        public void setKnowledgeBaseIds(List<Long> knowledgeBaseIds) {
+            this.knowledgeBaseIds = knowledgeBaseIds;
+        }
+    }
+
+    public static class KnowledgeBaseUpsertRequest {
+        @NotBlank
+        private String name;
+        private String description;
+        private String status;
+        private String visibilityScope;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public String getVisibilityScope() {
+            return visibilityScope;
+        }
+
+        public void setVisibilityScope(String visibilityScope) {
+            this.visibilityScope = visibilityScope;
+        }
+    }
+
+    public static class KnowledgeSearchRequest {
+        @NotBlank
+        private String query;
+        private List<Long> knowledgeBaseIds;
+        private Integer limit;
+
+        public String getQuery() {
+            return query;
+        }
+
+        public void setQuery(String query) {
+            this.query = query;
+        }
+
+        public List<Long> getKnowledgeBaseIds() {
+            return knowledgeBaseIds;
+        }
+
+        public void setKnowledgeBaseIds(List<Long> knowledgeBaseIds) {
+            this.knowledgeBaseIds = knowledgeBaseIds;
+        }
+
+        public Integer getLimit() {
+            return limit;
+        }
+
+        public void setLimit(Integer limit) {
+            this.limit = limit;
+        }
+    }
+
     public static class LlmServiceUpsertRequest {
         @NotBlank
         private String provider;
@@ -251,6 +335,8 @@ public final class AiDTO {
         @Valid
         private List<ChatAttachmentItem> attachments;
         private List<String> skillCodes;
+        private List<Long> knowledgeBaseIds;
+        private List<AiVO.KnowledgeReferenceVO> knowledgeReferences;
         private Boolean confirmed;
 
         public Long getEmployeeId() {
@@ -291,6 +377,22 @@ public final class AiDTO {
 
         public void setSkillCodes(List<String> skillCodes) {
             this.skillCodes = skillCodes;
+        }
+
+        public List<Long> getKnowledgeBaseIds() {
+            return knowledgeBaseIds;
+        }
+
+        public void setKnowledgeBaseIds(List<Long> knowledgeBaseIds) {
+            this.knowledgeBaseIds = knowledgeBaseIds;
+        }
+
+        public List<AiVO.KnowledgeReferenceVO> getKnowledgeReferences() {
+            return knowledgeReferences;
+        }
+
+        public void setKnowledgeReferences(List<AiVO.KnowledgeReferenceVO> knowledgeReferences) {
+            this.knowledgeReferences = knowledgeReferences;
         }
 
         public Boolean getConfirmed() {

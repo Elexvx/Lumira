@@ -87,6 +87,7 @@ export default {
   'nav.system.verification': '验证管理',
   'nav.system.notifications': '通知中心',
   'nav.system.aiEmployees': '数字员工',
+  'nav.system.aiKnowledge': '知识库',
   'nav.system.monitoring.root': '系统监控',
   'nav.system.monitoring.service': '服务监控',
   'nav.system.monitoring.redis': 'Redis监控',

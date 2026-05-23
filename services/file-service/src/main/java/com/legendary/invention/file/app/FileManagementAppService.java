@@ -172,7 +172,7 @@ public class FileManagementAppService {
         if (DocumentUploadService.supports(originalFilename, contentType)) {
             return uploadDocument(currentUser, file, category, tags, remark);
         }
-        throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT 文件");
+        throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 文件");
     }
 
     @Transactional

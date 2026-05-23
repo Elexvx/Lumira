@@ -448,6 +448,22 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
                 builder.append("\n- fileId=").append(attachment.getFileId());
             }
         }
+        if (request.getKnowledgeReferences() != null && !request.getKnowledgeReferences().isEmpty()) {
+            builder.append("\n\n已授权知识库参考资料：");
+            int index = 1;
+            for (AiVO.KnowledgeReferenceVO reference : request.getKnowledgeReferences()) {
+                if (reference == null || !StringUtils.hasText(reference.getContent())) {
+                    continue;
+                }
+                builder.append("\n\n[资料").append(index).append("] ")
+                        .append(safeText(reference.getKnowledgeBaseName(), "知识库"))
+                        .append(" / ")
+                        .append(safeText(reference.getDocumentTitle(), reference.getOriginalFileName()));
+                builder.append("\n").append(reference.getContent().trim());
+                index++;
+            }
+            builder.append("\n\n请优先基于上述资料回答；如果资料不足，请明确说明未在知识库中找到充分依据。");
+        }
         return builder.toString().trim();
     }
 

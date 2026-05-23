@@ -32,6 +32,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     private final AiConversationService aiConversationService;
     private final AiToolRegistry aiToolRegistry;
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
+    private final AiKnowledgeBaseAppService aiKnowledgeBaseAppService;
 
     DefaultAiEmployeeRuntimeService(
             MyBatisQueryOperations jdbcTemplate,
@@ -39,7 +40,8 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             AiChatModelFactory aiChatModelFactory,
             AiConversationService aiConversationService,
             AiToolRegistry aiToolRegistry,
-            AiSkillPermissionChecker aiSkillPermissionChecker
+            AiSkillPermissionChecker aiSkillPermissionChecker,
+            AiKnowledgeBaseAppService aiKnowledgeBaseAppService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.aiLlmServiceConfigProvider = aiLlmServiceConfigProvider;
@@ -47,6 +49,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         this.aiConversationService = aiConversationService;
         this.aiToolRegistry = aiToolRegistry;
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
+        this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
     }
 
     @Override
@@ -84,6 +87,9 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
                 .orElse(null);
         List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
+        emit(onEvent, AiVO.ChatStreamEventVO.status("正在检索知识库"));
+        List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(tenantId, employee.getId(), request);
+        request.setKnowledgeReferences(references);
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用模型"));
         AiVO.ChatResponseVO response = onEvent == null
                 ? aiChatModelFactory.create(config).chat(request, employee, skills)
@@ -95,6 +101,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                         thinking -> emit(onEvent, AiVO.ChatStreamEventVO.thinking(thinking))
                 );
         emit(onEvent, AiVO.ChatStreamEventVO.status("正在保存 AI 回复"));
+        response.setReferences(references);
         response.setConversationId(conversationId);
         if (response.getConversationCode() == null) {
             response.setConversationCode(queryConversationCode(tenantId, conversationId));
@@ -102,6 +109,26 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
         recordToolAuditLog(tenantId, employee.getId(), conversationId, request, response, confirmed);
         return response;
+    }
+
+    private List<AiVO.KnowledgeReferenceVO> resolveKnowledgeReferences(Long tenantId, Long employeeId, AiDTO.ChatRequest request) {
+        if (!shouldUseKnowledge(request)) {
+            return List.of();
+        }
+        if (request.getKnowledgeBaseIds() != null && !request.getKnowledgeBaseIds().isEmpty()) {
+            return aiKnowledgeBaseAppService.retrieve(tenantId, request.getMessage(), request.getKnowledgeBaseIds(), 6);
+        }
+        return aiKnowledgeBaseAppService.retrieveForEmployee(tenantId, employeeId, request.getMessage(), 6);
+    }
+
+    private boolean shouldUseKnowledge(AiDTO.ChatRequest request) {
+        if (request.getKnowledgeBaseIds() != null && !request.getKnowledgeBaseIds().isEmpty()) {
+            return true;
+        }
+        if (request.getSkillCodes() == null || request.getSkillCodes().isEmpty()) {
+            return true;
+        }
+        return request.getSkillCodes().contains("knowledge.search");
     }
 
     private void emit(Consumer<AiVO.ChatStreamEventVO> onEvent, AiVO.ChatStreamEventVO event) {

@@ -82,6 +82,7 @@ export default {
   'nav.system.verification': 'Verification',
   'nav.system.notifications': 'Notification Center',
   'nav.system.aiEmployees': 'AI Employees',
+  'nav.system.aiKnowledge': 'Knowledge Base',
   'nav.system.monitoring.root': 'Monitoring',
   'nav.system.monitoring.service': 'Service Monitoring',
   'nav.system.monitoring.redis': 'Redis Monitoring',

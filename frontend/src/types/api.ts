@@ -417,6 +417,52 @@ export interface AiConversationExportRecord {
   content: string;
 }
 
+export interface AiKnowledgeBaseRecord {
+  id: number;
+  tenantId?: number | null;
+  kbCode?: string | null;
+  name: string;
+  description?: string | null;
+  status: string;
+  visibilityScope?: string | null;
+  documentCount?: number | null;
+  chunkCount?: number | null;
+  createdBy?: number | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface AiKnowledgeDocumentRecord {
+  id: number;
+  tenantId?: number | null;
+  knowledgeBaseId: number;
+  fileId?: number | null;
+  title: string;
+  originalFileName?: string | null;
+  fileExtension?: string | null;
+  mimeType?: string | null;
+  fileSizeBytes?: number | null;
+  status: string;
+  parseError?: string | null;
+  extractedCharCount?: number | null;
+  chunkCount?: number | null;
+  createdBy?: number | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface AiKnowledgeReferenceRecord {
+  chunkId: number;
+  knowledgeBaseId: number;
+  knowledgeBaseName?: string | null;
+  documentId: number;
+  documentTitle?: string | null;
+  fileId?: number | null;
+  originalFileName?: string | null;
+  chunkIndex?: number | null;
+  content: string;
+}
+
 export interface AiLlmServiceRecord {
   id: number;
   tenantId?: number | null;
@@ -448,6 +494,7 @@ export interface AiChatResponseRecord {
   replyRole?: string | null;
   provider?: string | null;
   model?: string | null;
+  references?: AiKnowledgeReferenceRecord[] | null;
   replyAt?: string | null;
 }
 
@@ -488,6 +535,7 @@ export interface AiChatRequestPayload {
     fileId: number;
   }> | null;
   skillCodes?: string[];
+  knowledgeBaseIds?: number[];
   confirmed?: boolean | null;
 }
 
