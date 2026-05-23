@@ -7,7 +7,6 @@ import type { MenuRecord } from '@/types/api';
 import type { MenuTreeRecord } from '@/pages/settings/menus/treeUtils';
 
 interface BuildMenuColumnsOptions {
-  isDesktop: boolean;
   isMobile: boolean;
   canReorderMenus: boolean;
   expandedRowKeys: number[];
@@ -22,7 +21,6 @@ interface BuildMenuColumnsOptions {
 }
 
 export const buildMenuColumns = ({
-  isDesktop,
   isMobile,
   canReorderMenus,
   expandedRowKeys,
@@ -152,7 +150,7 @@ export const buildMenuColumns = ({
   {
     title: '操作',
     valueType: 'option',
-    fixed: isDesktop ? 'right' : undefined,
+    fixed: isMobile ? undefined : 'right',
     width: 180,
     render: (_, record) => {
       const readonly = isReadonlyMenu(record);

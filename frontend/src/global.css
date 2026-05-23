@@ -134,7 +134,8 @@ body,
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
+  overflow-x: visible;
+  overflow-y: visible;
   overscroll-behavior-x: contain;
 }
 
@@ -179,14 +180,15 @@ body,
 }
 
 .saas-table-wrap .ant-table-body {
-  max-height: clamp(280px, calc(100dvh - 392px), 560px);
-  overflow: auto;
-  overscroll-behavior: contain;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
 }
 
 @media (max-width: 767px) {
   .saas-table-wrap .ant-table-body {
-    max-height: clamp(240px, calc(100dvh - 304px), 420px);
+    max-height: none;
   }
 }
 
