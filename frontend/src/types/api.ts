@@ -425,6 +425,7 @@ export interface AiKnowledgeBaseRecord {
   description?: string | null;
   status: string;
   visibilityScope?: string | null;
+  ownerUserId?: number | null;
   documentCount?: number | null;
   chunkCount?: number | null;
   createdBy?: number | null;

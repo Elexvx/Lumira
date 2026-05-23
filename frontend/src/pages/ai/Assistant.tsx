@@ -1711,7 +1711,7 @@ const AiAssistantPage = () => {
           title="分享链接不可用"
           subTitle="这条分享链接不存在、已过期，或者已被撤销。"
           extra={
-            <Button type="primary" onClick={() => history.push('/ai')}>
+            <Button type="primary" onClick={() => history.push('/ai/assistant')}>
               返回 AI 助手
             </Button>
           }
@@ -1731,7 +1731,7 @@ const AiAssistantPage = () => {
       }}
       extra={
         isShareMode ? (
-          <Button icon={<RobotOutlined />} onClick={() => history.push('/ai')}>
+          <Button icon={<RobotOutlined />} onClick={() => history.push('/ai/assistant')}>
             返回 AI 助手
           </Button>
         ) : null

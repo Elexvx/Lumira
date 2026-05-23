@@ -162,11 +162,12 @@ public class AiController {
     public ApiResponse<PageResponse<AiVO.KnowledgeBaseVO>> knowledgeBases(
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "scope", required = false) String scope,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("ai:knowledge:view");
-        return ApiResponse.success(aiKnowledgeBaseAppService.listKnowledgeBases(currentUser(), keyword, status, pageNo, pageSize), TraceContext.getRequestId());
+        return ApiResponse.success(aiKnowledgeBaseAppService.listKnowledgeBases(currentUser(), keyword, status, scope, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/knowledge-bases/{id}")

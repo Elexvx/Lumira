@@ -8,7 +8,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Empty, Form, Input, Modal, Select, Space, Tag, Typography, Upload, message } from 'antd';
+import { Button, Drawer, Empty, Form, Input, Modal, Select, Space, Tabs, Tag, Typography, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
@@ -28,6 +28,23 @@ const STATUS_OPTIONS = [
   { label: '启用', value: 'ENABLED' },
   { label: '停用', value: 'DISABLED' },
 ];
+
+const SCOPE_TABS = [
+  { key: 'ALL', label: '全部可用' },
+  { key: 'OWNED', label: '我的知识库' },
+  { key: 'SHARED', label: '共享给我' },
+  { key: 'TENANT', label: '企业知识库' },
+];
+
+const visibilityTag = (scope?: string | null) => {
+  if (scope === 'TENANT') {
+    return <Tag color="purple">企业</Tag>;
+  }
+  if (scope === 'TEAM') {
+    return <Tag color="blue">团队</Tag>;
+  }
+  return <Tag color="green">个人</Tag>;
+};
 
 const statusTag = (status?: string | null) => {
   if (status === 'READY') {
@@ -61,12 +78,21 @@ const AiKnowledgePage = () => {
   const [uploading, setUploading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<AiKnowledgeReferenceRecord[]>([]);
+  const [activeScope, setActiveScope] = useState('ALL');
 
   const requestOptions = useMemo(() => ({ autoRedirectOnUnauthorized: false }), []);
+  const canShareKnowledge = actionPermission.can(['*', 'ai:knowledge:share']);
+  const visibilityOptions = useMemo(
+    () => [
+      { label: '个人知识库', value: 'PERSONAL' },
+      ...(canShareKnowledge ? [{ label: '企业知识库', value: 'TENANT' }] : []),
+    ],
+    [canShareKnowledge],
+  );
 
   const openCreateDrawer = () => {
     setEditingRecord(null);
-    form.setFieldsValue({ status: 'ENABLED', visibilityScope: 'TENANT' });
+    form.setFieldsValue({ status: 'ENABLED', visibilityScope: 'PERSONAL' });
     setDrawerOpen(true);
   };
 
@@ -76,7 +102,7 @@ const AiKnowledgePage = () => {
       name: record.name,
       description: record.description,
       status: record.status || 'ENABLED',
-      visibilityScope: record.visibilityScope || 'TENANT',
+      visibilityScope: record.visibilityScope || 'PERSONAL',
     });
     setDrawerOpen(true);
   };
@@ -201,6 +227,7 @@ const AiKnowledgePage = () => {
       ),
     },
     { title: '状态', dataIndex: 'status', width: 100, valueEnum: { ENABLED: { text: '启用' }, DISABLED: { text: '停用' } }, render: (_, record) => statusTag(record.status) },
+    { title: '范围', dataIndex: 'visibilityScope', width: 100, search: false, render: (_, record) => visibilityTag(record.visibilityScope) },
     { title: '文档数', dataIndex: 'documentCount', width: 100, search: false, renderText: formatNumber },
     { title: '切片数', dataIndex: 'chunkCount', width: 100, search: false, renderText: formatNumber },
     { title: '说明', dataIndex: 'description', ellipsis: true, search: false },
@@ -243,6 +270,15 @@ const AiKnowledgePage = () => {
 
   return (
     <ManagementPage title="知识库" content={null}>
+      <Tabs
+        activeKey={activeScope}
+        items={SCOPE_TABS}
+        onChange={(key) => {
+          setActiveScope(key);
+          setSelectedKnowledgeBase(null);
+          actionRef.current?.reload();
+        }}
+      />
       <ManagementTable<AiKnowledgeBaseRecord>
         rowKey="id"
         actionRef={actionRef}
@@ -251,7 +287,7 @@ const AiKnowledgePage = () => {
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
           const result = await aiService.knowledgeBases(
-            { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, ...rest },
+            { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, scope: activeScope, ...rest },
             requestOptions,
           );
           return adaptPageResult(result);
@@ -287,8 +323,8 @@ const AiKnowledgePage = () => {
           <Form.Item name="status" label="状态" rules={[{ required: true }]}>
             <Select options={STATUS_OPTIONS} />
           </Form.Item>
-          <Form.Item name="visibilityScope" label="可见范围" initialValue="TENANT">
-            <Select options={[{ label: '租户内', value: 'TENANT' }, { label: '仅创建者', value: 'PRIVATE' }]} />
+          <Form.Item name="visibilityScope" label="可见范围" initialValue="PERSONAL">
+            <Select options={visibilityOptions} />
           </Form.Item>
           <Form.Item name="description" label="说明">
             <Input.TextArea rows={4} maxLength={1024} />

@@ -122,7 +122,7 @@ public final class PlatformModuleCatalog {
                     "system-service",
                     "/ai",
                     List.of("/api/ai/**"),
-                    List.of("ai:view", "ai:chat:send", "ai:knowledge:view", "ai:knowledge:query"),
+                    List.of("ai:view", "ai:chat:send", "ai:knowledge:view", "ai:knowledge:query", "ai:knowledge:share"),
                     List.of("system", "file")
             ),
             planned(

@@ -132,9 +132,17 @@ SELECT 1001, m.id, 'settings.ai-knowledge', '知识库', 'MENU', '/settings/ai-k
 FROM `sys_menu` m
 WHERE m.tenant_id = 1001
   AND m.menu_code = 'settings.root'
-  AND NOT EXISTS (
-    SELECT 1 FROM `sys_menu` existing
-    WHERE existing.tenant_id = 1001
-      AND existing.menu_code = 'settings.ai-knowledge'
-  )
-LIMIT 1;
+LIMIT 1
+ON DUPLICATE KEY UPDATE
+  `parent_id` = VALUES(`parent_id`),
+  `menu_name` = VALUES(`menu_name`),
+  `menu_type` = VALUES(`menu_type`),
+  `path` = VALUES(`path`),
+  `component` = VALUES(`component`),
+  `icon` = VALUES(`icon`),
+  `sort_no` = VALUES(`sort_no`),
+  `permission_key` = VALUES(`permission_key`),
+  `status` = VALUES(`status`),
+  `updated_by` = VALUES(`updated_by`),
+  `updated_at` = CURRENT_TIMESTAMP,
+  `deleted` = 0;
