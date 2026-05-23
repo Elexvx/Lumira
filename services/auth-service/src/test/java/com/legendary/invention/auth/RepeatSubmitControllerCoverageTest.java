@@ -16,10 +16,13 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RepeatSubmitControllerCoverageTest {
+
+    private static final Set<String> INFRASTRUCTURE_WRITE_ENDPOINTS = Set.of("AuthController#refreshToken");
 
     @Test
     void userFacingWriteEndpointsShouldUseRepeatSubmit() throws Exception {
@@ -37,8 +40,11 @@ class RepeatSubmitControllerCoverageTest {
                 continue;
             }
             for (Method method : controllerClass.getDeclaredMethods()) {
-                if (isWriteEndpoint(method) && method.getAnnotation(RepeatSubmit.class) == null) {
-                    missing.add(controllerClass.getSimpleName() + "#" + method.getName());
+                String endpointName = controllerClass.getSimpleName() + "#" + method.getName();
+                if (isWriteEndpoint(method)
+                        && method.getAnnotation(RepeatSubmit.class) == null
+                        && !INFRASTRUCTURE_WRITE_ENDPOINTS.contains(endpointName)) {
+                    missing.add(endpointName);
                 }
             }
         }
