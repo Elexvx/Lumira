@@ -11,33 +11,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SystemRouteCatalogTest {
 
     @Test
-    void builtinPermissionMenus_shouldContainSiteManagementRoutes() {
+    void builtinPermissionMenus_shouldContainCoreRoutes() {
         List<SystemVO.MenuVO> flattenedMenus = flatten(SystemRouteCatalog.buildBuiltinPermissionMenus());
 
         assertThat(flattenedMenus)
                 .extracting(SystemVO.MenuVO::getMenuCode)
                 .contains(
-                        "site.root",
-                        "site.settings",
-                        "site.navigation",
-                        "site.carousels",
-                        "site.contents",
-                        "site.submissions",
                         "dashboard.home",
+                        "ai.root",
+                        "settings.root",
                         "user.center.personal"
-                );
+                )
+                .doesNotContain("site.root");
         assertThat(flattenedMenus)
                 .extracting(SystemVO.MenuVO::getPath)
                 .contains(
                         "/dashboard/home",
-                        "/site",
-                        "/site/settings",
-                        "/site/navigation",
-                        "/site/carousels",
-                        "/site/contents",
-                        "/site/submissions",
+                        "/ai",
+                        "/settings",
                         "/user-center/personal-center"
-                );
+                )
+                .doesNotContain("/site", "/site/settings", "/site/carousels");
         assertThat(flattenedMenus)
                 .filteredOn(menu -> "user.center.personal".equals(menu.getMenuCode()))
                 .singleElement()
@@ -57,13 +51,13 @@ class SystemRouteCatalogTest {
                     assertThat(SystemRouteCatalog.isBuiltInMenu(menu)).isTrue();
                 });
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/dashboard/home")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/carousels")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site")).isFalse();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isFalse();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/user-center/permissions")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/Home")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/settings")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/carousels")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/settings")).isFalse();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/iam/Overview")).isTrue();
     }
 

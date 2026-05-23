@@ -31,15 +31,7 @@ VALUES
   (1001, 'system:tenant:update', '编辑租户', 'system', 'CORE', 0, 0, 0),
   (1001, 'system:tenant:delete', '删除租户', 'system', 'CORE', 0, 0, 0),
   (1001, 'system:menu:delete', '删除菜单', 'system', 'CORE', 0, 0, 0),
-  (1001, 'system:dict:delete', '删除字典', 'system', 'CORE', 0, 0, 0),
-  (1001, 'site:page', '查看官网页面', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:page:create', '新增官网页面', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:page:update', '编辑官网页面', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:page:publish', '发布官网页面', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:form', '管理官网表单', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:form:create', '新增官网表单', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:form:update', '编辑官网表单', 'site', 'CORE', 0, 0, 0),
-  (1001, 'site:form:delete', '删除官网表单', 'site', 'CORE', 0, 0, 0)
+  (1001, 'system:dict:delete', '删除字典', 'system', 'CORE', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
   `permission_name` = VALUES(`permission_name`),
   `permission_group` = VALUES(`permission_group`),
@@ -56,15 +48,7 @@ VALUES
   (1001, 2001, 'system:tenant:update', 0, 0, 0),
   (1001, 2001, 'system:tenant:delete', 0, 0, 0),
   (1001, 2001, 'system:menu:delete', 0, 0, 0),
-  (1001, 2001, 'system:dict:delete', 0, 0, 0),
-  (1001, 2001, 'site:page', 0, 0, 0),
-  (1001, 2001, 'site:page:create', 0, 0, 0),
-  (1001, 2001, 'site:page:update', 0, 0, 0),
-  (1001, 2001, 'site:page:publish', 0, 0, 0),
-  (1001, 2001, 'site:form', 0, 0, 0),
-  (1001, 2001, 'site:form:create', 0, 0, 0),
-  (1001, 2001, 'site:form:update', 0, 0, 0),
-  (1001, 2001, 'site:form:delete', 0, 0, 0)
+  (1001, 2001, 'system:dict:delete', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
   `updated_by` = VALUES(`updated_by`),
   `updated_at` = CURRENT_TIMESTAMP,
@@ -72,9 +56,7 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO `sys_menu` (`id`, `tenant_id`, `parent_id`, `menu_code`, `menu_name`, `menu_type`, `path`, `component`, `icon`, `sort_no`, `permission_key`, `status`, `created_by`, `updated_by`, `deleted`)
 VALUES
-  (3032, 1001, 3002, 'settings.tenants', '租户管理', 'MENU', '/settings/tenants', '@/pages/settings/tenants', 'ApartmentOutlined', 0, 'system:tenant:view', 'ENABLED', 0, 0, 0),
-  (4049, 1001, 4041, 'site.pages', '页面管理', 'MENU', '/site/pages', '@/pages/site/pages', 'LayoutOutlined', 3, 'site:page', 'ENABLED', 0, 0, 0),
-  (4053, 1001, 4041, 'site.forms', '表单管理', 'MENU', '/site/forms', '@/pages/site/forms', 'FormOutlined', 5, 'site:form', 'ENABLED', 0, 0, 0)
+  (3032, 1001, 3002, 'settings.tenants', '租户管理', 'MENU', '/settings/tenants', '@/pages/settings/tenants', 'ApartmentOutlined', 0, 'system:tenant:view', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `menu_name` = VALUES(`menu_name`),

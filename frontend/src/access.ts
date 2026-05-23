@@ -39,7 +39,6 @@ const SYSTEM_MONITORING_PERMISSIONS = [
 ];
 
 const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
-const SITE_PERMISSIONS = ['site:view', 'site:settings', 'site:navigation', 'site:carousel', 'site:page', 'site:content', 'site:form', 'site:submission'];
 const AI_PERMISSIONS = ['ai:chat:send', 'ai:knowledge:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser }) {
@@ -97,14 +96,6 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitAiEmployees: isLogin && hasPermission(permissions, 'ai:view'),
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),
     canVisitAiAssistant: isLogin && hasPermission(permissions, 'ai:chat:send'),
-    canVisitSite: isLogin && SITE_PERMISSIONS.some((item) => hasPermission(permissions, item)),
-    canVisitSiteSettings: isLogin && hasPermission(permissions, 'site:settings'),
-    canVisitSiteNavigation: isLogin && hasPermission(permissions, 'site:navigation'),
-    canVisitSiteCarousels: isLogin && hasPermission(permissions, 'site:carousel'),
-    canVisitSitePages: isLogin && hasPermission(permissions, 'site:page'),
-    canVisitSiteContents: isLogin && hasPermission(permissions, 'site:content'),
-    canVisitSiteForms: isLogin && hasPermission(permissions, 'site:form'),
-    canVisitSiteSubmissions: isLogin && hasPermission(permissions, 'site:submission'),
     canVisitPluginRuntime: isLogin,
   };
 }

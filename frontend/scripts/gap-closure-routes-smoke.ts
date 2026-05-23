@@ -4,8 +4,8 @@ import { backendRouteMeta, realPageRouteMetaMap, realPageRoutePaths } from '../s
 
 const expectedRoutes = [
   ['/settings/tenants', 'nav.system.tenants'],
-  ['/site/pages', 'nav.site.pages'],
-  ['/site/forms', 'nav.site.forms'],
+  ['/settings/menus', 'nav.system.menus'],
+  ['/settings/localization', 'nav.localization.root'],
 ] as const;
 
 for (const [path, name] of expectedRoutes) {

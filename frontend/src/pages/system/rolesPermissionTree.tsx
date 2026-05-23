@@ -30,7 +30,6 @@ export interface RolePermissionDisplayGroup {
 const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType'] => node.nodeType || 'PAGE';
 
 const CATALOG_LABEL_BY_PERMISSION_KEY = new Map<string, string>([
-  ['site:view', 'nav.site.root'],
   ['user:center:view', 'nav.user.center'],
   ['profile:view', 'nav.user.personalCenter'],
 ]);
