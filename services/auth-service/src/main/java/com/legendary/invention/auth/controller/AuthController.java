@@ -111,7 +111,6 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
-    @RepeatSubmit
     public ApiResponse<RefreshTokenResponseDTO> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         return ApiResponse.success(authAppService.refreshToken(request), TraceContext.getRequestId());
     }
