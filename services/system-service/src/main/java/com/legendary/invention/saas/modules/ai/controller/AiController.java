@@ -153,6 +153,7 @@ public class AiController {
     }
 
     @PostMapping("/llm-services/test")
+    @RepeatSubmit
     public ApiResponse<AiVO.LlmServiceTestResultVO> testLlmService(@RequestBody AiDTO.LlmServiceTestRequest request) {
         requireAny("ai:llm:create", "ai:llm:update");
         return ApiResponse.success(aiManagementAppService.testLlmService(currentUser(), request), TraceContext.getRequestId());

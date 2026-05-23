@@ -23,15 +23,11 @@ class PlatformModuleCatalogTest {
     }
 
     @Test
-    void shouldMarkFutureSceneModulesAsPlanned() {
+    void shouldNotExposeRemovedSceneModules() {
         Map<String, PlatformModuleVO> modules = PlatformModuleCatalog.listModules().stream()
                 .collect(Collectors.toMap(PlatformModuleVO::getModuleCode, item -> item));
 
-        assertThat(modules.get("journal").getModuleType()).isEqualTo("SCENE");
-        assertThat(modules.get("journal").getLifecycleStatus()).isEqualTo("PLANNED");
-        assertThat(modules.get("journal").isBuiltin()).isFalse();
-        assertThat(modules.get("competition").getDependencies())
-                .contains("form", "submission", "file", "message", "site");
+        assertThat(modules).doesNotContainKeys("journal", "competition");
     }
 
     @Test
@@ -41,17 +37,17 @@ class PlatformModuleCatalogTest {
 
         assertThat(modules.get("site").isDependencySatisfied()).isTrue();
         assertThat(modules.get("site").isReadyToEnable()).isTrue();
-        assertThat(modules.get("journal").isDependencySatisfied()).isFalse();
-        assertThat(modules.get("journal").getInactiveDependencies()).contains("form", "submission");
-        assertThat(modules.get("journal").getReadinessIssues()).isNotEmpty();
+        assertThat(modules.get("submission").isDependencySatisfied()).isFalse();
+        assertThat(modules.get("submission").getInactiveDependencies()).contains("form");
+        assertThat(modules.get("submission").getReadinessIssues()).isNotEmpty();
     }
 
     @Test
     void shouldFindSingleModuleWithReadinessDetails() {
-        PlatformModuleVO module = PlatformModuleCatalog.findModule("competition").orElseThrow();
+        PlatformModuleVO module = PlatformModuleCatalog.findModule("submission").orElseThrow();
 
-        assertThat(module.getModuleCode()).isEqualTo("competition");
-        assertThat(module.getInactiveDependencies()).contains("form", "submission");
+        assertThat(module.getModuleCode()).isEqualTo("submission");
+        assertThat(module.getInactiveDependencies()).contains("form");
         assertThat(PlatformModuleCatalog.findModule("missing")).isEmpty();
     }
 }

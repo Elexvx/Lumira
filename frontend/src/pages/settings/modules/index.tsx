@@ -552,12 +552,12 @@ const ModulesPage = () => {
               <Row gutter={12}>
                 <Col xs={24} md={12}>
                   <Form.Item name="moduleCode" label="模块编码" rules={[{ required: true, message: '请输入模块编码' }]}>
-                    <Input placeholder="journal" />
+                    <Input placeholder="custom-module" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
                   <Form.Item name="moduleName" label="模块名称" rules={[{ required: true, message: '请输入模块名称' }]}>
-                    <Input placeholder="期刊场景" />
+                    <Input placeholder="自定义模块" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
@@ -582,7 +582,7 @@ const ModulesPage = () => {
                 </Col>
                 <Col xs={24}>
                   <Form.Item name="adminRoutePath" label="管理入口">
-                    <Input placeholder="/journal" />
+                    <Input placeholder="/custom-module" />
                   </Form.Item>
                 </Col>
                 <Col xs={24}>
@@ -597,12 +597,12 @@ const ModulesPage = () => {
                 </Col>
                 <Col xs={24}>
                   <Form.Item name="apiPrefixesText" label="API 前缀">
-                    <Input.TextArea rows={2} placeholder="/api/v1/journal/**" />
+                    <Input.TextArea rows={2} placeholder="/api/v1/custom-module/**" />
                   </Form.Item>
                 </Col>
                 <Col xs={24}>
                   <Form.Item name="permissionKeysText" label="权限声明">
-                    <Input.TextArea rows={3} placeholder={'journal:view\njournal:submission:view'} />
+                    <Input.TextArea rows={3} placeholder={'custom-module:view\ncustom-module:manage'} />
                   </Form.Item>
                 </Col>
                 <Col xs={24}>

@@ -13,14 +13,15 @@ class StaticPlatformModuleRegistryTest {
     void shouldExposeCatalogThroughRegistryContract() {
         assertThat(registry.listModules())
                 .extracting(PlatformModuleVO::getModuleCode)
-                .contains("system", "site", "journal", "competition");
+                .contains("system", "site", "form", "submission")
+                .doesNotContain("journal", "competition");
     }
 
     @Test
     void shouldFindModuleThroughRegistryContract() {
-        assertThat(registry.findModule("journal"))
+        assertThat(registry.findModule("submission"))
                 .hasValueSatisfying(module -> {
-                    assertThat(module.getModuleType()).isEqualTo("SCENE");
+                    assertThat(module.getModuleType()).isEqualTo("CAPABILITY");
                     assertThat(module.getReadinessIssues()).isNotEmpty();
                 });
         assertThat(registry.findModule("missing")).isEmpty();

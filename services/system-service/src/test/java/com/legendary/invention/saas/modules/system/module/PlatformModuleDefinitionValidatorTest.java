@@ -25,7 +25,7 @@ class PlatformModuleDefinitionValidatorTest {
 
     @Test
     void shouldReportDuplicateAndMissingDependency() {
-        SystemDTO.ModuleValidationRequest request = request("journal", "SCENE", "PLANNED", List.of("missing-module"));
+        SystemDTO.ModuleValidationRequest request = request("system", "FOUNDATION", "ENABLED", List.of("missing-module"));
 
         PlatformModuleValidationVO result = validator.validate(request, PlatformModuleCatalog.listModules());
 
@@ -37,13 +37,13 @@ class PlatformModuleDefinitionValidatorTest {
 
     @Test
     void shouldReportCycleDependency() {
-        SystemDTO.ModuleValidationRequest request = request("system", "FOUNDATION", "ENABLED", List.of("journal"));
+        SystemDTO.ModuleValidationRequest request = request("system", "FOUNDATION", "ENABLED", List.of("site"));
         request.setOverwriteExisting(true);
 
         PlatformModuleValidationVO result = validator.validate(request, PlatformModuleCatalog.listModules());
 
         assertThat(result.isValid()).isFalse();
-        assertThat(result.getCyclePath()).contains("system", "journal");
+        assertThat(result.getCyclePath()).contains("system", "site");
         assertThat(result.getIssues()).anySatisfy(issue -> assertThat(issue).contains("循环依赖"));
     }
 
