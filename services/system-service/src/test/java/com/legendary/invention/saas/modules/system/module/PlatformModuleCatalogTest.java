@@ -16,9 +16,8 @@ class PlatformModuleCatalogTest {
                 .collect(Collectors.toMap(PlatformModuleVO::getModuleCode, item -> item));
 
         assertThat(modules.keySet())
-                .contains("system", "auth", "file", "message", "approval", "evaluation", "site", "plugin");
+                .contains("system", "auth", "file", "message", "site", "plugin");
         assertThat(modules.get("system").getModuleType()).isEqualTo("FOUNDATION");
-        assertThat(modules.get("evaluation").getModuleType()).isEqualTo("CAPABILITY");
         assertThat(modules.get("site").getDependencies()).contains("file", "message");
         assertThat(modules.get("plugin").getApiPrefixes()).contains("/api/v1/plugins/**", "/api/p/{pluginCode}/**");
     }
@@ -32,7 +31,7 @@ class PlatformModuleCatalogTest {
         assertThat(modules.get("journal").getLifecycleStatus()).isEqualTo("PLANNED");
         assertThat(modules.get("journal").isBuiltin()).isFalse();
         assertThat(modules.get("competition").getDependencies())
-                .contains("form", "submission", "evaluation", "approval");
+                .contains("form", "submission", "file", "message", "site");
     }
 
     @Test

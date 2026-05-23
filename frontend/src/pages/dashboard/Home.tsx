@@ -1,6 +1,6 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Col, Empty, List, Row, Skeleton, Space, Statistic, Table, Tag, Tabs, Typography } from 'antd';
+import { Avatar, Col, Empty, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { buildTableScroll } from '@/features/table/proTable';
 import { dashboardService } from '@/services/dashboard';
@@ -179,8 +179,6 @@ const DashboardHomePage = () => {
   const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '当前用户';
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
-  const taskSummary = summary?.taskSummary;
-  const latestPendingTasks = taskSummary?.latestPending || [];
   const loginLogColumns = buildLoginLogColumns(responsive.isMobile);
   const operationLogColumns = buildOperationLogColumns('操作记录', responsive.isMobile);
   const pageContainerToken = {
@@ -211,30 +209,6 @@ const DashboardHomePage = () => {
               </Space>
             </Col>
           </Row>
-        </ProCard>
-
-        <ProCard variant="outlined" title="待办事项" className="saas-dashboard-home__todo">
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Row gutter={[16, 16]}>
-              <Col xs={12} md={6}><Statistic title="全部待办" value={taskSummary?.pendingCount || 0} /></Col>
-              <Col xs={12} md={6}><Statistic title="待审批" value={taskSummary?.approvalCount || 0} /></Col>
-              <Col xs={12} md={6}><Statistic title="待评分" value={taskSummary?.evaluationCount || 0} /></Col>
-              <Col xs={12} md={6}><Statistic title="待复核" value={taskSummary?.reviewCount || 0} /></Col>
-            </Row>
-            {latestPendingTasks.length ? (
-              <List
-                dataSource={latestPendingTasks}
-                renderItem={(item) => (
-                  <List.Item>
-                    <List.Item.Meta title={item.title} description={`${item.businessType} · ${formatDateTime(item.createTime)}`} />
-                    <Tag color="blue">{item.taskType}</Tag>
-                  </List.Item>
-                )}
-              />
-            ) : (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待办事项" />
-            )}
-          </Space>
         </ProCard>
 
         <Row gutter={[16, 16]} align="stretch">

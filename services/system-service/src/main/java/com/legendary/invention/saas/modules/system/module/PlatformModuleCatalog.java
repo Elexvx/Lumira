@@ -65,36 +65,6 @@ public final class PlatformModuleCatalog {
                     List.of("localization:view", "localization:publish")
             ),
             capability(
-                    "approval",
-                    "审批能力",
-                    "为投稿、报名、发布、配置变更等场景提供模板、实例、任务和审批记录。",
-                    "system-service",
-                    "/approvals",
-                    List.of("/api/approvals/**"),
-                    List.of("approval:view", "approval:template:manage", "approval:submit", "approval:approve"),
-                    List.of("system", "message")
-            ),
-            capability(
-                    "evaluation",
-                    "评审能力",
-                    "为比赛作品、期刊稿件、项目评分等场景提供模板、评分任务、复核和归档结果。",
-                    "system-service",
-                    "/evaluations",
-                    List.of("/api/evaluations/**"),
-                    List.of("evaluation:view", "evaluation:template:manage", "evaluation:create", "evaluation:score", "evaluation:review"),
-                    List.of("system", "message")
-            ),
-            capability(
-                    "task",
-                    "任务中心",
-                    "汇聚待办、已办和跨模块任务入口，并与调度执行器配合处理后台任务。",
-                    "system-service/job-executor",
-                    "/tasks",
-                    List.of("/api/tasks/**", "/internal/jobs/**"),
-                    List.of("task:view"),
-                    List.of("system")
-            ),
-            capability(
                     "site",
                     "官网与 CMS",
                     "承载站点、导航、轮播、内容、提交记录和公开 API。",
@@ -143,15 +113,15 @@ public final class PlatformModuleCatalog {
                     "journal",
                     "期刊场景",
                     SCENE,
-                    "计划用于验证投稿、初审、专家评审、录用和内容发布的第一个场景模块。",
-                    List.of("form", "submission", "approval", "evaluation", "file", "message", "site")
+                    "计划用于验证投稿、内容处理和发布的第一个场景模块。",
+                    List.of("form", "submission", "file", "message", "site")
             ),
             planned(
                     "competition",
                     "比赛场景",
                     SCENE,
-                    "计划用于验证报名、作品提交、专家评分和结果发布的场景模块。",
-                    List.of("form", "submission", "evaluation", "approval", "file", "message", "site")
+                    "计划用于验证报名、作品提交和结果发布的场景模块。",
+                    List.of("form", "submission", "file", "message", "site")
             ),
             optional(
                     "sms",

@@ -72,7 +72,7 @@ class CompositePlatformModuleRegistryTest {
         module.setAdminRoutePath("/journal");
         module.setApiPrefixes(List.of("/api/v1/journal/**"));
         module.setPermissionKeys(List.of("journal:view"));
-        module.setDependencies(List.of("form", "submission", "approval", "evaluation", "file", "message", "site"));
+        module.setDependencies(List.of("form", "submission", "file", "message", "site"));
         module.setRegistrationSourceOrder(List.of("DATABASE"));
         module.setRegisteredAt("2026-05-17T00:00:00");
         module.setBuiltin(false);

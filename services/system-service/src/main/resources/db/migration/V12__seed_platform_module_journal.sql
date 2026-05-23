@@ -21,7 +21,7 @@ select
     'SCENE',
     'PLANNED',
     'DATABASE',
-    '用于验证投稿、初审、专家评审、录用和内容发布的第一个数据库注册场景模块。',
+    '用于验证投稿、内容处理、录用和内容发布的第一个数据库注册场景模块。',
     'system-service',
     '/journal',
     '/api/v1/journal/**',
@@ -43,7 +43,7 @@ where not exists (
 update platform_module_definition
 set source_type = 'DATABASE',
     lifecycle_status = 'PLANNED',
-    description = '用于验证投稿、初审、专家评审、录用和内容发布的第一个数据库注册场景模块。',
+    description = '用于验证投稿、内容处理、录用和内容发布的第一个数据库注册场景模块。',
     owner_service = 'system-service',
     admin_route_path = '/journal',
     api_prefixes = '/api/v1/journal/**',
@@ -69,11 +69,9 @@ select 'journal', seed.dependency_module_code, seed.sort_no, 1, 1, 0
 from (
     select 'form' dependency_module_code, 1 sort_no
     union all select 'submission', 2
-    union all select 'approval', 3
-    union all select 'evaluation', 4
-    union all select 'file', 5
-    union all select 'message', 6
-    union all select 'site', 7
+    union all select 'file', 3
+    union all select 'message', 4
+    union all select 'site', 5
 ) seed
 where not exists (
     select 1

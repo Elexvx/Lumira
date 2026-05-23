@@ -3,7 +3,6 @@ package com.legendary.invention.saas.modules.system.dashboard.vo;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.plugin.vo.PluginVO;
 import com.legendary.invention.saas.modules.system.audit.vo.AuditLogVO;
-import com.legendary.invention.saas.modules.task.vo.TaskVO;
 
 import java.util.List;
 
@@ -16,7 +15,6 @@ public class DashboardSummaryVO {
     private List<AuditLogVO> recentLoginLogs;
     private List<AuditLogVO> recentOperationLogs;
     private List<ShortcutVO> shortcuts;
-    private TaskVO.TaskSummaryVO taskSummary;
 
     public CurrentUserVO getCurrentUser() { return currentUser; }
     public void setCurrentUser(CurrentUserVO currentUser) { this.currentUser = currentUser; }
@@ -32,6 +30,4 @@ public class DashboardSummaryVO {
     public void setRecentOperationLogs(List<AuditLogVO> recentOperationLogs) { this.recentOperationLogs = recentOperationLogs; }
     public List<ShortcutVO> getShortcuts() { return shortcuts; }
     public void setShortcuts(List<ShortcutVO> shortcuts) { this.shortcuts = shortcuts; }
-    public TaskVO.TaskSummaryVO getTaskSummary() { return taskSummary; }
-    public void setTaskSummary(TaskVO.TaskSummaryVO taskSummary) { this.taskSummary = taskSummary; }
 }
