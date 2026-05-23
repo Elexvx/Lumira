@@ -206,6 +206,7 @@ const SiteNavigationRoutesTab = () => {
           {
             title: '操作',
             width: 150,
+            fixed: responsive.isMobile ? undefined : 'right',
             render: (_, record) => (
               <Space>
                 {canUpdate ? (
@@ -368,6 +369,7 @@ const SettingsRoutesTab = () => {
         {
           title: '操作',
           width: 150,
+          fixed: responsive.isMobile ? undefined : 'right',
           render: (_, record, index) => (
             <Space>
               <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
@@ -670,7 +672,6 @@ const MenuManagementPage = () => {
   const columns = useMemo(
     () =>
       buildMenuColumns({
-        isDesktop: responsive.isDesktop,
         isMobile: responsive.isMobile,
         canReorderMenus,
         expandedRowKeys,
