@@ -13,14 +13,6 @@ public final class SystemRouteCatalog {
             "/ai",
             "/ai/assistant",
             "/ai/knowledge",
-            "/site",
-            "/site/settings",
-            "/site/navigation",
-            "/site/carousels",
-            "/site/pages",
-            "/site/contents",
-            "/site/forms",
-            "/site/submissions",
             "/system",
             "/system/overview",
             "/system/menus",
@@ -81,14 +73,6 @@ public final class SystemRouteCatalog {
             "redirect:/ai/assistant",
             "@/pages/ai/Assistant",
             "@/pages/ai/knowledge",
-            "redirect:/site/settings",
-            "@/pages/site/settings",
-            "@/pages/site/navigation",
-            "@/pages/site/carousels",
-            "@/pages/site/pages",
-            "@/pages/site/contents",
-            "@/pages/site/forms",
-            "@/pages/site/submissions",
             "@/layouts/SettingsLayout",
             "@/pages/settings/tenants",
             "@/pages/settings/menus",
@@ -199,17 +183,6 @@ public final class SystemRouteCatalog {
 
         roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/Home", "DashboardOutlined", 0, "dashboard:view"));
         roots.add(aiRoot);
-        SystemVO.MenuVO siteRoot = menu(-930L, 0L, "site.root", "官网管理", "CATALOG", "/site", "redirect:/site/settings", "GlobalOutlined", 7, "site:view");
-        siteRoot.setChildren(new ArrayList<>(List.of(
-                menu(-929L, -930L, "site.settings", "站点设置", "MENU", "/site/settings", "@/pages/site/settings", "SettingOutlined", 1, "site:settings"),
-                menu(-928L, -930L, "site.navigation", "导航管理", "MENU", "/site/navigation", "@/pages/site/navigation", "MenuOutlined", 2, "site:navigation"),
-                menu(-923L, -930L, "site.carousels", "轮播管理", "MENU", "/site/carousels", "@/pages/site/carousels", "PictureOutlined", 3, "site:carousel"),
-                menu(-927L, -930L, "site.pages", "页面管理", "MENU", "/site/pages", "@/pages/site/pages", "LayoutOutlined", 4, "site:page"),
-                menu(-926L, -930L, "site.contents", "内容管理", "MENU", "/site/contents", "@/pages/site/contents", "ReadOutlined", 5, "site:content"),
-                menu(-925L, -930L, "site.forms", "表单管理", "MENU", "/site/forms", "@/pages/site/forms", "FormOutlined", 6, "site:form"),
-                menu(-924L, -930L, "site.submissions", "提交记录", "MENU", "/site/submissions", "@/pages/site/submissions", "InboxOutlined", 7, "site:submission")
-        )));
-        roots.add(siteRoot);
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
         userCenterRoot.setChildren(new ArrayList<>(List.of(
                 menu(-951L, -950L, "system.users", "用户管理", "MENU", "/user-center/users", "@/pages/system/users", "TeamOutlined", 21, "system:user:view"),

@@ -1,6 +1,5 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Form, Input, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -25,7 +24,6 @@ import {
 } from '@/pages/settings/menus/treeUtils';
 import { buildMenuTableData } from '@/pages/settings/menus/tableData';
 import { iamService } from '@/services/iam';
-import { siteService, type SiteNavigation } from '@/services/site';
 import { backendRouteMeta } from '@/routes/meta';
 import type { MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
@@ -82,200 +80,6 @@ const moveArrayItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
   const [movedItem] = nextItems.splice(fromIndex, 1);
   nextItems.splice(toIndex, 0, movedItem);
   return nextItems;
-};
-
-const linkTypeOptions = [
-  { value: 'INTERNAL', label: '站内路由' },
-  { value: 'EXTERNAL', label: '外部链接' },
-  { value: 'NONE', label: '无跳转' },
-];
-
-const openTypeOptions = [
-  { value: 'SELF', label: '当前窗口' },
-  { value: 'BLANK', label: '新窗口' },
-];
-
-const navigationStatusOptions = [
-  { value: 'VISIBLE', label: '显示' },
-  { value: 'HIDDEN', label: '隐藏' },
-];
-
-const SiteNavigationRoutesTab = () => {
-  const [records, setRecords] = useState<SiteNavigation[]>([]);
-  const [editing, setEditing] = useState<Partial<SiteNavigation> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form] = Form.useForm<Partial<SiteNavigation>>();
-  const actionPermission = useActionPermission();
-  const responsive = useResponsive();
-  const canCreate = actionPermission.can('site:navigation:create');
-  const canUpdate = actionPermission.can('site:navigation:update');
-  const canDelete = actionPermission.can('site:navigation:delete');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setRecords(await siteService.navigation({ autoRedirectOnUnauthorized: false }));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const openEditor = (record?: SiteNavigation) => {
-    const next = record || { linkType: 'INTERNAL', openType: 'SELF', status: 'VISIBLE', sortOrder: records.length };
-    setEditing(next);
-    form.setFieldsValue(next);
-  };
-
-  const save = async () => {
-    const values = await form.validateFields();
-    setSaving(true);
-    try {
-      if (editing?.id) {
-        await siteService.updateNavigation(editing.id, values, { autoRedirectOnUnauthorized: false });
-      } else {
-        await siteService.createNavigation(values, { autoRedirectOnUnauthorized: false });
-      }
-      message.success('官网导航已保存');
-      setEditing(null);
-      await load();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <>
-      <ManagementTable<SiteNavigation>
-        rowKey="id"
-        loading={loading}
-        dataSource={records}
-        pagination={false}
-        scroll={{ x: 1050 }}
-        tableLayout="fixed"
-        isMobile={responsive.isMobile}
-        search={false}
-        toolBarRender={() =>
-          canCreate ? (
-            [
-              <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
-                新增导航
-              </Button>,
-            ]
-          ) : []
-        }
-        columns={[
-          {
-            title: '导航标题',
-            dataIndex: 'title',
-            width: 180,
-            ellipsis: true,
-          },
-          {
-            title: '链接类型',
-            dataIndex: 'linkType',
-            width: 120,
-            render: (value) => linkTypeOptions.find((item) => item.value === value)?.label || value,
-          },
-          {
-            title: '链接目标',
-            dataIndex: 'linkTarget',
-            ellipsis: true,
-            render: (value) => value || '-',
-          },
-          {
-            title: '打开方式',
-            dataIndex: 'openType',
-            width: 120,
-            render: (value) => openTypeOptions.find((item) => item.value === value)?.label || value,
-          },
-          {
-            title: '排序',
-            dataIndex: 'sortOrder',
-            width: 88,
-          },
-          {
-            title: '状态',
-            dataIndex: 'status',
-            width: 100,
-            render: (value) => <Tag color={value === 'VISIBLE' ? 'green' : 'default'}>{value === 'VISIBLE' ? '显示' : '隐藏'}</Tag>,
-          },
-          {
-            title: '操作',
-            valueType: 'option',
-            width: 150,
-            fixed: 'right',
-            render: (_, record) => (
-              <Space>
-                {canUpdate ? (
-                  <Button type="link" onClick={() => openEditor(record)}>
-                    编辑
-                  </Button>
-                ) : null}
-                {canDelete ? (
-                  <Popconfirm
-                    title="删除官网导航"
-                    description={`确认删除「${record.title}」吗？`}
-                    onConfirm={async () => {
-                      await siteService.deleteNavigation(record.id, { autoRedirectOnUnauthorized: false });
-                      message.success('官网导航已删除');
-                      await load();
-                    }}
-                  >
-                    <Button type="link" danger>
-                      删除
-                    </Button>
-                  </Popconfirm>
-                ) : null}
-              </Space>
-            ),
-          },
-        ]}
-      />
-
-      <ManagementDrawer
-        title={editing?.id ? '编辑官网导航' : '新增官网导航'}
-        open={Boolean(editing)}
-        onClose={() => setEditing(null)}
-        extra={
-          <Button type="primary" loading={saving} onClick={() => void save()}>
-            保存
-          </Button>
-        }
-      >
-        <Form form={form} layout="vertical" initialValues={{ linkType: 'INTERNAL', openType: 'SELF', status: 'VISIBLE' }}>
-          <Form.Item name="title" label="导航标题" rules={[{ required: true, message: '请输入导航标题' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="linkType" label="链接类型" rules={[{ required: true, message: '请选择链接类型' }]}>
-            <Select options={linkTypeOptions} />
-          </Form.Item>
-          <Form.Item noStyle shouldUpdate={(prev, next) => prev.linkType !== next.linkType}>
-            {({ getFieldValue }) =>
-              getFieldValue('linkType') === 'NONE' ? null : (
-                <Form.Item name="linkTarget" label="链接目标" rules={[{ required: true, message: '请输入链接目标' }]}>
-                  <Input placeholder="/about 或 https://example.com" />
-                </Form.Item>
-              )
-            }
-          </Form.Item>
-          <Form.Item name="openType" label="打开方式" rules={[{ required: true, message: '请选择打开方式' }]}>
-            <Select options={openTypeOptions} />
-          </Form.Item>
-          <Form.Item name="sortOrder" label="排序">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="status" label="前台状态" rules={[{ required: true, message: '请选择前台状态' }]}>
-            <Select options={navigationStatusOptions} />
-          </Form.Item>
-        </Form>
-      </ManagementDrawer>
-    </>
-  );
 };
 
 const SettingsRoutesTab = () => {
@@ -776,11 +580,6 @@ const MenuManagementPage = () => {
                 toolBarRender={false}
               />
             ),
-          },
-          {
-            key: 'site',
-            label: '官网顶部导航',
-            children: <SiteNavigationRoutesTab />,
           },
           {
             key: 'settings',

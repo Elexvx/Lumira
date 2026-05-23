@@ -36,7 +36,7 @@ const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const LAYOUT_HEADER_HEIGHT = 48;
 const LIGHT_SIDER_BACKGROUND = '#ffffff';
 const DARK_SIDER_BACKGROUND = '#0c0c0c';
-const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/site'];
+const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
 const resolveSiderMenuMode = (pathname: string) => (isSettingsShellPath(pathname) ? 'settings' : 'main');

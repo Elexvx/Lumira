@@ -7,7 +7,7 @@
 ## 仓库概览
 
 - `frontend/`：基于 `React 19.2.5`、`TypeScript`、`Umi Max`、`Ant Design 6.3.7` 和 `Ant Design Pro` 的前端工程。
-- `services/system-service/`：系统、配置、菜单、用户、审计、官网管理、任务等核心系统服务。
+- `services/system-service/`：系统、配置、菜单、用户、审计等核心系统服务。
 - `services/gateway-service/`：统一入口网关。
 - `services/auth-service/`：认证、登录、刷新 token、二次验证入口。
 - `services/file-service/`：文件、图片、存储空间和上传安全校验。
