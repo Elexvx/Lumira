@@ -46,17 +46,20 @@ public class AiManagementAppService {
     private final OperationAuditService operationAuditService;
     private final AiSecretCryptoService aiSecretCryptoService;
     private final AiEmployeeRuntimeService aiEmployeeRuntimeService;
+    private final AiChatModelFactory aiChatModelFactory;
 
     public AiManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
             OperationAuditService operationAuditService,
             AiSecretCryptoService aiSecretCryptoService,
-            AiEmployeeRuntimeService aiEmployeeRuntimeService
+            AiEmployeeRuntimeService aiEmployeeRuntimeService,
+            AiChatModelFactory aiChatModelFactory
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
         this.aiSecretCryptoService = aiSecretCryptoService;
         this.aiEmployeeRuntimeService = aiEmployeeRuntimeService;
+        this.aiChatModelFactory = aiChatModelFactory;
     }
 
     public PageResponse<AiVO.EmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -415,6 +418,45 @@ public class AiManagementAppService {
         );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-enabled", "UPDATE", "SUCCESS", "更新 LLM 服务状态: " + service.getCode() + " -> " + enabled);
         return true;
+    }
+
+    public AiVO.LlmServiceTestResultVO testLlmService(CurrentUser currentUser, AiDTO.LlmServiceTestRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        AiLlmServiceConfig config = buildTestConfig(tenantId, request);
+        AiDTO.ChatRequest chatRequest = new AiDTO.ChatRequest();
+        chatRequest.setMessage("请只回复 OK，用于验证当前 LLM 服务配置是否可用。");
+        AiVO.EmployeeDetailVO testEmployee = new AiVO.EmployeeDetailVO();
+        testEmployee.setId(0L);
+        testEmployee.setNickname("LLM 服务测试");
+        testEmployee.setSystemPrompt("你是一个连接测试助手。请按用户要求简短响应。");
+
+        long startedAt = System.nanoTime();
+        try {
+            AiVO.ChatResponseVO response = aiChatModelFactory.create(config).chat(chatRequest, testEmployee, List.of());
+            long latencyMs = elapsedMillis(startedAt);
+            operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "测试 LLM 服务: " + safeAuditLabel(config));
+            AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
+            result.setSuccess(true);
+            result.setMessage("测试通过");
+            result.setProvider(response.getProvider());
+            result.setModel(response.getModel());
+            result.setLatencyMs(latencyMs);
+            result.setReplyText(truncate(response.getReplyText(), 240));
+            return result;
+        } catch (RuntimeException exception) {
+            long latencyMs = elapsedMillis(startedAt);
+            String errorMessage = exception instanceof BizException bizException && StringUtils.hasText(bizException.getUserMessage())
+                    ? bizException.getUserMessage()
+                    : (StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "LLM 服务测试失败");
+            operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
+            AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
+            result.setSuccess(false);
+            result.setMessage(errorMessage);
+            result.setProvider(config.getProvider());
+            result.setModel(config.getDefaultModel());
+            result.setLatencyMs(latencyMs);
+            return result;
+        }
     }
 
     public List<AiVO.SkillVO> listSkills(CurrentUser currentUser) {
@@ -1204,6 +1246,63 @@ public class AiManagementAppService {
 
     private String cleanNullable(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private AiLlmServiceConfig buildTestConfig(Long tenantId, AiDTO.LlmServiceTestRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请填写 LLM 服务配置后再测试");
+        }
+        AiEntitiesHelper.LlmServiceRecord existing = request.getServiceId() == null ? null : requireLlmService(tenantId, request.getServiceId());
+        String provider = firstText(request.getProvider(), existing == null ? null : existing.getProvider());
+        if (!StringUtils.hasText(provider)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "请选择 LLM 类型");
+        }
+        AiLlmServiceConfig config = new AiLlmServiceConfig();
+        config.setId(request.getServiceId());
+        config.setProvider(provider);
+        config.setCode(firstText(request.getCode(), existing == null ? null : existing.getCode(), "llm-test"));
+        config.setTitle(firstText(request.getTitle(), existing == null ? null : existing.getTitle(), "LLM 服务测试"));
+        config.setBaseUrl(firstText(request.getBaseUrl(), existing == null ? null : existing.getBaseUrl()));
+        config.setDefaultModel(firstText(request.getDefaultModel(), existing == null ? null : existing.getDefaultModel()));
+        config.setApiKey(resolveTestApiKey(request, existing));
+        config.setTimeoutMs(request.getTimeoutMs() == null ? (existing == null ? 60000 : existing.getTimeoutMs()) : request.getTimeoutMs());
+        config.setTemperature(request.getTemperature() == null ? (existing == null ? null : existing.getTemperature()) : request.getTemperature());
+        config.setMaxTokens(request.getMaxTokens() == null ? (existing == null ? 64 : existing.getMaxTokens()) : request.getMaxTokens());
+        return config;
+    }
+
+    private String resolveTestApiKey(AiDTO.LlmServiceTestRequest request, AiEntitiesHelper.LlmServiceRecord existing) {
+        if (StringUtils.hasText(request.getApiKey())) {
+            return request.getApiKey().trim();
+        }
+        if (existing == null || !StringUtils.hasText(existing.getApiKeyEncrypted())) {
+            return null;
+        }
+        return aiSecretCryptoService.decrypt(existing.getApiKeyEncrypted());
+    }
+
+    private String firstText(String... values) {
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+    }
+
+    private String safeAuditLabel(AiLlmServiceConfig config) {
+        return firstText(config.getCode(), config.getTitle(), config.getProvider(), "未命名服务");
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     private String normalizePermissionMode(String permissionMode, Boolean readOnly) {

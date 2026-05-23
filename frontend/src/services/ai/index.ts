@@ -15,6 +15,8 @@ import type {
   AiKnowledgeDocumentRecord,
   AiKnowledgeReferenceRecord,
   AiLlmServiceRecord,
+  AiLlmServiceTestPayload,
+  AiLlmServiceTestResult,
   AiLlmServiceUpsertPayload,
   AiPromptTemplateRecord,
   AiSkillRecord,
@@ -124,6 +126,12 @@ export const aiService = {
     request<boolean>(`/ai/llm-services/${id}/enabled`, {
       method: 'PATCH',
       data: { enabled },
+      ...options,
+    }),
+  testLlmService: (payload: AiLlmServiceTestPayload, options: RequestOptions = {}) =>
+    request<AiLlmServiceTestResult>('/ai/llm-services/test', {
+      method: 'POST',
+      data: payload,
       ...options,
     }),
   skills: (options: RequestOptions = {}) =>

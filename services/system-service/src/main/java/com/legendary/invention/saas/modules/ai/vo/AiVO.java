@@ -433,6 +433,63 @@ public final class AiVO {
         }
     }
 
+    public static class LlmServiceTestResultVO {
+        private Boolean success;
+        private String message;
+        private String provider;
+        private String model;
+        private Long latencyMs;
+        private String replyText;
+
+        public Boolean getSuccess() {
+            return success;
+        }
+
+        public void setSuccess(Boolean success) {
+            this.success = success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public String getProvider() {
+            return provider;
+        }
+
+        public void setProvider(String provider) {
+            this.provider = provider;
+        }
+
+        public String getModel() {
+            return model;
+        }
+
+        public void setModel(String model) {
+            this.model = model;
+        }
+
+        public Long getLatencyMs() {
+            return latencyMs;
+        }
+
+        public void setLatencyMs(Long latencyMs) {
+            this.latencyMs = latencyMs;
+        }
+
+        public String getReplyText() {
+            return replyText;
+        }
+
+        public void setReplyText(String replyText) {
+            this.replyText = replyText;
+        }
+    }
+
     public static class SkillVO {
         private Long id;
         private String skillCode;

@@ -45,11 +45,24 @@ import type {
   AiEmployeeRecord,
   AiEmployeeSkillRecord,
   AiLlmServiceRecord,
+  AiLlmServiceTestResult,
   AiSkillPermissionMode,
   AiSkillRecord,
 } from '@/types/api';
 
 type AiPageTabKey = 'employees' | 'llm-services';
+type LlmFormValues = {
+  provider?: string;
+  code?: string;
+  title?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  defaultModel?: string;
+  enabled?: boolean;
+  timeoutMs?: number;
+  temperature?: number;
+  maxTokens?: number;
+};
 
 type AvatarOption = {
   key: string;
@@ -222,9 +235,11 @@ const AiEmployeesPage = () => {
   const [employeePromptTemplate, setEmployeePromptTemplate] = useState('');
   const [llmServiceOptions, setLlmServiceOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [employeeSkillModes, setEmployeeSkillModes] = useState<Record<string, AiSkillPermissionMode>>({});
-  const [, setSelectedLlmService] = useState<AiLlmServiceRecord | null>(null);
+  const [selectedLlmService, setSelectedLlmService] = useState<AiLlmServiceRecord | null>(null);
   const [employeeSaving, setEmployeeSaving] = useState(false);
   const [llmSaving, setLlmSaving] = useState(false);
+  const [llmTesting, setLlmTesting] = useState(false);
+  const [llmTestResult, setLlmTestResult] = useState<AiLlmServiceTestResult | null>(null);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
 
   const employeeState = useCrudPageState<AiEmployeeRecord>();
@@ -395,6 +410,7 @@ const AiEmployeesPage = () => {
   const openLlmCreate = () => {
     llmState.drawer.openCreate();
     setSelectedLlmService(null);
+    setLlmTestResult(null);
     llmForm.resetFields();
     llmForm.setFieldsValue({
       provider: 'aliyun-bailian',
@@ -412,6 +428,7 @@ const AiEmployeesPage = () => {
 
   const openLlmEdit = async (record: AiLlmServiceRecord) => {
     llmState.drawer.openEdit(record, record.id);
+    setLlmTestResult(null);
     try {
       const detail = await aiService.llmService(record.id, { autoRedirectOnUnauthorized: false });
       setSelectedLlmService(detail);
@@ -438,28 +455,31 @@ const AiEmployeesPage = () => {
     if (!defaults) {
       return;
     }
+    setLlmTestResult(null);
     llmForm.setFieldsValue({
       baseUrl: defaults.baseUrl,
       defaultModel: defaults.defaultModel || llmForm.getFieldValue('defaultModel'),
     });
   };
 
+  const buildLlmPayload = (values: LlmFormValues) => ({
+    provider: String(values.provider || '').trim(),
+    code: String(values.code || '').trim(),
+    title: String(values.title || '').trim(),
+    baseUrl: values.baseUrl?.trim?.() ? values.baseUrl.trim() : null,
+    apiKey: values.apiKey?.trim?.() ? values.apiKey.trim() : null,
+    defaultModel: values.defaultModel?.trim?.() ? values.defaultModel.trim() : null,
+    enabled: Boolean(values.enabled),
+    timeoutMs: values.timeoutMs ?? 60000,
+    temperature: values.temperature ?? 0.7,
+    maxTokens: values.maxTokens ?? 2048,
+  });
+
   const saveLlmService = async () => {
     setLlmSaving(true);
     try {
       const values = await llmForm.validateFields();
-      const payload = {
-        provider: values.provider,
-        code: String(values.code || '').trim(),
-        title: String(values.title || '').trim(),
-        baseUrl: values.baseUrl?.trim?.() ? values.baseUrl.trim() : null,
-        apiKey: values.apiKey?.trim?.() ? values.apiKey.trim() : null,
-        defaultModel: values.defaultModel?.trim?.() ? values.defaultModel.trim() : null,
-        enabled: Boolean(values.enabled),
-        timeoutMs: values.timeoutMs ?? 60000,
-        temperature: values.temperature ?? 0.7,
-        maxTokens: values.maxTokens ?? 2048,
-      };
+      const payload = buildLlmPayload(values);
 
       if (llmState.drawer.editingId) {
         await aiService.updateLlmService(llmState.drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
@@ -479,6 +499,34 @@ const AiEmployeesPage = () => {
       })));
     } finally {
       setLlmSaving(false);
+    }
+  };
+
+  const testLlmService = async () => {
+    setLlmTesting(true);
+    setLlmTestResult(null);
+    try {
+      await llmForm.validateFields(['provider']);
+      const values = llmForm.getFieldsValue();
+      const result = await aiService.testLlmService(
+        {
+          ...buildLlmPayload(values),
+          serviceId: llmState.drawer.editingId || selectedLlmService?.id || null,
+        },
+        { autoRedirectOnUnauthorized: false, silent: true },
+      );
+      setLlmTestResult(result);
+      if (result.success) {
+        message.success('LLM 服务测试通过');
+      } else {
+        message.warning(result.message || 'LLM 服务测试失败');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error && error.message ? error.message : 'LLM 服务测试失败';
+      setLlmTestResult({ success: false, message: errorMessage });
+      message.error(errorMessage);
+    } finally {
+      setLlmTesting(false);
     }
   };
 
@@ -841,14 +889,27 @@ const AiEmployeesPage = () => {
         onClose={() => {
           llmState.drawer.reset();
           setSelectedLlmService(null);
+          setLlmTestResult(null);
         }}
         width={STANDARD_DRAWER_WIDTH}
         footerActions={[
+          {
+            key: 'test',
+            label: (
+              <Space size={4}>
+                <SyncOutlined />
+                测试连接
+              </Space>
+            ),
+            loading: llmTesting,
+            disabled: llmSaving || !actionPermission.can(['ai:llm:create', 'ai:llm:update']),
+            onClick: () => void testLlmService(),
+          },
           { key: 'cancel', label: '取消', onClick: () => llmState.drawer.reset() },
           { key: 'save', label: '保存', type: 'primary', loading: llmSaving, onClick: () => void saveLlmService() },
         ]}
       >
-        <Form layout="vertical" form={llmForm}>
+        <Form layout="vertical" form={llmForm} onValuesChange={() => setLlmTestResult(null)}>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Row gutter={16}>
               <Col xs={24} md={12}>
@@ -878,8 +939,31 @@ const AiEmployeesPage = () => {
               <Input placeholder="阿里云百炼：https://dashscope.aliyuncs.com/compatible-mode/v1" />
             </Form.Item>
             <Form.Item label="API Key" name="apiKey">
-              <Input.Password placeholder="请输入 API Key" autoComplete="off" />
+              <Input.Password placeholder={selectedLlmService?.apiKeyConfigured ? '留空则使用已保存 API Key' : '请输入 API Key'} autoComplete="off" />
             </Form.Item>
+            {llmTestResult ? (
+              <Alert
+                showIcon
+                type={llmTestResult.success ? 'success' : 'error'}
+                message={llmTestResult.success ? '测试通过' : '测试失败'}
+                description={
+                  <Space direction="vertical" size={4}>
+                    <Typography.Text>{llmTestResult.message || (llmTestResult.success ? '当前 LLM 服务可正常响应' : '请检查 Base URL、模型和 API Key')}</Typography.Text>
+                    {llmTestResult.success ? (
+                      <Typography.Text type="secondary">
+                        {[
+                          llmTestResult.model ? `模型：${llmTestResult.model}` : null,
+                          llmTestResult.latencyMs != null ? `耗时：${llmTestResult.latencyMs} ms` : null,
+                          llmTestResult.replyText ? `响应：${llmTestResult.replyText}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ｜ ')}
+                      </Typography.Text>
+                    ) : null}
+                  </Space>
+                }
+              />
+            ) : null}
             <Row gutter={16}>
               <Col xs={24} md={8}>
                 <Form.Item label="超时时间（毫秒）" name="timeoutMs">
