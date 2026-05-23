@@ -528,6 +528,28 @@ export interface AiLlmServiceUpsertPayload {
   maxTokens?: number | null;
 }
 
+export interface AiLlmServiceTestPayload {
+  serviceId?: number | null;
+  provider?: string | null;
+  code?: string | null;
+  title?: string | null;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  defaultModel?: string | null;
+  timeoutMs?: number | null;
+  temperature?: number | null;
+  maxTokens?: number | null;
+}
+
+export interface AiLlmServiceTestResult {
+  success?: boolean | null;
+  message?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  latencyMs?: number | null;
+  replyText?: string | null;
+}
+
 export interface AiChatRequestPayload {
   employeeId: number;
   conversationId?: number | null;

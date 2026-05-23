@@ -152,6 +152,12 @@ public class AiController {
         return ApiResponse.success(aiManagementAppService.updateLlmServiceEnabled(currentUser(), id, request.getEnabled()), TraceContext.getRequestId());
     }
 
+    @PostMapping("/llm-services/test")
+    public ApiResponse<AiVO.LlmServiceTestResultVO> testLlmService(@RequestBody AiDTO.LlmServiceTestRequest request) {
+        requireAny("ai:llm:create", "ai:llm:update");
+        return ApiResponse.success(aiManagementAppService.testLlmService(currentUser(), request), TraceContext.getRequestId());
+    }
+
     @GetMapping("/skills")
     public ApiResponse<List<AiVO.SkillVO>> skills() {
         require("ai:view");
@@ -372,6 +378,19 @@ public class AiController {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(currentUser(), permissionKey);
+    }
+
+    private void requireAny(String... permissionKeys) {
+        var currentUser = currentUser();
+        for (String permissionKey : permissionKeys) {
+            try {
+                permissionGuard.requirePermission(currentUser, permissionKey);
+                return;
+            } catch (BizException ignored) {
+                // Try the next acceptable permission.
+            }
+        }
+        require(permissionKeys.length == 0 ? null : permissionKeys[0]);
     }
 
     public static class MapEnabledRequest {
