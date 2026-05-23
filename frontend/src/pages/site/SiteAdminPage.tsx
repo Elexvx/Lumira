@@ -25,7 +25,6 @@ type SiteAdminTableProps<RecordType extends object> = Omit<
 
 export const SiteAdminTable = <RecordType extends object>({
   search = false,
-  options = false,
   columns,
   ...props
 }: SiteAdminTableProps<RecordType>) => {
@@ -37,7 +36,6 @@ export const SiteAdminTable = <RecordType extends object>({
       columns={columns}
       isMobile={responsive.isMobile}
       search={search}
-      options={options}
     />
   );
 };

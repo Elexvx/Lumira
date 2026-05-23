@@ -76,7 +76,7 @@ const TenantManagement = () => {
         pagination={{ current: pageNo, total, pageSize: 10, onChange: load }}
         isMobile={responsive.isMobile}
         search={false}
-        options={false}
+        onRefresh={() => load()}
         columns={[
           { title: '租户编码', dataIndex: 'tenantCode', width: 180 },
           { title: '租户名称', dataIndex: 'tenantName', ellipsis: true },
