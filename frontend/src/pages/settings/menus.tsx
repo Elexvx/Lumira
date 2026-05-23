@@ -448,7 +448,6 @@ const MenuManagementPage = () => {
     void (async () => {
       try {
         await loadMenus();
-        menuCrud.reloadTable();
       } catch {
         // keep silent: global request interceptor already handles feedback
       }
@@ -457,7 +456,7 @@ const MenuManagementPage = () => {
 
   useEffect(() => {
     menuCrud.reloadTable();
-  }, [expandedRowKeys]);
+  }, [expandedRowKeys, menuCrud.reloadTable, menuTree]);
 
   const flatMenus = useMemo(() => flattenMenus(menuTree), [menuTree]);
 
