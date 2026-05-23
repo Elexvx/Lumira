@@ -13,6 +13,7 @@ interface BuildMenuColumnsOptions {
   expandedRowKeys: number[];
   expandableMenuIds: Set<number>;
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
+  isReadonlyMenu: (record: MenuRecord) => boolean;
   onToggleExpand: (menuId: number) => void;
   onOpenDetail: (record: MenuRecord) => void;
   onOpenEdit: (record: MenuRecord) => void;
@@ -27,6 +28,7 @@ export const buildMenuColumns = ({
   expandedRowKeys,
   expandableMenuIds,
   buildRowActions,
+  isReadonlyMenu,
   onToggleExpand,
   onOpenDetail,
   onOpenEdit,
@@ -42,6 +44,7 @@ export const buildMenuColumns = ({
     render: (_, record) => {
       const hasChildren = expandableMenuIds.has(record.id);
       const expanded = expandedRowKeys.includes(record.id);
+      const readonly = isReadonlyMenu(record);
 
       return (
         <Space size={8}>
@@ -64,7 +67,7 @@ export const buildMenuColumns = ({
               justifyContent: 'center',
             }}
           />
-          <HolderOutlined style={{ color: '#8c8c8c', cursor: canReorderMenus ? 'grab' : 'not-allowed' }} />
+          <HolderOutlined style={{ color: '#8c8c8c', cursor: canReorderMenus && !readonly ? 'grab' : 'not-allowed' }} />
         </Space>
       );
     },
@@ -151,40 +154,45 @@ export const buildMenuColumns = ({
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
     width: 180,
-    render: (_, record) => (
-      <TableActionBar
-        isMobile={isMobile}
-        items={buildRowActions([
-          {
-            key: 'detail',
-            label: '详情',
-            permission: 'system:menu:view',
-            onClick: () => onOpenDetail(record),
-          },
-          {
-            key: 'edit',
-            label: '编辑',
-            permission: 'system:menu:update',
-            onClick: () => onOpenEdit(record),
-          },
-          {
-            key: 'status',
-            label: record.status === 'ENABLED' ? '停用' : '启用',
-            permission: 'system:menu:status',
-            danger: record.status === 'ENABLED',
-            onClick: () => onToggleStatus(record),
-          },
-          {
-            key: 'delete',
-            label: '删除',
-            permission: 'system:menu:delete',
-            danger: true,
-            disabled: Boolean(record.children?.length),
-            onClick: () => onDelete(record),
-          },
-        ])}
-      />
-    ),
+    render: (_, record) => {
+      const readonly = isReadonlyMenu(record);
+      return (
+        <TableActionBar
+          isMobile={isMobile}
+          items={buildRowActions([
+            {
+              key: 'detail',
+              label: '详情',
+              permission: 'system:menu:view',
+              onClick: () => onOpenDetail(record),
+            },
+            {
+              key: 'edit',
+              label: '编辑',
+              permission: 'system:menu:update',
+              disabled: readonly,
+              onClick: () => onOpenEdit(record),
+            },
+            {
+              key: 'status',
+              label: record.status === 'ENABLED' ? '停用' : '启用',
+              permission: 'system:menu:status',
+              danger: record.status === 'ENABLED',
+              disabled: readonly,
+              onClick: () => onToggleStatus(record),
+            },
+            {
+              key: 'delete',
+              label: '删除',
+              permission: 'system:menu:delete',
+              danger: true,
+              disabled: readonly || Boolean(record.children?.length),
+              onClick: () => onDelete(record),
+            },
+          ])}
+        />
+      );
+    },
   },
 ];
 

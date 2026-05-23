@@ -781,13 +781,19 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
-        List<SystemVO.MenuVO> menus = new ArrayList<>(SystemRouteCatalog.buildBuiltinPermissionMenus());
-        menus.addAll(listMenus(currentUser));
+        List<SystemVO.MenuVO> menus = listMenus(currentUser);
         List<SystemVO.PermissionVO> permissions = listPermissions(currentUser);
         return permissionTreeAssembler.build(menus, permissions);
     }
 
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
+        List<SystemVO.MenuVO> menus = new ArrayList<>(SystemRouteCatalog.buildBuiltinPermissionMenus());
+        menus.addAll(listCustomMenus(currentUser));
+        sortMenuTree(menus);
+        return menus;
+    }
+
+    private List<SystemVO.MenuVO> listCustomMenus(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
         List<SystemVO.MenuVO> menus = jdbcTemplate.query(
                 """
@@ -818,10 +824,11 @@ public class SystemManagementAppService {
             if (item == null || item.getId() == null || item.getSortNo() == null) {
                 continue;
             }
-            ensureEditableMenu(item.getId(), tenantId);
-            if (item.getParentId() != null && item.getParentId() > 0) {
-                ensureEditableMenu(item.getParentId(), tenantId);
+            if (item.getId() <= 0) {
+                continue;
             }
+            ensureEditableMenu(item.getId(), tenantId);
+            ensureEditableParentMenu(item.getParentId(), tenantId);
             jdbcTemplate.update(
                     """
                             update sys_menu
@@ -875,9 +882,7 @@ public class SystemManagementAppService {
     public SystemVO.MenuVO createMenu(CurrentUser currentUser, SystemDTO.MenuUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
         ensureEditableMenuRequest(request);
-        if (request.getParentId() != null && request.getParentId() > 0) {
-            ensureEditableMenu(request.getParentId(), tenantId);
-        }
+        ensureEditableParentMenu(request.getParentId(), tenantId);
         Long menuId = insertMenu(null, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
         return getMenu(currentUser, menuId);
@@ -888,9 +893,7 @@ public class SystemManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         ensureEditableMenu(menuId, tenantId);
         ensureEditableMenuRequest(request);
-        if (request.getParentId() != null && request.getParentId() > 0) {
-            ensureEditableMenu(request.getParentId(), tenantId);
-        }
+        ensureEditableParentMenu(request.getParentId(), tenantId);
         insertMenu(menuId, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
         return getMenu(currentUser, menuId);
@@ -2448,6 +2451,16 @@ public class SystemManagementAppService {
         }
     }
 
+    private void ensureEditableParentMenu(Long parentId, Long tenantId) {
+        if (parentId == null || parentId == 0) {
+            return;
+        }
+        if (parentId < 0) {
+            throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
+        }
+        ensureEditableMenu(parentId, tenantId);
+    }
+
     private void ensureEditableMenuRequest(SystemDTO.MenuUpsertRequest request) {
         if (request == null) {
             return;
@@ -2593,12 +2606,25 @@ public class SystemManagementAppService {
             }
             index.get(parentId).getChildren().add(menu);
         }
-        Comparator<SystemVO.MenuVO> comparator = Comparator.comparingInt(item -> item.getSortNo() == null ? 0 : item.getSortNo());
+        Comparator<SystemVO.MenuVO> comparator = Comparator
+                .comparingInt((SystemVO.MenuVO item) -> item.getSortNo() == null ? 0 : item.getSortNo())
+                .thenComparing(item -> item.getId() == null ? 0L : item.getId());
+        sortMenuTree(roots, comparator);
+        return roots;
+    }
+
+    private void sortMenuTree(List<SystemVO.MenuVO> roots) {
+        Comparator<SystemVO.MenuVO> comparator = Comparator
+                .comparingInt((SystemVO.MenuVO item) -> item.getSortNo() == null ? 0 : item.getSortNo())
+                .thenComparing(item -> item.getId() == null ? 0L : item.getId());
+        sortMenuTree(roots, comparator);
+    }
+
+    private void sortMenuTree(List<SystemVO.MenuVO> roots, Comparator<SystemVO.MenuVO> comparator) {
         roots.sort(comparator);
         for (SystemVO.MenuVO root : roots) {
             sortChildren(root, comparator);
         }
-        return roots;
     }
 
     private void sortChildren(SystemVO.MenuVO menu, Comparator<SystemVO.MenuVO> comparator) {

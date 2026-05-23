@@ -1325,6 +1325,7 @@ export interface MenuRecord {
   sortNo?: number;
   permissionKey?: string | null;
   status: string;
+  builtin?: boolean;
   children?: MenuRecord[];
 }
 
