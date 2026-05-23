@@ -1,7 +1,9 @@
+import { ProConfigProvider } from '@ant-design/pro-components';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveAntdLocale } from '@/i18n/antdLocale';
+import { resolveProComponentsIntl } from '@/i18n/proComponentsIntl';
 import { buildAntdThemeConfig, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
 import {
@@ -91,7 +93,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
       <ConfigProvider locale={resolveAntdLocale()} theme={themeConfig} variant="filled">
-        <AntdApp>{children}</AntdApp>
+        <ProConfigProvider intl={resolveProComponentsIntl()}>
+          <AntdApp>{children}</AntdApp>
+        </ProConfigProvider>
       </ConfigProvider>
     </ThemePreferenceContext.Provider>
   );

@@ -1,11 +1,10 @@
-import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
+import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
-import { ManagementDrawer, ManagementPage } from '@/features/management';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { iamService } from '@/services/iam';
 import type { DepartmentRecord } from '@/types/api';
@@ -107,7 +106,7 @@ const DepartmentManagementPage = () => {
     await loadDepartments();
   };
 
-  const columns = useMemo<ColumnsType<DepartmentRecord>>(
+  const columns = useMemo<ProColumns<DepartmentRecord>[]>(
     () => [
       {
         title: '部门名称',
@@ -169,32 +168,27 @@ const DepartmentManagementPage = () => {
 
   return (
     <ManagementPage title="组织部门">
-      <Table<DepartmentRecord>
+      <ManagementTable<DepartmentRecord>
         rowKey="id"
         columns={columns}
         dataSource={departments}
         loading={loading}
         pagination={false}
+        isMobile={responsive.isMobile}
+        search={false}
         scroll={{ x: 900 }}
-        onChange={() => undefined}
-        title={() => (
-          <Space wrap>
-            {buildToolbarButtons([
-              {
-                key: 'create',
-                permission: 'system:department:create',
-                type: 'primary',
-                label: '新增部门',
-                onClick: openCreate,
-              },
-              {
-                key: 'refresh',
-                label: '刷新',
-                onClick: () => void loadDepartments(),
-              },
-            ])}
-          </Space>
-        )}
+        onRefresh={() => loadDepartments()}
+        toolBarRender={() =>
+          buildToolbarButtons([
+            {
+              key: 'create',
+              permission: 'system:department:create',
+              type: 'primary',
+              label: '新增部门',
+              onClick: openCreate,
+            },
+          ])
+        }
       />
 
       <ManagementDrawer

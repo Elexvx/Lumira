@@ -1,8 +1,8 @@
-import { PageContainer, ProCard } from '@ant-design/pro-components';
+import { PageContainer, ProCard, type ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Col, Empty, Row, Skeleton, Space, Table, Tag, Tabs, Typography } from 'antd';
+import { Avatar, Col, Empty, Row, Skeleton, Space, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { buildTableScroll } from '@/features/table/proTable';
+import { ManagementTable } from '@/features/management';
 import { dashboardService } from '@/services/dashboard';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -87,7 +87,7 @@ const logResultColor = (value?: string | null) => {
   return 'default';
 };
 
-const buildLoginLogColumns = (isMobile: boolean) => [
+const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] => [
   {
     title: '时间',
     dataIndex: 'createdAt',
@@ -129,7 +129,7 @@ const buildLoginLogColumns = (isMobile: boolean) => [
   },
 ];
 
-const buildOperationLogColumns = (title: string, isMobile: boolean) => [
+const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<AuditLogRecord>[] => [
   {
     title: '时间',
     dataIndex: 'createdAt',
@@ -221,17 +221,19 @@ const DashboardHomePage = () => {
                     key: 'login',
                     label: `登录记录 (${recentLoginLogs.length})`,
                     children: (
-                      <Table<AuditLogRecord>
+                      <ManagementTable<AuditLogRecord>
                         size="small"
                         rowKey="id"
                         pagination={false}
+                        isMobile={responsive.isMobile}
+                        search={false}
+                        onRefresh={() => dashboardQuery.refetch()}
                         loading={dashboardQuery.isLoading && !summary}
                         columns={loginLogColumns}
                         dataSource={recentLoginLogs}
                         locale={{
                           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
                         }}
-                        scroll={buildTableScroll(loginLogColumns, responsive.isMobile)}
                       />
                     ),
                   },
@@ -239,17 +241,19 @@ const DashboardHomePage = () => {
                     key: 'operation',
                     label: `操作记录 (${recentOperationLogs.length})`,
                     children: (
-                      <Table<AuditLogRecord>
+                      <ManagementTable<AuditLogRecord>
                         size="small"
                         rowKey="id"
                         pagination={false}
+                        isMobile={responsive.isMobile}
+                        search={false}
+                        onRefresh={() => dashboardQuery.refetch()}
                         loading={dashboardQuery.isLoading && !summary}
                         columns={operationLogColumns}
                         dataSource={recentOperationLogs}
                         locale={{
                           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
                         }}
-                        scroll={buildTableScroll(operationLogColumns, responsive.isMobile)}
                       />
                     ),
                   },
