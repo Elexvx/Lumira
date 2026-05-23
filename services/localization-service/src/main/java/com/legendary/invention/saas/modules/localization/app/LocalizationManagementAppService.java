@@ -451,11 +451,19 @@ public class LocalizationManagementAppService {
     private void upsertTranslation(Long entryId, String localeCode, String translatedMessage) {
         String normalizedLocale = normalizeLocale(localeCode);
         String value = normalizeText(translatedMessage);
+        Long translationId = queryTranslationId(entryId, normalizedLocale).orElse(null);
         if (!StringUtils.hasText(value)) {
+            if (translationId != null) {
+                translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                        .set("deleted", 1)
+                        .set("updated_by", 0)
+                        .set("updated_at", LocalDateTime.now())
+                        .eq("id", translationId)
+                        .eq("deleted", 0));
+            }
             return;
         }
 
-        Long translationId = queryTranslationId(entryId, normalizedLocale).orElse(null);
         if (translationId == null) {
             TranslationEntity entity = new TranslationEntity();
             entity.entryId = entryId;
