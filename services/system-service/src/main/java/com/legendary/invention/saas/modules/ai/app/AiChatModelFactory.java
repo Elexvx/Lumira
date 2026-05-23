@@ -270,6 +270,8 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         response.setModel(resolveModel(config, root));
         response.setReplyAt(LocalDateTime.now());
         response.setReplyText(replyText.trim());
+        String thinkingContent = extractReasoningContent(root);
+        response.setThinkingContent(StringUtils.hasText(thinkingContent) ? thinkingContent.trim() : null);
         return response;
     }
 
@@ -360,7 +362,8 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             List<AiVO.SkillVO> skills
     ) throws IOException {
         var body = objectMapper.createObjectNode();
-        body.put("model", resolveModel(config, null));
+        String model = resolveModel(config, null);
+        body.put("model", model);
         body.put("stream", false);
 
         BigDecimal temperature = config.getTemperature();
@@ -370,6 +373,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         if (config.getMaxTokens() != null) {
             body.put("max_tokens", config.getMaxTokens());
         }
+        applyProviderRequestOptions(config, body);
 
         var messages = body.putArray("messages");
         messages.addObject()
@@ -391,9 +395,6 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         var body = objectMapper.readTree(buildRequestBody(config, request, employee, skills));
         if (body instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
             objectNode.put("stream", stream);
-            if (stream && shouldEnableThinking(config)) {
-                objectNode.put("enable_thinking", true);
-            }
             return objectMapper.writeValueAsString(objectNode);
         }
         return objectMapper.writeValueAsString(body);
@@ -543,6 +544,24 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         return StringUtils.hasText(reasoningContent) ? reasoningContent : null;
     }
 
+    private String extractReasoningContent(JsonNode root) {
+        JsonNode choices = root.path("choices");
+        if (choices.isArray() && !choices.isEmpty()) {
+            JsonNode firstChoice = choices.get(0);
+            String reasoningContent = firstChoice.path("message").path("reasoning_content").asText(null);
+            if (StringUtils.hasText(reasoningContent)) {
+                return reasoningContent;
+            }
+            reasoningContent = firstChoice.path("reasoning_content").asText(null);
+            if (StringUtils.hasText(reasoningContent)) {
+                return reasoningContent;
+            }
+        }
+
+        String reasoningContent = root.path("reasoning_content").asText(null);
+        return StringUtils.hasText(reasoningContent) ? reasoningContent : null;
+    }
+
     private String extractErrorMessage(String body) {
         if (!StringUtils.hasText(body)) {
             return "响应内容为空";
@@ -611,6 +630,33 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         return "aliyun-bailian".equals(normalizedProvider) || "dashscope".equals(normalizedProvider);
     }
 
+    private void applyProviderRequestOptions(
+            AiLlmServiceConfig config,
+            com.fasterxml.jackson.databind.node.ObjectNode body
+    ) {
+        String normalizedProvider = normalizeProvider(config.getProvider());
+        if ("deepseek".equals(normalizedProvider)) {
+            applyDeepSeekRequestOptions(config, body);
+            return;
+        }
+        if (shouldEnableThinking(config)) {
+            body.put("enable_thinking", true);
+        }
+    }
+
+    private void applyDeepSeekRequestOptions(AiLlmServiceConfig config, com.fasterxml.jackson.databind.node.ObjectNode body) {
+        String originalModel = StringUtils.hasText(config.getDefaultModel())
+                ? config.getDefaultModel().trim().toLowerCase(Locale.ROOT)
+                : "";
+        if ("deepseek-chat".equals(originalModel)) {
+            body.set("thinking", objectMapper.createObjectNode().put("type", "disabled"));
+            return;
+        }
+        if ("deepseek-reasoner".equals(originalModel)) {
+            body.set("thinking", objectMapper.createObjectNode().put("type", "enabled"));
+        }
+    }
+
     private String resolveModel(AiLlmServiceConfig config, JsonNode root) {
         if (StringUtils.hasText(config.getDefaultModel())) {
             return normalizeModelForProvider(config, config.getDefaultModel().trim());
@@ -634,7 +680,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         String normalizedModel = model.trim().toLowerCase(Locale.ROOT);
         return switch (normalizedModel) {
             case "deepseek-chat" -> "deepseek-v4-flash";
-            case "deepseek-reasoner" -> "deepseek-v4-pro";
+            case "deepseek-reasoner" -> "deepseek-v4-flash";
             default -> model.trim();
         };
     }

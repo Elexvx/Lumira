@@ -13,7 +13,7 @@ WHERE provider = 'deepseek'
   AND default_model = 'deepseek-chat';
 
 UPDATE ai_llm_service
-SET default_model = 'deepseek-v4-pro',
+SET default_model = 'deepseek-v4-flash',
     update_time = CURRENT_TIMESTAMP
 WHERE provider = 'deepseek'
   AND is_deleted = 0
