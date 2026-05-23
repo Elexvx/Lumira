@@ -13,14 +13,13 @@ public final class SystemRouteCatalog {
             "/ai",
             "/ai/assistant",
             "/ai/knowledge",
-            "/tasks",
-            "/approvals",
-            "/evaluations",
             "/site",
             "/site/settings",
             "/site/navigation",
             "/site/carousels",
+            "/site/pages",
             "/site/contents",
+            "/site/forms",
             "/site/submissions",
             "/system",
             "/system/overview",
@@ -46,6 +45,7 @@ public final class SystemRouteCatalog {
             "/files/all",
             "/settings",
             "/settings/overview",
+            "/settings/tenants",
             "/settings/menus",
             "/settings/dicts",
             "/settings/profile-fields",
@@ -79,18 +79,19 @@ public final class SystemRouteCatalog {
 
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
             "@/pages/dashboard/Home",
+            "redirect:/ai/assistant",
             "@/pages/ai/Assistant",
             "@/pages/ai/knowledge",
-            "@/pages/tasks",
-            "@/pages/approvals",
-            "@/pages/evaluations",
             "redirect:/site/settings",
             "@/pages/site/settings",
             "@/pages/site/navigation",
             "@/pages/site/carousels",
+            "@/pages/site/pages",
             "@/pages/site/contents",
+            "@/pages/site/forms",
             "@/pages/site/submissions",
             "@/layouts/SettingsLayout",
+            "@/pages/settings/tenants",
             "@/pages/settings/modules",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
@@ -201,9 +202,6 @@ public final class SystemRouteCatalog {
 
         roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/Home", "DashboardOutlined", 0, "dashboard:view"));
         roots.add(aiRoot);
-        roots.add(menu(-980L, 0L, "tasks.root", "任务中心", "MENU", "/tasks", "@/pages/tasks", "CheckSquareOutlined", 4, "task:view"));
-        roots.add(menu(-970L, 0L, "approvals.root", "审批中心", "MENU", "/approvals", "@/pages/approvals", "AuditOutlined", 5, "approval:view"));
-        roots.add(menu(-960L, 0L, "evaluations.root", "评审中心", "MENU", "/evaluations", "@/pages/evaluations", "StarOutlined", 6, "evaluation:view"));
         SystemVO.MenuVO siteRoot = menu(-930L, 0L, "site.root", "官网管理", "CATALOG", "/site", "redirect:/site/settings", "GlobalOutlined", 7, "site:view");
         siteRoot.setChildren(new ArrayList<>(List.of(
                 menu(-929L, -930L, "site.settings", "站点设置", "MENU", "/site/settings", "@/pages/site/settings", "SettingOutlined", 1, "site:settings"),

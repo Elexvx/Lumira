@@ -29,7 +29,6 @@ import com.legendary.invention.saas.modules.system.user.app.SystemUserManagement
 import com.legendary.invention.saas.modules.system.user.vo.UserDetailVO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
-import com.legendary.invention.saas.modules.task.app.TaskCenterAppService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
@@ -167,7 +166,6 @@ public class SystemManagementAppService {
     private final OperationAuditService operationAuditService;
     private final SecuritySettingsService securitySettingsService;
     private final PasswordPolicyService passwordPolicyService;
-    private final TaskCenterAppService taskCenterAppService;
     private final IamUserService iamUserService;
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
@@ -192,7 +190,6 @@ public class SystemManagementAppService {
             OperationAuditService operationAuditService,
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
-            TaskCenterAppService taskCenterAppService,
             IamUserService iamUserService,
             SystemUserManagementAppService systemUserManagementAppService,
             SystemRoleManagementAppService systemRoleManagementAppService,
@@ -214,7 +211,6 @@ public class SystemManagementAppService {
         this.operationAuditService = operationAuditService;
         this.securitySettingsService = securitySettingsService;
         this.passwordPolicyService = passwordPolicyService;
-        this.taskCenterAppService = taskCenterAppService;
         this.iamUserService = iamUserService;
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.systemRoleManagementAppService = systemRoleManagementAppService;
@@ -238,7 +234,6 @@ public class SystemManagementAppService {
             OperationAuditService operationAuditService,
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
-            TaskCenterAppService taskCenterAppService,
             IamUserService iamUserService,
             SystemUserManagementAppService systemUserManagementAppService,
             PlatformModuleRegistry platformModuleRegistry,
@@ -260,7 +255,6 @@ public class SystemManagementAppService {
                 operationAuditService,
                 securitySettingsService,
                 passwordPolicyService,
-                taskCenterAppService,
                 iamUserService,
                 systemUserManagementAppService,
                 defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
@@ -285,7 +279,6 @@ public class SystemManagementAppService {
             OperationAuditService operationAuditService,
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
-            TaskCenterAppService taskCenterAppService,
             IamUserService iamUserService
     ) {
         this(
@@ -303,7 +296,6 @@ public class SystemManagementAppService {
                 operationAuditService,
                 securitySettingsService,
                 passwordPolicyService,
-                taskCenterAppService,
                 iamUserService,
                 defaultUserManagementAppService(jdbcTemplate, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
                 defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
@@ -347,43 +339,6 @@ public class SystemManagementAppService {
         );
     }
 
-    public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
-            UserDomainService userDomainService,
-            PermissionSnapshotService permissionSnapshotService,
-            SystemPluginViewService systemPluginViewService,
-            OnlineSessionManagementAppService onlineSessionManagementAppService,
-            SystemVerificationAppService systemVerificationAppService,
-            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
-            SystemProfileSettingsAppService systemProfileSettingsAppService,
-            PasswordEncoder passwordEncoder,
-            AuthSessionStore authSessionStore,
-            LoginAuditService loginAuditService,
-            OperationAuditService operationAuditService,
-            SecuritySettingsService securitySettingsService,
-            PasswordPolicyService passwordPolicyService,
-            IamUserService iamUserService
-    ) {
-        this(
-                jdbcTemplate,
-                userDomainService,
-                permissionSnapshotService,
-                systemPluginViewService,
-                onlineSessionManagementAppService,
-                systemVerificationAppService,
-                systemPlatformSettingsAppService,
-                systemProfileSettingsAppService,
-                passwordEncoder,
-                authSessionStore,
-                loginAuditService,
-                operationAuditService,
-                securitySettingsService,
-                passwordPolicyService,
-                null,
-                iamUserService
-        );
-    }
-
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
         SystemVO.DashboardSummaryVO summary = new SystemVO.DashboardSummaryVO();
         summary.setCurrentUser(buildCurrentUser(currentUser));
@@ -393,9 +348,6 @@ public class SystemManagementAppService {
         summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, 5)));
         summary.setRecentOperationLogs(new ArrayList<>(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords()));
         summary.setShortcuts(new ArrayList<>(DASHBOARD_SHORTCUTS));
-        if (taskCenterAppService != null) {
-            summary.setTaskSummary(taskCenterAppService.summary(currentUser));
-        }
         return summary;
     }
 

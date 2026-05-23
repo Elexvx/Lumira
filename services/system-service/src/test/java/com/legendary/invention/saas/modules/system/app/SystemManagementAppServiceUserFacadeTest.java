@@ -31,7 +31,6 @@ class SystemManagementAppServiceUserFacadeTest {
                 null,
                 null,
                 null,
-                null,
                 userManagementAppService,
                 null,
                 null,

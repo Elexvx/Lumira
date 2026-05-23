@@ -592,7 +592,7 @@ const ModulesPage = () => {
                 </Col>
                 <Col xs={24}>
                   <Form.Item name="dependenciesText" label="依赖模块">
-                    <Input.TextArea rows={3} placeholder={'form\nsubmission\napproval'} />
+                    <Input.TextArea rows={3} placeholder={'form\nsubmission\nfile'} />
                   </Form.Item>
                 </Col>
                 <Col xs={24}>
