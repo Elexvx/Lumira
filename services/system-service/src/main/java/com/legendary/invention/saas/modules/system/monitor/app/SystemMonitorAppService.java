@@ -51,7 +51,7 @@ public class SystemMonitorAppService {
             new ServiceEndpoint("message-service", "http://localhost:8085"),
             new ServiceEndpoint("plugin-service", "http://localhost:8086"),
             new ServiceEndpoint("localization-service", "http://localhost:8088"),
-            new ServiceEndpoint("job-executor", "http://localhost:8090")
+            new ServiceEndpoint("job-executor", "http://localhost:8089")
     );
     private final StringRedisTemplate stringRedisTemplate;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
@@ -152,8 +152,12 @@ public class SystemMonitorAppService {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             service.setResponseTimeMs(Duration.ofNanos(System.nanoTime() - startedAt).toMillis());
-            service.setStatus(response.statusCode() >= 200 && response.statusCode() < 500 ? "UP" : "DOWN");
-            service.setVersion(response.body() != null && response.body().contains("\"UP\"") ? "actuator" : null);
+            boolean healthy = response.statusCode() >= 200
+                    && response.statusCode() < 300
+                    && response.body() != null
+                    && response.body().contains("\"UP\"");
+            service.setStatus(healthy ? "UP" : "DOWN");
+            service.setVersion(healthy ? "actuator" : null);
             if (!"UP".equals(service.getStatus())) {
                 service.setErrorMessage("HTTP " + response.statusCode());
             }
@@ -166,9 +170,31 @@ public class SystemMonitorAppService {
     }
 
     private String resolveBaseUrl(ServiceEndpoint endpoint) {
-        String envKey = "GATEWAY_" + endpoint.serviceName().replace("-", "_").toUpperCase(Locale.ROOT) + "_URI";
-        String value = System.getenv(envKey);
-        return value == null || value.isBlank() ? endpoint.defaultBaseUrl() : value.trim();
+        return resolveBaseUrl(endpoint, System.getenv());
+    }
+
+    static String resolveBaseUrl(ServiceEndpoint endpoint, Map<String, String> environment) {
+        String serviceKey = endpoint.serviceName().replace("-", "_").toUpperCase(Locale.ROOT);
+        List<String> candidateKeys = List.of(
+                "MONITOR_" + serviceKey + "_BASE_URL",
+                serviceKey + "_BASE_URL",
+                "GATEWAY_" + serviceKey + "_URI"
+        );
+        for (String key : candidateKeys) {
+            String value = environment.get(key);
+            if (value != null && !value.isBlank()) {
+                return stripTrailingSlash(value.trim());
+            }
+        }
+        return endpoint.defaultBaseUrl();
+    }
+
+    private static String stripTrailingSlash(String value) {
+        String normalized = value;
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private SystemMonitorVO.ApiDocVO toApiDoc(SystemMonitorVO.ServiceInstanceVO service) {
@@ -405,6 +431,6 @@ public class SystemMonitorAppService {
         }
     }
 
-    private record ServiceEndpoint(String serviceName, String defaultBaseUrl) {
+    record ServiceEndpoint(String serviceName, String defaultBaseUrl) {
     }
 }

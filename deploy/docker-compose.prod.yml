@@ -105,6 +105,14 @@ services:
       SERVER_PORT: 8080
       SPRING_FLYWAY_ENABLED: "true"
       FILE_SERVICE_BASE_URL: http://file-service:8084
+      MONITOR_GATEWAY_SERVICE_BASE_URL: http://gateway-service:8081
+      MONITOR_AUTH_SERVICE_BASE_URL: http://auth-service:8082
+      MONITOR_SYSTEM_SERVICE_BASE_URL: http://system-service:8080
+      MONITOR_FILE_SERVICE_BASE_URL: http://file-service:8084
+      MONITOR_MESSAGE_SERVICE_BASE_URL: http://message-service:8085
+      MONITOR_PLUGIN_SERVICE_BASE_URL: http://plugin-service:8086
+      MONITOR_LOCALIZATION_SERVICE_BASE_URL: http://localization-service:8088
+      MONITOR_JOB_EXECUTOR_BASE_URL: http://job-executor:8089
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
       PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}

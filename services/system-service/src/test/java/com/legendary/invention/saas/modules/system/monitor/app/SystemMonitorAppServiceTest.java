@@ -3,6 +3,7 @@ package com.legendary.invention.saas.modules.system.monitor.app;
 import com.legendary.invention.saas.modules.system.monitor.vo.SystemMonitorVO;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,5 +43,36 @@ class SystemMonitorAppServiceTest {
         info.setProperty("used_memory", "100");
         info.setProperty("maxmemory", "200");
         assertEquals(50.0D, SystemMonitorAppService.calculateMemoryUsagePercent(info), 0.0001D);
+    }
+
+    @Test
+    void resolvesContainerServiceBaseUrlFromMonitorEnvironment() {
+        var endpoint = new SystemMonitorAppService.ServiceEndpoint("auth-service", "http://localhost:8082");
+
+        String baseUrl = SystemMonitorAppService.resolveBaseUrl(endpoint, Map.of(
+                "MONITOR_AUTH_SERVICE_BASE_URL", "http://auth-service:8082/"
+        ));
+
+        assertEquals("http://auth-service:8082", baseUrl);
+    }
+
+    @Test
+    void resolvesServiceBaseUrlFromGatewayEnvironmentForCompatibility() {
+        var endpoint = new SystemMonitorAppService.ServiceEndpoint("file-service", "http://localhost:8084");
+
+        String baseUrl = SystemMonitorAppService.resolveBaseUrl(endpoint, Map.of(
+                "GATEWAY_FILE_SERVICE_URI", "http://file-service:8084"
+        ));
+
+        assertEquals("http://file-service:8084", baseUrl);
+    }
+
+    @Test
+    void fallsBackToLocalBaseUrlWhenMonitorEnvironmentIsMissing() {
+        var endpoint = new SystemMonitorAppService.ServiceEndpoint("job-executor", "http://localhost:8089");
+
+        String baseUrl = SystemMonitorAppService.resolveBaseUrl(endpoint, Map.of());
+
+        assertEquals("http://localhost:8089", baseUrl);
     }
 }
