@@ -51,6 +51,11 @@ class SystemRouteCatalogTest {
         assertThat(flattenedMenus)
                 .filteredOn(menu -> menu.getComponent() != null)
                 .allSatisfy(menu -> assertThat(SystemRouteCatalog.isBuiltInMenuComponent(menu.getComponent())).isTrue());
+        assertThat(flattenedMenus)
+                .allSatisfy(menu -> {
+                    assertThat(menu.isBuiltin()).isTrue();
+                    assertThat(SystemRouteCatalog.isBuiltInMenu(menu)).isTrue();
+                });
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/dashboard/home")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isTrue();

@@ -43,6 +43,8 @@ interface MenuDragState {
   position: MenuDropPosition;
 }
 
+const isBuiltinMenu = (record: Pick<MenuRecord, 'builtin' | 'id'>) => Boolean(record.builtin || record.id < 0);
+
 const formatRouteName = (name: string) =>
   resolveBuiltinMessage(
     name,
@@ -459,6 +461,7 @@ const MenuManagementPage = () => {
   }, [expandedRowKeys, menuCrud.reloadTable, menuTree]);
 
   const flatMenus = useMemo(() => flattenMenus(menuTree), [menuTree]);
+  const editableFlatMenus = useMemo(() => flatMenus.filter((menu) => !isBuiltinMenu(menu)), [flatMenus]);
 
   const saveMenuOrder = useCallback(
     async (nextTree: MenuRecord[]) => {
@@ -478,7 +481,7 @@ const MenuManagementPage = () => {
       try {
         await iamService.reorderMenus(
           {
-            items: flattenMenuOrder(normalizedTree),
+            items: flattenMenuOrder(normalizedTree).filter((item) => item.id > 0),
           },
           { autoRedirectOnUnauthorized: false },
         );
@@ -511,6 +514,10 @@ const MenuManagementPage = () => {
   };
 
   const openEdit = async (record: MenuRecord) => {
+    if (isBuiltinMenu(record)) {
+      message.warning('内置菜单不支持编辑');
+      return;
+    }
     menuCrud.drawer.openEdit(record, record.id);
     const detail = await iamService.menuDetail(record.id, { autoRedirectOnUnauthorized: false });
     editorForm.setFieldsValue({
@@ -520,6 +527,12 @@ const MenuManagementPage = () => {
   };
 
   const openDetail = async (record: MenuRecord) => {
+    if (isBuiltinMenu(record)) {
+      menuCrud.detail.openDetail(record);
+      menuCrud.detail.setLoading(false);
+      menuCrud.detail.setCurrentRecord(record);
+      return;
+    }
     menuCrud.detail.openDetail(record);
     menuCrud.detail.setLoading(true);
     try {
@@ -550,7 +563,7 @@ const MenuManagementPage = () => {
   };
 
   const handleRowDragStart = (record: MenuRecord) => (event: DragEvent<HTMLTableRowElement>) => {
-    if (!canReorderMenus) {
+    if (!canReorderMenus || isBuiltinMenu(record)) {
       event.preventDefault();
       return;
     }
@@ -564,7 +577,7 @@ const MenuManagementPage = () => {
   };
 
   const handleRowDragOver = (record: MenuRecord) => (event: DragEvent<HTMLTableRowElement>) => {
-    if (!dragState || dragState.draggedId === record.id || !canReorderMenus) {
+    if (!dragState || dragState.draggedId === record.id || !canReorderMenus || isBuiltinMenu(record)) {
       return;
     }
     event.preventDefault();
@@ -583,7 +596,7 @@ const MenuManagementPage = () => {
 
   const handleRowDrop = (record: MenuRecord) => async (event: DragEvent<HTMLTableRowElement>) => {
     event.preventDefault();
-    if (!dragState || dragState.draggedId === record.id || !canReorderMenus) {
+    if (!dragState || dragState.draggedId === record.id || !canReorderMenus || isBuiltinMenu(record)) {
       setDragState(null);
       return;
     }
@@ -608,6 +621,10 @@ const MenuManagementPage = () => {
   };
 
   const updateMenuStatus = async (record: MenuRecord, status: 'ENABLED' | 'DISABLED') => {
+    if (isBuiltinMenu(record)) {
+      message.warning('内置菜单不支持修改状态');
+      return;
+    }
     await iamService.changeMenuStatus(record.id, status, { autoRedirectOnUnauthorized: false });
     message.success('状态已更新');
     await loadMenus();
@@ -632,6 +649,10 @@ const MenuManagementPage = () => {
   };
 
   const deleteMenu = (record: MenuRecord) => {
+    if (isBuiltinMenu(record)) {
+      message.warning('内置菜单不支持删除');
+      return;
+    }
     confirmAction({
       title: '删除菜单',
       content: `确认删除菜单「${record.menuName}」吗？删除后权限树和运行菜单将不再出现该项。`,
@@ -655,6 +676,7 @@ const MenuManagementPage = () => {
         expandedRowKeys,
         expandableMenuIds,
         buildRowActions: actionPermission.buildTableActions,
+        isReadonlyMenu: isBuiltinMenu,
         onToggleExpand: (menuId) =>
           setExpandedRowKeys((currentKeys) =>
             currentKeys.includes(menuId) ? currentKeys.filter((key) => key !== menuId) : [...currentKeys, menuId],
@@ -716,13 +738,13 @@ const MenuManagementPage = () => {
                 pagination={false}
                 tableLayout="fixed"
                 onRow={(record) => ({
-                  draggable: canReorderMenus,
+                  draggable: canReorderMenus && !isBuiltinMenu(record),
                   onDragStart: handleRowDragStart(record),
                   onDragOver: handleRowDragOver(record),
                   onDrop: handleRowDrop(record),
                   onDragEnd: handleRowDragEnd,
                   style: {
-                    cursor: canReorderMenus ? 'grab' : undefined,
+                    cursor: canReorderMenus && !isBuiltinMenu(record) ? 'grab' : undefined,
                     userSelect: 'none',
                     opacity: dragState?.draggedId === record.id ? 0.35 : 1,
                     backgroundColor:
@@ -771,7 +793,7 @@ const MenuManagementPage = () => {
           { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveMenu() },
         ]}
       >
-        <MenuEditorForm formProps={editorFormProps} parentOptions={buildParentMenuOptions(flatMenus)} />
+        <MenuEditorForm formProps={editorFormProps} parentOptions={buildParentMenuOptions(editableFlatMenus)} />
       </ManagementDrawer>
 
       <ManagementDrawer

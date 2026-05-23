@@ -208,6 +208,7 @@ public final class SystemVO {
         private Integer sortNo;
         private String permissionKey;
         private String status;
+        private boolean builtin;
         private List<MenuVO> children;
 
         public Long getId() { return id; }
@@ -234,6 +235,8 @@ public final class SystemVO {
         public void setPermissionKey(String permissionKey) { this.permissionKey = permissionKey; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public boolean isBuiltin() { return builtin; }
+        public void setBuiltin(boolean builtin) { this.builtin = builtin; }
         public List<MenuVO> getChildren() { return children; }
         public void setChildren(List<MenuVO> children) { this.children = children; }
     }

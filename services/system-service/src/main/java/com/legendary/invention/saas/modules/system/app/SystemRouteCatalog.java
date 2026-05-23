@@ -268,6 +268,7 @@ public final class SystemRouteCatalog {
         menu.setSortNo(sortNo);
         menu.setPermissionKey(permissionKey);
         menu.setStatus("ENABLED");
+        menu.setBuiltin(true);
         return menu;
     }
 }
