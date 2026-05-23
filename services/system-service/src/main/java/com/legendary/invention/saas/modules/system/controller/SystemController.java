@@ -9,8 +9,6 @@ import com.legendary.invention.saas.infrastructure.security.SecurityContextFacad
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
-import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
-import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.api.file.FileObjectDTO;
@@ -61,32 +59,6 @@ public class SystemController {
     public ApiResponse<List<SystemVO.PermissionTreeVO>> permissionTree() {
         require("system:role:view");
         return ApiResponse.success(systemManagementAppService.listPermissionTree(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
-    }
-
-    @GetMapping("/modules")
-    public ApiResponse<List<PlatformModuleVO>> modules() {
-        require("system:menu:view");
-        return ApiResponse.success(systemManagementAppService.listPlatformModules(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
-    }
-
-    @GetMapping("/modules/{moduleCode}")
-    public ApiResponse<PlatformModuleVO> module(@PathVariable("moduleCode") String moduleCode) {
-        require("system:menu:view");
-        return ApiResponse.success(systemManagementAppService.getPlatformModule(securityContextFacade.getCurrentUser(), moduleCode), TraceContext.getRequestId());
-    }
-
-    @PostMapping("/modules/validate")
-    @RepeatSubmit
-    public ApiResponse<PlatformModuleValidationVO> validateModule(@Valid @RequestBody SystemDTO.ModuleValidationRequest request) {
-        require("system:menu:view");
-        return ApiResponse.success(systemManagementAppService.validatePlatformModule(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
-    }
-
-    @PostMapping("/modules")
-    @RepeatSubmit
-    public ApiResponse<PlatformModuleVO> createModule(@Valid @RequestBody SystemDTO.ModuleValidationRequest request) {
-        require("system:menu:create");
-        return ApiResponse.success(systemManagementAppService.createPlatformModule(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @GetMapping("/users")

@@ -31,10 +31,7 @@ class SystemManagementAppServiceUserFacadeTest {
                 null,
                 null,
                 null,
-                userManagementAppService,
-                null,
-                null,
-                null
+                userManagementAppService
         );
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);

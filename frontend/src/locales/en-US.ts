@@ -72,7 +72,6 @@ export default {
   'nav.settings.root': 'Settings',
   'nav.system.plugins': 'Plugins',
   'nav.system.tenants': 'Tenants',
-  'nav.system.modules': 'Modules',
   'nav.system.menus': 'Menus',
   'nav.system.dicts': 'Dictionaries',
   'nav.system.profileFields': 'Profile Fields',
@@ -259,7 +258,4 @@ export default {
   'system.files.field.actions': 'Actions',
   'system.files.title.my': 'My Files',
   'system.files.title.all': 'Global File Management',
-  'page.modules.title': 'Module Center',
-  'page.modules.refresh': 'Refresh',
-  'page.modules.inventory': 'Module Inventory',
 };

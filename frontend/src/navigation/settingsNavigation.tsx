@@ -80,12 +80,6 @@ export const SETTINGS_PROFILE_PATH = PROFILE_PATH;
 
 const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSourceItem>([
   {
-    path: '/settings/modules',
-    name: 'nav.system.modules',
-    icon: 'AppstoreOutlined',
-    access: 'canVisitSystemModules',
-  },
-  {
     path: '/settings/menus',
     name: 'nav.system.menus',
     icon: 'AppstoreOutlined',

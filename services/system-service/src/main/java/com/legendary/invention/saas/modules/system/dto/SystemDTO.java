@@ -103,55 +103,6 @@ public final class SystemDTO {
         public void setStatus(String status) { this.status = status; }
     }
 
-    public static class ModuleValidationRequest {
-        @NotBlank
-        @Pattern(regexp = "^[a-z][a-z0-9-]{1,94}[a-z0-9]$")
-        private String moduleCode;
-        @NotBlank
-        @Size(max = 160)
-        private String moduleName;
-        @NotBlank
-        private String moduleType;
-        @NotBlank
-        private String lifecycleStatus;
-        private String sourceType;
-        @Size(max = 1000)
-        private String description;
-        @Size(max = 160)
-        private String ownerService;
-        @Size(max = 255)
-        private String adminRoutePath;
-        private List<String> apiPrefixes;
-        private List<String> permissionKeys;
-        private List<String> dependencies;
-        private Boolean overwriteExisting;
-
-        public String getModuleCode() { return moduleCode; }
-        public void setModuleCode(String moduleCode) { this.moduleCode = moduleCode; }
-        public String getModuleName() { return moduleName; }
-        public void setModuleName(String moduleName) { this.moduleName = moduleName; }
-        public String getModuleType() { return moduleType; }
-        public void setModuleType(String moduleType) { this.moduleType = moduleType; }
-        public String getLifecycleStatus() { return lifecycleStatus; }
-        public void setLifecycleStatus(String lifecycleStatus) { this.lifecycleStatus = lifecycleStatus; }
-        public String getSourceType() { return sourceType; }
-        public void setSourceType(String sourceType) { this.sourceType = sourceType; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-        public String getOwnerService() { return ownerService; }
-        public void setOwnerService(String ownerService) { this.ownerService = ownerService; }
-        public String getAdminRoutePath() { return adminRoutePath; }
-        public void setAdminRoutePath(String adminRoutePath) { this.adminRoutePath = adminRoutePath; }
-        public List<String> getApiPrefixes() { return apiPrefixes; }
-        public void setApiPrefixes(List<String> apiPrefixes) { this.apiPrefixes = apiPrefixes; }
-        public List<String> getPermissionKeys() { return permissionKeys; }
-        public void setPermissionKeys(List<String> permissionKeys) { this.permissionKeys = permissionKeys; }
-        public List<String> getDependencies() { return dependencies; }
-        public void setDependencies(List<String> dependencies) { this.dependencies = dependencies; }
-        public Boolean getOverwriteExisting() { return overwriteExisting; }
-        public void setOverwriteExisting(Boolean overwriteExisting) { this.overwriteExisting = overwriteExisting; }
-    }
-
     public static class MenuReorderRequest {
         @NotEmpty
         @Valid

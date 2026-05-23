@@ -62,10 +62,7 @@ class SystemManagementAppServiceRoleFacadeTest {
                 null,
                 null,
                 null,
-                roleManagementAppService,
-                null,
-                null,
-                null
+                roleManagementAppService
         );
     }
 }
