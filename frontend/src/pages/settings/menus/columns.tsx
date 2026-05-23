@@ -150,7 +150,7 @@ export const buildMenuColumns = ({
   {
     title: '操作',
     valueType: 'option',
-    fixed: isMobile ? undefined : 'right',
+    fixed: 'right',
     width: 180,
     render: (_, record) => {
       const readonly = isReadonlyMenu(record);

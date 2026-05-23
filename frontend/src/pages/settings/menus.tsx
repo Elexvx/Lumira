@@ -155,6 +155,7 @@ const SiteNavigationRoutesTab = () => {
         loading={loading}
         dataSource={records}
         pagination={false}
+        scroll={{ x: 1050 }}
         tableLayout="fixed"
         isMobile={responsive.isMobile}
         search={false}
@@ -205,8 +206,9 @@ const SiteNavigationRoutesTab = () => {
           },
           {
             title: '操作',
+            valueType: 'option',
             width: 150,
-            fixed: responsive.isMobile ? undefined : 'right',
+            fixed: 'right',
             render: (_, record) => (
               <Space>
                 {canUpdate ? (
@@ -322,6 +324,7 @@ const SettingsRoutesTab = () => {
       rowKey="id"
       dataSource={records}
       pagination={false}
+      scroll={{ x: 1180 }}
       tableLayout="fixed"
       isMobile={responsive.isMobile}
       search={false}
@@ -368,8 +371,9 @@ const SettingsRoutesTab = () => {
         },
         {
           title: '操作',
+          valueType: 'option',
           width: 150,
-          fixed: responsive.isMobile ? undefined : 'right',
+          fixed: 'right',
           render: (_, record, index) => (
             <Space>
               <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
@@ -737,6 +741,7 @@ const MenuManagementPage = () => {
                 isMobile={responsive.isMobile}
                 search={searchConfig}
                 pagination={false}
+                scroll={{ x: 1780 }}
                 tableLayout="fixed"
                 onRow={(record) => ({
                   draggable: canReorderMenus && !isBuiltinMenu(record),
