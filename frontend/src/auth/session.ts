@@ -33,6 +33,8 @@ export interface SessionBootstrapResult {
 
 export type LogoutReason = 'user_initiated' | 'forced_expired';
 
+let refreshTokenPromise: Promise<boolean> | null = null;
+
 export const isLoggedIn = () => tokenManager.hasToken();
 
 export const getStoredCurrentUser = (): CurrentUser | null => storage.get<CurrentUser>(USER_PROFILE_KEY);
@@ -147,6 +149,19 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
 };
 
 export const tryRefreshToken = async (): Promise<boolean> => {
+  if (refreshTokenPromise) {
+    return refreshTokenPromise;
+  }
+
+  refreshTokenPromise = refreshTokenOnce();
+  try {
+    return await refreshTokenPromise;
+  } finally {
+    refreshTokenPromise = null;
+  }
+};
+
+const refreshTokenOnce = async (): Promise<boolean> => {
   const refreshToken = tokenManager.getRefreshToken();
   if (!refreshToken) {
     return false;
