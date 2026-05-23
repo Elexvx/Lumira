@@ -109,20 +109,6 @@ public final class PlatformModuleCatalog {
                     "计划从官网提交记录抽象出的投稿、报名、申请等通用提交能力。",
                     List.of("form", "file", "message")
             ),
-            planned(
-                    "journal",
-                    "期刊场景",
-                    SCENE,
-                    "计划用于验证投稿、内容处理和发布的第一个场景模块。",
-                    List.of("form", "submission", "file", "message", "site")
-            ),
-            planned(
-                    "competition",
-                    "比赛场景",
-                    SCENE,
-                    "计划用于验证报名、作品提交和结果发布的场景模块。",
-                    List.of("form", "submission", "file", "message", "site")
-            ),
             optional(
                     "sms",
                     "短信适配",

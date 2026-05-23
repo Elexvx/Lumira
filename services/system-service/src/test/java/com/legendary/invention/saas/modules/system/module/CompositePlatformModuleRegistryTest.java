@@ -18,14 +18,13 @@ class CompositePlatformModuleRegistryTest {
         Map<String, PlatformModuleVO> modules = registry.listModules().stream()
                 .collect(Collectors.toMap(PlatformModuleVO::getModuleCode, item -> item));
 
-        assertThat(modules.keySet()).contains("system", "journal");
-        assertThat(modules.get("journal").getLifecycleStatus()).isEqualTo("PLANNED");
-        assertThat(modules.get("journal").getSourceType()).isEqualTo("DATABASE");
-        assertThat(modules.get("journal").isOverriddenByDatabase()).isTrue();
-        assertThat(modules.get("journal").getRegistrationSourceOrder()).containsExactly("BUILTIN", "DATABASE");
-        assertThat(modules.get("journal").getRegisteredAt()).isEqualTo("2026-05-17T00:00:00");
-        assertThat(modules.get("journal").isDependencySatisfied()).isFalse();
-        assertThat(modules.get("journal").getInactiveDependencies()).contains("form", "submission");
+        assertThat(modules.keySet()).contains("system");
+        assertThat(modules.get("system").getLifecycleStatus()).isEqualTo("ENABLED");
+        assertThat(modules.get("system").getSourceType()).isEqualTo("DATABASE");
+        assertThat(modules.get("system").isOverriddenByDatabase()).isTrue();
+        assertThat(modules.get("system").getRegistrationSourceOrder()).containsExactly("BUILTIN", "DATABASE");
+        assertThat(modules.get("system").getRegisteredAt()).isEqualTo("2026-05-17T00:00:00");
+        assertThat(modules.get("system").isDependencySatisfied()).isTrue();
     }
 
     @Test
@@ -42,7 +41,7 @@ class CompositePlatformModuleRegistryTest {
         PlatformModuleVO invalid = databaseModule();
         invalid.setModuleCode(" ");
         PlatformModuleVO nullable = databaseModule();
-        nullable.setModuleCode("journal-lite");
+        nullable.setModuleCode("custom-scene");
         nullable.setApiPrefixes(null);
         nullable.setPermissionKeys(null);
         nullable.setDependencies(null);
@@ -54,25 +53,25 @@ class CompositePlatformModuleRegistryTest {
                 .collect(Collectors.toMap(PlatformModuleVO::getModuleCode, item -> item));
 
         assertThat(modules).doesNotContainKey(" ");
-        assertThat(modules.get("journal-lite").getApiPrefixes()).isEmpty();
-        assertThat(modules.get("journal-lite").getPermissionKeys()).isEmpty();
-        assertThat(modules.get("journal-lite").getDependencies()).isEmpty();
-        assertThat(modules.get("journal-lite").getRegistrationSourceOrder()).containsExactly("DATABASE");
+        assertThat(modules.get("custom-scene").getApiPrefixes()).isEmpty();
+        assertThat(modules.get("custom-scene").getPermissionKeys()).isEmpty();
+        assertThat(modules.get("custom-scene").getDependencies()).isEmpty();
+        assertThat(modules.get("custom-scene").getRegistrationSourceOrder()).containsExactly("DATABASE");
     }
 
     private static PlatformModuleVO databaseModule() {
         PlatformModuleVO module = new PlatformModuleVO();
-        module.setModuleCode("journal");
-        module.setModuleName("期刊场景");
-        module.setModuleType("SCENE");
-        module.setLifecycleStatus("PLANNED");
+        module.setModuleCode("system");
+        module.setModuleName("系统管理");
+        module.setModuleType("FOUNDATION");
+        module.setLifecycleStatus("ENABLED");
         module.setSourceType("DATABASE");
-        module.setDescription("数据库注册的期刊场景模块。");
+        module.setDescription("数据库注册的系统管理模块。");
         module.setOwnerService("system-service");
-        module.setAdminRoutePath("/journal");
-        module.setApiPrefixes(List.of("/api/v1/journal/**"));
-        module.setPermissionKeys(List.of("journal:view"));
-        module.setDependencies(List.of("form", "submission", "file", "message", "site"));
+        module.setAdminRoutePath("/settings");
+        module.setApiPrefixes(List.of("/api/v1/system/**"));
+        module.setPermissionKeys(List.of("system:view"));
+        module.setDependencies(List.of());
         module.setRegistrationSourceOrder(List.of("DATABASE"));
         module.setRegisteredAt("2026-05-17T00:00:00");
         module.setBuiltin(false);
