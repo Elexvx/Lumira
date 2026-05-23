@@ -8,10 +8,12 @@ import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.ai.app.AiManagementAppService;
+import com.legendary.invention.saas.modules.ai.app.AiKnowledgeBaseAppService;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
@@ -32,17 +35,20 @@ import java.util.concurrent.CompletableFuture;
 public class AiController {
 
     private final AiManagementAppService aiManagementAppService;
+    private final AiKnowledgeBaseAppService aiKnowledgeBaseAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final ObjectMapper objectMapper;
 
     public AiController(
             AiManagementAppService aiManagementAppService,
+            AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             ObjectMapper objectMapper
     ) {
         this.aiManagementAppService = aiManagementAppService;
+        this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.objectMapper = objectMapper;
@@ -152,6 +158,86 @@ public class AiController {
         return ApiResponse.success(aiManagementAppService.listSkills(currentUser()), TraceContext.getRequestId());
     }
 
+    @GetMapping("/knowledge-bases")
+    public ApiResponse<PageResponse<AiVO.KnowledgeBaseVO>> knowledgeBases(
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+    ) {
+        require("ai:knowledge:view");
+        return ApiResponse.success(aiKnowledgeBaseAppService.listKnowledgeBases(currentUser(), keyword, status, pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/knowledge-bases/{id}")
+    public ApiResponse<AiVO.KnowledgeBaseVO> knowledgeBase(@PathVariable("id") Long id) {
+        require("ai:knowledge:view");
+        return ApiResponse.success(aiKnowledgeBaseAppService.getKnowledgeBase(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/knowledge-bases")
+    @RepeatSubmit
+    public ApiResponse<AiVO.KnowledgeBaseVO> createKnowledgeBase(@Valid @RequestBody AiDTO.KnowledgeBaseUpsertRequest request) {
+        require("ai:knowledge:create");
+        return ApiResponse.success(aiKnowledgeBaseAppService.createKnowledgeBase(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/knowledge-bases/{id}")
+    @RepeatSubmit
+    public ApiResponse<AiVO.KnowledgeBaseVO> updateKnowledgeBase(@PathVariable("id") Long id, @Valid @RequestBody AiDTO.KnowledgeBaseUpsertRequest request) {
+        require("ai:knowledge:update");
+        return ApiResponse.success(aiKnowledgeBaseAppService.updateKnowledgeBase(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/knowledge-bases/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteKnowledgeBase(@PathVariable("id") Long id) {
+        require("ai:knowledge:delete");
+        return ApiResponse.success(aiKnowledgeBaseAppService.deleteKnowledgeBase(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/knowledge-bases/{id}/documents")
+    public ApiResponse<PageResponse<AiVO.KnowledgeDocumentVO>> knowledgeDocuments(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+    ) {
+        require("ai:knowledge:view");
+        return ApiResponse.success(aiKnowledgeBaseAppService.listDocuments(currentUser(), id, pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @PostMapping(value = "/knowledge-bases/{id}/documents/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RepeatSubmit
+    public ApiResponse<AiVO.KnowledgeDocumentVO> uploadKnowledgeDocument(
+            @PathVariable("id") Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        require("ai:knowledge:document:upload");
+        return ApiResponse.success(aiKnowledgeBaseAppService.uploadDocument(currentUser(), id, file), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/knowledge-bases/{id}/documents/{documentId}/reindex")
+    @RepeatSubmit
+    public ApiResponse<AiVO.KnowledgeDocumentVO> reindexKnowledgeDocument(@PathVariable("id") Long id, @PathVariable("documentId") Long documentId) {
+        require("ai:knowledge:document:index");
+        return ApiResponse.success(aiKnowledgeBaseAppService.reindexDocument(currentUser(), id, documentId), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/knowledge-bases/{id}/documents/{documentId}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteKnowledgeDocument(@PathVariable("id") Long id, @PathVariable("documentId") Long documentId) {
+        require("ai:knowledge:document:delete");
+        return ApiResponse.success(aiKnowledgeBaseAppService.deleteDocument(currentUser(), id, documentId), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/knowledge-bases/search")
+    @RepeatSubmit
+    public ApiResponse<List<AiVO.KnowledgeReferenceVO>> searchKnowledge(@Valid @RequestBody AiDTO.KnowledgeSearchRequest request) {
+        require("ai:knowledge:query");
+        int limit = request.getLimit() == null ? 8 : request.getLimit();
+        return ApiResponse.success(aiKnowledgeBaseAppService.retrieve(currentUser(), request.getQuery(), request.getKnowledgeBaseIds(), limit), TraceContext.getRequestId());
+    }
+
     @GetMapping("/employees/{id}/skills")
     public ApiResponse<List<AiVO.EmployeeSkillVO>> employeeSkills(@PathVariable("id") Long id) {
         require("ai:view");
@@ -163,6 +249,19 @@ public class AiController {
     public ApiResponse<Boolean> updateEmployeeSkills(@PathVariable("id") Long id, @Valid @RequestBody AiDTO.EmployeeSkillsUpdateRequest request) {
         require("ai:employee:skills");
         return ApiResponse.success(aiManagementAppService.updateEmployeeSkills(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/employees/{id}/knowledge-bases")
+    public ApiResponse<List<AiVO.KnowledgeBaseVO>> employeeKnowledgeBases(@PathVariable("id") Long id) {
+        require("ai:knowledge:view");
+        return ApiResponse.success(aiKnowledgeBaseAppService.listEmployeeKnowledgeBases(currentUser(), id), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/employees/{id}/knowledge-bases")
+    @RepeatSubmit
+    public ApiResponse<Boolean> updateEmployeeKnowledgeBases(@PathVariable("id") Long id, @RequestBody AiDTO.EmployeeKnowledgeBasesUpdateRequest request) {
+        require("ai:knowledge:bind");
+        return ApiResponse.success(aiKnowledgeBaseAppService.updateEmployeeKnowledgeBases(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/assistant")

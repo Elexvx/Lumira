@@ -11,6 +11,9 @@ import type {
   AiEmployeeRecord,
   AiEmployeeUpsertPayload,
   AiGovernanceOverviewRecord,
+  AiKnowledgeBaseRecord,
+  AiKnowledgeDocumentRecord,
+  AiKnowledgeReferenceRecord,
   AiLlmServiceRecord,
   AiLlmServiceUpsertPayload,
   AiPromptTemplateRecord,
@@ -22,6 +25,13 @@ import type {
 export interface AiPageQuery extends Record<string, unknown> {
   pageNo?: number;
   pageSize?: number;
+}
+
+export interface AiKnowledgeBasePayload {
+  name: string;
+  description?: string | null;
+  status?: string | null;
+  visibilityScope?: string | null;
 }
 
 export interface AiChatStreamEvent {
@@ -113,6 +123,72 @@ export const aiService = {
   skills: (options: RequestOptions = {}) =>
     request<AiSkillRecord[]>('/ai/skills', {
       method: 'GET',
+      ...options,
+    }),
+  knowledgeBases: (params: AiPageQuery & { keyword?: string; status?: string } = {}, options: RequestOptions = {}) =>
+    request<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  createKnowledgeBase: (payload: AiKnowledgeBasePayload, options: RequestOptions = {}) =>
+    request<AiKnowledgeBaseRecord>('/ai/knowledge-bases', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  updateKnowledgeBase: (id: number, payload: AiKnowledgeBasePayload, options: RequestOptions = {}) =>
+    request<AiKnowledgeBaseRecord>(`/ai/knowledge-bases/${id}`, {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  deleteKnowledgeBase: (id: number, options: RequestOptions = {}) =>
+    request<boolean>(`/ai/knowledge-bases/${id}`, {
+      method: 'DELETE',
+      ...options,
+    }),
+  knowledgeDocuments: (id: number, params: AiPageQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<AiKnowledgeDocumentRecord>>(`/ai/knowledge-bases/${id}/documents`, {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  uploadKnowledgeDocument: (id: number, file: File, options: RequestOptions = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<AiKnowledgeDocumentRecord>(`/ai/knowledge-bases/${id}/documents/upload`, {
+      method: 'POST',
+      headers: {},
+      data: formData,
+      ...options,
+    });
+  },
+  reindexKnowledgeDocument: (id: number, documentId: number, options: RequestOptions = {}) =>
+    request<AiKnowledgeDocumentRecord>(`/ai/knowledge-bases/${id}/documents/${documentId}/reindex`, {
+      method: 'POST',
+      ...options,
+    }),
+  deleteKnowledgeDocument: (id: number, documentId: number, options: RequestOptions = {}) =>
+    request<boolean>(`/ai/knowledge-bases/${id}/documents/${documentId}`, {
+      method: 'DELETE',
+      ...options,
+    }),
+  searchKnowledge: (payload: { query: string; knowledgeBaseIds?: number[]; limit?: number }, options: RequestOptions = {}) =>
+    request<AiKnowledgeReferenceRecord[]>('/ai/knowledge-bases/search', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  employeeKnowledgeBases: (id: number, options: RequestOptions = {}) =>
+    request<AiKnowledgeBaseRecord[]>(`/ai/employees/${id}/knowledge-bases`, {
+      method: 'GET',
+      ...options,
+    }),
+  updateEmployeeKnowledgeBases: (id: number, knowledgeBaseIds: number[], options: RequestOptions = {}) =>
+    request<boolean>(`/ai/employees/${id}/knowledge-bases`, {
+      method: 'PUT',
+      data: { knowledgeBaseIds },
       ...options,
     }),
   employeeSkills: (id: number, options: RequestOptions = {}) =>

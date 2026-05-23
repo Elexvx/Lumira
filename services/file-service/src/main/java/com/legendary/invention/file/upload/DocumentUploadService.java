@@ -23,7 +23,7 @@ import java.util.zip.ZipInputStream;
 @Service
 public class DocumentUploadService {
 
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "md", "txt");
     private static final Map<String, String> EXPECTED_CONTENT_TYPES = Map.of(
             "pdf", "application/pdf",
             "doc", "application/msword",
@@ -31,7 +31,9 @@ public class DocumentUploadService {
             "xls", "application/vnd.ms-excel",
             "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "ppt", "application/vnd.ms-powerpoint",
-            "pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            "pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "md", "text/markdown",
+            "txt", "text/plain"
     );
 
     private final UploadProperties uploadProperties;
@@ -117,6 +119,9 @@ public class DocumentUploadService {
         }
         String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
         String expectedContentType = EXPECTED_CONTENT_TYPES.get(extension);
+        if (Set.of("md", "txt").contains(extension) && normalizedContentType.startsWith("text/")) {
+            return normalizedContentType;
+        }
         if (!expectedContentType.equals(normalizedContentType)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "文档 Content-Type 与文件格式不一致");
         }
@@ -130,11 +135,29 @@ public class DocumentUploadService {
             case "docx" -> isOpenXmlPackage(bytes, "word/");
             case "xlsx" -> isOpenXmlPackage(bytes, "xl/");
             case "pptx" -> isOpenXmlPackage(bytes, "ppt/");
+            case "md", "txt" -> isUtf8LikeText(bytes);
             default -> false;
         };
         if (!valid) {
             throw new BizException(ErrorCode.BAD_REQUEST, "文档文件内容与声明格式不一致");
         }
+    }
+
+    private boolean isUtf8LikeText(byte[] bytes) {
+        if (bytes.length == 0) {
+            return true;
+        }
+        int controlChars = 0;
+        for (byte current : bytes) {
+            int value = current & 0xFF;
+            if (value == 0) {
+                return false;
+            }
+            if (value < 0x20 && value != '\n' && value != '\r' && value != '\t') {
+                controlChars++;
+            }
+        }
+        return controlChars <= Math.max(4, bytes.length / 100);
     }
 
     private boolean isOleCompoundFile(byte[] bytes) {

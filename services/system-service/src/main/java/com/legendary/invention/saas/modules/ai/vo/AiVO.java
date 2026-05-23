@@ -716,6 +716,129 @@ public final class AiVO {
         }
     }
 
+    public static class KnowledgeBaseVO {
+        private Long id;
+        private Long tenantId;
+        private String kbCode;
+        private String name;
+        private String description;
+        private String status;
+        private String visibilityScope;
+        private Long documentCount;
+        private Long chunkCount;
+        private Long createdBy;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getTenantId() { return tenantId; }
+        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
+        public String getKbCode() { return kbCode; }
+        public void setKbCode(String kbCode) { this.kbCode = kbCode; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getVisibilityScope() { return visibilityScope; }
+        public void setVisibilityScope(String visibilityScope) { this.visibilityScope = visibilityScope; }
+        public Long getDocumentCount() { return documentCount; }
+        public void setDocumentCount(Long documentCount) { this.documentCount = documentCount; }
+        public Long getChunkCount() { return chunkCount; }
+        public void setChunkCount(Long chunkCount) { this.chunkCount = chunkCount; }
+        public Long getCreatedBy() { return createdBy; }
+        public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public LocalDateTime getCreateTime() { return createTime; }
+        public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+        public LocalDateTime getUpdateTime() { return updateTime; }
+        public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+    }
+
+    public static class KnowledgeDocumentVO {
+        private Long id;
+        private Long tenantId;
+        private Long knowledgeBaseId;
+        private Long fileId;
+        private String title;
+        private String originalFileName;
+        private String fileExtension;
+        private String mimeType;
+        private Long fileSizeBytes;
+        private String status;
+        private String parseError;
+        private Integer extractedCharCount;
+        private Integer chunkCount;
+        private Long createdBy;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getTenantId() { return tenantId; }
+        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
+        public Long getKnowledgeBaseId() { return knowledgeBaseId; }
+        public void setKnowledgeBaseId(Long knowledgeBaseId) { this.knowledgeBaseId = knowledgeBaseId; }
+        public Long getFileId() { return fileId; }
+        public void setFileId(Long fileId) { this.fileId = fileId; }
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getOriginalFileName() { return originalFileName; }
+        public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+        public String getFileExtension() { return fileExtension; }
+        public void setFileExtension(String fileExtension) { this.fileExtension = fileExtension; }
+        public String getMimeType() { return mimeType; }
+        public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+        public Long getFileSizeBytes() { return fileSizeBytes; }
+        public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getParseError() { return parseError; }
+        public void setParseError(String parseError) { this.parseError = parseError; }
+        public Integer getExtractedCharCount() { return extractedCharCount; }
+        public void setExtractedCharCount(Integer extractedCharCount) { this.extractedCharCount = extractedCharCount; }
+        public Integer getChunkCount() { return chunkCount; }
+        public void setChunkCount(Integer chunkCount) { this.chunkCount = chunkCount; }
+        public Long getCreatedBy() { return createdBy; }
+        public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public LocalDateTime getCreateTime() { return createTime; }
+        public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+        public LocalDateTime getUpdateTime() { return updateTime; }
+        public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+    }
+
+    public static class KnowledgeReferenceVO {
+        private Long chunkId;
+        private Long knowledgeBaseId;
+        private String knowledgeBaseName;
+        private Long documentId;
+        private String documentTitle;
+        private Long fileId;
+        private String originalFileName;
+        private Integer chunkIndex;
+        private String content;
+
+        public Long getChunkId() { return chunkId; }
+        public void setChunkId(Long chunkId) { this.chunkId = chunkId; }
+        public Long getKnowledgeBaseId() { return knowledgeBaseId; }
+        public void setKnowledgeBaseId(Long knowledgeBaseId) { this.knowledgeBaseId = knowledgeBaseId; }
+        public String getKnowledgeBaseName() { return knowledgeBaseName; }
+        public void setKnowledgeBaseName(String knowledgeBaseName) { this.knowledgeBaseName = knowledgeBaseName; }
+        public Long getDocumentId() { return documentId; }
+        public void setDocumentId(Long documentId) { this.documentId = documentId; }
+        public String getDocumentTitle() { return documentTitle; }
+        public void setDocumentTitle(String documentTitle) { this.documentTitle = documentTitle; }
+        public Long getFileId() { return fileId; }
+        public void setFileId(Long fileId) { this.fileId = fileId; }
+        public String getOriginalFileName() { return originalFileName; }
+        public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+        public Integer getChunkIndex() { return chunkIndex; }
+        public void setChunkIndex(Integer chunkIndex) { this.chunkIndex = chunkIndex; }
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+    }
+
     public static class ChatResponseVO {
         private Long conversationId;
         private String conversationCode;
@@ -725,6 +848,7 @@ public final class AiVO {
         private String replyRole;
         private String provider;
         private String model;
+        private List<KnowledgeReferenceVO> references;
         private LocalDateTime replyAt;
 
         public Long getConversationId() {
@@ -789,6 +913,14 @@ public final class AiVO {
 
         public void setModel(String model) {
             this.model = model;
+        }
+
+        public List<KnowledgeReferenceVO> getReferences() {
+            return references;
+        }
+
+        public void setReferences(List<KnowledgeReferenceVO> references) {
+            this.references = references;
         }
 
         public LocalDateTime getReplyAt() {

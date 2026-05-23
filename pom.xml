@@ -36,6 +36,7 @@
         <jjwt.version>0.13.0</jjwt.version>
         <mysql.version>9.7.0</mysql.version>
         <springdoc.version>3.0.3</springdoc.version>
+        <tika.version>3.2.3</tika.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
