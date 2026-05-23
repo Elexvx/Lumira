@@ -23,7 +23,6 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', access: 'canVisitSystemSettings', hideInMenu: true },
   { path: '/settings/tenants', name: 'nav.system.tenants', icon: 'ApartmentOutlined', access: 'canVisitSystemTenants' },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
-  { path: '/settings/modules', name: 'nav.system.modules', icon: 'AppstoreOutlined', access: 'canVisitSystemModules' },
   { path: '/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
   { path: '/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
   { path: '/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },
@@ -161,7 +160,6 @@ export const backendRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/settings/overview', redirect: '/settings' },
       { path: '/settings/tenants', component: '@/pages/settings/tenants', name: 'nav.system.tenants', icon: 'ApartmentOutlined', access: 'canVisitSystemTenants' },
-      { path: '/settings/modules', component: '@/pages/settings/modules', name: 'nav.system.modules', icon: 'AppstoreOutlined', access: 'canVisitSystemModules' },
       { path: '/settings/menus', component: '@/pages/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
       { path: '/settings/dicts', component: '@/pages/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
       { path: '/settings/profile-fields', component: '@/pages/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },

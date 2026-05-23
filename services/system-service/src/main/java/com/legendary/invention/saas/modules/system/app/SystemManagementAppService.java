@@ -16,12 +16,6 @@ import com.legendary.invention.saas.modules.system.permission.SystemPermissionTr
 import com.legendary.invention.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.legendary.invention.saas.modules.system.dto.ProfileDTO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
-import com.legendary.invention.saas.modules.system.module.DatabasePlatformModuleRepository;
-import com.legendary.invention.saas.modules.system.module.PlatformModuleDefinitionValidator;
-import com.legendary.invention.saas.modules.system.module.PlatformModuleRegistry;
-import com.legendary.invention.saas.modules.system.module.StaticPlatformModuleRegistry;
-import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleValidationVO;
-import com.legendary.invention.saas.modules.system.module.vo.PlatformModuleVO;
 import com.legendary.invention.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.legendary.invention.saas.modules.system.plugin.SystemPluginViewService;
 import com.legendary.invention.saas.modules.system.role.app.SystemRoleManagementAppService;
@@ -169,9 +163,6 @@ public class SystemManagementAppService {
     private final IamUserService iamUserService;
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
-    private final PlatformModuleRegistry platformModuleRegistry;
-    private final PlatformModuleDefinitionValidator platformModuleDefinitionValidator;
-    private final DatabasePlatformModuleRepository databasePlatformModuleRepository;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     @Autowired
@@ -192,10 +183,7 @@ public class SystemManagementAppService {
             PasswordPolicyService passwordPolicyService,
             IamUserService iamUserService,
             SystemUserManagementAppService systemUserManagementAppService,
-            SystemRoleManagementAppService systemRoleManagementAppService,
-            PlatformModuleRegistry platformModuleRegistry,
-            PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
-            DatabasePlatformModuleRepository databasePlatformModuleRepository
+            SystemRoleManagementAppService systemRoleManagementAppService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userDomainService = userDomainService;
@@ -214,9 +202,6 @@ public class SystemManagementAppService {
         this.iamUserService = iamUserService;
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.systemRoleManagementAppService = systemRoleManagementAppService;
-        this.platformModuleRegistry = platformModuleRegistry;
-        this.platformModuleDefinitionValidator = platformModuleDefinitionValidator;
-        this.databasePlatformModuleRepository = databasePlatformModuleRepository;
     }
 
     public SystemManagementAppService(
@@ -235,10 +220,7 @@ public class SystemManagementAppService {
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
             IamUserService iamUserService,
-            SystemUserManagementAppService systemUserManagementAppService,
-            PlatformModuleRegistry platformModuleRegistry,
-            PlatformModuleDefinitionValidator platformModuleDefinitionValidator,
-            DatabasePlatformModuleRepository databasePlatformModuleRepository
+            SystemUserManagementAppService systemUserManagementAppService
     ) {
         this(
                 jdbcTemplate,
@@ -257,10 +239,7 @@ public class SystemManagementAppService {
                 passwordPolicyService,
                 iamUserService,
                 systemUserManagementAppService,
-                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
-                platformModuleRegistry,
-                platformModuleDefinitionValidator,
-                databasePlatformModuleRepository
+                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService)
         );
     }
 
@@ -298,10 +277,7 @@ public class SystemManagementAppService {
                 passwordPolicyService,
                 iamUserService,
                 defaultUserManagementAppService(jdbcTemplate, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
-                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
-                new StaticPlatformModuleRegistry(),
-                new PlatformModuleDefinitionValidator(),
-                null
+                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService)
         );
     }
 
@@ -349,38 +325,6 @@ public class SystemManagementAppService {
         summary.setRecentOperationLogs(new ArrayList<>(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords()));
         summary.setShortcuts(new ArrayList<>(DASHBOARD_SHORTCUTS));
         return summary;
-    }
-
-    public List<PlatformModuleVO> listPlatformModules(CurrentUser currentUser) {
-        return platformModuleRegistry.listModules();
-    }
-
-    public PlatformModuleVO getPlatformModule(CurrentUser currentUser, String moduleCode) {
-        return platformModuleRegistry.findModule(moduleCode)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "模块不存在"));
-    }
-
-    public PlatformModuleValidationVO validatePlatformModule(CurrentUser currentUser, SystemDTO.ModuleValidationRequest request) {
-        return platformModuleDefinitionValidator.validate(request, platformModuleRegistry.listModules());
-    }
-
-    @Transactional
-    public PlatformModuleVO createPlatformModule(CurrentUser currentUser, SystemDTO.ModuleValidationRequest request) {
-        if (!"DATABASE".equals(request.getSourceType())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前仅允许创建 DATABASE 来源模块");
-        }
-        if (!"PLANNED".equals(request.getLifecycleStatus())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前仅允许创建 PLANNED 生命周期模块");
-        }
-        PlatformModuleValidationVO validation = validatePlatformModule(currentUser, request);
-        if (!validation.isValid()) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "模块草案校验未通过: " + String.join("; ", validation.getIssues()));
-        }
-        if (databasePlatformModuleRepository == null) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "数据库模块注册仓储不可用");
-        }
-        databasePlatformModuleRepository.createModule(request, currentUser.getUserId());
-        return getPlatformModule(currentUser, request.getModuleCode());
     }
 
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {
