@@ -7,6 +7,7 @@ export interface UserListQuery extends Record<string, unknown> {
   username?: string;
   mobile?: string;
   email?: string;
+  deptId?: number;
   status?: string;
   source?: string;
   registeredStart?: string;
