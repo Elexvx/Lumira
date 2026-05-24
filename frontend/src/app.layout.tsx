@@ -21,7 +21,7 @@ import { backendRouteMeta, realPageRouteMetaMap } from '@/routes/meta';
 import { buildBreadcrumbItems } from '@/app.breadcrumb';
 import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
 import { useResponsive } from '@/hooks/useResponsive';
-import { resolveLayoutNavTheme } from '@/theme/runtime';
+import { resolveProLayoutThemeSettings } from '@/theme/proLayoutTheme';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
 import buildAccess from '@/access';
@@ -34,8 +34,6 @@ type LocalRuntimeMenuDataItem = RuntimeMenuDataItem & { redirect?: string };
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const LAYOUT_HEADER_HEIGHT = 48;
-const LIGHT_SIDER_BACKGROUND = '#ffffff';
-const DARK_SIDER_BACKGROUND = '#0c0c0c';
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
@@ -282,8 +280,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const brandName = brandingSettings.websiteName;
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
-  const navTheme = resolveLayoutNavTheme();
-  const siderBackground = navTheme === 'realDark' ? DARK_SIDER_BACKGROUND : LIGHT_SIDER_BACKGROUND;
+  const layoutThemeSettings = resolveProLayoutThemeSettings();
   const currentPathname = history.location.pathname;
   const siderMenuMode = resolveSiderMenuMode(currentPathname);
 
@@ -300,11 +297,8 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       header: {
         heightLayoutHeader: LAYOUT_HEADER_HEIGHT,
       },
-      sider: {
-        colorMenuBackground: siderBackground,
-      },
     },
-    navTheme,
+    ...layoutThemeSettings,
     splitMenus: false,
     breadcrumbRender: (routers = []) => {
       const pathname = history.location.pathname;

@@ -43,15 +43,18 @@ export const syncThemeRuntimeSnapshot = (themePreference: ThemePreference, syste
 
 export const getThemeRuntimeSnapshot = () => themeRuntimeSnapshot;
 
-export const resolveLayoutNavTheme = () => {
+export const resolveThemeRuntimeSnapshot = (): ThemeRuntimeSnapshot => {
   if (themeRuntimeSnapshotSynced) {
-    return themeRuntimeSnapshot.resolvedColorMode === 'dark' ? 'realDark' : 'light';
+    return themeRuntimeSnapshot;
   }
 
   const documentResolvedColorMode = getDocumentResolvedColorMode();
-  if (documentResolvedColorMode) {
-    return documentResolvedColorMode === 'dark' ? 'realDark' : 'light';
+  if (!documentResolvedColorMode) {
+    return themeRuntimeSnapshot;
   }
 
-  return themeRuntimeSnapshot.resolvedColorMode === 'dark' ? 'realDark' : 'light';
+  return {
+    ...themeRuntimeSnapshot,
+    resolvedColorMode: documentResolvedColorMode,
+  };
 };
