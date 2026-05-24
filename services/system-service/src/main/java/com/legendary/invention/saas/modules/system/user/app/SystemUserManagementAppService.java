@@ -80,6 +80,7 @@ public class SystemUserManagementAppService {
             String username,
             String mobile,
             String email,
+            Long deptId,
             String status,
             String source,
             String registeredStart,
@@ -145,6 +146,25 @@ public class SystemUserManagementAppService {
                      )
                     """;
             params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_EMAIL, email));
+        }
+        if (deptId != null) {
+            Set<Long> visibleDeptIds = queryDepartmentAndDescendantIds(tenantId, deptId);
+            if (visibleDeptIds.isEmpty()) {
+                baseSql += " and 1 = 0";
+            } else {
+                baseSql += """
+                         and exists (
+                             select 1
+                             from sys_user_department ud_filter
+                             where ud_filter.tenant_id = ?
+                               and ud_filter.user_id = u.id
+                               and ud_filter.dept_id in (%s)
+                               and ud_filter.deleted = 0
+                         )
+                        """.formatted(placeholders(visibleDeptIds.size()));
+                params.add(tenantId);
+                params.addAll(visibleDeptIds);
+            }
         }
         if (StringUtils.hasText(status)) {
             baseSql += " and u.status = ?";
@@ -1026,6 +1046,40 @@ public class SystemUserManagementAppService {
 
     private String placeholders(int count) {
         return String.join(", ", java.util.Collections.nCopies(count, "?"));
+    }
+
+    private Set<Long> queryDepartmentAndDescendantIds(Long tenantId, Long deptId) {
+        Long rootCount = jdbcTemplate.queryForObject(
+                "select count(1) from sys_department where tenant_id = ? and id = ? and deleted = 0",
+                Long.class,
+                tenantId,
+                deptId
+        );
+        if (rootCount == null || rootCount == 0) {
+            return Set.of();
+        }
+
+        Set<Long> result = new LinkedHashSet<>();
+        result.add(deptId);
+        Set<Long> frontier = new LinkedHashSet<>();
+        frontier.add(deptId);
+        while (!frontier.isEmpty()) {
+            List<Object> params = new ArrayList<>();
+            params.add(tenantId);
+            params.addAll(frontier);
+            List<Long> children = jdbcTemplate.queryForList(
+                    "select id from sys_department where tenant_id = ? and deleted = 0 and parent_id in (" + placeholders(frontier.size()) + ")",
+                    Long.class,
+                    params.toArray()
+            );
+            frontier = new LinkedHashSet<>();
+            for (Long childId : children) {
+                if (childId != null && result.add(childId)) {
+                    frontier.add(childId);
+                }
+            }
+        }
+        return result;
     }
 
     private Object[] buildTenantAndIdsParams(Long tenantId, List<Long> ids) {

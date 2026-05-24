@@ -1,0 +1,126 @@
+.saas-user-management-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.saas-user-department-card {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+}
+
+.saas-user-department-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 420px;
+  padding: 16px;
+}
+
+.saas-user-department-card__title {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.saas-user-department-card__search {
+  flex: none;
+}
+
+.saas-user-department-card__loading {
+  display: grid;
+  flex: 1;
+  min-height: 240px;
+  place-items: center;
+}
+
+.saas-user-department-tree {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.saas-user-department-tree .ant-tree-treenode {
+  width: 100%;
+  min-width: 0;
+}
+
+.saas-user-department-tree .ant-tree-node-content-wrapper {
+  min-width: 0;
+}
+
+.saas-user-department-tree__node {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.saas-user-department-tree__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saas-user-department-tree__count {
+  flex: none;
+  min-width: 22px;
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: var(--saas-action-bg);
+  color: var(--saas-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.saas-user-management-main {
+  min-width: 0;
+}
+
+.saas-user-management-main__summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--saas-border-color);
+  border-radius: var(--saas-card-radius);
+  background: var(--saas-surface-bg);
+}
+
+.saas-user-management-main__summary .ant-typography {
+  margin: 0;
+}
+
+.saas-user-management-main__hint {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+}
+
+@media (max-width: 991px) {
+  .saas-user-management-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .saas-user-department-card {
+    position: static;
+  }
+
+  .saas-user-department-card .ant-card-body {
+    min-height: auto;
+  }
+
+  .saas-user-management-main__summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
