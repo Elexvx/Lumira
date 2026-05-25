@@ -1,6 +1,6 @@
 import { QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useAccess, useIntl } from '@umijs/max';
+import { useAccess, useIntl, useLocation } from '@umijs/max';
 import { Empty, FloatButton, Popover, Typography } from 'antd';
 import { isLoggedIn } from '@/auth/session';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
@@ -11,6 +11,7 @@ import './GlobalFloatActions.css';
 export const GlobalFloatActions = () => {
   const access = useAccess();
   const intl = useIntl();
+  const { pathname } = useLocation();
   const { isMobile } = useResponsive();
   const floatingSettingsQuery = useQuery({
     queryKey: ['floating-window-settings'],
@@ -21,6 +22,7 @@ export const GlobalFloatActions = () => {
   const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);
   const canVisitApiDocs = Boolean((access as Record<string, unknown>).canVisitSystemMonitoringDocs);
   const showApiDocsQr = canVisitApiDocs && floatingSettings.apiDocsQrEnabled;
+  const isAssistantPage = pathname === '/ai/assistant' || pathname.startsWith('/ai/share/');
 
   if (!isLoggedIn()) {
     return null;
@@ -32,7 +34,7 @@ export const GlobalFloatActions = () => {
       shape="square"
       style={{
         right: isMobile ? 16 : 32,
-        bottom: isMobile ? 24 : 40,
+        bottom: isAssistantPage ? (isMobile ? 168 : 184) : isMobile ? 24 : 40,
       }}
     >
       {showApiDocsQr ? (

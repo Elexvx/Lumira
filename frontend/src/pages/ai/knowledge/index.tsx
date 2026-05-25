@@ -8,7 +8,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Empty, Form, Input, Modal, Select, Space, Tabs, Tag, Typography, Upload, message } from 'antd';
+import { Button, Drawer, Empty, Form, Input, Select, Space, Tabs, Tag, Typography, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
@@ -114,6 +114,12 @@ const AiKnowledgePage = () => {
     setEditingRecord(null);
     setSaving(false);
     form.resetFields();
+  };
+
+  const closeDocumentDrawer = () => {
+    setSelectedKnowledgeBase(null);
+    searchForm.resetFields();
+    setSearchResults([]);
   };
 
   const saveKnowledgeBase = async () => {
@@ -337,17 +343,12 @@ const AiKnowledgePage = () => {
         </Form>
       </Drawer>
 
-      <Modal
-        width={980}
+      <Drawer
+        size={responsive.isMobile ? '100%' : 980}
         title={selectedKnowledgeBase ? `知识库文档 / ${selectedKnowledgeBase.name}` : '知识库文档'}
         open={Boolean(selectedKnowledgeBase)}
-        footer={null}
-        onCancel={() => {
-          setSelectedKnowledgeBase(null);
-          searchForm.resetFields();
-          setSearchResults([]);
-        }}
-        destroyOnClose
+        onClose={closeDocumentDrawer}
+        destroyOnHidden
       >
         {selectedKnowledgeBase ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -408,7 +409,7 @@ const AiKnowledgePage = () => {
             )}
           </Space>
         ) : null}
-      </Modal>
+      </Drawer>
     </ManagementPage>
   );
 };

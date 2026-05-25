@@ -190,55 +190,55 @@ export const ProfileBasicCard = ({
 
           {hasVisibleProfileFields ? (
             <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
+              <Col xs={24}>
                 <Form.Item name="nickname" label="昵称">
                   <Input placeholder="请输入昵称" />
                 </Form.Item>
               </Col>
               {visibleProfileFields.has('realName') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item name="realName" label="姓名">
                     <Input placeholder="请输入姓名" />
                   </Form.Item>
                 </Col>
               ) : null}
               {visibleProfileFields.has('mobile') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item label="手机号">
                     <Input value={displayMobile} disabled />
                   </Form.Item>
                 </Col>
               ) : null}
               {visibleProfileFields.has('email') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item label="邮箱">
                     <Input value={displayEmail} disabled autoComplete="off" />
                   </Form.Item>
                 </Col>
               ) : null}
               {visibleProfileFields.has('birthMonth') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item name="birthMonth" label="出生年月">
                     <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
               ) : null}
               {visibleProfileFields.has('gender') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item name="gender" label="性别">
                     <Select allowClear placeholder="请选择性别" options={GENDER_OPTIONS} />
                   </Form.Item>
                 </Col>
               ) : null}
               {visibleProfileFields.has('region') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item name="region" label="所在地区">
                     <Input placeholder="请输入所在地区" />
                   </Form.Item>
                 </Col>
               ) : null}
               {visibleProfileFields.has('idCardNumber') ? (
-                <Col xs={24} md={12}>
+                <Col xs={24}>
                   <Form.Item name="idCardNumber" label="身份证号码" rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
                     <Input placeholder="请输入身份证号码" />
                   </Form.Item>
