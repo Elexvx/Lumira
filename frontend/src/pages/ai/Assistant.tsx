@@ -857,22 +857,21 @@ const Composer = ({
             </div>
           ) : false
         }
-        prefix={
-          <Button
-            type="text"
-            icon={<PaperClipOutlined />}
-            aria-label="上传附件"
-            title={`上传附件，支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')}`}
-            loading={attachmentUploading}
-            disabled={readOnly || sending || attachmentUploading || !activeSession}
-            onClick={() => fileInputRef.current?.click()}
-          />
-        }
+        prefix={false}
         footer={(_, { components }) => {
           const { SendButton, LoadingButton } = components;
           return (
             <div className="saas-ai-assistant-composer__footer">
               <div className="saas-ai-assistant-composer__tools">
+                <Button
+                  type="text"
+                  icon={<PaperClipOutlined />}
+                  aria-label="上传附件"
+                  title={`上传附件，支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')}`}
+                  loading={attachmentUploading}
+                  disabled={readOnly || sending || attachmentUploading || !activeSession}
+                  onClick={() => fileInputRef.current?.click()}
+                />
                 <XSender.Switch
                   icon={<ThunderboltOutlined />}
                   value={thinkingSupported && deepThink}
