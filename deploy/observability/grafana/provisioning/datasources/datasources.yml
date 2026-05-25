@@ -18,8 +18,14 @@ datasources:
     jsonData:
       derivedFields:
         - name: traceId
-          matcherRegex: "(?:traceId|trace_id|traceID)[=: ]+([0-9a-fA-F]+)"
+          matcherRegex: "(?:traceId|trace_id|traceID|otelTraceId)[=: ]+([0-9a-fA-F]{32})"
           datasourceUid: tempo
+          url: "$${__value.raw}"
+        - name: spanId
+          matcherRegex: "(?:spanId|span_id)[=: ]+([0-9a-fA-F]{16})"
+          url: "$${__value.raw}"
+        - name: requestId
+          matcherRegex: "(?:requestId|request_id)[=: ]+([A-Za-z0-9._:-]+)"
           url: "$${__value.raw}"
 
   - name: Tempo

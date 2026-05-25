@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,8 @@ const repoRoot = path.resolve(scriptDir, '..');
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
 const envPath = path.join(repoRoot, 'deploy', '.env');
 const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
+const alertRulesPath = path.join(repoRoot, 'deploy', 'observability', 'grafana', 'provisioning', 'alerting', 'rules.yml');
+const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafana-alerting');
 
 const args = new Set(process.argv.slice(2));
 const rebuild = args.has('--rebuild');
@@ -141,8 +143,22 @@ function generatedEnvDefaults() {
     OBSERVABILITY_ENVIRONMENT: 'prod',
     OTEL_JAVAAGENT_ENABLED: 'false',
     OTEL_EXPORTER_OTLP_ENDPOINT: 'http://alloy:4318',
+    PROMETHEUS_IMAGE: 'prom/prometheus@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3',
+    GRAFANA_IMAGE: 'grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5',
+    LOKI_IMAGE: 'grafana/loki@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86',
+    TEMPO_IMAGE: 'grafana/tempo@sha256:2513658c41faa9197dc7373599bb6119eb27bcb4232cc83779e2bc87cbc34299',
+    ALLOY_IMAGE: 'grafana/alloy@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0',
     GRAFANA_ADMIN_USER: 'admin',
     GRAFANA_ADMIN_PASSWORD: randomSecret('grafana'),
+    GRAFANA_ALERT_EMAIL_ENABLED: 'false',
+    GRAFANA_ALERT_EMAIL_TO: '',
+    GRAFANA_SMTP_HOST: '',
+    GRAFANA_SMTP_USER: '',
+    GRAFANA_SMTP_PASSWORD: '',
+    GRAFANA_SMTP_FROM_ADDRESS: 'alerts@legendary-invention.local',
+    GRAFANA_SMTP_FROM_NAME: 'Legendary Observability',
+    GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
+    GRAFANA_ALERT_WEBHOOK_URL: '',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'http://localhost:*,http://127.0.0.1:*',
   };
 }
@@ -204,6 +220,101 @@ function ensureHostMountedDirectories() {
   ensureWritableDirectory(resolvedXxlJobLogPath, 'XXL-Job executor log directory');
 }
 
+function mergedEnv() {
+  return {
+    ...parseEnvFile(envPath),
+    ...Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined)),
+  };
+}
+
+function isEnabled(value) {
+  return String(value ?? '').trim().toLowerCase() === 'true';
+}
+
+function yamlQuote(value) {
+  return `'${String(value ?? '').replaceAll("'", "''")}'`;
+}
+
+function renderReceiver(receiver) {
+  const settings = Object.entries(receiver.settings)
+    .map(([key, value]) => `            ${key}: ${yamlQuote(value)}`)
+    .join('\n');
+  return `          - uid: ${receiver.uid}
+            type: ${receiver.type}
+            settings:
+${settings}
+            disableResolveMessage: false`;
+}
+
+function ensureObservabilityProvisioning() {
+  if (!observability) {
+    return;
+  }
+
+  if (!existsSync(alertRulesPath)) {
+    throw new Error(`Missing Grafana alert rules provisioning file: ${alertRulesPath}`);
+  }
+
+  const env = mergedEnv();
+  const receivers = [];
+  if (isEnabled(env.GRAFANA_ALERT_EMAIL_ENABLED) && env.GRAFANA_ALERT_EMAIL_TO) {
+    receivers.push({
+      uid: 'legendary-email',
+      type: 'email',
+      settings: {
+        addresses: env.GRAFANA_ALERT_EMAIL_TO,
+      },
+    });
+  }
+  if (isEnabled(env.GRAFANA_ALERT_WEBHOOK_ENABLED) && env.GRAFANA_ALERT_WEBHOOK_URL) {
+    receivers.push({
+      uid: 'legendary-webhook',
+      type: 'webhook',
+      settings: {
+        url: env.GRAFANA_ALERT_WEBHOOK_URL,
+      },
+    });
+  }
+  if (receivers.length === 0) {
+    receivers.push({
+      uid: 'legendary-noop',
+      type: 'webhook',
+      settings: {
+        url: 'http://127.0.0.1:9/legendary-alerts-disabled',
+      },
+    });
+  }
+
+  mkdirSync(generatedAlertingDir, { recursive: true });
+  writeFileSync(
+    path.join(generatedAlertingDir, 'contact-points.yml'),
+    `apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: legendary-alerts
+    receivers:
+${receivers.map(renderReceiver).join('\n')}
+`
+  );
+  writeFileSync(
+    path.join(generatedAlertingDir, 'notification-policies.yml'),
+    `apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: legendary-alerts
+    group_by:
+      - grafana_folder
+      - alertname
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+`
+  );
+  log(`Grafana alert provisioning is ready with ${receivers.map((receiver) => receiver.uid).join(', ')}.`);
+}
+
 function composeArgs(...extraArgs) {
   const profileArgs = observability ? ['--profile', 'observability'] : [];
   return ['compose', '--env-file', 'deploy/.env', '-f', composeFile, ...profileArgs, ...extraArgs];
@@ -214,7 +325,7 @@ async function probeHttp(url, options = {}) {
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 5_000);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { signal: controller.signal, headers: options.headers ?? {} });
     return {
       ok: response.ok,
       status: response.status,
@@ -311,6 +422,42 @@ async function waitForPrometheusTargets() {
   throw new Error(`Prometheus did not report all legendary service targets as UP (${lastSummary}).`);
 }
 
+async function checkGrafanaAlertingProvisioning() {
+  const env = mergedEnv();
+  const user = env.GRAFANA_ADMIN_USER || 'admin';
+  const password = env.GRAFANA_ADMIN_PASSWORD || 'change-me-grafana-admin-password';
+  const headers = {
+    Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`,
+  };
+  const checks = [
+    {
+      url: 'http://127.0.0.1:3001/api/v1/provisioning/alert-rules',
+      label: 'Grafana alert rules provisioning API',
+      includes: 'legendary-service-down',
+    },
+    {
+      url: 'http://127.0.0.1:3001/api/v1/provisioning/contact-points',
+      label: 'Grafana contact points provisioning API',
+      includes: 'legendary-alerts',
+    },
+    {
+      url: 'http://127.0.0.1:3001/api/v1/provisioning/policies',
+      label: 'Grafana notification policies provisioning API',
+      includes: 'legendary-alerts',
+    },
+  ];
+
+  for (const check of checks) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await probeHttp(check.url, { headers, timeoutMs: 5_000 });
+    if (!result.ok || !result.text.includes(check.includes)) {
+      const status = result.status ? `status=${result.status}` : 'no HTTP response';
+      throw new Error(`${check.label} did not include ${check.includes} (${status}).`);
+    }
+    log(`${check.label} is ready.`);
+  }
+}
+
 async function checkObservability() {
   log('Running observability health checks...');
   await waitForHttp('http://127.0.0.1:9090/-/ready', 'Prometheus');
@@ -319,6 +466,7 @@ async function checkObservability() {
   await waitForHttp('http://127.0.0.1:3200/ready', 'Tempo');
   await waitForHttp('http://127.0.0.1:12345/-/ready', 'Alloy');
   await waitForPrometheusTargets();
+  await checkGrafanaAlertingProvisioning();
   log('Observability health checks passed.');
 }
 
@@ -331,6 +479,7 @@ ensureEnvFile();
 configureBuildIdentity();
 ensureDockerReady();
 ensureHostMountedDirectories();
+ensureObservabilityProvisioning();
 
 if (reset) {
   run('docker', composeArgs('down', '-v', '--remove-orphans'));
