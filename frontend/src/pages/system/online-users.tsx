@@ -204,7 +204,7 @@ const OnlineUsersPage = () => {
     {
       title: '操作',
       valueType: 'option',
-      fixed: responsive.isDesktop ? 'right' : undefined,
+      fixed: 'right',
       width: 180,
       render: (_, record) => {
         const isSelfUser = record.userId === currentUser?.userId;
@@ -268,7 +268,7 @@ const OnlineUsersPage = () => {
       },
     },
     ],
-    [buildActions, currentUser?.sessionId, currentUser?.userId, responsive.isDesktop, responsive.isMobile],
+    [buildActions, currentUser?.sessionId, currentUser?.userId, responsive.isMobile],
   );
 
   return (
@@ -283,6 +283,7 @@ const OnlineUsersPage = () => {
           search={false}
           columns={columns}
           isMobile={responsive.isMobile}
+          scroll={{ x: 1840 }}
           request={buildTableRequest((params) => systemService.onlineUsers(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
