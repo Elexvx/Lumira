@@ -426,6 +426,7 @@ public final class AiDTO {
         private Long conversationId;
         @NotBlank
         private String message;
+        private Boolean enableThinking;
         @Valid
         private List<ChatAttachmentItem> attachments;
         private List<String> skillCodes;
@@ -455,6 +456,14 @@ public final class AiDTO {
 
         public void setMessage(String message) {
             this.message = message;
+        }
+
+        public Boolean getEnableThinking() {
+            return enableThinking;
+        }
+
+        public void setEnableThinking(Boolean enableThinking) {
+            this.enableThinking = enableThinking;
         }
 
         public List<ChatAttachmentItem> getAttachments() {
