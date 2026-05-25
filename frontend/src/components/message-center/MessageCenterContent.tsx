@@ -28,20 +28,6 @@ interface MessageCenterNotice extends MessageNoticeRecord {
   absoluteTimeLabel: string;
 }
 
-interface MessageCenterChannel {
-  key: string;
-  label: string;
-  notices: MessageCenterNotice[];
-  unreadCount: number;
-  totalCount: number;
-  preview: string;
-  relativeTimeLabel: string;
-}
-
-const MESSAGE_TYPE_LABELS: Record<string, string> = {
-  MESSAGE: 'message.center.type.message',
-};
-
 const buildAbsoluteTimeLabel = (value?: string) => {
   if (!value) {
     return '-';
@@ -112,27 +98,6 @@ const normalizeNotice = (notice: MessageNoticeRecord): MessageCenterNotice => {
   };
 };
 
-const resolveMessageTypeLabel = (messageType?: string) => {
-  if (!messageType) {
-    return '消息';
-  }
-
-  return MESSAGE_TYPE_LABELS[messageType] || messageType;
-};
-
-const shortenText = (value?: string, fallback = '-') => {
-  if (!value) {
-    return fallback;
-  }
-
-  const compact = value.replace(/\s+/g, ' ').trim();
-  if (compact.length <= 24) {
-    return compact;
-  }
-
-  return `${compact.slice(0, 24)}…`;
-};
-
 export interface MessageCenterContentProps {
   onUnreadCountChange?: (unreadCount: number) => void;
 }
@@ -145,7 +110,6 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeChannelKey, setActiveChannelKey] = useState<string | null>(null);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const loadRequestIdRef = useRef(0);
 
@@ -258,71 +222,17 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
     [notices],
   );
 
-  const channelList = useMemo<MessageCenterChannel[]>(() => {
-    const grouped = new Map<string, MessageCenterNotice[]>();
-
-    for (const notice of notices) {
-      const key = notice.messageType || 'MESSAGE';
-      const next = grouped.get(key) || [];
-      next.push(notice);
-      grouped.set(key, next);
-    }
-
-    return Array.from(grouped.entries())
-      .map(([key, channelNotices]) => {
-        const latestNotice = channelNotices[0] || null;
-        const unreadCountForChannel = channelNotices.filter((item) => !item.readFlag).length;
-        return {
-          key,
-          label: intl.formatMessage({ id: resolveMessageTypeLabel(key), defaultMessage: '站内信' }),
-          notices: channelNotices,
-          unreadCount: unreadCountForChannel,
-          totalCount: channelNotices.length,
-          preview: latestNotice ? shortenText(latestNotice.title || latestNotice.content) : intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' }),
-          relativeTimeLabel: latestNotice?.relativeTimeLabel || '-',
-        };
-      })
-      .sort((left, right) => {
-        const leftTime = left.notices[0] ? new Date(left.notices[0].effectiveAt).getTime() : 0;
-        const rightTime = right.notices[0] ? new Date(right.notices[0].effectiveAt).getTime() : 0;
-        return rightTime - leftTime;
-      });
-  }, [notices]);
-
-  useEffect(() => {
-    if (channelList.length === 0) {
-      if (activeChannelKey !== null) {
-        setActiveChannelKey(null);
-      }
-      return;
-    }
-
-    if (!activeChannelKey || !channelList.some((item) => item.key === activeChannelKey)) {
-      setActiveChannelKey(channelList[0].key);
-    }
-  }, [activeChannelKey, channelList]);
-
-  const activeChannel = useMemo(() => {
-    if (channelList.length === 0) {
-      return null;
-    }
-
-    return channelList.find((item) => item.key === activeChannelKey) || channelList[0];
-  }, [activeChannelKey, channelList]);
-
   const visibleNotices = useMemo(() => {
-    const source = activeChannel?.notices || notices;
-
     if (filter === 'unread') {
-      return source.filter((item) => !item.readFlag);
+      return notices.filter((item) => !item.readFlag);
     }
 
     if (filter === 'read') {
-      return source.filter((item) => item.readFlag);
+      return notices.filter((item) => item.readFlag);
     }
 
-    return source;
-  }, [activeChannel?.notices, filter, notices]);
+    return notices;
+  }, [filter, notices]);
 
   const tabItems = useMemo(
     () => [
@@ -367,12 +277,12 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
     return null;
   }
 
-  const activeChannelLabel = activeChannel?.label || intl.formatMessage({ id: 'message.center.site', defaultMessage: '站内信' });
-  const activeChannelSubtitle =
-    activeChannel && activeChannel.totalCount > 0
+  const title = intl.formatMessage({ id: 'message.center.site', defaultMessage: '站内信' });
+  const subtitle =
+    notices.length > 0
       ? intl.formatMessage(
           { id: 'message.center.count', defaultMessage: '共 {total} 条消息 · {unread} 条未读' },
-          { total: activeChannel.totalCount, unread: activeChannel.unreadCount },
+          { total: counts.all, unread: counts.unread },
         )
       : intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' });
 
@@ -381,9 +291,9 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <Typography.Title level={4} style={{ margin: 0 }}>
-            {activeChannelLabel}
+            {title}
           </Typography.Title>
-          <Typography.Text type="secondary">{activeChannelSubtitle}</Typography.Text>
+          <Typography.Text type="secondary">{subtitle}</Typography.Text>
         </div>
 
         <Space wrap>
@@ -411,32 +321,16 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
 
       <Tabs activeKey={filter} items={tabItems} onChange={(key) => setFilter(key as MessageCenterFilter)} />
 
-      {channelList.length > 1 ? (
-        <Tabs
-          size="small"
-          activeKey={activeChannel?.key}
-          onChange={(key) => setActiveChannelKey(key)}
-          items={channelList.map((channel) => ({
-            key: channel.key,
-            label: (
-              <Space size={8} wrap>
-                <Typography.Text>{channel.label}</Typography.Text>
-                <Tag color={channel.unreadCount > 0 ? 'red' : 'blue'} bordered={false}>
-              {channel.unreadCount > 0
-                ? intl.formatMessage({ id: 'message.center.statusUnread', defaultMessage: '未读' })
-                : intl.formatMessage({ id: 'message.center.statusRead', defaultMessage: '已读' })}
-                </Tag>
-              </Space>
-            ),
-          }))}
-        />
-      ) : null}
-
-        <Spin spinning={loading && notices.length === 0} tip={intl.formatMessage({ id: 'message.center.loading', defaultMessage: '加载消息中' })}>
-          {visibleNotices.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={filter === 'all'
-            ? intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' })
-            : intl.formatMessage({ id: 'message.center.noneFiltered', defaultMessage: '暂无符合条件的消息' })}>
+      <Spin spinning={loading && notices.length === 0} tip={intl.formatMessage({ id: 'message.center.loading', defaultMessage: '加载消息中' })}>
+        {visibleNotices.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              filter === 'all'
+                ? intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' })
+                : intl.formatMessage({ id: 'message.center.noneFiltered', defaultMessage: '暂无符合条件的消息' })
+            }
+          >
             {loadError ? (
               <Button icon={<ReloadOutlined />} onClick={() => void reloadCenter()}>
                 {intl.formatMessage({ id: 'common.retry', defaultMessage: '重试' })}
