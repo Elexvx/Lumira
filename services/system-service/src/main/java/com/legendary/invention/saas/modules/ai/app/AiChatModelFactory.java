@@ -373,7 +373,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         if (config.getMaxTokens() != null) {
             body.put("max_tokens", config.getMaxTokens());
         }
-        applyProviderRequestOptions(config, body);
+        applyProviderRequestOptions(config, request, body);
 
         var messages = body.putArray("messages");
         messages.addObject()
@@ -636,19 +636,21 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
 
     private void applyProviderRequestOptions(
             AiLlmServiceConfig config,
+            AiDTO.ChatRequest request,
             com.fasterxml.jackson.databind.node.ObjectNode body
     ) {
         String normalizedProvider = normalizeProvider(config.getProvider());
         if ("deepseek".equals(normalizedProvider)) {
-            applyDeepSeekRequestOptions(config, body);
+            applyDeepSeekRequestOptions(config, request, body);
             return;
         }
         if (shouldEnableThinking(config)) {
-            body.put("enable_thinking", true);
+            boolean enableThinking = request == null || request.getEnableThinking() == null || Boolean.TRUE.equals(request.getEnableThinking());
+            body.put("enable_thinking", enableThinking);
         }
     }
 
-    private void applyDeepSeekRequestOptions(AiLlmServiceConfig config, com.fasterxml.jackson.databind.node.ObjectNode body) {
+    private void applyDeepSeekRequestOptions(AiLlmServiceConfig config, AiDTO.ChatRequest request, com.fasterxml.jackson.databind.node.ObjectNode body) {
         String originalModel = StringUtils.hasText(config.getDefaultModel())
                 ? config.getDefaultModel().trim().toLowerCase(Locale.ROOT)
                 : "";
@@ -657,7 +659,8 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             return;
         }
         if ("deepseek-reasoner".equals(originalModel)) {
-            body.set("thinking", objectMapper.createObjectNode().put("type", "enabled"));
+            boolean enableThinking = request == null || request.getEnableThinking() == null || Boolean.TRUE.equals(request.getEnableThinking());
+            body.set("thinking", objectMapper.createObjectNode().put("type", enableThinking ? "enabled" : "disabled"));
         }
     }
 

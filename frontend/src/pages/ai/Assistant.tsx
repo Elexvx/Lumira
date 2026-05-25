@@ -1,4 +1,5 @@
 import {
+  AppstoreOutlined,
   BulbOutlined,
   CopyOutlined,
   DeleteOutlined,
@@ -6,21 +7,24 @@ import {
   EditOutlined,
   FileOutlined,
   MoreOutlined,
+  PaperClipOutlined,
   PlusOutlined,
   PushpinOutlined,
   RobotOutlined,
   ShareAltOutlined,
   SmileOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Sender as XSender } from '@ant-design/x';
+import { Sender as XSender, Sources, Suggestion, Think } from '@ant-design/x';
+import type { SlotConfigType } from '@ant-design/x/es/sender';
 import { XMarkdown } from '@ant-design/x-markdown';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { history, useParams } from '@umijs/max';
 import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Space, Spin, Tag, Tabs, message } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import { aiService } from '@/services/ai';
 import { fileService } from '@/services/file';
@@ -32,11 +36,12 @@ import type {
   AiChatResponseRecord,
   AiEmployeeRecord,
   AiKnowledgeReferenceRecord,
+  AiLlmServiceRecord,
   FileObjectRecord,
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
-import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
+import { MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import './Assistant.css';
 
@@ -118,12 +123,35 @@ type BubbleItem = {
 };
 
 type ComposerProps = {
+  employees: AiEmployeeRecord[];
   selectedEmployee?: AiEmployeeRecord | null;
+  llmServices: AiLlmServiceRecord[];
   readOnly: boolean;
   activeSession?: ChatSession | null;
   sending: boolean;
-  onSend: (messageText: string) => void;
-  onPasteFile: (files: FileList) => void;
+  attachmentUploading: boolean;
+  onEmployeeChange: (employeeId: number) => void;
+  onSend: (messageText: string, options: { enableThinking: boolean }) => void;
+  onUploadFiles: (files: File[]) => void;
+  onRemoveAttachment: (fileId: number) => void;
+};
+
+const AI_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
+const AI_ATTACHMENT_ACCEPT = AI_ATTACHMENT_EXTENSIONS.map((extension) => `.${extension}`).join(',');
+
+const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowerCase() || '';
+
+const isAllowedAiAttachment = (file: File) => AI_ATTACHMENT_EXTENSIONS.includes(getFileExtension(file.name));
+
+const isThinkingSupportedByModel = (service?: AiLlmServiceRecord | null) => {
+  if (!service) {
+    return false;
+  }
+  const provider = service.provider?.trim().toLowerCase() || '';
+  const model = service.defaultModel?.trim().toLowerCase() || '';
+  return provider === 'dashscope'
+    || provider === 'aliyun-bailian'
+    || (provider === 'deepseek' && model === 'deepseek-reasoner');
 };
 
 const HOT_TOPIC_PROMPTS: AssistantPrompt[] = [
@@ -419,12 +447,22 @@ const mapFileObjectToAttachment = (file: FileObjectRecord): ComposerAttachment =
   previewMode: file.previewMode,
 });
 
-const mapMessageRecord = (record: AiConversationMessageRecord): ChatBubble => ({
-  key: `message_${record.id}`,
-  role: record.role.trim().toUpperCase() === 'USER' ? 'user' : 'ai',
-  content: record.content,
-  attachments: (record.attachments || []).map(mapAttachmentRecord),
-});
+type MessageRecordWithSources = AiConversationMessageRecord & {
+  thinkingContent?: string | null;
+  references?: AiKnowledgeReferenceRecord[] | null;
+};
+
+const mapMessageRecord = (record: AiConversationMessageRecord): ChatBubble => {
+  const messageRecord = record as MessageRecordWithSources;
+  return {
+    key: `message_${record.id}`,
+    role: record.role.trim().toUpperCase() === 'USER' ? 'user' : 'ai',
+    content: record.content,
+    attachments: (record.attachments || []).map(mapAttachmentRecord),
+    thinkingContent: messageRecord.thinkingContent,
+    references: messageRecord.references,
+  };
+};
 
 const getConversationGroup = (session: ChatSession) => {
   if (session.isDraft) {
@@ -497,22 +535,58 @@ const renderThinkingContent = (item: ChatBubble) => {
   const statusText = thinkingContent ? '处理过程' : '正在生成回复';
 
   return (
-    <details className="saas-ai-assistant-thinking" open={Boolean(thinkingContent)}>
-      <summary className="saas-ai-assistant-thinking__summary">
-        <RobotOutlined className="saas-ai-assistant-thinking__icon" />
-        <span>{statusText}</span>
-      </summary>
-      <div className="saas-ai-assistant-thinking__body">
-        {thinkingContent ? (
-          <div className="saas-ai-assistant-thinking__content">{thinkingContent}</div>
-        ) : (
-          <div className="saas-ai-assistant-thinking__loading">
-            <Spin size="small" />
-            <span>正在调用模型并生成回复，当前接口暂不支持实时过程流。</span>
-          </div>
-        )}
-      </div>
-    </details>
+    <Think
+      title={statusText}
+      loading={item.thinkingLoading}
+      defaultExpanded={Boolean(thinkingContent)}
+      classNames={{
+        root: 'saas-ai-assistant-thinking',
+        status: 'saas-ai-assistant-thinking__status',
+        content: 'saas-ai-assistant-thinking__content',
+      }}
+    >
+      {thinkingContent ? (
+        <MarkdownMessage content={thinkingContent} />
+      ) : (
+        <div className="saas-ai-assistant-thinking__loading">
+          <Spin size="small" />
+          <span>正在调用模型并生成回复。</span>
+        </div>
+      )}
+    </Think>
+  );
+};
+
+const renderSources = (references?: AiKnowledgeReferenceRecord[] | null) => {
+  if (!references?.length) {
+    return null;
+  }
+
+  const dedupedReferences = Array.from(
+    new Map<number, AiKnowledgeReferenceRecord>(references.map((reference) => [reference.chunkId, reference])).values(),
+  ).slice(0, 6);
+
+  const sourceItems = dedupedReferences.map((reference) => ({
+    key: reference.chunkId,
+    title: reference.documentTitle || reference.originalFileName || `知识片段 #${reference.chunkId}`,
+    description: reference.knowledgeBaseName
+      ? `知识库：${reference.knowledgeBaseName}${reference.chunkIndex != null ? ` · 分片 #${reference.chunkIndex + 1}` : ''}`
+      : reference.chunkIndex != null
+        ? `分片 #${reference.chunkIndex + 1}`
+        : '知识引用',
+  }));
+
+  return (
+    <Sources
+      classNames={{
+        root: 'saas-ai-assistant-sources',
+        title: 'saas-ai-assistant-sources__title',
+        content: 'saas-ai-assistant-sources__content',
+      }}
+      title={`参考来源（${sourceItems.length}）`}
+      expandIconPosition="end"
+      items={sourceItems}
+    />
   );
 };
 
@@ -575,39 +649,208 @@ const createActions = (
 };
 
 const Composer = ({
+  employees,
   selectedEmployee,
+  llmServices,
   readOnly,
   activeSession,
   sending,
+  attachmentUploading,
+  onEmployeeChange,
   onSend,
-  onPasteFile,
+  onUploadFiles,
+  onRemoveAttachment,
 }: ComposerProps) => {
   const [inputValue, setInputValue] = useState('');
+  const [senderKey, setSenderKey] = useState(0);
+  const [deepThink, setDeepThink] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedLlmService = useMemo(
+    () => llmServices.find((service) => service.id === selectedEmployee?.defaultLlmServiceId) || null,
+    [llmServices, selectedEmployee?.defaultLlmServiceId],
+  );
+  const thinkingSupported = isThinkingSupportedByModel(selectedLlmService);
+
+  useEffect(() => {
+    setDeepThink(thinkingSupported);
+  }, [thinkingSupported, selectedLlmService?.id]);
+
+  const agentItems = useMemo(
+    () =>
+      employees
+        .filter((employee) => employee.enabled !== false)
+        .map((employee) => ({
+          label: employee.nickname?.trim() || employee.username,
+          value: String(employee.id),
+          icon: <RobotOutlined />,
+          extra: employee.defaultLlmServiceTitle || employee.position || undefined,
+        })),
+    [employees],
+  );
+
+  const slotConfig = useMemo<SlotConfigType[]>(
+    () => [
+      { type: 'text', value: '请' },
+      {
+        type: 'content',
+        key: 'task',
+        props: {
+          placeholder: '输入任务或问题',
+        },
+      },
+    ],
+    [],
+  );
+
+  const selectedAgentSkill = selectedEmployee
+    ? {
+        title: selectedEmployee.nickname?.trim() || selectedEmployee.username,
+        value: String(selectedEmployee.id),
+        closable: false,
+      }
+    : undefined;
 
   useEffect(() => {
     setInputValue('');
+    setSenderKey((current) => current + 1);
   }, [activeSession?.id, readOnly]);
+
+  const handleFiles = (files: File[]) => {
+    const safeFiles = files.filter(isAllowedAiAttachment);
+    const blockedCount = files.length - safeFiles.length;
+    if (blockedCount > 0) {
+      message.warning('已拦截不支持或存在风险的文件格式');
+    }
+    if (!safeFiles.length) {
+      message.error(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
+      return;
+    }
+    onUploadFiles(safeFiles);
+  };
+
+  const handleSubmit = (messageText: string) => {
+    const normalizedMessage = messageText.trim();
+    if (!normalizedMessage || normalizedMessage === '请') {
+      message.warning('请输入要处理的任务或问题');
+      return;
+    }
+    onSend(normalizedMessage, { enableThinking: thinkingSupported && deepThink });
+    setInputValue('');
+    setSenderKey((current) => current + 1);
+  };
 
   return (
     <div className="saas-ai-assistant-composer">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={AI_ATTACHMENT_ACCEPT}
+        multiple
+        hidden
+        onChange={(event) => {
+          const files = Array.from(event.target.files || []);
+          event.target.value = '';
+          if (files.length) {
+            handleFiles(files);
+          }
+        }}
+      />
       <XSender
+        key={senderKey}
         rootClassName="saas-ai-assistant-sender"
-        value={inputValue}
         loading={sending}
         readOnly={readOnly}
         disabled={readOnly || !selectedEmployee || !activeSession}
-        autoSize={{ minRows: 3, maxRows: 6 }}
+        autoSize={{ minRows: 4, maxRows: 7 }}
         submitType="enter"
+        slotConfig={slotConfig}
+        skill={selectedAgentSkill}
         onChange={(nextValue) => setInputValue(nextValue)}
         onSubmit={(nextValue) => {
-          if (!nextValue.trim()) {
-            return;
-          }
-          onSend(nextValue);
-          setInputValue('');
+          handleSubmit(nextValue);
         }}
-        onPasteFile={onPasteFile}
+        onPasteFile={(files) => handleFiles(Array.from(files))}
         placeholder={readOnly ? '当前为只读分享页面' : selectedEmployee && activeSession ? '向我提问吧' : '暂无可用数字员工'}
+        header={
+          activeSession?.pendingAttachments.length ? (
+            <div className="saas-ai-assistant-composer__attachments">
+              {activeSession.pendingAttachments.map((attachment) => (
+                <Tag
+                  key={attachment.id}
+                  icon={<FileOutlined />}
+                  closable={!sending && !readOnly}
+                  onClose={(event) => {
+                    event.preventDefault();
+                    onRemoveAttachment(attachment.fileId);
+                  }}
+                >
+                  {attachment.originalFileName}
+                  {attachment.fileSizeLabel ? ` · ${attachment.fileSizeLabel}` : ''}
+                </Tag>
+              ))}
+            </div>
+          ) : false
+        }
+        prefix={
+          <Button
+            type="text"
+            icon={<PaperClipOutlined />}
+            aria-label="上传附件"
+            title={`上传附件，支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')}`}
+            loading={attachmentUploading}
+            disabled={readOnly || sending || attachmentUploading || !activeSession}
+            onClick={() => fileInputRef.current?.click()}
+          />
+        }
+        footer={(_, { components }) => {
+          const { SendButton, LoadingButton } = components;
+          return (
+            <div className="saas-ai-assistant-composer__footer">
+              <div className="saas-ai-assistant-composer__tools">
+                <XSender.Switch
+                  icon={<ThunderboltOutlined />}
+                  value={thinkingSupported && deepThink}
+                  disabled={!thinkingSupported || readOnly || sending}
+                  checkedChildren="思考：开启"
+                  unCheckedChildren={thinkingSupported ? '思考：关闭' : '思考：不可用'}
+                  onChange={setDeepThink}
+                />
+                <Suggestion
+                  items={agentItems}
+                  onSelect={(value) => {
+                    const nextEmployeeId = Number(value);
+                    if (Number.isFinite(nextEmployeeId)) {
+                      onEmployeeChange(nextEmployeeId);
+                    }
+                  }}
+                >
+                  {({ onTrigger, onKeyDown }) => (
+                    <Button
+                      icon={<AppstoreOutlined />}
+                      disabled={readOnly || sending || !agentItems.length}
+                      onClick={() => onTrigger({})}
+                      onKeyDown={onKeyDown}
+                    >
+                      Agent
+                    </Button>
+                  )}
+                </Suggestion>
+                <Button
+                  icon={<FileOutlined />}
+                  loading={attachmentUploading}
+                  disabled={readOnly || sending || attachmentUploading || !activeSession}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Files
+                </Button>
+              </div>
+              <div className="saas-ai-assistant-composer__actions">
+                {sending ? <LoadingButton /> : <SendButton disabled={!inputValue.trim() || inputValue.trim() === '请'} />}
+              </div>
+            </div>
+          );
+        }}
       />
     </div>
   );
@@ -652,6 +895,12 @@ const AiAssistantPage = () => {
     retry: false,
   });
 
+  const llmServicesQuery = useQuery({
+    queryKey: ['ai-assistant-llm-services'],
+    enabled: !isShareMode,
+    queryFn: async () => aiService.llmServices({ pageNo: 1, pageSize: 100 }, { autoRedirectOnUnauthorized: false }),
+  });
+
   const shareQuery = useQuery({
     queryKey: ['ai-assistant-share', shareToken],
     enabled: isShareMode && Boolean(shareToken),
@@ -660,6 +909,7 @@ const AiAssistantPage = () => {
   });
 
   const employees = employeesQuery.data?.records || [];
+  const llmServices = llmServicesQuery.data?.records || [];
   const assistantEmployee = assistantQuery.data || null;
   const shareConversation = shareQuery.data?.conversation || null;
   const shareEmployee = shareConversation
@@ -900,13 +1150,10 @@ const AiAssistantPage = () => {
       return;
     }
 
-    const allowedFiles = files.filter((file) => {
-      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-      return ALLOWED_UPLOAD_EXTENSIONS.includes(fileExtension);
-    });
+    const allowedFiles = files.filter(isAllowedAiAttachment);
 
     if (!allowedFiles.length) {
-      message.error(`仅支持 ${ALLOWED_UPLOAD_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
+      message.error(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
       return;
     }
 
@@ -945,7 +1192,7 @@ const AiAssistantPage = () => {
     }
   };
 
-  const handleSend = async (messageText: string) => {
+  const handleSend = async (messageText: string, options: { enableThinking?: boolean } = {}) => {
     const trimmed = messageText.trim();
     if (!trimmed || !selectedEmployee || !activeSession || isShareMode) {
       return;
@@ -1038,6 +1285,7 @@ const AiAssistantPage = () => {
             employeeId: selectedEmployee.id,
             conversationId: activeSession.conversationId ?? null,
             message: trimmed,
+            enableThinking: options.enableThinking ?? null,
             attachments: draftAttachments.map((attachment) => ({ fileId: attachment.fileId })),
           },
           (event) => {
@@ -1449,15 +1697,7 @@ const AiAssistantPage = () => {
         footer: (
           <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
             {item.attachments.length ? <Space wrap>{item.attachments.map(renderAttachmentTag)}</Space> : null}
-            {item.references?.length ? (
-              <Space wrap>
-                {item.references.slice(0, 4).map((reference) => (
-                  <Tag key={reference.chunkId} color="cyan">
-                    {reference.documentTitle || reference.originalFileName || reference.knowledgeBaseName || '知识库引用'}
-                  </Tag>
-                ))}
-              </Space>
-            ) : null}
+            {renderSources(item.references)}
             <div className="saas-ai-assistant-bubble__actions">
               {createActions(item, {
                 onCopy: handleCopyMessage,
@@ -1512,7 +1752,7 @@ const AiAssistantPage = () => {
 
   const chatPanel = (
     <section className="saas-ai-assistant-layout__chat">
-      <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
+        <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
         {!hasContent ? (
           <Welcome
             icon={<RobotOutlined />}
@@ -1550,12 +1790,21 @@ const AiAssistantPage = () => {
 
       <div className="saas-ai-assistant-shell__composer">
         <Composer
+          employees={selectedEmployeeOptions}
           selectedEmployee={selectedEmployee}
+          llmServices={llmServices}
           readOnly={isShareMode}
           activeSession={activeSession}
           sending={sending}
-          onSend={(messageText) => void handleSend(messageText)}
-          onPasteFile={(files) => void uploadAttachments(Array.from(files))}
+          attachmentUploading={attachmentUploading}
+          onEmployeeChange={(employeeId) => setSelectedEmployeeId(employeeId)}
+          onSend={(messageText, options) => void handleSend(messageText, options)}
+          onUploadFiles={(files) => void uploadAttachments(files)}
+          onRemoveAttachment={(fileId) => {
+            if (activeSession) {
+              handleRemoveDraftAttachment(activeSession.id, fileId);
+            }
+          }}
         />
       </div>
     </section>

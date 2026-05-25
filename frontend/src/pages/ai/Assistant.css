@@ -405,7 +405,85 @@
 }
 
 .saas-ai-assistant-sender .ant-sender-input {
-  min-height: 92px;
+  min-height: 118px;
+  padding-top: 14px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.saas-ai-assistant-sender .ant-sender-prefix {
+  align-items: flex-end;
+  padding-bottom: 10px;
+}
+
+.saas-ai-assistant-sender .ant-sender-footer {
+  padding-top: 10px;
+}
+
+.saas-ai-assistant-sender .ant-sender-actions-list {
+  display: none;
+}
+
+.saas-ai-assistant-composer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.saas-ai-assistant-composer__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.saas-ai-assistant-composer__tools .ant-btn {
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+.saas-ai-assistant-composer__tools .ant-sender-switch {
+  border-radius: 8px;
+}
+
+.saas-ai-assistant-composer__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.saas-ai-assistant-composer__actions::before {
+  content: '';
+  width: 1px;
+  height: 24px;
+  background: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+}
+
+.saas-ai-assistant-composer__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding-bottom: 8px;
+}
+
+.saas-ai-assistant-composer__attachments .ant-tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin-inline-end: 0;
+  border-radius: 8px;
+}
+
+.saas-ai-assistant-composer__attachments .ant-tag span:not(.anticon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .saas-ai-assistant-bubble__footer {
@@ -473,6 +551,23 @@
   background: transparent;
 }
 
+.saas-ai-assistant-markdown-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  border: 1px dashed var(--ant-color-border, rgba(0, 0, 0, 0.25));
+  border-radius: 6px;
+}
+
+.saas-ai-assistant-markdown pre:has(.saas-ai-assistant-code),
+.saas-ai-assistant-markdown pre:has(.saas-ai-assistant-mermaid) {
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+}
+
 .saas-ai-assistant-markdown table {
   width: 100%;
   border-collapse: collapse;
@@ -495,48 +590,17 @@
 }
 
 .saas-ai-assistant-thinking {
-  min-width: min(360px, 100%);
+  width: min(100%, 760px);
   color: var(--ant-color-text-secondary);
 }
 
-.saas-ai-assistant-thinking__summary {
-  display: inline-flex;
+.saas-ai-assistant-thinking__status {
+  display: flex;
   align-items: center;
   gap: 8px;
   width: fit-content;
-  cursor: pointer;
-  list-style: none;
   font-weight: 600;
-  color: var(--ant-color-text-secondary);
-}
-
-.saas-ai-assistant-thinking__summary::-webkit-details-marker {
-  display: none;
-}
-
-.saas-ai-assistant-thinking__summary::after {
-  content: '';
-  width: 7px;
-  height: 7px;
-  margin-left: 2px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translateY(-2px);
-  transition: transform 0.2s ease;
-}
-
-.saas-ai-assistant-thinking[open] .saas-ai-assistant-thinking__summary::after {
-  transform: rotate(225deg) translateY(-2px);
-}
-
-.saas-ai-assistant-thinking__icon {
-  color: var(--ant-color-text-tertiary);
-}
-
-.saas-ai-assistant-thinking__body {
-  margin-top: 12px;
-  padding-left: 18px;
-  border-left: 3px solid var(--ant-color-border-secondary);
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
 }
 
 .saas-ai-assistant-thinking__content {
@@ -548,6 +612,42 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.saas-ai-assistant-sources {
+  max-width: 100%;
+}
+
+.saas-ai-assistant-sources .ant-sources-title {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+}
+
+.saas-ai-assistant-sources__title .ant-sources-title {
+  color: var(--ant-color-text-secondary);
+}
+
+.saas-ai-assistant-sources__content {
+  margin-top: 8px;
+}
+
+.saas-ai-assistant-sources__content .ant-sources-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saas-ai-assistant-sources__content .ant-sources-link {
+  color: var(--ant-color-text);
+}
+
+.saas-ai-assistant-sources__content .ant-sources-link-title {
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.saas-ai-assistant-sources__content .ant-sources-link-icon {
+  color: var(--ant-color-text-tertiary);
 }
 
 @media (max-width: 992px) {

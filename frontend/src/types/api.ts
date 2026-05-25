@@ -503,6 +503,7 @@ export interface AiChatRequestPayload {
   employeeId: number;
   conversationId?: number | null;
   message: string;
+  enableThinking?: boolean | null;
   attachments?: Array<{
     fileId: number;
   }> | null;
