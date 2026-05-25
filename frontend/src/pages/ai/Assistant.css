@@ -385,10 +385,6 @@
   width: 100%;
 }
 
-.saas-ai-assistant-composer__attachments .ant-tag {
-  margin-inline-end: 0;
-}
-
 .saas-ai-assistant-composer {
   display: flex;
   flex-direction: column;
@@ -464,26 +460,32 @@
 }
 
 .saas-ai-assistant-composer__attachments {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   width: 100%;
   padding-bottom: 8px;
 }
 
-.saas-ai-assistant-composer__attachments .ant-tag {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  margin-inline-end: 0;
+.saas-ai-assistant-file-card-list {
+  width: 100%;
+}
+
+.saas-ai-assistant-file-card-list .ant-file-card {
   border-radius: 8px;
 }
 
-.saas-ai-assistant-composer__attachments .ant-tag span:not(.anticon) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.saas-ai-assistant-file-card-list--pending .ant-file-card-list-content {
+  gap: 8px;
+}
+
+.saas-ai-assistant-file-card-list--pending .ant-file-card {
+  background: color-mix(in srgb, var(--ant-color-bg-container, #fff) 96%, var(--ant-color-primary, #1677ff) 4%);
+}
+
+.saas-ai-assistant-file-card-list--message {
+  max-width: min(100%, 520px);
+}
+
+.saas-ai-assistant-message-attachments {
+  width: 100%;
 }
 
 .saas-ai-assistant-bubble__footer {
