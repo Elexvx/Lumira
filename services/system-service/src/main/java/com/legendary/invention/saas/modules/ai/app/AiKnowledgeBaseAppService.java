@@ -97,7 +97,7 @@ public class AiKnowledgeBaseAppService {
                           on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
                         left join ai_knowledge_chunk c
                           on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
-                        """ + where + """
+                        """ + sqlClause(where) + """
                         group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                  kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                         order by kb.id desc
@@ -389,7 +389,7 @@ public class AiKnowledgeBaseAppService {
                         from ai_knowledge_chunk c
                         join ai_knowledge_document d on d.tenant_id = c.tenant_id and d.id = c.document_id
                         join ai_knowledge_base kb on kb.tenant_id = c.tenant_id and kb.id = c.knowledge_base_id
-                        """ + where + """
+                        """ + sqlClause(where) + """
                         order by c.update_time desc, c.id desc
                         limit ?
                         """,
@@ -415,7 +415,7 @@ public class AiKnowledgeBaseAppService {
                         join ai_knowledge_base kb on kb.tenant_id = rel.tenant_id and kb.id = rel.knowledge_base_id and kb.is_deleted = 0
                         left join ai_knowledge_document d on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
                         left join ai_knowledge_chunk c on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
-                        """ + where + """
+                        """ + sqlClause(where) + """
                         group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                  kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                         order by kb.id desc
@@ -580,7 +580,7 @@ public class AiKnowledgeBaseAppService {
                         from ai_knowledge_base kb
                         left join ai_knowledge_document d on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
                         left join ai_knowledge_chunk c on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
-                        """ + where + """
+                        """ + sqlClause(where) + """
                         group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                  kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                         limit 1
@@ -806,6 +806,10 @@ public class AiKnowledgeBaseAppService {
 
     private Long currentUserId(CurrentUser currentUser) {
         return currentUser == null || currentUser.getUserId() == null ? 0L : currentUser.getUserId();
+    }
+
+    private String sqlClause(StringBuilder clause) {
+        return clause + "\n";
     }
 
     private boolean hasAllPermission(CurrentUser currentUser) {
