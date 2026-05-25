@@ -44,8 +44,8 @@ export const MenuEditorForm = ({ formProps, parentOptions }: MenuEditorFormProps
     <Form.Item name="component" label="组件">
       <Input />
     </Form.Item>
-    <Form.Item name="icon" label="图标">
-      <Input />
+    <Form.Item name="icon" label="图标" extra="填写 Ant Design 图标名，例如：RobotOutlined、SettingOutlined。">
+      <Input placeholder="如：RobotOutlined" />
     </Form.Item>
     <Form.Item name="sortNo" label="排序">
       <InputNumber style={{ width: '100%' }} />

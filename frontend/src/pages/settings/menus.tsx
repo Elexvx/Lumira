@@ -1,5 +1,5 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Space, Spin, Tabs, Tag, message } from 'antd';
+import { Button, Form, Input, Space, Spin, Tabs, Tag, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -29,10 +29,13 @@ import { confirmAction } from '@/utils/confirm';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import {
   DEFAULT_SETTING_ROUTE_ORDER,
+  getStoredSettingRouteIcons,
   getStoredSettingRouteOrder,
+  persistSettingRouteIcons,
   persistSettingRouteOrder,
   resetSettingRouteOrder,
 } from '@/navigation/settingsRouteOrder';
+import { isMainMenuHiddenSettingPath } from '@/navigation/settingsNavigation';
 
 interface MenuDragState {
   draggedId: number;
@@ -56,18 +59,24 @@ interface SettingsRouteRecord {
   name: string;
   path: string;
   icon?: string;
+  defaultIcon?: string;
+  customIcon?: string;
   access?: string;
   sortNo: number;
   manageMode: string;
 }
 
-const buildSettingsRouteRecords = (routeOrder: string[]): SettingsRouteRecord[] => routeOrder.map((path, index) => {
+const buildSettingsRouteRecords = (routeOrder: string[], routeIcons: Record<string, string>): SettingsRouteRecord[] => routeOrder.map((path, index) => {
   const meta = backendRouteMeta.find((item) => item.path === path);
+  const customIcon = routeIcons[path];
+  const defaultIcon = meta?.icon;
   return {
     id: path,
     name: meta ? formatRouteName(meta.name) : path,
     path,
-    icon: meta?.icon,
+    icon: customIcon || defaultIcon,
+    defaultIcon,
+    customIcon,
     access: meta?.access,
     sortNo: index + 1,
     manageMode: '平台内置',
@@ -81,11 +90,21 @@ const moveArrayItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
   return nextItems;
 };
 
+const buildMainRouteMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
+  menus
+    .filter((menu) => !isMainMenuHiddenSettingPath(menu.path ?? undefined))
+    .map((menu) => ({
+      ...menu,
+      children: menu.children?.length ? buildMainRouteMenuTree(menu.children) : undefined,
+    }));
+
 const SettingsRoutesTab = () => {
   const { setInitialState } = useInitialStateModel();
   const responsive = useResponsive();
   const [routeOrder, setRouteOrder] = useState(() => getStoredSettingRouteOrder());
-  const records = useMemo(() => buildSettingsRouteRecords(routeOrder), [routeOrder]);
+  const [routeIcons, setRouteIcons] = useState(() => getStoredSettingRouteIcons());
+  const [editingRouteIcons, setEditingRouteIcons] = useState<Record<string, string>>(() => getStoredSettingRouteIcons());
+  const records = useMemo(() => buildSettingsRouteRecords(routeOrder, routeIcons), [routeOrder, routeIcons]);
   const canResetOrder = routeOrder.join('|') !== DEFAULT_SETTING_ROUTE_ORDER.join('|');
 
   const refreshSettingsNavigation = () => {
@@ -104,6 +123,30 @@ const SettingsRoutesTab = () => {
     setRouteOrder(nextOrder);
     refreshSettingsNavigation();
     message.success('设置页路由顺序已更新');
+  };
+
+  const updateRouteIcon = (record: SettingsRouteRecord) => {
+    const nextIcon = (editingRouteIcons[record.path] || '').trim();
+    const nextIcons = {
+      ...routeIcons,
+      [record.path]: nextIcon,
+    };
+    persistSettingRouteIcons(nextIcons);
+    const normalizedIcons = getStoredSettingRouteIcons();
+    setRouteIcons(normalizedIcons);
+    setEditingRouteIcons(normalizedIcons);
+    refreshSettingsNavigation();
+    message.success(nextIcon ? '设置页路由图标已更新' : '设置页路由图标已恢复默认');
+  };
+
+  const resetRouteIcon = (record: SettingsRouteRecord) => {
+    const { [record.path]: _removed, ...nextIcons } = routeIcons;
+    persistSettingRouteIcons(nextIcons);
+    const normalizedIcons = getStoredSettingRouteIcons();
+    setRouteIcons(normalizedIcons);
+    setEditingRouteIcons(normalizedIcons);
+    refreshSettingsNavigation();
+    message.success('设置页路由图标已恢复默认');
   };
 
   const moveRoute = (record: SettingsRouteRecord, direction: -1 | 1) => {
@@ -158,8 +201,25 @@ const SettingsRoutesTab = () => {
         {
           title: '图标',
           dataIndex: 'icon',
-          width: 160,
-          render: (value) => value || '-',
+          width: 280,
+          render: (_, record) => (
+            <Space.Compact style={{ width: '100%' }}>
+              <Input
+                allowClear
+                value={editingRouteIcons[record.path] ?? ''}
+                placeholder={record.defaultIcon || '如：SettingOutlined'}
+                onChange={(event) =>
+                  setEditingRouteIcons((current) => ({
+                    ...current,
+                    [record.path]: event.target.value,
+                  }))
+                }
+                onPressEnter={() => updateRouteIcon(record)}
+              />
+              <Button onClick={() => updateRouteIcon(record)}>保存</Button>
+              {record.customIcon ? <Button onClick={() => resetRouteIcon(record)}>默认</Button> : null}
+            </Space.Compact>
+          ),
         },
         {
           title: '顺序',
@@ -214,6 +274,7 @@ const MenuManagementPage = () => {
     dataSource: menuCrud.detail.currentRecord || undefined,
   });
   const canReorderMenus = actionPermission.can('system:menu:update') && !reordering;
+  const mainRouteMenuTree = useMemo(() => buildMainRouteMenuTree(menuTree), [menuTree]);
   const expandableMenuIds = useMemo(() => {
     const ids = new Set<number>();
     const collectIds = (menus: MenuRecord[]) => {
@@ -224,9 +285,9 @@ const MenuManagementPage = () => {
         }
       });
     };
-    collectIds(menuTree);
+    collectIds(mainRouteMenuTree);
     return ids;
-  }, [menuTree]);
+  }, [mainRouteMenuTree]);
 
   const loadMenus = useCallback(async () => {
     const result = await iamService.menus({ autoRedirectOnUnauthorized: false });
@@ -270,7 +331,7 @@ const MenuManagementPage = () => {
     menuCrud.reloadTable();
   }, [expandedRowKeys, menuCrud.reloadTable, menuTree]);
 
-  const flatMenus = useMemo(() => flattenMenus(menuTree), [menuTree]);
+  const flatMenus = useMemo(() => flattenMenus(mainRouteMenuTree), [mainRouteMenuTree]);
   const editableFlatMenus = useMemo(() => flatMenus.filter((menu) => !isBuiltinMenu(menu)), [flatMenus]);
 
   const saveMenuOrder = useCallback(
@@ -547,7 +608,7 @@ const MenuManagementPage = () => {
                   },
                 })}
                 request={async (params) => {
-                  const visibleMenus = buildMenuTableData(menuTree, expandedRowKeys, params);
+                  const visibleMenus = buildMenuTableData(mainRouteMenuTree, expandedRowKeys, params);
                   return {
                     data: visibleMenus,
                     success: true,

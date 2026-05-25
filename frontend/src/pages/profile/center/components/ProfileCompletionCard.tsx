@@ -34,64 +34,36 @@ export const ProfileCompletionCard = ({
         extra={summary ? <Tag color={summary.completionRate === 100 ? 'green' : 'blue'}>{summary.completionRate}%</Tag> : null}
       >
         {summary ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <div className="saas-profile-page__completion-summary">
-              <Progress
-                type="circle"
-                percent={summary.completionRate}
-                size={72}
-                strokeColor={summary.completionRate === 100 ? '#52c41a' : '#1677ff'}
-              />
-              <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {summary.score}/{summary.maxScore} 分
-                </Typography.Title>
-                <Typography.Text type="secondary">
-                  已完成 {summary.earnedWeight || 0} / {summary.totalWeight || 0} 权重
-                </Typography.Text>
-                <Typography.Text type="secondary">
-                  {incompleteItems.length ? `${incompleteItems.length} 项资料待完善` : '资料已全部完善'}
-                </Typography.Text>
-              </Space>
-            </div>
-
-            {groups.length ? (
-              <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                {groups.map((group) => (
-                  <div key={group.groupKey} className="saas-profile-page__completion-group-row">
-                    <Typography.Text strong ellipsis style={{ minWidth: 0 }}>
-                      {group.groupLabel}
-                    </Typography.Text>
-                    <Space size={8} align="center">
-                      <Progress percent={group.completionRate} showInfo={false} size="small" className="saas-profile-page__completion-group-progress" />
-                      <Typography.Text type="secondary">{group.earnedWeight || 0}/{group.totalWeight || 0}</Typography.Text>
-                    </Space>
-                  </div>
-                ))}
-              </Space>
-            ) : null}
-
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Space align="baseline" size={8} wrap>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {summary.completionRate}%
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                {incompleteItems.length ? `${incompleteItems.length} 项待完善` : '资料已完善'}
+              </Typography.Text>
+              <Typography.Text type="secondary">
+                {summary.score}/{summary.maxScore} 分
+              </Typography.Text>
+            </Space>
+            <Progress
+              percent={summary.completionRate}
+              showInfo={false}
+              strokeColor={summary.completionRate === 100 ? '#52c41a' : '#1677ff'}
+            />
             {visibleIncompleteItems.length ? (
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Space size={[8, 8]} wrap>
                 {visibleIncompleteItems.map((item) => (
-                  <div key={item.fieldKey} className="saas-profile-page__completion-action-row">
-                    <Space size={8} style={{ minWidth: 0 }}>
-                      <ExclamationCircleFilled style={{ color: '#fa8c16' }} />
-                      <Typography.Text strong ellipsis style={{ minWidth: 0 }}>
-                        {item.fieldLabel}
-                      </Typography.Text>
-                    </Space>
-                    {item.actionAvailable === false ? (
-                      <Tag style={{ marginInlineEnd: 0 }}>待开启</Tag>
-                    ) : (
-                      <Button type="link" size="small" onClick={() => onActionItem(item)}>
-                        {actionButtonText(item)}
-                      </Button>
-                    )}
-                  </div>
+                  item.actionAvailable === false ? (
+                    <Tag key={item.fieldKey}>待开启 · {item.fieldLabel}</Tag>
+                  ) : (
+                    <Button key={item.fieldKey} type="link" size="small" icon={<ExclamationCircleFilled />} onClick={() => onActionItem(item)}>
+                      {item.fieldLabel}
+                    </Button>
+                  )
                 ))}
                 {incompleteItems.length > visibleIncompleteItems.length ? (
-                  <Typography.Text type="secondary">还有 {incompleteItems.length - visibleIncompleteItems.length} 项可在编辑资料中完善</Typography.Text>
+                  <Typography.Text type="secondary">还有 {incompleteItems.length - visibleIncompleteItems.length} 项</Typography.Text>
                 ) : null}
               </Space>
             ) : null}

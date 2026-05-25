@@ -115,6 +115,15 @@ export const buildMenuColumns = ({
     ellipsis: true,
   },
   {
+    title: '图标',
+    dataIndex: 'icon',
+    search: false,
+    width: 180,
+    responsive: ['md', 'lg', 'xl', 'xxl'],
+    ellipsis: true,
+    render: (_, record) => record.icon || '-',
+  },
+  {
     title: '组件',
     dataIndex: 'component',
     search: false,
@@ -198,6 +207,7 @@ export const menuDetailColumns: ProDescriptionsItemProps<MenuRecord>[] = [
   { title: '菜单名称', dataIndex: 'menuName' },
   { title: '菜单类型', dataIndex: 'menuType' },
   { title: '路由', dataIndex: 'path', renderText: (value) => value || '-' },
+  { title: '图标', dataIndex: 'icon', renderText: (value) => value || '-' },
   { title: '组件', dataIndex: 'component', renderText: (value) => value || '-' },
   { title: '权限标识', dataIndex: 'permissionKey', renderText: (value) => value || '-' },
   { title: '状态', dataIndex: 'status' },
