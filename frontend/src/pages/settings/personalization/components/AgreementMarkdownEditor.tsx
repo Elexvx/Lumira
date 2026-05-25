@@ -14,10 +14,10 @@ import {
 } from '@ant-design/icons';
 import { Button, Divider, Input, Tooltip } from 'antd';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
+import { XMarkdown } from '@ant-design/x-markdown';
 import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import './AgreementMarkdownEditor.css';
 
 interface AgreementMarkdownEditorProps {
@@ -164,9 +164,7 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
           <div className="agreement-markdown-editor__preview">
           {markdown.trim() ? (
             <div className="agreement-markdown-editor__preview-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {markdown}
-              </ReactMarkdown>
+              <XMarkdown content={markdown} openLinksInNewTab escapeRawHtml />
             </div>
           ) : (
             <div className="agreement-markdown-editor__preview-empty">预览会显示在这里</div>
