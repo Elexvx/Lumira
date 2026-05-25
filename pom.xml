@@ -37,6 +37,7 @@
         <mysql.version>9.7.0</mysql.version>
         <springdoc.version>3.0.3</springdoc.version>
         <tika.version>3.2.3</tika.version>
+        <opentelemetry-api.version>1.50.0</opentelemetry-api.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -64,6 +65,11 @@
                 <version>${spring-cloud-alibaba.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api</artifactId>
+                <version>${opentelemetry-api.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

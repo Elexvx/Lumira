@@ -1,6 +1,8 @@
 package com.legendary.invention.common.web;
 
 import com.legendary.invention.common.constant.HeaderConstants;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,13 +32,23 @@ public class TraceIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String requestId = resolveHeader(request, HeaderConstants.REQUEST_ID, null);
-        String traceId = resolveHeader(request, HeaderConstants.TRACE_ID, useRequestIdAsTraceFallback ? requestId : null);
+        SpanContext spanContext = Span.current().getSpanContext();
+        String spanId = spanContext.isValid() ? spanContext.getSpanId() : "";
+        String traceId = spanContext.isValid()
+                ? spanContext.getTraceId()
+                : resolveHeader(request, HeaderConstants.TRACE_ID, useRequestIdAsTraceFallback ? requestId : null);
 
         TraceContext.setRequestId(requestId);
         TraceContext.setTraceId(traceId);
+        TraceContext.setSpanId(spanId);
         if (writeMdc) {
             MDC.put("requestId", requestId);
             MDC.put("traceId", traceId);
+            MDC.put("trace_id", traceId);
+            if (StringUtils.hasText(spanId)) {
+                MDC.put("spanId", spanId);
+                MDC.put("span_id", spanId);
+            }
         }
         response.setHeader(HeaderConstants.REQUEST_ID, requestId);
         response.setHeader(HeaderConstants.TRACE_ID, traceId);
@@ -46,6 +58,9 @@ public class TraceIdFilter extends OncePerRequestFilter {
             if (writeMdc) {
                 MDC.remove("requestId");
                 MDC.remove("traceId");
+                MDC.remove("trace_id");
+                MDC.remove("spanId");
+                MDC.remove("span_id");
             }
             TraceContext.clear();
         }

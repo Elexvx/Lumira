@@ -20,6 +20,7 @@ frontend/package-lock.json
 deploy/.env
 deploy/.env.*
 !deploy/.env.example
+deploy/.generated/
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
