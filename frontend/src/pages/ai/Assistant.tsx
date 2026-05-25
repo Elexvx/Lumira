@@ -806,8 +806,8 @@ const Composer = ({
                   icon={<ThunderboltOutlined />}
                   value={thinkingSupported && deepThink}
                   disabled={!thinkingSupported || readOnly || sending}
-                  checkedChildren="思考：开启"
-                  unCheckedChildren={thinkingSupported ? '思考：关闭' : '思考：不可用'}
+                  checkedChildren="思考"
+                  unCheckedChildren="思考"
                   onChange={setDeepThink}
                 />
                 <Suggestion
