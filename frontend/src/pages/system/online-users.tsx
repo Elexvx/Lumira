@@ -100,15 +100,17 @@ const OnlineUsersPage = () => {
     {
       title: '用户',
       dataIndex: 'username',
-      width: 220,
+      width: 360,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
-          <Space size={6} wrap>
-            <Typography.Text strong>{record.realName || record.nickname || record.username}</Typography.Text>
+        <Space className="saas-online-users-page__user-cell" size={6} wrap={false}>
+          <Typography.Text className="saas-online-users-page__user-name" strong ellipsis={{ tooltip: record.realName || record.nickname || record.username }}>
+            {record.realName || record.nickname || record.username}
+          </Typography.Text>
             {record.userId === currentUser?.userId ? <Tag color="orange">当前账号</Tag> : null}
             {record.sessionId === currentUser?.sessionId ? <Tag color="blue">当前会话</Tag> : null}
-          </Space>
-          <Typography.Text type="secondary">{record.username}</Typography.Text>
+          <Typography.Text className="saas-online-users-page__username" type="secondary" ellipsis={{ tooltip: record.username }}>
+            {record.username}
+          </Typography.Text>
         </Space>
       ),
     },
@@ -283,7 +285,7 @@ const OnlineUsersPage = () => {
           search={false}
           columns={columns}
           isMobile={responsive.isMobile}
-          scroll={{ x: 1840 }}
+          scroll={{ x: 1980 }}
           request={buildTableRequest((params) => systemService.onlineUsers(params, { autoRedirectOnUnauthorized: false }))}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
