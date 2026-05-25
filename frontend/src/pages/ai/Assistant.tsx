@@ -16,7 +16,8 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Sender as XSender, Sources, Suggestion, Think } from '@ant-design/x';
+import { FileCard, Sender as XSender, Sources, Suggestion, Think } from '@ant-design/x';
+import type { FileCardProps } from '@ant-design/x';
 import type { SlotConfigType } from '@ant-design/x/es/sender';
 import { XMarkdown } from '@ant-design/x-markdown';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -142,6 +143,47 @@ const AI_ATTACHMENT_ACCEPT = AI_ATTACHMENT_EXTENSIONS.map((extension) => `.${ext
 const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowerCase() || '';
 
 const isAllowedAiAttachment = (file: File) => AI_ATTACHMENT_EXTENSIONS.includes(getFileExtension(file.name));
+
+const getAttachmentFileIcon = (attachment: ComposerAttachment): FileCardProps['icon'] => {
+  const extension = (attachment.fileExtension || getFileExtension(attachment.originalFileName)).toLowerCase();
+  if (['xls', 'xlsx'].includes(extension)) {
+    return 'excel';
+  }
+  if (['doc', 'docx'].includes(extension)) {
+    return 'word';
+  }
+  if (['ppt', 'pptx'].includes(extension)) {
+    return 'ppt';
+  }
+  if (extension === 'pdf') {
+    return 'pdf';
+  }
+  if (extension === 'md') {
+    return 'markdown';
+  }
+  if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(extension)) {
+    return 'image';
+  }
+  return 'default';
+};
+
+const getAttachmentFileType = (attachment: ComposerAttachment): FileCardProps['type'] => {
+  const extension = (attachment.fileExtension || getFileExtension(attachment.originalFileName)).toLowerCase();
+  if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(extension)) {
+    return 'image';
+  }
+  return 'file';
+};
+
+const toAttachmentFileCardItem = (attachment: ComposerAttachment): FileCardProps => ({
+  key: attachment.fileId,
+  name: attachment.originalFileName,
+  byte: attachment.fileSizeBytes ?? undefined,
+  description: attachment.fileSizeLabel || undefined,
+  icon: getAttachmentFileIcon(attachment),
+  type: getAttachmentFileType(attachment),
+  src: attachment.previewUrl || attachment.publicUrl || attachment.downloadUrl || undefined,
+});
 
 const isThinkingSupportedByModel = (service?: AiLlmServiceRecord | null) => {
   if (!service) {
@@ -623,11 +665,27 @@ const downloadText = (content: string, fileName: string, mimeType: string) => {
   window.URL.revokeObjectURL(url);
 };
 
-const renderAttachmentTag = (attachment: ComposerAttachment) => (
-  <Tag key={attachment.id} icon={<FileOutlined />} color="blue">
-    {attachment.originalFileName}
-    {attachment.fileSizeLabel ? ` · ${attachment.fileSizeLabel}` : ''}
-  </Tag>
+const renderAttachmentCardList = (
+  attachments: ComposerAttachment[],
+  options?: {
+    removable?: boolean;
+    onRemove?: (fileId: number) => void;
+    className?: string;
+  },
+) => (
+  <FileCard.List
+    className={options?.className}
+    items={attachments.map(toAttachmentFileCardItem)}
+    size="small"
+    removable={options?.removable}
+    overflow="wrap"
+    onRemove={(item) => {
+      const fileId = Number(item.key);
+      if (Number.isFinite(fileId)) {
+        options?.onRemove?.(fileId);
+      }
+    }}
+  />
 );
 
 const createActions = (
@@ -775,20 +833,11 @@ const Composer = ({
         header={
           activeSession?.pendingAttachments.length ? (
             <div className="saas-ai-assistant-composer__attachments">
-              {activeSession.pendingAttachments.map((attachment) => (
-                <Tag
-                  key={attachment.id}
-                  icon={<FileOutlined />}
-                  closable={!sending && !readOnly}
-                  onClose={(event) => {
-                    event.preventDefault();
-                    onRemoveAttachment(attachment.fileId);
-                  }}
-                >
-                  {attachment.originalFileName}
-                  {attachment.fileSizeLabel ? ` · ${attachment.fileSizeLabel}` : ''}
-                </Tag>
-              ))}
+              {renderAttachmentCardList(activeSession.pendingAttachments, {
+                removable: !sending && !readOnly,
+                onRemove: onRemoveAttachment,
+                className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
+              })}
             </div>
           ) : false
         }
@@ -1696,7 +1745,13 @@ const AiAssistantPage = () => {
         ),
         footer: (
           <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
-            {item.attachments.length ? <Space wrap>{item.attachments.map(renderAttachmentTag)}</Space> : null}
+            {item.attachments.length ? (
+              <div className="saas-ai-assistant-message-attachments">
+                {renderAttachmentCardList(item.attachments, {
+                  className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--message',
+                })}
+              </div>
+            ) : null}
             {renderSources(item.references)}
             <div className="saas-ai-assistant-bubble__actions">
               {createActions(item, {
