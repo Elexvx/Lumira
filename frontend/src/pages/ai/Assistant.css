@@ -73,27 +73,6 @@
   background: color-mix(in srgb, var(--ant-color-bg-layout, #f5f5f5) 72%, transparent);
 }
 
-.saas-ai-assistant-sidebar__brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 72px;
-  padding: 0 24px;
-  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.saas-ai-assistant-sidebar__logo {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 8px;
-  color: #fff;
-  background: linear-gradient(135deg, #1677ff 0%, #9254de 100%);
-}
-
 .saas-ai-assistant-sidebar__footer {
   display: flex;
   align-items: center;
@@ -109,7 +88,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 12px 12px;
+  padding: 12px;
 }
 
 .saas-ai-assistant-conversations .ant-btn {

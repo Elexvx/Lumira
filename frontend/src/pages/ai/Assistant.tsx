@@ -1808,12 +1808,6 @@ const AiAssistantPage = () => {
 
   const sessionsPanel = (
     <aside className="saas-ai-assistant-layout__sidebar">
-      <div className="saas-ai-assistant-sidebar__brand">
-        <span className="saas-ai-assistant-sidebar__logo">
-          <RobotOutlined />
-        </span>
-        <span>AI 助手</span>
-      </div>
       <Conversations
         items={conversationItems}
         activeKey={activeSessionId}
