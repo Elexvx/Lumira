@@ -515,12 +515,7 @@ public class FileManagementAppService {
     }
 
     private Path resolveStorageRoot(FileStorageSpaceEntity entity) {
-        String rootPath = StringUtils.hasText(entity.getRootPath()) ? entity.getRootPath() : "storage/uploads/";
-        Path root = Path.of(rootPath);
-        if (!root.isAbsolute()) {
-            root = root.toAbsolutePath().normalize();
-        }
-        return root;
+        return resolveStorageRoot(StringUtils.hasText(entity.getRootPath()) ? entity.getRootPath() : uploadProperties.getStorageRoot());
     }
 
     private void validateRemoteStorage(FileStorageSpaceEntity entity) throws IOException, InterruptedException {
@@ -685,12 +680,26 @@ public class FileManagementAppService {
     }
 
     private Path resolveStorageRoot(StorageSpaceDTO storageSpace) {
-        String rootPath = StringUtils.hasText(storageSpace.rootPath()) ? storageSpace.rootPath() : uploadProperties.getStorageRoot();
+        return resolveStorageRoot(StringUtils.hasText(storageSpace.rootPath()) ? storageSpace.rootPath() : uploadProperties.getStorageRoot());
+    }
+
+    private Path resolveStorageRoot(String rootPath) {
         Path root = Path.of(rootPath);
-        if (!root.isAbsolute()) {
-            root = root.toAbsolutePath().normalize();
+        if (root.isAbsolute()) {
+            return root.normalize();
         }
-        return root;
+        Path uploadRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        String normalizedRootPath = rootPath.trim().replace('\\', '/');
+        while (normalizedRootPath.endsWith("/")) {
+            normalizedRootPath = normalizedRootPath.substring(0, normalizedRootPath.length() - 1);
+        }
+        if ("storage/uploads".equals(normalizedRootPath)) {
+            return uploadRoot;
+        }
+        if (normalizedRootPath.startsWith("storage/uploads/")) {
+            return uploadRoot.resolve(normalizedRootPath.substring("storage/uploads/".length())).normalize();
+        }
+        return uploadRoot.resolve(normalizedRootPath).normalize();
     }
 
     private String resolvePublicPath(Path storageRoot) {
