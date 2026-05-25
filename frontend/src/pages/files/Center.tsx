@@ -472,6 +472,7 @@ const SystemFilesPage = () => {
       {
         title: '操作',
         valueType: 'option',
+        fixed: 'right',
         width: 180,
         render: (_, record) => (
           <TableActionBar
@@ -587,6 +588,7 @@ const SystemFilesPage = () => {
       {
         title: formatMessage({ id: 'system.files.field.actions', defaultMessage: 'Actions' }),
         valueType: 'option',
+        fixed: 'right',
         width: 220,
         render: (_, record) => (
           <TableActionBar
