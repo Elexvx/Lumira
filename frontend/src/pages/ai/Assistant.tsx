@@ -1,28 +1,25 @@
 import {
-  ArrowUpOutlined,
-  AppstoreAddOutlined,
   BulbOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
-  FileSearchOutlined,
   FileOutlined,
   PlusOutlined,
   PushpinOutlined,
   RobotOutlined,
-  ScheduleOutlined,
   ShareAltOutlined,
   SmileOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
+import { Sender as XSender } from '@ant-design/x';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { history, useParams } from '@umijs/max';
 import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Space, Spin, Tag, Tabs, message } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, DragEvent } from 'react';
+import type { DragEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { aiService } from '@/services/ai';
@@ -39,7 +36,7 @@ import type {
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
-import { ALLOWED_UPLOAD_EXTENSIONS, FILE_ACCEPT, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
+import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
 import './Assistant.css';
 
 type BubbleRole = 'user' | 'ai';
@@ -125,7 +122,6 @@ type ComposerProps = {
   activeSession?: ChatSession | null;
   sending: boolean;
   onSend: (messageText: string) => void;
-  onPromptSubmit: (messageText: string) => void;
   onPasteFile: (files: FileList) => void;
 };
 
@@ -154,29 +150,6 @@ const GUIDE_PROMPTS: AssistantPrompt[] = [
     title: '角色',
     description: '以企业数字员工身份协助分析和执行',
     icon: <SmileOutlined />,
-  },
-];
-
-const SENDER_PROMPTS: AssistantPrompt[] = [
-  {
-    key: 'sender-1',
-    description: '动态',
-    icon: <ScheduleOutlined />,
-  },
-  {
-    key: 'sender-2',
-    description: '组件',
-    icon: <RobotOutlined />,
-  },
-  {
-    key: 'sender-3',
-    description: '指南',
-    icon: <FileSearchOutlined />,
-  },
-  {
-    key: 'sender-4',
-    description: '教程',
-    icon: <AppstoreAddOutlined />,
   },
 ];
 
@@ -231,31 +204,6 @@ const PromptPanel = ({
   </div>
 );
 
-const SenderPrompts = ({
-  items,
-  disabled,
-  onItemClick,
-}: {
-  items: AssistantPrompt[];
-  disabled?: boolean;
-  onItemClick: (description: string) => void;
-}) => (
-  <div className="saas-ai-assistant-sender-prompts">
-    {items.map((item) => (
-      <button
-        key={item.key}
-        type="button"
-        className="saas-ai-assistant-sender-prompt"
-        disabled={disabled}
-        onClick={() => onItemClick(item.description)}
-      >
-        {item.icon}
-        <span>{item.description}</span>
-      </button>
-    ))}
-  </div>
-);
-
 const BubbleSystem = ({ content }: { content: React.ReactNode; variant?: string }) => (
   <div className="saas-ai-assistant-bubble-system">{content}</div>
 );
@@ -302,62 +250,6 @@ const Welcome = ({
     {extra}
   </div>
 );
-
-const SenderBase = ({
-  value,
-  loading,
-  readOnly,
-  disabled,
-  onChange,
-  onSubmit,
-  onPasteFile,
-  placeholder,
-}: {
-  value: string;
-  loading?: boolean;
-  readOnly?: boolean;
-  disabled?: boolean;
-  onChange: (value: string) => void;
-  onSubmit: (value: string) => void;
-  onPasteFile?: (files: FileList) => void;
-  placeholder?: string;
-}) => (
-  <div className="saas-ai-assistant-sender">
-    <Input.TextArea
-      value={value}
-      autoSize={{ minRows: 2, maxRows: 6 }}
-      readOnly={readOnly}
-      disabled={disabled}
-      placeholder={placeholder}
-      onChange={(event) => onChange(event.target.value)}
-      onPaste={(event) => {
-        const files = event.clipboardData?.files;
-        if (files?.length) {
-          onPasteFile?.(files);
-        }
-      }}
-      onPressEnter={(event) => {
-        if (!event.shiftKey) {
-          event.preventDefault();
-          if (value.trim() && !disabled && !loading) {
-            onSubmit(value);
-          }
-        }
-      }}
-    />
-    <Button
-      className="saas-ai-assistant-sender__submit"
-      type="primary"
-      shape="circle"
-      icon={<ArrowUpOutlined />}
-      loading={loading}
-      disabled={disabled || !value.trim()}
-      aria-label="发送"
-      onClick={() => onSubmit(value)}
-    />
-  </div>
-);
-const Sender = SenderBase;
 
 const Conversations = ({
   items,
@@ -685,7 +577,6 @@ const Composer = ({
   activeSession,
   sending,
   onSend,
-  onPromptSubmit,
   onPasteFile,
 }: ComposerProps) => {
   const [inputValue, setInputValue] = useState('');
@@ -696,20 +587,19 @@ const Composer = ({
 
   return (
     <div className="saas-ai-assistant-composer">
-      {!readOnly ? (
-        <SenderPrompts
-          items={SENDER_PROMPTS}
-          disabled={!selectedEmployee || !activeSession || sending}
-          onItemClick={onPromptSubmit}
-        />
-      ) : null}
-      <Sender
+      <XSender
+        rootClassName="saas-ai-assistant-sender"
         value={inputValue}
         loading={sending}
         readOnly={readOnly}
         disabled={readOnly || !selectedEmployee || !activeSession}
+        autoSize={{ minRows: 3, maxRows: 6 }}
+        submitType="enter"
         onChange={(nextValue) => setInputValue(nextValue)}
         onSubmit={(nextValue) => {
+          if (!nextValue.trim()) {
+            return;
+          }
           onSend(nextValue);
           setInputValue('');
         }}
@@ -725,7 +615,6 @@ const AiAssistantPage = () => {
   const params = useParams<RouteParams>();
   const shareToken = params.token?.trim() || '';
   const isShareMode = Boolean(shareToken);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string>('session-default');
@@ -1606,19 +1495,6 @@ const AiAssistantPage = () => {
   const hasContent = Boolean(activeSession?.messages?.length);
   const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
 
-  const triggerUploadDialog = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleUploadFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextFiles = Array.from(event.target.files || []);
-    event.target.value = '';
-    if (!nextFiles.length) {
-      return;
-    }
-    void uploadAttachments(nextFiles);
-  };
-
   const handleDropFiles = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     if (isShareMode) {
@@ -1676,16 +1552,7 @@ const AiAssistantPage = () => {
           activeSession={activeSession}
           sending={sending}
           onSend={(messageText) => void handleSend(messageText)}
-          onPromptSubmit={handlePromptSubmit}
           onPasteFile={(files) => void uploadAttachments(Array.from(files))}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={FILE_ACCEPT}
-          multiple
-          className="saas-ai-assistant-file-input"
-          onChange={handleUploadFileInputChange}
         />
       </div>
     </section>
