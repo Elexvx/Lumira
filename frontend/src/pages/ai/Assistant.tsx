@@ -338,6 +338,7 @@ const Conversations = ({
   groupable?: boolean;
   className?: string;
 }) => {
+  const [openActionKey, setOpenActionKey] = useState<string | null>(null);
   const groupedItems = items.reduce<Record<string, ConversationItem[]>>((result, item) => {
     const groupName = item.group || '会话';
     result[groupName] = [...(result[groupName] || []), item];
@@ -370,11 +371,26 @@ const Conversations = ({
                 </div>
               );
               const menuProps = menu?.(item);
+              const itemWrapClassName = [
+                'saas-ai-assistant-conversation-item-wrap',
+                item.key === activeKey ? 'saas-ai-assistant-conversation-item-wrap--active' : '',
+                openActionKey === item.key ? 'saas-ai-assistant-conversation-item-wrap--menu-open' : '',
+              ].filter(Boolean).join(' ');
               return menuProps ? (
-                <Dropdown key={item.key} menu={menuProps} trigger={['contextMenu']}>
-                  <div className={`saas-ai-assistant-conversation-item-wrap${item.key === activeKey ? ' saas-ai-assistant-conversation-item-wrap--active' : ''}`}>
+                <Dropdown
+                  key={item.key}
+                  menu={menuProps}
+                  trigger={['contextMenu']}
+                  onOpenChange={(open) => setOpenActionKey(open ? item.key : null)}
+                >
+                  <div className={itemWrapClassName}>
                     {content}
-                    <Dropdown menu={menuProps} trigger={['click']} placement="bottomRight">
+                    <Dropdown
+                      menu={menuProps}
+                      trigger={['click']}
+                      placement="bottomRight"
+                      onOpenChange={(open) => setOpenActionKey(open ? item.key : null)}
+                    >
                       <Button
                         className="saas-ai-assistant-conversation-item__more"
                         type="text"
