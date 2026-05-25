@@ -720,7 +720,7 @@ const Composer = ({
         type: 'content',
         key: 'task',
         props: {
-          placeholder: '输入任务或问题，输入 / 切换助手',
+          placeholder: '向我提问吧',
         },
       },
     ],
@@ -806,9 +806,9 @@ const Composer = ({
             value={inputValue}
             slotConfig={slotConfig}
             skill={selectedAgentSkill}
-            onChange={(nextValue) => setInputValue(nextValue)}
-            onKeyUp={(event) => {
-              const slashMatch = event.currentTarget.value.match(/(?:^|\s)\/([^\s/]*)$/);
+            onChange={(nextValue) => {
+              setInputValue(nextValue);
+              const slashMatch = nextValue.match(/(?:^|\s)\/([^\s/]*)$/);
               onTrigger(slashMatch ? { keyword: slashMatch[1] } : false);
             }}
             onSubmit={(nextValue) => {
