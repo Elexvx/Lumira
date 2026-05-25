@@ -57,6 +57,17 @@ public class ImageUploadService {
     }
 
     public StoredImage upload(MultipartFile file, String storageSubPath) {
+        Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        String publicPath = normalizePublicPath(uploadProperties.getPublicPath());
+        String normalizedSubPath = normalizeStorageSubPath(storageSubPath);
+        if (StringUtils.hasText(normalizedSubPath)) {
+            storageRoot = storageRoot.resolve(normalizedSubPath).normalize();
+            publicPath = publicPath + "/" + normalizedSubPath;
+        }
+        return upload(file, storageRoot, publicPath);
+    }
+
+    public StoredImage upload(MultipartFile file, Path storageRoot, String publicPath) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择图片文件");
         }
@@ -71,16 +82,19 @@ public class ImageUploadService {
         validateMagicBytes(bytes, extension);
         validateDecodedImage(bytes, extension);
 
-        Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        Path normalizedStorageRoot = storageRoot == null
+                ? Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize()
+                : storageRoot.toAbsolutePath().normalize();
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String normalizedExtension = "jpeg".equals(extension) ? "jpg" : extension;
         String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + normalizedExtension;
-        String normalizedSubPath = normalizeStorageSubPath(storageSubPath);
-        Path target = storageRoot
-                .resolve(StringUtils.hasText(normalizedSubPath) ? normalizedSubPath : "")
+        Path target = normalizedStorageRoot
                 .resolve(dateFolder)
                 .resolve(generatedName)
                 .normalize();
+        if (!target.startsWith(normalizedStorageRoot)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片存储路径无效");
+        }
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
@@ -94,11 +108,8 @@ public class ImageUploadService {
                 "." + normalizedExtension,
                 contentType,
                 file.getSize(),
-                StringUtils.hasText(normalizedSubPath) ? normalizedSubPath + "/" + dateFolder + "/" + generatedName : dateFolder + "/" + generatedName,
-                normalizePublicPath(uploadProperties.getPublicPath())
-                        + "/"
-                        + (StringUtils.hasText(normalizedSubPath) ? normalizedSubPath + "/" : "")
-                        + dateFolder + "/" + generatedName
+                dateFolder + "/" + generatedName,
+                normalizePublicPath(StringUtils.hasText(publicPath) ? publicPath : uploadProperties.getPublicPath()) + "/" + dateFolder + "/" + generatedName
         );
     }
 

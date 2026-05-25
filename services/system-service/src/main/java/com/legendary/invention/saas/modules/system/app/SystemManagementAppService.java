@@ -707,6 +707,7 @@ public class SystemManagementAppService {
                 currentUser.getUserId()
         );
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        initializeTenantFileStorageSpaces(id, currentUser.getUserId());
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "create", "CREATE", "SUCCESS", "创建租户: " + tenantCode);
         return getTenant(currentUser, id);
     }
@@ -2080,6 +2081,43 @@ public class SystemManagementAppService {
 
     private Long currentTenantId(CurrentUser currentUser) {
         return currentUser == null || currentUser.getCurrentTenantId() == null ? DEFAULT_PUBLIC_TENANT_ID : currentUser.getCurrentTenantId();
+    }
+
+    private void initializeTenantFileStorageSpaces(Long tenantId, Long operatorId) {
+        jdbcTemplate.update(
+                """
+                        insert into file_storage_space (
+                            tenant_id, title, storage_key, provider, root_path, rename_strategy, max_file_size_mb,
+                            allowed_mime_types, default_flag, retain_file_on_record_delete, status, created_by, updated_by, deleted
+                        )
+                        select ?, 'Local storage', 'local', 'LOCAL', 'storage/uploads/', 'APPEND_RANDOM_ID', 20,
+                               '*', 1, 0, 'ENABLED', ?, ?, 0
+                        where not exists (
+                            select 1 from file_storage_space where tenant_id = ? and storage_key = 'local'
+                        )
+                        """,
+                tenantId,
+                operatorId,
+                operatorId,
+                tenantId
+        );
+        jdbcTemplate.update(
+                """
+                        insert into file_storage_space (
+                            tenant_id, title, storage_key, provider, root_path, rename_strategy, max_file_size_mb,
+                            allowed_mime_types, default_flag, retain_file_on_record_delete, status, created_by, updated_by, deleted
+                        )
+                        select ?, 'AI 聊天附件', 'ai_chat', 'LOCAL', 'storage/uploads/ai_chat/', 'APPEND_RANDOM_ID', 20,
+                               '*', 0, 0, 'ENABLED', ?, ?, 0
+                        where not exists (
+                            select 1 from file_storage_space where tenant_id = ? and storage_key = 'ai_chat'
+                        )
+                        """,
+                tenantId,
+                operatorId,
+                operatorId,
+                tenantId
+        );
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {

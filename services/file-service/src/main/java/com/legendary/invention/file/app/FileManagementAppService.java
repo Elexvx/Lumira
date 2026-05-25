@@ -207,7 +207,7 @@ public class FileManagementAppService {
     ) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
-        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file, storageContext.storageSubPath());
+        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath());
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
@@ -239,7 +239,7 @@ public class FileManagementAppService {
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
-        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file, storageContext.storageSubPath());
+        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath());
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
@@ -266,7 +266,7 @@ public class FileManagementAppService {
     public void deleteFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
         FileObjectDTO file = queryFile(currentUser, fileId, tenantScope);
         if (!shouldRetainStoredFile(currentTenantId(currentUser), file.bucket())) {
-            deleteStoredFile(file.storagePath());
+            deleteStoredFile(file);
         }
         fileObjectMapper.update(
                 null,
@@ -418,7 +418,7 @@ public class FileManagementAppService {
 
     public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean tenantScope) {
         FileObjectDTO file = queryFile(currentUser, fileId, tenantScope);
-        Path target = resolveFilePath(file.storagePath());
+        Path target = resolveFilePath(file);
         if (target == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件路径无效");
         }
@@ -468,8 +468,8 @@ public class FileManagementAppService {
         );
     }
 
-    private void deleteStoredFile(String relativePath) {
-        Path target = resolveFilePath(relativePath);
+    private void deleteStoredFile(FileObjectDTO file) {
+        Path target = resolveFilePath(file);
         if (target == null) {
             return;
         }
@@ -496,11 +496,29 @@ public class FileManagementAppService {
         return target;
     }
 
+    private Path resolveFilePath(FileObjectDTO file) {
+        if (file == null || !StringUtils.hasText(file.storagePath())) {
+            return null;
+        }
+        if (StringUtils.hasText(file.bucket())) {
+            FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.tenantId(), file.bucket());
+            if (storageSpace != null) {
+                Path storageRoot = resolveStorageRoot(storageSpace);
+                Path target = storageRoot.resolve(file.storagePath()).normalize();
+                if (target.startsWith(storageRoot)) {
+                    return target;
+                }
+                return null;
+            }
+        }
+        return resolveFilePath(file.storagePath());
+    }
+
     private Path resolveStorageRoot(FileStorageSpaceEntity entity) {
         String rootPath = StringUtils.hasText(entity.getRootPath()) ? entity.getRootPath() : "storage/uploads/";
         Path root = Path.of(rootPath);
         if (!root.isAbsolute()) {
-            root = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize().resolve(rootPath).normalize();
+            root = root.toAbsolutePath().normalize();
         }
         return root;
     }
@@ -658,8 +676,49 @@ public class FileManagementAppService {
         StorageSpaceDTO storageSpace = normalizedBucket != null
                 ? queryStorageSpace(tenantId, normalizedBucket)
                 : getDefaultStorageSpace(tenantId);
-        String storageSubPath = normalizedBucket != null ? normalizedBucket : null;
-        return new StorageSpaceUploadContext(storageSpace, normalizedBucket != null ? normalizedBucket : storageSpace.storageKey(), storageSubPath);
+        if (!"LOCAL".equalsIgnoreCase(storageSpace.provider())) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "当前仅支持本地存储空间上传");
+        }
+        Path storageRoot = resolveStorageRoot(storageSpace);
+        String publicPath = resolvePublicPath(storageRoot);
+        return new StorageSpaceUploadContext(storageSpace, normalizedBucket != null ? normalizedBucket : storageSpace.storageKey(), storageRoot, publicPath);
+    }
+
+    private Path resolveStorageRoot(StorageSpaceDTO storageSpace) {
+        String rootPath = StringUtils.hasText(storageSpace.rootPath()) ? storageSpace.rootPath() : uploadProperties.getStorageRoot();
+        Path root = Path.of(rootPath);
+        if (!root.isAbsolute()) {
+            root = root.toAbsolutePath().normalize();
+        }
+        return root;
+    }
+
+    private String resolvePublicPath(Path storageRoot) {
+        String publicPath = normalizePublicPath(uploadProperties.getPublicPath());
+        Path uploadRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        Path normalizedStorageRoot = storageRoot.toAbsolutePath().normalize();
+        if (!normalizedStorageRoot.equals(uploadRoot) && normalizedStorageRoot.startsWith(uploadRoot)) {
+            Path relativePath = uploadRoot.relativize(normalizedStorageRoot);
+            String suffix = relativePath.toString().replace('\\', '/');
+            if (StringUtils.hasText(suffix)) {
+                return publicPath + "/" + suffix;
+            }
+        }
+        return publicPath;
+    }
+
+    private String normalizePublicPath(String publicPath) {
+        if (!StringUtils.hasText(publicPath)) {
+            return "/api/uploads";
+        }
+        String normalized = publicPath.trim();
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private void clearDefaultStorage(Long tenantId) {
@@ -899,7 +958,8 @@ public class FileManagementAppService {
     private record StorageSpaceUploadContext(
             StorageSpaceDTO storageSpace,
             String storageBucket,
-            String storageSubPath
+            Path storageRoot,
+            String publicPath
     ) {
     }
 
