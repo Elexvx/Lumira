@@ -1,6 +1,6 @@
-import { ApartmentOutlined, ReloadOutlined, TeamOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Card, Empty, Form, Input, Spin, Tree, Typography, message } from 'antd';
+import { Button, Card, Empty, Form, Input, Spin, Tree, message } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -45,22 +45,6 @@ const flattenDepartmentIds = (department: DepartmentRecord): number[] => [
   department.id,
   ...(department.children || []).flatMap((child) => flattenDepartmentIds(child)),
 ];
-
-const findDepartmentById = (items: DepartmentRecord[], id: number | null): DepartmentRecord | null => {
-  if (id == null) {
-    return null;
-  }
-  for (const item of items) {
-    if (item.id === id) {
-      return item;
-    }
-    const child = findDepartmentById(item.children || [], id);
-    if (child) {
-      return child;
-    }
-  }
-  return null;
-};
 
 const departmentTitleMatches = (department: DepartmentRecord, keyword: string) =>
   !keyword ||
@@ -148,7 +132,6 @@ const UserManagementPage = () => {
   };
 
   const allDepartmentIds = useMemo(() => departments.flatMap((department) => flattenDepartmentIds(department)), [departments]);
-  const selectedDepartment = useMemo(() => findDepartmentById(departments, selectedDepartmentId), [departments, selectedDepartmentId]);
   const normalizedDepartmentKeyword = departmentKeyword.trim().toLowerCase();
   const departmentTreeData = useMemo<DataNode[]>(
     () => [
@@ -356,16 +339,6 @@ const UserManagementPage = () => {
         </Card>
 
         <div className="saas-user-management-main">
-          <div className="saas-user-management-main__summary">
-            <div>
-              <Typography.Text type="secondary">当前部门</Typography.Text>
-              <Typography.Title level={5}>{selectedDepartment ? selectedDepartment.deptName : '全部部门'}</Typography.Title>
-            </div>
-            <Typography.Text type="secondary" className="saas-user-management-main__hint">
-              <TeamOutlined />
-              {selectedDepartment ? '已筛选该部门及下级部门用户' : '显示当前租户全部用户'}
-            </Typography.Text>
-          </div>
           <ManagementTable<UserRecord>
             actionRef={actionRef}
             rowKey="id"

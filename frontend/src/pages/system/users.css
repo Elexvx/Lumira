@@ -82,30 +82,6 @@
   min-width: 0;
 }
 
-.saas-user-management-main__summary {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--saas-border-color);
-  border-radius: var(--saas-card-radius);
-  background: var(--saas-surface-bg);
-}
-
-.saas-user-management-main__summary .ant-typography {
-  margin: 0;
-}
-
-.saas-user-management-main__hint {
-  display: inline-flex;
-  flex: none;
-  gap: 6px;
-  align-items: center;
-}
-
 @media (max-width: 991px) {
   .saas-user-management-layout {
     grid-template-columns: 1fr;
@@ -117,10 +93,5 @@
 
   .saas-user-department-card .ant-card-body {
     min-height: auto;
-  }
-
-  .saas-user-management-main__summary {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
