@@ -431,9 +431,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./observability/grafana/provisioning/alerting/rules.yml:/etc/grafana/provisioning/alerting/rules.yml:ro
-      - ./.generated/grafana-alerting/contact-points.yml:/etc/grafana/provisioning/alerting/contact-points.generated.yml:ro
-      - ./.generated/grafana-alerting/notification-policies.yml:/etc/grafana/provisioning/alerting/notification-policies.generated.yml:ro
+      - ./.generated/grafana-alerting:/etc/grafana/provisioning/alerting:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
