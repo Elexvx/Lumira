@@ -315,14 +315,14 @@
 }
 
 .saas-ai-assistant-sender .ant-sender-input {
-  min-height: 118px;
-  padding-top: 14px;
+  min-height: 64px;
+  padding-top: 10px;
   font-size: 16px;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .saas-ai-assistant-sender .ant-sender-footer {
-  padding-top: 10px;
+  padding-top: 8px;
 }
 
 .saas-ai-assistant-sender .ant-sender-actions-list {
@@ -333,20 +333,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
 .saas-ai-assistant-composer__tools {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .saas-ai-assistant-composer__tools .ant-btn {
-  min-height: 36px;
+  min-height: 34px;
   border-radius: 8px;
 }
 
@@ -601,5 +601,13 @@
   .saas-ai-assistant-shell__composer {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .saas-ai-assistant-composer__footer {
+    align-items: flex-end;
+  }
+
+  .saas-ai-assistant-composer__tools {
+    flex-wrap: wrap;
   }
 }
