@@ -83,6 +83,38 @@ body,
   background-color: var(--saas-page-bg);
 }
 
+.ant-drawer .ant-drawer-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ant-drawer .ant-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ant-drawer .ant-drawer-footer {
+  flex: 0 0 auto;
+  padding: 12px 24px;
+  border-top-color: var(--saas-border-color);
+  background: var(--ant-color-bg-elevated, var(--saas-surface-bg));
+}
+
+.saas-drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.saas-drawer-footer .ant-space {
+  justify-content: flex-end;
+}
+
+.saas-drawer-footer .ant-btn {
+  min-width: 88px;
+}
+
 /*
  * The default ProLayout background decoration conflicts with the custom page background.
  * Keep this override scoped to ProLayout instead of globally patching all `.ant-*` containers.
