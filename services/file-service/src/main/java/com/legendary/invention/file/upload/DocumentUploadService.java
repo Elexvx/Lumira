@@ -55,6 +55,17 @@ public class DocumentUploadService {
     }
 
     public StoredDocument upload(MultipartFile file, String storageSubPath) {
+        Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        String publicPath = normalizePublicPath(uploadProperties.getPublicPath());
+        String normalizedSubPath = normalizeStorageSubPath(storageSubPath);
+        if (StringUtils.hasText(normalizedSubPath)) {
+            storageRoot = storageRoot.resolve(normalizedSubPath).normalize();
+            publicPath = publicPath + "/" + normalizedSubPath;
+        }
+        return upload(file, storageRoot, publicPath);
+    }
+
+    public StoredDocument upload(MultipartFile file, Path storageRoot, String publicPath) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择文档文件");
         }
@@ -70,13 +81,15 @@ public class DocumentUploadService {
 
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + extension;
-        String normalizedSubPath = normalizeStorageSubPath(storageSubPath);
-        String relativePath = StringUtils.hasText(normalizedSubPath)
-                ? normalizedSubPath + "/" + dateFolder + "/" + generatedName
-                : dateFolder + "/" + generatedName;
+        String relativePath = dateFolder + "/" + generatedName;
 
-        Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
-        Path target = storageRoot.resolve(relativePath).normalize();
+        Path normalizedStorageRoot = storageRoot == null
+                ? Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize()
+                : storageRoot.toAbsolutePath().normalize();
+        Path target = normalizedStorageRoot.resolve(relativePath).normalize();
+        if (!target.startsWith(normalizedStorageRoot)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文件存储路径无效");
+        }
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
@@ -84,7 +97,7 @@ public class DocumentUploadService {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传失败: " + exception.getMessage());
         }
 
-        String publicUrl = normalizePublicPath(uploadProperties.getPublicPath()) + "/" + relativePath;
+        String publicUrl = normalizePublicPath(StringUtils.hasText(publicPath) ? publicPath : uploadProperties.getPublicPath()) + "/" + relativePath;
         String previewMode = resolvePreviewMode(extension);
 
         return new StoredDocument(
