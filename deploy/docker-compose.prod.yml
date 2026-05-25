@@ -429,7 +429,9 @@ services:
       - "127.0.0.1:3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/alerting/rules.yml:/etc/grafana/provisioning/alerting/rules.yml:ro
       - ./.generated/grafana-alerting/contact-points.yml:/etc/grafana/provisioning/alerting/contact-points.generated.yml:ro
       - ./.generated/grafana-alerting/notification-policies.yml:/etc/grafana/provisioning/alerting/notification-policies.generated.yml:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
