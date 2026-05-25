@@ -278,7 +278,6 @@ const AiKnowledgePage = () => {
         onChange={(key) => {
           setActiveScope(key);
           setSelectedKnowledgeBase(null);
-          actionRef.current?.reload();
         }}
       />
       <ManagementTable<AiKnowledgeBaseRecord>
@@ -286,10 +285,12 @@ const AiKnowledgePage = () => {
         actionRef={actionRef}
         columns={columns}
         isMobile={responsive.isMobile}
+        params={{ scope: activeScope }}
         request={async (params) => {
-          const { current, pageSize, ...rest } = params;
+          const { current, pageSize, scope, ...rest } = params;
+          const requestScope = typeof scope === 'string' ? scope : activeScope;
           const result = await aiService.knowledgeBases(
-            { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, scope: activeScope, ...rest },
+            { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, scope: requestScope, ...rest },
             requestOptions,
           );
           return adaptPageResult(result);
