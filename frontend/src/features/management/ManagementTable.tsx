@@ -1,10 +1,11 @@
 import { ProTable, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
+import { Button } from 'antd';
 import { buildMobilePagination, buildTableScroll } from '@/features/table/proTable';
 
 type ManagementTableOptions = Exclude<ProTableProps<object, Record<string, unknown>>['options'], false | undefined>;
 
 const DEFAULT_MANAGEMENT_TABLE_OPTIONS: ManagementTableOptions = {
-  reload: true,
+  reload: false,
   density: true,
   setting: true,
 };
@@ -32,13 +33,25 @@ const buildManagementTableOptions = <
     ...(options || {}),
   } as Exclude<ProTableProps<RecordType, Params>['options'], false | undefined>;
 
-  if (onRefresh) {
-    mergedOptions.reload = () => {
-      void onRefresh();
-    };
+  return mergedOptions;
+};
+
+const buildManagementToolbar = <
+  RecordType extends object,
+  Params extends Record<string, unknown>,
+>(
+  toolBarRender: ManagementTableProps<RecordType, Params>['toolBarRender'],
+  onRefresh?: ManagementTableProps<RecordType, Params>['onRefresh'],
+): ManagementTableProps<RecordType, Params>['toolBarRender'] => {
+  if (toolBarRender !== undefined || !onRefresh) {
+    return toolBarRender;
   }
 
-  return mergedOptions;
+  return () => [
+    <Button key="refresh" onClick={() => void onRefresh()}>
+      刷新
+    </Button>,
+  ];
 };
 
 export const ManagementTable = <RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>({
@@ -48,6 +61,7 @@ export const ManagementTable = <RecordType extends object = object, Params exten
   options,
   onRefresh,
   scroll,
+  toolBarRender,
   ...props
 }: ManagementTableProps<RecordType, Params>) => (
   <div className="saas-table-wrap">
@@ -57,6 +71,7 @@ export const ManagementTable = <RecordType extends object = object, Params exten
       options={buildManagementTableOptions(options, onRefresh)}
       pagination={buildMobilePagination(pagination, isMobile) as ProTableProps<RecordType, Params>['pagination']}
       scroll={scroll ?? buildTableScroll(columns, isMobile)}
+      toolBarRender={buildManagementToolbar(toolBarRender, onRefresh)}
     />
   </div>
 );
