@@ -7,11 +7,9 @@ import {
   EditOutlined,
   FileSearchOutlined,
   FileOutlined,
-  GlobalOutlined,
   PaperClipOutlined,
   PlusOutlined,
   PushpinOutlined,
-  QuestionCircleOutlined,
   RobotOutlined,
   ScheduleOutlined,
   ShareAltOutlined,
@@ -1832,13 +1830,6 @@ const AiAssistantPage = () => {
         groupable
         className="saas-ai-assistant-conversations"
       />
-      <div className="saas-ai-assistant-sidebar__footer">
-        <Space size={8}>
-          <Avatar size={24} icon={<GlobalOutlined />} />
-          <span>当前对话</span>
-        </Space>
-        <Button type="text" icon={<QuestionCircleOutlined />} aria-label="帮助" title="帮助" />
-      </div>
     </aside>
   );
 
