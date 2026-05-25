@@ -51,6 +51,10 @@ public class DocumentUploadService {
     }
 
     public StoredDocument upload(MultipartFile file) {
+        return upload(file, null);
+    }
+
+    public StoredDocument upload(MultipartFile file, String storageSubPath) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择文档文件");
         }
@@ -66,7 +70,10 @@ public class DocumentUploadService {
 
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + extension;
-        String relativePath = dateFolder + "/" + generatedName;
+        String normalizedSubPath = normalizeStorageSubPath(storageSubPath);
+        String relativePath = StringUtils.hasText(normalizedSubPath)
+                ? normalizedSubPath + "/" + dateFolder + "/" + generatedName
+                : dateFolder + "/" + generatedName;
 
         Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
         Path target = storageRoot.resolve(relativePath).normalize();
@@ -91,6 +98,20 @@ public class DocumentUploadService {
                 previewMode,
                 isPreviewable(previewMode)
         );
+    }
+
+    private String normalizeStorageSubPath(String storageSubPath) {
+        if (!StringUtils.hasText(storageSubPath)) {
+            return null;
+        }
+        String normalized = storageSubPath.trim().toLowerCase(Locale.ROOT).replace('\\', '/');
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return StringUtils.hasText(normalized) ? normalized : null;
     }
 
     private byte[] readBytes(MultipartFile file) {

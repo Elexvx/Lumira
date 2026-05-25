@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
-(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,'ENABLED',1,1,0);
+(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,'ENABLED',1,1,0),
+(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,'ENABLED',1,1,0);
 
 CREATE TABLE IF NOT EXISTS `platform_event_outbox` (
   `id` bigint NOT NULL AUTO_INCREMENT,

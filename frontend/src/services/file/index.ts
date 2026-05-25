@@ -18,6 +18,7 @@ export interface FileUploadPayload {
   category?: string;
   tags?: string;
   remark?: string;
+  bucket?: string;
 }
 
 export const fileService = {
@@ -44,6 +45,9 @@ export const fileService = {
     }
     if (payload.remark) {
       formData.append('remark', payload.remark);
+    }
+    if (payload.bucket) {
+      formData.append('bucket', payload.bucket);
     }
 
     return request<FileObjectRecord>('/v1/files/upload', {

@@ -366,6 +366,7 @@ const SystemFilesPage = () => {
             category,
             tags: values.tags,
             remark: values.remark,
+            bucket: activeBucket || undefined,
           },
           requestOptions,
         );
@@ -673,7 +674,7 @@ const SystemFilesPage = () => {
 
   const actionToolbar = actionPermission.buildToolbarActions([
     {
-      hidden: isTenantScope,
+      hidden: isTenantScope && !activeBucket,
       value: (
         <Button key="upload" type="primary" icon={<UploadOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canUploadFile} onClick={openUploadDrawer}>
           {formatMessage({ id: 'common.uploadDocument', defaultMessage: 'Upload document' })}

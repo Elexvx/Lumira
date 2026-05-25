@@ -165,30 +165,54 @@ public class FileManagementAppService {
 
     @Transactional
     public FileObjectDTO uploadFile(CurrentUser currentUser, MultipartFile file, String category, String tags, String remark) {
+        return uploadFile(currentUser, file, category, tags, remark, null);
+    }
+
+    @Transactional
+    public FileObjectDTO uploadFile(
+            CurrentUser currentUser,
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket
+    ) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
         }
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
         if (ImageUploadService.supports(originalFilename, contentType)) {
-            return uploadImage(currentUser, file, category, remark);
+            return uploadImage(currentUser, file, category, remark, bucket);
         }
         if (DocumentUploadService.supports(originalFilename, contentType)) {
-            return uploadDocument(currentUser, file, category, tags, remark);
+            return uploadDocument(currentUser, file, category, tags, remark, bucket);
         }
         throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 文件");
     }
 
     @Transactional
     public FileObjectDTO uploadDocument(CurrentUser currentUser, MultipartFile file, String category, String tags, String remark) {
-        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file);
+        return uploadDocument(currentUser, file, category, tags, remark, null);
+    }
+
+    @Transactional
+    public FileObjectDTO uploadDocument(
+            CurrentUser currentUser,
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket
+    ) {
         Long tenantId = currentTenantId(currentUser);
-        StorageSpaceDTO storageSpace = getDefaultStorageSpace(tenantId);
+        StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
+        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file, storageContext.storageSubPath());
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
-                storageSpace.provider(),
-                storageSpace.storageKey(),
+                storageContext.storageSpace().provider(),
+                storageContext.storageBucket(),
                 storedDocument.relativePath(),
                 storedDocument.originalFileName(),
                 storedDocument.fileExtension(),
@@ -208,14 +232,19 @@ public class FileManagementAppService {
 
     @Transactional
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark) {
-        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file);
+        return uploadImage(currentUser, file, category, remark, null);
+    }
+
+    @Transactional
+    public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
         Long tenantId = currentTenantId(currentUser);
-        StorageSpaceDTO storageSpace = getDefaultStorageSpace(tenantId);
+        StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
+        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file, storageContext.storageSubPath());
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
-                storageSpace.provider(),
-                storageSpace.storageKey(),
+                storageContext.storageSpace().provider(),
+                storageContext.storageBucket(),
                 storedImage.relativePath(),
                 storedImage.originalFileName(),
                 normalizeText(storedImage.fileExtension().replaceFirst("^\\.", "")),
@@ -624,6 +653,15 @@ public class FileManagementAppService {
         return Boolean.TRUE.equals(fileStorageSpaceMapper.shouldRetainStoredFile(tenantId, bucket));
     }
 
+    private StorageSpaceUploadContext resolveUploadContext(Long tenantId, String bucket) {
+        String normalizedBucket = StringUtils.hasText(bucket) ? normalizeStorageKey(bucket) : null;
+        StorageSpaceDTO storageSpace = normalizedBucket != null
+                ? queryStorageSpace(tenantId, normalizedBucket)
+                : getDefaultStorageSpace(tenantId);
+        String storageSubPath = normalizedBucket != null ? normalizedBucket : null;
+        return new StorageSpaceUploadContext(storageSpace, normalizedBucket != null ? normalizedBucket : storageSpace.storageKey(), storageSubPath);
+    }
+
     private void clearDefaultStorage(Long tenantId) {
         fileStorageSpaceMapper.clearDefaultStorage(tenantId);
     }
@@ -855,6 +893,13 @@ public class FileManagementAppService {
             boolean defaultStorage,
             boolean retainFileOnRecordDelete,
             String status
+    ) {
+    }
+
+    private record StorageSpaceUploadContext(
+            StorageSpaceDTO storageSpace,
+            String storageBucket,
+            String storageSubPath
     ) {
     }
 

@@ -203,11 +203,12 @@ public class FileController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "tags", required = false) String tags,
-            @RequestParam(name = "remark", required = false) String remark
+            @RequestParam(name = "remark", required = false) String remark,
+            @RequestParam(name = "bucket", required = false) String bucket
     ) {
         require("system:file:upload");
         return ApiResponse.success(
-                fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark),
+                fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark, bucket),
                 TraceContext.getRequestId()
         );
     }
