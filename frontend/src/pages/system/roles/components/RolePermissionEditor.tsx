@@ -145,7 +145,7 @@ export const RolePermissionEditor = ({
                   />
                 ) : (
                   <div className="role-action-panel__empty">
-                    <Empty description="该页面暂无字权限" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    <Empty description="该页面暂无子权限" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                   </div>
                 )
               ) : (

@@ -8,6 +8,9 @@ interface PluginCardsGridProps {
   currentAvailableMap: Map<string, TenantPlugin>;
   getPreferredEnableVersion: (pluginCode: string) => { version: string } | undefined;
   mutationLoading: boolean;
+  canEnable: boolean;
+  canDisable: boolean;
+  canViewLogs: boolean;
   onToggleEnable: (pluginCode: string, enabled: boolean, versionLabel?: string) => void;
   onOpenDetails: (plugin: PluginDefinition) => void;
   onOpenVersions: (plugin: PluginDefinition) => void;
@@ -21,6 +24,9 @@ export const PluginCardsGrid = ({
   currentAvailableMap,
   getPreferredEnableVersion,
   mutationLoading,
+  canEnable,
+  canDisable,
+  canViewLogs,
   onToggleEnable,
   onOpenDetails,
   onOpenVersions,
@@ -42,6 +48,7 @@ export const PluginCardsGrid = ({
         const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
         const enabled = Boolean(enabledPlugin);
         const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
+        const canToggle = enabled ? canDisable : canEnable;
 
         return (
           <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
@@ -59,7 +66,7 @@ export const PluginCardsGrid = ({
               extra={
                 <Switch
                   checked={enabled}
-                  disabled={mutationLoading || !versionLabel}
+                  disabled={mutationLoading || !versionLabel || !canToggle}
                   onChange={(checked) => onToggleEnable(plugin.pluginCode, checked, versionLabel)}
                 />
               }
@@ -69,10 +76,10 @@ export const PluginCardsGrid = ({
                 <Space wrap>
                   <Button onClick={() => onOpenDetails(plugin)}>详情</Button>
                   <Button onClick={() => onOpenVersions(plugin)}>版本</Button>
-                  <Button onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>
+                  <Button disabled={!canViewLogs} onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>
                     日志
                   </Button>
-                  <Button danger icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
+                  <Button danger disabled={!canDisable} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
                     卸载
                   </Button>
                 </Space>

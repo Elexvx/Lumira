@@ -32,6 +32,7 @@ const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc
   acc[item.value] = item.label;
   return acc;
 }, {});
+type RoleEditorMode = 'create' | 'edit' | 'permissions';
 
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
@@ -54,11 +55,18 @@ const RoleManagementPage = () => {
   const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [roleEditorMode, setRoleEditorMode] = useState<RoleEditorMode>('create');
   const [defaultRoleModalOpen, setDefaultRoleModalOpen] = useState(false);
   const [defaultRoleOptions, setDefaultRoleOptions] = useState<RoleRecord[]>([]);
   const [defaultRoleId, setDefaultRoleId] = useState<number | undefined>();
   const [defaultRoleLoading, setDefaultRoleLoading] = useState(false);
   const [defaultRoleSaving, setDefaultRoleSaving] = useState(false);
+  const canSaveRole =
+    roleEditorMode === 'permissions'
+      ? actionPermission.can('system:role:permissions')
+      : actionPermission.can(roleCrud.drawer.editingId ? 'system:role:update' : 'system:role:create');
+  const canUpdateRoleSettings = actionPermission.can('system:role:update');
+  const isPermissionOnlyEditor = roleEditorMode === 'permissions';
   const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { roleType: 'CUSTOM', permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES },
@@ -131,6 +139,7 @@ const RoleManagementPage = () => {
 
   const closeEditorDrawer = () => {
     roleCrud.drawer.close();
+    setRoleEditorMode('create');
     permissionEditor.setEditorLoading(false);
     setEditorDirty(false);
     permissionEditor.resetEditorPermissionState();
@@ -138,6 +147,7 @@ const RoleManagementPage = () => {
 
   const openCreate = () => {
     roleCrud.drawer.openCreate();
+    setRoleEditorMode('create');
     permissionEditor.resetEditorPermissionState();
     setEditorDirty(false);
     permissionEditor.setEditorLoading(false);
@@ -178,8 +188,9 @@ const RoleManagementPage = () => {
     }
   };
 
-  const openEdit = async (record: RoleRecord) => {
+  const openEdit = async (record: RoleRecord, mode: RoleEditorMode = 'edit') => {
     roleCrud.drawer.openEdit(record, record.id);
+    setRoleEditorMode(mode);
     permissionEditor.resetEditorPermissionState();
     permissionEditor.setEditorLoading(true);
     setEditorDirty(false);
@@ -215,6 +226,13 @@ const RoleManagementPage = () => {
     setSaving(true);
     try {
       const values = await editorForm.validateFields();
+      if (roleCrud.drawer.editingId && roleEditorMode === 'permissions') {
+        await iamService.updateRolePermissions(roleCrud.drawer.editingId, values.permissionKeys || [], { autoRedirectOnUnauthorized: false });
+        message.success('角色权限已更新');
+        closeEditorDrawer();
+        roleCrud.reloadTable();
+        return;
+      }
       const payload = {
         ...values,
         roleCode: typeof values.roleCode === 'string' ? values.roleCode.trim() : values.roleCode,
@@ -274,6 +292,7 @@ const RoleManagementPage = () => {
         buildRowActions: actionPermission.buildTableActions,
         onOpenDetail: (record) => void openDetail(record),
         onOpenEdit: (record) => void openEdit(record),
+        onOpenPermissions: (record) => void openEdit(record, 'permissions'),
         onDelete: deleteRole,
       }),
     [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
@@ -318,6 +337,7 @@ const RoleManagementPage = () => {
         confirmLoading={defaultRoleSaving}
         onOk={() => void saveDefaultRole()}
         onCancel={() => setDefaultRoleModalOpen(false)}
+        okButtonProps={{ disabled: !canUpdateRoleSettings }}
         okText="保存"
         cancelText="取消"
       >
@@ -342,12 +362,12 @@ const RoleManagementPage = () => {
       </Modal>
 
       <ManagementDrawer
-        title={roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色'}
+        title={roleEditorMode === 'permissions' ? '分配角色权限' : roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色'}
         open={roleCrud.drawer.open}
         onClose={handleEditorClose}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: handleEditorClose },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveRole() },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveRole, onClick: () => void saveRole() },
         ]}
       >
         <Form {...editorFormProps}>
@@ -372,13 +392,13 @@ const RoleManagementPage = () => {
               },
             ]}
           >
-            <Input maxLength={64} onBlur={handleRoleCodeBlur} />
+            <Input maxLength={64} disabled={isPermissionOnlyEditor} onBlur={handleRoleCodeBlur} />
           </Form.Item>
           <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
-            <Input />
+            <Input disabled={isPermissionOnlyEditor} />
           </Form.Item>
           <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
-            <Select options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
+            <Select disabled={isPermissionOnlyEditor} options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
           </Form.Item>
           <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
           <Form.Item
@@ -386,7 +406,7 @@ const RoleManagementPage = () => {
             label="数据范围"
             rules={[{ required: true, message: '请选择数据范围' }]}
           >
-            <Select options={DATA_SCOPE_OPTIONS} />
+            <Select disabled={isPermissionOnlyEditor} options={DATA_SCOPE_OPTIONS} />
           </Form.Item>
           <RolePermissionEditor
             permissionTree={permissionEditor.permissionTree}

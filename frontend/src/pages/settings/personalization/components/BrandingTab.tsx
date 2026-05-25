@@ -10,6 +10,7 @@ interface BrandingTabProps {
   previewState: BrandingSettings;
   uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr' | null;
   brandingSaving: boolean;
+  canUpdate: boolean;
   onUpload: (target: 'favicon' | 'logo' | 'loginBackground', file: File) => Promise<void>;
   onClearField: (field: 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl', label: string) => void;
   onSave: () => void;
@@ -20,12 +21,13 @@ export const BrandingTab = ({
   previewState,
   uploadingTarget,
   brandingSaving,
+  canUpdate,
   onUpload,
   onClearField,
   onSave,
 }: BrandingTabProps) => (
   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-    <Form {...formProps}>
+    <Form {...formProps} disabled={!canUpdate}>
       <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
         <Input />
       </Form.Item>
@@ -70,13 +72,14 @@ export const BrandingTab = ({
                   await onUpload('favicon', file);
                   return Upload.LIST_IGNORE;
                 }}
+                disabled={!canUpdate}
               >
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'}>
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'} disabled={!canUpdate}>
                   上传 Icon
                 </Button>
               </Upload>
             </ImgCrop>
-            <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteFaviconUrl', '网站 Icon')} disabled={!previewState.websiteFaviconUrl}>
+            <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteFaviconUrl', '网站 Icon')} disabled={!canUpdate || !previewState.websiteFaviconUrl}>
               清除
             </Button>
           </Space>
@@ -112,13 +115,14 @@ export const BrandingTab = ({
                   await onUpload('logo', file);
                   return Upload.LIST_IGNORE;
                 }}
+                disabled={!canUpdate}
               >
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'}>
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'} disabled={!canUpdate}>
                   上传 Logo
                 </Button>
               </Upload>
             </ImgCrop>
-            <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteLogoUrl', 'Logo')} disabled={!previewState.websiteLogoUrl}>
+            <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteLogoUrl', 'Logo')} disabled={!canUpdate || !previewState.websiteLogoUrl}>
               清除
             </Button>
           </Space>
@@ -153,12 +157,13 @@ export const BrandingTab = ({
                 await onUpload('loginBackground', file);
                 return Upload.LIST_IGNORE;
               }}
+              disabled={!canUpdate}
             >
-              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'loginBackground'}>
+              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'loginBackground'} disabled={!canUpdate}>
                 上传背景图
               </Button>
             </Upload>
-            <Button icon={<DeleteOutlined />} onClick={() => onClearField('loginBackgroundUrl', '登录页背景图')} disabled={!previewState.loginBackgroundUrl}>
+            <Button icon={<DeleteOutlined />} onClick={() => onClearField('loginBackgroundUrl', '登录页背景图')} disabled={!canUpdate || !previewState.loginBackgroundUrl}>
               清除
             </Button>
             <Typography.Text type="secondary">建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。</Typography.Text>
@@ -212,7 +217,7 @@ export const BrandingTab = ({
     </Card>
 
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-      <Button type="primary" loading={brandingSaving} onClick={onSave}>
+      <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
         保存设置
       </Button>
     </div>

@@ -24,6 +24,8 @@ const DictManagementPage = () => {
   const [typeDetail, setTypeDetail] = useState<DictTypeRecord | null>(null);
   const [items, setItems] = useState<DictItemRecord[]>([]);
   const [saving, setSaving] = useState(false);
+  const canSaveType = actionPermission.can(typeCrud.drawer.editingId ? 'system:dict:update' : 'system:dict:create');
+  const canSaveItem = actionPermission.can('system:dict:update');
   const typeFormProps = useStandardFormProps({
     form: typeForm,
     initialValues: { status: 'ENABLED' },
@@ -211,7 +213,7 @@ const DictManagementPage = () => {
         onClose={typeCrud.drawer.close}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: typeCrud.drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveType() },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveType, onClick: () => void saveType() },
         ]}
       >
         <DictTypeForm formProps={typeFormProps} />
@@ -262,7 +264,7 @@ const DictManagementPage = () => {
         onClose={itemDrawer.close}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: itemDrawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveItem() },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveItem, onClick: () => void saveItem() },
         ]}
       >
         <DictItemForm formProps={itemFormProps} />

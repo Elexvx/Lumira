@@ -6,6 +6,10 @@ import type { PluginRuntimeLog, PluginVersion } from '@/types/api';
 interface BuildVersionColumnsOptions {
   isDesktop: boolean;
   isMobile: boolean;
+  canInstall: boolean;
+  canUpgrade: boolean;
+  canRollback: boolean;
+  canDisable: boolean;
   onInstall: (pluginCode: string, version: string) => void;
   onActivate: (pluginCode: string, version: string) => void;
   onDisable: (pluginCode: string) => void;
@@ -15,6 +19,10 @@ interface BuildVersionColumnsOptions {
 export const buildVersionColumns = ({
   isDesktop,
   isMobile,
+  canInstall,
+  canUpgrade,
+  canRollback,
+  canDisable,
   onInstall,
   onActivate,
   onDisable,
@@ -36,10 +44,10 @@ export const buildVersionColumns = ({
       <TableActionBar
         isMobile={isMobile}
         items={[
-          { key: 'install', label: '安装', onClick: () => onInstall(record.pluginCode, record.version) },
-          { key: 'activate', label: '激活', onClick: () => onActivate(record.pluginCode, record.version) },
-          { key: 'disable', label: '停用', onClick: () => onDisable(record.pluginCode), danger: true },
-          { key: 'rollback', label: '回滚', onClick: () => onRollback(record.pluginCode, record.version) },
+          { key: 'install', label: '安装', disabled: !canInstall, onClick: () => onInstall(record.pluginCode, record.version) },
+          { key: 'activate', label: '激活', disabled: !canUpgrade, onClick: () => onActivate(record.pluginCode, record.version) },
+          { key: 'disable', label: '停用', disabled: !canDisable, onClick: () => onDisable(record.pluginCode), danger: true },
+          { key: 'rollback', label: '回滚', disabled: !canRollback, onClick: () => onRollback(record.pluginCode, record.version) },
         ]}
       />
     ),

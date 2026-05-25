@@ -18,7 +18,7 @@ const PLATFORM_TENANT_ID = 1001;
 const PluginsPage = () => {
   const { token } = theme.useToken();
   const { initialState, setInitialState } = useInitialStateModel();
-  const { responsive } = usePagePermissionActions();
+  const { actionPermission, responsive } = usePagePermissionActions();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
   const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
   const [versionMap, setVersionMap] = useState<Record<string, PluginVersion[]>>({});
@@ -298,17 +298,39 @@ const PluginsPage = () => {
   const selectedPluginVersions = selectedPlugin ? versionMap[selectedPlugin.pluginCode] || [] : [];
   const selectedTenantPlugin = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
   const selectedActiveVersion = selectedPluginVersions.find((item) => item.isActive === 1) || selectedPluginVersions[0];
+  const canUploadPlugin = actionPermission.can('plugin:management:upload');
+  const canInstallPlugin = actionPermission.can('plugin:management:install');
+  const canUpgradePlugin = actionPermission.can('plugin:management:upgrade');
+  const canRollbackPlugin = actionPermission.can('plugin:management:rollback');
+  const canEnablePlugin = actionPermission.can('plugin:management:enable');
+  const canDisablePlugin = actionPermission.can('plugin:management:disable');
+  const canViewPluginLogs = actionPermission.can('plugin:management:logs');
   const versionColumns = useMemo(
     () =>
       buildVersionColumns({
         isDesktop: responsive.isDesktop,
         isMobile: responsive.isMobile,
+        canInstall: canInstallPlugin,
+        canUpgrade: canUpgradePlugin,
+        canRollback: canRollbackPlugin,
+        canDisable: canDisablePlugin,
         onInstall: (pluginCode, version) => void handleInstall(pluginCode, version),
         onActivate: (pluginCode, version) => void handleActivate(pluginCode, version),
         onDisable: (pluginCode) => void handleDisable(pluginCode),
         onRollback: (pluginCode, version) => void handleRollback(pluginCode, version),
       }),
-    [handleActivate, handleDisable, handleInstall, handleRollback, responsive.isDesktop, responsive.isMobile],
+    [
+      canDisablePlugin,
+      canInstallPlugin,
+      canRollbackPlugin,
+      canUpgradePlugin,
+      handleActivate,
+      handleDisable,
+      handleInstall,
+      handleRollback,
+      responsive.isDesktop,
+      responsive.isMobile,
+    ],
   );
   return (
     <ManagementPage
@@ -331,7 +353,7 @@ const PluginsPage = () => {
               <Button icon={<SyncOutlined />} onClick={() => void loadOverview()} loading={loading || mutationLoading}>
                 {formatMessage({ id: 'page.plugins.refresh', defaultMessage: 'Refresh' })}
               </Button>
-              <Button icon={<CloudUploadOutlined />} type="primary" onClick={() => setUploadVisible(true)}>
+              <Button icon={<CloudUploadOutlined />} type="primary" disabled={!canUploadPlugin} onClick={() => setUploadVisible(true)}>
                 {formatMessage({ id: 'page.plugins.upload', defaultMessage: 'Upload plugin' })}
               </Button>
             </Space>
@@ -343,6 +365,9 @@ const PluginsPage = () => {
             currentAvailableMap={currentAvailableMap}
             getPreferredEnableVersion={(pluginCode) => getPreferredEnableVersion(pluginCode, versionMap)}
             mutationLoading={mutationLoading}
+            canEnable={canEnablePlugin}
+            canDisable={canDisablePlugin}
+            canViewLogs={canViewPluginLogs}
             onToggleEnable={(pluginCode, enabled, versionLabel) =>
               void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
             }
@@ -484,8 +509,13 @@ const PluginsPage = () => {
         open={uploadVisible}
         title={formatMessage({ id: 'page.plugins.uploadPackage', defaultMessage: 'Upload plugin package' })}
         onCancel={() => setUploadVisible(false)}
-        onOk={() => void handleUpload()}
+        onOk={() => {
+          if (canUploadPlugin) {
+            void handleUpload();
+          }
+        }}
         confirmLoading={mutationLoading}
+        okButtonProps={{ disabled: !canUploadPlugin }}
         okText={formatMessage({ id: 'page.plugins.uploadConfirm', defaultMessage: 'Upload' })}
         cancelText={formatMessage({ id: 'page.plugins.cancelUpload', defaultMessage: 'Cancel' })}
       >

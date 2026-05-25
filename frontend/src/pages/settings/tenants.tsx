@@ -67,7 +67,7 @@ const TenantManagement = () => {
   return (
     <ManagementPage
       title="租户管理"
-      extra={canCreate ? <Button type="primary" icon={<PlusOutlined />} onClick={() => open()}>新增租户</Button> : null}
+      extra={<Button type="primary" icon={<PlusOutlined />} disabled={!canCreate} onClick={() => open()}>新增租户</Button>}
     >
       <ManagementTable<TenantRecord>
         rowKey="id"
@@ -92,20 +92,18 @@ const TenantManagement = () => {
             width: 160,
             render: (_, record) => (
               <Space>
-                {canUpdate ? <Button type="link" onClick={() => open(record)}>编辑</Button> : null}
-                {canDelete ? (
-                  <Popconfirm
-                    title="删除租户"
-                    description={`确认删除「${record.tenantName}」吗？`}
-                    onConfirm={async () => {
-                      await systemService.deleteTenant(record.id, { autoRedirectOnUnauthorized: false });
-                      message.success('租户已删除');
-                      await load();
-                    }}
-                  >
-                    <Button type="link" danger disabled={record.id === 1001}>删除</Button>
-                  </Popconfirm>
-                ) : null}
+                <Button type="link" disabled={!canUpdate} onClick={() => open(record)}>编辑</Button>
+                <Popconfirm
+                  title="删除租户"
+                  description={`确认删除「${record.tenantName}」吗？`}
+                  onConfirm={async () => {
+                    await systemService.deleteTenant(record.id, { autoRedirectOnUnauthorized: false });
+                    message.success('租户已删除');
+                    await load();
+                  }}
+                >
+                  <Button type="link" danger disabled={!canDelete || record.id === 1001}>删除</Button>
+                </Popconfirm>
               </Space>
             ),
           },
@@ -115,7 +113,7 @@ const TenantManagement = () => {
         title={editing?.id ? '编辑租户' : '新增租户'}
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        extra={<Button type="primary" onClick={save}>保存</Button>}
+        extra={<Button type="primary" disabled={editing?.id ? !canUpdate : !canCreate} onClick={save}>保存</Button>}
       >
         <Form form={form} layout="vertical">
           <Form.Item name="tenantCode" label="租户编码" rules={[{ required: true, message: '请输入租户编码' }]}>

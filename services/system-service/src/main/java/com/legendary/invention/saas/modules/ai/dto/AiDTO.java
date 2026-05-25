@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public final class AiDTO {
 
@@ -507,6 +508,56 @@ public final class AiDTO {
 
         public void setFileId(Long fileId) {
             this.fileId = fileId;
+        }
+    }
+
+    public static class ToolExecuteRequest {
+        @NotNull
+        private Long employeeId;
+        private Long conversationId;
+        @NotBlank
+        private String toolCode;
+        private Map<String, Object> arguments;
+        private Boolean confirmed;
+
+        public Long getEmployeeId() {
+            return employeeId;
+        }
+
+        public void setEmployeeId(Long employeeId) {
+            this.employeeId = employeeId;
+        }
+
+        public Long getConversationId() {
+            return conversationId;
+        }
+
+        public void setConversationId(Long conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        public String getToolCode() {
+            return toolCode;
+        }
+
+        public void setToolCode(String toolCode) {
+            this.toolCode = toolCode;
+        }
+
+        public Map<String, Object> getArguments() {
+            return arguments;
+        }
+
+        public void setArguments(Map<String, Object> arguments) {
+            this.arguments = arguments;
+        }
+
+        public Boolean getConfirmed() {
+            return confirmed;
+        }
+
+        public void setConfirmed(Boolean confirmed) {
+            this.confirmed = confirmed;
         }
     }
 

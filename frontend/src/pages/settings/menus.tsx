@@ -205,6 +205,7 @@ const MenuManagementPage = () => {
   const [reordering, setReordering] = useState(false);
   const [activeTab, setActiveTab] = useState('main');
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([]);
+  const canSaveMenu = actionPermission.can(menuCrud.drawer.editingId ? 'system:menu:update' : 'system:menu:create');
   const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { menuType: 'MENU', status: 'ENABLED', sortNo: 0 },
@@ -595,7 +596,7 @@ const MenuManagementPage = () => {
         onClose={menuCrud.drawer.close}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: menuCrud.drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveMenu() },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveMenu, onClick: () => void saveMenu() },
         ]}
       >
         <MenuEditorForm formProps={editorFormProps} parentOptions={buildParentMenuOptions(editableFlatMenus)} />

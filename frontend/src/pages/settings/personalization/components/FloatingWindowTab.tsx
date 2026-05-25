@@ -9,14 +9,15 @@ interface FloatingWindowTabProps {
   preview: FloatingWindowSettings;
   uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr' | null;
   saving: boolean;
+  canUpdate: boolean;
   onUpload: (target: 'floatingQr', file: File) => Promise<void>;
   onClearQrImage: () => void;
   onSave: () => void;
 }
 
-export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving, onUpload, onClearQrImage, onSave }: FloatingWindowTabProps) => (
+export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving, canUpdate, onUpload, onClearQrImage, onSave }: FloatingWindowTabProps) => (
   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-    <Form {...formProps}>
+    <Form {...formProps} disabled={!canUpdate}>
       <Form.Item name="apiDocsQrEnabled" label="二维码" valuePropName="checked">
         <Switch />
       </Form.Item>
@@ -45,12 +46,13 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
                 await onUpload('floatingQr', file);
                 return Upload.LIST_IGNORE;
               }}
+              disabled={!canUpdate}
             >
-              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'floatingQr'}>
+              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'floatingQr'} disabled={!canUpdate}>
                 上传二维码
               </Button>
             </Upload>
-            <Button icon={<DeleteOutlined />} onClick={onClearQrImage} disabled={!preview.apiDocsQrImageUrl}>
+            <Button icon={<DeleteOutlined />} onClick={onClearQrImage} disabled={!canUpdate || !preview.apiDocsQrImageUrl}>
               清除
             </Button>
           </Space>
@@ -59,7 +61,7 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
     </Form>
 
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-      <Button type="primary" loading={saving} onClick={onSave}>
+      <Button type="primary" loading={saving} disabled={!canUpdate} onClick={onSave}>
         保存设置
       </Button>
     </div>

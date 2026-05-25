@@ -121,12 +121,6 @@ const PERMISSION_MODE_OPTIONS: Array<{ label: string; value: AiSkillPermissionMo
   { label: '禁用', value: 'deny' },
 ];
 
-const PERMISSION_MODE_COLOR: Record<AiSkillPermissionMode, string> = {
-  visit: 'blue',
-  allow: 'green',
-  deny: 'red',
-};
-
 const RISK_LEVEL_COLOR: Record<string, string> = {
   LOW: 'green',
   MEDIUM: 'orange',
@@ -145,32 +139,24 @@ const buildSkillModeMap = (
   selectedSkills?: AiEmployeeSkillRecord[] | null,
 ) => {
   const map: Record<string, AiSkillPermissionMode> = {};
-  catalog
-    .filter((skill) => !skill.readOnly)
-    .forEach((skill) => {
-      const matchedSkill = selectedSkills?.find((item) => item.skillCode === skill.skillCode);
-      map[skill.skillCode] = matchedSkill?.permissionMode || 'deny';
-    });
+  const selectedSkillMap = new Map((selectedSkills || []).map((skill) => [skill.skillCode, skill.permissionMode]));
+  catalog.forEach((skill) => {
+    map[skill.skillCode] = selectedSkillMap.get(skill.skillCode) || (skill.readOnly ? 'visit' : 'deny');
+  });
   return map;
 };
 
 const getAvatarOption = (avatarKey?: string | null) =>
   AVATAR_OPTIONS.find((option) => option.key === avatarKey) || AVATAR_OPTIONS[0];
 
-const getPermissionModeTag = (mode: AiSkillPermissionMode) => (
-  <Tag color={PERMISSION_MODE_COLOR[mode]}>{mode === 'visit' ? '访问' : mode === 'allow' ? '允许' : '禁用'}</Tag>
-);
-
 const SkillSection = ({
   title,
   skills,
-  readOnly,
   modes,
   onModeChange,
 }: {
   title: string;
   skills: AiSkillRecord[];
-  readOnly: boolean;
   modes: Record<string, AiSkillPermissionMode>;
   onModeChange: (skillCode: string, mode: AiSkillPermissionMode) => void;
 }) => {
@@ -198,7 +184,7 @@ const SkillSection = ({
                   {skill.category ? <Tag color="default">{skill.category}</Tag> : null}
                   {skill.riskLevel ? <Tag color={RISK_LEVEL_COLOR[skill.riskLevel] || 'default'}>{skill.riskLevel}</Tag> : null}
                   {skill.needConfirm ? <Tag color="volcano">需二次确认</Tag> : null}
-                  {readOnly ? <Tag color="blue">通用技能</Tag> : <Tag color="purple">自定义技能</Tag>}
+                  {skill.readOnly ? <Tag color="blue">通用技能</Tag> : <Tag color="purple">自定义技能</Tag>}
                   {skill.readOnly ? <Tag color="cyan">只读</Tag> : null}
                 </Space>
                 <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -206,16 +192,12 @@ const SkillSection = ({
                 </Typography.Paragraph>
                 <Space wrap align="center">
                   <Typography.Text type="secondary">权限模式</Typography.Text>
-                  {readOnly ? (
-                    getPermissionModeTag('visit')
-                  ) : (
-                    <Select
-                      value={selectedMode}
-                      options={PERMISSION_MODE_OPTIONS}
-                      style={{ minWidth: 140 }}
-                      onChange={(mode) => onModeChange(skill.skillCode, mode)}
-                    />
-                  )}
+                  <Select
+                    value={selectedMode}
+                    options={PERMISSION_MODE_OPTIONS}
+                    style={{ minWidth: 140 }}
+                    onChange={(mode) => onModeChange(skill.skillCode, mode)}
+                  />
                 </Space>
               </Space>
             </List.Item>
@@ -249,6 +231,8 @@ const AiEmployeesPage = () => {
 
   const commonSkills = useMemo(() => employeeSkillCatalog.filter((skill) => Boolean(skill.readOnly)), [employeeSkillCatalog]);
   const customSkills = useMemo(() => employeeSkillCatalog.filter((skill) => !skill.readOnly), [employeeSkillCatalog]);
+  const canSaveEmployee = actionPermission.can(employeeState.drawer.editingId ? 'ai:employee:update' : 'ai:employee:create');
+  const canSaveLlmService = actionPermission.can(llmState.drawer.editingId ? 'ai:llm:update' : 'ai:llm:create');
 
   useEffect(() => {
     let active = true;
@@ -350,9 +334,9 @@ const AiEmployeesPage = () => {
         systemPrompt: values.systemPrompt?.trim?.() ? values.systemPrompt.trim() : null,
         defaultLlmServiceId: values.defaultLlmServiceId || null,
         sortOrder: 0,
-        skills: customSkills.map((skill) => ({
+        skills: employeeSkillCatalog.map((skill) => ({
           skillCode: skill.skillCode,
-          permissionMode: employeeSkillModes[skill.skillCode] || 'deny',
+          permissionMode: employeeSkillModes[skill.skillCode] || (skill.readOnly ? 'visit' : 'deny'),
         })),
       };
 
@@ -611,7 +595,6 @@ const AiEmployeesPage = () => {
                 label: record.enabled ? '禁用' : '启用',
                 onClick: () => void toggleEmployeeEnabled(record),
                 permission: 'ai:employee:status',
-                unauthorizedMode: 'hide',
               },
               { key: 'delete', label: '删除', onClick: () => deleteEmployee(record), permission: 'ai:employee:delete', danger: true },
             ])}
@@ -649,7 +632,6 @@ const AiEmployeesPage = () => {
                 label: record.enabled ? '禁用' : '启用',
                 onClick: () => void toggleLlmServiceEnabled(record),
                 permission: 'ai:llm:status',
-                unauthorizedMode: 'hide',
               },
               { key: 'delete', label: '删除', onClick: () => deleteLlmService(record), permission: 'ai:llm:delete', danger: true },
             ])}
@@ -747,7 +729,7 @@ const AiEmployeesPage = () => {
         width={STANDARD_DRAWER_WIDTH}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: () => employeeState.drawer.reset() },
-          { key: 'save', label: '保存', type: 'primary', loading: employeeSaving, onClick: () => void saveEmployee() },
+          { key: 'save', label: '保存', type: 'primary', loading: employeeSaving, disabled: !canSaveEmployee, onClick: () => void saveEmployee() },
         ]}
       >
         <Form layout="vertical" form={employeeForm} initialValues={{ avatarKey: DEFAULT_AVATAR_KEY, systemPrompt: employeePromptTemplate }}>
@@ -854,19 +836,22 @@ const AiEmployeesPage = () => {
                     <Alert
                       type="info"
                       showIcon
-                      message="通用技能第一期只读展示，自定义技能可设置访问 / 允许 / 禁用。"
+                      message="每个数字员工可独立配置技能边界；只读工具支持访问或禁用，写入类工具需二次确认。"
                     />
                     <SkillSection
                       title="通用技能"
                       skills={commonSkills}
-                      readOnly
                       modes={employeeSkillModes}
-                      onModeChange={() => undefined}
+                      onModeChange={(skillCode, mode) => {
+                        setEmployeeSkillModes((prev) => ({
+                          ...prev,
+                          [skillCode]: mode,
+                        }));
+                      }}
                     />
                     <SkillSection
                       title="自定义技能"
                       skills={customSkills}
-                      readOnly={false}
                       modes={employeeSkillModes}
                       onModeChange={(skillCode, mode) => {
                         setEmployeeSkillModes((prev) => ({
@@ -906,7 +891,7 @@ const AiEmployeesPage = () => {
             onClick: () => void testLlmService(),
           },
           { key: 'cancel', label: '取消', onClick: () => llmState.drawer.reset() },
-          { key: 'save', label: '保存', type: 'primary', loading: llmSaving, onClick: () => void saveLlmService() },
+          { key: 'save', label: '保存', type: 'primary', loading: llmSaving, disabled: !canSaveLlmService, onClick: () => void saveLlmService() },
         ]}
       >
         <Form layout="vertical" form={llmForm} onValuesChange={() => setLlmTestResult(null)}>

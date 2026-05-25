@@ -29,6 +29,7 @@ const DepartmentManagementPage = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const canSaveDepartment = actionPermission.can(drawer.editingId ? 'system:department:update' : 'system:department:create');
   const formProps = useStandardFormProps({
     form,
     initialValues: { sortNo: 0, status: 'ENABLED' },
@@ -197,7 +198,7 @@ const DepartmentManagementPage = () => {
         onClose={drawer.close}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveDepartment() },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveDepartment, onClick: () => void saveDepartment() },
         ]}
       >
         <Form {...formProps}>

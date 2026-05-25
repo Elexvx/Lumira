@@ -104,6 +104,7 @@ const UserManagementPage = () => {
   const [expandedDepartmentKeys, setExpandedDepartmentKeys] = useState<string[]>([ALL_DEPARTMENTS_KEY]);
   const [departmentKeyword, setDepartmentKeyword] = useState('');
   const protectedAdminSelected = isProtectedAdminAccount(drawer.currentRecord);
+  const canSaveUser = actionPermission.can(drawer.editingId ? 'system:user:update' : 'system:user:create');
   const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { status: 'ENABLED', roleIds: [], deptIds: [] },
@@ -406,7 +407,7 @@ const UserManagementPage = () => {
         onClose={drawer.close}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveUser() },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveUser, onClick: () => void saveUser() },
         ]}
       >
         <UserEditorForm

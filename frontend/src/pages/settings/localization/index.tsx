@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, SaveOutlined, SyncOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Form, Input, List, Modal, Segmented, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, List, Modal, Select, Space, Spin, Tag, Typography, message } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
@@ -21,11 +21,6 @@ type EntryFormValues = LocalizationEntryPayload;
 const fallbackLanguages: LocalizationLanguage[] = [
   { id: -1, localeCode: 'zh-CN', languageName: '简体中文', nativeName: '简体中文', status: 'ENABLED', defaultLanguage: true },
   { id: -2, localeCode: 'en-US', languageName: 'English', nativeName: 'English', status: 'ENABLED' },
-];
-
-const statusOptions = [
-  { label: '全部', value: 'all' },
-  { label: '待翻译', value: 'PENDING' },
 ];
 
 const entryStatusOptions = [
@@ -65,14 +60,12 @@ const translationValue = (record: LocalizationEntry, localeCode: string) => {
 };
 
 const LocalizationPage = () => {
-  const { actionPermission, responsive, buttonSize } = usePagePermissionActions();
+  const { actionPermission, responsive, searchConfig, buttonSize } = usePagePermissionActions();
   const tableActionRef = useRef<ActionType>(null);
+  const searchValuesRef = useRef<{ namespaceCode?: string }>({ namespaceCode: 'all' });
   const [languages, setLanguages] = useState<LocalizationLanguage[]>([]);
   const [namespaces, setNamespaces] = useState<LocalizationNamespace[]>([]);
   const [releases, setReleases] = useState<LocalizationRelease[]>([]);
-  const [namespaceCode, setNamespaceCode] = useState('all');
-  const [keyword, setKeyword] = useState('');
-  const [status, setStatus] = useState<string>('all');
   const [loadingMeta, setLoadingMeta] = useState(false);
   const [savingEntryId, setSavingEntryId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<EntryDrafts>({});
@@ -195,8 +188,9 @@ const LocalizationPage = () => {
   const openEntryDrawer = (record?: LocalizationEntry) => {
     setEditingEntry(record || null);
     entryForm.resetFields();
+    const selectedNamespaceCode = searchValuesRef.current.namespaceCode;
     entryForm.setFieldsValue({
-      namespaceCode: record?.namespaceCode || (namespaceCode === 'all' ? undefined : namespaceCode),
+      namespaceCode: record?.namespaceCode || (selectedNamespaceCode === 'all' ? undefined : selectedNamespaceCode),
       messageKey: record?.messageKey || '',
       defaultMessage: record?.defaultMessage || '',
       sourceLocale: record?.sourceLocale || DEFAULT_LOCALE,
@@ -266,6 +260,61 @@ const LocalizationPage = () => {
 
   const columns = useMemo<ProColumns<LocalizationEntry>[]>(
     () => [
+      {
+        title: '当前语言',
+        dataIndex: 'localeCode',
+        hideInTable: true,
+        valueType: 'select',
+        initialValue: primaryLocale,
+        fieldProps: {
+          options: languageColumns.map((language) => ({
+            label: `${localeLabel(language)} (${language.localeCode})`,
+            value: language.localeCode,
+          })),
+          disabled: true,
+        },
+        search: {
+          transform: (value) => ({ localeCode: value || primaryLocale }),
+        },
+      },
+      {
+        title: '模块',
+        dataIndex: 'namespaceCode',
+        hideInTable: true,
+        valueType: 'select',
+        initialValue: 'all',
+        fieldProps: {
+          options: namespaceOptions,
+          showSearch: true,
+          optionFilterProp: 'label',
+        },
+        search: {
+          transform: (value) => ({ namespaceCode: value === 'all' ? undefined : value }),
+        },
+      },
+      {
+        title: '关键字',
+        dataIndex: 'keyword',
+        hideInTable: true,
+        fieldProps: {
+          allowClear: true,
+          placeholder: '搜索键名、原文或来源',
+        },
+      },
+      {
+        title: '翻译状态',
+        dataIndex: 'translationStatus',
+        hideInTable: true,
+        valueType: 'select',
+        initialValue: 'all',
+        valueEnum: {
+          all: { text: '全部' },
+          PENDING: { text: '待翻译' },
+        },
+        search: {
+          transform: (value) => ({ translationStatus: value === 'all' ? undefined : value }),
+        },
+      },
       {
         title: '',
         width: 64,
@@ -343,71 +392,34 @@ const LocalizationPage = () => {
         ),
       },
     ],
-    [actionPermission, drafts, languageColumns, responsive.isMobile, savingEntryId],
+    [actionPermission, drafts, languageColumns, namespaceOptions, primaryLocale, responsive.isMobile, savingEntryId],
   );
 
   return (
     <ManagementPage title="本地化">
       <Spin spinning={loadingMeta}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-            <Space wrap>
-              <Space>
-                <Typography.Text strong>当前语言</Typography.Text>
-                <Tag>简体中文</Tag>
-              </Space>
-              <Select
-                value={namespaceCode}
-                options={namespaceOptions}
-                onChange={(value) => {
-                  setNamespaceCode(value);
-                  tableActionRef.current?.reload();
-                }}
-                style={{ width: responsive.isMobile ? '100%' : 180 }}
-              />
-              <Input.Search
-                allowClear
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-                onSearch={() => tableActionRef.current?.reload()}
-                placeholder="关键字"
-                style={{ width: responsive.isMobile ? '100%' : 280 }}
-              />
-              <Segmented value={status} onChange={(value) => setStatus(String(value))} options={statusOptions} />
-            </Space>
-            <Space wrap>
-              <Button icon={<DeleteOutlined />} disabled>
-                删除译文
-              </Button>
-              <Button icon={<SyncOutlined />} loading={syncing} onClick={() => void syncEntries()}>
-                同步
-              </Button>
-              <Button type="primary" icon={<SaveOutlined />} loading={publishing} onClick={() => void publishEntries()}>
-                发布
-              </Button>
-            </Space>
-          </Space>
-
           <ManagementTable<LocalizationEntry>
             actionRef={tableActionRef}
             rowKey="id"
             columns={columns}
             isMobile={responsive.isMobile}
-            search={false}
-            params={{
-              localeCode: primaryLocale,
-              namespaceCode: namespaceCode === 'all' ? undefined : namespaceCode,
-              keyword: keyword || undefined,
-              translationStatus: status === 'all' ? undefined : status,
-            }}
-            request={async (params, sorter) =>
-              adaptPageResult(
+            search={searchConfig}
+            request={async (params, sorter) => {
+              const localeCode = typeof params.localeCode === 'string' && params.localeCode ? params.localeCode : primaryLocale;
+              const namespaceValue = typeof params.namespaceCode === 'string' ? params.namespaceCode : undefined;
+              const namespaceCode = namespaceValue && namespaceValue !== 'all' ? namespaceValue : undefined;
+              const keyword = typeof params.keyword === 'string' && params.keyword.trim() ? params.keyword.trim() : undefined;
+              const translationStatusValue = typeof params.translationStatus === 'string' ? params.translationStatus : undefined;
+              const translationStatus = translationStatusValue && translationStatusValue !== 'all' ? translationStatusValue : undefined;
+              searchValuesRef.current = { namespaceCode: namespaceCode || 'all' };
+
+              return adaptPageResult(
                 await localizationService.entries(
                   {
-                    localeCode: primaryLocale,
-                    namespaceCode: namespaceCode === 'all' ? undefined : namespaceCode,
-                    keyword: keyword || undefined,
-                    translationStatus: status === 'all' ? undefined : status,
+                    localeCode,
+                    namespaceCode,
+                    keyword,
+                    translationStatus,
                     pageNo: Number(params.current) || 1,
                     pageSize: Number(params.pageSize) || 20,
                     sortField: Object.keys(sorter || {}).find((key) => ['ascend', 'descend'].includes(String((sorter as Record<string, unknown>)[key]))) || undefined,
@@ -415,14 +427,34 @@ const LocalizationPage = () => {
                   },
                   { autoRedirectOnUnauthorized: false, silent: true },
                 ),
-              )
-            }
+              );
+            }}
             toolBarRender={() =>
               actionPermission.buildToolbarActions([
                 {
-                  permission: 'localization:create',
                   value: (
-                    <Button key="create" type="primary" size={buttonSize} icon={<PlusOutlined />} onClick={() => openEntryDrawer()}>
+                    <Button key="delete" size={buttonSize} icon={<DeleteOutlined />} disabled={!actionPermission.can('localization:delete')}>
+                      删除译文
+                    </Button>
+                  ),
+                },
+                {
+                  value: (
+                    <Button key="sync" size={buttonSize} icon={<SyncOutlined />} loading={syncing} disabled={!actionPermission.can('localization:sync')} onClick={() => void syncEntries()}>
+                      同步
+                    </Button>
+                  ),
+                },
+                {
+                  value: (
+                    <Button key="publish" type="primary" size={buttonSize} icon={<SaveOutlined />} loading={publishing} disabled={!actionPermission.can('localization:publish')} onClick={() => void publishEntries()}>
+                      发布
+                    </Button>
+                  ),
+                },
+                {
+                  value: (
+                    <Button key="create" type="primary" size={buttonSize} icon={<PlusOutlined />} disabled={!actionPermission.can('localization:create')} onClick={() => openEntryDrawer()}>
                       新增词条
                     </Button>
                   ),
@@ -437,7 +469,6 @@ const LocalizationPage = () => {
               ])
             }
           />
-        </Space>
       </Spin>
 
       <ManagementDrawer
@@ -446,7 +477,14 @@ const LocalizationPage = () => {
         onClose={() => setEntryDrawerOpen(false)}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: () => setEntryDrawerOpen(false) },
-          { key: 'save', label: '保存', type: 'primary', loading: entrySaving, onClick: () => void saveEntry() },
+          {
+            key: 'save',
+            label: '保存',
+            type: 'primary',
+            loading: entrySaving,
+            disabled: !actionPermission.can(editingEntry ? 'localization:update' : 'localization:create'),
+            onClick: () => void saveEntry(),
+          },
         ]}
       >
         <Form form={entryForm} layout="vertical">

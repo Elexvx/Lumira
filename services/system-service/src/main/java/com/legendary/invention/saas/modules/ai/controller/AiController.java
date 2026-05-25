@@ -9,6 +9,7 @@ import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.ai.app.AiManagementAppService;
 import com.legendary.invention.saas.modules.ai.app.AiKnowledgeBaseAppService;
+import com.legendary.invention.saas.modules.ai.app.AiNativeToolRuntimeService;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
@@ -36,6 +37,7 @@ public class AiController {
 
     private final AiManagementAppService aiManagementAppService;
     private final AiKnowledgeBaseAppService aiKnowledgeBaseAppService;
+    private final AiNativeToolRuntimeService aiNativeToolRuntimeService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final ObjectMapper objectMapper;
@@ -43,12 +45,14 @@ public class AiController {
     public AiController(
             AiManagementAppService aiManagementAppService,
             AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
+            AiNativeToolRuntimeService aiNativeToolRuntimeService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             ObjectMapper objectMapper
     ) {
         this.aiManagementAppService = aiManagementAppService;
         this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
+        this.aiNativeToolRuntimeService = aiNativeToolRuntimeService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.objectMapper = objectMapper;
@@ -163,6 +167,19 @@ public class AiController {
     public ApiResponse<List<AiVO.SkillVO>> skills() {
         require("ai:view");
         return ApiResponse.success(aiManagementAppService.listSkills(currentUser()), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/tools")
+    public ApiResponse<List<AiVO.ToolVO>> tools() {
+        require("ai:tool:view");
+        return ApiResponse.success(aiNativeToolRuntimeService.listTools(currentUser()), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/tools/execute")
+    @RepeatSubmit
+    public ApiResponse<AiVO.ToolExecuteResultVO> executeTool(@Valid @RequestBody AiDTO.ToolExecuteRequest request) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiNativeToolRuntimeService.execute(currentUser(), request), TraceContext.getRequestId());
     }
 
     @GetMapping("/knowledge-bases")

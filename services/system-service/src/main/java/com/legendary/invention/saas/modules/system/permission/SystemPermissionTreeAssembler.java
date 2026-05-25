@@ -37,9 +37,10 @@ public final class SystemPermissionTreeAssembler {
             "ban"
     );
     private static final Map<String, List<String>> EXPLICIT_ACTION_PREFIXES_BY_PAGE_PERMISSION = Map.ofEntries(
-            Map.entry("ai:view", List.of("ai:employee:", "ai:llm:")),
+            Map.entry("ai:view", List.of("ai:employee:", "ai:llm:", "ai:skill:", "ai:tool:")),
             Map.entry("audit:view", List.of("audit:")),
             Map.entry("plugin:management:view", List.of("plugin:management:")),
+            Map.entry("system:file:view", List.of("system:file:upload", "system:file:delete")),
             Map.entry("system:file:manage", List.of("system:file:manage:")),
             Map.entry("system:department:view", List.of("system:department:")),
             Map.entry("system:monitor:view", List.of("system:monitor:")),

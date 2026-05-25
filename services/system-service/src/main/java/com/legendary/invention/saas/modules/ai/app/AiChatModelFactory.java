@@ -431,6 +431,10 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
                     builder.append(" / ").append(skill.getCategory().trim());
                 }
             }
+            builder.append("\n\n工具调用约束：");
+            builder.append("\n- 你只能通过平台 AI 工具执行入口使用上述技能，不要声称已经访问、修改或执行了未经过工具返回确认的底层数据。");
+            builder.append("\n- 涉及新增、修改、删除、导出、发送、启停等高风险动作时，必须先要求用户二次确认。");
+            builder.append("\n- 当工具返回权限不足或数据为空时，要如实说明限制，不要编造系统状态。");
         }
 
         return builder.toString().trim();

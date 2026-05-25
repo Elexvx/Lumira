@@ -180,6 +180,9 @@ const NotificationsPage = () => {
   const canManageSmtp =
     actionPermission.can('system:config:update') ||
     actionPermission.can('system:verification:manage');
+  const canRetractMessage =
+    actionPermission.can('message:message:retract') ||
+    actionPermission.can('system:notification:write');
 
   const requestOptions = useMemo(
     () => ({
@@ -500,13 +503,13 @@ const NotificationsPage = () => {
             isMobile={responsive.isMobile}
             items={[
               { key: 'detail', label: '详情', onClick: () => handleOpenDetail(record) },
-              { key: 'retract', label: '撤回', danger: true, hidden: record.publishStatus === 'RETRACTED', onClick: () => handleRetract(record) },
+              { key: 'retract', label: '撤回', danger: true, hidden: record.publishStatus === 'RETRACTED' || !canRetractMessage, onClick: () => handleRetract(record) },
             ]}
           />
         ),
       },
     ],
-    [responsive.isMobile],
+    [canRetractMessage, responsive.isMobile],
   );
 
   const logColumns = useMemo<ProColumns<MessageDeliveryLogRecord>[]>(
@@ -551,9 +554,9 @@ const NotificationsPage = () => {
         { key: 'logs', label: '发送日志', onClick: () => setLogOpen(true) },
         { key: 'archive', label: '通知归档', onClick: () => setArchiveOpen(true) },
         { key: 'refresh', label: '刷新', onClick: () => void loadSmtpSettings() },
-        { key: 'manual-send', permission: ['message:message:write', 'system:notification:write'], hidden: !canManualPublish, type: 'primary', label: '手动发布', onClick: openPublishDrawer },
+        { key: 'manual-send', permission: ['message:message:write', 'system:notification:write'], type: 'primary', label: '手动发布', onClick: openPublishDrawer },
       ]),
-    [buildToolbarButtons, canManualPublish],
+    [buildToolbarButtons],
   );
 
   return (
@@ -632,7 +635,7 @@ const NotificationsPage = () => {
               <Form.Item name="content" label="测试内容">
                 <Input.TextArea rows={4} />
               </Form.Item>
-              <Button loading={testingSmtpSettings} onClick={() => void handleTestSmtpSettings()}>
+              <Button loading={testingSmtpSettings} disabled={!canManageSmtp} onClick={() => void handleTestSmtpSettings()}>
                 发送测试邮件
               </Button>
             </Form>
@@ -685,7 +688,13 @@ const NotificationsPage = () => {
           setDetailOpen(false);
           setDetailRecord(null);
         }}
-        extra={detailRecord && detailRecord.publishStatus === 'PUBLISHED' ? <Button danger onClick={() => handleRetract(detailRecord)}>撤回</Button> : null}
+        extra={
+          detailRecord && detailRecord.publishStatus === 'PUBLISHED' ? (
+            <Button danger disabled={!canRetractMessage} onClick={() => handleRetract(detailRecord)}>
+              撤回
+            </Button>
+          ) : null
+        }
       >
         {detailRecord ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -718,7 +727,7 @@ const NotificationsPage = () => {
         onClose={closePublishDrawer}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: closePublishDrawer },
-          { key: 'publish', label: '发送', type: 'primary', loading: publishing, onClick: () => void handlePublish() },
+          { key: 'publish', label: '发送', type: 'primary', loading: publishing, disabled: !canManualPublish, onClick: () => void handlePublish() },
         ]}
       >
         <Form

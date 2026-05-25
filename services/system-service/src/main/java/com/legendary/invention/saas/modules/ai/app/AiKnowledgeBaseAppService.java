@@ -5,6 +5,8 @@ import com.legendary.invention.api.file.FileObjectDTO;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
+import com.legendary.invention.saas.infrastructure.event.PlatformEventPublisher;
+import com.legendary.invention.saas.infrastructure.event.PlatformEventTypes;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
@@ -20,8 +22,10 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,17 +42,20 @@ public class AiKnowledgeBaseAppService {
     private final FileInternalApi fileInternalApi;
     private final AiKnowledgeTextExtractor textExtractor;
     private final OperationAuditService operationAuditService;
+    private final PlatformEventPublisher platformEventPublisher;
 
     public AiKnowledgeBaseAppService(
             MyBatisQueryOperations jdbcTemplate,
             FileInternalApi fileInternalApi,
             AiKnowledgeTextExtractor textExtractor,
-            OperationAuditService operationAuditService
+            OperationAuditService operationAuditService,
+            PlatformEventPublisher platformEventPublisher
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.fileInternalApi = fileInternalApi;
         this.textExtractor = textExtractor;
         this.operationAuditService = operationAuditService;
+        this.platformEventPublisher = platformEventPublisher;
     }
 
     private enum KnowledgeAccess {
@@ -260,7 +267,17 @@ public class AiKnowledgeBaseAppService {
                 knowledgeBaseId,
                 uploaded.id()
         );
-        rebuildChunks(tenantId, knowledgeBaseId, documentId, extracted.text());
+        int chunkCount = rebuildChunks(tenantId, knowledgeBaseId, documentId, extracted.text());
+        publishKnowledgeDocumentEvent(
+                PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
+                currentUser,
+                tenantId,
+                knowledgeBaseId,
+                documentId,
+                title,
+                "READY",
+                chunkCount
+        );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-upload", "CREATE", "SUCCESS", "上传知识库文档: " + title);
         return requireDocument(tenantId, knowledgeBaseId, documentId);
     }
@@ -280,7 +297,17 @@ public class AiKnowledgeBaseAppService {
         if (!StringUtils.hasText(extractedText)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "文档没有可重建索引的文本内容");
         }
-        rebuildChunks(tenantId, knowledgeBaseId, documentId, extractedText);
+        int chunkCount = rebuildChunks(tenantId, knowledgeBaseId, documentId, extractedText);
+        publishKnowledgeDocumentEvent(
+                PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
+                currentUser,
+                tenantId,
+                knowledgeBaseId,
+                documentId,
+                document.getTitle(),
+                "READY",
+                chunkCount
+        );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-reindex", "UPDATE", "SUCCESS", "重建知识库文档索引: " + document.getTitle());
         return requireDocument(tenantId, knowledgeBaseId, documentId);
     }
@@ -289,7 +316,7 @@ public class AiKnowledgeBaseAppService {
     public boolean deleteDocument(CurrentUser currentUser, Long knowledgeBaseId, Long documentId) {
         Long tenantId = currentTenantId(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.MANAGE);
-        requireDocument(tenantId, knowledgeBaseId, documentId);
+        AiVO.KnowledgeDocumentVO document = requireDocument(tenantId, knowledgeBaseId, documentId);
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 "update ai_knowledge_document set is_deleted = 1, updated_by = ?, update_time = ? where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0",
@@ -300,6 +327,16 @@ public class AiKnowledgeBaseAppService {
                 documentId
         );
         jdbcTemplate.update("update ai_knowledge_chunk set is_deleted = 1, update_time = ? where tenant_id = ? and knowledge_base_id = ? and document_id = ? and is_deleted = 0", now, tenantId, knowledgeBaseId, documentId);
+        publishKnowledgeDocumentEvent(
+                PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_DELETED,
+                currentUser,
+                tenantId,
+                knowledgeBaseId,
+                documentId,
+                document.getTitle(),
+                "DELETED",
+                0
+        );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-delete", "DELETE", "SUCCESS", "删除知识库文档: " + documentId);
         return true;
     }
@@ -440,7 +477,7 @@ public class AiKnowledgeBaseAppService {
         return retrieve(currentUser, query, boundIds, limit, false);
     }
 
-    private void rebuildChunks(Long tenantId, Long knowledgeBaseId, Long documentId, String text) {
+    private int rebuildChunks(Long tenantId, Long knowledgeBaseId, Long documentId, String text) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update("update ai_knowledge_chunk set is_deleted = 1, update_time = ? where tenant_id = ? and knowledge_base_id = ? and document_id = ? and is_deleted = 0", now, tenantId, knowledgeBaseId, documentId);
         List<String> chunks = splitChunks(text);
@@ -472,6 +509,34 @@ public class AiKnowledgeBaseAppService {
                 tenantId,
                 knowledgeBaseId,
                 documentId
+        );
+        return chunks.size();
+    }
+
+    private void publishKnowledgeDocumentEvent(
+            String eventType,
+            CurrentUser currentUser,
+            Long tenantId,
+            Long knowledgeBaseId,
+            Long documentId,
+            String title,
+            String status,
+            int chunkCount
+    ) {
+        Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("knowledgeBaseId", knowledgeBaseId);
+        attributes.put("documentId", documentId);
+        attributes.put("title", title);
+        attributes.put("status", status);
+        attributes.put("chunkCount", chunkCount);
+        platformEventPublisher.publishAfterCommit(
+                PlatformEventTypes.SOURCE_AI,
+                eventType,
+                tenantId,
+                currentUserId(currentUser),
+                PlatformEventTypes.AGGREGATE_KNOWLEDGE_DOCUMENT,
+                documentId,
+                attributes
         );
     }
 

@@ -82,6 +82,8 @@ const AiKnowledgePage = () => {
 
   const requestOptions = useMemo(() => ({ autoRedirectOnUnauthorized: false }), []);
   const canShareKnowledge = actionPermission.can(['*', 'ai:knowledge:share']);
+  const canSaveKnowledgeBase = actionPermission.can(editingRecord ? 'ai:knowledge:update' : 'ai:knowledge:create');
+  const canQueryKnowledge = actionPermission.can('ai:knowledge:query');
   const visibilityOptions = useMemo(
     () => [
       { label: '个人知识库', value: 'PERSONAL' },
@@ -310,7 +312,7 @@ const AiKnowledgePage = () => {
         extra={
           <Space>
             <Button onClick={closeDrawer}>取消</Button>
-            <Button type="primary" loading={saving} onClick={() => void saveKnowledgeBase()}>
+            <Button type="primary" loading={saving} disabled={!canSaveKnowledgeBase} onClick={() => void saveKnowledgeBase()}>
               保存
             </Button>
           </Space>
@@ -378,7 +380,7 @@ const AiKnowledgePage = () => {
               <Form.Item name="query" rules={[{ required: true, message: '请输入检索内容' }]} style={{ flex: 1, minWidth: 260 }}>
                 <Input prefix={<SearchOutlined />} placeholder="测试这个知识库能否检索到答案依据" />
               </Form.Item>
-              <Button loading={searching} onClick={() => void runSearch()}>
+              <Button loading={searching} disabled={!canQueryKnowledge} onClick={() => void runSearch()}>
                 检索测试
               </Button>
             </Form>
