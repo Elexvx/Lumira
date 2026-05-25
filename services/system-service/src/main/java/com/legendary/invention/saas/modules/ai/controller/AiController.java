@@ -297,7 +297,7 @@ public class AiController {
 
     @GetMapping("/conversations")
     public ApiResponse<PageResponse<AiVO.ConversationVO>> conversations(
-            @RequestParam(name = "employeeId") Long employeeId,
+            @RequestParam(name = "employeeId", required = false) Long employeeId,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {

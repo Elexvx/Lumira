@@ -72,31 +72,40 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         Long conversationId = request == null ? null : request.getConversationId();
         boolean confirmed = request != null && Boolean.TRUE.equals(request.getConfirmed());
         try {
-            emit(onEvent, AiVO.ChatStreamEventVO.status("正在加载数字员工配置"));
-            AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, request.getEmployeeId());
-            employeeId = employee.getId();
-            if (!Boolean.TRUE.equals(employee.getEnabled())) {
-                throw new BizException(ErrorCode.BIZ_ERROR, "数字员工已禁用");
+            emit(onEvent, AiVO.ChatStreamEventVO.status(employeeId == null ? "正在加载对话配置" : "正在加载数字员工配置"));
+            AiVO.EmployeeDetailVO employee;
+            List<AiVO.SkillVO> skills;
+            AiLlmServiceConfig config;
+            if (employeeId == null) {
+                employee = buildDefaultConversationEmployee();
+                skills = List.of();
+                config = aiLlmServiceConfigProvider.findDefault(tenantId).orElse(null);
+            } else {
+                employee = queryEmployeeDetail(tenantId, employeeId);
+                employeeId = employee.getId();
+                if (!Boolean.TRUE.equals(employee.getEnabled())) {
+                    throw new BizException(ErrorCode.BIZ_ERROR, "数字员工已禁用");
+                }
+                emit(onEvent, AiVO.ChatStreamEventVO.status("正在校验技能授权"));
+                aiSkillPermissionChecker.verifyAllowed(tenantId, employee.getId(), request.getSkillCodes(), confirmed);
+                config = aiLlmServiceConfigProvider.findById(tenantId, employee.getDefaultLlmServiceId())
+                        .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
+                        .orElse(null);
+                skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
             }
-            emit(onEvent, AiVO.ChatStreamEventVO.status("正在校验技能授权"));
-            aiSkillPermissionChecker.verifyAllowed(tenantId, employee.getId(), request.getSkillCodes(), confirmed);
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在创建会话并保存用户消息"));
             conversationId = aiConversationService.ensureConversation(
                     tenantId,
                     currentUser.getUserId(),
-                    employee.getId(),
+                    employeeId,
                     request.getConversationId(),
                     buildConversationTitle(request.getMessage())
             );
             Long userMessageId = aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
             aiConversationService.recordMessageAttachments(tenantId, conversationId, userMessageId, request.getAttachments());
 
-            AiLlmServiceConfig config = aiLlmServiceConfigProvider.findById(tenantId, employee.getDefaultLlmServiceId())
-                    .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
-                    .orElse(null);
-            List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
-            emit(onEvent, AiVO.ChatStreamEventVO.status("正在检索知识库"));
-            List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(currentUser, employee.getId(), request);
+            emit(onEvent, AiVO.ChatStreamEventVO.status(employeeId == null ? "正在准备上下文" : "正在检索知识库"));
+            List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(currentUser, employeeId, request);
             request.setKnowledgeReferences(references);
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用模型"));
             AiVO.ChatResponseVO response = onEvent == null
@@ -115,7 +124,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 response.setConversationCode(queryConversationCode(tenantId, conversationId));
             }
             aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
-            recordToolAuditLog(tenantId, employee.getId(), conversationId, request, response, confirmed);
+            recordToolAuditLog(tenantId, employeeId, conversationId, request, response, confirmed);
             return response;
         } catch (RuntimeException exception) {
             recordFailedToolAuditLog(tenantId, employeeId, conversationId, request, confirmed, exception);
@@ -130,6 +139,9 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         if (request.getKnowledgeBaseIds() != null && !request.getKnowledgeBaseIds().isEmpty()) {
             return aiKnowledgeBaseAppService.retrieve(currentUser, request.getMessage(), request.getKnowledgeBaseIds(), 6);
         }
+        if (employeeId == null) {
+            return List.of();
+        }
         return aiKnowledgeBaseAppService.retrieveForEmployee(currentUser, employeeId, request.getMessage(), 6);
     }
 
@@ -141,6 +153,17 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             return true;
         }
         return request.getSkillCodes().contains("knowledge.search");
+    }
+
+    private AiVO.EmployeeDetailVO buildDefaultConversationEmployee() {
+        AiVO.EmployeeDetailVO employee = new AiVO.EmployeeDetailVO();
+        employee.setUsername("ai-assistant");
+        employee.setNickname("AI 助手");
+        employee.setPosition("通用对话");
+        employee.setEnabled(true);
+        employee.setSystemPrompt("你是企业后台系统中的通用 AI 助手。用户未选择任何数字员工时，你应作为普通对话助手提供清晰、准确、简洁的帮助；不要声称自己拥有特定数字员工的身份、技能、知识库或业务工具权限。");
+        employee.setSkills(List.of());
+        return employee;
     }
 
     private void emit(Consumer<AiVO.ChatStreamEventVO> onEvent, AiVO.ChatStreamEventVO event) {
