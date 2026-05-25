@@ -1,2 +1,0 @@
--- Deprecated scene seed intentionally left empty.
--- Planned scene modules are no longer shown in the platform module center.
