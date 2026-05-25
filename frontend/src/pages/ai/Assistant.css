@@ -135,11 +135,29 @@
   width: 32px;
   min-width: 32px;
   color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.saas-ai-assistant-conversation-item-wrap:hover .saas-ai-assistant-conversation-item__more.ant-btn,
+.saas-ai-assistant-conversation-item-wrap:focus-within .saas-ai-assistant-conversation-item__more.ant-btn,
+.saas-ai-assistant-conversation-item-wrap--menu-open .saas-ai-assistant-conversation-item__more.ant-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .saas-ai-assistant-conversation-item-wrap--active .saas-ai-assistant-conversation-item__more.ant-btn,
 .saas-ai-assistant-conversation-item-wrap--active .saas-ai-assistant-conversation-item__more.ant-btn:hover {
   color: #fff;
+}
+
+.saas-ai-assistant-conversation-item-wrap--active:hover .saas-ai-assistant-conversation-item__more.ant-btn,
+.saas-ai-assistant-conversation-item-wrap--active:focus-within .saas-ai-assistant-conversation-item__more.ant-btn,
+.saas-ai-assistant-conversation-item-wrap--active.saas-ai-assistant-conversation-item-wrap--menu-open .saas-ai-assistant-conversation-item__more.ant-btn {
   background: color-mix(in srgb, #fff 12%, transparent);
 }
 
