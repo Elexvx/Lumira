@@ -1,6 +1,5 @@
 import {
   AppstoreOutlined,
-  BulbOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
@@ -12,7 +11,6 @@ import {
   PushpinOutlined,
   RobotOutlined,
   ShareAltOutlined,
-  SmileOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
@@ -98,14 +96,6 @@ type ActionItem = {
   ariaLabel?: string;
   icon?: React.ReactNode;
   onItemClick?: () => void;
-};
-
-type AssistantPrompt = {
-  key: string;
-  title?: string;
-  description: string;
-  icon?: React.ReactNode;
-  rank?: React.ReactNode;
 };
 
 type ConversationItem = {
@@ -197,34 +187,6 @@ const isThinkingSupportedByModel = (service?: AiLlmServiceRecord | null) => {
     || (provider === 'deepseek' && model === 'deepseek-reasoner');
 };
 
-const HOT_TOPIC_PROMPTS: AssistantPrompt[] = [
-  {
-    key: 'hot-1',
-    rank: <span className="saas-ai-assistant-prompt-rank saas-ai-assistant-prompt-rank--hot">1</span>,
-    description: '帮我梳理当前知识库中最适合自动化处理的业务流程',
-  },
-  {
-    key: 'hot-2',
-    rank: <span className="saas-ai-assistant-prompt-rank">2</span>,
-    description: '根据最近上传的资料，生成一份可执行的问题清单',
-  },
-];
-
-const GUIDE_PROMPTS: AssistantPrompt[] = [
-  {
-    key: 'guide-1',
-    title: '意图',
-    description: '先理解目标，再给出可落地的解决方案',
-    icon: <BulbOutlined />,
-  },
-  {
-    key: 'guide-2',
-    title: '角色',
-    description: '以企业数字员工身份协助分析和执行',
-    icon: <SmileOutlined />,
-  },
-];
-
 const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
   <Space size={4} wrap>
     {items.map((item) => (
@@ -241,39 +203,6 @@ const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
       </Button>
     ))}
   </Space>
-);
-
-const PromptPanel = ({
-  title,
-  items,
-  disabled,
-  onItemClick,
-}: {
-  title: string;
-  items: AssistantPrompt[];
-  disabled?: boolean;
-  onItemClick: (description: string) => void;
-}) => (
-  <div className="saas-ai-assistant-prompt-panel">
-    <div className="saas-ai-assistant-prompt-panel__title">{title}</div>
-    <div className="saas-ai-assistant-prompt-panel__list">
-      {items.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          className="saas-ai-assistant-prompt-card"
-          disabled={disabled}
-          onClick={() => onItemClick(item.description)}
-        >
-          <span className="saas-ai-assistant-prompt-card__icon">{item.rank || item.icon}</span>
-          <span className="saas-ai-assistant-prompt-card__content">
-            {item.title ? <span className="saas-ai-assistant-prompt-card__title">{item.title}</span> : null}
-            <span className="saas-ai-assistant-prompt-card__description">{item.description}</span>
-          </span>
-        </button>
-      ))}
-    </div>
-  </div>
 );
 
 const BubbleSystem = ({ content }: { content: React.ReactNode; variant?: string }) => (
@@ -1491,13 +1420,6 @@ const AiAssistantPage = () => {
     }
   };
 
-  const handlePromptSubmit = (messageText: string) => {
-    if (isShareMode || sending) {
-      return;
-    }
-    void handleSend(messageText);
-  };
-
   const handleCreateSession = () => {
     if (isShareMode || !selectedEmployee) {
       return;
@@ -1824,7 +1746,7 @@ const AiAssistantPage = () => {
 
   const chatPanel = (
     <section className="saas-ai-assistant-layout__chat">
-        <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
+      <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
         {!hasContent ? (
           <Welcome
             icon={<RobotOutlined />}
@@ -1834,23 +1756,7 @@ const AiAssistantPage = () => {
               isShareMode ? (
                 <Bubble.System content={emptyWelcome} variant="borderless" />
               ) : (
-                <div className="saas-ai-assistant-welcome-prompts">
-                  <Bubble.System content={emptyWelcome} variant="borderless" />
-                  <div className="saas-ai-assistant-prompt-grid">
-                    <PromptPanel
-                      title="最热话题"
-                      items={HOT_TOPIC_PROMPTS}
-                      disabled={!selectedEmployee || sending}
-                      onItemClick={handlePromptSubmit}
-                    />
-                    <PromptPanel
-                      title="设计指南"
-                      items={GUIDE_PROMPTS}
-                      disabled={!selectedEmployee || sending}
-                      onItemClick={handlePromptSubmit}
-                    />
-                  </div>
-                </div>
+                <Bubble.System content={emptyWelcome} variant="borderless" />
               )
             }
             className="saas-ai-assistant-shell__welcome"
