@@ -10,6 +10,8 @@ interface PageToolbarButtonConfig {
   onClick: () => void;
   permission?: PermissionRequirement;
   hidden?: boolean;
+  disabled?: boolean;
+  unauthorizedMode?: 'hide' | 'disable';
   type?: ButtonProps['type'];
 }
 
@@ -28,17 +30,30 @@ export const usePagePermissionActions = () => {
   const buttonSize: ButtonProps['size'] = responsive.isMobile ? 'small' : 'middle';
 
   const buildToolbarButtons = (items: PageToolbarButtonConfig[]) =>
-    actionPermission.buildToolbarActions(
-      items.map((item) => ({
-        permission: item.permission,
-        hidden: item.hidden,
-        value: (
-          <Button key={item.key} type={item.type} size={buttonSize} onClick={item.onClick}>
+    items
+      .filter((item) => {
+        if (item.hidden) {
+          return false;
+        }
+        if (!item.permission || item.unauthorizedMode === 'disable' || item.unauthorizedMode == null) {
+          return true;
+        }
+        return actionPermission.can(item.permission);
+      })
+      .map((item) => {
+        const allowed = actionPermission.can(item.permission);
+        return (
+          <Button
+            key={item.key}
+            type={item.type}
+            size={buttonSize}
+            disabled={item.disabled || !allowed}
+            onClick={item.onClick}
+          >
             {item.label}
           </Button>
-        ),
-      })),
-    );
+        );
+      });
 
   return {
     actionPermission,

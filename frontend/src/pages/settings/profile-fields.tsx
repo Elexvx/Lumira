@@ -122,9 +122,9 @@ const ProfileFieldManagementPage = () => {
               <Empty description="暂无可配置字段" />
             )}
 
-            {canUpdate && items.length ? (
+            {items.length ? (
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button type="primary" loading={saving} onClick={() => void handleSave()} disabled={loading}>
+                <Button type="primary" loading={saving} onClick={() => void handleSave()} disabled={loading || !canUpdate}>
                   保存设置
                 </Button>
               </div>

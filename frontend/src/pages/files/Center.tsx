@@ -138,6 +138,9 @@ const SystemFilesPage = () => {
     [],
   );
   const scopeParams = useMemo(() => ({ scope: fileScope as 'mine' | 'tenant' }), [fileScope]);
+  const canManageStorage = actionPermission.can('system:file:manage');
+  const canDeleteStorage = actionPermission.can('system:file:manage:delete');
+  const canUploadFile = actionPermission.can('system:file:upload');
 
   const openStorageDrawer = (provider: FileStorageProvider, record?: FileStorageSpaceRecord) => {
     setStorageDrawerMode(record ? 'edit' : 'create');
@@ -476,29 +479,28 @@ const SystemFilesPage = () => {
               {
                 key: 'edit',
                 label: '编辑',
+                disabled: !canManageStorage,
                 onClick: () => openStorageDrawer(record.provider, record),
               },
               {
                 key: 'test',
                 label: '测试',
+                disabled: !canManageStorage,
                 onClick: () => void handleTestStorageSpace(record),
               },
-              ...(actionPermission.can('system:file:manage:delete') && !record.defaultStorage
-                ? [
-                    {
-                      key: 'delete',
-                      label: '删除',
-                      danger: true,
-                      onClick: () => handleDeleteStorageSpace(record),
-                    },
-                  ]
-                : []),
+              {
+                key: 'delete',
+                label: '删除',
+                danger: true,
+                disabled: !canDeleteStorage || Boolean(record.defaultStorage),
+                onClick: () => handleDeleteStorageSpace(record),
+              },
             ]}
           />
         ),
       },
     ],
-    [actionPermission, responsive.isMobile],
+    [canDeleteStorage, canManageStorage, responsive.isMobile],
   );
 
   const columns = useMemo<ProColumns<FileObjectRecord>[]>(
@@ -652,18 +654,16 @@ const SystemFilesPage = () => {
 
   const storageToolbar = actionPermission.buildToolbarActions([
     {
-      permission: 'system:file:manage:delete',
       value: (
-        <Button key="delete" icon={<DeleteOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled>
+        <Button key="delete" icon={<DeleteOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canDeleteStorage}>
           删除
         </Button>
       ),
     },
     {
-      permission: 'system:file:manage',
       value: (
         <Dropdown key="add" menu={{ items: addStorageItems }} trigger={['click']}>
-          <Button type="primary" icon={<PlusOutlined />} size={responsive.isMobile ? 'small' : 'middle'}>
+          <Button type="primary" icon={<PlusOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canManageStorage}>
             添加 <DownOutlined />
           </Button>
         </Dropdown>
@@ -673,10 +673,9 @@ const SystemFilesPage = () => {
 
   const actionToolbar = actionPermission.buildToolbarActions([
     {
-      permission: 'system:file:upload',
       hidden: isTenantScope,
       value: (
-        <Button key="upload" type="primary" icon={<UploadOutlined />} size={responsive.isMobile ? 'small' : 'middle'} onClick={openUploadDrawer}>
+        <Button key="upload" type="primary" icon={<UploadOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canUploadFile} onClick={openUploadDrawer}>
           {formatMessage({ id: 'common.uploadDocument', defaultMessage: 'Upload document' })}
         </Button>
       ),
@@ -764,7 +763,7 @@ const SystemFilesPage = () => {
         onClose={closeStorageDrawer}
         footerActions={[
           { key: 'cancel', label: '取消', onClick: closeStorageDrawer },
-          { key: 'save', label: '保存', type: 'primary', loading: storageSaving, onClick: () => void handleSaveStorageSpace() },
+          { key: 'save', label: '保存', type: 'primary', loading: storageSaving, disabled: !canManageStorage, onClick: () => void handleSaveStorageSpace() },
         ]}
       >
         <Form form={storageForm} layout="vertical" initialValues={defaultStoragePayload('LOCAL')}>
@@ -841,7 +840,7 @@ const SystemFilesPage = () => {
         onClose={closeUploadDrawer}
         footerActions={[
           { key: 'cancel', label: formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' }), onClick: closeUploadDrawer },
-          { key: 'upload', label: formatMessage({ id: 'system.files.drawer.startUpload', defaultMessage: 'Start upload' }), type: 'primary', loading: uploading, onClick: () => void handleUpload() },
+          { key: 'upload', label: formatMessage({ id: 'system.files.drawer.startUpload', defaultMessage: 'Start upload' }), type: 'primary', loading: uploading, disabled: !canUploadFile, onClick: () => void handleUpload() },
         ]}
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>

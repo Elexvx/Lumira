@@ -8,6 +8,7 @@ import { buildTableRequest } from '@/features/table/proTable';
 import { auditService } from '@/services/audit';
 import type { AuditLogRecord } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 
 type AuditLogType = 'login' | 'operation' | 'ai';
 type AuditRecord = AuditLogRecord;
@@ -52,6 +53,7 @@ const renderStatusTag = (label?: string | null) => {
 const AuditOverviewPage = () => {
   const actionRef = useRef<ActionType | undefined>(undefined);
   const responsive = useResponsive();
+  const actionPermission = useActionPermission();
   const [logType, setLogType] = useState<AuditLogType>('login');
   const [selectedRecord, setSelectedRecord] = useState<AuditRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -63,9 +65,18 @@ const AuditOverviewPage = () => {
     column: 1,
     dataSource: selectedRecord || undefined,
   });
+  const canViewLoginLogs = actionPermission.can('audit:login:view');
+  const canViewOperationLogs = actionPermission.can('audit:operation:view');
+  const tabList = [
+    canViewLoginLogs ? { tab: '登录日志', key: 'login' } : null,
+    canViewOperationLogs ? { tab: '操作日志', key: 'operation' } : null,
+    canViewOperationLogs ? { tab: 'AI 调用记录', key: 'ai' } : null,
+  ].filter((item): item is { tab: string; key: AuditLogType } => Boolean(item));
+  const activeLogType = tabList.some((item) => item.key === logType) ? logType : tabList[0]?.key || 'login';
+  const canReadActiveLog = activeLogType === 'login' ? canViewLoginLogs : canViewOperationLogs;
 
   const columns = useMemo<ProColumns<AuditRecord>[]>(() => {
-    if (logType === 'login') {
+    if (activeLogType === 'login') {
       return [
           { title: '用户名', dataIndex: 'username', importance: 1 },
           timeRangeColumn,
@@ -122,7 +133,7 @@ const AuditOverviewPage = () => {
         ];
     }
 
-    if (logType === 'ai') {
+    if (activeLogType === 'ai') {
       return [
         {
           title: '数字员工 ID',
@@ -249,24 +260,20 @@ const AuditOverviewPage = () => {
             ),
           },
         ];
-  }, [logType, responsive.isDesktop, responsive.isMobile]);
+  }, [activeLogType, responsive.isDesktop, responsive.isMobile]);
 
   return (
     <ManagementPage
       title="审计中心"
-      tabList={[
-        { tab: '登录日志', key: 'login' },
-        { tab: '操作日志', key: 'operation' },
-        { tab: 'AI 调用记录', key: 'ai' },
-      ]}
-      tabActiveKey={logType}
+      tabList={tabList}
+      tabActiveKey={activeLogType}
       onTabChange={(key) => {
         setLogType(key as AuditLogType);
         actionRef.current?.reload();
       }}
     >
       <ManagementTable<AuditRecord>
-          key={logType}
+          key={activeLogType}
           actionRef={actionRef}
           rowKey="id"
           columns={columns}
@@ -274,11 +281,13 @@ const AuditOverviewPage = () => {
           search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
           pagination={{ showSizeChanger: true, pageSize: 10 }}
           request={buildTableRequest((params) =>
-            logType === 'login'
-              ? auditService.loginLogs(params, { autoRedirectOnUnauthorized: false })
-              : logType === 'ai'
-                ? auditService.aiCallLogs(params, { autoRedirectOnUnauthorized: false })
-                : auditService.operationLogs(params, { autoRedirectOnUnauthorized: false }),
+            canReadActiveLog
+              ? activeLogType === 'login'
+                ? auditService.loginLogs(params, { autoRedirectOnUnauthorized: false })
+                : activeLogType === 'ai'
+                  ? auditService.aiCallLogs(params, { autoRedirectOnUnauthorized: false })
+                  : auditService.operationLogs(params, { autoRedirectOnUnauthorized: false })
+              : Promise.resolve({ records: [], total: 0 }),
           )}
           toolBarRender={() => [
             <Button key="refresh" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>

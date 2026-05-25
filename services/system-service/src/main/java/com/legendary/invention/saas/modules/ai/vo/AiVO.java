@@ -3,6 +3,7 @@ package com.legendary.invention.saas.modules.ai.vo;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public final class AiVO {
 
@@ -589,6 +590,138 @@ public final class AiVO {
 
         public void setUpdateTime(LocalDateTime updateTime) {
             this.updateTime = updateTime;
+        }
+    }
+
+    public static class ToolVO {
+        private String toolCode;
+        private String toolName;
+        private String category;
+        private String description;
+        private String riskLevel;
+        private Boolean readOnly;
+        private Boolean needConfirm;
+        private String requiredPermission;
+        private Map<String, Object> inputSchema;
+
+        public String getToolCode() {
+            return toolCode;
+        }
+
+        public void setToolCode(String toolCode) {
+            this.toolCode = toolCode;
+        }
+
+        public String getToolName() {
+            return toolName;
+        }
+
+        public void setToolName(String toolName) {
+            this.toolName = toolName;
+        }
+
+        public String getCategory() {
+            return category;
+        }
+
+        public void setCategory(String category) {
+            this.category = category;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getRiskLevel() {
+            return riskLevel;
+        }
+
+        public void setRiskLevel(String riskLevel) {
+            this.riskLevel = riskLevel;
+        }
+
+        public Boolean getReadOnly() {
+            return readOnly;
+        }
+
+        public void setReadOnly(Boolean readOnly) {
+            this.readOnly = readOnly;
+        }
+
+        public Boolean getNeedConfirm() {
+            return needConfirm;
+        }
+
+        public void setNeedConfirm(Boolean needConfirm) {
+            this.needConfirm = needConfirm;
+        }
+
+        public String getRequiredPermission() {
+            return requiredPermission;
+        }
+
+        public void setRequiredPermission(String requiredPermission) {
+            this.requiredPermission = requiredPermission;
+        }
+
+        public Map<String, Object> getInputSchema() {
+            return inputSchema;
+        }
+
+        public void setInputSchema(Map<String, Object> inputSchema) {
+            this.inputSchema = inputSchema;
+        }
+    }
+
+    public static class ToolExecuteResultVO {
+        private String toolCode;
+        private String resultStatus;
+        private String message;
+        private Map<String, Object> data;
+        private LocalDateTime executedAt;
+
+        public String getToolCode() {
+            return toolCode;
+        }
+
+        public void setToolCode(String toolCode) {
+            this.toolCode = toolCode;
+        }
+
+        public String getResultStatus() {
+            return resultStatus;
+        }
+
+        public void setResultStatus(String resultStatus) {
+            this.resultStatus = resultStatus;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public Map<String, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<String, Object> data) {
+            this.data = data;
+        }
+
+        public LocalDateTime getExecutedAt() {
+            return executedAt;
+        }
+
+        public void setExecutedAt(LocalDateTime executedAt) {
+            this.executedAt = executedAt;
         }
     }
 

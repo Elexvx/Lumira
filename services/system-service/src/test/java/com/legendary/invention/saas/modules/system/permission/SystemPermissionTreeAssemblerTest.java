@@ -24,7 +24,9 @@ class SystemPermissionTreeAssemblerTest {
                         permission("ai:employee:update", "编辑数字员工"),
                         permission("ai:llm:create", "创建 LLM 服务"),
                         permission("ai:chat:send", "发送 AI 对话"),
-                        permission("ai:skill:view", "查看技能列表")
+                        permission("ai:skill:view", "查看技能列表"),
+                        permission("ai:tool:view", "查看 AI 工具"),
+                        permission("ai:tool:execute", "执行 AI 工具")
                 )
         );
 
@@ -35,8 +37,43 @@ class SystemPermissionTreeAssemblerTest {
         assertTrue(actionKeys.contains("ai:employee:create"));
         assertTrue(actionKeys.contains("ai:employee:update"));
         assertTrue(actionKeys.contains("ai:llm:create"));
+        assertTrue(actionKeys.contains("ai:skill:view"));
+        assertTrue(actionKeys.contains("ai:tool:view"));
+        assertTrue(actionKeys.contains("ai:tool:execute"));
         assertFalse(actionKeys.contains("ai:chat:send"));
-        assertFalse(actionKeys.contains("ai:skill:view"));
+    }
+
+    @Test
+    void shouldSeparatePersonalAndTenantFileActions() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(
+                        menu("我的文件", "/user-center/files", "system:file:view"),
+                        menu("全站文件管理", "/settings/files/all", "system:file:manage")
+                ),
+                List.of(
+                        permission("system:file:view", "查看文件中心"),
+                        permission("system:file:upload", "上传文档"),
+                        permission("system:file:delete", "删除个人文件"),
+                        permission("system:file:manage", "管理全站文件"),
+                        permission("system:file:manage:delete", "删除全站文件")
+                )
+        );
+
+        Set<String> personalActionKeys = tree.get(0).getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet());
+        Set<String> tenantActionKeys = tree.get(1).getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet());
+
+        assertTrue(personalActionKeys.contains("system:file:upload"));
+        assertTrue(personalActionKeys.contains("system:file:delete"));
+        assertFalse(personalActionKeys.contains("system:file:manage"));
+        assertFalse(personalActionKeys.contains("system:file:manage:delete"));
+        assertTrue(tenantActionKeys.contains("system:file:manage:delete"));
+        assertFalse(tenantActionKeys.contains("system:file:upload"));
     }
 
     @Test

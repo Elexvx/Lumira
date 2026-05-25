@@ -42,7 +42,7 @@ export const useActionPermission = () => {
       buildTableActions: (items: PermissionAwareTableAction[]): TableActionItem[] =>
         items.map((item) => {
           const allowed = item.permission ? canAccessAny(normalizePermissions(item.permission)) : true;
-          const unauthorizedMode = item.unauthorizedMode ?? 'hide';
+          const unauthorizedMode = item.unauthorizedMode ?? 'disable';
           const hidden = Boolean(item.hidden) || (!allowed && unauthorizedMode === 'hide');
           const disabled = Boolean(item.disabled) || (!allowed && unauthorizedMode === 'disable');
 

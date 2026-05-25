@@ -74,30 +74,28 @@ export const BoundProviderCard = ({
                       </Space>
                       <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || '暂无绑定标识'}</Typography.Text>
                     </Space>
-                    {canManageSecondFactor ? (
-                      <Space
-                        wrap
-                        style={{
-                          flexShrink: 0,
-                          justifyContent: compactLayout ? 'flex-start' : 'flex-end',
-                          width: compactLayout ? '100%' : 'auto',
-                        }}
+                    <Space
+                      wrap
+                      style={{
+                        flexShrink: 0,
+                        justifyContent: compactLayout ? 'flex-start' : 'flex-end',
+                        width: compactLayout ? '100%' : 'auto',
+                      }}
+                    >
+                      <Button
+                        type="primary"
+                        block={compactLayout}
+                        onClick={() => onBind(provider)}
+                        disabled={!canManageSecondFactor || bindingLoading || bindingSubmitting || provider.systemEnabled === false}
                       >
-                        <Button
-                          type="primary"
-                          block={compactLayout}
-                          onClick={() => onBind(provider)}
-                          disabled={bindingLoading || bindingSubmitting || provider.systemEnabled === false}
-                        >
-                          {provider.systemEnabled === false ? '系统未启用' : provider.bound ? '重新绑定' : '绑定'}
+                        {provider.systemEnabled === false ? '系统未启用' : provider.bound ? '重新绑定' : '绑定'}
+                      </Button>
+                      {provider.bound ? (
+                        <Button danger block={compactLayout} onClick={() => onUnbind(provider)} disabled={!canManageSecondFactor || provider.systemEnabled === false}>
+                          解绑
                         </Button>
-                        {provider.bound ? (
-                          <Button danger block={compactLayout} onClick={() => onUnbind(provider)} disabled={provider.systemEnabled === false}>
-                            解绑
-                          </Button>
-                        ) : null}
-                      </Space>
-                    ) : null}
+                      ) : null}
+                    </Space>
                   </div>
                 </List.Item>
               )}
@@ -129,20 +127,18 @@ export const BoundProviderCard = ({
                       </Space>
                       <Typography.Text type="secondary">{item.value || '暂无绑定信息'}</Typography.Text>
                     </Space>
-                    {canManageSecondFactor ? (
-                      <Space
-                        wrap
-                        style={{
-                          flexShrink: 0,
-                          justifyContent: compactLayout ? 'flex-start' : 'flex-end',
-                          width: compactLayout ? '100%' : 'auto',
-                        }}
-                      >
-                        <Button type="primary" block={compactLayout} onClick={item.onAction} disabled={item.disabled} loading={item.actionLoading}>
-                          {item.actionLabel}
-                        </Button>
-                      </Space>
-                    ) : null}
+                    <Space
+                      wrap
+                      style={{
+                        flexShrink: 0,
+                        justifyContent: compactLayout ? 'flex-start' : 'flex-end',
+                        width: compactLayout ? '100%' : 'auto',
+                      }}
+                    >
+                      <Button type="primary" block={compactLayout} onClick={item.onAction} disabled={!canManageSecondFactor || item.disabled} loading={item.actionLoading}>
+                        {item.actionLabel}
+                      </Button>
+                    </Space>
                   </div>
                 </List.Item>
               )}

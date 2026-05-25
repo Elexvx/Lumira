@@ -10,6 +10,7 @@ interface WatermarkTabProps {
   previewState: BrandingSettings;
   uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr' | null;
   watermarkSaving: boolean;
+  canUpdate: boolean;
   onUpload: (target: 'watermark', file: File) => Promise<void>;
   onClearWatermarkImage: () => void;
   onSave: () => void;
@@ -21,6 +22,7 @@ export const WatermarkTab = ({
   previewState,
   uploadingTarget,
   watermarkSaving,
+  canUpdate,
   onUpload,
   onClearWatermarkImage,
   onSave,
@@ -30,7 +32,7 @@ export const WatermarkTab = ({
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form {...formProps}>
+      <Form {...formProps} disabled={!canUpdate}>
         <Form.Item name="enabled" label="启用水印" valuePropName="checked">
           <Switch />
         </Form.Item>
@@ -73,12 +75,13 @@ export const WatermarkTab = ({
                   await onUpload('watermark', file);
                   return Upload.LIST_IGNORE;
                 }}
+                disabled={!canUpdate}
               >
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'watermark'}>
+                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'watermark'} disabled={!canUpdate}>
                   上传水印图片
                 </Button>
               </Upload>
-              <Button icon={<DeleteOutlined />} onClick={onClearWatermarkImage} disabled={!watermarkPreview.imageUrl}>
+              <Button icon={<DeleteOutlined />} onClick={onClearWatermarkImage} disabled={!canUpdate || !watermarkPreview.imageUrl}>
                 清除
               </Button>
             </Space>
@@ -121,7 +124,7 @@ export const WatermarkTab = ({
       </Card>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button type="primary" loading={watermarkSaving} onClick={onSave}>
+        <Button type="primary" loading={watermarkSaving} disabled={!canUpdate} onClick={onSave}>
           保存设置
         </Button>
       </div>

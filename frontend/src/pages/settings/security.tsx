@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatMessage } from '@umijs/max';
 import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs, message } from 'antd';
 import { ManagementPage, ManagementPageBody } from '@/features/management';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useStandardFormProps } from '@/features/form/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
@@ -31,6 +32,8 @@ const passwordFieldNames: (keyof SecuritySettings)[] = [
 const SecuritySettingsPage = () => {
   const [form] = Form.useForm<SecuritySettings>();
   const { setInitialState } = useInitialStateModel();
+  const actionPermission = useActionPermission();
+  const canUpdate = actionPermission.can('system:config:update');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const captchaType = Form.useWatch('captchaType', form) || DEFAULT_SECURITY_SETTINGS.captchaType;
@@ -98,7 +101,7 @@ const SecuritySettingsPage = () => {
   const renderFooter = (fieldNames: (keyof SecuritySettings)[]) => (
     <Space>
       <Button onClick={handleReset}>{formatMessage({ id: 'page.security.resetDefault', defaultMessage: 'Restore defaults' })}</Button>
-      <Button type="primary" loading={saving} onClick={() => void handleSave(fieldNames)}>
+      <Button type="primary" loading={saving} disabled={!canUpdate} onClick={() => void handleSave(fieldNames)}>
         {formatMessage({ id: 'page.security.save', defaultMessage: 'Save settings' })}
       </Button>
     </Space>

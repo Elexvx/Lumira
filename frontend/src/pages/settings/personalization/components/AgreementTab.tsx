@@ -5,6 +5,7 @@ import { AgreementMarkdownEditor } from './AgreementMarkdownEditor';
 interface AgreementTabProps {
   formProps: FormProps;
   agreementSaving: boolean;
+  canUpdate: boolean;
   onClearUserAgreement: () => void;
   onClearPrivacyAgreement: () => void;
   onSave: () => void;
@@ -13,13 +14,14 @@ interface AgreementTabProps {
 export const AgreementTab = ({
   formProps,
   agreementSaving,
+  canUpdate,
   onClearUserAgreement,
   onClearPrivacyAgreement,
   onSave,
 }: AgreementTabProps) => {
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form {...formProps}>
+      <Form {...formProps} disabled={!canUpdate}>
         <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
           <AgreementMarkdownEditor placeholder="请输入用户协议 Markdown 内容" />
         </Form.Item>
@@ -29,13 +31,13 @@ export const AgreementTab = ({
       </Form>
 
       <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
-        <Button danger onClick={onClearUserAgreement}>
+        <Button danger disabled={!canUpdate} onClick={onClearUserAgreement}>
           清空用户协议
         </Button>
-        <Button danger onClick={onClearPrivacyAgreement}>
+        <Button danger disabled={!canUpdate} onClick={onClearPrivacyAgreement}>
           清空隐私协议
         </Button>
-        <Button type="primary" loading={agreementSaving} onClick={onSave}>
+        <Button type="primary" loading={agreementSaving} disabled={!canUpdate} onClick={onSave}>
           保存设置
         </Button>
       </Space>

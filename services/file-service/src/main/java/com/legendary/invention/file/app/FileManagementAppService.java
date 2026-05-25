@@ -16,6 +16,7 @@ import com.legendary.invention.file.config.UploadProperties;
 import com.legendary.invention.file.dto.FileStorageSpaceRequest;
 import com.legendary.invention.file.entity.FileObjectEntity;
 import com.legendary.invention.file.entity.FileStorageSpaceEntity;
+import com.legendary.invention.file.event.FilePlatformEventPublisher;
 import com.legendary.invention.file.mapper.FileObjectMapper;
 import com.legendary.invention.file.mapper.FileStorageSpaceMapper;
 import com.legendary.invention.file.upload.DocumentUploadService;
@@ -65,6 +66,7 @@ public class FileManagementAppService {
     private final UploadProperties uploadProperties;
     private final DocumentUploadService documentUploadService;
     private final ImageUploadService imageUploadService;
+    private final FilePlatformEventPublisher filePlatformEventPublisher;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     public FileManagementAppService(
@@ -72,13 +74,15 @@ public class FileManagementAppService {
             FileStorageSpaceMapper fileStorageSpaceMapper,
             UploadProperties uploadProperties,
             DocumentUploadService documentUploadService,
-            ImageUploadService imageUploadService
+            ImageUploadService imageUploadService,
+            FilePlatformEventPublisher filePlatformEventPublisher
     ) {
         this.fileObjectMapper = fileObjectMapper;
         this.fileStorageSpaceMapper = fileStorageSpaceMapper;
         this.uploadProperties = uploadProperties;
         this.documentUploadService = documentUploadService;
         this.imageUploadService = imageUploadService;
+        this.filePlatformEventPublisher = filePlatformEventPublisher;
     }
 
     public PageResponse<FileObjectDTO> listFiles(
@@ -197,7 +201,9 @@ public class FileManagementAppService {
                 tags,
                 remark
         );
-        return getInsertedFile(tenantId, insertedId);
+        FileObjectDTO uploaded = getInsertedFile(tenantId, insertedId);
+        filePlatformEventPublisher.publishUploadedAfterCommit(currentUser, uploaded);
+        return uploaded;
     }
 
     @Transactional
@@ -222,7 +228,9 @@ public class FileManagementAppService {
                 null,
                 remark
         );
-        return getInsertedFile(tenantId, insertedId);
+        FileObjectDTO uploaded = getInsertedFile(tenantId, insertedId);
+        filePlatformEventPublisher.publishUploadedAfterCommit(currentUser, uploaded);
+        return uploaded;
     }
 
     @Transactional
@@ -241,6 +249,7 @@ public class FileManagementAppService {
                         .eq(FileObjectEntity::getTenantId, currentTenantId(currentUser))
                         .eq(FileObjectEntity::getDeleted, 0)
         );
+        filePlatformEventPublisher.publishDeletedAfterCommit(currentUser, file);
     }
 
     public PageResponse<StorageSpaceDTO> listStorageSpaces(CurrentUser currentUser, long pageNo, long pageSize) {

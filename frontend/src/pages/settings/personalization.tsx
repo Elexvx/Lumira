@@ -124,6 +124,9 @@ const PersonalizationSettingsPage = () => {
 
   const handleUpload = useCallback(
     async (target: UploadTarget, file: File) => {
+      if (!canUpdate) {
+        return;
+      }
       if (!isAllowedImageFile(target, file)) {
         message.error(target === 'favicon' ? '请上传图片或 .ico 文件' : '请上传图片文件');
         return;
@@ -161,7 +164,7 @@ const PersonalizationSettingsPage = () => {
         setUploadingTarget(null);
       }
     },
-    [brandingForm, floatingForm, watermarkForm],
+    [brandingForm, canUpdate, floatingForm, watermarkForm],
   );
 
   const handleSaveBranding = async () => {
@@ -348,6 +351,7 @@ const PersonalizationSettingsPage = () => {
                     previewState={previewState}
                     uploadingTarget={uploadingTarget}
                     brandingSaving={brandingSaving}
+                    canUpdate={canUpdate}
                     onUpload={(target, file) => handleUpload(target, file)}
                     onClearField={handleClearBrandingField}
                     onSave={() => void handleSaveBranding()}
@@ -364,6 +368,7 @@ const PersonalizationSettingsPage = () => {
                     previewState={previewState}
                     uploadingTarget={uploadingTarget}
                     watermarkSaving={watermarkSaving}
+                    canUpdate={canUpdate}
                     onUpload={(target, file) => handleUpload(target, file)}
                     onClearWatermarkImage={handleClearWatermarkImage}
                     onSave={() => void handleSaveWatermark()}
@@ -379,6 +384,7 @@ const PersonalizationSettingsPage = () => {
                     preview={floatingPreview}
                     uploadingTarget={uploadingTarget}
                     saving={floatingSaving}
+                    canUpdate={canUpdate}
                     onUpload={(target, file) => handleUpload(target, file)}
                     onClearQrImage={handleClearFloatingQrImage}
                     onSave={() => void handleSaveFloating()}
@@ -392,6 +398,7 @@ const PersonalizationSettingsPage = () => {
                   <AgreementTab
                     formProps={agreementFormProps}
                     agreementSaving={agreementSaving}
+                    canUpdate={canUpdate}
                     onClearUserAgreement={() => handleClearAgreementField('userAgreementMarkdown')}
                     onClearPrivacyAgreement={() => handleClearAgreementField('privacyAgreementMarkdown')}
                     onSave={() => void handleSaveAgreement()}

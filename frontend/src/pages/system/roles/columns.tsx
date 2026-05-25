@@ -11,6 +11,7 @@ interface BuildRoleColumnsOptions {
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenDetail: (record: RoleRecord) => void;
   onOpenEdit: (record: RoleRecord) => void;
+  onOpenPermissions: (record: RoleRecord) => void;
   onDelete: (record: RoleRecord) => void;
 }
 
@@ -25,6 +26,7 @@ export const buildRoleColumns = ({
   buildRowActions,
   onOpenDetail,
   onOpenEdit,
+  onOpenPermissions,
   onDelete,
 }: BuildRoleColumnsOptions): ProColumns<RoleRecord>[] => [
   {
@@ -90,7 +92,7 @@ export const buildRoleColumns = ({
             key: 'permission',
             label: '权限分配',
             permission: 'system:role:permissions',
-            onClick: () => onOpenEdit(record),
+            onClick: () => onOpenPermissions(record),
           },
           {
             key: 'delete',

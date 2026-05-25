@@ -328,6 +328,11 @@ pnpm typecheck
 - [技术方案](./docs/01-technical-scheme.md)
 - [前端架构](./docs/06-frontend-architecture.md)
 - [后端架构](./docs/07-backend-architecture.md)
+- [服务与数据库表 Ownership](./docs/15-service-data-ownership.md)
+- [system-service 模块边界](./docs/16-system-service-module-boundaries.md)
+- [网关、认证与权限职责边界](./docs/17-gateway-auth-permission-boundaries.md)
+- [事件与 Outbox 架构](./docs/18-event-outbox-architecture.md)
+- [架构运行手册](./docs/19-architecture-runbook.md)
 - [初始化说明](./docs/11-bootstrap-setup.md)
 
 ## 贡献约定
