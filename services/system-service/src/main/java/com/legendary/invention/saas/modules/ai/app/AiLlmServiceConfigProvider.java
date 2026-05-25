@@ -13,6 +13,8 @@ public interface AiLlmServiceConfigProvider {
 
     Optional<AiLlmServiceConfig> findById(Long tenantId, Long serviceId);
 
+    Optional<AiLlmServiceConfig> findDefault(Long tenantId);
+
     Optional<AiLlmServiceConfig> findDefaultForEmployee(Long tenantId, Long employeeId);
 }
 
@@ -48,6 +50,29 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
                 new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
                 tenantId,
                 serviceId
+        ).stream()
+                .findFirst()
+                .map(this::decryptApiKey);
+    }
+
+    @Override
+    public Optional<AiLlmServiceConfig> findDefault(Long tenantId) {
+        if (tenantId == null) {
+            return Optional.empty();
+        }
+        return jdbcTemplate.query(
+                """
+                        select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
+                               timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
+                        from ai_llm_service
+                        where tenant_id = ?
+                          and is_deleted = 0
+                          and enabled = 1
+                        order by id asc
+                        limit 1
+                        """,
+                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
+                tenantId
         ).stream()
                 .findFirst()
                 .map(this::decryptApiKey);

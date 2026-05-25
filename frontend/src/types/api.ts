@@ -307,7 +307,7 @@ export interface AiGovernanceOverviewRecord {
 export interface AiConversationRecord {
   id: number;
   tenantId?: number | null;
-  employeeId: number;
+  employeeId?: number | null;
   employeeName?: string | null;
   conversationCode: string;
   title?: string | null;
@@ -500,7 +500,7 @@ export interface AiLlmServiceTestResult {
 }
 
 export interface AiChatRequestPayload {
-  employeeId: number;
+  employeeId?: number | null;
   conversationId?: number | null;
   message: string;
   enableThinking?: boolean | null;

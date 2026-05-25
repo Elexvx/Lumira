@@ -20,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -508,12 +509,14 @@ public class AiManagementAppService {
 
     public PageResponse<AiVO.ConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
         Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, employeeId);
+        if (employeeId != null) {
+            requireEmployee(tenantId, employeeId);
+        }
         return pageQuery(
                 """
                         select c.id, c.tenant_id as tenantId, c.employee_id as employeeId,
                                c.owner_user_id as ownerUserId,
-                               coalesce(e.nickname, e.username) as employeeName,
+                               coalesce(e.nickname, e.username, 'AI 助手') as employeeName,
                                c.conversation_code as conversationCode, c.title, c.status,
                                c.is_pinned as pinned,
                                (
@@ -535,7 +538,7 @@ public class AiManagementAppService {
                          and e.is_deleted = 0
                         where c.tenant_id = ?
                           and c.owner_user_id = ?
-                          and c.employee_id = ?
+                          and ((? is null and c.employee_id is null) or c.employee_id = ?)
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
                         """,
@@ -544,13 +547,13 @@ public class AiManagementAppService {
                         from ai_conversation c
                         where c.tenant_id = ?
                           and c.owner_user_id = ?
-                          and c.employee_id = ?
+                          and ((? is null and c.employee_id is null) or c.employee_id = ?)
                           and c.is_deleted = 0
                         """,
                 AiVO.ConversationVO.class,
                 pageNo,
                 pageSize,
-                List.of(tenantId, currentUser.getUserId(), employeeId)
+                Arrays.asList(tenantId, currentUser.getUserId(), employeeId, employeeId)
         );
     }
 

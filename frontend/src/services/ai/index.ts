@@ -242,7 +242,7 @@ export const aiService = {
       params,
       ...options,
     }),
-  conversations: (params: AiPageQuery & { employeeId: number }, options: RequestOptions = {}) =>
+  conversations: (params: AiPageQuery & { employeeId?: number | null }, options: RequestOptions = {}) =>
     request<PagedResult<AiConversationRecord>>('/ai/conversations', {
       method: 'GET',
       params,

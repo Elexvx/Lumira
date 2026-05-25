@@ -4,7 +4,6 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
-  FileOutlined,
   MoreOutlined,
   PaperClipOutlined,
   PlusOutlined,
@@ -121,7 +120,7 @@ type ComposerProps = {
   activeSession?: ChatSession | null;
   sending: boolean;
   attachmentUploading: boolean;
-  onEmployeeChange: (employeeId: number) => void;
+  onEmployeeChange: (employeeId: number | null) => void;
   onSend: (messageText: string, options: { enableThinking: boolean }) => void;
   onUploadFiles: (files: File[]) => void;
   onRemoveAttachment: (fileId: number) => void;
@@ -692,15 +691,36 @@ const Composer = ({
         })),
     [employees],
   );
+  const conversationAgentItems = useMemo(
+    () => [
+      {
+        label: '普通对话',
+        value: 'general',
+        icon: <RobotOutlined />,
+        extra: '不使用数字员工',
+      },
+      ...agentItems,
+    ],
+    [agentItems],
+  );
+  const agentSuggestionItems = useMemo(
+    () => (info?: { keyword?: string }) => {
+      const keyword = info?.keyword?.trim().toLowerCase();
+      if (!keyword) {
+        return conversationAgentItems;
+      }
+      return conversationAgentItems.filter((item) => String(item.label).toLowerCase().includes(keyword));
+    },
+    [conversationAgentItems],
+  );
 
   const slotConfig = useMemo<SlotConfigType[]>(
     () => [
-      { type: 'text', value: '请' },
       {
         type: 'content',
         key: 'task',
         props: {
-          placeholder: '输入任务或问题',
+          placeholder: '输入任务或问题，输入 / 切换助手',
         },
       },
     ],
@@ -743,6 +763,19 @@ const Composer = ({
     setInputValue('');
     setSenderKey((current) => current + 1);
   };
+  const handleAgentSuggestionSelect = (value: string) => {
+    if (value === 'general') {
+      onEmployeeChange(null);
+      setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
+      return;
+    }
+
+    const nextEmployeeId = Number(value);
+    if (Number.isFinite(nextEmployeeId)) {
+      onEmployeeChange(nextEmployeeId);
+      setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
+    }
+  };
 
   return (
     <div className="saas-ai-assistant-composer">
@@ -760,92 +793,85 @@ const Composer = ({
           }
         }}
       />
-      <XSender
-        key={senderKey}
-        rootClassName="saas-ai-assistant-sender"
-        loading={sending}
-        readOnly={readOnly}
-        disabled={readOnly || !selectedEmployee || !activeSession}
-        autoSize={{ minRows: 2, maxRows: 6 }}
-        submitType="enter"
-        slotConfig={slotConfig}
-        skill={selectedAgentSkill}
-        onChange={(nextValue) => setInputValue(nextValue)}
-        onSubmit={(nextValue) => {
-          handleSubmit(nextValue);
-        }}
-        onPasteFile={(files) => handleFiles(Array.from(files))}
-        placeholder={readOnly ? '当前为只读分享页面' : selectedEmployee && activeSession ? '向我提问吧' : '暂无可用数字员工'}
-        header={
-          activeSession?.pendingAttachments.length ? (
-            <div className="saas-ai-assistant-composer__attachments">
-              {renderAttachmentCardList(activeSession.pendingAttachments, {
-                removable: !sending && !readOnly,
-                onRemove: onRemoveAttachment,
-                className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
-              })}
-            </div>
-          ) : false
-        }
-        prefix={false}
-        footer={(_, { components }) => {
-          const { SendButton, LoadingButton } = components;
-          return (
-            <div className="saas-ai-assistant-composer__footer">
-              <div className="saas-ai-assistant-composer__tools">
-                <Button
-                  type="text"
-                  icon={<PaperClipOutlined />}
-                  aria-label="上传附件"
-                  title={`上传附件，支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')}`}
-                  loading={attachmentUploading}
-                  disabled={readOnly || sending || attachmentUploading || !activeSession}
-                  onClick={() => fileInputRef.current?.click()}
-                />
-                <XSender.Switch
-                  icon={<ThunderboltOutlined />}
-                  value={thinkingSupported && deepThink}
-                  disabled={!thinkingSupported || readOnly || sending}
-                  checkedChildren="思考"
-                  unCheckedChildren="思考"
-                  onChange={setDeepThink}
-                />
-                <Suggestion
-                  items={agentItems}
-                  onSelect={(value) => {
-                    const nextEmployeeId = Number(value);
-                    if (Number.isFinite(nextEmployeeId)) {
-                      onEmployeeChange(nextEmployeeId);
-                    }
-                  }}
-                >
-                  {({ onTrigger, onKeyDown }) => (
+      <Suggestion items={agentSuggestionItems} onSelect={handleAgentSuggestionSelect} block>
+        {({ onTrigger }) => (
+          <XSender
+            key={senderKey}
+            rootClassName="saas-ai-assistant-sender"
+            loading={sending}
+            readOnly={readOnly}
+            disabled={readOnly || !activeSession}
+            autoSize={{ minRows: 2, maxRows: 6 }}
+            submitType="enter"
+            value={inputValue}
+            slotConfig={slotConfig}
+            skill={selectedAgentSkill}
+            onChange={(nextValue) => setInputValue(nextValue)}
+            onKeyUp={(event) => {
+              const slashMatch = event.currentTarget.value.match(/(?:^|\s)\/([^\s/]*)$/);
+              onTrigger(slashMatch ? { keyword: slashMatch[1] } : false);
+            }}
+            onSubmit={(nextValue) => {
+              handleSubmit(nextValue);
+            }}
+            onPasteFile={(files) => handleFiles(Array.from(files))}
+            placeholder={readOnly ? '当前为只读分享页面' : activeSession ? '向我提问吧' : '暂无可用对话'}
+            header={
+              activeSession?.pendingAttachments.length ? (
+                <div className="saas-ai-assistant-composer__attachments">
+                  {renderAttachmentCardList(activeSession.pendingAttachments, {
+                    removable: !sending && !readOnly,
+                    onRemove: onRemoveAttachment,
+                    className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
+                  })}
+                </div>
+              ) : false
+            }
+            prefix={false}
+            footer={(_, { components }) => {
+              const { SendButton, LoadingButton } = components;
+              return (
+                <div className="saas-ai-assistant-composer__footer">
+                  <div className="saas-ai-assistant-composer__tools">
                     <Button
-                      icon={<AppstoreOutlined />}
-                      disabled={readOnly || sending || !agentItems.length}
-                      onClick={() => onTrigger({})}
-                      onKeyDown={onKeyDown}
-                    >
-                      Agent
-                    </Button>
-                  )}
-                </Suggestion>
-                <Button
-                  icon={<FileOutlined />}
-                  loading={attachmentUploading}
-                  disabled={readOnly || sending || attachmentUploading || !activeSession}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Files
-                </Button>
-              </div>
-              <div className="saas-ai-assistant-composer__actions">
-                {sending ? <LoadingButton /> : <SendButton disabled={!inputValue.trim() || inputValue.trim() === '请'} />}
-              </div>
-            </div>
-          );
-        }}
-      />
+                      type="text"
+                      icon={<PaperClipOutlined />}
+                      aria-label="上传附件"
+                      title={`上传附件，支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')}`}
+                      loading={attachmentUploading}
+                      disabled={readOnly || sending || attachmentUploading || !activeSession}
+                      onClick={() => fileInputRef.current?.click()}
+                    />
+                    <XSender.Switch
+                      icon={<ThunderboltOutlined />}
+                      value={thinkingSupported && deepThink}
+                      disabled={!thinkingSupported || readOnly || sending}
+                      checkedChildren="思考"
+                      unCheckedChildren="思考"
+                      onChange={setDeepThink}
+                    />
+                    <Suggestion items={conversationAgentItems} onSelect={handleAgentSuggestionSelect}>
+                      {({ onTrigger, onKeyDown }) => (
+                        <Button
+                          icon={<AppstoreOutlined />}
+                          disabled={readOnly || sending}
+                          onClick={() => onTrigger({})}
+                          onKeyDown={onKeyDown}
+                        >
+                          Agent
+                        </Button>
+                      )}
+                    </Suggestion>
+                  </div>
+                  <div className="saas-ai-assistant-composer__actions">
+                    {sending ? <LoadingButton /> : <SendButton disabled={!inputValue.trim()} />}
+                  </div>
+                </div>
+              );
+            }}
+          />
+        )}
+      </Suggestion>
     </div>
   );
 };
@@ -921,17 +947,14 @@ const AiAssistantPage = () => {
       return;
     }
 
-    if (!employees.length) {
-      setSelectedEmployeeId(assistantEmployee?.id ?? null);
-      return;
-    }
-
     setSelectedEmployeeId((currentValue) => {
       if (currentValue && employees.some((employee) => employee.id === currentValue)) {
         return currentValue;
       }
-      const defaultEmployee = employees.find((employee) => employee.enabled) || employees[0];
-      return defaultEmployee?.id ?? assistantEmployee?.id ?? null;
+      if (currentValue && assistantEmployee?.id === currentValue) {
+        return currentValue;
+      }
+      return null;
     });
   }, [assistantEmployee?.id, employees, isShareMode]);
 
@@ -947,24 +970,22 @@ const AiAssistantPage = () => {
       return shareEmployee;
     }
 
-    if (!selectedEmployeeOptions.length) {
-      return null;
-    }
-
     if (selectedEmployeeId) {
-      return selectedEmployeeOptions.find((employee) => employee.id === selectedEmployeeId) || selectedEmployeeOptions[0];
+      return selectedEmployeeOptions.find((employee) => employee.id === selectedEmployeeId) || null;
     }
 
-    return selectedEmployeeOptions.find((employee) => employee.enabled) || selectedEmployeeOptions[0] || null;
+    return null;
   }, [isShareMode, selectedEmployeeId, selectedEmployeeOptions, shareEmployee]);
 
+  const activeEmployeeId = selectedEmployee?.id ?? null;
+
   const conversationsQuery = useQuery({
-    queryKey: ['ai-assistant-conversations', selectedEmployee?.id],
-    enabled: !isShareMode && Boolean(selectedEmployee?.id),
+    queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
+    enabled: !isShareMode,
     queryFn: async () =>
       aiService.conversations(
         {
-          employeeId: selectedEmployee!.id,
+          employeeId: activeEmployeeId,
           pageNo: 1,
           pageSize: 50,
         },
@@ -977,15 +998,9 @@ const AiAssistantPage = () => {
       return;
     }
 
-    if (!selectedEmployee) {
-      setSessions([]);
-      setActiveSessionId('session-default');
-      return;
-    }
-
     const records = conversationsQuery.data?.records || [];
     setSessions((currentSessions) => {
-      const draftSessions = currentSessions.filter((session) => session.isDraft || !session.conversationId);
+      const draftSessions = currentSessions.filter((session) => (session.isDraft || !session.conversationId) && session.employeeId === activeEmployeeId);
       const persistedSessions = records.map((record) => {
         const existingSession = currentSessions.find((session) => session.conversationId === record.id || session.id === String(record.id));
         if (!existingSession) {
@@ -1025,7 +1040,7 @@ const AiAssistantPage = () => {
 
       return records[0] ? String(records[0].id) : 'session-default';
     });
-  }, [conversationsQuery.data, isShareMode, selectedEmployee]);
+  }, [activeEmployeeId, conversationsQuery.data, isShareMode, selectedEmployee]);
 
   useEffect(() => {
     if (!isShareMode || !shareQuery.data) {
@@ -1131,7 +1146,7 @@ const AiAssistantPage = () => {
         preview: current.preview === current.title || current.preview === session.title ? nextTitle : current.preview,
         updatedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       }));
-      void queryClient.invalidateQueries({ queryKey: ['ai-assistant-conversations', selectedEmployee?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'] });
       closeRenameModal();
       message.success('会话名称已更新');
     } catch (error) {
@@ -1140,7 +1155,7 @@ const AiAssistantPage = () => {
   };
 
   const uploadAttachments = async (files: File[]) => {
-    if (isShareMode || !selectedEmployee || !activeSession) {
+    if (isShareMode || !activeSession) {
       return;
     }
 
@@ -1189,7 +1204,7 @@ const AiAssistantPage = () => {
 
   const handleSend = async (messageText: string, options: { enableThinking?: boolean } = {}) => {
     const trimmed = messageText.trim();
-    if (!trimmed || !selectedEmployee || !activeSession || isShareMode) {
+    if (!trimmed || !activeSession || isShareMode) {
       return;
     }
 
@@ -1212,9 +1227,9 @@ const AiAssistantPage = () => {
     setSending(true);
     updateSession(activeSession.id, (session) => ({
       ...session,
-      employeeId: selectedEmployee.id,
-      employeeName: selectedEmployee.nickname?.trim() || selectedEmployee.username,
-      employeeAvatarKey: selectedEmployee.avatarKey ?? null,
+      employeeId: activeEmployeeId,
+      employeeName: selectedEmployee?.nickname?.trim() || selectedEmployee?.username || 'AI 助手',
+      employeeAvatarKey: selectedEmployee?.avatarKey ?? null,
       title: session.conversationId ? session.title : buildSessionTitle(trimmed),
       preview: trimmed,
       messages: [...session.messages, userBubble, assistantPlaceholder],
@@ -1234,7 +1249,7 @@ const AiAssistantPage = () => {
 
         const conversations = await aiService.conversations(
           {
-            employeeId: selectedEmployee.id,
+            employeeId: activeEmployeeId,
             pageNo: 1,
             pageSize: 1,
           },
@@ -1269,7 +1284,7 @@ const AiAssistantPage = () => {
         );
         setActiveSessionId(String(latestConversation.id));
         void queryClient.invalidateQueries({
-          queryKey: ['ai-assistant-conversations', selectedEmployee.id],
+          queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
         });
         return true;
       };
@@ -1277,7 +1292,7 @@ const AiAssistantPage = () => {
       try {
         await aiService.streamChat(
           {
-            employeeId: selectedEmployee.id,
+            employeeId: activeEmployeeId,
             conversationId: activeSession.conversationId ?? null,
             message: trimmed,
             enableThinking: options.enableThinking ?? null,
@@ -1406,7 +1421,7 @@ const AiAssistantPage = () => {
       }
 
       void queryClient.invalidateQueries({
-        queryKey: ['ai-assistant-conversations', selectedEmployee.id],
+        queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
       });
     } catch (error) {
       updateSession(activeSession.id, (session) => ({
@@ -1421,7 +1436,7 @@ const AiAssistantPage = () => {
   };
 
   const handleCreateSession = () => {
-    if (isShareMode || !selectedEmployee) {
+    if (isShareMode) {
       return;
     }
 
@@ -1539,7 +1554,7 @@ const AiAssistantPage = () => {
           return remaining[0] ? remaining[0].id : 'session-default';
         });
         void queryClient.invalidateQueries({
-          queryKey: ['ai-assistant-conversations', selectedEmployee?.id],
+          queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
         });
       },
     });
@@ -1561,7 +1576,7 @@ const AiAssistantPage = () => {
         isPinned: !current.isPinned,
       }));
       void queryClient.invalidateQueries({
-        queryKey: ['ai-assistant-conversations', selectedEmployee?.id],
+        queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
       });
     } catch (error) {
       message.error(error instanceof Error && error.message ? error.message : '置顶设置失败');
@@ -1798,17 +1813,17 @@ const AiAssistantPage = () => {
           setMobilePanel('chat');
         }}
         creation={
-          selectedEmployee
-            ? {
-                label: '新建对话',
-                icon: <PlusOutlined />,
-                onClick: () => {
-                  handleCreateSession();
-                  setMobilePanel('chat');
-                },
-                align: 'center' as const,
-              }
-            : undefined
+          isShareMode
+            ? undefined
+            : {
+              label: '新建对话',
+              icon: <PlusOutlined />,
+              onClick: () => {
+                handleCreateSession();
+                setMobilePanel('chat');
+              },
+              align: 'center' as const,
+            }
         }
         menu={(conversation) => buildConversationMenu(sessions.find((session) => session.id === String(conversation.key)) || activeSession || buildInitialSession(selectedEmployee))}
         groupable
