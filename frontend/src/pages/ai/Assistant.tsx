@@ -1,14 +1,21 @@
 import {
+  AppstoreAddOutlined,
+  BulbOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
+  FileSearchOutlined,
   FileOutlined,
+  GlobalOutlined,
   PaperClipOutlined,
   PlusOutlined,
   PushpinOutlined,
+  QuestionCircleOutlined,
   RobotOutlined,
+  ScheduleOutlined,
   ShareAltOutlined,
+  SmileOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -91,6 +98,14 @@ type ActionItem = {
   onItemClick?: () => void;
 };
 
+type AssistantPrompt = {
+  key: string;
+  title?: string;
+  description: string;
+  icon?: React.ReactNode;
+  rank?: React.ReactNode;
+};
+
 type ConversationItem = {
   key: string;
   label: React.ReactNode;
@@ -119,10 +134,61 @@ type ComposerProps = {
   onShareConversation: () => void;
   onExportConversation: (format: 'markdown' | 'text') => void;
   onSend: (messageText: string) => void;
+  onPromptSubmit: (messageText: string) => void;
   onPasteFile: (files: FileList) => void;
   onRemoveAttachment: (fileId: number) => void;
-  onTriggerUpload: () => void;
 };
+
+const HOT_TOPIC_PROMPTS: AssistantPrompt[] = [
+  {
+    key: 'hot-1',
+    rank: <span className="saas-ai-assistant-prompt-rank saas-ai-assistant-prompt-rank--hot">1</span>,
+    description: '帮我梳理当前知识库中最适合自动化处理的业务流程',
+  },
+  {
+    key: 'hot-2',
+    rank: <span className="saas-ai-assistant-prompt-rank">2</span>,
+    description: '根据最近上传的资料，生成一份可执行的问题清单',
+  },
+];
+
+const GUIDE_PROMPTS: AssistantPrompt[] = [
+  {
+    key: 'guide-1',
+    title: '意图',
+    description: '先理解目标，再给出可落地的解决方案',
+    icon: <BulbOutlined />,
+  },
+  {
+    key: 'guide-2',
+    title: '角色',
+    description: '以企业数字员工身份协助分析和执行',
+    icon: <SmileOutlined />,
+  },
+];
+
+const SENDER_PROMPTS: AssistantPrompt[] = [
+  {
+    key: 'sender-1',
+    description: '动态',
+    icon: <ScheduleOutlined />,
+  },
+  {
+    key: 'sender-2',
+    description: '组件',
+    icon: <RobotOutlined />,
+  },
+  {
+    key: 'sender-3',
+    description: '指南',
+    icon: <FileSearchOutlined />,
+  },
+  {
+    key: 'sender-4',
+    description: '教程',
+    icon: <AppstoreAddOutlined />,
+  },
+];
 
 const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
   <Space size={4} wrap>
@@ -142,6 +208,64 @@ const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
   </Space>
 );
 
+const PromptPanel = ({
+  title,
+  items,
+  disabled,
+  onItemClick,
+}: {
+  title: string;
+  items: AssistantPrompt[];
+  disabled?: boolean;
+  onItemClick: (description: string) => void;
+}) => (
+  <div className="saas-ai-assistant-prompt-panel">
+    <div className="saas-ai-assistant-prompt-panel__title">{title}</div>
+    <div className="saas-ai-assistant-prompt-panel__list">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className="saas-ai-assistant-prompt-card"
+          disabled={disabled}
+          onClick={() => onItemClick(item.description)}
+        >
+          <span className="saas-ai-assistant-prompt-card__icon">{item.rank || item.icon}</span>
+          <span className="saas-ai-assistant-prompt-card__content">
+            {item.title ? <span className="saas-ai-assistant-prompt-card__title">{item.title}</span> : null}
+            <span className="saas-ai-assistant-prompt-card__description">{item.description}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const SenderPrompts = ({
+  items,
+  disabled,
+  onItemClick,
+}: {
+  items: AssistantPrompt[];
+  disabled?: boolean;
+  onItemClick: (description: string) => void;
+}) => (
+  <div className="saas-ai-assistant-sender-prompts">
+    {items.map((item) => (
+      <button
+        key={item.key}
+        type="button"
+        className="saas-ai-assistant-sender-prompt"
+        disabled={disabled}
+        onClick={() => onItemClick(item.description)}
+      >
+        {item.icon}
+        <span>{item.description}</span>
+      </button>
+    ))}
+  </div>
+);
+
 const BubbleSystem = ({ content }: { content: React.ReactNode; variant?: string }) => (
   <div className="saas-ai-assistant-bubble-system">{content}</div>
 );
@@ -150,6 +274,12 @@ const BubbleList = ({ items, className }: { items: BubbleItem[]; role?: unknown;
   <div className={className}>
     {items.map((item) => (
       <div key={item.key} className={`saas-ai-assistant-bubble saas-ai-assistant-bubble--${item.role}`}>
+        {item.role === 'ai' ? (
+          <div className="saas-ai-assistant-bubble__header">
+            <Avatar size={28} icon={<RobotOutlined />} />
+            <span>AI 助手</span>
+          </div>
+        ) : null}
         <div className="saas-ai-assistant-bubble__content">{item.content}</div>
         {item.footer ? <div className="saas-ai-assistant-bubble__footer">{item.footer}</div> : null}
       </div>
@@ -593,9 +723,9 @@ const Composer = ({
   onShareConversation,
   onExportConversation,
   onSend,
+  onPromptSubmit,
   onPasteFile,
   onRemoveAttachment,
-  onTriggerUpload,
 }: ComposerProps) => {
   const [inputValue, setInputValue] = useState('');
 
@@ -659,29 +789,38 @@ const Composer = ({
   ) : null;
 
   return (
-    <Sender
-      value={inputValue}
-      loading={sending}
-      readOnly={readOnly}
-      disabled={readOnly || !selectedEmployee || !activeSession}
-      onChange={(nextValue) => setInputValue(nextValue)}
-      onSubmit={(nextValue) => {
-        onSend(nextValue);
-        setInputValue('');
-      }}
-      onPasteFile={onPasteFile}
-      placeholder={readOnly ? '当前为只读分享页面' : selectedEmployee && activeSession ? '输入消息，按 Enter 发送...' : '暂无可用数字员工'}
-      header={
-        <Sender.Header open closable={false} title="会话工具" forceRender>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <div className="saas-ai-assistant-composer__toolbar">{toolbar}</div>
-            {!readOnly && attachmentFooter ? <div className="saas-ai-assistant-composer__attachments">{attachmentFooter}</div> : null}
-          </Space>
-        </Sender.Header>
-      }
-      footer={readOnly ? null : attachmentFooter}
-      suffix={null}
-    />
+    <div className="saas-ai-assistant-composer">
+      {!readOnly ? (
+        <SenderPrompts
+          items={SENDER_PROMPTS}
+          disabled={!selectedEmployee || !activeSession || sending}
+          onItemClick={onPromptSubmit}
+        />
+      ) : null}
+      <Sender
+        value={inputValue}
+        loading={sending}
+        readOnly={readOnly}
+        disabled={readOnly || !selectedEmployee || !activeSession}
+        onChange={(nextValue) => setInputValue(nextValue)}
+        onSubmit={(nextValue) => {
+          onSend(nextValue);
+          setInputValue('');
+        }}
+        onPasteFile={onPasteFile}
+        placeholder={readOnly ? '当前为只读分享页面' : selectedEmployee && activeSession ? '向我提问吧' : '暂无可用数字员工'}
+        header={
+          <Sender.Header open closable={false} title="会话工具" forceRender>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <div className="saas-ai-assistant-composer__toolbar">{toolbar}</div>
+              {!readOnly && attachmentFooter ? <div className="saas-ai-assistant-composer__attachments">{attachmentFooter}</div> : null}
+            </Space>
+          </Sender.Header>
+        }
+        footer={readOnly ? null : attachmentFooter}
+        suffix={null}
+      />
+    </div>
   );
 };
 
@@ -1250,6 +1389,13 @@ const AiAssistantPage = () => {
     }
   };
 
+  const handlePromptSubmit = (messageText: string) => {
+    if (isShareMode || sending) {
+      return;
+    }
+    void handleSend(messageText);
+  };
+
   const handleCreateSession = () => {
     if (isShareMode || !selectedEmployee) {
       return;
@@ -1595,9 +1741,31 @@ const AiAssistantPage = () => {
         {!hasContent ? (
           <Welcome
             icon={<RobotOutlined />}
-            title={isShareMode ? '分享会话为空' : '你好，有什么可以帮你？'}
-            description={isShareMode ? '这条分享会话还没有消息。' : '你可以直接输入问题，或者先创建一个新的对话继续。'}
-            extra={<Bubble.System content={emptyWelcome} variant="borderless" />}
+            title={isShareMode ? '分享会话为空' : '你好，我是企业 AI 助手'}
+            description={isShareMode ? '这条分享会话还没有消息。' : '可以帮你查资料、写方案、拆任务。'}
+            extra={
+              isShareMode ? (
+                <Bubble.System content={emptyWelcome} variant="borderless" />
+              ) : (
+                <div className="saas-ai-assistant-welcome-prompts">
+                  <Bubble.System content={emptyWelcome} variant="borderless" />
+                  <div className="saas-ai-assistant-prompt-grid">
+                    <PromptPanel
+                      title="最热话题"
+                      items={HOT_TOPIC_PROMPTS}
+                      disabled={!selectedEmployee || sending}
+                      onItemClick={handlePromptSubmit}
+                    />
+                    <PromptPanel
+                      title="设计指南"
+                      items={GUIDE_PROMPTS}
+                      disabled={!selectedEmployee || sending}
+                      onItemClick={handlePromptSubmit}
+                    />
+                  </div>
+                </div>
+              )
+            }
             className="saas-ai-assistant-shell__welcome"
           />
         ) : (
@@ -1622,9 +1790,9 @@ const AiAssistantPage = () => {
           onShareConversation={() => void handleShareConversation(activeSession)}
           onExportConversation={(format) => void handleExportConversation(format, activeSession)}
           onSend={(messageText) => void handleSend(messageText)}
+          onPromptSubmit={handlePromptSubmit}
           onPasteFile={(files) => void uploadAttachments(Array.from(files))}
           onRemoveAttachment={(fileId) => handleRemoveDraftAttachment(activeSession?.id || '', fileId)}
-          onTriggerUpload={triggerUploadDialog}
         />
         <input
           ref={fileInputRef}
@@ -1640,6 +1808,12 @@ const AiAssistantPage = () => {
 
   const sessionsPanel = (
     <aside className="saas-ai-assistant-layout__sidebar">
+      <div className="saas-ai-assistant-sidebar__brand">
+        <span className="saas-ai-assistant-sidebar__logo">
+          <RobotOutlined />
+        </span>
+        <span>AI 助手</span>
+      </div>
       <Conversations
         items={conversationItems}
         activeKey={activeSessionId}
@@ -1664,6 +1838,13 @@ const AiAssistantPage = () => {
         groupable
         className="saas-ai-assistant-conversations"
       />
+      <div className="saas-ai-assistant-sidebar__footer">
+        <Space size={8}>
+          <Avatar size={24} icon={<GlobalOutlined />} />
+          <span>当前对话</span>
+        </Space>
+        <Button type="text" icon={<QuestionCircleOutlined />} aria-label="帮助" title="帮助" />
+      </div>
     </aside>
   );
 

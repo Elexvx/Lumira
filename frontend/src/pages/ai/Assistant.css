@@ -15,10 +15,11 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.15));
-  border-radius: 12px;
+  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  border-radius: 8px;
   overflow: hidden;
   background: var(--ant-color-bg-container, #fff);
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.06);
 }
 
 .saas-ai-assistant-layout--share {
@@ -27,7 +28,7 @@
 
 .saas-ai-assistant-desktop-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -69,14 +70,46 @@
   flex-direction: column;
   min-width: 0;
   border-right: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
-  background: var(--ant-color-bg-container, #fff);
+  background: color-mix(in srgb, var(--ant-color-bg-layout, #f5f5f5) 72%, transparent);
+}
+
+.saas-ai-assistant-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 72px;
+  padding: 0 24px;
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.saas-ai-assistant-sidebar__logo {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #1677ff 0%, #9254de 100%);
+}
+
+.saas-ai-assistant-sidebar__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 12px;
+  border-top: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+  font-size: 13px;
 }
 
 .saas-ai-assistant-conversations {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 12px;
+  padding: 0 12px 12px;
 }
 
 .saas-ai-assistant-conversations .ant-btn {
@@ -84,6 +117,7 @@
   min-height: 36px;
   padding-inline: 10px;
   border-radius: 8px;
+  text-align: left;
 }
 
 .saas-ai-assistant-conversations__groups {
@@ -110,27 +144,144 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--ant-color-bg-container, #fff);
+  background:
+    radial-gradient(circle at 50% -20%, rgba(22, 119, 255, 0.08), transparent 36%),
+    var(--ant-color-bg-container, #fff);
 }
 
 .saas-ai-assistant-shell__chat-body {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 20px 24px;
+  padding: 24px;
 }
 
 .saas-ai-assistant-shell__welcome {
-  max-width: 760px;
+  max-width: 840px;
   margin: 0 auto;
-  padding-top: 48px;
+  padding-top: 32px;
   text-align: center;
 }
 
 .saas-ai-assistant-welcome__icon {
   margin-bottom: 16px;
   color: var(--ant-color-primary, #1677ff);
-  font-size: 42px;
+  font-size: 44px;
+}
+
+.saas-ai-assistant-shell__welcome h2 {
+  margin-bottom: 10px;
+  font-size: 26px;
+  line-height: 1.28;
+}
+
+.saas-ai-assistant-shell__welcome p {
+  margin-bottom: 16px;
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+}
+
+.saas-ai-assistant-welcome-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.saas-ai-assistant-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+
+.saas-ai-assistant-prompt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: linear-gradient(123deg, #e5f4ff 0%, #efe7ff 100%);
+}
+
+.saas-ai-assistant-prompt-panel__title {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.saas-ai-assistant-prompt-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saas-ai-assistant-prompt-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(0, 0, 0, 0.72);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.saas-ai-assistant-prompt-card:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(60, 75, 120, 0.12);
+}
+
+.saas-ai-assistant-prompt-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.saas-ai-assistant-prompt-card__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: rgba(0, 0, 0, 0.62);
+  font-size: 16px;
+}
+
+.saas-ai-assistant-prompt-rank {
+  color: #ff6565;
+  font-weight: 800;
+}
+
+.saas-ai-assistant-prompt-rank--hot {
+  color: #f93a4a;
+}
+
+.saas-ai-assistant-prompt-card__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.saas-ai-assistant-prompt-card__title {
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 700;
+}
+
+.saas-ai-assistant-prompt-card__description {
+  color: rgba(0, 0, 0, 0.68);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .saas-ai-assistant-bubble-system {
@@ -142,6 +293,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: min(940px, 100%);
+  margin: 0 auto;
   padding: 4px 0 8px;
 }
 
@@ -161,12 +314,27 @@
   align-items: flex-start;
 }
 
+.saas-ai-assistant-bubble__header {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .saas-ai-assistant-bubble__content {
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--ant-color-fill-tertiary, rgba(0, 0, 0, 0.04));
   color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
   line-height: 1.7;
+}
+
+.saas-ai-assistant-bubble--ai .saas-ai-assistant-bubble__content {
+  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  background: color-mix(in srgb, var(--ant-color-bg-container, #fff) 92%, var(--ant-color-fill-tertiary, rgba(0, 0, 0, 0.04)));
 }
 
 .saas-ai-assistant-bubble--user .saas-ai-assistant-bubble__content {
@@ -176,9 +344,8 @@
 
 .saas-ai-assistant-shell__composer {
   flex: 0 0 auto;
-  padding: 16px 24px 24px;
-  background: var(--ant-color-bg-container, #fff);
-  border-top: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  padding: 0 24px 24px;
+  background: transparent;
 }
 
 .saas-ai-assistant-share-alert {
@@ -207,10 +374,64 @@
   margin-inline-end: 0;
 }
 
+.saas-ai-assistant-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(840px, 100%);
+  margin: 0 auto;
+}
+
+.saas-ai-assistant-sender-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saas-ai-assistant-sender-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  border-radius: 8px;
+  background: var(--ant-color-bg-container, #fff);
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+  cursor: pointer;
+  font-size: 13px;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.saas-ai-assistant-sender-prompt:hover {
+  border-color: var(--ant-color-primary, #1677ff);
+  color: var(--ant-color-primary, #1677ff);
+  background: color-mix(in srgb, var(--ant-color-primary-bg, #e6f4ff) 62%, #fff);
+}
+
+.saas-ai-assistant-sender-prompt:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .saas-ai-assistant-sender {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  border-radius: 8px;
+  background: var(--ant-color-bg-container, #fff);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.saas-ai-assistant-sender .ant-input {
+  border: 0;
+  box-shadow: none;
+  resize: none;
 }
 
 .saas-ai-assistant-sender-header {
