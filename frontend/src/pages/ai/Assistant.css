@@ -88,6 +88,61 @@
   text-align: left;
 }
 
+.saas-ai-assistant-conversation-item-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.saas-ai-assistant-conversation-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.saas-ai-assistant-conversation-item--active {
+  background: var(--ant-color-primary, #1677ff);
+}
+
+.saas-ai-assistant-conversation-item__main.ant-btn {
+  width: 100%;
+  padding-right: 40px;
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+}
+
+.saas-ai-assistant-conversation-item--active .saas-ai-assistant-conversation-item__main.ant-btn,
+.saas-ai-assistant-conversation-item--active .saas-ai-assistant-conversation-item__main.ant-btn:hover {
+  color: #fff;
+  background: transparent;
+}
+
+.saas-ai-assistant-conversation-item__main .ant-btn-icon {
+  flex: 0 0 auto;
+}
+
+.saas-ai-assistant-conversation-item__main > span:not(.ant-btn-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saas-ai-assistant-conversation-item__more.ant-btn {
+  position: absolute;
+  right: 4px;
+  width: 32px;
+  min-width: 32px;
+  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+}
+
+.saas-ai-assistant-conversation-item-wrap--active .saas-ai-assistant-conversation-item__more.ant-btn,
+.saas-ai-assistant-conversation-item-wrap--active .saas-ai-assistant-conversation-item__more.ant-btn:hover {
+  color: #fff;
+  background: color-mix(in srgb, #fff 12%, transparent);
+}
+
 .saas-ai-assistant-conversations__groups {
   display: flex;
   flex-direction: column;
