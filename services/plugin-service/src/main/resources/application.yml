@@ -60,13 +60,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,sentinel
+        include: health,info,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
 
 saas:
   security:
     jwt-secret: ${JWT_SECRET}
     permit-paths:
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
       - /actuator/health
+      - /actuator/info
+      - /actuator/prometheus
   plugin:
     platform-version: ${PLUGIN_PLATFORM_VERSION:0.1.0}
     api-version: ${PLUGIN_API_VERSION:1.0.0}

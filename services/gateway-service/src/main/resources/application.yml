@@ -77,7 +77,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway,sentinel
+        include: health,info,prometheus,gateway,sentinel
   endpoint:
     gateway:
       access: unrestricted
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}

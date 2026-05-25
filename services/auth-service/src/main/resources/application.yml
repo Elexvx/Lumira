@@ -37,7 +37,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,sentinel
+        include: health,info,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
 
 saas:
   job:
@@ -61,7 +65,12 @@ saas:
       - /api/v1/auth/passkeys/authentication/complete
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
       - /actuator/health
+      - /actuator/info
+      - /actuator/prometheus
   auth:
     wechat:
       enabled: ${WECHAT_LOGIN_ENABLED:false}

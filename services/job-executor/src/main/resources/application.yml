@@ -46,4 +46,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,sentinel
+        include: health,info,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}

@@ -64,7 +64,12 @@ saas:
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     permit-paths:
       - /api/v1/localization/runtime/**
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
       - /actuator/health
+      - /actuator/info
+      - /actuator/prometheus
       - /api/health
   job:
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
@@ -76,4 +81,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,sentinel
+        include: health,info,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}

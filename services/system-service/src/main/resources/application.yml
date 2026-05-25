@@ -88,7 +88,12 @@ saas:
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
       - /api/uploads/**
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
       - /actuator/health
+      - /actuator/info
+      - /actuator/prometheus
       - /api/health
   auth:
     wechat:
@@ -131,4 +136,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,sentinel
+        include: health,info,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}

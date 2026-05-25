@@ -59,8 +59,12 @@ saas:
     permit-paths:
       - /ws/message
       - /internal/jobs/**
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
       - /actuator/health
       - /actuator/info
+      - /actuator/prometheus
   message:
     ws-ticket-expires-in-seconds: ${MESSAGE_WS_TICKET_EXPIRES_IN_SECONDS:30}
     outbox-relay-batch-size: ${MESSAGE_OUTBOX_RELAY_BATCH_SIZE:100}
@@ -69,4 +73,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,sentinel
+        include: health,info,metrics,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}

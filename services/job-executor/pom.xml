@@ -19,6 +19,10 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -26,6 +30,11 @@
             <groupId>com.xuxueli</groupId>
             <artifactId>xxl-job-core</artifactId>
             <version>3.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.legendary.invention</groupId>
+            <artifactId>common-core</artifactId>
+            <version>0.1.0</version>
         </dependency>
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

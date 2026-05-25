@@ -1,5 +1,7 @@
 package com.legendary.invention.saas.modules.system.monitor.app;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.management.OperatingSystemMXBean;
 import com.legendary.invention.saas.modules.system.monitor.vo.SystemMonitorVO;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -54,11 +56,13 @@ public class SystemMonitorAppService {
             new ServiceEndpoint("job-executor", "http://localhost:8089")
     );
     private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
     private final Instant applicationStartInstant = Instant.now();
 
-    public SystemMonitorAppService(StringRedisTemplate stringRedisTemplate) {
+    public SystemMonitorAppService(StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
         this.stringRedisTemplate = stringRedisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     public SystemMonitorVO.ServiceMonitorVO getServiceMonitor() {
@@ -157,7 +161,7 @@ public class SystemMonitorAppService {
                     && response.body() != null
                     && response.body().contains("\"UP\"");
             service.setStatus(healthy ? "UP" : "DOWN");
-            service.setVersion(healthy ? "actuator" : null);
+            service.setVersion(healthy ? probeServiceVersion(baseUrl) : null);
             if (!"UP".equals(service.getStatus())) {
                 service.setErrorMessage("HTTP " + response.statusCode());
             }
@@ -167,6 +171,23 @@ public class SystemMonitorAppService {
             service.setErrorMessage(ex.getMessage());
         }
         return service;
+    }
+
+    private String probeServiceVersion(String baseUrl) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/version"))
+                    .timeout(Duration.ofSeconds(2))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300 || response.body() == null) {
+                return null;
+            }
+            JsonNode versionNode = objectMapper.readTree(response.body()).path("data").path("version");
+            return versionNode.isTextual() && !versionNode.asText().isBlank() ? versionNode.asText() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private String resolveBaseUrl(ServiceEndpoint endpoint) {

@@ -29,7 +29,14 @@ import java.util.stream.Collectors;
 public class PluginJwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
-    private static final List<String> PUBLIC_PREFIXES = List.of("/actuator/health");
+    private static final List<String> PUBLIC_PREFIXES = List.of(
+            "/api/version",
+            "/api/v1/version",
+            "/api/v1/*/version",
+            "/actuator/health",
+            "/actuator/info",
+            "/actuator/prometheus"
+    );
 
     private final JwtTokenService jwtTokenService;
     private final AuthInternalApi authInternalApi;

@@ -85,7 +85,12 @@ saas:
       - /api/v1/public/captcha/**
       - /api/uploads/**
       - /actuator/health
+      - /actuator/info
       - /api/health
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
+      - /actuator/prometheus
   event:
     outbox:
       relay-enabled: false
@@ -110,3 +115,13 @@ saas:
 
 logging:
   config: classpath:logback-spring.xml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,sentinel
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
