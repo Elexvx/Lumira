@@ -226,11 +226,35 @@ body,
   white-space: nowrap;
 }
 
+.saas-online-users-page .saas-online-users-page__user-cell {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.saas-online-users-page .saas-online-users-page__user-name,
+.saas-online-users-page .saas-online-users-page__username {
+  display: inline-block;
+  min-width: 0;
+}
+
+.saas-online-users-page .saas-online-users-page__user-name {
+  max-width: 120px;
+}
+
+.saas-online-users-page .saas-online-users-page__username {
+  max-width: 88px;
+}
+
 .saas-online-users-page .ant-table-cell .ant-tag {
   display: inline-flex;
   max-width: 100%;
   min-width: 0;
   align-items: center;
+  margin-inline-end: 0;
 }
 
 .saas-service-monitor-page {
