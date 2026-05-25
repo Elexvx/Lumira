@@ -351,7 +351,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         return buildSettingsMenuData(initialState);
       }
 
-      const backendMenus = initialState?.menuTree || [];
+      const backendMenus: MenuNode[] = initialState?.menuTree || [];
       const translatedLocalMenus = translateVisibleLocalMenuData(initialState, menuData as RuntimeMenuDataItem[]);
       if (!backendMenus.length) {
         return buildMainMenuData(initialState, translatedLocalMenus, translatedLocalMenus);
