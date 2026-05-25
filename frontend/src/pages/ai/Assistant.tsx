@@ -139,6 +139,7 @@ type ComposerProps = {
 
 const AI_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
 const AI_ATTACHMENT_ACCEPT = AI_ATTACHMENT_EXTENSIONS.map((extension) => `.${extension}`).join(',');
+const AI_CHAT_ATTACHMENT_BUCKET = 'ai_chat';
 
 const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowerCase() || '';
 
@@ -1238,6 +1239,7 @@ const AiAssistantPage = () => {
             category: 'AI 会话附件',
             tags: 'ai,conversation',
             remark: activeSession.title,
+            bucket: AI_CHAT_ATTACHMENT_BUCKET,
           },
           { autoRedirectOnUnauthorized: false },
         );

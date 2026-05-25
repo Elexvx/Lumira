@@ -53,6 +53,10 @@ public class ImageUploadService {
     }
 
     public StoredImage upload(MultipartFile file) {
+        return upload(file, null);
+    }
+
+    public StoredImage upload(MultipartFile file, String storageSubPath) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择图片文件");
         }
@@ -71,7 +75,12 @@ public class ImageUploadService {
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String normalizedExtension = "jpeg".equals(extension) ? "jpg" : extension;
         String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + normalizedExtension;
-        Path target = storageRoot.resolve(dateFolder).resolve(generatedName).normalize();
+        String normalizedSubPath = normalizeStorageSubPath(storageSubPath);
+        Path target = storageRoot
+                .resolve(StringUtils.hasText(normalizedSubPath) ? normalizedSubPath : "")
+                .resolve(dateFolder)
+                .resolve(generatedName)
+                .normalize();
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
@@ -85,9 +94,26 @@ public class ImageUploadService {
                 "." + normalizedExtension,
                 contentType,
                 file.getSize(),
-                dateFolder + "/" + generatedName,
-                normalizePublicPath(uploadProperties.getPublicPath()) + "/" + dateFolder + "/" + generatedName
+                StringUtils.hasText(normalizedSubPath) ? normalizedSubPath + "/" + dateFolder + "/" + generatedName : dateFolder + "/" + generatedName,
+                normalizePublicPath(uploadProperties.getPublicPath())
+                        + "/"
+                        + (StringUtils.hasText(normalizedSubPath) ? normalizedSubPath + "/" : "")
+                        + dateFolder + "/" + generatedName
         );
+    }
+
+    private String normalizeStorageSubPath(String storageSubPath) {
+        if (!StringUtils.hasText(storageSubPath)) {
+            return null;
+        }
+        String normalized = storageSubPath.trim().toLowerCase(Locale.ROOT).replace('\\', '/');
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return StringUtils.hasText(normalized) ? normalized : null;
     }
 
     private byte[] readBytes(MultipartFile file) {
