@@ -1,3 +1,5 @@
+-- Consolidated file-service baseline. Future schema changes should start at V2.
+
 CREATE TABLE IF NOT EXISTS `file_object` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `tenant_id` bigint NOT NULL,
@@ -6,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `object_key` varchar(255) NOT NULL,
   `uploaded_by` bigint DEFAULT NULL,
   `uploaded_by_name` varchar(128) DEFAULT NULL,
+  `department_id` bigint DEFAULT NULL,
   `original_filename` varchar(255) NOT NULL,
   `file_extension` varchar(32) DEFAULT NULL,
   `content_type` varchar(128) DEFAULT NULL,
@@ -24,5 +27,64 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_file_object_key` (`tenant_id`,`object_key`)
+  UNIQUE KEY `uk_file_object_key` (`tenant_id`,`object_key`),
+  KEY `idx_file_object_department` (`tenant_id`,`department_id`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `file_storage_space` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `title` varchar(128) NOT NULL,
+  `storage_key` varchar(64) NOT NULL,
+  `provider` varchar(32) NOT NULL,
+  `root_path` varchar(255) DEFAULT NULL,
+  `bucket_name` varchar(128) DEFAULT NULL,
+  `endpoint` varchar(255) DEFAULT NULL,
+  `region` varchar(128) DEFAULT NULL,
+  `access_key_id` varchar(255) DEFAULT NULL,
+  `access_key_secret` varchar(512) DEFAULT NULL,
+  `rename_strategy` varchar(32) NOT NULL DEFAULT 'APPEND_RANDOM_ID',
+  `max_file_size_mb` int NOT NULL DEFAULT '20',
+  `allowed_mime_types` varchar(1024) NOT NULL DEFAULT '*',
+  `default_flag` tinyint NOT NULL DEFAULT '0',
+  `retain_file_on_record_delete` tinyint NOT NULL DEFAULT '0',
+  `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
+  `created_by` bigint DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_file_storage_space_key` (`tenant_id`,`storage_key`),
+  KEY `idx_file_storage_space_default` (`tenant_id`,`default_flag`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
+(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,'ENABLED',1,1,0);
+
+CREATE TABLE IF NOT EXISTS `platform_event_outbox` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `user_id` bigint DEFAULT NULL,
+  `source_type` varchar(64) NOT NULL,
+  `event_type` varchar(64) NOT NULL,
+  `event_key` varchar(128) NOT NULL,
+  `payload_json` longtext NOT NULL,
+  `dispatch_status` varchar(32) NOT NULL DEFAULT 'RECORDED',
+  `retry_count` int NOT NULL DEFAULT '0',
+  `next_retry_at` datetime DEFAULT NULL,
+  `delivered_at` datetime DEFAULT NULL,
+  `last_error` varchar(1024) DEFAULT NULL,
+  `trace_id` varchar(128) DEFAULT NULL,
+  `request_id` varchar(128) DEFAULT NULL,
+  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_platform_event_outbox_tenant_status` (`tenant_id`,`dispatch_status`),
+  KEY `idx_platform_event_outbox_retry` (`dispatch_status`,`next_retry_at`),
+  KEY `idx_platform_event_outbox_created_at` (`created_at`),
+  KEY `idx_platform_event_outbox_event_key` (`event_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
