@@ -4,6 +4,11 @@ FROM maven:3.9.11-eclipse-temurin-21 AS builder
 
 WORKDIR /workspace
 
+ARG OTEL_JAVAAGENT_URL=https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
+RUN set -eux; \
+    curl -fsSL "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
+    jar tf /workspace/opentelemetry-javaagent.jar >/dev/null
+
 RUN mkdir -p /root/.m2 && cat > /root/.m2/settings.xml <<'EOF'
 <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -49,16 +54,19 @@ RUN set -eux; \
 FROM eclipse-temurin:21-jre
 
 ENV JAVA_OPTS="" \
-    SERVER_PORT=8080
+    SERVER_PORT=8080 \
+    OTEL_JAVAAGENT_ENABLED=false \
+    OTEL_JAVAAGENT_PATH=/app/opentelemetry-javaagent.jar
 
 WORKDIR /app
 
 RUN addgroup --system app && adduser --system --ingroup app app && mkdir -p /tmp/nacos /tmp/sentinel && chown -R app:app /tmp/nacos /tmp/sentinel
 
 COPY --from=builder /workspace/app.jar /app/app.jar
+COPY --from=builder /workspace/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 
 USER app
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"true\" ]; then AGENT_OPTS=\"-javaagent:$OTEL_JAVAAGENT_PATH\"; fi; exec java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $AGENT_OPTS $JAVA_OPTS -jar /app/app.jar"]

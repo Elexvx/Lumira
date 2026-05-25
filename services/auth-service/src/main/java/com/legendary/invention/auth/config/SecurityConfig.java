@@ -26,7 +26,12 @@ public class SecurityConfig {
             "/api/v1/auth/passkeys/authentication/complete",
             "/api/v1/auth/second-factor/complete",
             "/api/v1/auth/refresh-token",
-            "/actuator/health"
+            "/api/version",
+            "/api/v1/version",
+            "/api/v1/*/version",
+            "/actuator/health",
+            "/actuator/info",
+            "/actuator/prometheus"
     };
 
     @Bean

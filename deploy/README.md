@@ -58,8 +58,27 @@ node scripts/deploy-container.mjs --rebuild
 
 - API proxy：`http://127.0.0.1:8000/health`
 - API 健康检查：`http://127.0.0.1:8000/api/health`
+- 版本检查：`http://127.0.0.1:8000/api/version`
 - Gateway 健康检查：`http://127.0.0.1:8081/actuator/health`
 - 公开登录配置接口：`http://127.0.0.1:8000/api/v1/public/login-capabilities`
+
+## 可观测性闭环
+
+默认部署不启动观测栈。需要 Prometheus 指标、OpenTelemetry trace、Loki 日志、Tempo trace 存储和 Grafana 看板时运行：
+
+```bash
+node scripts/deploy-container.mjs --rebuild --observability
+```
+
+观测端口默认只绑定本机：
+
+- Grafana：`http://127.0.0.1:3001`
+- Prometheus：`http://127.0.0.1:9090`
+- Loki：`http://127.0.0.1:3100`
+- Tempo：`http://127.0.0.1:3200`
+- Alloy：`http://127.0.0.1:12345`
+
+Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Observability Overview` 看板。服务运行时会暴露 `/actuator/prometheus`，并在启用观测栈时通过 OpenTelemetry Java Agent 把 trace 发送到 Alloy。
 
 ## Vercel 前端配置
 

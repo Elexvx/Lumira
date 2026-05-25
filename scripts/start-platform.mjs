@@ -53,6 +53,15 @@ function commandExists(command, args = ['--version']) {
   return result.status === 0;
 }
 
+function optionalOutput(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    shell: useShell,
+  });
+  return result.status === 0 ? result.stdout.trim() : '';
+}
+
 function pickPackageManager() {
   if (commandExists(corepackCommand)) {
     return { command: corepackCommand, args: ['pnpm'] };
@@ -66,8 +75,17 @@ function pickPackageManager() {
 }
 
 function buildRuntimeEnv() {
+  const appVersion = process.env.APP_VERSION ?? '0.1.0';
+  const gitCommit = process.env.GIT_COMMIT ?? optionalOutput('git', ['rev-parse', '--short=12', 'HEAD']);
+  const gitBranch = process.env.GIT_BRANCH ?? optionalOutput('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+  const buildVersion = process.env.BUILD_VERSION ?? (gitCommit ? `${appVersion}+${gitCommit}` : appVersion);
   return {
     ...process.env,
+    APP_VERSION: appVersion,
+    BUILD_VERSION: buildVersion,
+    BUILD_TIME: process.env.BUILD_TIME ?? new Date().toISOString(),
+    GIT_COMMIT: gitCommit,
+    GIT_BRANCH: gitBranch,
     DB_USERNAME: process.env.DB_USERNAME ?? 'root',
     DB_PASSWORD: process.env.DB_PASSWORD ?? '123456',
     NACOS_DISCOVERY_ENABLED: process.env.NACOS_DISCOVERY_ENABLED ?? 'true',

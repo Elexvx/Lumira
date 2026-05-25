@@ -28,7 +28,14 @@ import java.util.List;
 public class MessageJwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
-    private static final List<String> PUBLIC_PREFIXES = List.of("/actuator/health", "/actuator/info");
+    private static final List<String> PUBLIC_PREFIXES = List.of(
+            "/api/version",
+            "/api/v1/version",
+            "/api/v1/*/version",
+            "/actuator/health",
+            "/actuator/info",
+            "/actuator/prometheus"
+    );
 
     private final JwtTokenService jwtTokenService;
     private final MessageSessionAuthenticationService sessionAuthenticationService;

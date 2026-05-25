@@ -21,6 +21,7 @@ const ps = args.has('--ps');
 const reset = args.has('--reset');
 const help = args.has('--help') || args.has('-h');
 const skipCheck = args.has('--skip-check');
+const observability = args.has('--observability');
 
 function log(message) {
   console.log(`[deploy] ${message}`);
@@ -67,6 +68,32 @@ function output(command, commandArgs) {
   });
 }
 
+function optionalOutput(command, commandArgs) {
+  const result = output(command, commandArgs);
+  return result.status === 0 ? result.stdout.trim() : '';
+}
+
+function configureBuildIdentity() {
+  const env = parseEnvFile(envPath);
+  const appVersion = process.env.APP_VERSION || env.APP_VERSION || '0.1.0';
+  const gitCommit = process.env.GIT_COMMIT || env.GIT_COMMIT || optionalOutput('git', ['rev-parse', '--short=12', 'HEAD']);
+  const gitBranch = process.env.GIT_BRANCH || env.GIT_BRANCH || optionalOutput('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+  const buildTime = process.env.BUILD_TIME || env.BUILD_TIME || new Date().toISOString();
+  const buildVersion = process.env.BUILD_VERSION || env.BUILD_VERSION || (gitCommit ? `${appVersion}+${gitCommit}` : appVersion);
+
+  process.env.APP_VERSION = appVersion;
+  process.env.BUILD_VERSION = buildVersion;
+  process.env.BUILD_TIME = buildTime;
+  process.env.GIT_COMMIT = gitCommit;
+  process.env.GIT_BRANCH = gitBranch;
+  if (observability) {
+    process.env.OBSERVABILITY_ENVIRONMENT = process.env.OBSERVABILITY_ENVIRONMENT || env.OBSERVABILITY_ENVIRONMENT || 'prod';
+    process.env.OTEL_JAVAAGENT_ENABLED = 'true';
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://alloy:4318';
+  }
+  log(`Build identity: version=${buildVersion}, commit=${gitCommit || 'unknown'}, branch=${gitBranch || 'unknown'}`);
+}
+
 function printHelp() {
   console.log(`Usage: node scripts/deploy-container.mjs [options]
 
@@ -77,6 +104,7 @@ Options:
   --logs      Follow service logs.
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
+  --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
   -h, --help  Show this help message.
 `);
 }
@@ -97,23 +125,43 @@ function randomBase64Secret(byteLength = 48) {
   return randomBytes(byteLength).toString('base64');
 }
 
-function ensureEnvFile() {
-  if (existsSync(envPath)) {
-    return;
-  }
-
-  const generatedValues = {
+function generatedEnvDefaults() {
+  return {
     DB_PASSWORD: randomSecret('mysql'),
     NACOS_AUTH_TOKEN: randomBase64Secret(),
     NACOS_AUTH_IDENTITY_KEY: randomSecret('nacos-key'),
     NACOS_AUTH_IDENTITY_VALUE: randomSecret('nacos-value'),
     JWT_SECRET: randomSecret('jwt'),
+    FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
     SAAS_JOB_INTERNAL_TOKEN: randomSecret('job-token'),
     XXL_JOB_ADMIN_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
+    OBSERVABILITY_ENVIRONMENT: 'prod',
+    OTEL_JAVAAGENT_ENABLED: 'false',
+    OTEL_EXPORTER_OTLP_ENDPOINT: 'http://alloy:4318',
+    GRAFANA_ADMIN_USER: 'admin',
+    GRAFANA_ADMIN_PASSWORD: randomSecret('grafana'),
+    CORS_ALLOWED_ORIGIN_PATTERNS: 'http://localhost:*,http://127.0.0.1:*',
   };
+}
+
+function ensureEnvFile() {
+  const generatedValues = generatedEnvDefaults();
+
+  if (existsSync(envPath)) {
+    let content = readFileSync(envPath, 'utf8');
+    const missingEntries = Object.entries(generatedValues)
+      .filter(([key]) => !new RegExp(`^${key}=`, 'm').test(content));
+
+    if (missingEntries.length > 0) {
+      content = `${content.trimEnd()}\n${missingEntries.map(([key, value]) => `${key}=${value}`).join('\n')}\n`;
+      writeFileSync(envPath, content);
+      log(`Backfilled deploy/.env keys: ${missingEntries.map(([key]) => key).join(', ')}`);
+    }
+    return;
+  }
 
   let content = readFileSync(envExamplePath, 'utf8');
   for (const [key, value] of Object.entries(generatedValues)) {
@@ -157,7 +205,8 @@ function ensureHostMountedDirectories() {
 }
 
 function composeArgs(...extraArgs) {
-  return ['compose', '--env-file', 'deploy/.env', '-f', composeFile, ...extraArgs];
+  const profileArgs = observability ? ['--profile', 'observability'] : [];
+  return ['compose', '--env-file', 'deploy/.env', '-f', composeFile, ...profileArgs, ...extraArgs];
 }
 
 async function probeHttp(url, options = {}) {
@@ -217,10 +266,60 @@ async function checkDeployment() {
   log('Running deployment health checks...');
   await waitForHttp(`${baseUrl}/health`, 'API proxy');
   await waitForHttp(`${baseUrl}/api/health`, 'system API through API proxy');
+  await waitForHttp(`${baseUrl}/api/version`, 'gateway version API');
+  await waitForHttp(`${baseUrl}/api/v1/system/version`, 'system-service version API');
   await waitForHttp(`${gatewayUrl}/actuator/health`, 'gateway actuator');
   await waitForHttp(`${baseUrl}/api/v1/public/login-capabilities`, 'public login capabilities API');
   await waitForHttp(`${baseUrl}/api/v1/localization/languages`, 'protected localization management API is routed', { expectedStatus: 401 });
+  if (observability) {
+    await checkObservability();
+  }
   log('Deployment health checks passed.');
+}
+
+async function waitForPrometheusTargets() {
+  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22legendary-services%22%7D';
+  const timeoutMs = 240_000;
+  const intervalMs = 3_000;
+  const startedAt = Date.now();
+  let lastSummary = 'no Prometheus response';
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await probeHttp(queryUrl, { timeoutMs: 5_000 });
+    if (result.ok) {
+      try {
+        const payload = JSON.parse(result.text);
+        const series = payload.data?.result ?? [];
+        const upSeries = series.filter((item) => item.value?.[1] === '1');
+        lastSummary = `${upSeries.length}/${series.length} legendary targets are UP`;
+        if (series.length >= 8 && upSeries.length >= 8) {
+          log(`Prometheus targets are ready: ${lastSummary}`);
+          return;
+        }
+      } catch (err) {
+        lastSummary = err instanceof Error ? err.message : String(err);
+      }
+    } else {
+      lastSummary = `status=${result.status}`;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(`Prometheus did not report all legendary service targets as UP (${lastSummary}).`);
+}
+
+async function checkObservability() {
+  log('Running observability health checks...');
+  await waitForHttp('http://127.0.0.1:9090/-/ready', 'Prometheus');
+  await waitForHttp('http://127.0.0.1:3001/api/health', 'Grafana');
+  await waitForHttp('http://127.0.0.1:3100/ready', 'Loki');
+  await waitForHttp('http://127.0.0.1:3200/ready', 'Tempo');
+  await waitForHttp('http://127.0.0.1:12345/-/ready', 'Alloy');
+  await waitForPrometheusTargets();
+  log('Observability health checks passed.');
 }
 
 if (help) {
@@ -228,8 +327,9 @@ if (help) {
   process.exit(0);
 }
 
-ensureDockerReady();
 ensureEnvFile();
+configureBuildIdentity();
+ensureDockerReady();
 ensureHostMountedDirectories();
 
 if (reset) {

@@ -24,6 +24,19 @@ x-common-env: &common-env
   TRUST_FORWARDED_HEADERS: "true"
   JAVA_OPTS: ${JAVA_OPTS:-}
   CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:?CORS_ALLOWED_ORIGIN_PATTERNS is required}
+  APP_VERSION: ${APP_VERSION:-0.1.0}
+  BUILD_VERSION: ${BUILD_VERSION:-0.1.0}
+  BUILD_TIME: ${BUILD_TIME:-}
+  GIT_COMMIT: ${GIT_COMMIT:-}
+  GIT_BRANCH: ${GIT_BRANCH:-}
+  OBSERVABILITY_ENVIRONMENT: ${OBSERVABILITY_ENVIRONMENT:-prod}
+  OTEL_JAVAAGENT_ENABLED: ${OTEL_JAVAAGENT_ENABLED:-false}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=legendary-invention,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
 
 services:
   mysql:
@@ -103,6 +116,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8080
+      OTEL_SERVICE_NAME: system-service
       SPRING_FLYWAY_ENABLED: "true"
       FILE_SERVICE_BASE_URL: http://file-service:8084
       MONITOR_GATEWAY_SERVICE_BASE_URL: http://gateway-service:8081
@@ -137,6 +151,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8081
+      OTEL_SERVICE_NAME: gateway-service
       GATEWAY_AUTH_SERVICE_URI: http://auth-service:8082
       GATEWAY_FILE_SERVICE_URI: http://file-service:8084
       GATEWAY_MESSAGE_SERVICE_URI: http://message-service:8085
@@ -167,6 +182,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8082
+      OTEL_SERVICE_NAME: auth-service
       SYSTEM_SERVICE_BASE_URL: http://system-service:8080
       ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:-false}
     depends_on:
@@ -187,6 +203,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8084
+      OTEL_SERVICE_NAME: file-service
       AUTH_SERVICE_BASE_URL: http://auth-service:8082
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
     volumes:
@@ -206,6 +223,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8085
+      OTEL_SERVICE_NAME: message-service
       AUTH_SERVICE_BASE_URL: http://auth-service:8082
     depends_on:
       - redis
@@ -225,6 +243,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8086
+      OTEL_SERVICE_NAME: plugin-service
       AUTH_SERVICE_BASE_URL: http://auth-service:8082
       SYSTEM_SERVICE_BASE_URL: http://system-service:8080
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
@@ -250,6 +269,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8088
+      OTEL_SERVICE_NAME: localization-service
       AUTH_SERVICE_BASE_URL: http://auth-service:8082
     networks:
       - default
@@ -268,6 +288,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8089
+      OTEL_SERVICE_NAME: job-executor
       SAAS_JOB_BACKEND_BASE_URL: http://system-service:8080
       SAAS_JOB_MESSAGE_SERVICE_BASE_URL: http://message-service:8085
       XXL_JOB_ADMIN_ADDRESSES: http://xxl-job-admin:8080/xxl-job-admin
@@ -313,6 +334,101 @@ services:
     depends_on:
       - gateway-service
 
+  prometheus:
+    profiles:
+      - observability
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:latest}
+    container_name: legendary-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - gateway-service
+      - auth-service
+      - system-service
+      - file-service
+      - message-service
+      - plugin-service
+      - localization-service
+      - job-executor
+
+  loki:
+    profiles:
+      - observability
+    image: ${LOKI_IMAGE:-grafana/loki:latest}
+    container_name: legendary-loki
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/config.yml
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+
+  tempo:
+    profiles:
+      - observability
+    image: ${TEMPO_IMAGE:-grafana/tempo:latest}
+    container_name: legendary-tempo
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/tempo/tempo.yml
+    ports:
+      - "127.0.0.1:3200:3200"
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+
+  alloy:
+    profiles:
+      - observability
+    image: ${ALLOY_IMAGE:-grafana/alloy:latest}
+    container_name: legendary-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    environment:
+      OBSERVABILITY_ENVIRONMENT: ${OBSERVABILITY_ENVIRONMENT:-prod}
+    ports:
+      - "127.0.0.1:12345:12345"
+    volumes:
+      - ./observability/alloy.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+      - tempo
+
+  grafana:
+    profiles:
+      - observability
+    image: ${GRAFANA_IMAGE:-grafana/grafana:latest}
+    container_name: legendary-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-grafana-admin-password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
 volumes:
   redis_data:
   nacos_data:
@@ -320,6 +436,10 @@ volumes:
   upload_data:
   plugin_data:
   plugin_staging:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
 
 networks:
   1panel-network:

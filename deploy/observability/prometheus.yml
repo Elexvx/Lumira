@@ -1,0 +1,45 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  - job_name: legendary-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - gateway-service:8081
+        labels:
+          service_name: gateway-service
+      - targets:
+          - auth-service:8082
+        labels:
+          service_name: auth-service
+      - targets:
+          - system-service:8080
+        labels:
+          service_name: system-service
+      - targets:
+          - file-service:8084
+        labels:
+          service_name: file-service
+      - targets:
+          - message-service:8085
+        labels:
+          service_name: message-service
+      - targets:
+          - plugin-service:8086
+        labels:
+          service_name: plugin-service
+      - targets:
+          - localization-service:8088
+        labels:
+          service_name: localization-service
+      - targets:
+          - job-executor:8089
+        labels:
+          service_name: job-executor
