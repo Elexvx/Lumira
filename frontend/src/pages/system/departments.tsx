@@ -35,7 +35,7 @@ const DepartmentManagementPage = () => {
     initialValues: { sortNo: 0, status: 'ENABLED' },
   });
   const detailProps = useDetailProDescriptionsProps<DepartmentRecord>({
-    column: responsive.isMobile ? 1 : 2,
+    column: 1,
     dataSource: selectedDepartment || undefined,
   });
 
