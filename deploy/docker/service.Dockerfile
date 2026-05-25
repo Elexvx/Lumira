@@ -4,9 +4,9 @@ FROM maven:3.9.11-eclipse-temurin-21 AS builder
 
 WORKDIR /workspace
 
-ARG OTEL_JAVAAGENT_URL=https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
+ARG OTEL_JAVAAGENT_URL=https://repo.maven.apache.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/2.28.1/opentelemetry-javaagent-2.28.1.jar
 RUN set -eux; \
-    curl -fsSL "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
+    curl --fail --show-error --location --retry 3 --retry-all-errors --connect-timeout 10 --max-time 180 "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
     jar tf /workspace/opentelemetry-javaagent.jar >/dev/null
 
 RUN mkdir -p /root/.m2 && cat > /root/.m2/settings.xml <<'EOF'
