@@ -1,4 +1,5 @@
 import {
+  ArrowUpOutlined,
   AppstoreAddOutlined,
   BulbOutlined,
   CopyOutlined,
@@ -7,7 +8,6 @@ import {
   EditOutlined,
   FileSearchOutlined,
   FileOutlined,
-  PaperClipOutlined,
   PlusOutlined,
   PushpinOutlined,
   RobotOutlined,
@@ -18,7 +18,7 @@ import {
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { history, useParams } from '@umijs/max';
-import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Select, Space, Spin, Tag, Tabs, message } from 'antd';
+import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Space, Spin, Tag, Tabs, message } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -121,20 +121,12 @@ type BubbleItem = {
 
 type ComposerProps = {
   selectedEmployee?: AiEmployeeRecord | null;
-  selectedEmployeeOptions: AiEmployeeRecord[];
   readOnly: boolean;
   activeSession?: ChatSession | null;
   sending: boolean;
-  attachmentUploading: boolean;
-  onEmployeeChange: (employeeId: number) => void;
-  onOpenUploadDialog: () => void;
-  onCopyShareLink: () => void;
-  onShareConversation: () => void;
-  onExportConversation: (format: 'markdown' | 'text') => void;
   onSend: (messageText: string) => void;
   onPromptSubmit: (messageText: string) => void;
   onPasteFile: (files: FileList) => void;
-  onRemoveAttachment: (fileId: number) => void;
 };
 
 const HOT_TOPIC_PROMPTS: AssistantPrompt[] = [
@@ -311,22 +303,6 @@ const Welcome = ({
   </div>
 );
 
-const SenderHeader = ({
-  title,
-  children,
-}: {
-  open?: boolean;
-  closable?: boolean;
-  forceRender?: boolean;
-  title?: React.ReactNode;
-  children?: React.ReactNode;
-}) => (
-  <div className="saas-ai-assistant-sender-header">
-    {title ? <div className="saas-ai-assistant-sender-header__title">{title}</div> : null}
-    {children}
-  </div>
-);
-
 const SenderBase = ({
   value,
   loading,
@@ -336,8 +312,6 @@ const SenderBase = ({
   onSubmit,
   onPasteFile,
   placeholder,
-  header,
-  footer,
 }: {
   value: string;
   loading?: boolean;
@@ -347,12 +321,8 @@ const SenderBase = ({
   onSubmit: (value: string) => void;
   onPasteFile?: (files: FileList) => void;
   placeholder?: string;
-  header?: React.ReactNode;
-  footer?: React.ReactNode;
-  suffix?: React.ReactNode;
 }) => (
   <div className="saas-ai-assistant-sender">
-    {header}
     <Input.TextArea
       value={value}
       autoSize={{ minRows: 2, maxRows: 6 }}
@@ -375,18 +345,19 @@ const SenderBase = ({
         }
       }}
     />
-    <div className="saas-ai-assistant-sender__footer">
-      <div>{footer}</div>
-      <Button type="primary" loading={loading} disabled={disabled || !value.trim()} onClick={() => onSubmit(value)}>
-        发送
-      </Button>
-    </div>
+    <Button
+      className="saas-ai-assistant-sender__submit"
+      type="primary"
+      shape="circle"
+      icon={<ArrowUpOutlined />}
+      loading={loading}
+      disabled={disabled || !value.trim()}
+      aria-label="发送"
+      onClick={() => onSubmit(value)}
+    />
   </div>
 );
-
-const Sender = Object.assign(SenderBase, {
-  Header: SenderHeader,
-});
+const Sender = SenderBase;
 
 const Conversations = ({
   items,
@@ -710,81 +681,18 @@ const createActions = (
 
 const Composer = ({
   selectedEmployee,
-  selectedEmployeeOptions,
   readOnly,
   activeSession,
   sending,
-  attachmentUploading,
-  onEmployeeChange,
-  onOpenUploadDialog,
-  onCopyShareLink,
-  onShareConversation,
-  onExportConversation,
   onSend,
   onPromptSubmit,
   onPasteFile,
-  onRemoveAttachment,
 }: ComposerProps) => {
   const [inputValue, setInputValue] = useState('');
 
   useEffect(() => {
     setInputValue('');
   }, [activeSession?.id, readOnly]);
-
-  const employeeSelect = selectedEmployeeOptions.length ? (
-    <Select
-      value={selectedEmployee?.id}
-      onChange={(value) => onEmployeeChange(Number(value))}
-      options={selectedEmployeeOptions.map((employee) => ({
-        label: employee.nickname || employee.username,
-        value: employee.id,
-      }))}
-      style={{ minWidth: 240 }}
-      disabled={readOnly}
-    />
-  ) : null;
-
-  const toolbar = readOnly ? (
-    <Space wrap>
-      <Tag color="blue">只读分享</Tag>
-      {activeSession?.conversationId ? (
-        <Button icon={<DownloadOutlined />} onClick={() => onExportConversation('markdown')}>
-          导出
-        </Button>
-      ) : null}
-      <Button icon={<ShareAltOutlined />} onClick={onCopyShareLink}>
-        复制分享链接
-      </Button>
-    </Space>
-  ) : (
-    <Space wrap>
-      {employeeSelect}
-      <Button icon={<PaperClipOutlined />} onClick={onOpenUploadDialog} disabled={!selectedEmployee || !activeSession || sending || attachmentUploading}>
-        上传附件
-      </Button>
-    </Space>
-  );
-
-  const attachmentFooter = !readOnly && activeSession?.pendingAttachments.length ? (
-    <Space wrap className="saas-ai-assistant-composer__attachments">
-      {activeSession.pendingAttachments.map((attachment) => (
-        <Tag
-          key={attachment.id}
-          closable
-          icon={<FileOutlined />}
-          onClose={(event) => {
-            event.preventDefault();
-            onRemoveAttachment(attachment.fileId);
-          }}
-        >
-          {attachment.originalFileName}
-        </Tag>
-      ))}
-      {attachmentUploading ? <Tag color="processing">附件上传中…</Tag> : null}
-    </Space>
-  ) : attachmentUploading ? (
-    <Tag color="processing">附件上传中…</Tag>
-  ) : null;
 
   return (
     <div className="saas-ai-assistant-composer">
@@ -807,16 +715,6 @@ const Composer = ({
         }}
         onPasteFile={onPasteFile}
         placeholder={readOnly ? '当前为只读分享页面' : selectedEmployee && activeSession ? '向我提问吧' : '暂无可用数字员工'}
-        header={
-          <Sender.Header open closable={false} title="会话工具" forceRender>
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <div className="saas-ai-assistant-composer__toolbar">{toolbar}</div>
-              {!readOnly && attachmentFooter ? <div className="saas-ai-assistant-composer__attachments">{attachmentFooter}</div> : null}
-            </Space>
-          </Sender.Header>
-        }
-        footer={readOnly ? null : attachmentFooter}
-        suffix={null}
       />
     </div>
   );
@@ -1774,23 +1672,12 @@ const AiAssistantPage = () => {
       <div className="saas-ai-assistant-shell__composer">
         <Composer
           selectedEmployee={selectedEmployee}
-          selectedEmployeeOptions={isShareMode ? [] : selectedEmployeeOptions}
           readOnly={isShareMode}
           activeSession={activeSession}
           sending={sending}
-          attachmentUploading={attachmentUploading}
-          onEmployeeChange={(employeeId) => {
-            setSelectedEmployeeId(employeeId);
-            setActiveSessionId('session-default');
-          }}
-          onOpenUploadDialog={triggerUploadDialog}
-          onCopyShareLink={handleCopyShareLink}
-          onShareConversation={() => void handleShareConversation(activeSession)}
-          onExportConversation={(format) => void handleExportConversation(format, activeSession)}
           onSend={(messageText) => void handleSend(messageText)}
           onPromptSubmit={handlePromptSubmit}
           onPasteFile={(files) => void uploadAttachments(Array.from(files))}
-          onRemoveAttachment={(fileId) => handleRemoveDraftAttachment(activeSession?.id || '', fileId)}
         />
         <input
           ref={fileInputRef}
