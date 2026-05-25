@@ -1,5 +1,6 @@
 import {
   ApiOutlined,
+  ApartmentOutlined,
   AppstoreOutlined,
   AuditOutlined,
   DashboardOutlined,
@@ -28,7 +29,7 @@ import { backendRouteMeta } from '@/routes/meta';
 import type { RuntimeMenuDataItem } from '@/app.types';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { MenuNode } from '@/types/api';
-import { DEFAULT_SETTING_ROUTE_ORDER, getStoredSettingRouteOrder } from './settingsRouteOrder';
+import { DEFAULT_SETTING_ROUTE_ORDER, getStoredSettingRouteIcons, getStoredSettingRouteOrder } from './settingsRouteOrder';
 
 type AntdIconComponent = ComponentType<Record<string, unknown>>;
 
@@ -45,6 +46,7 @@ interface SettingsNavigationSourceItem {
 
 const ANT_DESIGN_ICONS: Record<string, AntdIconComponent> = {
   ApiOutlined,
+  ApartmentOutlined,
   AppstoreOutlined,
   AuditOutlined,
   DashboardOutlined,
@@ -254,7 +256,11 @@ const sortNavigationItems = (items: SettingsNavigationSourceItem[]) =>
 
 const cloneSettingsFallbackItems = () =>
   getStoredSettingRouteOrder()
-    .map((path) => SETTINGS_FALLBACK_ITEM_MAP.get(path))
+    .map((path) => {
+      const item = SETTINGS_FALLBACK_ITEM_MAP.get(path);
+      const customIcon = getStoredSettingRouteIcons()[path];
+      return item ? { ...item, icon: customIcon || item.icon } : undefined;
+    })
     .filter(Boolean)
     .map((item) => ({ ...item })) as SettingsNavigationSourceItem[];
 

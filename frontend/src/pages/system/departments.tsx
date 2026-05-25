@@ -1,5 +1,5 @@
 import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
-import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, message } from 'antd';
+import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, Tooltip, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
@@ -139,7 +139,13 @@ const DepartmentManagementPage = () => {
         title: '操作',
         width: 260,
         fixed: 'right',
-        render: (_, record) => (
+        render: (_, record) => {
+          const userCount = record.userCount ?? 0;
+          const hasChildren = !!record.children?.length;
+          const cannotDelete = userCount > 0 || hasChildren;
+          const deleteDisabledReason = hasChildren ? '该部门存在下级部门，不能删除' : userCount > 0 ? `该部门下仍有 ${userCount} 名用户，不能删除` : null;
+
+          return (
           <Space size={8} wrap>
             <Button type="link" size="small" onClick={() => void openDetail(record)}>
               详情
@@ -155,14 +161,27 @@ const DepartmentManagementPage = () => {
               </Button>
             ) : null}
             {actionPermission.can('system:department:delete') ? (
-              <Popconfirm title="删除部门" description={`确认删除「${record.deptName}」吗？`} onConfirm={() => void deleteDepartment(record)}>
-                <Button type="link" size="small" danger>
-                  删除
-                </Button>
-              </Popconfirm>
+              cannotDelete ? (
+                <Tooltip title={deleteDisabledReason}>
+                  <Button type="link" size="small" danger disabled>
+                    删除
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Popconfirm
+                  title="删除部门"
+                  description={`确认删除「${record.deptName}」吗？`}
+                  onConfirm={() => void deleteDepartment(record)}
+                >
+                  <Button type="link" size="small" danger>
+                    删除
+                  </Button>
+                </Popconfirm>
+              )
             ) : null}
           </Space>
-        ),
+          );
+        },
       },
     ],
     [actionPermission],
