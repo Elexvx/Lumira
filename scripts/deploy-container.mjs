@@ -237,7 +237,7 @@ function yamlQuote(value) {
 
 function renderReceiver(receiver) {
   const settings = Object.entries(receiver.settings)
-    .map(([key, value]) => `            ${key}: ${yamlQuote(value)}`)
+    .map(([key, value]) => `              ${key}: ${yamlQuote(value)}`)
     .join('\n');
   return `          - uid: ${receiver.uid}
             type: ${receiver.type}
