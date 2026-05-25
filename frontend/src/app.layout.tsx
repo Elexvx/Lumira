@@ -22,6 +22,7 @@ import { buildBreadcrumbItems } from '@/app.breadcrumb';
 import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
 import { useResponsive } from '@/hooks/useResponsive';
 import { resolveProLayoutThemeSettings } from '@/theme/proLayoutTheme';
+import { ThemeRuntimeBridge } from '@/theme/ThemeRuntimeBridge';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, MenuNode } from '@/types/api';
 import buildAccess from '@/access';
@@ -319,6 +320,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     menuRender: (_, defaultDom) => defaultDom,
     childrenRender: (dom) => (
       <SessionActivityGuard>
+        <ThemeRuntimeBridge />
         {dom}
         <GlobalFloatActions />
       </SessionActivityGuard>
