@@ -152,14 +152,16 @@ export const ProfileBasicCard = ({
         width={STANDARD_DRAWER_WIDTH}
         destroyOnClose={false}
         onClose={() => onEditOpenChange(false)}
-        extra={(
-          <Space>
-            <Button onClick={() => onEditOpenChange(false)}>取消</Button>
-            <Button type="primary" loading={profileSaving} onClick={onSave}>
-              保存资料
-            </Button>
-          </Space>
-        )}
+        footer={
+          <div className="saas-drawer-footer">
+            <Space>
+              <Button onClick={() => onEditOpenChange(false)}>取消</Button>
+              <Button type="primary" loading={profileSaving} onClick={onSave}>
+                保存资料
+              </Button>
+            </Space>
+          </div>
+        }
       >
         <Form {...profileFormProps} layout="vertical">
           <Form.Item name="avatarUrl" hidden>

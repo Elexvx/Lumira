@@ -12,7 +12,7 @@ import { Button, Drawer, Empty, Form, Input, Select, Space, Tabs, Tag, Typograph
 import type { UploadProps } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
-import { ManagementPage, ManagementTable } from '@/features/management';
+import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { adaptPageResult } from '@/features/table/proTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
@@ -312,20 +312,16 @@ const AiKnowledgePage = () => {
         }}
       />
 
-      <Drawer
+      <ManagementDrawer
         width={STANDARD_DRAWER_WIDTH}
         title={editingRecord ? '编辑知识库' : '新建知识库'}
         open={drawerOpen}
         onClose={closeDrawer}
         destroyOnClose
-        extra={
-          <Space>
-            <Button onClick={closeDrawer}>取消</Button>
-            <Button type="primary" loading={saving} disabled={!canSaveKnowledgeBase} onClick={() => void saveKnowledgeBase()}>
-              保存
-            </Button>
-          </Space>
-        }
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: closeDrawer },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveKnowledgeBase, onClick: () => void saveKnowledgeBase() },
+        ]}
       >
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入知识库名称' }]}>
@@ -341,7 +337,7 @@ const AiKnowledgePage = () => {
             <Input.TextArea rows={4} maxLength={1024} />
           </Form.Item>
         </Form>
-      </Drawer>
+      </ManagementDrawer>
 
       <Drawer
         size={responsive.isMobile ? '100%' : 980}

@@ -29,25 +29,27 @@ export const ManagementDrawer = ({
 }: ManagementDrawerProps) => {
   const responsive = useResponsive();
   const renderedActions = footerActions?.length ? (
-    <Space wrap>
-      {footerActions.map((action) => (
-        <Button
-          key={action.key}
-          type={action.type}
-          size={responsive.isMobile ? 'small' : 'middle'}
-          danger={action.danger}
-          loading={action.loading}
-          disabled={action.disabled}
-          onClick={action.onClick}
-        >
-          {action.label}
-        </Button>
-      ))}
-    </Space>
+    <div className="saas-drawer-footer">
+      <Space wrap>
+        {footerActions.map((action) => (
+          <Button
+            key={action.key}
+            type={action.type}
+            size={responsive.isMobile ? 'small' : 'middle'}
+            danger={action.danger}
+            loading={action.loading}
+            disabled={action.disabled}
+            onClick={action.onClick}
+          >
+            {action.label}
+          </Button>
+        ))}
+      </Space>
+    </div>
   ) : undefined;
 
   return (
-    <Drawer {...props} width={width} destroyOnHidden={destroyOnHidden} extra={extra ?? renderedActions} footer={footer}>
+    <Drawer {...props} width={width} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions}>
       {children}
     </Drawer>
   );

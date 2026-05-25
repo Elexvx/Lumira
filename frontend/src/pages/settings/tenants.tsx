@@ -113,7 +113,10 @@ const TenantManagement = () => {
         title={editing?.id ? '编辑租户' : '新增租户'}
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        extra={<Button type="primary" disabled={editing?.id ? !canUpdate : !canCreate} onClick={save}>保存</Button>}
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: () => setEditing(null) },
+          { key: 'save', label: '保存', type: 'primary', disabled: editing?.id ? !canUpdate : !canCreate, onClick: save },
+        ]}
       >
         <Form form={form} layout="vertical">
           <Form.Item name="tenantCode" label="租户编码" rules={[{ required: true, message: '请输入租户编码' }]}>
