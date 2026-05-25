@@ -286,6 +286,7 @@ function ensureObservabilityProvisioning() {
   }
 
   mkdirSync(generatedAlertingDir, { recursive: true });
+  writeFileSync(path.join(generatedAlertingDir, 'rules.yml'), readFileSync(alertRulesPath, 'utf8'));
   writeFileSync(
     path.join(generatedAlertingDir, 'contact-points.yml'),
     `apiVersion: 1
