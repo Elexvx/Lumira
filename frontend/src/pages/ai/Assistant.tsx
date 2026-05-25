@@ -5,6 +5,7 @@ import {
   DownloadOutlined,
   EditOutlined,
   FileOutlined,
+  MoreOutlined,
   PlusOutlined,
   PushpinOutlined,
   RobotOutlined,
@@ -286,21 +287,34 @@ const Conversations = ({
             <div className="saas-ai-assistant-conversations__group-title">{groupName}</div>
             {groupItems.map((item) => {
               const content = (
-                <Button
-                  key={item.key}
-                  block
-                  type={item.key === activeKey ? 'primary' : 'text'}
-                  icon={item.icon}
-                  disabled={item.disabled}
-                  onClick={() => onActiveChange(item.key)}
-                >
-                  {item.label}
-                </Button>
+                <div className={`saas-ai-assistant-conversation-item${item.key === activeKey ? ' saas-ai-assistant-conversation-item--active' : ''}`}>
+                  <Button
+                    className="saas-ai-assistant-conversation-item__main"
+                    type="text"
+                    icon={item.icon}
+                    disabled={item.disabled}
+                    onClick={() => onActiveChange(item.key)}
+                  >
+                    {item.label}
+                  </Button>
+                </div>
               );
               const menuProps = menu?.(item);
               return menuProps ? (
                 <Dropdown key={item.key} menu={menuProps} trigger={['contextMenu']}>
-                  <div>{content}</div>
+                  <div className={`saas-ai-assistant-conversation-item-wrap${item.key === activeKey ? ' saas-ai-assistant-conversation-item-wrap--active' : ''}`}>
+                    {content}
+                    <Dropdown menu={menuProps} trigger={['click']} placement="bottomRight">
+                      <Button
+                        className="saas-ai-assistant-conversation-item__more"
+                        type="text"
+                        icon={<MoreOutlined />}
+                        aria-label="会话操作"
+                        disabled={item.disabled}
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    </Dropdown>
+                  </div>
                 </Dropdown>
               ) : content;
             })}
