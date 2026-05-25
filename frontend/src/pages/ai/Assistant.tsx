@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { Sender as XSender } from '@ant-design/x';
+import { XMarkdown } from '@ant-design/x-markdown';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { history, useParams } from '@umijs/max';
 import { Alert, Avatar, Button, Dropdown, Input, Modal, Result, Space, Spin, Tag, Tabs, message } from 'antd';
@@ -20,8 +21,6 @@ import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { aiService } from '@/services/ai';
 import { fileService } from '@/services/file';
 import type {
@@ -37,6 +36,7 @@ import type {
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { confirmAction } from '@/utils/confirm';
 import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_FILE_COUNT } from '@/pages/files/fileCenter.utils';
+import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import './Assistant.css';
 
 type BubbleRole = 'user' | 'ai';
@@ -503,18 +503,7 @@ const renderThinkingContent = (item: ChatBubble) => {
 };
 
 const MarkdownMessage = ({ content }: { content: string }) => (
-  <ReactMarkdown
-    remarkPlugins={[remarkGfm]}
-    components={{
-      a: ({ children, ...props }) => (
-        <a {...props} target="_blank" rel="noreferrer">
-          {children}
-        </a>
-      ),
-    }}
-  >
-    {content}
-  </ReactMarkdown>
+  <XMarkdown content={content} openLinksInNewTab escapeRawHtml />
 );
 
 const renderMessageContent = (item: ChatBubble, visibleReplyText?: string) => {
