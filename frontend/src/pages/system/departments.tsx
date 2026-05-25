@@ -138,6 +138,7 @@ const DepartmentManagementPage = () => {
       {
         title: '操作',
         width: 260,
+        fixed: 'right',
         render: (_, record) => (
           <Space size={8} wrap>
             <Button type="link" size="small" onClick={() => void openDetail(record)}>
@@ -177,7 +178,7 @@ const DepartmentManagementPage = () => {
         pagination={false}
         isMobile={responsive.isMobile}
         search={false}
-        scroll={{ x: 900 }}
+        scroll={{ x: 990 }}
         onRefresh={() => loadDepartments()}
         toolBarRender={() =>
           buildToolbarButtons([

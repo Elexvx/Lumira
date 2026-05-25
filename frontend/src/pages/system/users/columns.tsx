@@ -18,7 +18,6 @@ interface BuildUserColumnsOptions {
 }
 
 export const buildUserColumns = ({
-  isDesktop,
   isMobile,
   buildRowActions,
   onOpenDetail,
@@ -163,7 +162,7 @@ export const buildUserColumns = ({
   {
     title: '操作',
     valueType: 'option',
-    fixed: isDesktop ? 'right' : undefined,
+    fixed: 'right',
     width: 220,
     render: (_, record) => (
       <TableActionBar

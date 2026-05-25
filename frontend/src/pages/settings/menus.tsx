@@ -1,5 +1,5 @@
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Input, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Form, Space, Spin, Tabs, Tag, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -7,7 +7,6 @@ import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/settings/menus/columns';
@@ -511,29 +510,6 @@ const MenuManagementPage = () => {
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
-        tabBarExtraContent={
-          activeTab === 'main' ? (
-            <Space wrap>
-              {buildToolbarButtons([
-                {
-                  key: 'create',
-                  permission: 'system:menu:create',
-                  type: 'primary',
-                  label: '新增菜单',
-                  onClick: openCreate,
-                },
-                {
-                  key: 'refresh',
-                  label: '刷新',
-                  onClick: async () => {
-                    await loadMenus();
-                    menuCrud.reloadTable();
-                  },
-                },
-              ])}
-            </Space>
-          ) : null
-        }
         items={[
           {
             key: 'main',
@@ -578,7 +554,25 @@ const MenuManagementPage = () => {
                     total: visibleMenus.length,
                   };
                 }}
-                toolBarRender={false}
+                toolBarRender={() =>
+                  buildToolbarButtons([
+                    {
+                      key: 'create',
+                      permission: 'system:menu:create',
+                      type: 'primary',
+                      label: '新增菜单',
+                      onClick: openCreate,
+                    },
+                    {
+                      key: 'refresh',
+                      label: '刷新',
+                      onClick: async () => {
+                        await loadMenus();
+                        menuCrud.reloadTable();
+                      },
+                    },
+                  ])
+                }
               />
             ),
           },
