@@ -830,11 +830,6 @@ const SystemVerificationPage = () => {
         search: false,
       },
       {
-        title: '描述',
-        dataIndex: 'description',
-        search: false,
-      },
-      {
         title: '启用',
         dataIndex: 'enabled',
         width: 120,
@@ -845,6 +840,7 @@ const SystemVerificationPage = () => {
       {
         title: '操作',
         valueType: 'option',
+        fixed: responsive.isDesktop ? 'right' : undefined,
         width: 160,
         render: (_, record) => (
           <TableActionBar
