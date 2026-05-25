@@ -105,6 +105,7 @@ body,
 .saas-drawer-footer {
   display: flex;
   justify-content: flex-end;
+  width: 100%;
 }
 
 .saas-drawer-footer .ant-space {
@@ -744,12 +745,6 @@ body,
       white-space: normal;
     }
   }
-}
-
-.saas-drawer-footer {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
 }
 
 .saas-brand-logo {
