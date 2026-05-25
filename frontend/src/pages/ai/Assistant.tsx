@@ -85,7 +85,8 @@ type RouteParams = {
 
 type ActionItem = {
   key: string;
-  label: string;
+  label?: string;
+  ariaLabel?: string;
   icon?: React.ReactNode;
   onItemClick?: () => void;
 };
@@ -126,7 +127,15 @@ type ComposerProps = {
 const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
   <Space size={4} wrap>
     {items.map((item) => (
-      <Button key={item.key} type="text" size="small" icon={item.icon} onClick={item.onItemClick}>
+      <Button
+        key={item.key}
+        type="text"
+        size="small"
+        icon={item.icon}
+        aria-label={item.ariaLabel || item.label}
+        title={item.ariaLabel || item.label}
+        onClick={item.onItemClick}
+      >
         {item.label}
       </Button>
     ))}
@@ -554,45 +563,19 @@ const renderAttachmentTag = (attachment: ComposerAttachment) => (
 );
 
 const createActions = (
-  session: ChatSession,
   messageItem: ChatBubble,
   handlers: {
     onCopy: (text: string) => void;
-    onShare: () => void;
-    onExport: (format: 'markdown' | 'text') => void;
   },
 ) => {
   const items = [
     {
       key: 'copy',
-      label: '复制',
+      ariaLabel: '复制',
       icon: <CopyOutlined />,
       onItemClick: () => handlers.onCopy(messageItem.content),
     },
   ];
-
-  if (!session.isDraft && session.conversationId && messageItem.role === 'ai') {
-    items.push(
-      {
-        key: 'share',
-        label: '分享会话',
-        icon: <ShareAltOutlined />,
-        onItemClick: handlers.onShare,
-      },
-      {
-        key: 'export-markdown',
-        label: '导出 Markdown',
-        icon: <DownloadOutlined />,
-        onItemClick: () => handlers.onExport('markdown'),
-      },
-      {
-        key: 'export-text',
-        label: '导出文本',
-        icon: <DownloadOutlined />,
-        onItemClick: () => handlers.onExport('text'),
-      },
-    );
-  }
 
   return <Actions items={items} variant="borderless" />;
 };
@@ -651,23 +634,6 @@ const Composer = ({
       <Button icon={<PaperClipOutlined />} onClick={onOpenUploadDialog} disabled={!selectedEmployee || !activeSession || sending || attachmentUploading}>
         上传附件
       </Button>
-      <Button icon={<ShareAltOutlined />} onClick={onShareConversation} disabled={!activeSession?.conversationId || sending}>
-        分享
-      </Button>
-      <Dropdown
-        menu={{
-          items: [
-            { key: 'markdown', label: '导出 Markdown', icon: <DownloadOutlined /> },
-            { key: 'text', label: '导出文本', icon: <DownloadOutlined /> },
-          ],
-          onClick: ({ key }) => onExportConversation(key === 'text' ? 'text' : 'markdown'),
-        }}
-        disabled={!activeSession}
-      >
-        <Button icon={<DownloadOutlined />} disabled={!activeSession}>
-          导出
-        </Button>
-      </Dropdown>
     </Space>
   );
 
@@ -1559,10 +1525,8 @@ const AiAssistantPage = () => {
               </Space>
             ) : null}
             <div className="saas-ai-assistant-bubble__actions">
-              {createActions(activeSession, item, {
+              {createActions(item, {
                 onCopy: handleCopyMessage,
-                onShare: () => void handleShareConversation(activeSession),
-                onExport: (format) => void handleExportConversation(format, activeSession),
               })}
             </div>
           </Space>

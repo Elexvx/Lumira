@@ -105,7 +105,7 @@ export interface MessageCenterContentProps {
 export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterContentProps) => {
   const { initialState } = useInitialStateModel();
   const intl = useIntl();
-  const [filter, setFilter] = useState<MessageCenterFilter>('all');
+  const [filter, setFilter] = useState<MessageCenterFilter>('unread');
   const [notices, setNotices] = useState<MessageCenterNotice[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -236,9 +236,9 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
 
   const tabItems = useMemo(
     () => [
-      { label: intl.formatMessage({ id: 'message.center.all', defaultMessage: '全部' }) + ` (${counts.all})`, key: 'all' },
       { label: intl.formatMessage({ id: 'message.center.unread', defaultMessage: '未读' }) + ` (${counts.unread})`, key: 'unread' },
       { label: intl.formatMessage({ id: 'message.center.read', defaultMessage: '已读' }) + ` (${counts.read})`, key: 'read' },
+      { label: intl.formatMessage({ id: 'message.center.all', defaultMessage: '全部' }) + ` (${counts.all})`, key: 'all' },
     ],
     [counts.all, counts.read, counts.unread, intl],
   );
@@ -278,13 +278,6 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
   }
 
   const title = intl.formatMessage({ id: 'message.center.site', defaultMessage: '站内信' });
-  const subtitle =
-    notices.length > 0
-      ? intl.formatMessage(
-          { id: 'message.center.count', defaultMessage: '共 {total} 条消息 · {unread} 条未读' },
-          { total: counts.all, unread: counts.unread },
-        )
-      : intl.formatMessage({ id: 'message.center.none', defaultMessage: '暂无消息' });
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -293,7 +286,6 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
           <Typography.Title level={4} style={{ margin: 0 }}>
             {title}
           </Typography.Title>
-          <Typography.Text type="secondary">{subtitle}</Typography.Text>
         </div>
 
         <Space wrap>

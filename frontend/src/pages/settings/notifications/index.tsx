@@ -432,16 +432,16 @@ const NotificationsPage = () => {
   const channelColumns = useMemo<ProColumns<ChannelRecord>[]>(
     () => [
       { title: '序号', dataIndex: 'order', width: 80, search: false },
-      { title: '通知标识', dataIndex: 'identifier', copyable: true, search: false },
+      { title: '通知标识', dataIndex: 'identifier', width: 180, copyable: true, search: false },
       { title: '通知类型', dataIndex: 'type', width: 140, search: false, render: (_, record) => renderTag(record.type, record.key === 'EMAIL' ? 'purple' : 'blue') },
-      { title: '标题', dataIndex: 'title', search: false, render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text> },
-      { title: '描述', dataIndex: 'description', search: false, ellipsis: true },
+      { title: '标题', dataIndex: 'title', width: 160, search: false, render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text> },
+      { title: '描述', dataIndex: 'description', width: 220, search: false, ellipsis: true },
       { title: '启用', dataIndex: 'enabled', width: 110, search: false, render: (_, record) => (record.enabled ? <Tag color="green">启用</Tag> : <Tag>未配置</Tag>) },
       {
         title: '操作',
         valueType: 'option',
-        width: 140,
-        fixed: 'right',
+        width: 220,
+        fixed: responsive.isDesktop ? 'right' : undefined,
         render: (_, record) => (
           <TableActionBar
             isMobile={responsive.isMobile}
@@ -467,7 +467,7 @@ const NotificationsPage = () => {
         ),
       },
     ],
-    [responsive.isMobile],
+    [responsive.isDesktop, responsive.isMobile],
   );
 
   const archiveColumns = useMemo<ProColumns<MessageNoticeRecord>[]>(

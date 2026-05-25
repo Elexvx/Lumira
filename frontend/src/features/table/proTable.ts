@@ -55,6 +55,7 @@ export const buildTableScroll = <RecordType extends object>(
   columns: ProColumns<RecordType>[],
   isMobile: boolean,
 ) => {
+  const hasFixedColumn = columns.some((column) => Boolean(column.fixed));
   const estimatedWidth = columns.reduce((sum, column) => {
     if (typeof column.width === 'number') {
       return sum + column.width;
@@ -74,7 +75,7 @@ export const buildTableScroll = <RecordType extends object>(
     return sum + 120;
   }, 0);
 
-  return estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD || isMobile ? { x: 'max-content' } : undefined;
+  return hasFixedColumn || estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD || isMobile ? { x: 'max-content' } : undefined;
 };
 
 export const buildTableRequest = <RecordType, Params extends PageRequestPayload = PageRequestPayload>(
