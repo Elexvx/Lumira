@@ -647,7 +647,6 @@ const NotificationsPage = () => {
         title="通知发送日志"
         open={logOpen}
         onClose={() => setLogOpen(false)}
-        width={responsive.isMobile ? '100%' : 1100}
         destroyOnHidden
       >
         <ManagementTable<MessageDeliveryLogRecord>
@@ -666,7 +665,6 @@ const NotificationsPage = () => {
         title="通知归档"
         open={archiveOpen}
         onClose={() => setArchiveOpen(false)}
-        width={responsive.isMobile ? '100%' : 1100}
         destroyOnHidden
       >
         <ManagementTable<MessageNoticeRecord>
