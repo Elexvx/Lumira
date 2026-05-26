@@ -139,6 +139,7 @@ Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Ob
 LOAD_SMOKE_BASE_URL=http://127.0.0.1:8000 \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
+LOAD_SMOKE_RPS=48 \
 node scripts/load-smoke.mjs
 ```
 
@@ -148,6 +149,7 @@ node scripts/load-smoke.mjs
 LOAD_SMOKE_BASE_URL=https://api.elexvx.com \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
+LOAD_SMOKE_RPS=48 \
 node scripts/load-smoke.mjs
 ```
 
