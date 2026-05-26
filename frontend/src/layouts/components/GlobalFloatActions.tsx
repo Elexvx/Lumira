@@ -33,7 +33,7 @@ export const GlobalFloatActions = () => {
       className="saas-global-float-actions"
       shape="square"
       style={{
-        right: isMobile ? 16 : 32,
+        right: isAssistantPage ? (isMobile ? 12 : 16) : isMobile ? 16 : 32,
         bottom: isAssistantPage ? (isMobile ? 168 : 184) : isMobile ? 24 : 40,
       }}
     >
