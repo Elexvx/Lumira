@@ -1,5 +1,6 @@
-import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Input, Space, Spin, Tabs, Tag, message } from 'antd';
+import { HolderOutlined } from '@ant-design/icons';
+import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
+import { Button, Form, Input, Popover, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -43,7 +44,7 @@ interface MenuDragState {
   position: MenuDropPosition;
 }
 
-const isBuiltinMenu = (record: Pick<MenuRecord, 'builtin' | 'id'>) => Boolean(record.builtin || record.id < 0);
+const isBuiltinMenu = (record: Pick<MenuRecord, 'id'>) => record.id < 0;
 
 const formatRouteName = (name: string) =>
   resolveBuiltinMessage(
@@ -56,14 +57,17 @@ const formatRouteName = (name: string) =>
 
 interface SettingsRouteRecord {
   id: string;
-  name: string;
+  menuCode: string;
+  menuName: string;
+  menuType: string;
   path: string;
   icon?: string;
   defaultIcon?: string;
   customIcon?: string;
-  access?: string;
+  permissionKey?: string;
+  component?: string;
   sortNo: number;
-  manageMode: string;
+  status: string;
 }
 
 const buildSettingsRouteRecords = (routeOrder: string[], routeIcons: Record<string, string>): SettingsRouteRecord[] => routeOrder.map((path, index) => {
@@ -72,14 +76,17 @@ const buildSettingsRouteRecords = (routeOrder: string[], routeIcons: Record<stri
   const defaultIcon = meta?.icon;
   return {
     id: path,
-    name: meta ? formatRouteName(meta.name) : path,
+    menuCode: `settings:${path.replace(/^\/settings\/?/, '').replace(/\//g, ':') || 'root'}`,
+    menuName: meta ? formatRouteName(meta.name) : path,
+    menuType: 'MENU',
     path,
     icon: customIcon || defaultIcon,
     defaultIcon,
     customIcon,
-    access: meta?.access,
+    permissionKey: meta?.access,
+    component: meta?.path ? `@/pages${meta.path}` : '-',
     sortNo: index + 1,
-    manageMode: '平台内置',
+    status: 'ENABLED',
   };
 });
 
@@ -165,12 +172,143 @@ const SettingsRoutesTab = () => {
     message.success('设置页路由顺序已恢复默认');
   };
 
+  const columns: ProColumns<SettingsRouteRecord>[] = [
+    {
+      title: '拖拽',
+      dataIndex: 'dragHandle',
+      width: 96,
+      search: false,
+      responsive: ['md', 'lg', 'xl', 'xxl'],
+      render: () => <HolderOutlined style={{ color: '#8c8c8c', cursor: 'default' }} />,
+    },
+    {
+      title: '菜单编码',
+      dataIndex: 'menuCode',
+      search: false,
+      width: 180,
+      responsive: ['lg', 'xl', 'xxl'],
+      ellipsis: true,
+      render: (_, record) => <Typography.Text ellipsis={{ tooltip: record.menuCode }}>{record.menuCode}</Typography.Text>,
+    },
+    {
+      title: '菜单名称',
+      dataIndex: 'menuName',
+      width: 260,
+      search: true,
+      ellipsis: true,
+      render: (_, record) => (
+        <Typography.Text className="saas-menu-tree-cell" ellipsis={{ tooltip: record.menuName }}>
+          {record.menuName}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: '菜单类型',
+      dataIndex: 'menuType',
+      width: 120,
+      valueEnum: {
+        MENU: { text: '菜单' },
+      },
+    },
+    {
+      title: '路由',
+      dataIndex: 'path',
+      search: false,
+      width: 220,
+      responsive: ['md', 'lg', 'xl', 'xxl'],
+      ellipsis: true,
+    },
+    {
+      title: '图标',
+      dataIndex: 'icon',
+      search: false,
+      width: 180,
+      responsive: ['md', 'lg', 'xl', 'xxl'],
+      ellipsis: true,
+      render: (_, record) => record.icon || '-',
+    },
+    {
+      title: '组件',
+      dataIndex: 'component',
+      search: false,
+      width: 300,
+      responsive: ['lg', 'xl', 'xxl'],
+      ellipsis: true,
+    },
+    {
+      title: '权限标识',
+      dataIndex: 'permissionKey',
+      width: 220,
+      search: true,
+      responsive: ['md', 'lg', 'xl', 'xxl'],
+      ellipsis: true,
+      render: (_, record) =>
+        record.permissionKey ? <Typography.Text ellipsis={{ tooltip: record.permissionKey }}>{record.permissionKey}</Typography.Text> : '-',
+    },
+    {
+      title: '排序',
+      dataIndex: 'sortNo',
+      search: false,
+      width: 88,
+      responsive: ['md', 'lg', 'xl', 'xxl'],
+      render: (_, record) => record.sortNo,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      width: 120,
+      search: false,
+      render: (_, record) => <Tag color="green">{record.status}</Tag>,
+    },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 220,
+      fixed: 'right',
+      render: (_, record, index) => (
+        <Space>
+          <Popover
+            trigger="click"
+            title="设置图标"
+            content={(
+              <Space.Compact>
+                <Input
+                  allowClear
+                  value={editingRouteIcons[record.path] ?? ''}
+                  placeholder={record.defaultIcon || '如：SettingOutlined'}
+                  style={{ width: 180 }}
+                  onChange={(event) =>
+                    setEditingRouteIcons((current) => ({
+                      ...current,
+                      [record.path]: event.target.value,
+                    }))
+                  }
+                  onPressEnter={() => updateRouteIcon(record)}
+                />
+                <Button onClick={() => updateRouteIcon(record)}>保存</Button>
+                {record.customIcon ? <Button onClick={() => resetRouteIcon(record)}>默认</Button> : null}
+              </Space.Compact>
+            )}
+          >
+            <Button type="link">图标</Button>
+          </Popover>
+          <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
+            上移
+          </Button>
+          <Button type="link" disabled={index === records.length - 1} onClick={() => moveRoute(record, 1)}>
+            下移
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <ManagementTable<SettingsRouteRecord>
       rowKey="id"
       dataSource={records}
       pagination={false}
-      scroll={{ x: 1180 }}
+      scroll={{ x: 1780 }}
       tableLayout="fixed"
       isMobile={responsive.isMobile}
       search={false}
@@ -179,76 +317,7 @@ const SettingsRoutesTab = () => {
           [<Button key="reset" onClick={resetOrder}>恢复默认顺序</Button>]
         ) : []
       }
-      columns={[
-        {
-          title: '显示名称',
-          dataIndex: 'name',
-          width: 180,
-          ellipsis: true,
-        },
-        {
-          title: '路由路径',
-          dataIndex: 'path',
-          width: 240,
-          ellipsis: true,
-        },
-        {
-          title: '访问权限',
-          dataIndex: 'access',
-          width: 220,
-          ellipsis: true,
-        },
-        {
-          title: '图标',
-          dataIndex: 'icon',
-          width: 280,
-          render: (_, record) => (
-            <Space.Compact style={{ width: '100%' }}>
-              <Input
-                allowClear
-                value={editingRouteIcons[record.path] ?? ''}
-                placeholder={record.defaultIcon || '如：SettingOutlined'}
-                onChange={(event) =>
-                  setEditingRouteIcons((current) => ({
-                    ...current,
-                    [record.path]: event.target.value,
-                  }))
-                }
-                onPressEnter={() => updateRouteIcon(record)}
-              />
-              <Button onClick={() => updateRouteIcon(record)}>保存</Button>
-              {record.customIcon ? <Button onClick={() => resetRouteIcon(record)}>默认</Button> : null}
-            </Space.Compact>
-          ),
-        },
-        {
-          title: '顺序',
-          dataIndex: 'sortNo',
-          width: 88,
-        },
-        {
-          title: '管理方式',
-          dataIndex: 'manageMode',
-          width: 140,
-          render: (value) => <Tag color="blue">{value}</Tag>,
-        },
-        {
-          title: '操作',
-          valueType: 'option',
-          width: 150,
-          fixed: 'right',
-          render: (_, record, index) => (
-            <Space>
-              <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
-                上移
-              </Button>
-              <Button type="link" disabled={index === records.length - 1} onClick={() => moveRoute(record, 1)}>
-                下移
-              </Button>
-            </Space>
-          ),
-        },
-      ]}
+      columns={columns}
     />
   );
 };

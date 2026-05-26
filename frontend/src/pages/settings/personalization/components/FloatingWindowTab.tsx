@@ -4,6 +4,9 @@ import type { FormProps } from 'antd';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { FloatingWindowSettings } from '@/types/api';
 
+const FLOATING_QR_PREVIEW_CARD_WIDTH = 180;
+const FLOATING_QR_PREVIEW_CONTENT_SIZE = 132;
+
 interface FloatingWindowTabProps {
   formProps: FormProps;
   preview: FloatingWindowSettings;
@@ -29,10 +32,16 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
       </Form.Item>
       <Form.Item label="二维码图片" extra="用于悬浮窗按钮展开后的二维码弹窗。">
         <Space align="start" size={16} wrap>
-          <Card size="small" style={{ width: 220 }} bodyStyle={{ padding: 12 }}>
-            <div style={{ width: '100%', height: 180, display: 'grid', placeItems: 'center' }}>
+          <Card size="small" style={{ width: FLOATING_QR_PREVIEW_CARD_WIDTH }} bodyStyle={{ padding: 12 }}>
+            <div style={{ width: '100%', height: FLOATING_QR_PREVIEW_CONTENT_SIZE, display: 'grid', placeItems: 'center' }}>
               {preview.apiDocsQrImageUrl ? (
-                <Image width={180} height={180} preview={false} src={normalizeUploadUrl(preview.apiDocsQrImageUrl)} style={{ objectFit: 'contain' }} />
+                <Image
+                  width={FLOATING_QR_PREVIEW_CONTENT_SIZE}
+                  height={FLOATING_QR_PREVIEW_CONTENT_SIZE}
+                  preview={false}
+                  src={normalizeUploadUrl(preview.apiDocsQrImageUrl)}
+                  style={{ objectFit: 'contain' }}
+                />
               ) : (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
               )}

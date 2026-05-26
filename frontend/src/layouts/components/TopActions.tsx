@@ -186,16 +186,6 @@ export const TopActions = () => {
   const userMenuItems = useMemo<MenuProps['items']>(
     () => [
       {
-      key: 'user-header',
-        disabled: true,
-        label: (
-          <div className="saas-user-menu__header-item">
-            <div className="saas-user-menu__name">{userName}</div>
-          </div>
-        ),
-      },
-      { type: 'divider' },
-      {
         key: 'profile',
         icon: <ProfileOutlined />,
         label: intl.formatMessage({ id: 'nav.user.profile', defaultMessage: '个人资料' }),
@@ -219,7 +209,7 @@ export const TopActions = () => {
         label: intl.formatMessage({ id: 'auth.logout', defaultMessage: '注销' }),
       },
     ],
-    [intl, roleMenuItems, userName],
+    [intl, roleMenuItems],
   );
 
   const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {

@@ -15,7 +15,6 @@ import {
 import { PageContainer } from '@ant-design/pro-components';
 import { FileCard, Sender as XSender, Sources, Suggestion, Think } from '@ant-design/x';
 import type { FileCardProps } from '@ant-design/x';
-import type { SlotConfigType } from '@ant-design/x/es/sender';
 import { XMarkdown } from '@ant-design/x-markdown';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { history, useParams } from '@umijs/max';
@@ -714,19 +713,6 @@ const Composer = ({
     [conversationAgentItems],
   );
 
-  const slotConfig = useMemo<SlotConfigType[]>(
-    () => [
-      {
-        type: 'content',
-        key: 'task',
-        props: {
-          placeholder: '向我提问吧',
-        },
-      },
-    ],
-    [],
-  );
-
   const selectedAgentSkill = selectedEmployee
     ? {
         title: selectedEmployee.nickname?.trim() || selectedEmployee.username,
@@ -793,7 +779,7 @@ const Composer = ({
           }
         }}
       />
-      <Suggestion items={agentSuggestionItems} onSelect={handleAgentSuggestionSelect} block>
+      <Suggestion items={agentSuggestionItems} onSelect={handleAgentSuggestionSelect} rootClassName="saas-ai-assistant-agent-suggestion">
         {({ onTrigger }) => (
           <XSender
             key={senderKey}
@@ -804,7 +790,6 @@ const Composer = ({
             autoSize={{ minRows: 2, maxRows: 6 }}
             submitType="enter"
             value={inputValue}
-            slotConfig={slotConfig}
             skill={selectedAgentSkill}
             onChange={(nextValue) => {
               setInputValue(nextValue);
@@ -1743,7 +1728,6 @@ const AiAssistantPage = () => {
     return () => window.clearTimeout(timer);
   }, [activeSession?.messages, streamProgress]);
 
-  const emptyWelcome = buildAssistantGreeting(selectedEmployee, shareConversation?.employeeName || undefined);
   const hasContent = Boolean(activeSession?.messages?.length);
   const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
 
@@ -1767,13 +1751,6 @@ const AiAssistantPage = () => {
             icon={<RobotOutlined />}
             title={isShareMode ? '分享会话为空' : '你好，我是企业 AI 助手'}
             description={isShareMode ? '这条分享会话还没有消息。' : '可以帮你查资料、写方案、拆任务。'}
-            extra={
-              isShareMode ? (
-                <Bubble.System content={emptyWelcome} variant="borderless" />
-              ) : (
-                <Bubble.System content={emptyWelcome} variant="borderless" />
-              )
-            }
             className="saas-ai-assistant-shell__welcome"
           />
         ) : (

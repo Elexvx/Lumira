@@ -340,7 +340,7 @@ const AiKnowledgePage = () => {
       </ManagementDrawer>
 
       <Drawer
-        size={responsive.isMobile ? '100%' : 980}
+        width={responsive.isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
         title={selectedKnowledgeBase ? `知识库文档 / ${selectedKnowledgeBase.name}` : '知识库文档'}
         open={Boolean(selectedKnowledgeBase)}
         onClose={closeDocumentDrawer}
