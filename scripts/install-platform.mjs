@@ -249,13 +249,26 @@ function normalizeOrigin(value) {
   return `https://${trimmed.replace(/\/$/, '')}`;
 }
 
+function defaultFrontendOrigin(existingEnv) {
+  const explicitOrigin = argMap.get('frontend-origin');
+  if (explicitOrigin) {
+    return normalizeOrigin(explicitOrigin);
+  }
+  if (existingEnv.FRONTEND_ORIGIN && !/localhost|127\.0\.0\.1|\*/.test(existingEnv.FRONTEND_ORIGIN)) {
+    return normalizeOrigin(existingEnv.FRONTEND_ORIGIN);
+  }
+  const fromCors = (existingEnv.CORS_ALLOWED_ORIGIN_PATTERNS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .find((item) => /^https:\/\//.test(item) && !item.includes('localhost') && !item.includes('127.0.0.1'));
+  return normalizeOrigin(fromCors || 'https://test.elexvx.com');
+}
+
 async function collectInstallOptions(existingEnv, capacity) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
     const apiDomainDefault = argMap.get('api-domain') || existingEnv.API_DOMAIN || 'api.elexvx.com';
-    const frontendOriginDefault = normalizeOrigin(
-      argMap.get('frontend-origin') || existingEnv.FRONTEND_ORIGIN || existingEnv.CORS_ALLOWED_ORIGIN_PATTERNS?.split(',')[0] || 'https://test.elexvx.com'
-    );
+    const frontendOriginDefault = defaultFrontendOrigin(existingEnv);
     const apiDomain = await ask(rl, '后端 API 域名', apiDomainDefault);
     const frontendOrigin = normalizeOrigin(await ask(rl, '前端访问域名或 Origin', frontendOriginDefault));
     const useLocalMysql = await askBoolean(rl, '是否启动内置 MySQL（已有 1Panel/MySQL 时选否）', argMap.has('local-mysql'));
@@ -303,23 +316,29 @@ function ensureEnvFile(options, profile) {
     existingEnv.CORS_ALLOWED_ORIGIN_PATTERNS,
   ].filter(Boolean).flatMap((value) => value.split(',').map((item) => item.trim()).filter(Boolean))));
 
+  const generatedDefaults = defaultGeneratedValues();
+  const tunable = (key, value) => {
+    const current = existingEnv[key];
+    return !current || generatedDefaults.has(current) ? value : current;
+  };
+
   const updates = {
     API_DOMAIN: options.apiDomain,
     FRONTEND_ORIGIN: options.frontendOrigin,
     API_PROXY_BIND: existingEnv.API_PROXY_BIND || '127.0.0.1:8000',
     CORS_ALLOWED_ORIGIN_PATTERNS: corsOrigins.join(','),
-    JAVA_OPTS: existingEnv.JAVA_OPTS?.includes('MaxRAMPercentage=75') ? profile.javaOpts : (existingEnv.JAVA_OPTS || profile.javaOpts),
-    REDIS_MAXMEMORY: existingEnv.REDIS_MAXMEMORY || profile.redisMaxmemory,
-    REDIS_MEM_LIMIT: existingEnv.REDIS_MEM_LIMIT || profile.serviceLimits.REDIS_MEM_LIMIT || '384m',
-    DOCKER_LOG_MAX_SIZE: existingEnv.DOCKER_LOG_MAX_SIZE || profile.dockerLogMaxSize,
-    DOCKER_LOG_MAX_FILE: existingEnv.DOCKER_LOG_MAX_FILE || profile.dockerLogMaxFile,
-    SERVER_TOMCAT_THREADS_MAX: existingEnv.SERVER_TOMCAT_THREADS_MAX || profile.tomcatThreadsMax,
-    SERVER_TOMCAT_THREADS_MIN_SPARE: existingEnv.SERVER_TOMCAT_THREADS_MIN_SPARE || '8',
-    SERVER_TOMCAT_ACCEPT_COUNT: existingEnv.SERVER_TOMCAT_ACCEPT_COUNT || '120',
-    SERVER_TOMCAT_MAX_CONNECTIONS: existingEnv.SERVER_TOMCAT_MAX_CONNECTIONS || '4096',
-    SPRING_THREADS_VIRTUAL_ENABLED: existingEnv.SPRING_THREADS_VIRTUAL_ENABLED || 'true',
-    SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: existingEnv.SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE || profile.hikariMaxPoolSize,
-    SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: existingEnv.SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE || '1',
+    JAVA_OPTS: tunable('JAVA_OPTS', profile.javaOpts),
+    REDIS_MAXMEMORY: tunable('REDIS_MAXMEMORY', profile.redisMaxmemory),
+    REDIS_MEM_LIMIT: tunable('REDIS_MEM_LIMIT', '384m'),
+    DOCKER_LOG_MAX_SIZE: tunable('DOCKER_LOG_MAX_SIZE', profile.dockerLogMaxSize),
+    DOCKER_LOG_MAX_FILE: tunable('DOCKER_LOG_MAX_FILE', profile.dockerLogMaxFile),
+    SERVER_TOMCAT_THREADS_MAX: tunable('SERVER_TOMCAT_THREADS_MAX', profile.tomcatThreadsMax),
+    SERVER_TOMCAT_THREADS_MIN_SPARE: tunable('SERVER_TOMCAT_THREADS_MIN_SPARE', '8'),
+    SERVER_TOMCAT_ACCEPT_COUNT: tunable('SERVER_TOMCAT_ACCEPT_COUNT', '120'),
+    SERVER_TOMCAT_MAX_CONNECTIONS: tunable('SERVER_TOMCAT_MAX_CONNECTIONS', '4096'),
+    SPRING_THREADS_VIRTUAL_ENABLED: tunable('SPRING_THREADS_VIRTUAL_ENABLED', 'true'),
+    SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: tunable('SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE', profile.hikariMaxPoolSize),
+    SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: tunable('SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE', '1'),
     NACOS_CONFIG_ENABLED: yesNo(options.useNacos && existingEnv.NACOS_CONFIG_ENABLED === 'true'),
     NACOS_DISCOVERY_ENABLED: yesNo(options.useNacos && existingEnv.NACOS_DISCOVERY_ENABLED === 'true'),
     ...profile.serviceLimits,
@@ -339,6 +358,30 @@ function ensureEnvFile(options, profile) {
   }
   writeFileSync(envPath, content);
   log(`deploy/.env is ready for ${profile.label}.`);
+}
+
+function defaultGeneratedValues() {
+  const values = new Set([
+    '-XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom',
+  ]);
+  for (const profile of Object.values(defaultCapacityProfiles)) {
+    values.add(profile.javaOpts);
+    values.add(profile.redisMaxmemory);
+    values.add(profile.dockerLogMaxSize);
+    values.add(profile.dockerLogMaxFile);
+    values.add(profile.hikariMaxPoolSize);
+    values.add(profile.tomcatThreadsMax);
+    for (const value of Object.values(profile.serviceLimits)) {
+      values.add(value);
+    }
+    for (const value of Object.values(profile.gatewayQps)) {
+      values.add(value);
+    }
+  }
+  for (const value of ['1', '2', '3', '4', '8', '50m', '100m', '120', '4096', 'true', '384m']) {
+    values.add(value);
+  }
+  return values;
 }
 
 function ensureDocker() {

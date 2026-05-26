@@ -3,6 +3,7 @@
 const baseUrl = process.env.LOAD_SMOKE_BASE_URL || process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
 const durationMs = Number(process.env.LOAD_SMOKE_DURATION_MS || 30_000);
 const concurrency = Number(process.env.LOAD_SMOKE_CONCURRENCY || 24);
+const targetRps = Number(process.env.LOAD_SMOKE_RPS || Math.max(8, concurrency * 2));
 const timeoutMs = Number(process.env.LOAD_SMOKE_TIMEOUT_MS || 5_000);
 
 const endpoints = (process.env.LOAD_SMOKE_ENDPOINTS || [
@@ -52,16 +53,34 @@ async function probe(pathname) {
 const results = [];
 const stopAt = Date.now() + durationMs;
 let cursor = 0;
+let nextRequestAt = Date.now();
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pace() {
+  if (!Number.isFinite(targetRps) || targetRps <= 0) {
+    return;
+  }
+  const now = Date.now();
+  const delay = Math.max(0, nextRequestAt - now);
+  nextRequestAt = Math.max(now, nextRequestAt) + Math.ceil(1000 / targetRps);
+  if (delay > 0) {
+    await sleep(delay);
+  }
+}
 
 async function worker() {
   while (Date.now() < stopAt) {
+    await pace();
     const endpoint = endpoints[cursor % endpoints.length];
     cursor += 1;
     results.push(await probe(endpoint));
   }
 }
 
-console.log(`Load smoke: base=${baseUrl}, durationMs=${durationMs}, concurrency=${concurrency}, endpoints=${endpoints.join(' ')}`);
+console.log(`Load smoke: base=${baseUrl}, durationMs=${durationMs}, concurrency=${concurrency}, targetRps=${targetRps}, endpoints=${endpoints.join(' ')}`);
 await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
 const latencies = results.map((result) => result.latencyMs);
