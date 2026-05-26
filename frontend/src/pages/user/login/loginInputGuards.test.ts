@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { sanitizeLoginInputValue, shouldBlockLoginInputKey, shouldBlockLoginInputPaste } from './loginInputGuards';
 
 describe('loginInputGuards', () => {
-  it('removes unsupported account characters while keeping email-safe symbols', () => {
-    expect(sanitizeLoginInputValue('admin<script>@example.com', 'account')).toBe('adminscript@example.com');
-    expect(sanitizeLoginInputValue('test+owner@example.com', 'email')).toBe('test+owner@example.com');
+  it('removes unsupported account characters while keeping only conservative email-safe symbols', () => {
+    expect(sanitizeLoginInputValue('admin*&^%$#@!?:|+_-.<script>@example.com', 'account')).toBe('admin@_-.script@example.com');
+    expect(sanitizeLoginInputValue('test+owner@example.com', 'email')).toBe('testowner@example.com');
   });
 
   it('keeps mobile and verification code inputs inside backend-compatible formats', () => {
@@ -14,7 +14,7 @@ describe('loginInputGuards', () => {
 
   it('blocks unsafe typing and paste payloads', () => {
     expect(shouldBlockLoginInputKey('account', { key: '<' })).toBe(true);
-    expect(shouldBlockLoginInputKey('email', { key: '+' })).toBe(false);
+    expect(shouldBlockLoginInputKey('email', { key: '+' })).toBe(true);
     expect(shouldBlockLoginInputKey('verificationCode', { key: '-' })).toBe(true);
     expect(shouldBlockLoginInputPaste('account', { clipboardData: { getData: () => 'admin;drop' } })).toBe(true);
   });
