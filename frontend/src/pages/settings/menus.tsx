@@ -1,6 +1,6 @@
 import { HolderOutlined } from '@ant-design/icons';
 import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
-import { Button, Form, Input, Popover, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -76,6 +76,16 @@ interface SettingsRouteRecord {
   status: string;
 }
 
+interface SettingsRoutesTabProps {
+  iconOptions: MenuIconOption[];
+  iconLoading?: boolean;
+}
+
+interface SettingsRouteEditorValues {
+  icon?: string;
+  sortNo?: number;
+}
+
 const MENU_ICON_DICT_CODE = 'menu_icon';
 
 const toMenuIconOptions = (items: DictItemRecord[]): MenuIconOption[] =>
@@ -122,14 +132,18 @@ const buildMainRouteMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
       children: menu.children?.length ? buildMainRouteMenuTree(menu.children) : undefined,
     }));
 
-const SettingsRoutesTab = () => {
+const SettingsRoutesTab = ({ iconOptions, iconLoading }: SettingsRoutesTabProps) => {
   const { setInitialState } = useInitialStateModel();
   const responsive = useResponsive();
+  const [routeEditorForm] = Form.useForm<SettingsRouteEditorValues>();
   const [routeOrder, setRouteOrder] = useState(() => getStoredSettingRouteOrder());
   const [routeIcons, setRouteIcons] = useState(() => getStoredSettingRouteIcons());
-  const [editingRouteIcons, setEditingRouteIcons] = useState<Record<string, string>>(() => getStoredSettingRouteIcons());
+  const [editingRoute, setEditingRoute] = useState<SettingsRouteRecord | null>(null);
   const records = useMemo(() => buildSettingsRouteRecords(routeOrder, routeIcons), [routeOrder, routeIcons]);
   const canResetOrder = routeOrder.join('|') !== DEFAULT_SETTING_ROUTE_ORDER.join('|');
+  const routeEditorFormProps = useStandardFormProps({
+    form: routeEditorForm,
+  });
 
   const refreshSettingsNavigation = () => {
     setInitialState((prev) =>
@@ -149,28 +163,59 @@ const SettingsRoutesTab = () => {
     message.success('设置页路由顺序已更新');
   };
 
-  const updateRouteIcon = (record: SettingsRouteRecord) => {
-    const nextIcon = (editingRouteIcons[record.path] || '').trim();
-    const nextIcons = {
-      ...routeIcons,
-      [record.path]: nextIcon,
-    };
-    persistSettingRouteIcons(nextIcons);
-    const normalizedIcons = getStoredSettingRouteIcons();
-    setRouteIcons(normalizedIcons);
-    setEditingRouteIcons(normalizedIcons);
-    refreshSettingsNavigation();
-    message.success(nextIcon ? '设置页路由图标已更新' : '设置页路由图标已恢复默认');
+  const closeRouteEditor = () => {
+    setEditingRoute(null);
+    routeEditorForm.resetFields();
   };
 
-  const resetRouteIcon = (record: SettingsRouteRecord) => {
+  const openEditRoute = (record: SettingsRouteRecord) => {
+    setEditingRoute(record);
+    routeEditorForm.setFieldsValue({
+      icon: record.icon,
+      sortNo: record.sortNo,
+    });
+  };
+
+  const resetRouteIcon = () => {
+    if (!editingRoute) {
+      return;
+    }
+    const record = editingRoute;
     const { [record.path]: _removed, ...nextIcons } = routeIcons;
     persistSettingRouteIcons(nextIcons);
     const normalizedIcons = getStoredSettingRouteIcons();
     setRouteIcons(normalizedIcons);
-    setEditingRouteIcons(normalizedIcons);
+    routeEditorForm.setFieldValue('icon', record.defaultIcon);
+    setEditingRoute((current) => (current ? { ...current, icon: record.defaultIcon, customIcon: undefined } : current));
     refreshSettingsNavigation();
     message.success('设置页路由图标已恢复默认');
+  };
+
+  const saveRouteEditor = async () => {
+    if (!editingRoute) {
+      return;
+    }
+    const values = await routeEditorForm.validateFields();
+    const nextIcon = (values.icon || '').trim();
+    const nextIcons = { ...routeIcons };
+    if (nextIcon && nextIcon !== editingRoute.defaultIcon) {
+      nextIcons[editingRoute.path] = nextIcon;
+    } else {
+      delete nextIcons[editingRoute.path];
+    }
+
+    const currentIndex = routeOrder.indexOf(editingRoute.path);
+    const nextSortNo = Math.min(Math.max(Math.trunc(Number(values.sortNo) || editingRoute.sortNo), 1), routeOrder.length);
+    const nextIndex = nextSortNo - 1;
+    const nextOrder = currentIndex >= 0 && currentIndex !== nextIndex ? moveArrayItem(routeOrder, currentIndex, nextIndex) : routeOrder;
+
+    persistSettingRouteIcons(nextIcons);
+    persistSettingRouteOrder(nextOrder);
+    setRouteIcons(getStoredSettingRouteIcons());
+    setRouteOrder(getStoredSettingRouteOrder());
+    refreshSettingsNavigation();
+    closeRouteEditor();
+    message.success('设置页路由已更新');
   };
 
   const moveRoute = (record: SettingsRouteRecord, direction: -1 | 1) => {
@@ -280,35 +325,11 @@ const SettingsRoutesTab = () => {
     {
       title: '操作',
       valueType: 'option',
-      width: 220,
+      width: 180,
       fixed: 'right',
       render: (_, record, index) => (
         <Space>
-          <Popover
-            trigger="click"
-            title="设置图标"
-            content={(
-              <Space.Compact>
-                <Input
-                  allowClear
-                  value={editingRouteIcons[record.path] ?? ''}
-                  placeholder={record.defaultIcon || '如：SettingOutlined'}
-                  style={{ width: 180 }}
-                  onChange={(event) =>
-                    setEditingRouteIcons((current) => ({
-                      ...current,
-                      [record.path]: event.target.value,
-                    }))
-                  }
-                  onPressEnter={() => updateRouteIcon(record)}
-                />
-                <Button onClick={() => updateRouteIcon(record)}>保存</Button>
-                {record.customIcon ? <Button onClick={() => resetRouteIcon(record)}>默认</Button> : null}
-              </Space.Compact>
-            )}
-          >
-            <Button type="link">图标</Button>
-          </Popover>
+          <Button type="link" onClick={() => openEditRoute(record)}>编辑</Button>
           <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
             上移
           </Button>
@@ -321,21 +342,70 @@ const SettingsRoutesTab = () => {
   ];
 
   return (
-    <ManagementTable<SettingsRouteRecord>
-      rowKey="id"
-      dataSource={records}
-      pagination={false}
-      scroll={{ x: 1780 }}
-      tableLayout="fixed"
-      isMobile={responsive.isMobile}
-      search={false}
-      toolBarRender={() =>
-        canResetOrder ? (
-          [<Button key="reset" onClick={resetOrder}>恢复默认顺序</Button>]
-        ) : []
-      }
-      columns={columns}
-    />
+    <>
+      <ManagementTable<SettingsRouteRecord>
+        rowKey="id"
+        dataSource={records}
+        pagination={false}
+        scroll={{ x: 1780 }}
+        tableLayout="fixed"
+        isMobile={responsive.isMobile}
+        search={false}
+        toolBarRender={() =>
+          canResetOrder ? (
+            [<Button key="reset" onClick={resetOrder}>恢复默认顺序</Button>]
+          ) : []
+        }
+        columns={columns}
+      />
+      <ManagementDrawer
+        title={editingRoute ? `编辑设置页路由 · ${editingRoute.menuName}` : '编辑设置页路由'}
+        open={Boolean(editingRoute)}
+        onClose={closeRouteEditor}
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: closeRouteEditor },
+          { key: 'reset-icon', label: '默认图标', disabled: !editingRoute?.customIcon, onClick: resetRouteIcon },
+          { key: 'save', label: '保存', type: 'primary', onClick: () => void saveRouteEditor() },
+        ]}
+      >
+        <Form {...routeEditorFormProps}>
+          <Form.Item label="菜单编码">
+            <Input disabled value={editingRoute?.menuCode} />
+          </Form.Item>
+          <Form.Item label="菜单名称">
+            <Input disabled value={editingRoute?.menuName} />
+          </Form.Item>
+          <Form.Item label="菜单类型">
+            <Select disabled value="MENU" options={[{ label: '菜单', value: 'MENU' }]} />
+          </Form.Item>
+          <Form.Item label="路由">
+            <Input disabled value={editingRoute?.path} />
+          </Form.Item>
+          <Form.Item label="组件">
+            <Input disabled value={editingRoute?.component} />
+          </Form.Item>
+          <Form.Item name="icon" label="图标" extra="图标选项来自字典 menu_icon，可在字典管理中维护；清空后使用默认图标。">
+            <Select
+              allowClear
+              showSearch
+              loading={iconLoading}
+              optionFilterProp="label"
+              options={iconOptions.length ? iconOptions : DEFAULT_MENU_ICON_OPTIONS}
+              placeholder="请选择图标"
+            />
+          </Form.Item>
+          <Form.Item name="sortNo" label="排序" rules={[{ type: 'number', min: 1, max: records.length, message: `请输入 1-${records.length} 之间的排序` }]}>
+            <InputNumber min={1} max={records.length} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="权限标识">
+            <Input disabled value={editingRoute?.permissionKey || '-'} />
+          </Form.Item>
+          <Form.Item label="状态">
+            <Select disabled value="ENABLED" options={[{ label: '启用', value: 'ENABLED' }]} />
+          </Form.Item>
+        </Form>
+      </ManagementDrawer>
+    </>
   );
 };
 
@@ -748,7 +818,7 @@ const MenuManagementPage = () => {
           {
             key: 'settings',
             label: '设置页路由',
-            children: <SettingsRoutesTab />,
+            children: <SettingsRoutesTab iconOptions={menuIconOptions} iconLoading={menuIconLoading} />,
           },
         ]}
       />
