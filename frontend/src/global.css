@@ -540,6 +540,19 @@ body,
     width: 100%;
   }
 
+  .saas-profile-page__top-row {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .saas-profile-page__top-row > .ant-card {
+    min-width: 0;
+    height: 100%;
+  }
+
   .saas-profile-page__welcome-card,
   .saas-profile-page__personal-card,
   .saas-profile-page__rail-block {
@@ -623,6 +636,10 @@ body,
       flex-direction: column;
     }
 
+    .saas-profile-page__top-row {
+      grid-template-columns: 1fr;
+    }
+
     .saas-profile-page__tenant-mark {
       text-align: left;
     }
@@ -658,7 +675,7 @@ body,
 
   .saas-profile-page__descriptions .ant-descriptions-item-label {
     color: var(--saas-text-secondary);
-    font-size: 15px;
+    font-size: 16px;
   }
 
   .saas-profile-page__descriptions .ant-descriptions-item-content {
@@ -680,7 +697,7 @@ body,
   }
 
   .saas-profile-page__account-card .ant-card-body {
-    min-height: 160px;
+    min-height: 112px;
     display: flex;
     align-items: center;
     padding: 28px;
