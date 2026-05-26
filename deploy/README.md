@@ -47,22 +47,22 @@ api.elexvx.com / HTTPS / CDN / WAF
 
 ## 一键部署后端完整平台
 
-安装前可以先检测服务器环境：
+平台安装和环境检测统一由一个脚本分步执行。只检测服务器环境时运行：
 
 ```bash
-node scripts/check-environment.mjs
+node scripts/install-platform.mjs --check-only
 ```
 
 严格模式会把警告也视为失败，适合 CI 或正式交付前检查：
 
 ```bash
-node scripts/check-environment.mjs --strict
+node scripts/install-platform.mjs --check-only --strict
 ```
 
-机器可运行但还没安装 Docker 时，用安装模式查看报告：
+需要给自动化平台读取时输出纯 JSON：
 
 ```bash
-node scripts/check-environment.mjs --install-mode
+node scripts/install-platform.mjs --check-only --json
 ```
 
 首次安装或服务器换规格时，推荐先运行交互式安装器：

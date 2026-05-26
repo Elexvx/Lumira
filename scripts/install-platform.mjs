@@ -2,7 +2,8 @@
 
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { cpus, totalmem, platform, arch } from 'node:os';
+import net from 'node:net';
+import { arch, cpus, platform, release, totalmem } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import readline from 'node:readline/promises';
@@ -23,6 +24,18 @@ const skipDockerInstall = argMap.has('skip-docker-install');
 const skipBuild = argMap.has('skip-build');
 const skipSmoke = argMap.has('skip-smoke');
 const noStart = argMap.has('no-start');
+const checkOnly = argMap.has('check-only') || argMap.has('check');
+const jsonOutput = argMap.has('json');
+const strict = argMap.has('strict');
+const skipNetwork = argMap.has('skip-network');
+
+const environmentMinimums = {
+  cpu: 4,
+  memoryGb: 3.5,
+  diskGb: 15,
+  nodeMajor: 20,
+  dockerMajor: 24,
+};
 
 const defaultCapacityProfiles = {
   tiny: {
@@ -196,13 +209,7 @@ function generatedSecrets() {
 function detectCapacity() {
   const cpuCount = cpus().length;
   const memoryGb = totalmem() / 1024 / 1024 / 1024;
-  let diskGb = 0;
-  try {
-    const df = output('df', ['-Pk', repoRoot], { check: false }).split(/\r?\n/).at(-1)?.trim().split(/\s+/);
-    diskGb = df?.[3] ? Number(df[3]) / 1024 / 1024 : 0;
-  } catch {
-    diskGb = 0;
-  }
+  const diskGb = diskFreeGb(repoRoot);
   const profileName = memoryGb <= 5 || cpuCount <= 4 ? 'tiny' : 'standard';
   return {
     cpuCount,
@@ -212,6 +219,182 @@ function detectCapacity() {
     arch: arch(),
     profileName,
   };
+}
+
+function diskFreeGb(targetPath) {
+  const result = output('df', ['-Pk', targetPath], { check: false });
+  if (!result) {
+    return 0;
+  }
+  const columns = result.split(/\r?\n/).at(-1)?.trim().split(/\s+/);
+  return columns?.[3] ? Number(columns[3]) / 1024 / 1024 : 0;
+}
+
+function parseMajorVersion(text) {
+  const match = String(text || '').match(/(\d+)\./);
+  return match ? Number(match[1]) : 0;
+}
+
+function parseDbEndpoint(dbUrl) {
+  if (!dbUrl) {
+    return null;
+  }
+  const match = dbUrl.match(/^jdbc:mysql:\/\/([^:/?]+)(?::(\d+))?/);
+  if (!match) {
+    return null;
+  }
+  return {
+    host: match[1],
+    port: Number(match[2] || 3306),
+  };
+}
+
+function probeTcp(host, port, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host, port, timeout: timeoutMs });
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once('error', () => resolve(false));
+  });
+}
+
+function checkPortAvailability(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+function addEnvironmentCheck(checks, status, name, message, details = {}) {
+  checks.push({ status, name, message, details });
+}
+
+async function buildEnvironmentReport({ expectedProfile = '', installMode = false, skipNetworkChecks = false } = {}) {
+  const checks = [];
+  const env = parseEnvFile(envPath);
+  const envExample = parseEnvFile(envExamplePath);
+  const capacity = detectCapacity();
+  const recommendedProfile = capacity.profileName;
+
+  addEnvironmentCheck(checks, capacity.cpuCount >= environmentMinimums.cpu ? 'pass' : 'fail', 'CPU', `${capacity.cpuCount} cores detected`, { minimum: environmentMinimums.cpu });
+  addEnvironmentCheck(checks, capacity.memoryGb >= environmentMinimums.memoryGb ? 'pass' : 'fail', 'Memory', `${capacity.memoryGb.toFixed(1)} GiB detected`, { minimumGb: environmentMinimums.memoryGb });
+  addEnvironmentCheck(checks, capacity.diskGb >= environmentMinimums.diskGb ? 'pass' : 'warn', 'Disk', `${capacity.diskGb.toFixed(1)} GiB free at ${repoRoot}`, { recommendedGb: environmentMinimums.diskGb });
+  addEnvironmentCheck(checks, ['linux', 'darwin'].includes(capacity.platform) ? 'pass' : 'warn', 'OS', `${capacity.platform} ${release()} ${capacity.arch}`);
+  addEnvironmentCheck(checks, expectedProfile && expectedProfile !== recommendedProfile ? 'warn' : 'pass', 'Capacity profile', `recommended=${recommendedProfile}${expectedProfile ? ` requested=${expectedProfile}` : ''}`);
+
+  const nodeMajor = parseMajorVersion(process.versions.node);
+  addEnvironmentCheck(checks, nodeMajor >= environmentMinimums.nodeMajor ? 'pass' : 'fail', 'Node.js', process.version, { minimumMajor: environmentMinimums.nodeMajor });
+
+  for (const command of ['curl', 'tar', 'gzip', 'sh']) {
+    addEnvironmentCheck(checks, commandExists(command) ? 'pass' : 'fail', `Command ${command}`, commandExists(command) ? 'available' : 'missing');
+  }
+
+  addEnvironmentCheck(checks, existsSync(composeFile) ? 'pass' : 'fail', 'Compose file', composeFile);
+  addEnvironmentCheck(checks, existsSync(envExamplePath) ? 'pass' : 'fail', 'Env example', envExamplePath);
+  addEnvironmentCheck(checks, existsSync(envPath) ? 'pass' : 'warn', 'Env file', existsSync(envPath) ? envPath : 'deploy/.env is not created yet');
+
+  const requiredEnvKeys = [
+    'DB_PASSWORD',
+    'JWT_SECRET',
+    'FIELD_SECRET',
+    'PLUGIN_SIGNATURE_SECRET',
+    'SAAS_JOB_INTERNAL_TOKEN',
+    'XXL_JOB_ADMIN_ACCESS_TOKEN',
+    'XXL_JOB_LOGIN_PASSWORD',
+    'CORS_ALLOWED_ORIGIN_PATTERNS',
+  ];
+  const envSource = existsSync(envPath) ? env : envExample;
+  for (const key of requiredEnvKeys) {
+    const value = envSource[key];
+    const status = value && !/^change-me/.test(value) ? 'pass' : existsSync(envPath) ? 'fail' : 'warn';
+    addEnvironmentCheck(checks, status, `Env ${key}`, status === 'pass' ? 'configured' : 'missing or placeholder');
+  }
+
+  if (envSource.FRONTEND_ORIGIN) {
+    addEnvironmentCheck(
+      checks,
+      /^https?:\/\//.test(envSource.FRONTEND_ORIGIN) && !envSource.FRONTEND_ORIGIN.includes('*') ? 'pass' : 'warn',
+      'Frontend origin',
+      envSource.FRONTEND_ORIGIN
+    );
+  }
+  if (envSource.API_DOMAIN) {
+    addEnvironmentCheck(checks, envSource.API_DOMAIN.includes('.') ? 'pass' : 'warn', 'API domain', envSource.API_DOMAIN);
+  }
+
+  const dockerExists = commandExists('docker');
+  addEnvironmentCheck(checks, dockerExists ? 'pass' : installMode ? 'warn' : 'fail', 'Docker CLI', dockerExists ? 'available' : 'missing');
+  if (dockerExists) {
+    const dockerVersion = output('docker', ['--version'], { check: false });
+    const dockerMajor = parseMajorVersion(dockerVersion);
+    addEnvironmentCheck(checks, dockerMajor >= environmentMinimums.dockerMajor ? 'pass' : 'warn', 'Docker version', dockerVersion || 'unknown', { recommendedMajor: environmentMinimums.dockerMajor });
+
+    const dockerInfo = spawnSync('docker', ['info'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+    });
+    addEnvironmentCheck(
+      checks,
+      dockerInfo.status === 0 ? 'pass' : installMode ? 'warn' : 'fail',
+      'Docker daemon',
+      dockerInfo.status === 0 ? 'running' : (dockerInfo.stderr || 'not running').trim()
+    );
+
+    const compose = output('docker', ['compose', 'version'], { check: false });
+    addEnvironmentCheck(checks, compose ? 'pass' : 'fail', 'Docker Compose', compose || 'docker compose v2 missing');
+  }
+
+  if (!skipNetworkChecks) {
+    const apiProxyAvailable = await checkPortAvailability(8000);
+    addEnvironmentCheck(checks, apiProxyAvailable ? 'pass' : 'warn', 'Port 8000', apiProxyAvailable ? 'available' : 'already in use');
+    const gatewayAvailable = await checkPortAvailability(8081);
+    addEnvironmentCheck(checks, gatewayAvailable ? 'pass' : 'warn', 'Port 8081', gatewayAvailable ? 'available' : 'already in use');
+
+    const dbEndpoint = parseDbEndpoint(envSource.DB_URL);
+    if (dbEndpoint && !['localhost', '127.0.0.1', 'mysql'].includes(dbEndpoint.host)) {
+      const dbReachable = await probeTcp(dbEndpoint.host, dbEndpoint.port);
+      addEnvironmentCheck(checks, dbReachable ? 'pass' : 'warn', 'External MySQL TCP', `${dbEndpoint.host}:${dbEndpoint.port} ${dbReachable ? 'reachable' : 'not reachable from here'}`);
+    }
+  }
+
+  const fatalCount = checks.filter((check) => check.status === 'fail').length;
+  const warnCount = checks.filter((check) => check.status === 'warn').length;
+  return {
+    status: fatalCount > 0 ? 'fail' : warnCount > 0 ? 'warn' : 'pass',
+    recommendedProfile,
+    cpuCount: capacity.cpuCount,
+    memoryGb: Number(capacity.memoryGb.toFixed(1)),
+    diskGb: Number(capacity.diskGb.toFixed(1)),
+    checks,
+  };
+}
+
+function printEnvironmentReport(report) {
+  console.log(`[env] status=${report.status} profile=${report.recommendedProfile} cpu=${report.cpuCount} memory=${report.memoryGb}GiB diskFree=${report.diskGb}GiB`);
+  for (const check of report.checks) {
+    const marker = check.status === 'pass' ? 'OK' : check.status === 'warn' ? 'WARN' : 'FAIL';
+    console.log(`[env] ${marker.padEnd(4)} ${check.name}: ${check.message}`);
+  }
+}
+
+function assertEnvironmentReport(report) {
+  const fatalCount = report.checks.filter((check) => check.status === 'fail').length;
+  const warnCount = report.checks.filter((check) => check.status === 'warn').length;
+  if (fatalCount > 0 || (strict && warnCount > 0)) {
+    throw new Error(`Environment check failed: ${fatalCount} failure(s), ${warnCount} warning(s).`);
+  }
 }
 
 function yesNo(value) {
@@ -418,13 +601,14 @@ function ensureDocker() {
   log('Docker installed and running.');
 }
 
-function checkEnvironment(profileName) {
-  run('node', [
-    'scripts/check-environment.mjs',
-    '--install-mode',
-    '--skip-network',
-    `--profile=${profileName}`,
-  ]);
+async function checkEnvironment(profileName) {
+  const report = await buildEnvironmentReport({
+    expectedProfile: profileName,
+    installMode: true,
+    skipNetworkChecks: skipNetwork,
+  });
+  printEnvironmentReport(report);
+  assertEnvironmentReport(report);
 }
 
 function composeProfiles(options) {
@@ -508,13 +692,29 @@ function runVerification(options, profile) {
 
 async function main() {
   const capacity = detectCapacity();
-  log(`Server: ${capacity.cpuCount} CPU, ${capacity.memoryGb.toFixed(1)} GiB RAM, ${capacity.diskGb.toFixed(1)} GiB free, ${capacity.platform}/${capacity.arch}`);
+  if (!(checkOnly && jsonOutput)) {
+    log(`Server: ${capacity.cpuCount} CPU, ${capacity.memoryGb.toFixed(1)} GiB RAM, ${capacity.diskGb.toFixed(1)} GiB free, ${capacity.platform}/${capacity.arch}`);
+  }
+  if (checkOnly) {
+    const report = await buildEnvironmentReport({
+      expectedProfile: argMap.get('profile') || capacity.profileName,
+      installMode: true,
+      skipNetworkChecks: skipNetwork,
+    });
+    if (jsonOutput) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      printEnvironmentReport(report);
+    }
+    assertEnvironmentReport(report);
+    return;
+  }
   const existingEnv = parseEnvFile(envPath);
   const options = await collectInstallOptions(existingEnv, capacity);
   const profile = defaultCapacityProfiles[options.profileName] || defaultCapacityProfiles[capacity.profileName];
   log(`Using capacity profile: ${profile.label}`);
   ensureEnvFile(options, profile);
-  checkEnvironment(options.profileName);
+  await checkEnvironment(options.profileName);
   ensureDocker();
   installContainers(options);
   runVerification(options, profile);
