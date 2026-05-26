@@ -47,6 +47,44 @@ api.elexvx.com / HTTPS / CDN / WAF
 
 ## 一键部署后端完整平台
 
+首次安装或服务器换规格时，推荐先运行交互式安装器：
+
+```bash
+node scripts/install-platform.mjs
+```
+
+安装器会分步完成：
+
+- 探测 CPU、内存、磁盘、系统架构。
+- 交互确认 API 域名、前端 Origin、是否启用内置 MySQL、Nacos、前端容器和观测栈。
+- 按服务器规格自动写入 `deploy/.env` 的 JVM、容器内存、Redis、数据库连接池、Tomcat 线程池、限流和日志轮转参数。
+- 检查 Docker；Linux 服务器缺少 Docker 时可自动安装。
+- 按阶段启动基础组件、业务服务、API proxy、可选前端容器和可选观测栈。
+- 自动运行部署健康检查和轻量并发冒烟。
+
+无人值守安装：
+
+```bash
+node scripts/install-platform.mjs --yes
+```
+
+常用参数：
+
+```bash
+node scripts/install-platform.mjs \
+  --api-domain=api.elexvx.com \
+  --frontend-origin=https://test.elexvx.com \
+  --yes
+```
+
+如果需要完全本机化演示，可启用内置 MySQL、Nacos 和前端容器：
+
+```bash
+node scripts/install-platform.mjs --local-mysql --nacos --frontend
+```
+
+日常已有环境重建可继续使用轻量部署脚本。
+
 从仓库根目录运行：
 
 ```bash
