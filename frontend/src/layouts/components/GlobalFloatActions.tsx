@@ -34,7 +34,7 @@ export const GlobalFloatActions = () => {
       shape="square"
       style={{
         right: isAssistantPage ? (isMobile ? 12 : 16) : isMobile ? 16 : 32,
-        bottom: isAssistantPage ? (isMobile ? 168 : 184) : isMobile ? 24 : 40,
+        bottom: isAssistantPage ? (isMobile ? 24 : 56) : isMobile ? 24 : 40,
       }}
     >
       {showApiDocsQr ? (
