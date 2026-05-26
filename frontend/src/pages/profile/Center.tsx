@@ -655,23 +655,27 @@ const ProfileCenterPage = () => {
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         {responsive.isMobile ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Card className="saas-profile-page__welcome-card">
-              <Space direction="vertical" size={6}>
-                <Typography.Title level={3} style={{ margin: 0 }}>
-                  Hi，{displayName}
-                </Typography.Title>
-                <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
-              </Space>
-            </Card>
-            <Card className="saas-profile-page__account-card">
-              <Space direction="vertical" size={18} style={{ width: '100%' }}>
-                <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+            <div className="saas-profile-page__top-row">
+              <Card className="saas-profile-page__welcome-card">
                 <Space direction="vertical" size={6}>
-                  <Typography.Title level={3} style={{ margin: 0 }}>{displayName}</Typography.Title>
-                  <Typography.Text>{activeRoleName}</Typography.Text>
+                  <Typography.Title level={3} style={{ margin: 0 }}>
+                    Hi，{displayName}
+                  </Typography.Title>
+                  <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
                 </Space>
-              </Space>
-            </Card>
+              </Card>
+              <Card className="saas-profile-page__account-card" bordered={false}>
+                <Space align="center" size={14} className="saas-profile-page__welcome-profile">
+                  <Avatar size={56} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+                  <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
+                    <Typography.Title level={4} style={{ margin: 0 }}>
+                      {displayName}
+                    </Typography.Title>
+                    <Typography.Text>{activeRoleName}</Typography.Text>
+                  </Space>
+                </Space>
+              </Card>
+            </div>
             <div ref={profileBasicCardRef}>
               <ProfileBasicCard
                 loading={profileQuery.isLoading}
@@ -714,16 +718,29 @@ const ProfileCenterPage = () => {
           <Row gutter={[16, 16]} align="stretch" className="saas-profile-page__three-blocks">
             <Col xs={24} xl={18} className="saas-profile-page__main-column">
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
-                <Card className="saas-profile-page__welcome-card">
-                  <div className="saas-profile-page__welcome-content">
-                    <Space align="baseline" size={24}>
-                      <Typography.Title level={2} style={{ margin: 0 }}>
-                        Hi，{displayName}
-                      </Typography.Title>
-                      <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
+                <div className="saas-profile-page__top-row">
+                  <Card className="saas-profile-page__welcome-card">
+                    <div className="saas-profile-page__welcome-content">
+                      <Space align="baseline" size={24}>
+                        <Typography.Title level={2} style={{ margin: 0 }}>
+                          Hi，{displayName}
+                        </Typography.Title>
+                        <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
+                      </Space>
+                    </div>
+                  </Card>
+                  <Card className="saas-profile-page__account-card" bordered={false}>
+                    <Space align="center" size={16} className="saas-profile-page__welcome-profile">
+                      <Avatar size={64} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+                      <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
+                        <Typography.Title level={3} style={{ margin: 0 }}>
+                          {displayName}
+                        </Typography.Title>
+                        <Typography.Text>{activeRoleName}</Typography.Text>
+                      </Space>
                     </Space>
-                  </div>
-                </Card>
+                  </Card>
+                </div>
                 <div ref={profileBasicCardRef}>
                   <ProfileBasicCard
                     loading={profileQuery.isLoading}
@@ -749,17 +766,6 @@ const ProfileCenterPage = () => {
 
             <Col xs={24} xl={6} className="saas-profile-page__rail-column">
               <section className="saas-profile-page__rail-block" aria-label="账户状态">
-                <Card className="saas-profile-page__account-card" bordered={false}>
-                  <Space align="center" size={16} style={{ width: '100%' }}>
-                    <Avatar size={72} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
-                    <Space direction="vertical" size={6} className="saas-profile-page__account-copy">
-                      <Typography.Title level={3} style={{ margin: 0 }}>
-                        {displayName}
-                      </Typography.Title>
-                      <Typography.Text>{activeRoleName}</Typography.Text>
-                    </Space>
-                  </Space>
-                </Card>
                 <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
                 <BoundProviderCard
                   canManageSecondFactor
