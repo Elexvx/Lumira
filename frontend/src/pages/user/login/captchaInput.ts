@@ -33,3 +33,8 @@ export const shouldBlockCaptchaKey = (event: {
 
   return !CAPTCHA_ALLOWED_CHAR_PATTERN.test(event.key);
 };
+
+export const shouldBlockCaptchaPaste = (event: { clipboardData?: { getData: (type: string) => string } }) => {
+  const text = event.clipboardData?.getData('text') ?? '';
+  return sanitizeCaptchaValue(text) !== text;
+};

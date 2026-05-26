@@ -24,6 +24,7 @@ import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermar
 import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { AgreementPreviewModal } from '@/pages/user/login/components/AgreementPreviewModal';
 import { resolveLoginErrorFeedback } from '@/pages/user/login/loginErrorFeedback';
+import { sanitizeLoginInputValue } from '@/pages/user/login/loginInputGuards';
 import type {
   AgreementSettings,
   CaptchaChallenge,
@@ -295,13 +296,12 @@ const Login = () => {
         return;
       }
       const accountField = mode === 'sms' ? 'smsAccount' : 'emailAccount';
-      const account = loginForm.getFieldValue(accountField);
-      if (!account) {
-        message.warning(
-          mode === 'sms'
-            ? formatMessage({ id: 'page.login.error.pleaseEnterMobile', defaultMessage: 'Please enter your mobile number' })
-            : formatMessage({ id: 'page.login.error.pleaseEnterEmail', defaultMessage: 'Please enter your email' }),
-        );
+      let account = '';
+      try {
+        await loginForm.validateFields([accountField]);
+        account = sanitizeLoginInputValue(loginForm.getFieldValue(accountField), mode === 'sms' ? 'mobile' : 'email');
+        loginForm.setFieldsValue({ [accountField]: account } as Partial<LoginFormValues>);
+      } catch {
         return;
       }
 

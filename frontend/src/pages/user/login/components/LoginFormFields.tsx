@@ -4,7 +4,14 @@ import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton
 import { useEffect, useRef, useState } from 'react';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
-import { getCaptchaValueFromEvent, shouldBlockCaptchaKey } from '@/pages/user/login/captchaInput';
+import { getCaptchaValueFromEvent, shouldBlockCaptchaKey, shouldBlockCaptchaPaste } from '@/pages/user/login/captchaInput';
+import {
+  getLoginInputValueFromEvent,
+  rejectUnsafeLoginInput,
+  shouldBlockLoginInputKey,
+  shouldBlockLoginInputPaste,
+  type LoginInputKind,
+} from '@/pages/user/login/loginInputGuards';
 
 export type LoginMode = 'passkey' | 'sms' | 'email' | 'password';
 type CodeLoginMode = Extract<LoginMode, 'sms' | 'email'>;
@@ -113,6 +120,21 @@ export const LoginFormFields = ({
   const hasAgreement = Boolean(agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown);
   const showModeControl = availableLoginModes.length > 1 || availableLoginModes[0] !== 'password';
   const pendingChallenge = activeLoginMode === 'sms' ? loginCodeChallenges.sms : activeLoginMode === 'email' ? loginCodeChallenges.email : null;
+  const unsafeAccountMessage = formatMessage({ id: 'page.login.error.invalidAccountCharacters', defaultMessage: 'The account contains unsupported characters' });
+  const unsafeMobileMessage = formatMessage({ id: 'page.login.error.invalidMobile', defaultMessage: 'Please enter a valid mobile number' });
+  const unsafeCodeMessage = formatMessage({ id: 'page.login.error.invalidCodeCharacters', defaultMessage: 'Verification code can only contain letters and numbers' });
+  const guardedInputEvents = (kind: LoginInputKind) => ({
+    onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (shouldBlockLoginInputKey(kind, event)) {
+        event.preventDefault();
+      }
+    },
+    onPaste: (event: React.ClipboardEvent<HTMLInputElement>) => {
+      if (shouldBlockLoginInputPaste(kind, event)) {
+        event.preventDefault();
+      }
+    },
+  });
 
   useEffect(() => {
     const previous = previousPasswordCredentialsRef.current;
@@ -150,13 +172,19 @@ export const LoginFormFields = ({
         <Alert showIcon type="info" message={pendingSecondFactorPrompt} />
         <Form.Item
           name="verificationCode"
-          rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) }]}
+          rules={[
+            { required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) },
+            { validator: (_, value) => rejectUnsafeLoginInput(_, value, 'verificationCode', unsafeCodeMessage) },
+          ]}
+          getValueFromEvent={getLoginInputValueFromEvent('verificationCode')}
         >
           <Input
             size="large"
             autoComplete="one-time-code"
             inputMode="numeric"
+            maxLength={12}
             placeholder={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' })}
+            {...guardedInputEvents('verificationCode')}
           />
         </Form.Item>
       </>
@@ -167,13 +195,20 @@ export const LoginFormFields = ({
     <div className="saas-login-page__credentials-stack">
       <Form.Item
         name="passwordAccount"
-        rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account, mobile number, or email' }) }]}
+        rules={[
+          { required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account, mobile number, or email' }) },
+          { max: 128, message: formatMessage({ id: 'page.login.error.accountLength', defaultMessage: 'Account cannot exceed 128 characters' }) },
+          { validator: (_, value) => rejectUnsafeLoginInput(_, value, 'account', unsafeAccountMessage) },
+        ]}
+        getValueFromEvent={getLoginInputValueFromEvent('account')}
       >
         <Input
           size="large"
           prefix={<UserOutlined className="saas-login-page__field-icon" />}
           autoComplete="username"
+          maxLength={128}
           placeholder={formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account, mobile number, or email' })}
+          {...guardedInputEvents('account')}
         />
       </Form.Item>
       <Form.Item
@@ -215,6 +250,11 @@ export const LoginFormFields = ({
               onCompositionStart={(event) => event.preventDefault()}
               onKeyDown={(event) => {
                 if (shouldBlockCaptchaKey(event)) {
+                  event.preventDefault();
+                }
+              }}
+              onPaste={(event) => {
+                if (shouldBlockCaptchaPaste(event)) {
                   event.preventDefault();
                 }
               }}
@@ -299,29 +339,48 @@ export const LoginFormFields = ({
       <div className="saas-login-page__credentials-stack">
         <Form.Item
           name={mode === 'sms' ? 'smsAccount' : 'emailAccount'}
+          getValueFromEvent={getLoginInputValueFromEvent(mode === 'sms' ? 'mobile' : 'email')}
           rules={[
             { required: true, message: mode === 'sms' ? formatMessage({ id: 'page.login.error.pleaseEnterMobile', defaultMessage: 'Please enter your mobile number' }) : formatMessage({ id: 'page.login.error.pleaseEnterEmail', defaultMessage: 'Please enter your email' }) },
-            ...(mode === 'email' ? [{ type: 'email' as const, message: formatMessage({ id: 'page.login.error.invalidEmail', defaultMessage: 'Please enter a valid email address' }) }] : []),
+            ...(mode === 'sms'
+              ? [
+                  { pattern: /^1[3-9]\d{9}$/, message: unsafeMobileMessage },
+                  { validator: (_: unknown, value: unknown) => rejectUnsafeLoginInput(_, value, 'mobile', unsafeMobileMessage) },
+                ]
+              : [
+                  { type: 'email' as const, message: formatMessage({ id: 'page.login.error.invalidEmail', defaultMessage: 'Please enter a valid email address' }) },
+                  { max: 128, message: formatMessage({ id: 'page.login.error.accountLength', defaultMessage: 'Account cannot exceed 128 characters' }) },
+                  { validator: (_: unknown, value: unknown) => rejectUnsafeLoginInput(_, value, 'email', unsafeAccountMessage) },
+                ]),
           ]}
         >
           <Input
             size="large"
             prefix={mode === 'sms' ? <MobileOutlined className="saas-login-page__field-icon" /> : <MailOutlined className="saas-login-page__field-icon" />}
             autoComplete={mode === 'sms' ? 'tel' : 'email'}
+            inputMode={mode === 'sms' ? 'numeric' : 'email'}
+            maxLength={mode === 'sms' ? 11 : 128}
             placeholder={getAccountPlaceholder(mode)}
+            {...guardedInputEvents(mode === 'sms' ? 'mobile' : 'email')}
           />
         </Form.Item>
         <div className="saas-login-page__code-row">
           <Form.Item
             name={mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode'}
-            rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) }]}
+            rules={[
+              { required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }) },
+              { validator: (_, value) => rejectUnsafeLoginInput(_, value, 'verificationCode', unsafeCodeMessage) },
+            ]}
+            getValueFromEvent={getLoginInputValueFromEvent('verificationCode')}
             className="saas-login-page__code-input saas-login-page__feedback-reserved"
           >
             <Input
               size="large"
               autoComplete="one-time-code"
               inputMode="numeric"
+              maxLength={12}
               placeholder={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' })}
+              {...guardedInputEvents('verificationCode')}
             />
           </Form.Item>
           <Button
