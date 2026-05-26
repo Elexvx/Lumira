@@ -22,7 +22,42 @@ x-common-env: &common-env
   PLUGIN_SIGNATURE_SECRET: ${PLUGIN_SIGNATURE_SECRET:?PLUGIN_SIGNATURE_SECRET is required}
   SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN is required}
   TRUST_FORWARDED_HEADERS: "true"
-  JAVA_OPTS: ${JAVA_OPTS:-}
+  JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom}
+  SERVER_SHUTDOWN: graceful
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: ${SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE:-20s}
+  SPRING_THREADS_VIRTUAL_ENABLED: ${SPRING_THREADS_VIRTUAL_ENABLED:-true}
+  SERVER_COMPRESSION_ENABLED: ${SERVER_COMPRESSION_ENABLED:-true}
+  SERVER_COMPRESSION_MIME_TYPES: application/json,application/javascript,text/html,text/xml,text/plain,text/css,image/svg+xml
+  SERVER_COMPRESSION_MIN_RESPONSE_SIZE: ${SERVER_COMPRESSION_MIN_RESPONSE_SIZE:-1024}
+  SERVER_TOMCAT_THREADS_MAX: ${SERVER_TOMCAT_THREADS_MAX:-80}
+  SERVER_TOMCAT_THREADS_MIN_SPARE: ${SERVER_TOMCAT_THREADS_MIN_SPARE:-8}
+  SERVER_TOMCAT_ACCEPT_COUNT: ${SERVER_TOMCAT_ACCEPT_COUNT:-120}
+  SERVER_TOMCAT_MAX_CONNECTIONS: ${SERVER_TOMCAT_MAX_CONNECTIONS:-4096}
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:-4}
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:-1}
+  SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:-3000}
+  SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT:-2000}
+  SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT: ${SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT:-60000}
+  SPRING_DATASOURCE_HIKARI_MAX_LIFETIME: ${SPRING_DATASOURCE_HIKARI_MAX_LIFETIME:-600000}
+  MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:-true}
+  SAAS_TRAFFIC_GATEWAY_AUTH_SERVICE_QPS: ${SAAS_TRAFFIC_GATEWAY_AUTH_SERVICE_QPS:-120}
+  SAAS_TRAFFIC_GATEWAY_FILE_SERVICE_QPS: ${SAAS_TRAFFIC_GATEWAY_FILE_SERVICE_QPS:-80}
+  SAAS_TRAFFIC_GATEWAY_MESSAGE_SERVICE_QPS: ${SAAS_TRAFFIC_GATEWAY_MESSAGE_SERVICE_QPS:-80}
+  SAAS_TRAFFIC_GATEWAY_PLUGIN_SERVICE_QPS: ${SAAS_TRAFFIC_GATEWAY_PLUGIN_SERVICE_QPS:-50}
+  SAAS_TRAFFIC_GATEWAY_LOCALIZATION_SERVICE_QPS: ${SAAS_TRAFFIC_GATEWAY_LOCALIZATION_SERVICE_QPS:-80}
+  SAAS_TRAFFIC_GATEWAY_SYSTEM_SERVICE_QPS: ${SAAS_TRAFFIC_GATEWAY_SYSTEM_SERVICE_QPS:-160}
+  SAAS_TRAFFIC_AUTH_LOGIN_QPS: ${SAAS_TRAFFIC_AUTH_LOGIN_QPS:-20}
+  SAAS_TRAFFIC_AUTH_LOGIN_CODE_CHALLENGE_QPS: ${SAAS_TRAFFIC_AUTH_LOGIN_CODE_CHALLENGE_QPS:-20}
+  SAAS_TRAFFIC_AUTH_LOGIN_CODE_COMPLETE_QPS: ${SAAS_TRAFFIC_AUTH_LOGIN_CODE_COMPLETE_QPS:-20}
+  SAAS_TRAFFIC_AUTH_SECOND_FACTOR_COMPLETE_QPS: ${SAAS_TRAFFIC_AUTH_SECOND_FACTOR_COMPLETE_QPS:-20}
+  SAAS_TRAFFIC_AUTH_REFRESH_TOKEN_QPS: ${SAAS_TRAFFIC_AUTH_REFRESH_TOKEN_QPS:-80}
+  SAAS_TRAFFIC_AUTH_CURRENT_USER_QPS: ${SAAS_TRAFFIC_AUTH_CURRENT_USER_QPS:-160}
+  SAAS_TRAFFIC_SYSTEM_PUBLIC_BRANDING_SETTINGS_QPS: ${SAAS_TRAFFIC_SYSTEM_PUBLIC_BRANDING_SETTINGS_QPS:-80}
+  SAAS_TRAFFIC_SYSTEM_PUBLIC_AGREEMENT_SETTINGS_QPS: ${SAAS_TRAFFIC_SYSTEM_PUBLIC_AGREEMENT_SETTINGS_QPS:-80}
+  SAAS_TRAFFIC_SYSTEM_PUBLIC_SECURITY_SETTINGS_QPS: ${SAAS_TRAFFIC_SYSTEM_PUBLIC_SECURITY_SETTINGS_QPS:-60}
+  SAAS_TRAFFIC_SYSTEM_PUBLIC_LOGIN_CAPABILITIES_QPS: ${SAAS_TRAFFIC_SYSTEM_PUBLIC_LOGIN_CAPABILITIES_QPS:-100}
+  SAAS_TRAFFIC_SYSTEM_PUBLIC_CAPTCHA_CHALLENGE_QPS: ${SAAS_TRAFFIC_SYSTEM_PUBLIC_CAPTCHA_CHALLENGE_QPS:-80}
+  SAAS_TRAFFIC_SYSTEM_PUBLIC_CAPTCHA_SLIDER_VERIFY_QPS: ${SAAS_TRAFFIC_SYSTEM_PUBLIC_CAPTCHA_SLIDER_VERIFY_QPS:-40}
   CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:?CORS_ALLOWED_ORIGIN_PATTERNS is required}
   APP_VERSION: ${APP_VERSION:-0.1.0}
   BUILD_VERSION: ${BUILD_VERSION:-0.1.0}
@@ -39,6 +74,12 @@ x-common-env: &common-env
   OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: ${OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED:-true}
   OTEL_RESOURCE_ATTRIBUTES: service.namespace=legendary-invention,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
 
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: ${DOCKER_LOG_MAX_SIZE:-100m}
+    max-file: ${DOCKER_LOG_MAX_FILE:-3}
+
 services:
   mysql:
     profiles:
@@ -46,6 +87,9 @@ services:
     image: mysql:8.4
     container_name: legendary-mysql
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${MYSQL_MEM_LIMIT:-768m}
+    cpus: ${MYSQL_CPUS:-1.0}
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-saas}
@@ -61,20 +105,29 @@ services:
     image: redis:7.4
     container_name: legendary-redis
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${REDIS_MEM_LIMIT:-384m}
+    cpus: ${REDIS_CPUS:-0.5}
     command: >
       sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
-      redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
-      else redis-server --appendonly yes; fi'
+      redis-server --appendonly yes --maxmemory "$${REDIS_MAXMEMORY:-256mb}" --maxmemory-policy allkeys-lru --requirepass "$$REDIS_PASSWORD";
+      else redis-server --appendonly yes --maxmemory "$${REDIS_MAXMEMORY:-256mb}" --maxmemory-policy allkeys-lru; fi'
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-256mb}
       TZ: Asia/Shanghai
     volumes:
       - redis_data:/data
 
   nacos:
+    profiles:
+      - nacos
     image: nacos/nacos-server:v3.2.1
     container_name: legendary-nacos
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${NACOS_MEM_LIMIT:-768m}
+    cpus: ${NACOS_CPUS:-0.75}
     environment:
       MODE: standalone
       NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN is required}
@@ -92,7 +145,11 @@ services:
     image: xuxueli/xxl-job-admin:3.4.0
     container_name: legendary-xxl-job-admin
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${XXL_JOB_ADMIN_MEM_LIMIT:-384m}
+    cpus: ${XXL_JOB_ADMIN_CPUS:-0.5}
     environment:
+      JAVA_OPTS: ${XXL_JOB_ADMIN_JAVA_OPTS:--Xms64m -Xmx256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom}
       PARAMS: >-
         --server.port=8080
         --spring.datasource.url=jdbc:mysql://1Panel-mysql-fWzH:3306/${MYSQL_DATABASE:-saas}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
@@ -114,6 +171,9 @@ services:
     image: legendary/system-service:0.1.0
     container_name: legendary-system-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${SYSTEM_SERVICE_MEM_LIMIT:-768m}
+    cpus: ${SYSTEM_SERVICE_CPUS:-1.0}
     environment:
       <<: *common-env
       SERVER_PORT: 8080
@@ -149,6 +209,9 @@ services:
     image: legendary/gateway-service:0.1.0
     container_name: legendary-gateway-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${GATEWAY_SERVICE_MEM_LIMIT:-512m}
+    cpus: ${GATEWAY_SERVICE_CPUS:-0.75}
     environment:
       <<: *common-env
       SERVER_PORT: 8081
@@ -180,6 +243,9 @@ services:
     image: legendary/auth-service:0.1.0
     container_name: legendary-auth-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${AUTH_SERVICE_MEM_LIMIT:-384m}
+    cpus: ${AUTH_SERVICE_CPUS:-0.5}
     environment:
       <<: *common-env
       SERVER_PORT: 8082
@@ -201,6 +267,9 @@ services:
     image: legendary/file-service:0.1.0
     container_name: legendary-file-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${FILE_SERVICE_MEM_LIMIT:-384m}
+    cpus: ${FILE_SERVICE_CPUS:-0.5}
     environment:
       <<: *common-env
       SERVER_PORT: 8084
@@ -221,6 +290,9 @@ services:
     image: legendary/message-service:0.1.0
     container_name: legendary-message-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${MESSAGE_SERVICE_MEM_LIMIT:-384m}
+    cpus: ${MESSAGE_SERVICE_CPUS:-0.5}
     environment:
       <<: *common-env
       SERVER_PORT: 8085
@@ -241,6 +313,9 @@ services:
     image: legendary/plugin-service:0.1.0
     container_name: legendary-plugin-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${PLUGIN_SERVICE_MEM_LIMIT:-384m}
+    cpus: ${PLUGIN_SERVICE_CPUS:-0.5}
     environment:
       <<: *common-env
       SERVER_PORT: 8086
@@ -267,6 +342,9 @@ services:
     image: legendary/localization-service:0.1.0
     container_name: legendary-localization-service
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${LOCALIZATION_SERVICE_MEM_LIMIT:-320m}
+    cpus: ${LOCALIZATION_SERVICE_CPUS:-0.5}
     environment:
       <<: *common-env
       SERVER_PORT: 8088
@@ -286,6 +364,9 @@ services:
     image: legendary/job-executor:0.1.0
     container_name: legendary-job-executor
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${JOB_EXECUTOR_MEM_LIMIT:-320m}
+    cpus: ${JOB_EXECUTOR_CPUS:-0.5}
     environment:
       <<: *common-env
       SERVER_PORT: 8089
@@ -313,6 +394,9 @@ services:
     image: nginx:1.29-alpine
     container_name: legendary-api-proxy
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${API_PROXY_MEM_LIMIT:-128m}
+    cpus: ${API_PROXY_CPUS:-0.25}
     ports:
       - "${API_PROXY_BIND:-127.0.0.1:8000}:80"
     volumes:
@@ -330,6 +414,9 @@ services:
     image: legendary/frontend:0.1.0
     container_name: legendary-frontend
     restart: unless-stopped
+    logging: *json-logging
+    mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
+    cpus: ${FRONTEND_CPUS:-0.25}
     ports:
       - "127.0.0.1:8000:80"
     depends_on:
@@ -341,6 +428,7 @@ services:
     image: ${PROMETHEUS_IMAGE:-prom/prometheus@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3}
     container_name: legendary-prometheus
     restart: unless-stopped
+    logging: *json-logging
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -366,6 +454,7 @@ services:
     image: ${LOKI_IMAGE:-grafana/loki@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86}
     container_name: legendary-loki
     restart: unless-stopped
+    logging: *json-logging
     command:
       - -config.file=/etc/loki/config.yml
     ports:
@@ -380,6 +469,7 @@ services:
     image: ${TEMPO_IMAGE:-grafana/tempo@sha256:2513658c41faa9197dc7373599bb6119eb27bcb4232cc83779e2bc87cbc34299}
     container_name: legendary-tempo
     restart: unless-stopped
+    logging: *json-logging
     command:
       - -config.file=/etc/tempo/tempo.yml
     ports:
@@ -394,6 +484,7 @@ services:
     image: ${ALLOY_IMAGE:-grafana/alloy@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0}
     container_name: legendary-alloy
     restart: unless-stopped
+    logging: *json-logging
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -415,6 +506,7 @@ services:
     image: ${GRAFANA_IMAGE:-grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5}
     container_name: legendary-grafana
     restart: unless-stopped
+    logging: *json-logging
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-grafana-admin-password}

@@ -28,6 +28,10 @@ const observability = args.has('--observability');
 const serviceNames = parseServiceNames(rawArgs);
 const allowedServices = new Set([
   'system-service',
+  'mysql',
+  'redis',
+  'nacos',
+  'xxl-job-admin',
   'gateway-service',
   'auth-service',
   'file-service',
@@ -165,6 +169,7 @@ Options:
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
   --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
+  --nacos     Start the bundled Nacos container. This is also enabled when Nacos config or discovery is enabled in deploy/.env.
   -h, --help  Show this help message.
 `);
 }
@@ -218,11 +223,45 @@ function generatedEnvDefaults() {
     GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
     GRAFANA_ALERT_WEBHOOK_URL: '',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'http://localhost:*,http://127.0.0.1:*',
+    REDIS_MAXMEMORY: '256mb',
+    REDIS_MEM_LIMIT: '384m',
+    JAVA_OPTS: '-XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom',
+    SERVER_TOMCAT_THREADS_MAX: '80',
+    SERVER_TOMCAT_THREADS_MIN_SPARE: '8',
+    SERVER_TOMCAT_ACCEPT_COUNT: '120',
+    SERVER_TOMCAT_MAX_CONNECTIONS: '4096',
+    SPRING_THREADS_VIRTUAL_ENABLED: 'true',
+    SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '4',
+    SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1',
+    DOCKER_LOG_MAX_SIZE: '50m',
+    DOCKER_LOG_MAX_FILE: '2',
+    SYSTEM_SERVICE_MEM_LIMIT: '768m',
+    GATEWAY_SERVICE_MEM_LIMIT: '512m',
+    AUTH_SERVICE_MEM_LIMIT: '384m',
+    FILE_SERVICE_MEM_LIMIT: '384m',
+    MESSAGE_SERVICE_MEM_LIMIT: '384m',
+    PLUGIN_SERVICE_MEM_LIMIT: '384m',
+    LOCALIZATION_SERVICE_MEM_LIMIT: '320m',
+    JOB_EXECUTOR_MEM_LIMIT: '320m',
+    XXL_JOB_ADMIN_MEM_LIMIT: '384m',
+    API_PROXY_MEM_LIMIT: '128m',
+    SAAS_TRAFFIC_GATEWAY_AUTH_SERVICE_QPS: '120',
+    SAAS_TRAFFIC_GATEWAY_FILE_SERVICE_QPS: '80',
+    SAAS_TRAFFIC_GATEWAY_MESSAGE_SERVICE_QPS: '80',
+    SAAS_TRAFFIC_GATEWAY_PLUGIN_SERVICE_QPS: '50',
+    SAAS_TRAFFIC_GATEWAY_LOCALIZATION_SERVICE_QPS: '80',
+    SAAS_TRAFFIC_GATEWAY_SYSTEM_SERVICE_QPS: '160',
+    SAAS_TRAFFIC_AUTH_LOGIN_QPS: '20',
+    SAAS_TRAFFIC_AUTH_REFRESH_TOKEN_QPS: '80',
+    SAAS_TRAFFIC_AUTH_CURRENT_USER_QPS: '160',
   };
 }
 
 function ensureEnvFile() {
   const generatedValues = generatedEnvDefaults();
+  const legacyGeneratedValues = new Map([
+    ['JAVA_OPTS', '-XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom'],
+  ]);
 
   if (existsSync(envPath)) {
     let content = readFileSync(envPath, 'utf8');
@@ -233,6 +272,19 @@ function ensureEnvFile() {
       content = `${content.trimEnd()}\n${missingEntries.map(([key, value]) => `${key}=${value}`).join('\n')}\n`;
       writeFileSync(envPath, content);
       log(`Backfilled deploy/.env keys: ${missingEntries.map(([key]) => key).join(', ')}`);
+    }
+
+    let migratedKeys = [];
+    content = content.replace(/^([A-Z0-9_]+)=(.*)$/gm, (line, key, value) => {
+      if (legacyGeneratedValues.get(key) === value && generatedValues[key]) {
+        migratedKeys.push(key);
+        return `${key}=${generatedValues[key]}`;
+      }
+      return line;
+    });
+    if (migratedKeys.length > 0) {
+      writeFileSync(envPath, content);
+      log(`Migrated deploy/.env generated defaults: ${migratedKeys.join(', ')}`);
     }
     return;
   }
@@ -375,7 +427,12 @@ policies:
 }
 
 function composeArgs(...extraArgs) {
-  const profileArgs = observability ? ['--profile', 'observability'] : [];
+  const env = parseEnvFile(envPath);
+  const useNacos = args.has('--nacos') || isEnabled(env.NACOS_CONFIG_ENABLED) || isEnabled(env.NACOS_DISCOVERY_ENABLED);
+  const profileArgs = [
+    ...(observability ? ['--profile', 'observability'] : []),
+    ...(useNacos ? ['--profile', 'nacos'] : []),
+  ];
   return ['compose', '--env-file', 'deploy/.env', '-f', composeFile, ...profileArgs, ...extraArgs];
 }
 
