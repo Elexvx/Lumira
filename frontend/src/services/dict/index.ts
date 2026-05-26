@@ -54,6 +54,22 @@ export const dictService = {
       method: 'DELETE',
       ...options,
     }),
+  itemsByCode: async (dictCode: string, options: RequestOptions = {}) => {
+    const page = await dictService.types(
+      {
+        dictCode,
+        status: 'ENABLED',
+        pageNo: 1,
+        pageSize: 1,
+      },
+      options,
+    );
+    const dictType = page.records.find((item) => item.dictCode === dictCode) || page.records[0];
+    if (!dictType) {
+      return [];
+    }
+    return dictService.items(dictType.id, options);
+  },
   items: (dictTypeId: number, options: RequestOptions = {}) =>
     request<DictItemRecord[]>(`/v1/system/dict-types/${dictTypeId}/items`, {
       method: 'GET',

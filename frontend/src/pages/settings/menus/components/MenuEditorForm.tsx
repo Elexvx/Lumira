@@ -2,10 +2,34 @@ import { Form, Input, InputNumber, Select } from 'antd';
 import type { FormProps } from 'antd';
 import type { MenuRecord } from '@/types/api';
 
+export interface MenuIconOption {
+  label: string;
+  value: string;
+}
+
 interface MenuEditorFormProps {
   formProps: FormProps;
   parentOptions: Array<{ label: string; value: number }>;
+  iconOptions: MenuIconOption[];
+  iconLoading?: boolean;
 }
+
+export const DEFAULT_MENU_ICON_OPTIONS: MenuIconOption[] = [
+  { label: '首页 / DashboardOutlined', value: 'DashboardOutlined' },
+  { label: '应用 / AppstoreOutlined', value: 'AppstoreOutlined' },
+  { label: '设置 / SettingOutlined', value: 'SettingOutlined' },
+  { label: '用户 / UserOutlined', value: 'UserOutlined' },
+  { label: '团队 / TeamOutlined', value: 'TeamOutlined' },
+  { label: '权限 / SafetyOutlined', value: 'SafetyOutlined' },
+  { label: '菜单 / MenuOutlined', value: 'MenuOutlined' },
+  { label: '字典 / DatabaseOutlined', value: 'DatabaseOutlined' },
+  { label: '表单 / FormOutlined', value: 'FormOutlined' },
+  { label: '通知 / NotificationOutlined', value: 'NotificationOutlined' },
+  { label: '机器人 / RobotOutlined', value: 'RobotOutlined' },
+  { label: '接口 / ApiOutlined', value: 'ApiOutlined' },
+  { label: '文件 / FolderOpenOutlined', value: 'FolderOpenOutlined' },
+  { label: '审计 / AuditOutlined', value: 'AuditOutlined' },
+];
 
 const MENU_TYPE_OPTIONS = [
   { label: '目录', value: 'CATALOG' },
@@ -24,7 +48,7 @@ export const buildParentMenuOptions = (menus: Array<MenuRecord & { level: number
     value: menu.id,
   }));
 
-export const MenuEditorForm = ({ formProps, parentOptions }: MenuEditorFormProps) => (
+export const MenuEditorForm = ({ formProps, parentOptions, iconOptions, iconLoading }: MenuEditorFormProps) => (
   <Form {...formProps}>
     <Form.Item name="parentId" label="上级菜单">
       <Select allowClear options={parentOptions} />
@@ -44,8 +68,15 @@ export const MenuEditorForm = ({ formProps, parentOptions }: MenuEditorFormProps
     <Form.Item name="component" label="组件">
       <Input />
     </Form.Item>
-    <Form.Item name="icon" label="图标" extra="填写 Ant Design 图标名，例如：RobotOutlined、SettingOutlined。">
-      <Input placeholder="如：RobotOutlined" />
+    <Form.Item name="icon" label="图标" extra="图标选项来自字典 menu_icon，可在字典管理中维护。">
+      <Select
+        allowClear
+        showSearch
+        loading={iconLoading}
+        optionFilterProp="label"
+        options={iconOptions.length ? iconOptions : DEFAULT_MENU_ICON_OPTIONS}
+        placeholder="请选择图标"
+      />
     </Form.Item>
     <Form.Item name="sortNo" label="排序">
       <InputNumber style={{ width: '100%' }} />

@@ -11,7 +11,12 @@ import { usePagePermissionActions } from '@/features/permissions/usePagePermissi
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/settings/menus/columns';
-import { MenuEditorForm, buildParentMenuOptions } from '@/pages/settings/menus/components/MenuEditorForm';
+import {
+  DEFAULT_MENU_ICON_OPTIONS,
+  MenuEditorForm,
+  buildParentMenuOptions,
+  type MenuIconOption,
+} from '@/pages/settings/menus/components/MenuEditorForm';
 import {
   flattenMenuOrder,
   flattenMenus,
@@ -23,9 +28,10 @@ import {
   type MenuDropPosition,
 } from '@/pages/settings/menus/treeUtils';
 import { buildMenuTableData } from '@/pages/settings/menus/tableData';
+import { dictService } from '@/services/dict';
 import { iamService } from '@/services/iam';
 import { backendRouteMeta } from '@/routes/meta';
-import type { MenuRecord } from '@/types/api';
+import type { DictItemRecord, MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import {
@@ -69,6 +75,17 @@ interface SettingsRouteRecord {
   sortNo: number;
   status: string;
 }
+
+const MENU_ICON_DICT_CODE = 'menu_icon';
+
+const toMenuIconOptions = (items: DictItemRecord[]): MenuIconOption[] =>
+  items
+    .filter((item) => item.status === 'ENABLED')
+    .sort((first, second) => first.sortNo - second.sortNo)
+    .map((item) => ({
+      label: item.itemLabel || item.itemValue,
+      value: item.itemValue,
+    }));
 
 const buildSettingsRouteRecords = (routeOrder: string[], routeIcons: Record<string, string>): SettingsRouteRecord[] => routeOrder.map((path, index) => {
   const meta = backendRouteMeta.find((item) => item.path === path);
@@ -333,6 +350,8 @@ const MenuManagementPage = () => {
   const [reordering, setReordering] = useState(false);
   const [activeTab, setActiveTab] = useState('main');
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([]);
+  const [menuIconOptions, setMenuIconOptions] = useState<MenuIconOption[]>(DEFAULT_MENU_ICON_OPTIONS);
+  const [menuIconLoading, setMenuIconLoading] = useState(false);
   const canSaveMenu = actionPermission.can(menuCrud.drawer.editingId ? 'system:menu:update' : 'system:menu:create');
   const editorFormProps = useStandardFormProps({
     form: editorForm,
@@ -386,6 +405,22 @@ const MenuManagementPage = () => {
     });
   }, [setInitialState]);
 
+  const loadMenuIconOptions = useCallback(async () => {
+    setMenuIconLoading(true);
+    try {
+      const items = await dictService.itemsByCode(MENU_ICON_DICT_CODE, {
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+      });
+      const options = toMenuIconOptions(items);
+      setMenuIconOptions(options.length ? options : DEFAULT_MENU_ICON_OPTIONS);
+    } catch {
+      setMenuIconOptions(DEFAULT_MENU_ICON_OPTIONS);
+    } finally {
+      setMenuIconLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -395,6 +430,10 @@ const MenuManagementPage = () => {
       }
     })();
   }, [loadMenus]);
+
+  useEffect(() => {
+    void loadMenuIconOptions();
+  }, [loadMenuIconOptions]);
 
   useEffect(() => {
     menuCrud.reloadTable();
@@ -723,7 +762,12 @@ const MenuManagementPage = () => {
           { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveMenu, onClick: () => void saveMenu() },
         ]}
       >
-        <MenuEditorForm formProps={editorFormProps} parentOptions={buildParentMenuOptions(editableFlatMenus)} />
+        <MenuEditorForm
+          formProps={editorFormProps}
+          parentOptions={buildParentMenuOptions(editableFlatMenus)}
+          iconOptions={menuIconOptions}
+          iconLoading={menuIconLoading}
+        />
       </ManagementDrawer>
 
       <ManagementDrawer
