@@ -418,6 +418,15 @@ function ensureDocker() {
   log('Docker installed and running.');
 }
 
+function checkEnvironment(profileName) {
+  run('node', [
+    'scripts/check-environment.mjs',
+    '--install-mode',
+    '--skip-network',
+    `--profile=${profileName}`,
+  ]);
+}
+
 function composeProfiles(options) {
   return [
     ...(options.useLocalMysql ? ['--profile', 'local-mysql'] : []),
@@ -505,6 +514,7 @@ async function main() {
   const profile = defaultCapacityProfiles[options.profileName] || defaultCapacityProfiles[capacity.profileName];
   log(`Using capacity profile: ${profile.label}`);
   ensureEnvFile(options, profile);
+  checkEnvironment(options.profileName);
   ensureDocker();
   installContainers(options);
   runVerification(options, profile);
