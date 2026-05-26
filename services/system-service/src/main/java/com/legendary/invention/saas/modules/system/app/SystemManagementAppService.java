@@ -789,8 +789,13 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
+        List<SystemVO.MenuVO> persistedMenus = listCustomMenus(currentUser);
+        if (!persistedMenus.isEmpty()) {
+            sortMenuTree(persistedMenus);
+            return persistedMenus;
+        }
+
         List<SystemVO.MenuVO> menus = new ArrayList<>(SystemRouteCatalog.buildBuiltinPermissionMenus());
-        menus.addAll(listCustomMenus(currentUser));
         sortMenuTree(menus);
         return menus;
     }
@@ -809,7 +814,6 @@ public class SystemManagementAppService {
                 new BeanPropertyRowMapper<>(SystemVO.MenuVO.class),
                 tenantId
         ).stream()
-                .filter(menu -> !SystemRouteCatalog.isBuiltInMenu(menu))
                 .toList();
         return buildMenuTree(menus);
     }
@@ -894,7 +898,6 @@ public class SystemManagementAppService {
     public SystemVO.MenuVO updateMenu(CurrentUser currentUser, Long menuId, SystemDTO.MenuUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
         ensureEditableMenu(menuId, tenantId);
-        ensureEditableMenuRequest(request);
         ensureEditableParentMenu(request.getParentId(), tenantId);
         insertMenu(menuId, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
@@ -2407,7 +2410,6 @@ public class SystemManagementAppService {
     }
 
     private Long insertMenu(Long menuId, Long tenantId, SystemDTO.MenuUpsertRequest request, Long operatorId) {
-        ensureEditableMenuRequest(request);
         if (menuId == null) {
             jdbcTemplate.update(
                     """
@@ -2485,7 +2487,7 @@ public class SystemManagementAppService {
     }
 
     private void ensureEditableMenu(SystemVO.MenuVO menu) {
-        if (SystemRouteCatalog.isBuiltInMenu(menu)) {
+        if (menu == null || menu.getId() == null || menu.getId() <= 0 || menu.isBuiltin()) {
             throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
         }
     }

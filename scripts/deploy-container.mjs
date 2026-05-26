@@ -15,7 +15,8 @@ const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
 const alertRulesPath = path.join(repoRoot, 'deploy', 'observability', 'grafana', 'provisioning', 'alerting', 'rules.yml');
 const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafana-alerting');
 
-const args = new Set(process.argv.slice(2));
+const rawArgs = process.argv.slice(2);
+const args = new Set(rawArgs);
 const rebuild = args.has('--rebuild');
 const stop = args.has('--stop');
 const logs = args.has('--logs');
@@ -24,9 +25,65 @@ const reset = args.has('--reset');
 const help = args.has('--help') || args.has('-h');
 const skipCheck = args.has('--skip-check');
 const observability = args.has('--observability');
+const serviceNames = parseServiceNames(rawArgs);
+const allowedServices = new Set([
+  'system-service',
+  'gateway-service',
+  'auth-service',
+  'file-service',
+  'message-service',
+  'plugin-service',
+  'localization-service',
+  'job-executor',
+  'api-proxy',
+  'frontend',
+  'prometheus',
+  'loki',
+  'tempo',
+  'alloy',
+  'grafana',
+]);
 
 function log(message) {
   console.log(`[deploy] ${message}`);
+}
+
+function parseServiceNames(argv) {
+  const values = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--services' || arg === '--service') {
+      const nextValue = argv[index + 1];
+      if (!nextValue || nextValue.startsWith('--')) {
+        console.error(`${arg} requires a comma-separated service list.`);
+        process.exit(1);
+      }
+      values.push(nextValue);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--services=')) {
+      values.push(arg.slice('--services='.length));
+      continue;
+    }
+    if (arg.startsWith('--service=')) {
+      values.push(arg.slice('--service='.length));
+    }
+  }
+
+  return values
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function validateServiceNames() {
+  const invalidServices = serviceNames.filter((serviceName) => !allowedServices.has(serviceName));
+  if (invalidServices.length > 0) {
+    console.error(`Unknown service(s): ${invalidServices.join(', ')}`);
+    console.error(`Allowed services: ${Array.from(allowedServices).sort().join(', ')}`);
+    process.exit(1);
+  }
 }
 
 function run(command, commandArgs, options = {}) {
@@ -101,6 +158,7 @@ function printHelp() {
 
 Options:
   --rebuild   Force image rebuild.
+  --services  Deploy only selected services, comma-separated. Example: --services system-service
   --stop      Stop the deployment.
   --reset     Stop and remove volumes. This deletes database and uploaded data.
   --logs      Follow service logs.
@@ -503,13 +561,21 @@ if (logs) {
 }
 
 run('docker', composeArgs('config'), { stdio: 'ignore' });
+validateServiceNames();
 
-const upArgs = ['up', '-d'];
-if (rebuild) {
-  upArgs.push('--build');
+if (serviceNames.length > 0) {
+  log(`Deploying selected service(s) without dependency restart: ${serviceNames.join(', ')}`);
+  if (rebuild) {
+    runWithRetry('docker', composeArgs('build', ...serviceNames), 1);
+  }
+  runWithRetry('docker', composeArgs('up', '-d', '--no-deps', ...serviceNames), 1);
+} else {
+  const upArgs = ['up', '-d'];
+  if (rebuild) {
+    upArgs.push('--build');
+  }
+  runWithRetry('docker', composeArgs(...upArgs), 1);
 }
-
-runWithRetry('docker', composeArgs(...upArgs), 1);
 run('docker', composeArgs('ps'));
 
 if (!skipCheck) {

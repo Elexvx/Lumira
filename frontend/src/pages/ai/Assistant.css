@@ -299,6 +299,14 @@
   width: 100%;
 }
 
+.saas-ai-assistant-agent-suggestion .ant-cascader-dropdown {
+  min-width: min(360px, calc(100vw - 48px));
+}
+
+.saas-ai-assistant-agent-suggestion .ant-cascader-menu {
+  min-width: min(360px, calc(100vw - 48px));
+}
+
 .saas-ai-assistant-composer {
   display: flex;
   flex-direction: column;
