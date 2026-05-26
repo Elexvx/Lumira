@@ -61,6 +61,7 @@ export default defineConfig({
     },
   ],
   npmClient: 'pnpm',
+  hash: true,
   define: {
     'process.env.UMI_APP_API_BASE_URL': process.env.UMI_APP_API_BASE_URL || '',
     'process.env.UMI_APP_API_PREFIX': process.env.UMI_APP_API_PREFIX || '',

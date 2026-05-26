@@ -23,14 +23,15 @@ api.elexvx.com / HTTPS / CDN / WAF
     -> plugin-service
     -> localization-service
     -> job-executor
-  -> MySQL / Redis / Nacos / XXL-Job
+  -> MySQL / Redis / XXL-Job
+  -> Nacos（仅在启用 Nacos 配置/发现时启动）
 ```
 
 ## 默认启动组件
 
 - MySQL：`mysql:8.4`
 - Redis：`redis:7.4`
-- Nacos：`nacos/nacos-server:v3.2.1`
+- Nacos：`nacos/nacos-server:v3.2.1`，默认不启动；只有 `NACOS_CONFIG_ENABLED=true`、`NACOS_DISCOVERY_ENABLED=true` 或显式传入 `--nacos` 时启动
 - XXL-Job Admin：`xuxueli/xxl-job-admin:3.4.0`
 - api-proxy：Nginx 后端统一入口
 - gateway-service：统一后端网关
@@ -51,6 +52,8 @@ api.elexvx.com / HTTPS / CDN / WAF
 ```bash
 node scripts/deploy-container.mjs --rebuild
 ```
+
+默认部署按 4C4G 小型服务器收敛资源占用：Java 服务限制堆比例和元空间，Tomcat 线程池、Hikari 连接池、Redis 内存、Docker 日志和 API 入口限流都有默认上限。高流量时优先返回 429 或排队，而不是让 JVM、数据库连接和磁盘日志把服务器打满。
 
 首次运行会自动生成 `deploy/.env`，并为数据库、JWT、插件签名、任务内部调用等配置生成随机密钥。
 
@@ -79,6 +82,36 @@ node scripts/deploy-container.mjs --rebuild --observability
 - Alloy：`http://127.0.0.1:12345`
 
 Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Observability Overview` 看板。服务运行时会暴露 `/actuator/prometheus`，并在启用观测栈时通过 OpenTelemetry Java Agent 把 trace 发送到 Alloy。
+
+4C4G 服务器上不建议常驻完整观测栈；需要排查性能问题时短时开启，排查结束后停止观测栈释放内存。
+
+## 4C4G 稳定运行建议
+
+- 默认使用外部或 1Panel MySQL；本仓库内置 MySQL 仅用于 `local-mysql` profile。
+- 默认不启动 Nacos，本地配置和服务发现都是 optional；确实需要 Nacos 时运行 `node scripts/deploy-container.mjs --rebuild --nacos`。
+- 默认不启动 `frontend` 容器，正式前端走 Vercel；服务器只承担后端和 API proxy。
+- `deploy/.env` 里的 `*_MEM_LIMIT`、`SERVER_TOMCAT_THREADS_MAX`、`SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE` 和 `SAAS_TRAFFIC_*_QPS` 是小机器容量闸门。先压测观察，再逐步调大。
+- API proxy 对单 IP 做基础限流和连接数限制；业务层 Sentinel 继续保护登录、公开配置、验证码和后端路由。
+- Redis 默认 `maxmemory=256mb` 且使用 `allkeys-lru`，避免缓存或会话峰值把宿主机内存拖垮。
+- Docker 日志默认轮转，避免高流量错误日志撑满磁盘。
+
+部署后可以跑一个轻量压力冒烟：
+
+```bash
+LOAD_SMOKE_BASE_URL=http://127.0.0.1:8000 \
+LOAD_SMOKE_DURATION_MS=30000 \
+LOAD_SMOKE_CONCURRENCY=24 \
+node scripts/load-smoke.mjs
+```
+
+公网域名检查：
+
+```bash
+LOAD_SMOKE_BASE_URL=https://api.elexvx.com \
+LOAD_SMOKE_DURATION_MS=30000 \
+LOAD_SMOKE_CONCURRENCY=24 \
+node scripts/load-smoke.mjs
+```
 
 ## Vercel 前端配置
 

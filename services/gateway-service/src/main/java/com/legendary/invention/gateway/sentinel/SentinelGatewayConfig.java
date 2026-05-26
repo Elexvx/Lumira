@@ -14,6 +14,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerCodecConfigurer;
@@ -32,13 +33,16 @@ public class SentinelGatewayConfig {
 
     private final ObjectProvider<List<ViewResolver>> viewResolversProvider;
     private final ServerCodecConfigurer serverCodecConfigurer;
+    private final Environment environment;
 
     public SentinelGatewayConfig(
             ObjectProvider<List<ViewResolver>> viewResolversProvider,
-            ServerCodecConfigurer serverCodecConfigurer
+            ServerCodecConfigurer serverCodecConfigurer,
+            Environment environment
     ) {
         this.viewResolversProvider = viewResolversProvider;
         this.serverCodecConfigurer = serverCodecConfigurer;
+        this.environment = environment;
     }
 
     @PostConstruct
@@ -75,13 +79,17 @@ public class SentinelGatewayConfig {
 
     private Set<GatewayFlowRule> defaultGatewayRules() {
         Set<GatewayFlowRule> rules = new LinkedHashSet<>();
-        rules.add(routeRule("auth-service", 400));
-        rules.add(routeRule("file-service", 200));
-        rules.add(routeRule("message-service", 200));
-        rules.add(routeRule("plugin-service", 120));
-        rules.add(routeRule("localization-service", 120));
-        rules.add(routeRule("system-service", 500));
+        rules.add(routeRule("auth-service", qps("saas.traffic.gateway.auth-service-qps", 120)));
+        rules.add(routeRule("file-service", qps("saas.traffic.gateway.file-service-qps", 80)));
+        rules.add(routeRule("message-service", qps("saas.traffic.gateway.message-service-qps", 80)));
+        rules.add(routeRule("plugin-service", qps("saas.traffic.gateway.plugin-service-qps", 50)));
+        rules.add(routeRule("localization-service", qps("saas.traffic.gateway.localization-service-qps", 80)));
+        rules.add(routeRule("system-service", qps("saas.traffic.gateway.system-service-qps", 160)));
         return rules;
+    }
+
+    private double qps(String property, double defaultValue) {
+        return environment.getProperty(property, Double.class, defaultValue);
     }
 
     private GatewayFlowRule routeRule(String routeId, double qps) {
