@@ -81,6 +81,7 @@ public class SystemDepartmentAppService {
     public DepartmentVO createDepartment(CurrentUser currentUser, DepartmentUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
         validateParent(tenantId, null, request.getParentId());
+        validateDeptCodeUnique(tenantId, null, request.getDeptCode());
         jdbcTemplate.update(
                 """
                         insert into sys_department (
@@ -108,6 +109,7 @@ public class SystemDepartmentAppService {
         Long tenantId = currentTenantId(currentUser);
         DepartmentVO existing = getDepartment(currentUser, id);
         validateParent(tenantId, id, request.getParentId());
+        validateDeptCodeUnique(tenantId, id, request.getDeptCode());
         int updated = jdbcTemplate.update(
                 """
                         update sys_department
@@ -234,6 +236,30 @@ public class SystemDepartmentAppService {
         }
     }
 
+    private void validateDeptCodeUnique(Long tenantId, Long currentId, String deptCode) {
+        if (!StringUtils.hasText(deptCode)) {
+            return;
+        }
+        Long count = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from sys_department
+                        where tenant_id = ?
+                          and dept_code = ?
+                          and deleted = 0
+                          and (? is null or id <> ?)
+                        """,
+                Long.class,
+                tenantId,
+                deptCode.trim(),
+                currentId,
+                currentId
+        );
+        if (count != null && count > 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "部门编码已存在");
+        }
+    }
+
     private List<DepartmentVO> buildTree(List<DepartmentVO> rows) {
         Map<Long, DepartmentVO> byId = new LinkedHashMap<>();
         for (DepartmentVO row : rows) {
@@ -250,7 +276,19 @@ public class SystemDepartmentAppService {
                 parent.getChildren().add(row);
             }
         }
+        for (DepartmentVO root : roots) {
+            rollupUserCount(root);
+        }
         return roots;
+    }
+
+    private int rollupUserCount(DepartmentVO department) {
+        int total = department.getUserCount() == null ? 0 : department.getUserCount();
+        for (DepartmentVO child : department.getChildren()) {
+            total += rollupUserCount(child);
+        }
+        department.setUserCount(total);
+        return total;
     }
 
     private Long normalizeParentId(Long parentId) {
