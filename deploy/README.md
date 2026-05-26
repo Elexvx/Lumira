@@ -47,6 +47,24 @@ api.elexvx.com / HTTPS / CDN / WAF
 
 ## 一键部署后端完整平台
 
+安装前可以先检测服务器环境：
+
+```bash
+node scripts/check-environment.mjs
+```
+
+严格模式会把警告也视为失败，适合 CI 或正式交付前检查：
+
+```bash
+node scripts/check-environment.mjs --strict
+```
+
+机器可运行但还没安装 Docker 时，用安装模式查看报告：
+
+```bash
+node scripts/check-environment.mjs --install-mode
+```
+
 首次安装或服务器换规格时，推荐先运行交互式安装器：
 
 ```bash
@@ -56,6 +74,7 @@ node scripts/install-platform.mjs
 安装器会分步完成：
 
 - 探测 CPU、内存、磁盘、系统架构。
+- 检测 Node.js、Docker、Docker Compose、端口占用、必填环境变量、外部 MySQL 连通性和资源档建议。
 - 交互确认 API 域名、前端 Origin、是否启用内置 MySQL、Nacos、前端容器和观测栈。
 - 按服务器规格自动写入 `deploy/.env` 的 JVM、容器内存、Redis、数据库连接池、Tomcat 线程池、限流和日志轮转参数。
 - 检查 Docker；Linux 服务器缺少 Docker 时可自动安装。
