@@ -15,7 +15,7 @@ type PasteEventLike = {
   };
 };
 
-const UNSAFE_ACCOUNT_CHARS_PATTERN = /[\s<>"'`;\\()[\]{}]/g;
+const UNSAFE_ACCOUNT_CHARS_PATTERN = /[^A-Za-z0-9@._-]/g;
 const MOBILE_UNSAFE_CHARS_PATTERN = /\D/g;
 const VERIFICATION_CODE_UNSAFE_CHARS_PATTERN = /[^A-Za-z0-9]/g;
 
