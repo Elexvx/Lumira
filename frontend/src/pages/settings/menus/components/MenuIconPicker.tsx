@@ -121,6 +121,7 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
       <Input
         allowClear
         className="saas-menu-icon-picker__search"
+        size="small"
         suffix={<SearchOutlined />}
         placeholder="搜索"
         value={keyword}
@@ -130,6 +131,7 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
         block
         className="saas-menu-icon-picker__styles"
         options={ICON_STYLE_OPTIONS}
+        size="small"
         value={activeStyle}
         onChange={(nextValue) => setActiveStyle(nextValue as IconStyle)}
       />

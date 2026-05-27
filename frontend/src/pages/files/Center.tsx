@@ -141,6 +141,7 @@ const SystemFilesPage = () => {
   const canManageStorage = actionPermission.can('system:file:manage');
   const canDeleteStorage = actionPermission.can('system:file:manage:delete');
   const canUploadFile = actionPermission.can('system:file:upload');
+  const canUploadInCurrentScope = !isTenantScope && canUploadFile;
 
   const openStorageDrawer = (provider: FileStorageProvider, record?: FileStorageSpaceRecord) => {
     setStorageDrawerMode(record ? 'edit' : 'create');
@@ -225,6 +226,10 @@ const SystemFilesPage = () => {
   };
 
   const openUploadDrawer = () => {
+    if (!canUploadInCurrentScope) {
+      message.warning(formatMessage({ id: 'system.files.bucketUploadDisabled', defaultMessage: 'Storage buckets do not support uploads from the admin console' }));
+      return;
+    }
     uploadForm.resetFields();
     setUploadFileList([]);
     setUploadDrawerOpen(true);
@@ -344,6 +349,10 @@ const SystemFilesPage = () => {
   }, [previewDrawerOpen, previewRecord?.id, requestOptions, scopeParams]);
 
   const handleUpload = async () => {
+    if (!canUploadInCurrentScope) {
+      message.warning(formatMessage({ id: 'system.files.bucketUploadDisabled', defaultMessage: 'Storage buckets do not support uploads from the admin console' }));
+      return;
+    }
     const values = await uploadForm.validateFields();
     const files = uploadFileList.map((item) => item.originFileObj).filter(Boolean) as File[];
     if (!files.length) {
@@ -676,9 +685,9 @@ const SystemFilesPage = () => {
 
   const actionToolbar = actionPermission.buildToolbarActions([
     {
-      hidden: isTenantScope && !activeBucket,
+      hidden: !canUploadInCurrentScope,
       value: (
-        <Button key="upload" type="primary" icon={<UploadOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canUploadFile} onClick={openUploadDrawer}>
+        <Button key="upload" type="primary" icon={<UploadOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canUploadInCurrentScope} onClick={openUploadDrawer}>
           {formatMessage({ id: 'common.uploadDocument', defaultMessage: 'Upload document' })}
         </Button>
       ),
@@ -843,7 +852,7 @@ const SystemFilesPage = () => {
         onClose={closeUploadDrawer}
         footerActions={[
           { key: 'cancel', label: formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' }), onClick: closeUploadDrawer },
-          { key: 'upload', label: formatMessage({ id: 'system.files.drawer.startUpload', defaultMessage: 'Start upload' }), type: 'primary', loading: uploading, disabled: !canUploadFile, onClick: () => void handleUpload() },
+          { key: 'upload', label: formatMessage({ id: 'system.files.drawer.startUpload', defaultMessage: 'Start upload' }), type: 'primary', loading: uploading, disabled: !canUploadInCurrentScope, onClick: () => void handleUpload() },
         ]}
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>

@@ -33,6 +33,7 @@ export interface RequestOptions {
   skipAuth?: boolean;
   silent?: boolean;
   allowDuplicate?: boolean;
+  timeoutMs?: number;
 }
 
 export interface StreamRequestOptions extends RequestOptions {
@@ -57,11 +58,15 @@ export const request = async <T>(url: string, options: RequestOptions = {}): Pro
     let refreshedAfterUnauthorized = false;
 
     while (true) {
-      const response = await fetchWithTimeout(buildRequestUrl(url, options.params), {
-        method: options.method || 'GET',
-        headers: buildRequestHeaders(options, authSnapshot),
-        body: buildRequestBody(options.data, options.method),
-      });
+      const response = await fetchWithTimeout(
+        buildRequestUrl(url, options.params),
+        {
+          method: options.method || 'GET',
+          headers: buildRequestHeaders(options, authSnapshot),
+          body: buildRequestBody(options.data, options.method),
+        },
+        options.timeoutMs,
+      );
       const responseData = await parseResponseData(response);
       const httpStatus = response.status;
       const requestId = getResponseRequestId(response.headers, responseData);
@@ -173,11 +178,15 @@ export const requestFile = async (url: string, options: RequestOptions = {}) => 
     activeWriteRequests.add(duplicateKey);
   }
   try {
-    const response = await fetchWithTimeout(buildRequestUrl(url, options.params), {
-      method: options.method || 'GET',
-      headers: buildRequestHeaders(options, authSnapshot),
-      body: buildRequestBody(options.data, options.method),
-    });
+    const response = await fetchWithTimeout(
+      buildRequestUrl(url, options.params),
+      {
+        method: options.method || 'GET',
+        headers: buildRequestHeaders(options, authSnapshot),
+        body: buildRequestBody(options.data, options.method),
+      },
+      options.timeoutMs,
+    );
 
     if (!response.ok) {
       throw await buildFileRequestError(response, options, authSnapshot);
@@ -308,8 +317,8 @@ const buildRequestBody = (data: unknown, method?: RequestOptions['method']) => {
   return JSON.stringify(data);
 };
 
-const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
-  const timeoutMs = resolveRequestTimeoutMs();
+const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutOverrideMs?: number) => {
+  const timeoutMs = timeoutOverrideMs ?? resolveRequestTimeoutMs();
   if (!timeoutMs || timeoutMs <= 0) {
     return fetch(input, init);
   }

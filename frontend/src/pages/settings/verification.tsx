@@ -141,6 +141,19 @@ const verificationFormInitialValues: VerificationSettings = {
   loginModeOrder: ['passkey', 'sms', 'email', 'password'],
 };
 
+const resolveLoginModeFromAuthenticatorKey = (key: AuthenticatorCode): LoginModeCode => {
+  if (key === 'passkey_login') {
+    return 'passkey';
+  }
+  if (key === 'sms_login') {
+    return 'sms';
+  }
+  if (key === 'email_login') {
+    return 'email';
+  }
+  return 'password';
+};
+
 const smtpFormInitialValues: SmtpSettings = {
   host: '',
   port: 25,
@@ -192,6 +205,7 @@ const SystemVerificationPage = () => {
   const [savingWechatSettings, setSavingWechatSettings] = useState(false);
   const [savingPasskeySettings, setSavingPasskeySettings] = useState(false);
   const [testingSmtpSettings, setTestingSmtpSettings] = useState(false);
+  const [togglingAuthenticatorKey, setTogglingAuthenticatorKey] = useState<AuthenticatorCode | null>(null);
 
   const verificationSettingsQuery = useQuery({
     queryKey: ['verification-settings'],
@@ -708,6 +722,22 @@ const SystemVerificationPage = () => {
     openConfigDrawer('basic');
   }, [canManageSettings, openConfigDrawer, passkeySettingsForm, smsSettingsForm, verificationForm]);
 
+  const handleToggleAuthenticator = useCallback(async (record: AuthenticatorRecord) => {
+    if (!canManageSettings) {
+      return;
+    }
+    setTogglingAuthenticatorKey(record.key);
+    try {
+      if (record.enabled) {
+        await handleDeleteAuthenticator(record.key);
+        return;
+      }
+      handleEnableAuthenticator(resolveLoginModeFromAuthenticatorKey(record.key));
+    } finally {
+      setTogglingAuthenticatorKey(null);
+    }
+  }, [canManageSettings, handleDeleteAuthenticator, handleEnableAuthenticator]);
+
   const activeProvider = normalizeProviderCode(currentProvider);
   const providerSchema = SMS_PROVIDER_SCHEMAS[activeProvider];
   const verificationLoading =
@@ -734,18 +764,7 @@ const SystemVerificationPage = () => {
     });
     return result;
   }, []);
-  const authenticatorKeyToMode = useCallback((key: AuthenticatorCode): LoginModeCode => {
-    if (key === 'passkey_login') {
-      return 'passkey';
-    }
-    if (key === 'sms_login') {
-      return 'sms';
-    }
-    if (key === 'email_login') {
-      return 'email';
-    }
-    return 'password';
-  }, []);
+  const authenticatorKeyToMode = useCallback(resolveLoginModeFromAuthenticatorKey, []);
   const authenticatorRows = useMemo<AuthenticatorRecord[]>(
     () => {
       const rowsByMode: Record<LoginModeCode, Omit<AuthenticatorRecord, 'order'>> = {
@@ -910,6 +929,25 @@ const SystemVerificationPage = () => {
         render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: '#52c41a' }} /> : null),
       },
       {
+        title: '',
+        dataIndex: 'toggle',
+        width: 96,
+        align: 'center',
+        search: false,
+        render: (_, record) => (
+          <Button
+            type="link"
+            size="small"
+            danger={record.enabled}
+            disabled={!canManageSettings}
+            loading={togglingAuthenticatorKey === record.key}
+            onClick={() => void handleToggleAuthenticator(record)}
+          >
+            {record.enabled ? '点击禁用' : '点击启用'}
+          </Button>
+        ),
+      },
+      {
         title: '操作',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
@@ -936,7 +974,7 @@ const SystemVerificationPage = () => {
         ),
       },
     ],
-    [canManageSettings, handleDeleteAuthenticator, openConfigDrawer, responsive.isMobile],
+    [canManageSettings, handleDeleteAuthenticator, handleToggleAuthenticator, openConfigDrawer, responsive.isDesktop, responsive.isMobile, token.colorTextSecondary, togglingAuthenticatorKey],
   );
 
   const renderVerificationTab = () => (
