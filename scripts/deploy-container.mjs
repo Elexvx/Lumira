@@ -24,6 +24,7 @@ const ps = args.has('--ps');
 const reset = args.has('--reset');
 const help = args.has('--help') || args.has('-h');
 const skipCheck = args.has('--skip-check');
+const skipReadiness = args.has('--skip-readiness');
 const observability = args.has('--observability');
 const skipDockerPrune = args.has('--skip-docker-prune');
 const serviceNames = parseServiceNames(rawArgs);
@@ -169,6 +170,7 @@ Options:
   --logs      Follow service logs.
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
+  --skip-readiness Skip selected-service readiness waits.
   --skip-docker-prune Skip automatic Docker build cache cleanup before rebuilds.
   --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
   --nacos     Start the bundled Nacos container. This is also enabled when Nacos config or discovery is enabled in deploy/.env.
@@ -538,6 +540,42 @@ async function checkDeployment() {
   log('Deployment health checks passed.');
 }
 
+async function checkSelectedServiceReadiness() {
+  if (skipReadiness || serviceNames.length === 0) {
+    return;
+  }
+
+  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
+  const gatewayUrl = process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8081';
+  const checks = {
+    'system-service': [
+      [`${baseUrl}/api/v1/public/security-settings`, 'system-service public settings API'],
+      [`${baseUrl}/api/health`, 'system-service health API'],
+    ],
+    'auth-service': [
+      [`${baseUrl}/api/v1/public/login-capabilities`, 'auth-service login capabilities API'],
+    ],
+    'gateway-service': [
+      [`${gatewayUrl}/actuator/health`, 'gateway actuator'],
+    ],
+    'localization-service': [
+      [`${baseUrl}/api/v1/localization/languages`, 'localization-service protected route', { expectedStatus: 401 }],
+    ],
+  };
+
+  const selectedChecks = serviceNames.flatMap((serviceName) => checks[serviceName] ?? []);
+  if (selectedChecks.length === 0) {
+    return;
+  }
+
+  log('Waiting for selected service readiness...');
+  for (const [url, label, options] of selectedChecks) {
+    // eslint-disable-next-line no-await-in-loop
+    await waitForHttp(url, label, options ?? {});
+  }
+  log('Selected service readiness checks passed.');
+}
+
 async function waitForPrometheusTargets() {
   const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22legendary-services%22%7D';
   const timeoutMs = 240_000;
@@ -661,6 +699,7 @@ if (serviceNames.length > 0) {
     runWithRetry('docker', composeArgs('build', ...serviceNames), 1);
   }
   runWithRetry('docker', composeArgs('up', '-d', '--no-deps', ...serviceNames), 1);
+  await checkSelectedServiceReadiness();
 } else {
   const upArgs = ['up', '-d'];
   if (rebuild) {
