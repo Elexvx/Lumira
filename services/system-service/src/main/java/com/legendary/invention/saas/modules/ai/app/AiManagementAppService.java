@@ -538,7 +538,7 @@ public class AiManagementAppService {
                          and e.is_deleted = 0
                         where c.tenant_id = ?
                           and c.owner_user_id = ?
-                          and ((? is null and c.employee_id is null) or c.employee_id = ?)
+                          and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
                         """,
@@ -547,7 +547,7 @@ public class AiManagementAppService {
                         from ai_conversation c
                         where c.tenant_id = ?
                           and c.owner_user_id = ?
-                          and ((? is null and c.employee_id is null) or c.employee_id = ?)
+                          and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         """,
                 AiVO.ConversationVO.class,
