@@ -44,7 +44,6 @@ class JdbcAiConversationService implements AiConversationService {
                             from ai_conversation
                             where tenant_id = ?
                               and owner_user_id = ?
-                              and ((? is null and employee_id is null) or employee_id = ?)
                               and id = ?
                               and is_deleted = 0
                             limit 1
@@ -52,11 +51,21 @@ class JdbcAiConversationService implements AiConversationService {
                     (rs, rowNum) -> rs.getLong("id"),
                     tenantId,
                     ownerUserId,
-                    employeeId,
-                    employeeId,
                     conversationId
             ).stream().findFirst().orElse(null);
             if (foundId != null) {
+                jdbcTemplate.update(
+                        """
+                                update ai_conversation
+                                set employee_id = ?, update_time = ?
+                                where id = ? and tenant_id = ? and owner_user_id = ? and is_deleted = 0
+                                """,
+                        employeeId,
+                        LocalDateTime.now(),
+                        foundId,
+                        tenantId,
+                        ownerUserId
+                );
                 return foundId;
             }
         }

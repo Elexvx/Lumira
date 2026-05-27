@@ -295,8 +295,29 @@
   place-items: center;
 }
 
+.saas-ai-assistant-composer__header,
 .saas-ai-assistant-composer__attachments {
   width: 100%;
+}
+
+.saas-ai-assistant-composer__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saas-ai-assistant-composer__agents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.saas-ai-assistant-composer__agents .ant-tag {
+  max-width: 180px;
+  margin-inline-end: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .saas-ai-assistant-agent-suggestion .ant-cascader-dropdown {

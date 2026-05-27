@@ -422,6 +422,7 @@ public final class AiDTO {
 
     public static class ChatRequest {
         private Long employeeId;
+        private List<Long> employeeIds;
         private Long conversationId;
         @NotBlank
         private String message;
@@ -439,6 +440,14 @@ public final class AiDTO {
 
         public void setEmployeeId(Long employeeId) {
             this.employeeId = employeeId;
+        }
+
+        public List<Long> getEmployeeIds() {
+            return employeeIds;
+        }
+
+        public void setEmployeeIds(List<Long> employeeIds) {
+            this.employeeIds = employeeIds;
         }
 
         public Long getConversationId() {

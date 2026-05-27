@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -68,9 +70,13 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
 
     private AiVO.ChatResponseVO executeChat(CurrentUser currentUser, AiDTO.ChatRequest request, Consumer<AiVO.ChatStreamEventVO> onEvent) {
         Long tenantId = currentTenantId(currentUser);
-        Long employeeId = request == null ? null : request.getEmployeeId();
+        List<Long> employeeIds = normalizeEmployeeIds(request);
+        Long employeeId = employeeIds.size() == 1 ? employeeIds.get(0) : request == null ? null : request.getEmployeeId();
         Long conversationId = request == null ? null : request.getConversationId();
         boolean confirmed = request != null && Boolean.TRUE.equals(request.getConfirmed());
+        if (employeeIds.size() > 1) {
+            return executeMultiEmployeeChat(currentUser, tenantId, employeeIds, request, onEvent, confirmed);
+        }
         try {
             emit(onEvent, AiVO.ChatStreamEventVO.status(employeeId == null ? "正在加载对话配置" : "正在加载数字员工配置"));
             AiVO.EmployeeDetailVO employee;
@@ -130,6 +136,124 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             recordFailedToolAuditLog(tenantId, employeeId, conversationId, request, confirmed, exception);
             throw exception;
         }
+    }
+
+    private AiVO.ChatResponseVO executeMultiEmployeeChat(
+            CurrentUser currentUser,
+            Long tenantId,
+            List<Long> employeeIds,
+            AiDTO.ChatRequest request,
+            Consumer<AiVO.ChatStreamEventVO> onEvent,
+            boolean confirmed
+    ) {
+        Long conversationId = request == null ? null : request.getConversationId();
+        try {
+            emit(onEvent, AiVO.ChatStreamEventVO.status("正在准备多智能体协同"));
+            conversationId = aiConversationService.ensureConversation(
+                    tenantId,
+                    currentUser.getUserId(),
+                    null,
+                    conversationId,
+                    buildConversationTitle(request.getMessage())
+            );
+            Long userMessageId = aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
+            aiConversationService.recordMessageAttachments(tenantId, conversationId, userMessageId, request.getAttachments());
+
+            StringBuilder replyText = new StringBuilder();
+            StringBuilder thinkingContent = new StringBuilder();
+            List<AiVO.KnowledgeReferenceVO> references = new ArrayList<>();
+
+            for (Long targetEmployeeId : employeeIds) {
+                AiDTO.ChatRequest employeeRequest = copyChatRequest(request, targetEmployeeId);
+                AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, targetEmployeeId);
+                if (!Boolean.TRUE.equals(employee.getEnabled())) {
+                    throw new BizException(ErrorCode.BIZ_ERROR, "数字员工已禁用：" + displayEmployeeName(employee));
+                }
+
+                emit(onEvent, AiVO.ChatStreamEventVO.status("正在校验 " + displayEmployeeName(employee) + " 的技能授权"));
+                aiSkillPermissionChecker.verifyAllowed(tenantId, employee.getId(), employeeRequest.getSkillCodes(), confirmed);
+                AiLlmServiceConfig config = aiLlmServiceConfigProvider.findById(tenantId, employee.getDefaultLlmServiceId())
+                        .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
+                        .orElse(null);
+                List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
+
+                emit(onEvent, AiVO.ChatStreamEventVO.status("正在检索 " + displayEmployeeName(employee) + " 的知识库"));
+                List<AiVO.KnowledgeReferenceVO> employeeReferences = resolveKnowledgeReferences(currentUser, employee.getId(), employeeRequest);
+                references.addAll(employeeReferences);
+                employeeRequest.setKnowledgeReferences(employeeReferences);
+
+                String heading = "### " + displayEmployeeName(employee) + "\n\n";
+                replyText.append(heading);
+                emit(onEvent, AiVO.ChatStreamEventVO.delta(heading));
+                emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用 " + displayEmployeeName(employee)));
+                AiVO.ChatResponseVO response = onEvent == null
+                        ? aiChatModelFactory.create(config).chat(employeeRequest, employee, skills)
+                        : aiChatModelFactory.create(config).streamChat(
+                                employeeRequest,
+                                employee,
+                                skills,
+                                delta -> emit(onEvent, AiVO.ChatStreamEventVO.delta(delta)),
+                                thinking -> emit(onEvent, AiVO.ChatStreamEventVO.thinking(thinking))
+                        );
+                replyText.append(response.getReplyText() == null ? "" : response.getReplyText()).append("\n\n");
+                if (StringUtils.hasText(response.getThinkingContent())) {
+                    thinkingContent.append(heading).append(response.getThinkingContent()).append("\n\n");
+                }
+                recordToolAuditLog(tenantId, employee.getId(), conversationId, employeeRequest, response, confirmed);
+            }
+
+            emit(onEvent, AiVO.ChatStreamEventVO.status("正在保存多智能体回复"));
+            AiVO.ChatResponseVO combinedResponse = new AiVO.ChatResponseVO();
+            combinedResponse.setConversationId(conversationId);
+            combinedResponse.setConversationCode(queryConversationCode(tenantId, conversationId));
+            combinedResponse.setReplyText(replyText.toString().trim());
+            String combinedThinkingContent = thinkingContent.toString().trim();
+            combinedResponse.setThinkingContent(StringUtils.hasText(combinedThinkingContent) ? combinedThinkingContent : null);
+            combinedResponse.setReplyRole("ASSISTANT");
+            combinedResponse.setReferences(references);
+            combinedResponse.setReplyAt(LocalDateTime.now());
+            aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", combinedResponse.getReplyText());
+            return combinedResponse;
+        } catch (RuntimeException exception) {
+            recordFailedToolAuditLog(tenantId, null, conversationId, request, confirmed, exception);
+            throw exception;
+        }
+    }
+
+    private List<Long> normalizeEmployeeIds(AiDTO.ChatRequest request) {
+        if (request == null) {
+            return List.of();
+        }
+        LinkedHashSet<Long> ids = new LinkedHashSet<>();
+        if (request.getEmployeeIds() != null) {
+            request.getEmployeeIds().stream()
+                    .filter(id -> id != null && id > 0)
+                    .forEach(ids::add);
+        }
+        if (ids.isEmpty() && request.getEmployeeId() != null && request.getEmployeeId() > 0) {
+            ids.add(request.getEmployeeId());
+        }
+        return new ArrayList<>(ids);
+    }
+
+    private AiDTO.ChatRequest copyChatRequest(AiDTO.ChatRequest request, Long employeeId) {
+        AiDTO.ChatRequest copy = new AiDTO.ChatRequest();
+        copy.setEmployeeId(employeeId);
+        copy.setConversationId(request.getConversationId());
+        copy.setMessage(request.getMessage());
+        copy.setEnableThinking(request.getEnableThinking());
+        copy.setAttachments(request.getAttachments());
+        copy.setSkillCodes(request.getSkillCodes());
+        copy.setKnowledgeBaseIds(request.getKnowledgeBaseIds());
+        copy.setConfirmed(request.getConfirmed());
+        return copy;
+    }
+
+    private String displayEmployeeName(AiVO.EmployeeDetailVO employee) {
+        if (StringUtils.hasText(employee.getNickname())) {
+            return employee.getNickname().trim();
+        }
+        return employee.getUsername();
     }
 
     private List<AiVO.KnowledgeReferenceVO> resolveKnowledgeReferences(CurrentUser currentUser, Long employeeId, AiDTO.ChatRequest request) {
