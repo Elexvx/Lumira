@@ -88,6 +88,8 @@ type RouteParams = {
   token?: string;
 };
 
+const CONVERSATIONS_QUERY_KEY = ['ai-assistant-conversations'] as const;
+
 type ActionItem = {
   key: string;
   label?: string;
@@ -950,6 +952,11 @@ const AiAssistantPage = () => {
     return assistantEmployee ? [assistantEmployee] : [];
   }, [assistantEmployee, employees]);
 
+  const employeeById = useMemo(
+    () => new Map(selectedEmployeeOptions.map((employee) => [employee.id, employee])),
+    [selectedEmployeeOptions],
+  );
+
   const selectedEmployee = useMemo(() => {
     if (isShareMode) {
       return shareEmployee;
@@ -965,12 +972,11 @@ const AiAssistantPage = () => {
   const activeEmployeeId = selectedEmployee?.id ?? null;
 
   const conversationsQuery = useQuery({
-    queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
+    queryKey: CONVERSATIONS_QUERY_KEY,
     enabled: !isShareMode,
     queryFn: async () =>
       aiService.conversations(
         {
-          employeeId: activeEmployeeId,
           pageNo: 1,
           pageSize: 50,
         },
@@ -985,11 +991,12 @@ const AiAssistantPage = () => {
 
     const records = conversationsQuery.data?.records || [];
     setSessions((currentSessions) => {
-      const draftSessions = currentSessions.filter((session) => (session.isDraft || !session.conversationId) && session.employeeId === activeEmployeeId);
+      const draftSessions = currentSessions.filter((session) => session.isDraft || !session.conversationId);
       const persistedSessions = records.map((record) => {
         const existingSession = currentSessions.find((session) => session.conversationId === record.id || session.id === String(record.id));
+        const recordEmployee = record.employeeId ? employeeById.get(record.employeeId) : null;
         if (!existingSession) {
-          return buildSessionFromConversation(record, selectedEmployee);
+          return buildSessionFromConversation(record, recordEmployee);
         }
 
         return {
@@ -999,6 +1006,7 @@ const AiAssistantPage = () => {
           preview: record.preview?.trim() || record.title?.trim() || existingSession.preview,
           employeeId: record.employeeId ?? null,
           employeeName: record.employeeName?.trim() || existingSession.employeeName,
+          employeeAvatarKey: recordEmployee?.avatarKey ?? existingSession.employeeAvatarKey,
           updatedAt: record.latestMessageAt || record.updateTime || record.createTime || existingSession.updatedAt,
           conversationId: record.id,
           isDraft: false,
@@ -1025,7 +1033,7 @@ const AiAssistantPage = () => {
 
       return records[0] ? String(records[0].id) : 'session-default';
     });
-  }, [activeEmployeeId, conversationsQuery.data, isShareMode, selectedEmployee]);
+  }, [conversationsQuery.data, employeeById, isShareMode, selectedEmployee]);
 
   useEffect(() => {
     if (!isShareMode || !shareQuery.data) {
@@ -1131,7 +1139,7 @@ const AiAssistantPage = () => {
         preview: current.preview === current.title || current.preview === session.title ? nextTitle : current.preview,
         updatedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       }));
-      void queryClient.invalidateQueries({ queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'] });
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
       closeRenameModal();
       message.success('会话名称已更新');
     } catch (error) {
@@ -1209,12 +1217,16 @@ const AiAssistantPage = () => {
       thinkingLoading: true,
     };
 
+    const requestEmployeeId = activeSession.conversationId ? activeSession.employeeId ?? null : activeEmployeeId;
+    const requestEmployee = requestEmployeeId ? employeeById.get(requestEmployeeId) || null : null;
+    const requestEmployeeName = requestEmployee?.nickname?.trim() || requestEmployee?.username || activeSession.employeeName || 'AI 助手';
+
     setSending(true);
     updateSession(activeSession.id, (session) => ({
       ...session,
-      employeeId: activeEmployeeId,
-      employeeName: selectedEmployee?.nickname?.trim() || selectedEmployee?.username || 'AI 助手',
-      employeeAvatarKey: selectedEmployee?.avatarKey ?? null,
+      employeeId: requestEmployeeId,
+      employeeName: requestEmployeeName,
+      employeeAvatarKey: requestEmployee?.avatarKey ?? activeSession.employeeAvatarKey ?? null,
       title: session.conversationId ? session.title : buildSessionTitle(trimmed),
       preview: trimmed,
       messages: [...session.messages, userBubble, assistantPlaceholder],
@@ -1234,7 +1246,7 @@ const AiAssistantPage = () => {
 
         const conversations = await aiService.conversations(
           {
-            employeeId: activeEmployeeId,
+            ...(requestEmployeeId ? { employeeId: requestEmployeeId } : {}),
             pageNo: 1,
             pageSize: 1,
           },
@@ -1254,7 +1266,8 @@ const AiAssistantPage = () => {
           return false;
         }
 
-        const recoveredSession = buildSessionFromConversation(latestConversation, selectedEmployee);
+        const recoveredEmployee = latestConversation.employeeId ? employeeById.get(latestConversation.employeeId) : null;
+        const recoveredSession = buildSessionFromConversation(latestConversation, recoveredEmployee);
         setSessions((currentSessions) =>
           sortSessions(
             currentSessions.map((session) =>
@@ -1269,7 +1282,7 @@ const AiAssistantPage = () => {
         );
         setActiveSessionId(String(latestConversation.id));
         void queryClient.invalidateQueries({
-          queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
+          queryKey: CONVERSATIONS_QUERY_KEY,
         });
         return true;
       };
@@ -1277,7 +1290,7 @@ const AiAssistantPage = () => {
       try {
         await aiService.streamChat(
           {
-            employeeId: activeEmployeeId,
+            employeeId: requestEmployeeId,
             conversationId: activeSession.conversationId ?? null,
             message: trimmed,
             enableThinking: options.enableThinking ?? null,
@@ -1406,7 +1419,7 @@ const AiAssistantPage = () => {
       }
 
       void queryClient.invalidateQueries({
-        queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
+        queryKey: CONVERSATIONS_QUERY_KEY,
       });
     } catch (error) {
       updateSession(activeSession.id, (session) => ({
@@ -1438,6 +1451,10 @@ const AiAssistantPage = () => {
   };
 
   const handleSessionSelect = (sessionId: string) => {
+    const nextSession = sessions.find((session) => session.id === sessionId);
+    if (!isShareMode && nextSession) {
+      setSelectedEmployeeId(nextSession.employeeId ?? null);
+    }
     setActiveSessionId(sessionId);
   };
 
@@ -1539,7 +1556,7 @@ const AiAssistantPage = () => {
           return remaining[0] ? remaining[0].id : 'session-default';
         });
         void queryClient.invalidateQueries({
-          queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
+          queryKey: CONVERSATIONS_QUERY_KEY,
         });
       },
     });
@@ -1561,7 +1578,7 @@ const AiAssistantPage = () => {
         isPinned: !current.isPinned,
       }));
       void queryClient.invalidateQueries({
-        queryKey: ['ai-assistant-conversations', activeEmployeeId ?? 'general'],
+        queryKey: CONVERSATIONS_QUERY_KEY,
       });
     } catch (error) {
       message.error(error instanceof Error && error.message ? error.message : '置顶设置失败');
