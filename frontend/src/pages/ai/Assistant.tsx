@@ -748,8 +748,9 @@ const Composer = ({
   const selectedEmployeeIds = useMemo(() => selectedEmployees.map((employee) => employee.id), [selectedEmployees]);
   const firstSelectedEmployee = selectedEmployees[0] || null;
   const agentButtonLabel = selectedEmployees.length > 1
-    ? `${selectedEmployees.length} 个 Agent`
-    : firstSelectedEmployee?.nickname?.trim() || firstSelectedEmployee?.username || 'Agent';
+    ? `${selectedEmployees.length} 个助手`
+    : firstSelectedEmployee?.nickname?.trim() || firstSelectedEmployee?.username || '助手';
+  const agentControlLabel = selectedEmployees.length ? '切换助手' : '助手';
 
   const agentItems = useMemo(
     () =>
@@ -788,7 +789,7 @@ const Composer = ({
 
   const selectedAgentSkill = selectedEmployees.length
     ? {
-        title: selectedEmployees.length > 1 ? `${selectedEmployees.length} 个 Agent 协同` : agentButtonLabel,
+        title: selectedEmployees.length > 1 ? `${selectedEmployees.length} 个助手协同` : agentButtonLabel,
         value: selectedEmployeeIds.join(','),
         closable: {
           disabled: readOnly || sending,
@@ -842,10 +843,6 @@ const Composer = ({
     }
   };
 
-  const handleRemoveAgent = (employeeId: number) => {
-    onAgentsChange(selectedEmployeeIds.filter((item) => item !== employeeId));
-  };
-
   return (
     <div className="saas-ai-assistant-composer">
       <input
@@ -870,7 +867,7 @@ const Composer = ({
             loading={sending}
             readOnly={readOnly}
             disabled={readOnly || !activeSession}
-            autoSize={{ minRows: 2, maxRows: 6 }}
+            autoSize={{ minRows: 1, maxRows: 5 }}
             submitType="enter"
             value={inputValue}
             skill={selectedAgentSkill}
@@ -885,28 +882,8 @@ const Composer = ({
             onPasteFile={(files) => handleFiles(Array.from(files))}
             placeholder={readOnly ? '当前为只读分享页面' : activeSession ? '向我提问吧' : '暂无可用对话'}
             header={
-              selectedEmployees.length || activeSession?.pendingAttachments.length ? (
+              activeSession?.pendingAttachments.length ? (
                 <div className="saas-ai-assistant-composer__header">
-                  {selectedEmployees.length ? (
-                    <div className="saas-ai-assistant-composer__agents">
-                      {selectedEmployees.map((employee) => {
-                        const label = employee.nickname?.trim() || employee.username;
-                        return (
-                          <Tag
-                            key={employee.id}
-                            color="blue"
-                            closable={!readOnly && !sending}
-                            onClose={(event) => {
-                              event.preventDefault();
-                              handleRemoveAgent(employee.id);
-                            }}
-                          >
-                            {label}
-                          </Tag>
-                        );
-                      })}
-                    </div>
-                  ) : null}
                   {activeSession?.pendingAttachments.length ? (
                     <div className="saas-ai-assistant-composer__attachments">
                       {renderAttachmentCardList(activeSession.pendingAttachments, {
@@ -949,11 +926,11 @@ const Composer = ({
                           icon={<AppstoreOutlined />}
                           type={selectedEmployees.length ? 'primary' : 'default'}
                           disabled={readOnly || sending || !activeSession}
-                          title={selectedEmployees.length ? `当前 Agent：${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join('、')}` : '选择 Agent'}
+                          title={selectedEmployees.length ? `当前助手：${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join('、')}` : '选择助手'}
                           onClick={() => onTrigger({})}
                           onKeyDown={onKeyDown}
                         >
-                          <span className="saas-ai-assistant-composer__agent-label">{agentButtonLabel}</span>
+                          <span className="saas-ai-assistant-composer__agent-label">{agentControlLabel}</span>
                         </Button>
                       )}
                     </Suggestion>
