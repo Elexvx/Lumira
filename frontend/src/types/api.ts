@@ -501,6 +501,7 @@ export interface AiLlmServiceTestResult {
 
 export interface AiChatRequestPayload {
   employeeId?: number | null;
+  employeeIds?: number[] | null;
   conversationId?: number | null;
   message: string;
   enableThinking?: boolean | null;

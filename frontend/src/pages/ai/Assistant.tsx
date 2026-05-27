@@ -116,13 +116,13 @@ type BubbleItem = {
 
 type ComposerProps = {
   employees: AiEmployeeRecord[];
-  selectedEmployee?: AiEmployeeRecord | null;
+  selectedEmployees: AiEmployeeRecord[];
   readOnly: boolean;
   activeSession?: ChatSession | null;
   sending: boolean;
   attachmentUploading: boolean;
-  onEmployeeChange: (employeeId: number | null) => void;
-  onSend: (messageText: string, options: { enableThinking: boolean }) => void;
+  onAgentsChange: (employeeIds: number[]) => void;
+  onSend: (messageText: string, options: { enableThinking: boolean; employeeIds: number[] }) => void;
   onUploadFiles: (files: File[]) => void;
   onRemoveAttachment: (fileId: number) => void;
 };
@@ -645,12 +645,12 @@ const createActions = (
 
 const Composer = ({
   employees,
-  selectedEmployee,
+  selectedEmployees,
   readOnly,
   activeSession,
   sending,
   attachmentUploading,
-  onEmployeeChange,
+  onAgentsChange,
   onSend,
   onUploadFiles,
   onRemoveAttachment,
@@ -659,7 +659,11 @@ const Composer = ({
   const [senderKey, setSenderKey] = useState(0);
   const [deepThink, setDeepThink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const agentButtonLabel = selectedEmployee?.nickname?.trim() || selectedEmployee?.username || 'Agent';
+  const selectedEmployeeIds = useMemo(() => selectedEmployees.map((employee) => employee.id), [selectedEmployees]);
+  const firstSelectedEmployee = selectedEmployees[0] || null;
+  const agentButtonLabel = selectedEmployees.length > 1
+    ? `${selectedEmployees.length} 个 Agent`
+    : firstSelectedEmployee?.nickname?.trim() || firstSelectedEmployee?.username || 'Agent';
 
   const agentItems = useMemo(
     () =>
@@ -696,11 +700,14 @@ const Composer = ({
     [conversationAgentItems],
   );
 
-  const selectedAgentSkill = selectedEmployee
+  const selectedAgentSkill = selectedEmployees.length
     ? {
-        title: selectedEmployee.nickname?.trim() || selectedEmployee.username,
-        value: String(selectedEmployee.id),
-        closable: false,
+        title: selectedEmployees.length > 1 ? `${selectedEmployees.length} 个 Agent 协同` : agentButtonLabel,
+        value: selectedEmployeeIds.join(','),
+        closable: {
+          disabled: readOnly || sending,
+          onClose: () => onAgentsChange([]),
+        },
       }
     : undefined;
 
@@ -728,22 +735,29 @@ const Composer = ({
       message.warning('请输入要处理的任务或问题');
       return;
     }
-    onSend(normalizedMessage, { enableThinking: deepThink });
+    onSend(normalizedMessage, { enableThinking: deepThink, employeeIds: selectedEmployeeIds });
     setInputValue('');
     setSenderKey((current) => current + 1);
   };
   const handleAgentSuggestionSelect = (value: string) => {
     if (value === 'general') {
-      onEmployeeChange(null);
+      onAgentsChange([]);
       setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
       return;
     }
 
     const nextEmployeeId = Number(value);
     if (Number.isFinite(nextEmployeeId)) {
-      onEmployeeChange(nextEmployeeId);
+      const nextEmployeeIds = selectedEmployeeIds.includes(nextEmployeeId)
+        ? selectedEmployeeIds
+        : [...selectedEmployeeIds, nextEmployeeId];
+      onAgentsChange(nextEmployeeIds);
       setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
     }
+  };
+
+  const handleRemoveAgent = (employeeId: number) => {
+    onAgentsChange(selectedEmployeeIds.filter((item) => item !== employeeId));
   };
 
   return (
@@ -785,13 +799,37 @@ const Composer = ({
             onPasteFile={(files) => handleFiles(Array.from(files))}
             placeholder={readOnly ? '当前为只读分享页面' : activeSession ? '向我提问吧' : '暂无可用对话'}
             header={
-              activeSession?.pendingAttachments.length ? (
-                <div className="saas-ai-assistant-composer__attachments">
-                  {renderAttachmentCardList(activeSession.pendingAttachments, {
-                    removable: !sending && !readOnly,
-                    onRemove: onRemoveAttachment,
-                    className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
-                  })}
+              selectedEmployees.length || activeSession?.pendingAttachments.length ? (
+                <div className="saas-ai-assistant-composer__header">
+                  {selectedEmployees.length ? (
+                    <div className="saas-ai-assistant-composer__agents">
+                      {selectedEmployees.map((employee) => {
+                        const label = employee.nickname?.trim() || employee.username;
+                        return (
+                          <Tag
+                            key={employee.id}
+                            color="blue"
+                            closable={!readOnly && !sending}
+                            onClose={(event) => {
+                              event.preventDefault();
+                              handleRemoveAgent(employee.id);
+                            }}
+                          >
+                            {label}
+                          </Tag>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {activeSession?.pendingAttachments.length ? (
+                    <div className="saas-ai-assistant-composer__attachments">
+                      {renderAttachmentCardList(activeSession.pendingAttachments, {
+                        removable: !sending && !readOnly,
+                        onRemove: onRemoveAttachment,
+                        className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               ) : false
             }
@@ -823,9 +861,9 @@ const Composer = ({
                         <Button
                           className="saas-ai-assistant-composer__agent-button"
                           icon={<AppstoreOutlined />}
-                          type={selectedEmployee ? 'primary' : 'default'}
+                          type={selectedEmployees.length ? 'primary' : 'default'}
                           disabled={readOnly || sending || !activeSession}
-                          title={selectedEmployee ? `当前 Agent：${agentButtonLabel}` : '选择 Agent'}
+                          title={selectedEmployees.length ? `当前 Agent：${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join('、')}` : '选择 Agent'}
                           onClick={() => onTrigger({})}
                           onKeyDown={onKeyDown}
                         >
@@ -857,7 +895,7 @@ const AiAssistantPage = () => {
   const [activeSessionId, setActiveSessionId] = useState<string>('session-default');
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'sessions'>('chat');
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameTargetSessionId, setRenameTargetSessionId] = useState<string | null>(null);
@@ -911,14 +949,11 @@ const AiAssistantPage = () => {
       return;
     }
 
-    setSelectedEmployeeId((currentValue) => {
-      if (currentValue && employees.some((employee) => employee.id === currentValue)) {
-        return currentValue;
-      }
-      if (currentValue && assistantEmployee?.id === currentValue) {
-        return currentValue;
-      }
-      return null;
+    setSelectedEmployeeIds((currentValue) => {
+      const validIds = currentValue.filter(
+        (employeeId) => employees.some((employee) => employee.id === employeeId) || assistantEmployee?.id === employeeId,
+      );
+      return validIds.length === currentValue.length ? currentValue : validIds;
     });
   }, [assistantEmployee?.id, employees, isShareMode]);
 
@@ -934,19 +969,18 @@ const AiAssistantPage = () => {
     [selectedEmployeeOptions],
   );
 
-  const selectedEmployee = useMemo(() => {
+  const selectedEmployees = useMemo(() => {
     if (isShareMode) {
-      return shareEmployee;
+      return shareEmployee ? [shareEmployee] : [];
     }
 
-    if (selectedEmployeeId) {
-      return selectedEmployeeOptions.find((employee) => employee.id === selectedEmployeeId) || null;
-    }
+    return selectedEmployeeIds
+      .map((employeeId) => selectedEmployeeOptions.find((employee) => employee.id === employeeId) || null)
+      .filter((employee): employee is AiEmployeeRecord => Boolean(employee));
+  }, [isShareMode, selectedEmployeeIds, selectedEmployeeOptions, shareEmployee]);
 
-    return null;
-  }, [isShareMode, selectedEmployeeId, selectedEmployeeOptions, shareEmployee]);
-
-  const activeEmployeeId = selectedEmployee?.id ?? null;
+  const selectedEmployee = selectedEmployees[0] || null;
+  const activeEmployeeIds = selectedEmployees.map((employee) => employee.id);
 
   const conversationsQuery = useQuery({
     queryKey: CONVERSATIONS_QUERY_KEY,
@@ -1172,7 +1206,7 @@ const AiAssistantPage = () => {
     }
   };
 
-  const handleSend = async (messageText: string, options: { enableThinking?: boolean } = {}) => {
+  const handleSend = async (messageText: string, options: { enableThinking?: boolean; employeeIds?: number[] } = {}) => {
     const trimmed = messageText.trim();
     if (!trimmed || !activeSession || isShareMode) {
       return;
@@ -1194,9 +1228,15 @@ const AiAssistantPage = () => {
       thinkingLoading: true,
     };
 
-    const requestEmployeeId = activeSession.conversationId ? activeSession.employeeId ?? null : activeEmployeeId;
-    const requestEmployee = requestEmployeeId ? employeeById.get(requestEmployeeId) || null : null;
-    const requestEmployeeName = requestEmployee?.nickname?.trim() || requestEmployee?.username || activeSession.employeeName || 'AI 助手';
+    const requestEmployeeIds = options.employeeIds ?? activeEmployeeIds;
+    const requestEmployeeId = requestEmployeeIds.length === 1 ? requestEmployeeIds[0] : null;
+    const requestEmployees = requestEmployeeIds
+      .map((employeeId) => employeeById.get(employeeId) || null)
+      .filter((employee): employee is AiEmployeeRecord => Boolean(employee));
+    const requestEmployee = requestEmployees[0] || null;
+    const requestEmployeeName = requestEmployees.length > 1
+      ? `${requestEmployees.length} 个 Agent 协同`
+      : requestEmployee?.nickname?.trim() || requestEmployee?.username || activeSession.employeeName || 'AI 助手';
 
     setSending(true);
     updateSession(activeSession.id, (session) => ({
@@ -1268,6 +1308,7 @@ const AiAssistantPage = () => {
         await aiService.streamChat(
           {
             employeeId: requestEmployeeId,
+            employeeIds: requestEmployeeIds.length > 1 ? requestEmployeeIds : undefined,
             conversationId: activeSession.conversationId ?? null,
             message: trimmed,
             enableThinking: options.enableThinking ?? null,
@@ -1438,7 +1479,7 @@ const AiAssistantPage = () => {
   const handleSessionSelect = (sessionId: string) => {
     const nextSession = sessions.find((session) => session.id === sessionId);
     if (!isShareMode && nextSession) {
-      setSelectedEmployeeId(nextSession.employeeId ?? null);
+      setSelectedEmployeeIds(nextSession.employeeId ? [nextSession.employeeId] : []);
     }
     setActiveSessionId(sessionId);
   };
@@ -1763,12 +1804,12 @@ const AiAssistantPage = () => {
       <div className="saas-ai-assistant-shell__composer">
         <Composer
           employees={selectedEmployeeOptions}
-          selectedEmployee={selectedEmployee}
+          selectedEmployees={selectedEmployees}
           readOnly={isShareMode}
           activeSession={activeSession}
           sending={sending}
           attachmentUploading={attachmentUploading}
-          onEmployeeChange={(employeeId) => setSelectedEmployeeId(employeeId)}
+          onAgentsChange={(employeeIds) => setSelectedEmployeeIds(employeeIds)}
           onSend={(messageText, options) => void handleSend(messageText, options)}
           onUploadFiles={(files) => void uploadAttachments(files)}
           onRemoveAttachment={(fileId) => {
