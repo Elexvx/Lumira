@@ -97,6 +97,24 @@ public class AuditController {
         );
     }
 
+    @GetMapping("/verification-logs")
+    public ApiResponse<PageResponse<SystemVO.AuditLogVO>> verificationLogs(
+            @RequestParam(name = "tenantId", required = false) Long tenantId,
+            @RequestParam(name = "channel", required = false) String channel,
+            @RequestParam(name = "scene", required = false) String scene,
+            @RequestParam(name = "resultStatus", required = false) String resultStatus,
+            @RequestParam(name = "startTime", required = false) String startTime,
+            @RequestParam(name = "endTime", required = false) String endTime,
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+    ) {
+        require("audit:operation:view");
+        return ApiResponse.success(
+                systemManagementAppService.listVerificationLogs(securityContextFacade.getCurrentUser(), tenantId, channel, scene, resultStatus, startTime, endTime, pageNo, pageSize),
+                TraceContext.getRequestId()
+        );
+    }
+
     private void require(String permissionKey) {
         permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
     }

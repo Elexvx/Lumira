@@ -10,7 +10,7 @@ import type { AuditLogRecord } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 
-type AuditLogType = 'login' | 'operation' | 'ai';
+type AuditLogType = 'login' | 'operation' | 'ai' | 'verification';
 type AuditRecord = AuditLogRecord;
 
 const timeRangeColumn = {
@@ -70,6 +70,7 @@ const AuditOverviewPage = () => {
   const tabList = [
     canViewLoginLogs ? { tab: '登录日志', key: 'login' } : null,
     canViewOperationLogs ? { tab: '操作日志', key: 'operation' } : null,
+    canViewOperationLogs ? { tab: '验证码日志', key: 'verification' } : null,
     canViewOperationLogs ? { tab: 'AI 调用记录', key: 'ai' } : null,
   ].filter((item): item is { tab: string; key: AuditLogType } => Boolean(item));
   const activeLogType = tabList.some((item) => item.key === logType) ? logType : tabList[0]?.key || 'login';
@@ -214,6 +215,112 @@ const AuditOverviewPage = () => {
       ];
     }
 
+    if (activeLogType === 'verification') {
+      return [
+        {
+          title: '渠道',
+          dataIndex: 'channel',
+          importance: 1,
+          renderFormItem: () => (
+            <Select
+              allowClear
+              options={[
+                { label: '短信验证码', value: 'SMS' },
+                { label: '邮箱验证码', value: 'EMAIL' },
+              ]}
+            />
+          ),
+          render: (_, record) => {
+            const channel = record.operationType;
+            if (channel === 'SMS') {
+              return <Tag color="blue">短信验证码</Tag>;
+            }
+            if (channel === 'EMAIL') {
+              return <Tag color="purple">邮箱验证码</Tag>;
+            }
+            return channel || '-';
+          },
+        },
+        {
+          title: '场景',
+          dataIndex: 'scene',
+          importance: 1,
+          renderFormItem: () => (
+            <Select
+              allowClear
+              options={[
+                { label: '验证码登录', value: 'LOGIN_CODE' },
+                { label: '二次验证', value: 'SECOND_FACTOR' },
+                { label: '绑定验证', value: 'CONTACT_BIND' },
+              ]}
+            />
+          ),
+          render: (_, record) => {
+            const map: Record<string, string> = {
+              LOGIN_CODE: '验证码登录',
+              SECOND_FACTOR: '二次验证',
+              CONTACT_BIND: '绑定验证',
+            };
+            return map[record.actionName || ''] || record.actionName || '-';
+          },
+        },
+        {
+          title: '结果',
+          dataIndex: 'resultStatus',
+          importance: 1,
+          renderFormItem: () => (
+            <Select
+              allowClear
+              options={[
+                { label: '成功', value: 'SUCCESS' },
+                { label: '失败', value: 'FAIL' },
+              ]}
+            />
+          ),
+          render: (_, record) => renderStatusTag(record.logResult),
+        },
+        timeRangeColumn,
+        { title: '用户', dataIndex: 'username', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+        {
+          title: '详情',
+          dataIndex: 'detailMessage',
+          search: false,
+          responsive: ['md', 'lg', 'xl', 'xxl'],
+          ellipsis: true,
+          render: (_, record) =>
+            record.detailMessage ? (
+              <Typography.Text copyable={{ text: record.detailMessage }} ellipsis={{ tooltip: record.detailMessage }}>
+                {record.detailMessage}
+              </Typography.Text>
+            ) : (
+              '-'
+            ),
+        },
+        { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
+        {
+          title: '操作',
+          valueType: 'option',
+          fixed: responsive.isDesktop ? 'right' : undefined,
+          width: 100,
+          render: (_, record) => (
+            <TableActionBar
+              isMobile={responsive.isMobile}
+              items={[
+                {
+                  key: 'detail',
+                  label: '详情',
+                  onClick: () => {
+                    setSelectedRecord(record);
+                    setDrawerOpen(true);
+                  },
+                },
+              ]}
+            />
+          ),
+        },
+      ];
+    }
+
     return [
           { title: '用户名', dataIndex: 'username', importance: 1 },
           timeRangeColumn,
@@ -286,7 +393,9 @@ const AuditOverviewPage = () => {
                 ? auditService.loginLogs(params, { autoRedirectOnUnauthorized: false })
                 : activeLogType === 'ai'
                   ? auditService.aiCallLogs(params, { autoRedirectOnUnauthorized: false })
-                  : auditService.operationLogs(params, { autoRedirectOnUnauthorized: false })
+                  : activeLogType === 'verification'
+                    ? auditService.verificationLogs(params, { autoRedirectOnUnauthorized: false })
+                    : auditService.operationLogs(params, { autoRedirectOnUnauthorized: false })
               : Promise.resolve({ records: [], total: 0 }),
           )}
           toolBarRender={() => [
