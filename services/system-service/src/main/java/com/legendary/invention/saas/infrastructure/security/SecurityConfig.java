@@ -7,6 +7,7 @@ import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.web.TraceIdFilter;
 import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -55,6 +56,8 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(registry -> registry
+                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
                         .requestMatchers(securityProperties.getPermitPaths().toArray(new String[0]))
                         .permitAll()
                         .anyRequest()
