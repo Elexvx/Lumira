@@ -421,7 +421,6 @@ public final class AiDTO {
     }
 
     public static class ChatRequest {
-        @NotNull
         private Long employeeId;
         private Long conversationId;
         @NotBlank
