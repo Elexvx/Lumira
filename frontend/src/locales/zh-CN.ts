@@ -375,6 +375,8 @@ export default {
   'settings.menu': '系统设置',
   'message.center.title': '消息中心',
   'message.center.ariaLabel': '消息中心，当前有 {count} 条未读消息',
+  'message.center.newNotificationTitle': '收到新消息',
+  'message.center.newNotificationDescription': '你有一条新的站内信，请前往消息中心查看。',
   'message.center.site': '站内信',
   'message.center.all': '全部',
   'message.center.unread': '未读',
