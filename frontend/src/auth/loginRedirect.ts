@@ -26,19 +26,24 @@ const routePathMatches = (routePath: string, pathname: string) => {
   return new RegExp(`^${pattern}$`).test(pathname);
 };
 
-const canVisitPath = (target: string, currentUser: CurrentUser) => {
+export type RouteAccessStatus = 'allowed' | 'denied' | 'unknown';
+
+export const resolveRouteAccessStatus = (target: string, currentUser: CurrentUser): RouteAccessStatus => {
   const pathname = normalizePathname(target);
   const routeMeta = realPageRouteMetaList.find((item) => routePathMatches(item.path, pathname));
   if (!routeMeta) {
-    return false;
+    return 'unknown';
   }
   if (!routeMeta.access) {
-    return true;
+    return 'allowed';
   }
 
   const access = buildAccess({ currentUser }) as Record<string, unknown>;
-  return Boolean(access[routeMeta.access]);
+  return Boolean(access[routeMeta.access]) ? 'allowed' : 'denied';
 };
+
+const canVisitPath = (target: string, currentUser: CurrentUser) =>
+  resolveRouteAccessStatus(target, currentUser) === 'allowed';
 
 const findFirstAccessibleMenuPath = (menuTree: MenuNode[] | undefined, currentUser: CurrentUser): string | null => {
   const walk = (nodes: MenuNode[] = []): string | null => {

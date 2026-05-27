@@ -6,7 +6,7 @@ import { Button, Tooltip } from 'antd';
 import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
 import { isLoggedIn } from '@/auth/session';
-import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
+import { resolveLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
 import { GlobalFloatActions } from '@/layouts/components/GlobalFloatActions';
 import { TopActions } from '@/layouts/components/TopActions';
 import {
@@ -82,12 +82,11 @@ const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[
     };
   });
 
-const buildSettingsMenuData = (initialState?: AppInitialState, currentPathname?: string) => {
+const buildSettingsMenuData = (initialState?: AppInitialState) => {
   const access = buildAccess({ currentUser: initialState?.currentUser });
   return buildVisibleSettingsNavigationItems(
     initialState?.menuTree,
     (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
-    currentPathname,
   );
 };
 
@@ -349,7 +348,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     },
     menuDataRender: (menuData) => {
       if (siderMenuMode === 'settings') {
-        return buildSettingsMenuData(initialState, history.location.pathname);
+        return buildSettingsMenuData(initialState);
       }
 
       const backendMenus: MenuNode[] = initialState?.menuTree || [];
@@ -379,6 +378,14 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
 
       if (loggedIn && path === LOGIN_PATH) {
         history.replace(resolveLoginRedirectTarget(location.search || '', DEFAULT_HOME_PATH));
+        return;
+      }
+
+      if (loggedIn && !isPublicPath && initialState?.currentUser) {
+        const routeAccessStatus = resolveRouteAccessStatus(path, initialState.currentUser);
+        if (routeAccessStatus === 'denied') {
+          history.replace('/403');
+        }
       }
     },
   };
