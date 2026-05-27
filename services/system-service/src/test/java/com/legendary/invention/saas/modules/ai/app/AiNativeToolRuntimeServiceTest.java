@@ -66,6 +66,7 @@ class AiNativeToolRuntimeServiceTest {
         AiVO.ToolExecuteResultVO result = service.execute(currentUser(), request("system.user.search", Map.of("keyword", "admin")));
 
         assertThat(result.getResultStatus()).isEqualTo("SUCCESS");
+        assertThat(result.getData()).containsEntry("total", 1L);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> users = (List<Map<String, Object>>) result.getData().get("items");
         assertThat(users).hasSize(1);
@@ -120,6 +121,9 @@ class AiNativeToolRuntimeServiceTest {
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             if (sql.contains("from ai_employee")) {
+                return requiredType.cast(1L);
+            }
+            if (sql.contains("from sys_user u") && sql.contains("count(1)")) {
                 return requiredType.cast(1L);
             }
             return null;

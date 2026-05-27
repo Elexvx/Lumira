@@ -126,7 +126,8 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         permissionGuard.requirePermission(currentUser, tool.getRequiredPermission());
         String actionType = actionType(intent.toolCode());
         String riskLevel = firstText(tool.getRiskLevel(), "MEDIUM").toUpperCase(Locale.ROOT);
-        boolean requiresConfirm = Boolean.TRUE.equals(tool.getNeedConfirm()) || !"LOW".equals(riskLevel);
+        boolean readOnly = Boolean.TRUE.equals(tool.getReadOnly());
+        boolean requiresConfirm = !readOnly && (Boolean.TRUE.equals(tool.getNeedConfirm()) || !"LOW".equals(riskLevel));
         AiToolPolicyService.PolicyDecision policyDecision = aiToolPolicyService.evaluate(
                 tenantId,
                 intent.toolCode(),
@@ -202,6 +203,18 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                 arguments.put("userId", userId);
             }
             return new ToolIntent("system.user.delete", arguments);
+        }
+        if (containsAny(normalized, "查询用户", "查看用户", "检索用户", "用户列表", "用户数量", "多少用户", "几个用户", "有多少个用户", "有几个用户")) {
+            putIfText(arguments, "keyword", captureAfter(message, "关键词", "关键字", "用户名", "账号", "用户"));
+            if (containsAny(normalized, "启用", "正常")) {
+                arguments.put("status", "ENABLED");
+            } else if (containsAny(normalized, "禁用", "停用")) {
+                arguments.put("status", "DISABLED");
+            }
+            if (containsAny(normalized, "数量", "多少", "几个")) {
+                arguments.put("limit", 1);
+            }
+            return new ToolIntent("system.user.search", arguments);
         }
         if (containsAny(normalized, "新增角色", "创建角色", "新建角色")) {
             putIfText(arguments, "roleCode", captureAfter(message, "角色编码", "roleCode", "编码"));
