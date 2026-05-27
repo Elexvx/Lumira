@@ -1,5 +1,7 @@
 import {
   AppstoreOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
@@ -33,6 +35,8 @@ import type {
   AiChatResponseRecord,
   AiEmployeeRecord,
   AiKnowledgeReferenceRecord,
+  AiToolExecuteResultRecord,
+  AiToolPlanRecord,
   FileObjectRecord,
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
@@ -66,6 +70,8 @@ type ChatBubble = {
   thinkingLoading?: boolean;
   streamingContent?: string;
   references?: AiKnowledgeReferenceRecord[] | null;
+  toolPlan?: AiToolPlanRecord | null;
+  toolResult?: AiToolExecuteResultRecord | null;
 };
 
 type ChatSession = {
@@ -427,6 +433,8 @@ const mapFileObjectToAttachment = (file: FileObjectRecord): ComposerAttachment =
 type MessageRecordWithSources = AiConversationMessageRecord & {
   thinkingContent?: string | null;
   references?: AiKnowledgeReferenceRecord[] | null;
+  toolPlan?: AiToolPlanRecord | null;
+  toolResult?: AiToolExecuteResultRecord | null;
 };
 
 const mapMessageRecord = (record: AiConversationMessageRecord): ChatBubble => {
@@ -438,6 +446,8 @@ const mapMessageRecord = (record: AiConversationMessageRecord): ChatBubble => {
     attachments: (record.attachments || []).map(mapAttachmentRecord),
     thinkingContent: messageRecord.thinkingContent,
     references: messageRecord.references,
+    toolPlan: messageRecord.toolPlan,
+    toolResult: messageRecord.toolResult,
   };
 };
 
@@ -573,13 +583,89 @@ const MarkdownMessage = ({ content }: { content: string }) => (
   <XMarkdown content={content} openLinksInNewTab escapeRawHtml />
 );
 
-const renderMessageContent = (item: ChatBubble, visibleReplyText?: string) => {
+const renderToolPlanCard = (
+  item: ChatBubble,
+  options: {
+    onConfirm?: (plan: AiToolPlanRecord) => void;
+    confirming?: boolean;
+  } = {},
+) => {
+  const plan = item.toolPlan;
+  if (!plan) {
+    return null;
+  }
+  const blocked = plan.status === 'BLOCKED' || plan.policyVerdict === 'DENY' || plan.supervisorVerdict === 'DENY';
+  const result = item.toolResult;
+  const args = plan.arguments || {};
+
+  return (
+    <div className={`saas-ai-tool-card ${blocked ? 'saas-ai-tool-card--blocked' : ''}`}>
+      <div className="saas-ai-tool-card__head">
+        <span className="saas-ai-tool-card__title">{plan.toolName || plan.toolCode}</span>
+        <Tag color={blocked ? 'red' : plan.riskLevel === 'HIGH' ? 'orange' : 'blue'}>{plan.riskLevel || 'MEDIUM'}</Tag>
+      </div>
+      <div className="saas-ai-tool-card__summary">{plan.summary || 'AI 已生成一个系统操作计划。'}</div>
+      <div className="saas-ai-tool-card__meta">
+        <span>权限：{plan.permissionKey || '按当前用户权限'}</span>
+        <span>监督：{plan.supervisorVerdict || 'REQUIRE_CONFIRM'}</span>
+      </div>
+      {Object.keys(args).length ? (
+        <pre className="saas-ai-tool-card__args">{JSON.stringify(args, null, 2)}</pre>
+      ) : null}
+      {plan.policyMessage || plan.supervisorMessage ? (
+        <Alert
+          type={blocked ? 'error' : 'warning'}
+          showIcon
+          message={plan.policyMessage || plan.supervisorMessage}
+          className="saas-ai-tool-card__alert"
+        />
+      ) : null}
+      {result ? (
+        <Alert
+          type={result.resultStatus === 'SUCCESS' ? 'success' : 'error'}
+          showIcon
+          message={result.message || (result.resultStatus === 'SUCCESS' ? '系统操作已完成' : '系统操作失败')}
+          className="saas-ai-tool-card__alert"
+        />
+      ) : (
+        <div className="saas-ai-tool-card__actions">
+          <Button
+            type="primary"
+            size="small"
+            icon={<CheckCircleOutlined />}
+            disabled={blocked || options.confirming}
+            loading={options.confirming}
+            onClick={() => options.onConfirm?.(plan)}
+          >
+            确认执行
+          </Button>
+          <Button size="small" icon={<CloseCircleOutlined />} disabled={options.confirming}>
+            取消
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const renderMessageContent = (
+  item: ChatBubble,
+  visibleReplyText?: string,
+  options?: {
+    onConfirmTool?: (plan: AiToolPlanRecord) => void;
+    confirmingToolId?: number | null;
+  },
+) => {
   const content = visibleReplyText ?? item.content;
   if (item.role === 'ai') {
     const thinking = renderThinkingContent(item);
     return (
       <div className="saas-ai-assistant-ai-content">
         {thinking}
+        {renderToolPlanCard(item, {
+          onConfirm: options?.onConfirmTool,
+          confirming: Boolean(item.toolPlan?.id && options?.confirmingToolId === item.toolPlan.id),
+        })}
         {content ? (
           <div className="saas-ai-assistant-markdown">
             <MarkdownMessage content={content} />
@@ -900,6 +986,7 @@ const AiAssistantPage = () => {
   const [renameValue, setRenameValue] = useState('');
   const [renameTargetSessionId, setRenameTargetSessionId] = useState<string | null>(null);
   const [streamProgress, setStreamProgress] = useState<Record<string, number>>({});
+  const [confirmingToolId, setConfirmingToolId] = useState<number | null>(null);
 
   const employeesQuery = useQuery({
     queryKey: ['ai-assistant-employees'],
@@ -1365,6 +1452,40 @@ const AiAssistantPage = () => {
               return;
             }
 
+            if ((event.type === 'tool_proposal' || event.type === 'tool_blocked') && event.toolPlan) {
+              updateSession(activeSession.id, (session) => ({
+                ...session,
+                messages: session.messages.map((item) =>
+                  item.key === assistantPlaceholder.key
+                    ? {
+                      ...item,
+                      content: event.message || (event.type === 'tool_blocked' ? '该操作已被平台防护规则拦截。' : '我已生成系统操作计划，请确认后执行。'),
+                      thinkingLoading: false,
+                      toolPlan: event.toolPlan,
+                    }
+                    : item,
+                ),
+              }));
+              return;
+            }
+
+            if (event.type === 'tool_result' && event.toolResult) {
+              updateSession(activeSession.id, (session) => ({
+                ...session,
+                messages: session.messages.map((item) =>
+                  item.key === assistantPlaceholder.key
+                    ? {
+                      ...item,
+                      content: event.toolResult?.message || '系统操作已完成。',
+                      thinkingLoading: false,
+                      toolResult: event.toolResult,
+                    }
+                    : item,
+                ),
+              }));
+              return;
+            }
+
             if (event.type === 'done' && event.response) {
               streamState.response = event.response;
               return;
@@ -1422,6 +1543,8 @@ const AiAssistantPage = () => {
                   thinkingContent: response.thinkingContent,
                   streamingContent: response.replyText || '我已经收到你的消息。',
                   references: response.references,
+                  toolPlan: response.toolPlan,
+                  toolResult: response.toolResult,
                 },
               ],
               updatedAt: dayjs(response.replyAt || undefined).isValid()
@@ -1448,6 +1571,112 @@ const AiAssistantPage = () => {
       message.error(error instanceof Error && error.message ? error.message : '发送失败，请稍后重试');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleConfirmTool = async (plan: AiToolPlanRecord) => {
+    if (!activeSession || isShareMode || confirmingToolId) {
+      return;
+    }
+    const confirmText = `确认执行：${plan.summary || plan.toolName || plan.toolCode}`;
+    const userBubble: ChatBubble = {
+      key: buildBubbleKey('user'),
+      role: 'user',
+      content: confirmText,
+      attachments: [],
+    };
+    const assistantPlaceholder: ChatBubble = {
+      key: buildBubbleKey('assistant'),
+      role: 'ai',
+      content: '',
+      attachments: [],
+      thinkingLoading: true,
+      toolPlan: plan,
+    };
+    setConfirmingToolId(plan.id);
+    setSending(true);
+    updateSession(activeSession.id, (session) => ({
+      ...session,
+      messages: [...session.messages, userBubble, assistantPlaceholder],
+      updatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+    }));
+
+    try {
+      let response: AiChatResponseRecord | null = null;
+      let toolResult: AiToolExecuteResultRecord | null = null;
+      await aiService.streamChat(
+        {
+          employeeId: plan.employeeId ?? activeSession.employeeId ?? null,
+          conversationId: activeSession.conversationId ?? plan.conversationId ?? null,
+          pendingToolCallId: plan.id,
+          message: confirmText,
+          confirmed: true,
+        },
+        (event) => {
+          if (event.type === 'status' && event.message) {
+            updateSession(activeSession.id, (session) => ({
+              ...session,
+              messages: session.messages.map((item) =>
+                item.key === assistantPlaceholder.key
+                  ? {
+                    ...item,
+                    thinkingContent: [item.thinkingContent, event.message].filter(Boolean).join('\n'),
+                    thinkingLoading: true,
+                  }
+                  : item,
+              ),
+            }));
+            return;
+          }
+          if (event.type === 'tool_result' && event.toolResult) {
+            toolResult = event.toolResult;
+            updateSession(activeSession.id, (session) => ({
+              ...session,
+              messages: session.messages.map((item) =>
+                item.key === assistantPlaceholder.key
+                  ? {
+                    ...item,
+                    content: event.toolResult?.message || '系统操作已完成。',
+                    thinkingLoading: false,
+                    toolResult: event.toolResult,
+                  }
+                  : item,
+              ),
+            }));
+            return;
+          }
+          if (event.type === 'done' && event.response) {
+            response = event.response;
+          }
+          if (event.type === 'error') {
+            throw new Error(event.message || '系统操作执行失败');
+          }
+        },
+        { autoRedirectOnUnauthorized: false, silent: true },
+      );
+      updateSession(activeSession.id, (session) => ({
+        ...session,
+        messages: session.messages.map((item) =>
+          item.key === assistantPlaceholder.key
+            ? {
+              ...item,
+              content: response?.replyText || toolResult?.message || '系统操作已完成。',
+              thinkingLoading: false,
+              toolResult: response?.toolResult || toolResult,
+            }
+            : item,
+        ),
+      }));
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
+    } catch (error) {
+      updateSession(activeSession.id, (session) => ({
+        ...session,
+        messages: session.messages.filter((item) => item.key !== assistantPlaceholder.key),
+      }));
+      message.error(error instanceof Error && error.message ? error.message : '系统操作执行失败');
+    } finally {
+      setSending(false);
+      setConfirmingToolId(null);
     }
   };
 
@@ -1724,6 +1953,10 @@ const AiAssistantPage = () => {
         content: renderMessageContent(
           item,
           item.streamingContent ? item.streamingContent.slice(0, streamProgress[item.key] ?? 0) : undefined,
+          {
+            onConfirmTool: handleConfirmTool,
+            confirmingToolId,
+          },
         ),
         footer: (
           <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
@@ -1743,7 +1976,7 @@ const AiAssistantPage = () => {
           </Space>
         ),
       })) || [],
-    [activeSession, streamProgress],
+    [activeSession, streamProgress, confirmingToolId],
   );
 
   useEffect(() => {

@@ -19,11 +19,14 @@ import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.VerificationVerificationDTO;
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
+import com.legendary.invention.saas.common.enums.ErrorCode;
+import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.system.app.SystemRouteCatalog;
 import com.legendary.invention.saas.infrastructure.security.service.CaptchaService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
+import com.legendary.invention.saas.modules.iam.service.IamUserService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
@@ -32,6 +35,7 @@ import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import jakarta.validation.Valid;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,13 +46,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/internal/system")
 public class InternalSystemController {
 
+    private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
+    private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
+    private static final String FACTOR_SMS = "sms";
+    private static final String FACTOR_EMAIL = "email";
+
     private final UserDomainService userDomainService;
+    private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final CaptchaService captchaService;
     private final SystemVerificationAppService verificationAppService;
@@ -61,6 +72,7 @@ public class InternalSystemController {
 
     public InternalSystemController(
             UserDomainService userDomainService,
+            IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
             CaptchaService captchaService,
             SystemVerificationAppService verificationAppService,
@@ -72,6 +84,7 @@ public class InternalSystemController {
             SecuritySettingsService securitySettingsService
     ) {
         this.userDomainService = userDomainService;
+        this.iamUserService = iamUserService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.captchaService = captchaService;
         this.verificationAppService = verificationAppService;
@@ -281,17 +294,14 @@ public class InternalSystemController {
     }
 
     @PostMapping("/verification/login-code/challenge")
+    @Transactional
     public LoginCodeChallengeDTO loginCodeChallenge(
             @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
             @RequestParam("account") String account,
             @RequestParam("loginType") String loginType
     ) {
         SysUserEntity user = userDomainService.findLoginUser(account)
-                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
-        if (!user.getId().equals(userId)) {
-            throw new IllegalArgumentException("账号与用户ID不匹配");
-        }
+                .orElseGet(() -> registerLoginCodeUser(tenantId, account, loginType));
         var challenge = verificationAppService.startLoginCodeChallenge(user, tenantId, loginType);
         LoginCodeChallengeDTO dto = new LoginCodeChallengeDTO();
         dto.setLoginType(challenge.getLoginType());
@@ -401,7 +411,95 @@ public class InternalSystemController {
                 .orElseThrow(() -> new IllegalStateException("微信登录自动注册用户失败"));
         upsertUserTenantRelation(user.getId(), com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
         grantDefaultLoginRole(user.getId(), com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
+        permissionSnapshotService.invalidateTenant(com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
         return user;
+    }
+
+    private SysUserEntity registerLoginCodeUser(Long tenantId, String account, String loginType) {
+        String normalizedLoginType = normalizeLoginCodeType(loginType);
+        String identityType = iamUserService.detectIdentityType(account);
+        if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "短信验证码登录请使用手机号");
+        }
+        if (FACTOR_EMAIL.equals(normalizedLoginType) && !IamUserService.IDENTITY_EMAIL.equals(identityType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱验证码登录请使用邮箱地址");
+        }
+
+        String normalizedAccount = iamUserService.normalizeIdentifier(identityType, account);
+        String username = nextLoginCodeUsername(normalizedLoginType, normalizedAccount);
+        String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
+        String nickname = FACTOR_SMS.equals(normalizedLoginType) ? "短信注册用户" : "邮箱注册用户";
+        jdbcTemplate.update(
+                """
+                        insert into sys_user (
+                            username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                            available_time, id_card_number, status,
+                            created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENABLED', 0, 0, 0)
+                        """,
+                username,
+                randomPassword,
+                FACTOR_SMS.equals(normalizedLoginType) ? normalizedAccount : null,
+                nickname,
+                null,
+                null,
+                FACTOR_EMAIL.equals(normalizedLoginType) ? normalizedAccount : null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        Long createdUserId = jdbcTemplate.queryForObject(
+                "select id from sys_user where username = ? and deleted = 0 order by id desc limit 1",
+                Long.class,
+                username
+        );
+        SysUserEntity user = userDomainService.findById(createdUserId)
+                .orElseThrow(() -> new IllegalStateException("验证码登录自动注册用户失败"));
+        iamUserService.createUserWithIdentity(user, normalizedAccount, "LOGIN_CODE_REGISTER");
+        iamUserService.recordUserRegistered(user.getId(), "LOGIN_CODE_REGISTER", null, null);
+        upsertUserTenantRelation(user.getId(), tenantId);
+        grantDefaultLoginRole(user.getId(), tenantId);
+        permissionSnapshotService.invalidateTenant(tenantId);
+        return user;
+    }
+
+    private String normalizeLoginCodeType(String loginType) {
+        if (!StringUtils.hasText(loginType)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "登录方式不能为空");
+        }
+        String normalized = loginType.trim().toLowerCase(Locale.ROOT);
+        if (!FACTOR_SMS.equals(normalized) && !FACTOR_EMAIL.equals(normalized)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "验证码登录方式不存在");
+        }
+        return normalized;
+    }
+
+    private String nextLoginCodeUsername(String loginType, String normalizedAccount) {
+        String prefix = FACTOR_SMS.equals(loginType) ? "sms" : "email";
+        String safeAccount = StringUtils.hasText(normalizedAccount)
+                ? normalizedAccount.replaceAll("[^A-Za-z0-9_]", "_").replaceAll("_+", "_")
+                : UUID.randomUUID().toString().replace("-", "");
+        if (!StringUtils.hasText(safeAccount)) {
+            safeAccount = UUID.randomUUID().toString().replace("-", "");
+        }
+        int maxAccountLength = 48 - prefix.length() - 1;
+        if (safeAccount.length() > maxAccountLength) {
+            safeAccount = safeAccount.substring(0, maxAccountLength);
+        }
+        String baseUsername = prefix + "_" + safeAccount;
+        String username = baseUsername;
+        int suffix = 1;
+        while (userDomainService.findLoginUser(username).isPresent()) {
+            String suffixText = "_" + suffix;
+            int maxBaseLength = 64 - suffixText.length();
+            username = baseUsername.length() > maxBaseLength
+                    ? baseUsername.substring(0, maxBaseLength) + suffixText
+                    : baseUsername + suffixText;
+            suffix++;
+        }
+        return username;
     }
 
     private String nextWechatUsername(WechatLoginUserRequestDTO request) {
@@ -459,19 +557,35 @@ public class InternalSystemController {
     }
 
     private void grantDefaultLoginRole(Long userId, Long tenantId) {
+        String roleCode = resolveDefaultRegistrationRoleCode(tenantId);
         Long roleId = jdbcTemplate.query(
                 """
                         select id
                         from sys_role
-                        where tenant_id = ? and role_code = 'commonuser' and deleted = 0
+                        where tenant_id = ? and role_code = ? and deleted = 0
                         order by id desc
                         limit 1
                         """,
                 rs -> rs.next() ? rs.getLong("id") : null,
-                tenantId
+                tenantId,
+                roleCode
         );
         if (roleId == null) {
-            return;
+            roleId = jdbcTemplate.query(
+                    """
+                            select id
+                            from sys_role
+                            where tenant_id = ? and role_code = ? and deleted = 0
+                            order by id desc
+                            limit 1
+                            """,
+                    rs -> rs.next() ? rs.getLong("id") : null,
+                    tenantId,
+                    DEFAULT_REGISTRATION_ROLE_CODE
+            );
+        }
+        if (roleId == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
         }
         jdbcTemplate.update(
                 """
@@ -483,6 +597,26 @@ public class InternalSystemController {
                 userId,
                 roleId
         );
+    }
+
+    private String resolveDefaultRegistrationRoleCode(Long tenantId) {
+        String roleCode = jdbcTemplate.query(
+                """
+                        select config_value
+                        from sys_config
+                        where deleted = 0
+                          and config_scope = 'PLATFORM'
+                          and config_key = ?
+                          and (tenant_id = ? or tenant_id is null)
+                        order by case when tenant_id = ? then 0 else 1 end, id desc
+                        limit 1
+                        """,
+                rs -> rs.next() ? rs.getString("config_value") : null,
+                DEFAULT_REGISTRATION_ROLE_CODE_KEY,
+                tenantId,
+                tenantId
+        );
+        return StringUtils.hasText(roleCode) ? roleCode.trim() : DEFAULT_REGISTRATION_ROLE_CODE;
     }
 
     private VerificationProviderDTO toProvider(com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationProviderVO provider) {

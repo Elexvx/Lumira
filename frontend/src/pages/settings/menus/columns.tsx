@@ -4,6 +4,7 @@ import type { ProColumns, ProDescriptionsItemProps } from '@ant-design/pro-compo
 import { TableActionBar, type TableActionItem } from '@/features/table/TableActionBar';
 import type { PermissionAwareTableAction } from '@/features/permissions/useActionPermission';
 import type { MenuRecord } from '@/types/api';
+import { MenuIconPreview } from '@/pages/settings/menus/components/MenuIconPicker';
 import type { MenuTreeRecord } from '@/pages/settings/menus/treeUtils';
 
 interface BuildMenuColumnsOptions {
@@ -121,7 +122,7 @@ export const buildMenuColumns = ({
     width: 180,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
-    render: (_, record) => record.icon || '-',
+    render: (_, record) => <MenuIconPreview icon={record.icon} />,
   },
   {
     title: '组件',

@@ -11,12 +11,8 @@ import { usePagePermissionActions } from '@/features/permissions/usePagePermissi
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { buildMenuColumns, menuDetailColumns } from '@/pages/settings/menus/columns';
-import {
-  DEFAULT_MENU_ICON_OPTIONS,
-  MenuEditorForm,
-  buildParentMenuOptions,
-  type MenuIconOption,
-} from '@/pages/settings/menus/components/MenuEditorForm';
+import { MenuEditorForm, buildParentMenuOptions } from '@/pages/settings/menus/components/MenuEditorForm';
+import { MenuIconPicker, MenuIconPreview } from '@/pages/settings/menus/components/MenuIconPicker';
 import {
   flattenMenuOrder,
   flattenMenus,
@@ -28,10 +24,9 @@ import {
   type MenuDropPosition,
 } from '@/pages/settings/menus/treeUtils';
 import { buildMenuTableData } from '@/pages/settings/menus/tableData';
-import { dictService } from '@/services/dict';
 import { iamService } from '@/services/iam';
 import { backendRouteMeta } from '@/routes/meta';
-import type { DictItemRecord, MenuRecord } from '@/types/api';
+import type { MenuRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import {
@@ -76,26 +71,10 @@ interface SettingsRouteRecord {
   status: string;
 }
 
-interface SettingsRoutesTabProps {
-  iconOptions: MenuIconOption[];
-  iconLoading?: boolean;
-}
-
 interface SettingsRouteEditorValues {
   icon?: string;
   sortNo?: number;
 }
-
-const MENU_ICON_DICT_CODE = 'menu_icon';
-
-const toMenuIconOptions = (items: DictItemRecord[]): MenuIconOption[] =>
-  items
-    .filter((item) => item.status === 'ENABLED')
-    .sort((first, second) => first.sortNo - second.sortNo)
-    .map((item) => ({
-      label: item.itemLabel || item.itemValue,
-      value: item.itemValue,
-    }));
 
 const buildSettingsRouteRecords = (routeOrder: string[], routeIcons: Record<string, string>): SettingsRouteRecord[] => routeOrder.map((path, index) => {
   const meta = backendRouteMeta.find((item) => item.path === path);
@@ -132,7 +111,7 @@ const buildMainRouteMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
       children: menu.children?.length ? buildMainRouteMenuTree(menu.children) : undefined,
     }));
 
-const SettingsRoutesTab = ({ iconOptions, iconLoading }: SettingsRoutesTabProps) => {
+const SettingsRoutesTab = () => {
   const { setInitialState } = useInitialStateModel();
   const responsive = useResponsive();
   const [routeEditorForm] = Form.useForm<SettingsRouteEditorValues>();
@@ -287,7 +266,7 @@ const SettingsRoutesTab = ({ iconOptions, iconLoading }: SettingsRoutesTabProps)
       width: 180,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       ellipsis: true,
-      render: (_, record) => record.icon || '-',
+      render: (_, record) => <MenuIconPreview icon={record.icon} />,
     },
     {
       title: '组件',
@@ -384,15 +363,8 @@ const SettingsRoutesTab = ({ iconOptions, iconLoading }: SettingsRoutesTabProps)
           <Form.Item label="组件">
             <Input disabled value={editingRoute?.component} />
           </Form.Item>
-          <Form.Item name="icon" label="图标" extra="图标选项来自字典 menu_icon，可在字典管理中维护；清空后使用默认图标。">
-            <Select
-              allowClear
-              showSearch
-              loading={iconLoading}
-              optionFilterProp="label"
-              options={iconOptions.length ? iconOptions : DEFAULT_MENU_ICON_OPTIONS}
-              placeholder="请选择图标"
-            />
+          <Form.Item name="icon" label="菜单项图标" extra="图标来自 Ant Design 图标库；清空后使用默认图标。">
+            <MenuIconPicker />
           </Form.Item>
           <Form.Item name="sortNo" label="排序" rules={[{ type: 'number', min: 1, max: records.length, message: `请输入 1-${records.length} 之间的排序` }]}>
             <InputNumber min={1} max={records.length} style={{ width: '100%' }} />
@@ -420,8 +392,6 @@ const MenuManagementPage = () => {
   const [reordering, setReordering] = useState(false);
   const [activeTab, setActiveTab] = useState('main');
   const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([]);
-  const [menuIconOptions, setMenuIconOptions] = useState<MenuIconOption[]>(DEFAULT_MENU_ICON_OPTIONS);
-  const [menuIconLoading, setMenuIconLoading] = useState(false);
   const canSaveMenu = actionPermission.can(menuCrud.drawer.editingId ? 'system:menu:update' : 'system:menu:create');
   const editorFormProps = useStandardFormProps({
     form: editorForm,
@@ -475,22 +445,6 @@ const MenuManagementPage = () => {
     });
   }, [setInitialState]);
 
-  const loadMenuIconOptions = useCallback(async () => {
-    setMenuIconLoading(true);
-    try {
-      const items = await dictService.itemsByCode(MENU_ICON_DICT_CODE, {
-        autoRedirectOnUnauthorized: false,
-        silent: true,
-      });
-      const options = toMenuIconOptions(items);
-      setMenuIconOptions(options.length ? options : DEFAULT_MENU_ICON_OPTIONS);
-    } catch {
-      setMenuIconOptions(DEFAULT_MENU_ICON_OPTIONS);
-    } finally {
-      setMenuIconLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     void (async () => {
       try {
@@ -500,10 +454,6 @@ const MenuManagementPage = () => {
       }
     })();
   }, [loadMenus]);
-
-  useEffect(() => {
-    void loadMenuIconOptions();
-  }, [loadMenuIconOptions]);
 
   useEffect(() => {
     menuCrud.reloadTable();
@@ -818,7 +768,7 @@ const MenuManagementPage = () => {
           {
             key: 'settings',
             label: '设置页路由',
-            children: <SettingsRoutesTab iconOptions={menuIconOptions} iconLoading={menuIconLoading} />,
+            children: <SettingsRoutesTab />,
           },
         ]}
       />
@@ -835,8 +785,6 @@ const MenuManagementPage = () => {
         <MenuEditorForm
           formProps={editorFormProps}
           parentOptions={buildParentMenuOptions(editableFlatMenus)}
-          iconOptions={menuIconOptions}
-          iconLoading={menuIconLoading}
         />
       </ManagementDrawer>
 

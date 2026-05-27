@@ -156,15 +156,8 @@ public class AuthAppService {
 
     @SentinelResource(value = "auth-login-code-challenge", blockHandler = "loginCodeChallengeBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public LoginCodeChallengeDTO loginCodeChallenge(LoginCodeChallengeRequest request, HttpServletRequest httpServletRequest) {
-        String loginIp = clientIpResolver.resolve(httpServletRequest);
-        String userAgent = httpServletRequest.getHeader("User-Agent");
-        SystemUserSnapshotDTO user = systemInternalApi.findLoginUser(request.account());
-        if (user == null) {
-            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在: " + request.account(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
-        }
         Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
-        LoginCodeChallengeDTO challenge = systemInternalApi.loginCodeChallenge(tenantId, user.userId(), request.account(), request.loginType());
-        return challenge;
+        return systemInternalApi.loginCodeChallenge(tenantId, request.account(), request.loginType());
     }
 
     @SentinelResource(value = "auth-login-code-complete", blockHandler = "completeLoginCodeLoginBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)

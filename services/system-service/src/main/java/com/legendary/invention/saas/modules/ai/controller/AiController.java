@@ -10,6 +10,8 @@ import com.legendary.invention.saas.infrastructure.security.SecurityContextFacad
 import com.legendary.invention.saas.modules.ai.app.AiManagementAppService;
 import com.legendary.invention.saas.modules.ai.app.AiKnowledgeBaseAppService;
 import com.legendary.invention.saas.modules.ai.app.AiNativeToolRuntimeService;
+import com.legendary.invention.saas.modules.ai.app.AiToolOrchestrationService;
+import com.legendary.invention.saas.modules.ai.app.AiToolPolicyService;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
@@ -38,6 +40,8 @@ public class AiController {
     private final AiManagementAppService aiManagementAppService;
     private final AiKnowledgeBaseAppService aiKnowledgeBaseAppService;
     private final AiNativeToolRuntimeService aiNativeToolRuntimeService;
+    private final AiToolOrchestrationService aiToolOrchestrationService;
+    private final AiToolPolicyService aiToolPolicyService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final ObjectMapper objectMapper;
@@ -46,6 +50,8 @@ public class AiController {
             AiManagementAppService aiManagementAppService,
             AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
             AiNativeToolRuntimeService aiNativeToolRuntimeService,
+            AiToolOrchestrationService aiToolOrchestrationService,
+            AiToolPolicyService aiToolPolicyService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             ObjectMapper objectMapper
@@ -53,6 +59,8 @@ public class AiController {
         this.aiManagementAppService = aiManagementAppService;
         this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
         this.aiNativeToolRuntimeService = aiNativeToolRuntimeService;
+        this.aiToolOrchestrationService = aiToolOrchestrationService;
+        this.aiToolPolicyService = aiToolPolicyService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.objectMapper = objectMapper;
@@ -180,6 +188,57 @@ public class AiController {
     public ApiResponse<AiVO.ToolExecuteResultVO> executeTool(@Valid @RequestBody AiDTO.ToolExecuteRequest request) {
         require("ai:tool:execute");
         return ApiResponse.success(aiNativeToolRuntimeService.execute(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/tools/propose")
+    @RepeatSubmit
+    public ApiResponse<AiVO.ToolPlanVO> proposeTool(@RequestBody AiDTO.ToolProposeRequest request) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiToolOrchestrationService.propose(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/tools/confirm")
+    @RepeatSubmit
+    public ApiResponse<AiVO.ToolExecuteResultVO> confirmTool(@Valid @RequestBody AiDTO.ToolConfirmRequest request) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiToolOrchestrationService.confirm(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/tool-policies")
+    public ApiResponse<PageResponse<AiVO.ToolPolicyVO>> toolPolicies(
+            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+    ) {
+        require("ai:tool:view");
+        return ApiResponse.success(aiToolPolicyService.listPolicies(currentUser(), pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/tool-policies")
+    @RepeatSubmit
+    public ApiResponse<AiVO.ToolPolicyVO> createToolPolicy(@Valid @RequestBody AiDTO.ToolPolicyUpsertRequest request) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiToolPolicyService.createPolicy(currentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/tool-policies/{id}")
+    @RepeatSubmit
+    public ApiResponse<AiVO.ToolPolicyVO> updateToolPolicy(@PathVariable("id") Long id, @Valid @RequestBody AiDTO.ToolPolicyUpsertRequest request) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiToolPolicyService.updatePolicy(currentUser(), id, request), TraceContext.getRequestId());
+    }
+
+    @PatchMapping("/tool-policies/{id}/enabled")
+    @RepeatSubmit
+    public ApiResponse<Boolean> updateToolPolicyEnabled(@PathVariable("id") Long id, @RequestBody MapEnabledRequest request) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiToolPolicyService.updatePolicyEnabled(currentUser(), id, request.getEnabled()), TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/tool-policies/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteToolPolicy(@PathVariable("id") Long id) {
+        require("ai:tool:execute");
+        return ApiResponse.success(aiToolPolicyService.deletePolicy(currentUser(), id), TraceContext.getRequestId());
     }
 
     @GetMapping("/knowledge-bases")

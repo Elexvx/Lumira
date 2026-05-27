@@ -725,6 +725,110 @@ public final class AiVO {
         }
     }
 
+    public static class ToolPolicyVO {
+        private Long id;
+        private Long tenantId;
+        private String policyName;
+        private String toolCode;
+        private String actionType;
+        private String riskLevel;
+        private String matchType;
+        private String matchValue;
+        private String verdict;
+        private String message;
+        private Boolean enabled;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getTenantId() { return tenantId; }
+        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
+        public String getPolicyName() { return policyName; }
+        public void setPolicyName(String policyName) { this.policyName = policyName; }
+        public String getToolCode() { return toolCode; }
+        public void setToolCode(String toolCode) { this.toolCode = toolCode; }
+        public String getActionType() { return actionType; }
+        public void setActionType(String actionType) { this.actionType = actionType; }
+        public String getRiskLevel() { return riskLevel; }
+        public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
+        public String getMatchType() { return matchType; }
+        public void setMatchType(String matchType) { this.matchType = matchType; }
+        public String getMatchValue() { return matchValue; }
+        public void setMatchValue(String matchValue) { this.matchValue = matchValue; }
+        public String getVerdict() { return verdict; }
+        public void setVerdict(String verdict) { this.verdict = verdict; }
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
+        public Boolean getEnabled() { return enabled; }
+        public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+        public LocalDateTime getCreateTime() { return createTime; }
+        public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+        public LocalDateTime getUpdateTime() { return updateTime; }
+        public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
+    }
+
+    public static class ToolPlanVO {
+        private Long id;
+        private Long tenantId;
+        private Long conversationId;
+        private Long employeeId;
+        private String toolCode;
+        private String toolName;
+        private String actionType;
+        private String riskLevel;
+        private String summary;
+        private String permissionKey;
+        private Boolean requiresConfirm;
+        private String supervisorVerdict;
+        private String supervisorMessage;
+        private String policyVerdict;
+        private String policyMessage;
+        private String status;
+        private Map<String, Object> arguments;
+        private LocalDateTime expiresAt;
+        private LocalDateTime createTime;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getTenantId() { return tenantId; }
+        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
+        public Long getConversationId() { return conversationId; }
+        public void setConversationId(Long conversationId) { this.conversationId = conversationId; }
+        public Long getEmployeeId() { return employeeId; }
+        public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+        public String getToolCode() { return toolCode; }
+        public void setToolCode(String toolCode) { this.toolCode = toolCode; }
+        public String getToolName() { return toolName; }
+        public void setToolName(String toolName) { this.toolName = toolName; }
+        public String getActionType() { return actionType; }
+        public void setActionType(String actionType) { this.actionType = actionType; }
+        public String getRiskLevel() { return riskLevel; }
+        public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
+        public String getSummary() { return summary; }
+        public void setSummary(String summary) { this.summary = summary; }
+        public String getPermissionKey() { return permissionKey; }
+        public void setPermissionKey(String permissionKey) { this.permissionKey = permissionKey; }
+        public Boolean getRequiresConfirm() { return requiresConfirm; }
+        public void setRequiresConfirm(Boolean requiresConfirm) { this.requiresConfirm = requiresConfirm; }
+        public String getSupervisorVerdict() { return supervisorVerdict; }
+        public void setSupervisorVerdict(String supervisorVerdict) { this.supervisorVerdict = supervisorVerdict; }
+        public String getSupervisorMessage() { return supervisorMessage; }
+        public void setSupervisorMessage(String supervisorMessage) { this.supervisorMessage = supervisorMessage; }
+        public String getPolicyVerdict() { return policyVerdict; }
+        public void setPolicyVerdict(String policyVerdict) { this.policyVerdict = policyVerdict; }
+        public String getPolicyMessage() { return policyMessage; }
+        public void setPolicyMessage(String policyMessage) { this.policyMessage = policyMessage; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public Map<String, Object> getArguments() { return arguments; }
+        public void setArguments(Map<String, Object> arguments) { this.arguments = arguments; }
+        public LocalDateTime getExpiresAt() { return expiresAt; }
+        public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
+        public LocalDateTime getCreateTime() { return createTime; }
+        public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
+    }
+
     public static class ConversationVO {
         private Long id;
         private Long tenantId;
@@ -1042,6 +1146,8 @@ public final class AiVO {
         private String provider;
         private String model;
         private List<KnowledgeReferenceVO> references;
+        private ToolPlanVO toolPlan;
+        private ToolExecuteResultVO toolResult;
         private LocalDateTime replyAt;
 
         public Long getConversationId() {
@@ -1116,6 +1222,22 @@ public final class AiVO {
             this.references = references;
         }
 
+        public ToolPlanVO getToolPlan() {
+            return toolPlan;
+        }
+
+        public void setToolPlan(ToolPlanVO toolPlan) {
+            this.toolPlan = toolPlan;
+        }
+
+        public ToolExecuteResultVO getToolResult() {
+            return toolResult;
+        }
+
+        public void setToolResult(ToolExecuteResultVO toolResult) {
+            this.toolResult = toolResult;
+        }
+
         public LocalDateTime getReplyAt() {
             return replyAt;
         }
@@ -1130,6 +1252,8 @@ public final class AiVO {
         private String message;
         private String delta;
         private ChatResponseVO response;
+        private ToolPlanVO toolPlan;
+        private ToolExecuteResultVO toolResult;
 
         public static ChatStreamEventVO status(String message) {
             ChatStreamEventVO event = new ChatStreamEventVO();
@@ -1166,6 +1290,28 @@ public final class AiVO {
             return event;
         }
 
+        public static ChatStreamEventVO toolProposal(ToolPlanVO toolPlan) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("tool_proposal");
+            event.setToolPlan(toolPlan);
+            return event;
+        }
+
+        public static ChatStreamEventVO toolResult(ToolExecuteResultVO toolResult) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("tool_result");
+            event.setToolResult(toolResult);
+            return event;
+        }
+
+        public static ChatStreamEventVO toolBlocked(ToolPlanVO toolPlan, String message) {
+            ChatStreamEventVO event = new ChatStreamEventVO();
+            event.setType("tool_blocked");
+            event.setToolPlan(toolPlan);
+            event.setMessage(message);
+            return event;
+        }
+
         public String getType() {
             return type;
         }
@@ -1196,6 +1342,22 @@ public final class AiVO {
 
         public void setResponse(ChatResponseVO response) {
             this.response = response;
+        }
+
+        public ToolPlanVO getToolPlan() {
+            return toolPlan;
+        }
+
+        public void setToolPlan(ToolPlanVO toolPlan) {
+            this.toolPlan = toolPlan;
+        }
+
+        public ToolExecuteResultVO getToolResult() {
+            return toolResult;
+        }
+
+        public void setToolResult(ToolExecuteResultVO toolResult) {
+            this.toolResult = toolResult;
         }
     }
 

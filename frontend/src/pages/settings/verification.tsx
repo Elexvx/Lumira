@@ -751,7 +751,7 @@ const SystemVerificationPage = () => {
       const rowsByMode: Record<LoginModeCode, Omit<AuthenticatorRecord, 'order'>> = {
         passkey: {
           key: 'passkey_login',
-          identifier: 'passkey_login',
+          identifier: '通行密钥',
           type: '通行密钥',
           title: '通行密钥',
           description: '使用系统钥匙串或密码管理器进行 WebAuthn 验证',
@@ -759,7 +759,7 @@ const SystemVerificationPage = () => {
         },
         sms: {
           key: 'sms_login',
-          identifier: 'sms_login',
+          identifier: '短信',
           type: '短信',
           title: '短信验证',
           description: '使用短信验证码登录',
@@ -767,7 +767,7 @@ const SystemVerificationPage = () => {
         },
         email: {
           key: 'email_login',
-          identifier: 'email_login',
+          identifier: '邮箱',
           type: '邮箱',
           title: '邮箱验证码',
           description: '使用邮箱验证码登录',
@@ -775,7 +775,7 @@ const SystemVerificationPage = () => {
         },
         password: {
           key: 'password_login',
-          identifier: 'password_login',
+          identifier: '密码',
           type: '密码',
           title: '账号密码登录',
           description: '使用账号密码登录',
@@ -885,6 +885,7 @@ const SystemVerificationPage = () => {
       {
         title: '认证标识',
         dataIndex: 'identifier',
+        width: 180,
         search: false,
       },
       {
@@ -897,6 +898,7 @@ const SystemVerificationPage = () => {
       {
         title: '标题',
         dataIndex: 'title',
+        width: 180,
         search: false,
       },
       {
