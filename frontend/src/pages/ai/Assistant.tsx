@@ -33,7 +33,6 @@ import type {
   AiChatResponseRecord,
   AiEmployeeRecord,
   AiKnowledgeReferenceRecord,
-  AiLlmServiceRecord,
   FileObjectRecord,
 } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
@@ -91,7 +90,6 @@ type RouteParams = {
 const CONVERSATIONS_QUERY_KEY = ['ai-assistant-conversations'] as const;
 const EMPTY_CONVERSATIONS: AiConversationRecord[] = [];
 const EMPTY_EMPLOYEES: AiEmployeeRecord[] = [];
-const EMPTY_LLM_SERVICES: AiLlmServiceRecord[] = [];
 
 type ActionItem = {
   key: string;
@@ -119,7 +117,6 @@ type BubbleItem = {
 type ComposerProps = {
   employees: AiEmployeeRecord[];
   selectedEmployee?: AiEmployeeRecord | null;
-  llmServices: AiLlmServiceRecord[];
   readOnly: boolean;
   activeSession?: ChatSession | null;
   sending: boolean;
@@ -178,17 +175,6 @@ const toAttachmentFileCardItem = (attachment: ComposerAttachment): FileCardProps
   type: getAttachmentFileType(attachment),
   src: attachment.previewUrl || attachment.publicUrl || attachment.downloadUrl || undefined,
 });
-
-const isThinkingSupportedByModel = (service?: AiLlmServiceRecord | null) => {
-  if (!service) {
-    return false;
-  }
-  const provider = service.provider?.trim().toLowerCase() || '';
-  const model = service.defaultModel?.trim().toLowerCase() || '';
-  return provider === 'dashscope'
-    || provider === 'aliyun-bailian'
-    || (provider === 'deepseek' && model === 'deepseek-reasoner');
-};
 
 const Actions = ({ items }: { items: ActionItem[]; variant?: string }) => (
   <Space size={4} wrap>
@@ -487,6 +473,8 @@ const sortSessions = (sessions: ChatSession[]) =>
     return Number(b.conversationId || 0) - Number(a.conversationId || 0);
   });
 
+const isDraftSession = (session?: ChatSession | null) => Boolean(session && (session.isDraft || !session.conversationId));
+
 const formatExportFileName = (title: string, format: 'markdown' | 'text') => {
   const safeTitle = title.trim().replaceAll(/[\\/:*?"<>|]/g, '_') || 'ai-conversation';
   return `${safeTitle}.${format === 'markdown' ? 'md' : 'txt'}`;
@@ -658,7 +646,6 @@ const createActions = (
 const Composer = ({
   employees,
   selectedEmployee,
-  llmServices,
   readOnly,
   activeSession,
   sending,
@@ -672,16 +659,7 @@ const Composer = ({
   const [senderKey, setSenderKey] = useState(0);
   const [deepThink, setDeepThink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const selectedLlmService = useMemo(
-    () => llmServices.find((service) => service.id === selectedEmployee?.defaultLlmServiceId) || null,
-    [llmServices, selectedEmployee?.defaultLlmServiceId],
-  );
-  const thinkingSupported = isThinkingSupportedByModel(selectedLlmService);
-
-  useEffect(() => {
-    setDeepThink(thinkingSupported);
-  }, [thinkingSupported, selectedLlmService?.id]);
+  const agentButtonLabel = selectedEmployee?.nickname?.trim() || selectedEmployee?.username || 'Agent';
 
   const agentItems = useMemo(
     () =>
@@ -750,7 +728,7 @@ const Composer = ({
       message.warning('请输入要处理的任务或问题');
       return;
     }
-    onSend(normalizedMessage, { enableThinking: thinkingSupported && deepThink });
+    onSend(normalizedMessage, { enableThinking: deepThink });
     setInputValue('');
     setSenderKey((current) => current + 1);
   };
@@ -834,21 +812,24 @@ const Composer = ({
                     />
                     <XSender.Switch
                       icon={<ThunderboltOutlined />}
-                      value={thinkingSupported && deepThink}
-                      disabled={!thinkingSupported || readOnly || sending}
+                      value={deepThink}
+                      disabled={readOnly || sending || !activeSession}
                       checkedChildren="思考"
                       unCheckedChildren="思考"
-                      onChange={setDeepThink}
+                      onChange={(nextValue) => setDeepThink(Boolean(nextValue))}
                     />
                     <Suggestion items={conversationAgentItems} onSelect={handleAgentSuggestionSelect}>
                       {({ onTrigger, onKeyDown }) => (
                         <Button
+                          className="saas-ai-assistant-composer__agent-button"
                           icon={<AppstoreOutlined />}
-                          disabled={readOnly || sending}
+                          type={selectedEmployee ? 'primary' : 'default'}
+                          disabled={readOnly || sending || !activeSession}
+                          title={selectedEmployee ? `当前 Agent：${agentButtonLabel}` : '选择 Agent'}
                           onClick={() => onTrigger({})}
                           onKeyDown={onKeyDown}
                         >
-                          Agent
+                          <span className="saas-ai-assistant-composer__agent-label">{agentButtonLabel}</span>
                         </Button>
                       )}
                     </Suggestion>
@@ -905,12 +886,6 @@ const AiAssistantPage = () => {
     retry: false,
   });
 
-  const llmServicesQuery = useQuery({
-    queryKey: ['ai-assistant-llm-services'],
-    enabled: !isShareMode,
-    queryFn: async () => aiService.llmServices({ pageNo: 1, pageSize: 100 }, { autoRedirectOnUnauthorized: false }),
-  });
-
   const shareQuery = useQuery({
     queryKey: ['ai-assistant-share', shareToken],
     enabled: isShareMode && Boolean(shareToken),
@@ -919,7 +894,6 @@ const AiAssistantPage = () => {
   });
 
   const employees = employeesQuery.data?.records ?? EMPTY_EMPLOYEES;
-  const llmServices = llmServicesQuery.data?.records ?? EMPTY_LLM_SERVICES;
   const assistantEmployee = assistantQuery.data || null;
   const shareConversation = shareQuery.data?.conversation || null;
   const shareEmployee = shareConversation
@@ -1441,6 +1415,14 @@ const AiAssistantPage = () => {
       return;
     }
 
+    if (isDraftSession(activeSession)) {
+      message.info({
+        key: 'ai-assistant-current-new-session',
+        content: '已经是最新的对话了',
+      });
+      return;
+    }
+
     const nextSession = buildInitialSession(selectedEmployee);
     nextSession.id = buildBubbleKey('session');
     nextSession.title = '新对话';
@@ -1782,7 +1764,6 @@ const AiAssistantPage = () => {
         <Composer
           employees={selectedEmployeeOptions}
           selectedEmployee={selectedEmployee}
-          llmServices={llmServices}
           readOnly={isShareMode}
           activeSession={activeSession}
           sending={sending}
