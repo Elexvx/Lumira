@@ -71,7 +71,7 @@ public class AiController {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("ai:view");
+        requireAny("ai:view", "ai:chat:send");
         return ApiResponse.success(aiManagementAppService.listEmployees(currentUser(), pageNo, pageSize), TraceContext.getRequestId());
     }
 
