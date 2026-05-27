@@ -119,6 +119,7 @@ node scripts/deploy-container.mjs --rebuild
 - API proxy：`http://127.0.0.1:8000/health`
 - API 健康检查：`http://127.0.0.1:8000/api/health`
 - 版本检查：`http://127.0.0.1:8000/api/version`
+- 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/legendary-invention/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
 - Gateway 健康检查：`http://127.0.0.1:8081/actuator/health`
 - 公开登录配置接口：`http://127.0.0.1:8000/api/v1/public/login-capabilities`
 
