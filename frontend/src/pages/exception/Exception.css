@@ -1,0 +1,22 @@
+.saas-exception-page-shell {
+  width: min(100%, var(--saas-page-content-width));
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: var(--saas-page-gutter);
+}
+
+.saas-exception-result {
+  min-height: min(560px, calc(100vh - 220px));
+  padding: clamp(48px, 8vh, 88px) 24px 40px;
+}
+
+@media (max-width: 767px) {
+  .saas-exception-page-shell {
+    padding: 16px;
+  }
+
+  .saas-exception-result {
+    min-height: auto;
+    padding: 40px 12px 24px;
+  }
+}

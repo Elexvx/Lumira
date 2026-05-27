@@ -82,11 +82,12 @@ const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[
     };
   });
 
-const buildSettingsMenuData = (initialState?: AppInitialState) => {
+const buildSettingsMenuData = (initialState?: AppInitialState, currentPathname?: string) => {
   const access = buildAccess({ currentUser: initialState?.currentUser });
   return buildVisibleSettingsNavigationItems(
     initialState?.menuTree,
     (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
+    currentPathname,
   );
 };
 
@@ -348,7 +349,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     },
     menuDataRender: (menuData) => {
       if (siderMenuMode === 'settings') {
-        return buildSettingsMenuData(initialState);
+        return buildSettingsMenuData(initialState, history.location.pathname);
       }
 
       const backendMenus: MenuNode[] = initialState?.menuTree || [];
