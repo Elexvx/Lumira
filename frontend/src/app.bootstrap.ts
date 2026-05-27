@@ -15,6 +15,7 @@ import { systemService } from '@/services/system';
 import { API_PREFIX } from '@/constants/http';
 import {
   DEFAULT_WATERMARK_SETTINGS,
+  normalizeWatermarkSettings,
   persistWatermarkSettings,
 } from '@/watermark/settings';
 import type { AppInitialState } from '@/app.types';
@@ -100,7 +101,7 @@ const buildAuthenticatedInitialState = async (
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
       silent: true,
-    }),
+    }).then(normalizeWatermarkSettings).catch(() => DEFAULT_WATERMARK_SETTINGS),
   ]);
 
   await loadRuntimeLocalizationBundle(currentUser.locale || getLocale());
