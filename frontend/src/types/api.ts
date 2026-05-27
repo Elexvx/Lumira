@@ -1117,6 +1117,32 @@ export interface ServiceMonitorSnapshot {
   apiDocs?: ServiceApiDocStatus[];
 }
 
+export interface PlatformUpdateCurrentVersion {
+  version?: string | null;
+  commitId?: string | null;
+  branch?: string | null;
+  buildTime?: string | null;
+}
+
+export interface PlatformUpdateLatestVersion {
+  version?: string | null;
+  commitId?: string | null;
+  branch?: string | null;
+  releasedAt?: string | null;
+  title?: string | null;
+  url?: string | null;
+}
+
+export interface PlatformUpdateStatus {
+  current?: PlatformUpdateCurrentVersion | null;
+  latest?: PlatformUpdateLatestVersion | null;
+  updateAvailable?: boolean;
+  sourceUrl?: string | null;
+  checkedAt?: string | null;
+  errorMessage?: string | null;
+  notes?: string[];
+}
+
 export interface RedisMonitorOverview {
   version?: string | null;
   mode?: string | null;

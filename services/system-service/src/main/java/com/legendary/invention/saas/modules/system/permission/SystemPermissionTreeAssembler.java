@@ -44,6 +44,7 @@ public final class SystemPermissionTreeAssembler {
             Map.entry("system:file:manage", List.of("system:file:manage:")),
             Map.entry("system:department:view", List.of("system:department:")),
             Map.entry("system:monitor:view", List.of("system:monitor:")),
+            Map.entry("system:update:view", List.of("system:update:")),
             Map.entry("system:notification:view", List.of("system:notification:", "message:message:")),
             Map.entry("system:verification:view", List.of("system:verification:"))
     );

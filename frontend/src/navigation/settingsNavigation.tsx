@@ -30,6 +30,7 @@ const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/localization': '/settings/localization',
   '/settings/monitoring/api-docs': '/settings/api-docs',
   '/settings/monitoring/audit': '/settings/audit',
+  '/settings/monitoring/update': '/settings/monitoring',
 };
 
 export const SETTINGS_PROFILE_PATH = PROFILE_PATH;
