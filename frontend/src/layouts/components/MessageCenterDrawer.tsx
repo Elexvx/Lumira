@@ -1,6 +1,6 @@
 import { NotificationOutlined } from '@ant-design/icons';
-import { Badge, Button } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Badge, Button, notification } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIntl } from '@umijs/max';
 import { MESSAGE_CENTER_DRAWER_WIDTH } from '@/constants/ui';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -10,12 +10,17 @@ import { messageService } from '@/services/message';
 import { useMessageCenterRealtime } from '@/components/message-center/useMessageCenterRealtime';
 import type { MessageCenterRealtimeEvent } from '@/components/message-center/messageCenterRealtime';
 import { ManagementDrawer } from '@/features/management';
+import {
+  buildMessageCenterNotificationArgs,
+  shouldShowMessageCenterNotification,
+} from '@/layouts/components/messageCenterNotification';
 
 export const MessageCenterDrawer = () => {
   const { initialState } = useInitialStateModel();
   const intl = useIntl();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const notifiedNoticeKeysRef = useRef(new Set<string>());
   const permissions = useMemo(() => new Set(initialState?.currentUser?.permissions || []), [initialState?.currentUser?.permissions]);
   const canOpenMessageCenter =
     permissions.has('*') ||
@@ -60,6 +65,27 @@ export const MessageCenterDrawer = () => {
   }, [reloadUnreadCount]);
 
   useMessageCenterRealtime(canOpenMessageCenter, useCallback((event: MessageCenterRealtimeEvent) => {
+    if (shouldShowMessageCenterNotification(event)) {
+      const notificationArgs = buildMessageCenterNotificationArgs(event, {
+        title: intl.formatMessage({ id: 'message.center.newNotificationTitle', defaultMessage: '收到新消息' }),
+        description: intl.formatMessage({ id: 'message.center.newNotificationDescription', defaultMessage: '你有一条新的站内信，请前往消息中心查看。' }),
+      });
+      const notificationKey = String(notificationArgs.key);
+
+      if (!notifiedNoticeKeysRef.current.has(notificationKey)) {
+        notifiedNoticeKeysRef.current.add(notificationKey);
+
+        if (notifiedNoticeKeysRef.current.size > 100) {
+          notifiedNoticeKeysRef.current = new Set([...notifiedNoticeKeysRef.current].slice(-50));
+        }
+
+        notification.info({
+          ...notificationArgs,
+          onClick: () => setOpen(true),
+        });
+      }
+    }
+
     if (typeof event.unreadCount === 'number') {
       setUnreadCount(Math.max(0, event.unreadCount));
       return;
@@ -73,7 +99,7 @@ export const MessageCenterDrawer = () => {
     ) {
       void reloadUnreadCount();
     }
-  }, [reloadUnreadCount]));
+  }, [intl, reloadUnreadCount]));
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
