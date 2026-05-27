@@ -75,6 +75,8 @@ const Login = () => {
   const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
   const [activeLoginMode, setActiveLoginMode] = useState<LoginMode>('password');
   const [loginCodeChallenges, setLoginCodeChallenges] = useState<Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>>({});
+  const [loginCodeCooldownEndsAt, setLoginCodeCooldownEndsAt] = useState<Partial<Record<CodeLoginMode, number>>>({});
+  const [loginCodeClock, setLoginCodeClock] = useState(() => Date.now());
   const [agreementPreviewOpen, setAgreementPreviewOpen] = useState(false);
   const [agreementPreviewKind, setAgreementPreviewKind] = useState<'user' | 'privacy'>('user');
   const [loginForm] = Form.useForm<LoginFormValues>();
@@ -102,6 +104,13 @@ const Login = () => {
   const loginCapabilities = initialState?.loginCapabilities || DEFAULT_LOGIN_CAPABILITIES;
   const availableLoginModes = useMemo(() => getAvailableLoginModes(loginCapabilities), [loginCapabilities]);
   const redirectTarget = resolveLoginRedirectTarget(location.search);
+  const loginCodeCooldownSeconds = useMemo(
+    () => ({
+      sms: Math.max(0, Math.ceil(((loginCodeCooldownEndsAt.sms || 0) - loginCodeClock) / 1000)),
+      email: Math.max(0, Math.ceil(((loginCodeCooldownEndsAt.email || 0) - loginCodeClock) / 1000)),
+    }),
+    [loginCodeClock, loginCodeCooldownEndsAt.email, loginCodeCooldownEndsAt.sms],
+  );
   const securitySettingsRef = useRef(securitySettings);
   const loginEncryptionLoadPromiseRef = useRef<Promise<LoginEncryptionKey | null> | null>(null);
   const wechatCallbackHandledRef = useRef(false);
@@ -131,6 +140,15 @@ const Login = () => {
   useEffect(() => {
     securitySettingsRef.current = securitySettings;
   }, [securitySettings]);
+
+  useEffect(() => {
+    const hasActiveCooldown = loginCodeCooldownSeconds.sms > 0 || loginCodeCooldownSeconds.email > 0;
+    if (!hasActiveCooldown) {
+      return;
+    }
+    const timer = window.setInterval(() => setLoginCodeClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [loginCodeCooldownSeconds.email, loginCodeCooldownSeconds.sms]);
 
   useEffect(() => {
     setActiveLoginMode((current) => (availableLoginModes.includes(current) ? current : defaultLoginMode(loginCapabilities)));
@@ -295,6 +313,16 @@ const Login = () => {
         );
         return;
       }
+      const remainingCooldownSeconds = loginCodeCooldownSeconds[mode] || 0;
+      if (remainingCooldownSeconds > 0) {
+        message.warning(
+          formatMessage(
+            { id: 'page.login.code.cooldown', defaultMessage: 'Please wait {seconds}s before sending again' },
+            { seconds: remainingCooldownSeconds },
+          ),
+        );
+        return;
+      }
       const accountField = mode === 'sms' ? 'smsAccount' : 'emailAccount';
       let account = '';
       try {
@@ -321,6 +349,15 @@ const Login = () => {
           ...prev,
           [mode]: challenge,
         }));
+        const cooldownSeconds = Math.max(
+          1,
+          Math.floor(challenge.cooldownSeconds || securitySettings.verificationCodeCooldownSeconds || DEFAULT_SECURITY_SETTINGS.verificationCodeCooldownSeconds),
+        );
+        setLoginCodeCooldownEndsAt((prev) => ({
+          ...prev,
+          [mode]: Date.now() + cooldownSeconds * 1000,
+        }));
+        setLoginCodeClock(Date.now());
         loginForm.setFieldsValue({
           [mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode']: undefined,
         } as Partial<LoginFormValues>);
@@ -334,7 +371,7 @@ const Login = () => {
         setSendingLoginType(null);
       }
     },
-    [availableLoginModes, loginForm],
+    [availableLoginModes, loginCodeCooldownSeconds, loginForm, securitySettings.verificationCodeCooldownSeconds],
   );
 
   const completeSuccessfulLogin = useCallback(
@@ -388,6 +425,7 @@ const Login = () => {
       });
 
       setLoginCodeChallenges({});
+      setLoginCodeCooldownEndsAt({});
       history.replace(resolveAuthorizedLoginRedirectTarget(location.search, sessionResult.currentUser, menuTree));
     },
     [agreementSettings, initialState?.brandingSettings, initialState?.watermarkSettings, location.search, loginCapabilities, setInitialState],
@@ -711,6 +749,7 @@ const Login = () => {
           captchaImageLoadFailed={captchaImageLoadFailed}
           sendingLoginType={sendingLoginType}
           loginCodeChallenges={loginCodeChallenges}
+          loginCodeCooldownSeconds={loginCodeCooldownSeconds}
           wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
           passkeyLoading={passkeySubmitting}
           onModeChange={setActiveLoginMode}

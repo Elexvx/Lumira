@@ -9,6 +9,8 @@ public record SecuritySettingsDTO(
         String captchaType,
         Long loginDefenseWindowMinutes,
         Long loginMaxValidationAttempts,
-        Long loginMaxFailureCount
+        Long loginMaxFailureCount,
+        Long verificationCodeExpireSeconds,
+        Long verificationCodeCooldownSeconds
 ) {
 }

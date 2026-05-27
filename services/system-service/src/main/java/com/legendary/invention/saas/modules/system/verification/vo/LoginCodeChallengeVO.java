@@ -8,6 +8,7 @@ public class LoginCodeChallengeVO {
     private String maskedContact;
     private String promptMessage;
     private Long expiresInSeconds;
+    private Long cooldownSeconds;
     private String debugCode;
 
     public String getLoginType() { return loginType; }
@@ -22,6 +23,8 @@ public class LoginCodeChallengeVO {
     public void setPromptMessage(String promptMessage) { this.promptMessage = promptMessage; }
     public Long getExpiresInSeconds() { return expiresInSeconds; }
     public void setExpiresInSeconds(Long expiresInSeconds) { this.expiresInSeconds = expiresInSeconds; }
+    public Long getCooldownSeconds() { return cooldownSeconds; }
+    public void setCooldownSeconds(Long cooldownSeconds) { this.cooldownSeconds = cooldownSeconds; }
     public String getDebugCode() { return debugCode; }
     public void setDebugCode(String debugCode) { this.debugCode = debugCode; }
 }

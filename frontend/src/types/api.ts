@@ -89,6 +89,7 @@ export interface LoginCodeChallenge {
   maskedContact?: string | null;
   promptMessage?: string | null;
   expiresInSeconds?: number | null;
+  cooldownSeconds?: number | null;
   debugCode?: string | null;
 }
 
@@ -115,6 +116,8 @@ export interface SecuritySettings {
   loginDefenseWindowMinutes: number;
   loginMaxValidationAttempts: number;
   loginMaxFailureCount: number;
+  verificationCodeExpireSeconds: number;
+  verificationCodeCooldownSeconds: number;
   passwordMinLength: number;
   passwordRequireUppercase: boolean;
   passwordRequireLowercase: boolean;

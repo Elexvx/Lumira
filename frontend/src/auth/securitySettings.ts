@@ -13,6 +13,8 @@ export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   loginDefenseWindowMinutes: 5,
   loginMaxValidationAttempts: 100,
   loginMaxFailureCount: 10,
+  verificationCodeExpireSeconds: 300,
+  verificationCodeCooldownSeconds: 60,
   passwordMinLength: 6,
   passwordRequireUppercase: false,
   passwordRequireLowercase: false,
@@ -42,6 +44,14 @@ export const normalizeSecuritySettings = (settings?: Partial<SecuritySettings> |
     DEFAULT_SECURITY_SETTINGS.loginMaxValidationAttempts,
   );
   const loginMaxFailureCount = toPositiveNumber(settings?.loginMaxFailureCount, DEFAULT_SECURITY_SETTINGS.loginMaxFailureCount);
+  const verificationCodeExpireSeconds = toPositiveNumber(
+    settings?.verificationCodeExpireSeconds,
+    DEFAULT_SECURITY_SETTINGS.verificationCodeExpireSeconds,
+  );
+  const verificationCodeCooldownSeconds = toPositiveNumber(
+    settings?.verificationCodeCooldownSeconds,
+    DEFAULT_SECURITY_SETTINGS.verificationCodeCooldownSeconds,
+  );
   const passwordMinLength = toPositiveNumber(settings?.passwordMinLength, DEFAULT_SECURITY_SETTINGS.passwordMinLength);
   const passwordRequireUppercase = toBoolean(
     settings?.passwordRequireUppercase,
@@ -69,6 +79,8 @@ export const normalizeSecuritySettings = (settings?: Partial<SecuritySettings> |
     loginDefenseWindowMinutes,
     loginMaxValidationAttempts,
     loginMaxFailureCount,
+    verificationCodeExpireSeconds,
+    verificationCodeCooldownSeconds,
     passwordMinLength,
     passwordRequireUppercase,
     passwordRequireLowercase,

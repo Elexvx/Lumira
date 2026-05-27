@@ -2089,9 +2089,11 @@ public class SystemManagementAppService {
         snapshot.setAllowMultiDeviceLogin(Boolean.TRUE.equals(request.getAllowMultiDeviceLogin()));
         snapshot.setCaptchaEnabled(Boolean.TRUE.equals(request.getCaptchaEnabled()));
         snapshot.setCaptchaType(defaultIfBlank(request.getCaptchaType(), "IMAGE").trim().toUpperCase());
-        snapshot.setLoginDefenseWindowMinutes(current.getLoginDefenseWindowMinutes());
-        snapshot.setLoginMaxValidationAttempts(current.getLoginMaxValidationAttempts());
-        snapshot.setLoginMaxFailureCount(current.getLoginMaxFailureCount());
+        snapshot.setLoginDefenseWindowMinutes(request.getLoginDefenseWindowMinutes());
+        snapshot.setLoginMaxValidationAttempts(request.getLoginMaxValidationAttempts());
+        snapshot.setLoginMaxFailureCount(request.getLoginMaxFailureCount());
+        snapshot.setVerificationCodeExpireSeconds(request.getVerificationCodeExpireSeconds());
+        snapshot.setVerificationCodeCooldownSeconds(request.getVerificationCodeCooldownSeconds());
         snapshot.setPasswordMinLength(current.getPasswordMinLength());
         snapshot.setPasswordRequireUppercase(current.isPasswordRequireUppercase());
         snapshot.setPasswordRequireLowercase(current.isPasswordRequireLowercase());
@@ -2111,6 +2113,8 @@ public class SystemManagementAppService {
         vo.setLoginDefenseWindowMinutes(snapshot.getLoginDefenseWindowMinutes());
         vo.setLoginMaxValidationAttempts(snapshot.getLoginMaxValidationAttempts());
         vo.setLoginMaxFailureCount(snapshot.getLoginMaxFailureCount());
+        vo.setVerificationCodeExpireSeconds(snapshot.getVerificationCodeExpireSeconds());
+        vo.setVerificationCodeCooldownSeconds(snapshot.getVerificationCodeCooldownSeconds());
         vo.setPasswordMinLength(snapshot.getPasswordMinLength());
         vo.setPasswordRequireUppercase(snapshot.isPasswordRequireUppercase());
         vo.setPasswordRequireLowercase(snapshot.isPasswordRequireLowercase());

@@ -7,6 +7,7 @@ public class LoginCodeChallengeDTO {
     private String maskedContact;
     private String promptMessage;
     private Long expiresInSeconds;
+    private Long cooldownSeconds;
     private String debugCode;
 
     public String getLoginType() {
@@ -55,6 +56,14 @@ public class LoginCodeChallengeDTO {
 
     public void setExpiresInSeconds(Long expiresInSeconds) {
         this.expiresInSeconds = expiresInSeconds;
+    }
+
+    public Long getCooldownSeconds() {
+        return cooldownSeconds;
+    }
+
+    public void setCooldownSeconds(Long cooldownSeconds) {
+        this.cooldownSeconds = cooldownSeconds;
     }
 
     public String getDebugCode() {

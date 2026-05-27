@@ -43,6 +43,7 @@ interface LoginFormFieldsProps {
   captchaImageLoadFailed: boolean;
   sendingLoginType: CodeLoginMode | null;
   loginCodeChallenges: Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>;
+  loginCodeCooldownSeconds: Partial<Record<CodeLoginMode, number>>;
   wechatLoginAvailable?: boolean;
   passkeyLoading?: boolean;
   onModeChange: (mode: LoginMode) => void;
@@ -96,6 +97,7 @@ export const LoginFormFields = ({
   captchaImageLoadFailed,
   sendingLoginType,
   loginCodeChallenges,
+  loginCodeCooldownSeconds,
   wechatLoginAvailable,
   passkeyLoading,
   onModeChange,
@@ -335,6 +337,7 @@ export const LoginFormFields = ({
   const renderCodeTab = (mode: CodeLoginMode) => {
     const accountValue = mode === 'sms' ? smsAccount : emailAccount;
     const challenge = pendingChallenge;
+    const cooldownSeconds = loginCodeCooldownSeconds[mode] || 0;
     return (
       <div className="saas-login-page__credentials-stack">
         <Form.Item
@@ -388,9 +391,11 @@ export const LoginFormFields = ({
             onClick={() => onSendLoginCode(mode)}
             loading={sendingLoginType === mode}
             className="saas-login-page__send-code-button"
-            disabled={!accountValue}
+            disabled={!accountValue || cooldownSeconds > 0}
           >
-            {challenge?.challengeId
+            {cooldownSeconds > 0
+              ? formatMessage({ id: 'page.login.code.countdown', defaultMessage: '{seconds}s 后重发' }, { seconds: cooldownSeconds })
+              : challenge?.challengeId
               ? formatMessage({ id: 'page.login.code.refresh', defaultMessage: 'Resend' })
               : formatMessage({ id: 'page.login.code.send', defaultMessage: 'Send code' })}
           </Button>

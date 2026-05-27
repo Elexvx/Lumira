@@ -11,6 +11,8 @@ public class SecuritySettingsVO {
     private Long loginDefenseWindowMinutes;
     private Long loginMaxValidationAttempts;
     private Long loginMaxFailureCount;
+    private Long verificationCodeExpireSeconds;
+    private Long verificationCodeCooldownSeconds;
     private Long passwordMinLength;
     private Boolean passwordRequireUppercase;
     private Boolean passwordRequireLowercase;
@@ -35,6 +37,10 @@ public class SecuritySettingsVO {
     public void setLoginMaxValidationAttempts(Long loginMaxValidationAttempts) { this.loginMaxValidationAttempts = loginMaxValidationAttempts; }
     public Long getLoginMaxFailureCount() { return loginMaxFailureCount; }
     public void setLoginMaxFailureCount(Long loginMaxFailureCount) { this.loginMaxFailureCount = loginMaxFailureCount; }
+    public Long getVerificationCodeExpireSeconds() { return verificationCodeExpireSeconds; }
+    public void setVerificationCodeExpireSeconds(Long verificationCodeExpireSeconds) { this.verificationCodeExpireSeconds = verificationCodeExpireSeconds; }
+    public Long getVerificationCodeCooldownSeconds() { return verificationCodeCooldownSeconds; }
+    public void setVerificationCodeCooldownSeconds(Long verificationCodeCooldownSeconds) { this.verificationCodeCooldownSeconds = verificationCodeCooldownSeconds; }
     public Long getPasswordMinLength() { return passwordMinLength; }
     public void setPasswordMinLength(Long passwordMinLength) { this.passwordMinLength = passwordMinLength; }
     public Boolean getPasswordRequireUppercase() { return passwordRequireUppercase; }

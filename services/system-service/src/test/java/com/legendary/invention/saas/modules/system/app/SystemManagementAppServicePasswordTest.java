@@ -208,6 +208,8 @@ class SystemManagementAppServicePasswordTest {
                             10L,
                             5L,
                             5L,
+                            300L,
+                            60L,
                             8L,
                             true,
                             true,

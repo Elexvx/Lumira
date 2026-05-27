@@ -16,6 +16,7 @@ import com.legendary.invention.saas.modules.system.support.SmsVerificationSender
 import com.legendary.invention.saas.modules.system.support.SmtpMailService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
+import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -68,6 +70,7 @@ public class SystemVerificationAppService {
     private final SmsVerificationSender smsVerificationSender;
     private final VerificationDeliveryAuditService verificationDeliveryAuditService;
     private final SystemVerificationSettingsAppService settingsAppService;
+    private final SecuritySettingsService securitySettingsService;
     private final TotpService totpService = new TotpService();
 
     public SystemVerificationAppService(
@@ -78,7 +81,8 @@ public class SystemVerificationAppService {
             SmtpMailService smtpMailService,
             SmsVerificationSender smsVerificationSender,
             VerificationDeliveryAuditService verificationDeliveryAuditService,
-            SystemVerificationSettingsAppService settingsAppService
+            SystemVerificationSettingsAppService settingsAppService,
+            SecuritySettingsService securitySettingsService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -88,6 +92,7 @@ public class SystemVerificationAppService {
         this.smsVerificationSender = smsVerificationSender;
         this.verificationDeliveryAuditService = verificationDeliveryAuditService;
         this.settingsAppService = settingsAppService;
+        this.securitySettingsService = securitySettingsService;
     }
 
     public List<SystemVO.VerificationProviderVO> listProviders(Long tenantId, Long userId) {
@@ -143,6 +148,7 @@ public class SystemVerificationAppService {
         String maskedContact = FACTOR_SMS.equals(normalizedContactType)
                 ? maskMobile(normalizedContactValue)
                 : maskEmail(normalizedContactValue);
+        ensureVerificationCodeCooldown(tenantId, userId, normalizedContactType, CHALLENGE_TYPE_BIND);
 
         persistChallenge(
                 challengeId,
@@ -289,6 +295,7 @@ public class SystemVerificationAppService {
         String promptMessage = FACTOR_SMS.equals(normalizedLoginType)
                 ? "验证码已发送至绑定手机号，请输入 6 位验证码完成登录"
                 : "验证码已发送至绑定邮箱，请输入 6 位验证码完成登录";
+        ensureVerificationCodeCooldown(tenantId, user.getId(), normalizedLoginType, CHALLENGE_TYPE_LOGIN);
 
         persistChallenge(
                 challengeId,
@@ -305,19 +312,24 @@ public class SystemVerificationAppService {
                 user.getId()
         );
 
-        deliverVerificationCode(
-                tenantId,
-                user.getId(),
-                user.getUsername(),
-                normalizedLoginType,
-                AUDIT_SCENE_LOGIN_CODE,
-                FACTOR_SMS.equals(normalizedLoginType) ? user.getMobile() : user.getEmail(),
-                maskedContact,
-                verificationCode,
-                challengeId,
-                "邮箱验证码",
-                smsSettings
-        );
+        try {
+            deliverVerificationCode(
+                    tenantId,
+                    user.getId(),
+                    user.getUsername(),
+                    normalizedLoginType,
+                    AUDIT_SCENE_LOGIN_CODE,
+                    FACTOR_SMS.equals(normalizedLoginType) ? user.getMobile() : user.getEmail(),
+                    maskedContact,
+                    verificationCode,
+                    challengeId,
+                    "邮箱验证码",
+                    smsSettings
+            );
+        } catch (RuntimeException exception) {
+            discardChallenge(challengeId);
+            throw exception;
+        }
 
         LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
         challenge.setLoginType(normalizedLoginType);
@@ -325,7 +337,8 @@ public class SystemVerificationAppService {
         challenge.setChallengeId(challengeId);
         challenge.setMaskedContact(maskedContact);
         challenge.setPromptMessage(promptMessage);
-        challenge.setExpiresInSeconds((long) properties.getLoginChallengeExpireMinutes() * 60L);
+        challenge.setExpiresInSeconds(verificationCodeExpireSeconds());
+        challenge.setCooldownSeconds(verificationCodeCooldownSeconds());
         challenge.setDebugCode(properties.isExposeDebugCode() ? verificationCode : null);
         return challenge;
     }
@@ -414,6 +427,7 @@ public class SystemVerificationAppService {
             if (!StringUtils.hasText(user.getMobile())) {
                 throw new BizException(ErrorCode.BIZ_ERROR, "请先补充手机号后再使用短信验证码");
             }
+            ensureVerificationCodeCooldown(tenantId, userId, normalizedFactor, CHALLENGE_TYPE_LOGIN);
             String challengeId = generateChallengeId();
             String verificationCode = generateNumericCode(6);
             String codeHash = totpService.sha256(challengeId + ":" + verificationCode);
@@ -467,6 +481,7 @@ public class SystemVerificationAppService {
             if (!smtpMailService.isConfigured(tenantId)) {
                 throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 后再使用邮箱验证码登录");
             }
+            ensureVerificationCodeCooldown(tenantId, userId, normalizedFactor, CHALLENGE_TYPE_LOGIN);
             String challengeId = generateChallengeId();
             String verificationCode = generateNumericCode(6);
             String codeHash = totpService.sha256(challengeId + ":" + verificationCode);
@@ -1164,9 +1179,7 @@ public class SystemVerificationAppService {
                 userId,
                 factorCode,
                 challengeType,
-                LocalDateTime.now().plusMinutes(CHALLENGE_TYPE_BIND.equals(challengeType)
-                        ? properties.getBindChallengeExpireMinutes()
-                        : properties.getLoginChallengeExpireMinutes()),
+                challengeExpiresAt(factorCode, challengeType),
                 setupSecret,
                 setupUri,
                 toJson(recoveryCodes),
@@ -1212,11 +1225,67 @@ public class SystemVerificationAppService {
                 codeHash,
                 binding == null ? null : binding.maskedContact(),
                 debugCode,
-                LocalDateTime.now().plusMinutes(CHALLENGE_TYPE_BIND.equals(challengeType)
-                        ? properties.getBindChallengeExpireMinutes()
-                        : properties.getLoginChallengeExpireMinutes()),
+                challengeExpiresAt(factorCode, challengeType),
                 false
         );
+    }
+
+    private LocalDateTime challengeExpiresAt(String factorCode, String challengeType) {
+        if (isDeliveryCodeChallenge(factorCode)) {
+            return LocalDateTime.now().plusSeconds(verificationCodeExpireSeconds());
+        }
+        return LocalDateTime.now().plusMinutes(CHALLENGE_TYPE_BIND.equals(challengeType)
+                ? properties.getBindChallengeExpireMinutes()
+                : properties.getLoginChallengeExpireMinutes());
+    }
+
+    private void ensureVerificationCodeCooldown(Long tenantId, Long userId, String factorCode, String challengeType) {
+        long cooldownSeconds = verificationCodeCooldownSeconds();
+        if (cooldownSeconds <= 0 || !isDeliveryCodeChallenge(factorCode)) {
+            return;
+        }
+        LocalDateTime threshold = LocalDateTime.now().minusSeconds(cooldownSeconds);
+        LocalDateTime latestCreatedAt = jdbcTemplate.query(
+                """
+                        select created_at
+                        from sys_verification_challenge
+                        where tenant_id = ? and user_id = ? and factor_code = ? and challenge_type = ?
+                          and created_at > ? and deleted = 0
+                        order by created_at desc
+                        limit 1
+                        """,
+                rs -> rs.next() ? rs.getTimestamp("created_at").toLocalDateTime() : null,
+                tenantId,
+                userId,
+                factorCode,
+                challengeType,
+                threshold
+        );
+        if (latestCreatedAt == null) {
+            return;
+        }
+        long elapsedSeconds = Math.max(0L, Duration.between(latestCreatedAt, LocalDateTime.now()).getSeconds());
+        long remainingSeconds = Math.max(1L, cooldownSeconds - elapsedSeconds);
+        throw new BizException(ErrorCode.LOGIN_RATE_LIMITED, "验证码已发送，请 " + remainingSeconds + " 秒后再试");
+    }
+
+    private boolean isDeliveryCodeChallenge(String factorCode) {
+        return FACTOR_SMS.equals(factorCode) || FACTOR_EMAIL.equals(factorCode);
+    }
+
+    private void discardChallenge(String challengeId) {
+        jdbcTemplate.update(
+                "update sys_verification_challenge set deleted = 1, updated_at = current_timestamp where challenge_id = ? and consumed_flag = 0",
+                challengeId
+        );
+    }
+
+    private long verificationCodeExpireSeconds() {
+        return Math.max(1L, securitySettingsService.getVerificationCodeExpireSeconds());
+    }
+
+    private long verificationCodeCooldownSeconds() {
+        return Math.max(1L, securitySettingsService.getVerificationCodeCooldownSeconds());
     }
 
     private ChallengeRecord loadChallenge(String challengeId, String factorCode, String challengeType) {
