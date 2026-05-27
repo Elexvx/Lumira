@@ -161,7 +161,7 @@ public class SystemVerificationController {
     @RepeatSubmit
     public ApiResponse<SystemVO.SmsVerificationSettingsVO> updateSmsSettings(@Valid @RequestBody SystemDTO.SmsVerificationSettingsRequest request) {
         CurrentUser currentUser = currentUser();
-        require("system:verification:manage");
+        requireConfigManage();
         return ApiResponse.success(
                 verificationAppService.updateSmsSettings(currentUser, request),
                 TraceContext.getRequestId()
@@ -172,7 +172,7 @@ public class SystemVerificationController {
     @RepeatSubmit
     public ApiResponse<SystemVO.WechatLoginSettingsVO> updateWechatSettings(@Valid @RequestBody SystemDTO.WechatLoginSettingsRequest request) {
         CurrentUser currentUser = currentUser();
-        require("system:verification:manage");
+        requireConfigManage();
         return ApiResponse.success(
                 verificationAppService.updateWechatSettings(currentUser, request),
                 TraceContext.getRequestId()
@@ -183,7 +183,7 @@ public class SystemVerificationController {
     @RepeatSubmit
     public ApiResponse<SystemVO.PasskeySettingsVO> updatePasskeySettings(@Valid @RequestBody SystemDTO.PasskeySettingsRequest request) {
         CurrentUser currentUser = currentUser();
-        require("system:verification:manage");
+        requireConfigManage();
         return ApiResponse.success(
                 verificationAppService.updatePasskeySettings(currentUser, request),
                 TraceContext.getRequestId()
@@ -194,7 +194,7 @@ public class SystemVerificationController {
     @RepeatSubmit
     public ApiResponse<SystemVO.VerificationSettingsVO> updateVerificationSettings(@Valid @RequestBody SystemDTO.VerificationSettingsRequest request) {
         CurrentUser currentUser = currentUser();
-        require("system:verification:manage");
+        requireConfigManage();
         return ApiResponse.success(
                 verificationAppService.updateVerificationSettings(currentUser, request),
                 TraceContext.getRequestId()
@@ -215,10 +215,32 @@ public class SystemVerificationController {
 
     private void requireView() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        if (currentUser != null && currentUser.getPermissions() != null &&
-                (currentUser.getPermissions().contains("system:verification:view") || currentUser.getPermissions().contains("system:verification:manage"))) {
+        if (hasAnyPermission(currentUser, "system:verification:view", "system:verification:manage", "system:config:view", "system:config:update")) {
             return;
         }
         permissionGuard.requirePermission(currentUser, "system:verification:view");
+    }
+
+    private void requireConfigManage() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (hasAnyPermission(currentUser, "system:verification:manage", "system:config:update")) {
+            return;
+        }
+        permissionGuard.requirePermission(currentUser, "system:verification:manage");
+    }
+
+    private boolean hasAnyPermission(CurrentUser currentUser, String... permissionKeys) {
+        if (currentUser == null || currentUser.getPermissions() == null) {
+            return false;
+        }
+        if (currentUser.getPermissions().contains("*")) {
+            return true;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (currentUser.getPermissions().contains(permissionKey)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

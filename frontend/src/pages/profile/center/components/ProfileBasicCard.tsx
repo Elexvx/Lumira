@@ -102,10 +102,6 @@ export const ProfileBasicCard = ({
   if (visibleField('idCardNumber')) {
     profileItems.push({ key: 'idCardNumber', label: '身份证号码', children: currentUser?.idCardNumber || '-' });
   }
-  if (visibleField('availableTime')) {
-    profileItems.push({ key: 'availableTime', label: '可工作时间', children: currentUser?.availableTime || '-' });
-  }
-
   return (
     <>
       <Card

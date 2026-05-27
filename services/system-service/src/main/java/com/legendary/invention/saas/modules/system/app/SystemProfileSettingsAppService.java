@@ -38,7 +38,6 @@ public class SystemProfileSettingsAppService {
             new ProfileFieldDefinition("birthMonth", "出生年月", "控制个人中心是否展示出生年月字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.birth-month.visible", "profile.field.birth-month.weight", true, 10),
             new ProfileFieldDefinition("gender", "性别", "控制个人中心是否展示性别字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.gender.visible", "profile.field.gender.weight", true, 10),
             new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.region.visible", "profile.field.region.weight", true, 10),
-            new ProfileFieldDefinition("availableTime", "可工作时间", "控制个人中心是否展示可工作时间字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.available-time.visible", "profile.field.available-time.weight", true, 10),
             new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_GROUP_IDENTITY_KEY, "证件信息", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5)
     );
     private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
@@ -332,7 +331,6 @@ public class SystemProfileSettingsAppService {
             case "birthMonth" -> StringUtils.hasText(currentUser.getBirthMonth());
             case "gender" -> StringUtils.hasText(currentUser.getGender());
             case "region" -> StringUtils.hasText(currentUser.getRegion());
-            case "availableTime" -> StringUtils.hasText(currentUser.getAvailableTime());
             case "idCardNumber" -> StringUtils.hasText(currentUser.getIdCardNumber());
             default -> false;
         };
@@ -350,7 +348,6 @@ public class SystemProfileSettingsAppService {
             case "birthMonth" -> defaultIfBlank(currentUser.getBirthMonth(), "-");
             case "gender" -> defaultIfBlank(currentUser.getGender(), "-");
             case "region" -> defaultIfBlank(currentUser.getRegion(), "-");
-            case "availableTime" -> defaultIfBlank(currentUser.getAvailableTime(), "-");
             case "idCardNumber" -> maskIdCardNumber(currentUser.getIdCardNumber());
             default -> "-";
         };

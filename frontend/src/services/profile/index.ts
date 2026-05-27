@@ -16,7 +16,6 @@ export interface ProfileBasicInfoPayload {
   birthMonth?: string;
   gender?: string;
   region?: string;
-  availableTime?: string;
   idCardNumber?: string;
 }
 

@@ -106,7 +106,6 @@ const ProfileCenterPage = () => {
       birthMonth: currentUser.birthMonth ? dayjs(currentUser.birthMonth, 'YYYY-MM') : null,
       gender: currentUser.gender || undefined,
       region: currentUser.region || '',
-      availableTime: currentUser.availableTime || '',
       idCardNumber: currentUser.idCardNumber || '',
     });
   }, [currentUser, profileForm]);
@@ -656,24 +655,28 @@ const ProfileCenterPage = () => {
         {responsive.isMobile ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <div className="saas-profile-page__top-row">
-              <Card className="saas-profile-page__welcome-card">
-                <Space direction="vertical" size={6}>
-                  <Typography.Title level={3} style={{ margin: 0 }}>
-                    Hi，{displayName}
-                  </Typography.Title>
-                  <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
-                </Space>
-              </Card>
-              <Card className="saas-profile-page__account-card" bordered={false}>
-                <Space align="center" size={14} className="saas-profile-page__welcome-profile">
-                  <Avatar size={56} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
-                  <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
-                    <Typography.Title level={4} style={{ margin: 0 }}>
-                      {displayName}
-                    </Typography.Title>
-                    <Typography.Text>{activeRoleName}</Typography.Text>
-                  </Space>
-                </Space>
+              <Card className="saas-profile-page__summary-card">
+                <div className="saas-profile-page__summary-content">
+                  <section className="saas-profile-page__welcome-panel" aria-label="欢迎信息">
+                    <Space direction="vertical" size={6}>
+                      <Typography.Title level={3} style={{ margin: 0 }}>
+                        Hi，{displayName}
+                      </Typography.Title>
+                      <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
+                    </Space>
+                  </section>
+                  <section className="saas-profile-page__account-panel" aria-label="账户身份">
+                    <Space align="center" size={14} className="saas-profile-page__welcome-profile">
+                      <Avatar size={56} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+                      <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
+                        <Typography.Title level={4} style={{ margin: 0 }}>
+                          {displayName}
+                        </Typography.Title>
+                        <Typography.Text>{activeRoleName}</Typography.Text>
+                      </Space>
+                    </Space>
+                  </section>
+                </div>
               </Card>
             </div>
             <div ref={profileBasicCardRef}>
@@ -719,26 +722,30 @@ const ProfileCenterPage = () => {
             <Col xs={24} xl={18} className="saas-profile-page__main-column">
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
                 <div className="saas-profile-page__top-row">
-                  <Card className="saas-profile-page__welcome-card">
-                    <div className="saas-profile-page__welcome-content">
-                      <Space align="baseline" size={24}>
-                        <Typography.Title level={2} style={{ margin: 0 }}>
-                          Hi，{displayName}
-                        </Typography.Title>
-                        <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
-                      </Space>
+                  <Card className="saas-profile-page__summary-card">
+                    <div className="saas-profile-page__summary-content">
+                      <section className="saas-profile-page__welcome-panel" aria-label="欢迎信息">
+                        <div className="saas-profile-page__welcome-content">
+                          <Space align="baseline" size={24}>
+                            <Typography.Title level={2} style={{ margin: 0 }}>
+                              Hi，{displayName}
+                            </Typography.Title>
+                            <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
+                          </Space>
+                        </div>
+                      </section>
+                      <section className="saas-profile-page__account-panel" aria-label="账户身份">
+                        <Space align="center" size={16} className="saas-profile-page__welcome-profile">
+                          <Avatar size={64} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+                          <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
+                            <Typography.Title level={3} style={{ margin: 0 }}>
+                              {displayName}
+                            </Typography.Title>
+                            <Typography.Text>{activeRoleName}</Typography.Text>
+                          </Space>
+                        </Space>
+                      </section>
                     </div>
-                  </Card>
-                  <Card className="saas-profile-page__account-card" bordered={false}>
-                    <Space align="center" size={16} className="saas-profile-page__welcome-profile">
-                      <Avatar size={64} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
-                      <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
-                        <Typography.Title level={3} style={{ margin: 0 }}>
-                          {displayName}
-                        </Typography.Title>
-                        <Typography.Text>{activeRoleName}</Typography.Text>
-                      </Space>
-                    </Space>
                   </Card>
                 </div>
                 <div ref={profileBasicCardRef}>

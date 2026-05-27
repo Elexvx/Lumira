@@ -28,6 +28,7 @@ export const WatermarkTab = ({
   onSave,
 }: WatermarkTabProps) => {
   const wm = watermarkPreview;
+  const isImageMode = wm.mode === 'IMAGE';
   const { token } = theme.useToken();
 
   return (
@@ -39,54 +40,58 @@ export const WatermarkTab = ({
         <Form.Item name="mode" label="模式">
           <Segmented options={[{ label: '文字', value: 'TEXT' }, { label: '图片', value: 'IMAGE' }]} />
         </Form.Item>
-        <Form.Item
-          name="textLines"
-          label="多行文字（每行一个）"
-          getValueProps={(value?: string[]) => ({ value: (value || []).join('\n') })}
-          getValueFromEvent={(event: { target: { value: string } }) =>
-            event.target.value
-              .split('\n')
-              .map((item: string) => item.trim())
-              .filter(Boolean)
-          }
-        >
-          <Input.TextArea rows={4} placeholder="每行输入一条水印文字" />
-        </Form.Item>
+        {!isImageMode ? (
+          <Form.Item
+            name="textLines"
+            label="多行文字（每行一个）"
+            getValueProps={(value?: string[]) => ({ value: (value || []).join('\n') })}
+            getValueFromEvent={(event: { target: { value: string } }) =>
+              event.target.value
+                .split('\n')
+                .map((item: string) => item.trim())
+                .filter(Boolean)
+            }
+          >
+            <Input.TextArea rows={4} placeholder="每行输入一条水印文字" />
+          </Form.Item>
+        ) : null}
 
         <Form.Item name="imageUrl" hidden>
           <Input />
         </Form.Item>
-        <Form.Item label="水印图片（本地上传）" extra="仅在图片模式下生效。">
-          <Space align="start" size={16} wrap>
-            <Card size="small" style={{ width: 200 }} bodyStyle={{ padding: 12 }}>
-              <div style={{ width: '100%', height: 100, display: 'grid', placeItems: 'center' }}>
-                {watermarkPreview.imageUrl ? (
-                  <Image width={180} height={100} preview={false} src={normalizeUploadUrl(watermarkPreview.imageUrl)} style={{ objectFit: 'contain' }} />
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
-                )}
-              </div>
-            </Card>
-            <Space direction="vertical" size={8}>
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={async (file) => {
-                  await onUpload('watermark', file);
-                  return Upload.LIST_IGNORE;
-                }}
-                disabled={!canUpdate}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'watermark'} disabled={!canUpdate}>
-                  上传水印图片
+        {isImageMode ? (
+          <Form.Item label="水印图片（本地上传）">
+            <Space align="start" size={16} wrap>
+              <Card size="small" style={{ width: 200 }} bodyStyle={{ padding: 12 }}>
+                <div style={{ width: '100%', height: 100, display: 'grid', placeItems: 'center' }}>
+                  {watermarkPreview.imageUrl ? (
+                    <Image width={180} height={100} preview={false} src={normalizeUploadUrl(watermarkPreview.imageUrl)} style={{ objectFit: 'contain' }} />
+                  ) : (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
+                  )}
+                </div>
+              </Card>
+              <Space direction="vertical" size={8}>
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={async (file) => {
+                    await onUpload('watermark', file);
+                    return Upload.LIST_IGNORE;
+                  }}
+                  disabled={!canUpdate}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploadingTarget === 'watermark'} disabled={!canUpdate}>
+                    上传水印图片
+                  </Button>
+                </Upload>
+                <Button icon={<DeleteOutlined />} onClick={onClearWatermarkImage} disabled={!canUpdate || !watermarkPreview.imageUrl}>
+                  清除
                 </Button>
-              </Upload>
-              <Button icon={<DeleteOutlined />} onClick={onClearWatermarkImage} disabled={!canUpdate || !watermarkPreview.imageUrl}>
-                清除
-              </Button>
+              </Space>
             </Space>
-          </Space>
-        </Form.Item>
+          </Form.Item>
+        ) : null}
 
         <Form.Item name="fontColor" label="字体颜色">
           <Input />
