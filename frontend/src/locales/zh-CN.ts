@@ -409,6 +409,7 @@ export default {
   'system.files.textPreviewFailed': '文本预览加载失败',
   'system.files.pdfPreviewFailed': 'PDF 预览加载失败',
   'system.files.selectUploadFile': '请先选择要上传的文件',
+  'system.files.bucketUploadDisabled': '管理端存储空间不支持上传文件',
   'system.files.maxUploadCount': '一次最多上传 {count} 个文件',
   'system.files.uploadSuccess': '已上传 {count} 个文件',
   'system.files.uploadFailed': '文件上传失败，请稍后重试',

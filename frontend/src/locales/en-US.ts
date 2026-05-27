@@ -229,6 +229,7 @@ export default {
   'system.files.textPreviewFailed': 'Text preview failed to load',
   'system.files.pdfPreviewFailed': 'PDF preview failed to load',
   'system.files.selectUploadFile': 'Please select a file first',
+  'system.files.bucketUploadDisabled': 'Storage buckets do not support uploads from the admin console',
   'system.files.maxUploadCount': 'At most {count} files can be uploaded at once',
   'system.files.uploadSuccess': 'Uploaded {count} file(s)',
   'system.files.uploadFailed': 'File upload failed, please try again later',

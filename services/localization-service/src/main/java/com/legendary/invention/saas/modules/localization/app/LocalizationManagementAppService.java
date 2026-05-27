@@ -31,6 +31,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -300,12 +301,15 @@ public class LocalizationManagementAppService {
         LocalizationVO.SyncResultVO result = new LocalizationVO.SyncResultVO();
         Map<String, String> localesEncountered = new LinkedHashMap<>();
         localesEncountered.put(normalizeLocale(request.getSourceLocale()), request.getSourceLocale());
+        SyncIndexes indexes = loadSyncIndexes();
         for (LocalizationDTO.EntryUpsertRequest item : request.getItems()) {
-            saveEntryInternal(item);
+            syncEntryInternal(item, indexes);
             if (StringUtils.hasText(item.getSourceLocale())) {
                 localesEncountered.put(normalizeLocale(item.getSourceLocale()), item.getSourceLocale());
             }
-            item.getTranslations().keySet().forEach(locale -> localesEncountered.put(normalizeLocale(locale), locale));
+            if (item.getTranslations() != null) {
+                item.getTranslations().keySet().forEach(locale -> localesEncountered.put(normalizeLocale(locale), locale));
+            }
         }
 
         result.setLanguageCount(localesEncountered.size());
@@ -314,6 +318,80 @@ public class LocalizationManagementAppService {
         result.setTranslationCount((int) countTranslations());
         result.setUsageCount((int) countUsageRefs());
         return result;
+    }
+
+    private void syncEntryInternal(LocalizationDTO.EntryUpsertRequest request, SyncIndexes indexes) {
+        String namespaceCode = request.getNamespaceCode().trim();
+        NamespaceEntity namespace = indexes.namespacesByCode.get(namespaceCode);
+        Long namespaceId = namespace == null ? null : namespace.id;
+        if (namespaceId == null) {
+            NamespaceEntity newNamespace = new NamespaceEntity();
+            newNamespace.namespaceCode = namespaceCode;
+            newNamespace.namespaceName = resolveNamespaceName(namespaceCode, request.getSourceType());
+            newNamespace.sourceType = normalizeSourceType(request.getSourceType());
+            newNamespace.sourceRef = normalizeText(request.getSourceRef());
+            newNamespace.sortNo = 0;
+            newNamespace.status = normalizeStatus(request.getStatus());
+            newNamespace.createdBy = 0L;
+            newNamespace.updatedBy = 0L;
+            newNamespace.deleted = 0;
+            namespaceMapper.insert(newNamespace);
+            namespaceId = newNamespace.id;
+            indexes.namespacesByCode.put(namespaceCode, newNamespace);
+        }
+
+        String key = request.getMessageKey().trim();
+        String entryKey = entryKey(namespaceId, key);
+        EntryEntity entry = request.getId() != null ? indexes.entriesById.get(request.getId()) : indexes.entriesByNamespaceAndKey.get(entryKey);
+        Long entryId = entry == null ? request.getId() : entry.id;
+        if (entryId == null) {
+            EntryEntity entity = new EntryEntity();
+            entity.namespaceId = namespaceId;
+            entity.messageKey = key;
+            entity.defaultMessage = request.getDefaultMessage().trim();
+            entity.sourceLocale = normalizeLocale(request.getSourceLocale());
+            entity.sourceType = normalizeSourceType(request.getSourceType());
+            entity.sourceRef = normalizeText(request.getSourceRef());
+            entity.status = normalizeStatus(request.getStatus());
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            entryMapper.insert(entity);
+            entryId = entity.id;
+            indexes.entriesByNamespaceAndKey.put(entryKey, entity);
+            indexes.entriesById.put(entryId, entity);
+        } else if (entry == null || shouldUpdateEntry(entry, namespaceId, request)) {
+            entryMapper.update(null, new UpdateWrapper<EntryEntity>()
+                    .set("namespace_id", namespaceId)
+                    .set("message_key", key)
+                    .set("default_message", request.getDefaultMessage().trim())
+                    .set("source_locale", normalizeLocale(request.getSourceLocale()))
+                    .set("source_type", normalizeSourceType(request.getSourceType()))
+                    .set("source_ref", normalizeText(request.getSourceRef()))
+                    .set("status", normalizeStatus(request.getStatus()))
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("id", entryId)
+                    .eq("deleted", 0));
+            if (entry != null) {
+                entry.namespaceId = namespaceId;
+                entry.messageKey = key;
+                entry.defaultMessage = request.getDefaultMessage().trim();
+                entry.sourceLocale = normalizeLocale(request.getSourceLocale());
+                entry.sourceType = normalizeSourceType(request.getSourceType());
+                entry.sourceRef = normalizeText(request.getSourceRef());
+                entry.status = normalizeStatus(request.getStatus());
+            }
+        }
+
+        upsertUsageRef(entryId, request.getSourceType(), request.getSourceRef(), request.getDefaultMessage(), indexes);
+        Map<String, String> translations = new LinkedHashMap<>(request.getTranslations() == null ? Map.of() : request.getTranslations());
+        if (StringUtils.hasText(request.getLocaleCode()) || StringUtils.hasText(request.getTranslatedMessage())) {
+            translations.put(normalizeLocale(request.getLocaleCode()), request.getTranslatedMessage());
+        }
+        for (Map.Entry<String, String> translationEntry : translations.entrySet()) {
+            upsertTranslation(entryId, translationEntry.getKey(), translationEntry.getValue(), indexes);
+        }
     }
 
     public List<LocalizationVO.ReleaseVO> listReleases(String localeCode) {
@@ -487,6 +565,51 @@ public class LocalizationManagementAppService {
         }
     }
 
+    private void upsertTranslation(Long entryId, String localeCode, String translatedMessage, SyncIndexes indexes) {
+        String normalizedLocale = normalizeLocale(localeCode);
+        String value = normalizeText(translatedMessage);
+        String key = translationKey(entryId, normalizedLocale);
+        TranslationEntity translation = indexes.translationsByEntryAndLocale.get(key);
+        Long translationId = translation == null ? null : translation.id;
+        if (!StringUtils.hasText(value)) {
+            if (translationId != null) {
+                translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                        .set("deleted", 1)
+                        .set("updated_by", 0)
+                        .set("updated_at", LocalDateTime.now())
+                        .eq("id", translationId)
+                        .eq("deleted", 0));
+                indexes.translationsByEntryAndLocale.remove(key);
+            }
+            return;
+        }
+
+        if (translationId == null) {
+            TranslationEntity entity = new TranslationEntity();
+            entity.entryId = entryId;
+            entity.localeCode = normalizedLocale;
+            entity.translatedMessage = value;
+            entity.translationStatus = DEFAULT_TRANSLATION_STATUS;
+            entity.machineGenerated = 0;
+            entity.reviewStatus = "PENDING";
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            translationMapper.insert(entity);
+            indexes.translationsByEntryAndLocale.put(key, entity);
+        } else if (!sameText(translation.translatedMessage, value) || !DEFAULT_TRANSLATION_STATUS.equalsIgnoreCase(String.valueOf(translation.translationStatus))) {
+            translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                    .set("translated_message", value)
+                    .set("translation_status", DEFAULT_TRANSLATION_STATUS)
+                    .set("updated_by", 0)
+                    .set("updated_at", LocalDateTime.now())
+                    .eq("id", translationId)
+                    .eq("deleted", 0));
+            translation.translatedMessage = value;
+            translation.translationStatus = DEFAULT_TRANSLATION_STATUS;
+        }
+    }
+
     private void upsertUsageRef(Long entryId, String sourceType, String sourceRef, String sourceText) {
         if (!StringUtils.hasText(sourceRef)) {
             return;
@@ -512,6 +635,42 @@ public class LocalizationManagementAppService {
                 .set("updated_at", LocalDateTime.now())
                 .eq("id", usageId)
                 .eq("deleted", 0));
+    }
+
+    private void upsertUsageRef(Long entryId, String sourceType, String sourceRef, String sourceText, SyncIndexes indexes) {
+        if (!StringUtils.hasText(sourceRef)) {
+            return;
+        }
+        String normalizedSourceType = normalizeSourceType(sourceType);
+        String normalizedSourceRef = sourceRef.trim();
+        String key = usageRefKey(entryId, normalizedSourceType, normalizedSourceRef, null);
+        UsageRefEntity usageRef = indexes.usageRefsByEntryAndSource.get(key);
+        Long usageId = usageRef == null ? null : usageRef.id;
+        if (usageId == null) {
+            UsageRefEntity entity = new UsageRefEntity();
+            entity.entryId = entryId;
+            entity.sourceType = normalizedSourceType;
+            entity.sourceRef = normalizedSourceRef;
+            entity.sourceLine = null;
+            entity.sourceText = sourceText;
+            entity.createdBy = 0L;
+            entity.updatedBy = 0L;
+            entity.deleted = 0;
+            usageRefMapper.insert(entity);
+            indexes.usageRefsByEntryAndSource.put(key, entity);
+            return;
+        }
+
+        if (sameText(usageRef.sourceText, sourceText)) {
+            return;
+        }
+        usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
+                .set("source_text", sourceText)
+                .set("updated_by", 0)
+                .set("updated_at", LocalDateTime.now())
+                .eq("id", usageId)
+                .eq("deleted", 0));
+        usageRef.sourceText = sourceText;
     }
 
     private LocalizationVO.RuntimeBundleVO buildRuntimeBundle(String localeCode) {
@@ -816,6 +975,63 @@ public class LocalizationManagementAppService {
             }
         }
         return result;
+    }
+
+    private SyncIndexes loadSyncIndexes() {
+        SyncIndexes indexes = new SyncIndexes();
+        namespaceMapper.selectList(new QueryWrapper<NamespaceEntity>().eq("deleted", 0))
+                .forEach(namespace -> indexes.namespacesByCode.put(namespace.namespaceCode, namespace));
+        entryMapper.selectList(new QueryWrapper<EntryEntity>().eq("deleted", 0)).forEach(entry -> {
+            indexes.entriesByNamespaceAndKey.put(entryKey(entry.namespaceId, entry.messageKey), entry);
+            indexes.entriesById.put(entry.id, entry);
+        });
+        translationMapper.selectList(new QueryWrapper<TranslationEntity>().eq("deleted", 0))
+                .forEach(translation -> indexes.translationsByEntryAndLocale.put(translationKey(translation.entryId, translation.localeCode), translation));
+        usageRefMapper.selectList(new QueryWrapper<UsageRefEntity>().eq("deleted", 0))
+                .forEach(usageRef -> indexes.usageRefsByEntryAndSource.put(usageRefKey(usageRef.entryId, usageRef.sourceType, usageRef.sourceRef, usageRef.sourceLine), usageRef));
+        return indexes;
+    }
+
+    private String entryKey(Long namespaceId, String messageKey) {
+        return namespaceId + "\u0000" + messageKey;
+    }
+
+    private String translationKey(Long entryId, String localeCode) {
+        return entryId + "\u0000" + normalizeLocale(localeCode);
+    }
+
+    private String usageRefKey(Long entryId, String sourceType, String sourceRef, Integer sourceLine) {
+        return entryId + "\u0000" + normalizeSourceType(sourceType) + "\u0000" + sourceRef + "\u0000" + (sourceLine == null ? "" : sourceLine);
+    }
+
+    private boolean shouldUpdateEntry(EntryEntity entry, Long namespaceId, LocalizationDTO.EntryUpsertRequest request) {
+        return !sameLong(entry.namespaceId, namespaceId)
+                || !sameText(entry.messageKey, request.getMessageKey().trim())
+                || !sameText(entry.defaultMessage, request.getDefaultMessage().trim())
+                || !sameText(entry.sourceLocale, normalizeLocale(request.getSourceLocale()))
+                || !sameText(entry.sourceType, normalizeSourceType(request.getSourceType()))
+                || !sameText(entry.sourceRef, normalizeText(request.getSourceRef()))
+                || !sameText(entry.status, normalizeStatus(request.getStatus()));
+    }
+
+    private boolean sameLong(Long left, Long right) {
+        return left == null ? right == null : left.equals(right);
+    }
+
+    private boolean sameText(String left, String right) {
+        return normalizeCompareText(left).equals(normalizeCompareText(right));
+    }
+
+    private String normalizeCompareText(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static class SyncIndexes {
+        private final Map<String, NamespaceEntity> namespacesByCode = new HashMap<>();
+        private final Map<String, EntryEntity> entriesByNamespaceAndKey = new HashMap<>();
+        private final Map<Long, EntryEntity> entriesById = new HashMap<>();
+        private final Map<String, TranslationEntity> translationsByEntryAndLocale = new HashMap<>();
+        private final Map<String, UsageRefEntity> usageRefsByEntryAndSource = new HashMap<>();
     }
 
     private String resolveFallbackLocale(String localeCode) {

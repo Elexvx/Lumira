@@ -14,6 +14,8 @@ import { buildLocalizationSyncPayload } from './sourceScanner';
 
 const DEFAULT_LOCALE = 'zh-CN';
 const PINNED_LOCALES = ['zh-CN', 'en-US'];
+const SYNC_REQUEST_TIMEOUT_MS = 60000;
+const PUBLISH_REQUEST_TIMEOUT_MS = 30000;
 
 type EntryDrafts = Record<number, Record<string, string>>;
 type EntryFormValues = LocalizationEntryPayload;
@@ -235,7 +237,7 @@ const LocalizationPage = () => {
   const syncEntries = async () => {
     setSyncing(true);
     try {
-      await localizationService.sync(buildLocalizationSyncPayload(), { autoRedirectOnUnauthorized: false });
+      await localizationService.sync(buildLocalizationSyncPayload(), { autoRedirectOnUnauthorized: false, timeoutMs: SYNC_REQUEST_TIMEOUT_MS });
       message.success('已同步');
       await refreshBundles();
     } finally {
@@ -248,7 +250,7 @@ const LocalizationPage = () => {
     try {
       await Promise.all(
         languageColumns.map((language) =>
-          localizationService.publish({ localeCode: language.localeCode, note: '本地化中心发布' }, { autoRedirectOnUnauthorized: false }),
+          localizationService.publish({ localeCode: language.localeCode, note: '本地化中心发布' }, { autoRedirectOnUnauthorized: false, timeoutMs: PUBLISH_REQUEST_TIMEOUT_MS }),
         ),
       );
       message.success('已发布');
