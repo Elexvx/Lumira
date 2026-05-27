@@ -331,13 +331,45 @@ const flattenRuntimeMenuItems = (items: RuntimeMenuDataItem[]) => {
   return result;
 };
 
-const buildVisibleSettingsNavigationTree = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) =>
+const routePathMatches = (routePath: string, pathname?: string) => {
+  const normalizedPathname = normalizeMenuPath(pathname) || pathname;
+  return Boolean(normalizedPathname && (routePath === normalizedPathname || normalizedPathname.startsWith(`${routePath}/`)));
+};
+
+const buildVisibleSettingsNavigationTree = (
+  menuTree: MenuNode[] | undefined,
+  canVisitAccessKey: (accessKey: string) => boolean,
+  currentPathname?: string,
+) =>
   buildSettingsSourceItems(menuTree)
-    .map((item) => mapSourceItemToRuntimeMenuItem(item, canVisitAccessKey))
+    .map((item) => {
+      const keepCurrentDeniedRoute = routePathMatches(item.path, currentPathname);
+      if (item.access && !canVisitAccessKey(item.access) && keepCurrentDeniedRoute) {
+        return {
+          path: item.path,
+          name: resolveBuiltinMessage(
+            item.name,
+            formatMessage({
+              id: item.name,
+              defaultMessage: item.name,
+            }),
+          ),
+          locale: false as const,
+          icon: resolveNavigationIcon(item.icon),
+          hideInMenu: false,
+        };
+      }
+
+      return mapSourceItemToRuntimeMenuItem(item, canVisitAccessKey);
+    })
     .filter(Boolean) as RuntimeMenuDataItem[];
 
-export const buildVisibleSettingsNavigationItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) =>
-  buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey);
+export const buildVisibleSettingsNavigationItems = (
+  menuTree: MenuNode[] | undefined,
+  canVisitAccessKey: (accessKey: string) => boolean,
+  currentPathname?: string,
+) =>
+  buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey, currentPathname);
 
 export const buildSettingsDropdownItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean): MenuProps['items'] =>
   flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey))
