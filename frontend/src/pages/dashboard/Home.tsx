@@ -212,7 +212,7 @@ const DashboardHomePage = () => {
         </ProCard>
 
         <Row gutter={[16, 16]} align="stretch">
-          <Col xs={24} xl={16}>
+          <Col xs={24}>
             <ProCard variant="outlined" title="近期动态" className="saas-dashboard-home__panel">
               <Tabs
                 defaultActiveKey="login"

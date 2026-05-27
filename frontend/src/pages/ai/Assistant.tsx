@@ -68,7 +68,6 @@ type ChatBubble = {
   attachments: ComposerAttachment[];
   thinkingContent?: string | null;
   thinkingLoading?: boolean;
-  streamingContent?: string;
   references?: AiKnowledgeReferenceRecord[] | null;
   toolPlan?: AiToolPlanRecord | null;
   toolResult?: AiToolExecuteResultRecord | null;
@@ -962,7 +961,6 @@ const AiAssistantPage = () => {
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameTargetSessionId, setRenameTargetSessionId] = useState<string | null>(null);
-  const [streamProgress, setStreamProgress] = useState<Record<string, number>>({});
   const [confirmingToolId, setConfirmingToolId] = useState<number | null>(null);
 
   const employeesQuery = useQuery({
@@ -1518,7 +1516,6 @@ const AiAssistantPage = () => {
                   content: response.replyText || '我已经收到你的消息。',
                   attachments: [],
                   thinkingContent: response.thinkingContent,
-                  streamingContent: response.replyText || '我已经收到你的消息。',
                   references: response.references,
                   toolPlan: response.toolPlan,
                   toolResult: response.toolResult,
@@ -1927,14 +1924,10 @@ const AiAssistantPage = () => {
       activeSession?.messages.map((item) => ({
         key: item.key,
         role: item.role,
-        content: renderMessageContent(
-          item,
-          item.streamingContent ? item.streamingContent.slice(0, streamProgress[item.key] ?? 0) : undefined,
-          {
-            onConfirmTool: handleConfirmTool,
-            confirmingToolId,
-          },
-        ),
+        content: renderMessageContent(item, undefined, {
+          onConfirmTool: handleConfirmTool,
+          confirmingToolId,
+        }),
         footer: (
           <Space direction="vertical" size={8} className="saas-ai-assistant-bubble__footer">
             {item.attachments.length ? (
@@ -1953,33 +1946,8 @@ const AiAssistantPage = () => {
           </Space>
         ),
       })) || [],
-    [activeSession, streamProgress, confirmingToolId],
+    [activeSession, confirmingToolId],
   );
-
-  useEffect(() => {
-    const nextReply = activeSession?.messages.find(
-      (item) => item.streamingContent && (streamProgress[item.key] ?? 0) < item.streamingContent.length,
-    );
-    const target = nextReply;
-
-    if (!target) {
-      return undefined;
-    }
-
-    const total = target.streamingContent?.length ?? 0;
-    const current = streamProgress[target.key] ?? 0;
-    const nextValue = Math.min(current + 1, total);
-    const delay = 12;
-
-    const timer = window.setTimeout(() => {
-      setStreamProgress((prev) => ({
-        ...prev,
-        [target.key]: nextValue,
-      }));
-    }, delay);
-
-    return () => window.clearTimeout(timer);
-  }, [activeSession?.messages, streamProgress]);
 
   const hasContent = Boolean(activeSession?.messages?.length);
   const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
