@@ -10,8 +10,12 @@ import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
+import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
+import com.legendary.invention.saas.modules.system.dto.SystemDTO;
+import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -42,19 +46,32 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private final PermissionGuard permissionGuard;
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
     private final ObjectMapper objectMapper;
+    private final SystemManagementAppService systemManagementAppService;
     private final Map<String, NativeTool> tools;
 
+    @Autowired
     DefaultAiNativeToolRuntimeService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionGuard permissionGuard,
             AiSkillPermissionChecker aiSkillPermissionChecker,
             ObjectMapper objectMapper
     ) {
+        this(jdbcTemplate, permissionGuard, aiSkillPermissionChecker, objectMapper, null);
+    }
+
+    DefaultAiNativeToolRuntimeService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionGuard permissionGuard,
+            AiSkillPermissionChecker aiSkillPermissionChecker,
+            ObjectMapper objectMapper,
+            SystemManagementAppService systemManagementAppService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionGuard = permissionGuard;
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
         this.objectMapper = objectMapper;
-        this.tools = Map.of(
+        this.systemManagementAppService = systemManagementAppService;
+        this.tools = new LinkedHashMap<>(Map.of(
                 "system.permission.snapshot", new NativeTool(
                         "system.permission.snapshot",
                         "读取当前权限上下文",
@@ -162,6 +179,143 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         ),
                         this::searchAiCallAuditLogs
                 )
+        ));
+        registerWriteTools();
+    }
+
+    private void registerWriteTools() {
+        tools.put("system.user.create", new NativeTool(
+                "system.user.create",
+                "新增系统用户",
+                "system",
+                "在当前租户和当前账号权限范围内新增系统用户。",
+                "HIGH",
+                false,
+                true,
+                "system:user:create",
+                Map.of("type", "object", "required", List.of("username", "password", "status"), "properties", Map.of(
+                        "username", Map.of("type", "string"),
+                        "password", Map.of("type", "string"),
+                        "nickname", Map.of("type", "string"),
+                        "realName", Map.of("type", "string"),
+                        "mobile", Map.of("type", "string"),
+                        "email", Map.of("type", "string"),
+                        "status", Map.of("type", "string", "enum", List.of("ENABLED", "DISABLED")),
+                        "roleIds", Map.of("type", "array", "items", Map.of("type", "integer")),
+                        "deptIds", Map.of("type", "array", "items", Map.of("type", "integer")),
+                        "primaryDeptId", Map.of("type", "integer")
+                )),
+                this::createUser
+        ));
+        tools.put("system.user.update", new NativeTool(
+                "system.user.update",
+                "编辑系统用户",
+                "system",
+                "在当前租户和当前账号权限范围内编辑用户基础信息、角色和部门。",
+                "HIGH",
+                false,
+                true,
+                "system:user:update",
+                Map.of("type", "object", "required", List.of("userId"), "properties", Map.ofEntries(
+                        Map.entry("userId", Map.of("type", "integer")),
+                        Map.entry("username", Map.of("type", "string")),
+                        Map.entry("nickname", Map.of("type", "string")),
+                        Map.entry("realName", Map.of("type", "string")),
+                        Map.entry("mobile", Map.of("type", "string")),
+                        Map.entry("email", Map.of("type", "string")),
+                        Map.entry("avatarUrl", Map.of("type", "string")),
+                        Map.entry("status", Map.of("type", "string", "enum", List.of("ENABLED", "DISABLED"))),
+                        Map.entry("roleIds", Map.of("type", "array", "items", Map.of("type", "integer"))),
+                        Map.entry("deptIds", Map.of("type", "array", "items", Map.of("type", "integer"))),
+                        Map.entry("primaryDeptId", Map.of("type", "integer"))
+                )),
+                this::updateUser
+        ));
+        tools.put("system.user.status", new NativeTool(
+                "system.user.status",
+                "启停系统用户",
+                "system",
+                "在当前租户和当前账号权限范围内启用或禁用用户。",
+                "HIGH",
+                false,
+                true,
+                "system:user:status",
+                Map.of("type", "object", "required", List.of("userId", "status"), "properties", Map.of(
+                        "userId", Map.of("type", "integer"),
+                        "status", Map.of("type", "string", "enum", List.of("ENABLED", "DISABLED"))
+                )),
+                this::updateUserStatus
+        ));
+        tools.put("system.user.delete", new NativeTool(
+                "system.user.delete",
+                "删除系统用户",
+                "system",
+                "在当前租户和当前账号权限范围内删除用户。",
+                "HIGH",
+                false,
+                true,
+                "system:user:delete",
+                Map.of("type", "object", "required", List.of("userId"), "properties", Map.of(
+                        "userId", Map.of("type", "integer")
+                )),
+                this::deleteUser
+        ));
+        tools.put("profile.avatar.update", new NativeTool(
+                "profile.avatar.update",
+                "修改当前用户头像",
+                "profile",
+                "仅修改当前登录用户自己的头像。可传 avatarUrl，或传已上传文件 fileId。",
+                "MEDIUM",
+                false,
+                true,
+                "profile:view",
+                Map.of("type", "object", "properties", Map.of(
+                        "avatarUrl", Map.of("type", "string"),
+                        "fileId", Map.of("type", "integer")
+                )),
+                this::updateCurrentAvatar
+        ));
+        registerSystemManagementTools();
+    }
+
+    private void registerSystemManagementTools() {
+        tools.put("system.role.create", writeTool("system.role.create", "新增角色", "在当前租户新增角色。", "system:role:create", this::createRole));
+        tools.put("system.role.update", writeTool("system.role.update", "编辑角色", "在当前租户编辑角色基础信息。", "system:role:update", this::updateRole));
+        tools.put("system.role.permissions", writeTool("system.role.permissions", "配置角色权限", "在当前租户更新角色权限集合。", "system:role:permissions", this::updateRolePermissions));
+        tools.put("system.role.delete", writeTool("system.role.delete", "删除角色", "在当前租户删除角色。", "system:role:delete", this::deleteRole));
+        tools.put("system.tenant.create", writeTool("system.tenant.create", "新增租户", "新增平台租户。", "system:tenant:create", this::createTenant));
+        tools.put("system.tenant.update", writeTool("system.tenant.update", "编辑租户", "编辑平台租户。", "system:tenant:update", this::updateTenant));
+        tools.put("system.tenant.delete", writeTool("system.tenant.delete", "删除租户", "删除平台租户，默认租户会被业务服务保护。", "system:tenant:delete", this::deleteTenant));
+        tools.put("system.menu.create", writeTool("system.menu.create", "新增菜单", "新增当前租户自定义菜单。", "system:menu:create", this::createMenu));
+        tools.put("system.menu.update", writeTool("system.menu.update", "编辑菜单", "编辑当前租户自定义菜单。", "system:menu:update", this::updateMenu));
+        tools.put("system.menu.status", writeTool("system.menu.status", "启停菜单", "更新当前租户菜单状态。", "system:menu:status", this::updateMenuStatus));
+        tools.put("system.menu.delete", writeTool("system.menu.delete", "删除菜单", "删除当前租户自定义菜单。", "system:menu:delete", this::deleteMenu));
+        tools.put("system.dict_type.create", writeTool("system.dict_type.create", "新增字典类型", "新增当前租户字典类型。", "system:dict:create", this::createDictType));
+        tools.put("system.dict_type.update", writeTool("system.dict_type.update", "编辑字典类型", "编辑当前租户字典类型。", "system:dict:update", this::updateDictType));
+        tools.put("system.dict_type.delete", writeTool("system.dict_type.delete", "删除字典类型", "删除当前租户非系统字典类型。", "system:dict:delete", this::deleteDictType));
+        tools.put("system.dict_item.create", writeTool("system.dict_item.create", "新增字典项", "新增当前租户字典项。", "system:dict:create", this::createDictItem));
+        tools.put("system.dict_item.update", writeTool("system.dict_item.update", "编辑字典项", "编辑当前租户字典项。", "system:dict:update", this::updateDictItem));
+        tools.put("system.dict_item.delete", writeTool("system.dict_item.delete", "删除字典项", "删除当前租户字典项。", "system:dict:delete", this::deleteDictItem));
+        tools.put("system.config.create", writeTool("system.config.create", "新增系统配置", "新增非敏感平台或租户配置。", "system:config:update", this::createConfig));
+        tools.put("system.config.update", writeTool("system.config.update", "编辑系统配置", "编辑非敏感平台或租户配置。", "system:config:update", this::updateConfig));
+        tools.put("platform.branding.update", writeTool("platform.branding.update", "更新品牌设置", "更新网站名称、Logo、页脚等品牌设置。", "system:config:update", this::updateBrandingSettings));
+        tools.put("platform.agreement.update", writeTool("platform.agreement.update", "更新协议设置", "更新用户协议与隐私协议设置。", "system:config:update", this::updateAgreementSettings));
+        tools.put("platform.watermark.update", writeTool("platform.watermark.update", "更新水印设置", "更新平台水印设置。", "system:config:update", this::updateWatermarkSettings));
+        tools.put("platform.floating_window.update", writeTool("platform.floating_window.update", "更新浮窗设置", "更新全局浮窗设置。", "system:config:update", this::updateFloatingWindowSettings));
+    }
+
+    private NativeTool writeTool(String code, String name, String description, String requiredPermission, ToolExecutor executor) {
+        return new NativeTool(
+                code,
+                name,
+                "system",
+                description,
+                "HIGH",
+                false,
+                true,
+                requiredPermission,
+                Map.of("type", "object", "properties", Map.of()),
+                executor
         );
     }
 
@@ -189,7 +343,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
         try {
             requireEmployee(tenantId, request.getEmployeeId());
-            aiSkillPermissionChecker.verifyAllowed(tenantId, request.getEmployeeId(), List.of(toolCode), confirmed);
+            if (request.getEmployeeId() != null && request.getEmployeeId() > 0) {
+                aiSkillPermissionChecker.verifyAllowed(tenantId, request.getEmployeeId(), List.of(toolCode), confirmed);
+            }
             if (StringUtils.hasText(tool.requiredPermission())) {
                 permissionGuard.requirePermission(currentUser, tool.requiredPermission());
             }
@@ -327,6 +483,326 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         return data;
     }
 
+    private Map<String, Object> createUser(ToolExecutionContext context) {
+        SystemDTO.UserUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.UserUpsertRequest.class);
+        if (!StringUtils.hasText(request.getStatus())) {
+            request.setStatus("ENABLED");
+        }
+        SystemVO.UserDetailVO user = systemManagementAppService.createUser(context.currentUser(), request);
+        return Map.of("user", user);
+    }
+
+    private Map<String, Object> updateUser(ToolExecutionContext context) {
+        Long userId = longArg(context.arguments(), "userId");
+        if (userId == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 不能为空");
+        }
+        SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
+        SystemDTO.UserUpsertRequest request = mergeUserRequest(existing, context.arguments());
+        SystemVO.UserDetailVO user = systemManagementAppService.updateUser(context.currentUser(), userId, request);
+        return Map.of("user", user);
+    }
+
+    private Map<String, Object> updateUserStatus(ToolExecutionContext context) {
+        Long userId = longArg(context.arguments(), "userId");
+        String status = stringArg(context.arguments(), "status", null);
+        if (userId == null || !StringUtils.hasText(status)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 和 status 不能为空");
+        }
+        if (userId.equals(context.currentUser().getUserId()) && "DISABLED".equalsIgnoreCase(status)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 禁用当前登录账号");
+        }
+        if (Long.valueOf(1001L).equals(userId) && "DISABLED".equalsIgnoreCase(status)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 禁用默认管理员账户");
+        }
+        boolean updated = systemManagementAppService.updateUserStatus(context.currentUser(), userId, status);
+        return Map.of("updated", updated, "userId", userId, "status", status.toUpperCase(Locale.ROOT));
+    }
+
+    private Map<String, Object> deleteUser(ToolExecutionContext context) {
+        Long userId = longArg(context.arguments(), "userId");
+        if (userId == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 不能为空");
+        }
+        if (userId.equals(context.currentUser().getUserId())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 删除当前登录账号");
+        }
+        if (Long.valueOf(1001L).equals(userId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 删除默认管理员账户");
+        }
+        boolean deleted = systemManagementAppService.deleteUser(context.currentUser(), userId);
+        return Map.of("deleted", deleted, "userId", userId);
+    }
+
+    private Map<String, Object> updateCurrentAvatar(ToolExecutionContext context) {
+        String avatarUrl = stringArg(context.arguments(), "avatarUrl", null);
+        if (!StringUtils.hasText(avatarUrl)) {
+            Long fileId = longArg(context.arguments(), "fileId");
+            avatarUrl = resolveAvatarUrlFromFile(context, fileId);
+        }
+        var user = systemManagementAppService.updateCurrentUserAvatar(context.currentUser(), avatarUrl);
+        return Map.of("currentUser", user);
+    }
+
+    private String resolveAvatarUrlFromFile(ToolExecutionContext context, Long fileId) {
+        if (fileId == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "avatarUrl 或 fileId 不能为空");
+        }
+        List<Object> args = new java.util.ArrayList<>();
+        args.add(context.tenantId());
+        args.add(fileId);
+        StringBuilder sql = new StringBuilder("""
+                select public_url as publicUrl
+                from file_object
+                where tenant_id = ?
+                  and id = ?
+                  and deleted = 0
+                """);
+        if (!hasPermission(context.currentUser(), "system:file:manage")) {
+            sql.append(" and uploaded_by = ?");
+            args.add(context.currentUser().getUserId());
+        }
+        sql.append(" limit 1");
+        String publicUrl = jdbcTemplate.queryForObject(sql.toString(), String.class, args.toArray());
+        if (!StringUtils.hasText(publicUrl)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "头像文件不存在或无权使用");
+        }
+        return publicUrl;
+    }
+
+    private SystemDTO.UserUpsertRequest mergeUserRequest(SystemVO.UserDetailVO existing, Map<String, Object> arguments) {
+        SystemDTO.UserUpsertRequest request = new SystemDTO.UserUpsertRequest();
+        request.setUsername(stringArg(arguments, "username", existing.getUsername()));
+        request.setMobile(stringArg(arguments, "mobile", existing.getMobile()));
+        request.setNickname(stringArg(arguments, "nickname", existing.getNickname()));
+        request.setRealName(stringArg(arguments, "realName", existing.getRealName()));
+        request.setAvatarUrl(stringArg(arguments, "avatarUrl", existing.getAvatarUrl()));
+        request.setEmail(stringArg(arguments, "email", existing.getEmail()));
+        request.setBirthMonth(stringArg(arguments, "birthMonth", existing.getBirthMonth()));
+        request.setGender(stringArg(arguments, "gender", existing.getGender()));
+        request.setRegion(stringArg(arguments, "region", existing.getRegion()));
+        request.setAvailableTime(stringArg(arguments, "availableTime", existing.getAvailableTime()));
+        request.setIdCardNumber(stringArg(arguments, "idCardNumber", existing.getIdCardNumber()));
+        request.setStatus(stringArg(arguments, "status", existing.getStatus()));
+        request.setRoleIds(existing.getRoleIds());
+        request.setDeptIds(existing.getDeptIds());
+        request.setPrimaryDeptId(existing.getPrimaryDeptId());
+        if (arguments != null && arguments.containsKey("roleIds")) {
+            request.setRoleIds(longListArg(arguments.get("roleIds")));
+        }
+        if (arguments != null && arguments.containsKey("deptIds")) {
+            request.setDeptIds(longListArg(arguments.get("deptIds")));
+        }
+        if (arguments != null && arguments.containsKey("primaryDeptId")) {
+            request.setPrimaryDeptId(longValue(arguments.get("primaryDeptId"), "primaryDeptId"));
+        }
+        return request;
+    }
+
+    private Map<String, Object> createRole(ToolExecutionContext context) {
+        SystemDTO.RoleUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "roleId"), SystemDTO.RoleUpsertRequest.class);
+        if (!StringUtils.hasText(request.getRoleType())) {
+            request.setRoleType("BUSINESS");
+        }
+        SystemVO.RoleDetailVO role = systemManagementAppService.createRole(context.currentUser(), request);
+        return Map.of("role", role);
+    }
+
+    private Map<String, Object> updateRole(ToolExecutionContext context) {
+        Long roleId = requireLong(context.arguments(), "roleId");
+        SystemDTO.RoleUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "roleId"), SystemDTO.RoleUpsertRequest.class);
+        SystemVO.RoleDetailVO role = systemManagementAppService.updateRole(context.currentUser(), roleId, request);
+        return Map.of("role", role);
+    }
+
+    private Map<String, Object> updateRolePermissions(ToolExecutionContext context) {
+        Long roleId = requireLong(context.arguments(), "roleId");
+        List<String> permissionKeys = stringListArg(context.arguments().get("permissionKeys"));
+        boolean updated = systemManagementAppService.updateRolePermissions(context.currentUser(), roleId, permissionKeys);
+        return Map.of("updated", updated, "roleId", roleId, "permissionKeys", permissionKeys);
+    }
+
+    private Map<String, Object> deleteRole(ToolExecutionContext context) {
+        Long roleId = requireLong(context.arguments(), "roleId");
+        boolean deleted = systemManagementAppService.deleteRole(context.currentUser(), roleId);
+        return Map.of("deleted", deleted, "roleId", roleId);
+    }
+
+    private Map<String, Object> createTenant(ToolExecutionContext context) {
+        SystemDTO.TenantUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.TenantUpsertRequest.class);
+        if (!StringUtils.hasText(request.getStatus())) {
+            request.setStatus("ENABLED");
+        }
+        SystemVO.TenantVO tenant = systemManagementAppService.createTenant(context.currentUser(), request);
+        return Map.of("tenant", tenant);
+    }
+
+    private Map<String, Object> updateTenant(ToolExecutionContext context) {
+        Long tenantId = requireLong(context.arguments(), "tenantId");
+        SystemDTO.TenantUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "tenantId"), SystemDTO.TenantUpsertRequest.class);
+        SystemVO.TenantVO tenant = systemManagementAppService.updateTenant(context.currentUser(), tenantId, request);
+        return Map.of("tenant", tenant);
+    }
+
+    private Map<String, Object> deleteTenant(ToolExecutionContext context) {
+        Long tenantId = requireLong(context.arguments(), "tenantId");
+        boolean deleted = systemManagementAppService.deleteTenant(context.currentUser(), tenantId);
+        return Map.of("deleted", deleted, "tenantId", tenantId);
+    }
+
+    private Map<String, Object> createMenu(ToolExecutionContext context) {
+        SystemDTO.MenuUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.MenuUpsertRequest.class);
+        defaultMenuFields(request);
+        SystemVO.MenuVO menu = systemManagementAppService.createMenu(context.currentUser(), request);
+        return Map.of("menu", menu);
+    }
+
+    private Map<String, Object> updateMenu(ToolExecutionContext context) {
+        Long menuId = requireLong(context.arguments(), "menuId");
+        SystemDTO.MenuUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "menuId"), SystemDTO.MenuUpsertRequest.class);
+        defaultMenuFields(request);
+        SystemVO.MenuVO menu = systemManagementAppService.updateMenu(context.currentUser(), menuId, request);
+        return Map.of("menu", menu);
+    }
+
+    private Map<String, Object> updateMenuStatus(ToolExecutionContext context) {
+        Long menuId = requireLong(context.arguments(), "menuId");
+        String status = requiredString(context.arguments(), "status");
+        boolean updated = systemManagementAppService.updateMenuStatus(context.currentUser(), menuId, status);
+        return Map.of("updated", updated, "menuId", menuId, "status", status);
+    }
+
+    private Map<String, Object> deleteMenu(ToolExecutionContext context) {
+        Long menuId = requireLong(context.arguments(), "menuId");
+        boolean deleted = systemManagementAppService.deleteMenu(context.currentUser(), menuId);
+        return Map.of("deleted", deleted, "menuId", menuId);
+    }
+
+    private Map<String, Object> createDictType(ToolExecutionContext context) {
+        SystemDTO.DictTypeUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.DictTypeUpsertRequest.class);
+        if (!StringUtils.hasText(request.getStatus())) {
+            request.setStatus("ENABLED");
+        }
+        SystemVO.DictTypeVO dictType = systemManagementAppService.createDictType(context.currentUser(), request);
+        return Map.of("dictType", dictType);
+    }
+
+    private Map<String, Object> updateDictType(ToolExecutionContext context) {
+        Long dictTypeId = requireLong(context.arguments(), "dictTypeId");
+        SystemDTO.DictTypeUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "dictTypeId"), SystemDTO.DictTypeUpsertRequest.class);
+        SystemVO.DictTypeVO dictType = systemManagementAppService.updateDictType(context.currentUser(), dictTypeId, request);
+        return Map.of("dictType", dictType);
+    }
+
+    private Map<String, Object> deleteDictType(ToolExecutionContext context) {
+        Long dictTypeId = requireLong(context.arguments(), "dictTypeId");
+        boolean deleted = systemManagementAppService.deleteDictType(context.currentUser(), dictTypeId);
+        return Map.of("deleted", deleted, "dictTypeId", dictTypeId);
+    }
+
+    private Map<String, Object> createDictItem(ToolExecutionContext context) {
+        Long dictTypeId = requireLong(context.arguments(), "dictTypeId");
+        SystemDTO.DictItemUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "dictTypeId"), SystemDTO.DictItemUpsertRequest.class);
+        if (request.getSortNo() == null) {
+            request.setSortNo(0);
+        }
+        if (!StringUtils.hasText(request.getStatus())) {
+            request.setStatus("ENABLED");
+        }
+        SystemVO.DictItemVO item = systemManagementAppService.createDictItem(context.currentUser(), dictTypeId, request);
+        return Map.of("dictItem", item);
+    }
+
+    private Map<String, Object> updateDictItem(ToolExecutionContext context) {
+        Long dictTypeId = requireLong(context.arguments(), "dictTypeId");
+        Long itemId = requireLong(context.arguments(), "itemId");
+        SystemDTO.DictItemUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "dictTypeId", "itemId"), SystemDTO.DictItemUpsertRequest.class);
+        SystemVO.DictItemVO item = systemManagementAppService.updateDictItem(context.currentUser(), dictTypeId, itemId, request);
+        return Map.of("dictItem", item);
+    }
+
+    private Map<String, Object> deleteDictItem(ToolExecutionContext context) {
+        Long dictTypeId = requireLong(context.arguments(), "dictTypeId");
+        Long itemId = requireLong(context.arguments(), "itemId");
+        boolean deleted = systemManagementAppService.deleteDictItem(context.currentUser(), dictTypeId, itemId);
+        return Map.of("deleted", deleted, "dictTypeId", dictTypeId, "itemId", itemId);
+    }
+
+    private Map<String, Object> createConfig(ToolExecutionContext context) {
+        ensureNonSensitiveConfig(context.arguments());
+        SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.ConfigUpsertRequest.class);
+        if (!StringUtils.hasText(request.getConfigScope())) {
+            request.setConfigScope("TENANT");
+        }
+        SystemVO.ConfigVO config = systemManagementAppService.createConfig(context.currentUser(), request);
+        return Map.of("config", config);
+    }
+
+    private Map<String, Object> updateConfig(ToolExecutionContext context) {
+        Long configId = requireLong(context.arguments(), "configId");
+        ensureNonSensitiveConfig(context.arguments());
+        SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "configId"), SystemDTO.ConfigUpsertRequest.class);
+        SystemVO.ConfigVO config = systemManagementAppService.updateConfig(context.currentUser(), configId, request);
+        return Map.of("config", config);
+    }
+
+    private Map<String, Object> updateBrandingSettings(ToolExecutionContext context) {
+        SystemDTO.BrandingSettingsRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.BrandingSettingsRequest.class);
+        return Map.of("brandingSettings", systemManagementAppService.updateBrandingSettings(context.currentUser(), request));
+    }
+
+    private Map<String, Object> updateAgreementSettings(ToolExecutionContext context) {
+        SystemDTO.AgreementSettingsRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.AgreementSettingsRequest.class);
+        return Map.of("agreementSettings", systemManagementAppService.updateAgreementSettings(context.currentUser(), request));
+    }
+
+    private Map<String, Object> updateWatermarkSettings(ToolExecutionContext context) {
+        SystemDTO.WatermarkSettingsRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.WatermarkSettingsRequest.class);
+        return Map.of("watermarkSettings", systemManagementAppService.updateWatermarkSettings(context.currentUser(), request));
+    }
+
+    private Map<String, Object> updateFloatingWindowSettings(ToolExecutionContext context) {
+        SystemDTO.FloatingWindowSettingsRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.FloatingWindowSettingsRequest.class);
+        return Map.of("floatingWindowSettings", systemManagementAppService.updateFloatingWindowSettings(context.currentUser(), request));
+    }
+
+    private void defaultMenuFields(SystemDTO.MenuUpsertRequest request) {
+        if (request.getParentId() == null) {
+            request.setParentId(0L);
+        }
+        if (!StringUtils.hasText(request.getMenuType())) {
+            request.setMenuType("MENU");
+        }
+        if (request.getSortNo() == null) {
+            request.setSortNo(0);
+        }
+        if (!StringUtils.hasText(request.getStatus())) {
+            request.setStatus("ENABLED");
+        }
+    }
+
+    private void ensureNonSensitiveConfig(Map<String, Object> arguments) {
+        String configKey = stringArg(arguments, "configKey", null);
+        if (StringUtils.hasText(configKey) && looksSensitive(configKey)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "敏感配置不允许通过 AI 工具修改: " + configKey);
+        }
+        String configValue = stringArg(arguments, "configValue", null);
+        if (StringUtils.hasText(configValue) && looksSensitive(configValue)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "疑似敏感配置值不允许通过 AI 工具修改");
+        }
+    }
+
+    private Map<String, Object> withoutKeys(Map<String, Object> arguments, String... keys) {
+        if (arguments == null || arguments.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> copy = new LinkedHashMap<>(arguments);
+        for (String key : keys) {
+            copy.remove(key);
+        }
+        return copy;
+    }
+
     private Map<String, Object> searchFiles(ToolExecutionContext context) {
         String keyword = stringArg(context.arguments(), "keyword", null);
         String contentType = stringArg(context.arguments(), "contentType", null);
@@ -412,8 +888,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void requireEmployee(Long tenantId, Long employeeId) {
-        if (employeeId == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "数字员工不能为空");
+        if (employeeId == null || employeeId <= 0) {
+            return;
         }
         Long count = jdbcTemplate.queryForObject(
                 "select count(1) from ai_employee where tenant_id = ? and id = ? and is_deleted = 0 and enabled = 1",
@@ -530,6 +1006,18 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private Long longArg(Map<String, Object> arguments, String key) {
         Object value = arguments == null ? null : arguments.get(key);
+        return longValue(value, key);
+    }
+
+    private Long requireLong(Map<String, Object> arguments, String key) {
+        Long value = longArg(arguments, key);
+        if (value == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " 不能为空");
+        }
+        return value;
+    }
+
+    private Long longValue(Object value, String key) {
         if (value instanceof Number number) {
             return number.longValue();
         }
@@ -541,6 +1029,32 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         } catch (NumberFormatException exception) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, key + " 必须是数字");
         }
+    }
+
+    private List<Long> longListArg(Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        if (value instanceof List<?> values) {
+            return values.stream()
+                    .map(item -> longValue(item, "列表项"))
+                    .filter(item -> item != null && item > 0)
+                    .toList();
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "参数必须是数字数组");
+    }
+
+    private List<String> stringListArg(Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        if (value instanceof List<?> values) {
+            return values.stream()
+                    .map(item -> item == null ? null : String.valueOf(item).trim())
+                    .filter(StringUtils::hasText)
+                    .toList();
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "参数必须是字符串数组");
     }
 
     private String maskMobile(Object value) {
@@ -573,6 +1087,14 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         String text = String.valueOf(value).trim();
         return text.isEmpty() ? defaultValue : text;
+    }
+
+    private String requiredString(Map<String, Object> arguments, String key) {
+        String value = stringArg(arguments, key, null);
+        if (!StringUtils.hasText(value)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " 不能为空");
+        }
+        return value;
     }
 
     private int limitArg(Map<String, Object> arguments) {

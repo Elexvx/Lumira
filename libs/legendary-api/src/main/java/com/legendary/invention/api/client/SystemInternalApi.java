@@ -127,7 +127,6 @@ public interface SystemInternalApi {
     @PostMapping("/verification/login-code/challenge")
     com.legendary.invention.api.auth.LoginCodeChallengeDTO loginCodeChallenge(
             @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
             @RequestParam("account") String account,
             @RequestParam("loginType") String loginType
     );

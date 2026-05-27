@@ -424,6 +424,7 @@ public final class AiDTO {
         private Long employeeId;
         private List<Long> employeeIds;
         private Long conversationId;
+        private Long pendingToolCallId;
         @NotBlank
         private String message;
         private Boolean enableThinking;
@@ -456,6 +457,14 @@ public final class AiDTO {
 
         public void setConversationId(Long conversationId) {
             this.conversationId = conversationId;
+        }
+
+        public Long getPendingToolCallId() {
+            return pendingToolCallId;
+        }
+
+        public void setPendingToolCallId(Long pendingToolCallId) {
+            this.pendingToolCallId = pendingToolCallId;
         }
 
         public String getMessage() {
@@ -575,6 +584,162 @@ public final class AiDTO {
 
         public void setConfirmed(Boolean confirmed) {
             this.confirmed = confirmed;
+        }
+    }
+
+    public static class ToolProposeRequest {
+        private Long employeeId;
+        private Long conversationId;
+        private String message;
+        private String toolCode;
+        private Map<String, Object> arguments;
+        @Valid
+        private List<ChatAttachmentItem> attachments;
+
+        public Long getEmployeeId() {
+            return employeeId;
+        }
+
+        public void setEmployeeId(Long employeeId) {
+            this.employeeId = employeeId;
+        }
+
+        public Long getConversationId() {
+            return conversationId;
+        }
+
+        public void setConversationId(Long conversationId) {
+            this.conversationId = conversationId;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public String getToolCode() {
+            return toolCode;
+        }
+
+        public void setToolCode(String toolCode) {
+            this.toolCode = toolCode;
+        }
+
+        public Map<String, Object> getArguments() {
+            return arguments;
+        }
+
+        public void setArguments(Map<String, Object> arguments) {
+            this.arguments = arguments;
+        }
+
+        public List<ChatAttachmentItem> getAttachments() {
+            return attachments;
+        }
+
+        public void setAttachments(List<ChatAttachmentItem> attachments) {
+            this.attachments = attachments;
+        }
+    }
+
+    public static class ToolConfirmRequest {
+        @NotNull
+        private Long pendingToolCallId;
+
+        public Long getPendingToolCallId() {
+            return pendingToolCallId;
+        }
+
+        public void setPendingToolCallId(Long pendingToolCallId) {
+            this.pendingToolCallId = pendingToolCallId;
+        }
+    }
+
+    public static class ToolPolicyUpsertRequest {
+        @NotBlank
+        private String policyName;
+        private String toolCode;
+        private String actionType;
+        private String riskLevel;
+        private String matchType;
+        private String matchValue;
+        private String verdict;
+        private String message;
+        private Boolean enabled;
+
+        public String getPolicyName() {
+            return policyName;
+        }
+
+        public void setPolicyName(String policyName) {
+            this.policyName = policyName;
+        }
+
+        public String getToolCode() {
+            return toolCode;
+        }
+
+        public void setToolCode(String toolCode) {
+            this.toolCode = toolCode;
+        }
+
+        public String getActionType() {
+            return actionType;
+        }
+
+        public void setActionType(String actionType) {
+            this.actionType = actionType;
+        }
+
+        public String getRiskLevel() {
+            return riskLevel;
+        }
+
+        public void setRiskLevel(String riskLevel) {
+            this.riskLevel = riskLevel;
+        }
+
+        public String getMatchType() {
+            return matchType;
+        }
+
+        public void setMatchType(String matchType) {
+            this.matchType = matchType;
+        }
+
+        public String getMatchValue() {
+            return matchValue;
+        }
+
+        public void setMatchValue(String matchValue) {
+            this.matchValue = matchValue;
+        }
+
+        public String getVerdict() {
+            return verdict;
+        }
+
+        public void setVerdict(String verdict) {
+            this.verdict = verdict;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
         }
     }
 

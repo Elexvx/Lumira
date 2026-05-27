@@ -396,6 +396,48 @@ public class SystemManagementAppService {
     }
 
     @Transactional
+    public CurrentUserVO updateCurrentUserAvatar(CurrentUser currentUser, String avatarUrl) {
+        if (!StringUtils.hasText(avatarUrl)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "头像地址不能为空");
+        }
+        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        Long tenantId = currentTenantId(currentUser);
+        String normalizedAvatarUrl = normalizeNullableText(avatarUrl);
+        jdbcTemplate.update(
+                """
+                        update sys_user
+                        set avatar_url = ?, updated_by = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                normalizedAvatarUrl,
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                user.getId()
+        );
+        jdbcTemplate.update(
+                """
+                        insert into sys_user_tenant_profile
+                            (tenant_id, user_id, display_name, avatar_url, created_by, updated_by)
+                        values (?, ?, ?, ?, ?, ?)
+                        on duplicate key update
+                            avatar_url = values(avatar_url),
+                            updated_by = values(updated_by),
+                            updated_at = current_timestamp
+                        """,
+                tenantId,
+                user.getId(),
+                resolveProfileDisplayName(user),
+                normalizedAvatarUrl,
+                currentUser.getUserId(),
+                currentUser.getUserId()
+        );
+        userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "更新个人头像");
+        return buildCurrentUser(currentUser);
+    }
+
+    @Transactional
     public CurrentUserVO updateCurrentUserEmail(CurrentUser currentUser, ProfileDTO.EmailUpdateRequest request) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));

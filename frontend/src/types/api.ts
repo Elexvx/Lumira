@@ -445,6 +445,8 @@ export interface AiChatResponseRecord {
   provider?: string | null;
   model?: string | null;
   references?: AiKnowledgeReferenceRecord[] | null;
+  toolPlan?: AiToolPlanRecord | null;
+  toolResult?: AiToolExecuteResultRecord | null;
   replyAt?: string | null;
 }
 
@@ -503,6 +505,7 @@ export interface AiChatRequestPayload {
   employeeId?: number | null;
   employeeIds?: number[] | null;
   conversationId?: number | null;
+  pendingToolCallId?: number | null;
   message: string;
   enableThinking?: boolean | null;
   attachments?: Array<{
@@ -511,6 +514,52 @@ export interface AiChatRequestPayload {
   skillCodes?: string[];
   knowledgeBaseIds?: number[];
   confirmed?: boolean | null;
+}
+
+export interface AiToolPlanRecord {
+  id: number;
+  tenantId?: number | null;
+  conversationId?: number | null;
+  employeeId?: number | null;
+  toolCode: string;
+  toolName?: string | null;
+  actionType?: string | null;
+  riskLevel?: string | null;
+  summary?: string | null;
+  permissionKey?: string | null;
+  requiresConfirm?: boolean | null;
+  supervisorVerdict?: string | null;
+  supervisorMessage?: string | null;
+  policyVerdict?: string | null;
+  policyMessage?: string | null;
+  status?: string | null;
+  arguments?: Record<string, unknown> | null;
+  expiresAt?: string | null;
+  createTime?: string | null;
+}
+
+export interface AiToolExecuteResultRecord {
+  toolCode: string;
+  resultStatus: string;
+  message?: string | null;
+  data?: Record<string, unknown> | null;
+  executedAt?: string | null;
+}
+
+export interface AiToolPolicyRecord {
+  id: number;
+  tenantId?: number | null;
+  policyName: string;
+  toolCode?: string | null;
+  actionType?: string | null;
+  riskLevel?: string | null;
+  matchType?: string | null;
+  matchValue?: string | null;
+  verdict?: string | null;
+  message?: string | null;
+  enabled?: boolean | null;
+  createTime?: string | null;
+  updateTime?: string | null;
 }
 
 export interface LocalizationLanguage {

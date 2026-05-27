@@ -21,6 +21,9 @@ import type {
   AiPromptTemplateRecord,
   AiSkillRecord,
   AiEmployeeSkillRecord,
+  AiToolExecuteResultRecord,
+  AiToolPlanRecord,
+  AiToolPolicyRecord,
   PagedResult,
 } from '@/types/api';
 
@@ -43,10 +46,12 @@ export interface AiKnowledgeBaseQuery extends AiPageQuery {
 }
 
 export interface AiChatStreamEvent {
-  type: 'status' | 'thinking' | 'delta' | 'done' | 'error';
+  type: 'status' | 'thinking' | 'delta' | 'done' | 'error' | 'tool_proposal' | 'tool_result' | 'tool_blocked';
   message?: string | null;
   delta?: string | null;
   response?: AiChatResponseRecord | null;
+  toolPlan?: AiToolPlanRecord | null;
+  toolResult?: AiToolExecuteResultRecord | null;
 }
 
 export const aiService = {
@@ -257,6 +262,24 @@ export const aiService = {
     request<boolean>(`/ai/employees/${id}/skills`, {
       method: 'PUT',
       data: payload,
+      ...options,
+    }),
+  toolPolicies: (params: AiPageQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<AiToolPolicyRecord>>('/ai/tool-policies', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  proposeTool: (payload: { employeeId?: number | null; conversationId?: number | null; message?: string | null; toolCode?: string | null; arguments?: Record<string, unknown> | null }, options: RequestOptions = {}) =>
+    request<AiToolPlanRecord>('/ai/tools/propose', {
+      method: 'POST',
+      data: payload,
+      ...options,
+    }),
+  confirmTool: (pendingToolCallId: number, options: RequestOptions = {}) =>
+    request<AiToolExecuteResultRecord>('/ai/tools/confirm', {
+      method: 'POST',
+      data: { pendingToolCallId },
       ...options,
     }),
   chat: (payload: AiChatRequestPayload, options: RequestOptions = {}) =>

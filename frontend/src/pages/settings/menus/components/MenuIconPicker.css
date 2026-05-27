@@ -1,0 +1,112 @@
+.saas-menu-icon-picker {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.saas-menu-icon-picker__trigger {
+  display: inline-flex;
+  max-width: 100%;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.15));
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ant-color-bg-container, #fff);
+}
+
+.saas-menu-icon-picker__button.ant-btn {
+  width: 48px;
+  min-width: 48px;
+  height: 40px;
+  border: 0;
+  border-radius: 0;
+}
+
+.saas-menu-icon-picker__clear.ant-btn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  border-width: 0 0 0 1px;
+  border-color: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  border-radius: 0;
+}
+
+.saas-menu-icon-picker__placeholder {
+  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+}
+
+.saas-menu-icon-picker__overlay {
+  width: min(500px, calc(100vw - 48px));
+}
+
+.saas-menu-icon-picker__search {
+  margin-bottom: 14px;
+}
+
+.saas-menu-icon-picker__styles {
+  margin-bottom: 14px;
+}
+
+.saas-menu-icon-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 32px);
+  justify-content: start;
+  gap: 14px 18px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.saas-menu-icon-picker__option {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+  background: transparent;
+  cursor: pointer;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.saas-menu-icon-picker__option:hover {
+  color: var(--ant-color-primary, #1677ff);
+  background: var(--ant-color-fill-tertiary, rgba(0, 0, 0, 0.04));
+}
+
+.saas-menu-icon-picker__option--active,
+.saas-menu-icon-picker__option--active:hover {
+  color: var(--ant-color-primary, #1677ff);
+  background: var(--ant-color-primary-bg, #e6f4ff);
+}
+
+.saas-menu-icon-picker-popover .ant-popover-inner {
+  padding: 18px 24px;
+  border-radius: 8px;
+}
+
+.saas-menu-icon-picker-popover .ant-popover-arrow {
+  --antd-arrow-background-color: var(--ant-color-bg-elevated, #fff);
+}
+
+.saas-menu-icon-preview {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.saas-menu-icon-preview__icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+.saas-menu-icon-preview__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
