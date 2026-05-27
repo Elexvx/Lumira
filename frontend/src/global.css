@@ -565,6 +565,10 @@ body,
     align-items: stretch;
   }
 
+  .saas-profile-page__summary-content--account-only {
+    grid-template-columns: 1fr;
+  }
+
   .saas-profile-page__welcome-panel,
   .saas-profile-page__account-panel {
     display: flex;

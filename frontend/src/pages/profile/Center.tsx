@@ -480,8 +480,6 @@ const ProfileCenterPage = () => {
   const roleNames = currentUser?.availableRoles?.map((role) => role.roleName).filter(Boolean) || [];
   const activeRoleName =
     currentUser?.availableRoles?.find((role) => role.id === currentUser.simulatedRoleId)?.roleName || roleNames[0] || '暂无角色';
-  const nowHour = dayjs().hour();
-  const greetingText = nowHour < 6 ? '夜深了' : nowHour < 12 ? '上午好' : nowHour < 18 ? '下午好' : '晚上好';
 
   const handleSaveProfile = async () => {
     try {
@@ -656,15 +654,7 @@ const ProfileCenterPage = () => {
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <div className="saas-profile-page__top-row">
               <Card className="saas-profile-page__summary-card">
-                <div className="saas-profile-page__summary-content">
-                  <section className="saas-profile-page__welcome-panel" aria-label="欢迎信息">
-                    <Space direction="vertical" size={6}>
-                      <Typography.Title level={3} style={{ margin: 0 }}>
-                        Hi，{displayName}
-                      </Typography.Title>
-                      <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
-                    </Space>
-                  </section>
+                <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
                   <section className="saas-profile-page__account-panel" aria-label="账户身份">
                     <Space align="center" size={14} className="saas-profile-page__welcome-profile">
                       <Avatar size={56} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
@@ -723,17 +713,7 @@ const ProfileCenterPage = () => {
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
                 <div className="saas-profile-page__top-row">
                   <Card className="saas-profile-page__summary-card">
-                    <div className="saas-profile-page__summary-content">
-                      <section className="saas-profile-page__welcome-panel" aria-label="欢迎信息">
-                        <div className="saas-profile-page__welcome-content">
-                          <Space align="baseline" size={24}>
-                            <Typography.Title level={2} style={{ margin: 0 }}>
-                              Hi，{displayName}
-                            </Typography.Title>
-                            <Typography.Text>{greetingText}，欢迎回到工作台</Typography.Text>
-                          </Space>
-                        </div>
-                      </section>
+                    <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
                       <section className="saas-profile-page__account-panel" aria-label="账户身份">
                         <Space align="center" size={16} className="saas-profile-page__welcome-profile">
                           <Avatar size={64} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
