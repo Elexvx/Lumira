@@ -25,6 +25,7 @@ const reset = args.has('--reset');
 const help = args.has('--help') || args.has('-h');
 const skipCheck = args.has('--skip-check');
 const observability = args.has('--observability');
+const skipDockerPrune = args.has('--skip-docker-prune');
 const serviceNames = parseServiceNames(rawArgs);
 const allowedServices = new Set([
   'system-service',
@@ -168,6 +169,7 @@ Options:
   --logs      Follow service logs.
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
+  --skip-docker-prune Skip automatic Docker build cache cleanup before rebuilds.
   --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
   --nacos     Start the bundled Nacos container. This is also enabled when Nacos config or discovery is enabled in deploy/.env.
   -h, --help  Show this help message.
@@ -180,6 +182,38 @@ function ensureDockerReady() {
     console.error('Docker is not running. Start Docker Desktop or enable Docker in 1Panel, then run this command again.');
     process.exit(1);
   }
+}
+
+function availableDiskMb(mountPath = '/') {
+  const result = output('df', ['-Pm', mountPath]);
+  if (result.status !== 0) {
+    return null;
+  }
+  const lines = result.stdout.trim().split(/\r?\n/);
+  const columns = lines.at(-1)?.trim().split(/\s+/) ?? [];
+  const available = Number.parseInt(columns[3] ?? '', 10);
+  return Number.isFinite(available) ? available : null;
+}
+
+function maybePruneDockerBuildCache(stage) {
+  if (!rebuild || skipDockerPrune) {
+    return;
+  }
+  const minimumFreeMb = Number.parseInt(process.env.DEPLOY_MIN_FREE_MB || '10240', 10);
+  const pruneMode = (process.env.DEPLOY_DOCKER_PRUNE_MODE || 'auto').toLowerCase();
+  if (pruneMode === 'off') {
+    return;
+  }
+  const freeBefore = availableDiskMb('/');
+  const shouldPrune = pruneMode === 'always' || (freeBefore !== null && freeBefore < minimumFreeMb);
+  if (!shouldPrune) {
+    return;
+  }
+  log(`Docker cleanup (${stage}) started: free=${freeBefore ?? 'unknown'}MB, threshold=${minimumFreeMb}MB.`);
+  run('docker', ['builder', 'prune', '-af']);
+  run('docker', ['image', 'prune', '-f']);
+  const freeAfter = availableDiskMb('/');
+  log(`Docker cleanup (${stage}) finished: free=${freeAfter ?? 'unknown'}MB.`);
 }
 
 function randomSecret(prefix) {
@@ -619,6 +653,7 @@ if (logs) {
 
 run('docker', composeArgs('config'), { stdio: 'ignore' });
 validateServiceNames();
+maybePruneDockerBuildCache('before-build');
 
 if (serviceNames.length > 0) {
   log(`Deploying selected service(s) without dependency restart: ${serviceNames.join(', ')}`);
@@ -633,6 +668,7 @@ if (serviceNames.length > 0) {
   }
   runWithRetry('docker', composeArgs(...upArgs), 1);
 }
+maybePruneDockerBuildCache('after-build');
 run('docker', composeArgs('ps'));
 
 if (!skipCheck) {
