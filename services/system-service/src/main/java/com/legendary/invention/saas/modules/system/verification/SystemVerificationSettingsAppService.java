@@ -198,7 +198,9 @@ public class SystemVerificationSettingsAppService {
         boolean configured = enabled
                 && StringUtils.hasText(provider)
                 && StringUtils.hasText(signName)
-                && StringUtils.hasText(templateCode);
+                && StringUtils.hasText(templateCode)
+                && StringUtils.hasText(accessKeyId)
+                && StringUtils.hasText(accessKeySecret);
         return new SmsVerificationSettingsRecord(enabled, provider, signName, templateCode, accessKeyId, accessKeySecret, endpoint, region, configured);
     }
 

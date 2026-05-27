@@ -7,6 +7,8 @@ export interface AuditLogQuery extends Record<string, unknown> {
   employeeId?: number;
   skillCode?: string;
   resultStatus?: string;
+  channel?: string;
+  scene?: string;
   loginType?: string;
   logType?: string;
   startTime?: string;
@@ -30,6 +32,12 @@ export const auditService = {
     }),
   aiCallLogs: (params: AuditLogQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<AuditLogRecord>>('/v1/audit/ai-call-logs', {
+      method: 'GET',
+      params,
+      ...options,
+    }),
+  verificationLogs: (params: AuditLogQuery = {}, options: RequestOptions = {}) =>
+    request<PagedResult<AuditLogRecord>>('/v1/audit/verification-logs', {
       method: 'GET',
       params,
       ...options,

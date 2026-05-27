@@ -12,6 +12,7 @@ import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
 import com.legendary.invention.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
+import com.legendary.invention.saas.modules.system.support.SmsVerificationSender;
 import com.legendary.invention.saas.modules.system.support.SmtpMailService;
 import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
@@ -55,12 +56,17 @@ public class SystemVerificationAppService {
     private static final String SMS_CONFIG_ENDPOINT_KEY = "verification.sms.endpoint";
     private static final String SMS_CONFIG_REGION_KEY = "verification.sms.region";
     private static final String EMAIL_LOGIN_ENABLED_KEY = "verification.email-login.enabled";
+    private static final String AUDIT_SCENE_LOGIN_CODE = "LOGIN_CODE";
+    private static final String AUDIT_SCENE_SECOND_FACTOR = "SECOND_FACTOR";
+    private static final String AUDIT_SCENE_CONTACT_BIND = "CONTACT_BIND";
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final UserDomainService userDomainService;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
+    private final SmsVerificationSender smsVerificationSender;
+    private final VerificationDeliveryAuditService verificationDeliveryAuditService;
     private final SystemVerificationSettingsAppService settingsAppService;
     private final TotpService totpService = new TotpService();
 
@@ -70,6 +76,8 @@ public class SystemVerificationAppService {
             UserDomainService userDomainService,
             SystemVerificationProperties properties,
             SmtpMailService smtpMailService,
+            SmsVerificationSender smsVerificationSender,
+            VerificationDeliveryAuditService verificationDeliveryAuditService,
             SystemVerificationSettingsAppService settingsAppService
     ) {
         this.jdbcTemplate = jdbcTemplate;
@@ -77,6 +85,8 @@ public class SystemVerificationAppService {
         this.userDomainService = userDomainService;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
+        this.smsVerificationSender = smsVerificationSender;
+        this.verificationDeliveryAuditService = verificationDeliveryAuditService;
         this.settingsAppService = settingsAppService;
     }
 
@@ -122,6 +132,7 @@ public class SystemVerificationAppService {
     public SystemVO.VerificationChallengeVO startContactBindChallenge(Long tenantId, Long userId, String contactType, String contactValue) {
         String normalizedContactType = normalizeContactType(contactType);
         ensureContactBindSupported(normalizedContactType);
+        SysUserEntity user = requireUser(userId);
         String normalizedContactValue = normalizeContactValue(contactValue);
         validateContactBindPrerequisites(tenantId, normalizedContactType, normalizedContactValue);
 
@@ -148,7 +159,19 @@ public class SystemVerificationAppService {
                 userId
         );
 
-        sendContactVerificationCode(tenantId, normalizedContactType, normalizedContactValue, verificationCode);
+        deliverVerificationCode(
+                tenantId,
+                userId,
+                user.getUsername(),
+                normalizedContactType,
+                AUDIT_SCENE_CONTACT_BIND,
+                normalizedContactValue,
+                maskedContact,
+                verificationCode,
+                challengeId,
+                "邮箱验证码",
+                FACTOR_SMS.equals(normalizedContactType) ? loadSmsSettingsRecord(tenantId) : null
+        );
         return buildChallengeResponse(
                 normalizedContactType,
                 contactBindFactorName(normalizedContactType),
@@ -238,8 +261,9 @@ public class SystemVerificationAppService {
     public LoginCodeChallengeVO startLoginCodeChallenge(SysUserEntity user, Long tenantId, String loginType) {
         String normalizedLoginType = normalizeFactorCode(loginType);
         ensureLoginSupported(normalizedLoginType);
+        SmsVerificationSettingsRecord smsSettings = null;
         if (FACTOR_SMS.equals(normalizedLoginType)) {
-            SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
+            smsSettings = loadSmsSettingsRecord(tenantId);
             if (!smsSettings.enabled() || !smsSettings.configured()) {
                 throw new BizException(ErrorCode.BIZ_ERROR, "请先配置并启用短信验证码登录");
             }
@@ -281,16 +305,19 @@ public class SystemVerificationAppService {
                 user.getId()
         );
 
-        if (FACTOR_EMAIL.equals(normalizedLoginType)) {
-            smtpMailService.sendVerificationCode(tenantId, user.getEmail(), verificationCode, "邮箱验证码");
-        } else {
-            log.info("SMS login code generated tenantId={} userId={} challengeId={} code={}",
-                    tenantId,
-                    user.getId(),
-                    challengeId,
-                    verificationCode
-            );
-        }
+        deliverVerificationCode(
+                tenantId,
+                user.getId(),
+                user.getUsername(),
+                normalizedLoginType,
+                AUDIT_SCENE_LOGIN_CODE,
+                FACTOR_SMS.equals(normalizedLoginType) ? user.getMobile() : user.getEmail(),
+                maskedContact,
+                verificationCode,
+                challengeId,
+                "邮箱验证码",
+                smsSettings
+        );
 
         LoginCodeChallengeVO challenge = new LoginCodeChallengeVO();
         challenge.setLoginType(normalizedLoginType);
@@ -405,11 +432,18 @@ public class SystemVerificationAppService {
                     verificationCode,
                     userId
             );
-            log.info("SMS login code generated tenantId={} userId={} challengeId={} code={}",
+            deliverVerificationCode(
                     tenantId,
                     userId,
+                    user.getUsername(),
+                    normalizedFactor,
+                    AUDIT_SCENE_SECOND_FACTOR,
+                    user.getMobile(),
+                    maskedContact,
+                    verificationCode,
                     challengeId,
-                    verificationCode
+                    "邮箱验证码",
+                    smsSettings
             );
             return buildChallengeResponse(
                     normalizedFactor,
@@ -451,7 +485,19 @@ public class SystemVerificationAppService {
                     verificationCode,
                     userId
             );
-            smtpMailService.sendVerificationCode(tenantId, user.getEmail(), verificationCode, "邮箱验证码");
+            deliverVerificationCode(
+                    tenantId,
+                    userId,
+                    user.getUsername(),
+                    normalizedFactor,
+                    AUDIT_SCENE_SECOND_FACTOR,
+                    user.getEmail(),
+                    maskedContact,
+                    verificationCode,
+                    challengeId,
+                    "邮箱验证码",
+                    null
+            );
             return buildChallengeResponse(
                     normalizedFactor,
                     challengeId,
@@ -763,19 +809,6 @@ public class SystemVerificationAppService {
         return totpService.sha256(contactType + ":" + contactValue);
     }
 
-    private void sendContactVerificationCode(Long tenantId, String contactType, String contactValue, String verificationCode) {
-        if (FACTOR_EMAIL.equals(contactType)) {
-            smtpMailService.sendVerificationCode(tenantId, contactValue, verificationCode, "邮箱验证码");
-            return;
-        }
-        log.info("Contact bind code generated tenantId={} contactType={} contactValue={} code={}",
-                tenantId,
-                contactType,
-                maskMobile(contactValue),
-                verificationCode
-        );
-    }
-
     private SystemVO.SmsVerificationSettingsVO loadSmsSettings(Long tenantId) {
         SmsVerificationSettingsRecord record = loadSmsSettingsRecord(tenantId);
         SystemVO.SmsVerificationSettingsVO settings = new SystemVO.SmsVerificationSettingsVO();
@@ -805,8 +838,80 @@ public class SystemVerificationAppService {
         boolean configured = enabled
                 && StringUtils.hasText(provider)
                 && StringUtils.hasText(signName)
-                && StringUtils.hasText(templateCode);
+                && StringUtils.hasText(templateCode)
+                && StringUtils.hasText(accessKeyId)
+                && StringUtils.hasText(accessKeySecret);
         return new SmsVerificationSettingsRecord(enabled, provider, signName, templateCode, accessKeyId, accessKeySecret, endpoint, region, configured);
+    }
+
+    private void deliverVerificationCode(
+            Long tenantId,
+            Long userId,
+            String username,
+            String channel,
+            String scene,
+            String target,
+            String maskedTarget,
+            String verificationCode,
+            String challengeId,
+            String emailSubject,
+            SmsVerificationSettingsRecord smsSettings
+    ) {
+        String normalizedChannel = channel.toUpperCase(Locale.ROOT);
+        try {
+            String providerDetail;
+            if (FACTOR_EMAIL.equals(channel)) {
+                smtpMailService.sendVerificationCode(tenantId, target, verificationCode, emailSubject);
+                providerDetail = "provider=smtp";
+            } else if (FACTOR_SMS.equals(channel)) {
+                SmsVerificationSender.SmsSendResult result = smsVerificationSender.send(toSmsSettings(smsSettings), target, verificationCode);
+                providerDetail = "provider=" + defaultIfBlank(smsSettings.provider(), "aliyun")
+                        + ", providerRequestId=" + defaultIfBlank(result.requestId(), "-")
+                        + ", providerBizId=" + defaultIfBlank(result.bizId(), "-");
+            } else {
+                throw new BizException(ErrorCode.NOT_FOUND, "验证码渠道不存在");
+            }
+            verificationDeliveryAuditService.log(
+                    tenantId,
+                    userId,
+                    username,
+                    normalizedChannel,
+                    scene,
+                    "SUCCESS",
+                    abbreviate("challengeId=" + challengeId + ", target=" + maskedTarget + ", " + providerDetail)
+            );
+        } catch (RuntimeException exception) {
+            verificationDeliveryAuditService.log(
+                    tenantId,
+                    userId,
+                    username,
+                    normalizedChannel,
+                    scene,
+                    "FAIL",
+                    abbreviate("challengeId=" + challengeId + ", target=" + maskedTarget + ", reason=" + exception.getMessage())
+            );
+            throw exception;
+        }
+    }
+
+    private SmsVerificationSender.SmsSettings toSmsSettings(SmsVerificationSettingsRecord record) {
+        return new SmsVerificationSender.SmsSettings(
+                record.provider(),
+                record.signName(),
+                record.templateCode(),
+                record.accessKeyId(),
+                record.accessKeySecret(),
+                record.endpoint(),
+                record.region(),
+                record.configured()
+        );
+    }
+
+    private String abbreviate(String value) {
+        if (value == null || value.length() <= 1000) {
+            return value;
+        }
+        return value.substring(0, 1000);
     }
 
     private void upsertSmsConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {

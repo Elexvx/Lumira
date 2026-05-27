@@ -1512,6 +1512,57 @@ public class SystemManagementAppService {
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
     }
 
+    public PageResponse<SystemVO.AuditLogVO> listVerificationLogs(
+            CurrentUser currentUser,
+            Long tenantId,
+            String channel,
+            String scene,
+            String resultStatus,
+            String startTime,
+            String endTime,
+            long pageNo,
+            long pageSize
+    ) {
+        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        String baseSql = """
+                from audit_operation_log l
+                where l.deleted = 0
+                  and l.module_name = 'verification'
+                """;
+        List<Object> params = new ArrayList<>();
+        if (effectiveTenantId != null) {
+            baseSql += " and l.tenant_id = ?";
+            params.add(effectiveTenantId);
+        }
+        if (StringUtils.hasText(channel)) {
+            baseSql += " and l.operation_type = ?";
+            params.add(channel.trim().toUpperCase(Locale.ROOT));
+        }
+        if (StringUtils.hasText(scene)) {
+            baseSql += " and l.action_name = ?";
+            params.add(scene.trim().toUpperCase(Locale.ROOT));
+        }
+        if (StringUtils.hasText(resultStatus)) {
+            baseSql += " and l.result_status = ?";
+            params.add(resultStatus.trim().toUpperCase(Locale.ROOT));
+        }
+        if (StringUtils.hasText(startTime)) {
+            baseSql += " and l.created_at >= ?";
+            params.add(parseDateTime(startTime));
+        }
+        if (StringUtils.hasText(endTime)) {
+            baseSql += " and l.created_at <= ?";
+            params.add(parseDateTime(endTime));
+        }
+        String selectSql = """
+                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.module_name as moduleName,
+                       l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
+                       l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
+                       l.created_at as createdAt
+                """ + baseSql + " order by l.id desc";
+        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+    }
+
     public PageResponse<SystemVO.AuditLogVO> listAiCallLogs(
             CurrentUser currentUser,
             Long tenantId,
