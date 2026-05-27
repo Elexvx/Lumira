@@ -89,6 +89,9 @@ type RouteParams = {
 };
 
 const CONVERSATIONS_QUERY_KEY = ['ai-assistant-conversations'] as const;
+const EMPTY_CONVERSATIONS: AiConversationRecord[] = [];
+const EMPTY_EMPLOYEES: AiEmployeeRecord[] = [];
+const EMPTY_LLM_SERVICES: AiLlmServiceRecord[] = [];
 
 type ActionItem = {
   key: string;
@@ -915,8 +918,8 @@ const AiAssistantPage = () => {
     retry: false,
   });
 
-  const employees = employeesQuery.data?.records || [];
-  const llmServices = llmServicesQuery.data?.records || [];
+  const employees = employeesQuery.data?.records ?? EMPTY_EMPLOYEES;
+  const llmServices = llmServicesQuery.data?.records ?? EMPTY_LLM_SERVICES;
   const assistantEmployee = assistantQuery.data || null;
   const shareConversation = shareQuery.data?.conversation || null;
   const shareEmployee = shareConversation
@@ -989,7 +992,7 @@ const AiAssistantPage = () => {
       return;
     }
 
-    const records = conversationsQuery.data?.records || [];
+    const records = conversationsQuery.data?.records ?? EMPTY_CONVERSATIONS;
     setSessions((currentSessions) => {
       const draftSessions = currentSessions.filter((session) => session.isDraft || !session.conversationId);
       const persistedSessions = records.map((record) => {
