@@ -61,29 +61,24 @@ export const performLogout = async (options: { reason?: LogoutReason; hardReload
   };
 
   if (reason === 'user_initiated' && isLoggedIn()) {
-    const tokenState = tokenManager.getTokenState();
-    const accessTokenExpired = Boolean(tokenState && tokenState.expiresAt <= Date.now());
-
-    if (accessTokenExpired) {
-      const refreshed = await tryRefreshToken();
-      if (!refreshed) {
-        clearAuthSession();
-        redirectToLogin();
-        return;
-      }
-    }
-
-    try {
-      await authService.logout({
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-      });
-    } catch {
-      // 后端会话已失效时继续做本地清理，不阻塞退出流程
-    }
+    void revokeServerSession();
   }
   clearAuthSession();
   redirectToLogin();
+};
+
+const revokeServerSession = async () => {
+  try {
+    await authService.logout({
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+      allowDuplicate: true,
+      silent: true,
+      timeoutMs: 3000,
+    });
+  } catch {
+    // 后端会话已失效或网络异常时，本地退出流程不被阻塞。
+  }
 };
 
 export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {

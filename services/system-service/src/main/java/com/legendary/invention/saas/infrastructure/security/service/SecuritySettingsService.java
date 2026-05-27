@@ -24,6 +24,8 @@ public class SecuritySettingsService {
     private static final String LOGIN_DEFENSE_WINDOW_MINUTES_KEY = "security.login-defense-window-minutes";
     private static final String LOGIN_MAX_VALIDATION_ATTEMPTS_KEY = "security.login-max-validation-attempts";
     private static final String LOGIN_MAX_FAILURE_COUNT_KEY = "security.login-max-failure-count";
+    private static final String VERIFICATION_CODE_EXPIRE_SECONDS_KEY = "security.verification-code-expire-seconds";
+    private static final String VERIFICATION_CODE_COOLDOWN_SECONDS_KEY = "security.verification-code-cooldown-seconds";
     private static final String PASSWORD_MIN_LENGTH_KEY = "security.password-min-length";
     private static final String PASSWORD_REQUIRE_UPPERCASE_KEY = "security.password-require-uppercase";
     private static final String PASSWORD_REQUIRE_LOWERCASE_KEY = "security.password-require-lowercase";
@@ -74,6 +76,14 @@ public class SecuritySettingsService {
         return loadSettings().getLoginMaxFailureCount();
     }
 
+    public long getVerificationCodeExpireSeconds() {
+        return loadSettings().getVerificationCodeExpireSeconds();
+    }
+
+    public long getVerificationCodeCooldownSeconds() {
+        return loadSettings().getVerificationCodeCooldownSeconds();
+    }
+
     public long getPasswordMinLength() {
         return loadSettings().getPasswordMinLength();
     }
@@ -105,6 +115,8 @@ public class SecuritySettingsService {
                 resolvePositiveLong(LOGIN_DEFENSE_WINDOW_MINUTES_KEY, securityProperties.getLoginDefenseWindowMinutes()),
                 resolvePositiveLong(LOGIN_MAX_VALIDATION_ATTEMPTS_KEY, securityProperties.getLoginMaxValidationAttempts()),
                 resolvePositiveLong(LOGIN_MAX_FAILURE_COUNT_KEY, securityProperties.getLoginMaxFailureCount()),
+                resolvePositiveLong(VERIFICATION_CODE_EXPIRE_SECONDS_KEY, securityProperties.getVerificationCodeExpireSeconds()),
+                resolvePositiveLong(VERIFICATION_CODE_COOLDOWN_SECONDS_KEY, securityProperties.getVerificationCodeCooldownSeconds()),
                 resolvePositiveLong(PASSWORD_MIN_LENGTH_KEY, securityProperties.getPasswordMinLength()),
                 resolveBoolean(PASSWORD_REQUIRE_UPPERCASE_KEY, securityProperties.isPasswordRequireUppercase()),
                 resolveBoolean(PASSWORD_REQUIRE_LOWERCASE_KEY, securityProperties.isPasswordRequireLowercase()),
@@ -120,6 +132,8 @@ public class SecuritySettingsService {
         validatePositive(request.getLoginDefenseWindowMinutes(), "统计窗口");
         validatePositive(request.getLoginMaxValidationAttempts(), "最大验证次数");
         validatePositive(request.getLoginMaxFailureCount(), "最大错误次数");
+        validatePositive(request.getVerificationCodeExpireSeconds(), "验证码有效期");
+        validatePositive(request.getVerificationCodeCooldownSeconds(), "验证码重发冷却");
         validatePositive(request.getPasswordMinLength(), "最短长度");
         String captchaType = normalizeCaptchaType(request.getCaptchaType());
 
@@ -176,6 +190,18 @@ public class SecuritySettingsService {
                 "最大错误次数",
                 request.getLoginMaxFailureCount(),
                 "统计窗口内允许的最大登录失败次数"
+        );
+        upsertConfig(
+                VERIFICATION_CODE_EXPIRE_SECONDS_KEY,
+                "验证码有效期",
+                request.getVerificationCodeExpireSeconds(),
+                "短信/邮箱验证码的有效秒数"
+        );
+        upsertConfig(
+                VERIFICATION_CODE_COOLDOWN_SECONDS_KEY,
+                "验证码重发冷却",
+                request.getVerificationCodeCooldownSeconds(),
+                "同一账号同一验证码渠道再次发送前需要等待的秒数"
         );
         upsertConfig(
                 PASSWORD_MIN_LENGTH_KEY,
@@ -309,6 +335,8 @@ public class SecuritySettingsService {
         private long loginDefenseWindowMinutes;
         private long loginMaxValidationAttempts;
         private long loginMaxFailureCount;
+        private long verificationCodeExpireSeconds;
+        private long verificationCodeCooldownSeconds;
         private long passwordMinLength;
         private boolean passwordRequireUppercase;
         private boolean passwordRequireLowercase;
@@ -328,6 +356,8 @@ public class SecuritySettingsService {
                 long loginDefenseWindowMinutes,
                 long loginMaxValidationAttempts,
                 long loginMaxFailureCount,
+                long verificationCodeExpireSeconds,
+                long verificationCodeCooldownSeconds,
                 long passwordMinLength,
                 boolean passwordRequireUppercase,
                 boolean passwordRequireLowercase,
@@ -343,6 +373,8 @@ public class SecuritySettingsService {
             this.loginDefenseWindowMinutes = loginDefenseWindowMinutes;
             this.loginMaxValidationAttempts = loginMaxValidationAttempts;
             this.loginMaxFailureCount = loginMaxFailureCount;
+            this.verificationCodeExpireSeconds = verificationCodeExpireSeconds;
+            this.verificationCodeCooldownSeconds = verificationCodeCooldownSeconds;
             this.passwordMinLength = passwordMinLength;
             this.passwordRequireUppercase = passwordRequireUppercase;
             this.passwordRequireLowercase = passwordRequireLowercase;
@@ -420,6 +452,22 @@ public class SecuritySettingsService {
 
         public void setLoginMaxFailureCount(long loginMaxFailureCount) {
             this.loginMaxFailureCount = loginMaxFailureCount;
+        }
+
+        public long getVerificationCodeExpireSeconds() {
+            return verificationCodeExpireSeconds;
+        }
+
+        public void setVerificationCodeExpireSeconds(long verificationCodeExpireSeconds) {
+            this.verificationCodeExpireSeconds = verificationCodeExpireSeconds;
+        }
+
+        public long getVerificationCodeCooldownSeconds() {
+            return verificationCodeCooldownSeconds;
+        }
+
+        public void setVerificationCodeCooldownSeconds(long verificationCodeCooldownSeconds) {
+            this.verificationCodeCooldownSeconds = verificationCodeCooldownSeconds;
         }
 
         public long getPasswordMinLength() {

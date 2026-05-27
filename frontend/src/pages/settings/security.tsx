@@ -19,7 +19,13 @@ const tokenFieldNames: (keyof SecuritySettings)[] = [
 
 const captchaFieldNames: (keyof SecuritySettings)[] = ['captchaEnabled', 'captchaType'];
 
-const defenseFieldNames: (keyof SecuritySettings)[] = ['loginDefenseWindowMinutes', 'loginMaxValidationAttempts', 'loginMaxFailureCount'];
+const defenseFieldNames: (keyof SecuritySettings)[] = [
+  'loginDefenseWindowMinutes',
+  'loginMaxValidationAttempts',
+  'loginMaxFailureCount',
+  'verificationCodeExpireSeconds',
+  'verificationCodeCooldownSeconds',
+];
 
 const passwordFieldNames: (keyof SecuritySettings)[] = [
   'passwordMinLength',
@@ -230,6 +236,22 @@ const SecuritySettingsPage = () => {
                       extra={formatMessage({ id: 'page.security.maxFailures.help', defaultMessage: 'The max number of login failures allowed in the window before blocking.' })}
                     >
                       <InputNumber min={1} precision={0} style={{ width: '100%' }} placeholder={formatMessage({ id: 'page.security.example10', defaultMessage: 'e.g. 10' })} />
+                    </Form.Item>
+                    <Form.Item
+                      name="verificationCodeExpireSeconds"
+                      label={formatMessage({ id: 'page.security.verificationCodeExpire', defaultMessage: 'Verification code expiry (seconds)' })}
+                      rules={[{ required: true, message: formatMessage({ id: 'page.security.verificationCodeExpire.required', defaultMessage: 'Please enter the verification code expiry time' }) }, { type: 'number', min: 1, message: formatMessage({ id: 'common.mustBeGreaterThanZero', defaultMessage: 'Must be greater than 0' }) }]}
+                      extra={formatMessage({ id: 'page.security.verificationCodeExpire.help', defaultMessage: 'SMS and email verification codes expire after this number of seconds.' })}
+                    >
+                      <InputNumber min={1} precision={0} style={{ width: '100%' }} placeholder={formatMessage({ id: 'page.security.example300', defaultMessage: 'e.g. 300' })} />
+                    </Form.Item>
+                    <Form.Item
+                      name="verificationCodeCooldownSeconds"
+                      label={formatMessage({ id: 'page.security.verificationCodeCooldown', defaultMessage: 'Send countdown (seconds)' })}
+                      rules={[{ required: true, message: formatMessage({ id: 'page.security.verificationCodeCooldown.required', defaultMessage: 'Please enter the send countdown seconds' }) }, { type: 'number', min: 1, message: formatMessage({ id: 'common.mustBeGreaterThanZero', defaultMessage: 'Must be greater than 0' }) }]}
+                      extra={formatMessage({ id: 'page.security.verificationCodeCooldown.help', defaultMessage: 'After one verification code is sent, the send button counts down and cannot send again during this time.' })}
+                    >
+                      <InputNumber min={1} precision={0} style={{ width: '100%' }} placeholder={formatMessage({ id: 'page.security.example60', defaultMessage: 'e.g. 60' })} />
                     </Form.Item>
                     {renderFooter(defenseFieldNames)}
                   </Space>

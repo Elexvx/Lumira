@@ -58,6 +58,14 @@ public class SecuritySettingsService {
         return longValue(loadSettings().loginMaxFailureCount(), securityProperties.getLoginMaxFailureCount());
     }
 
+    public long getVerificationCodeExpireSeconds() {
+        return longValue(loadSettings().verificationCodeExpireSeconds(), 300);
+    }
+
+    public long getVerificationCodeCooldownSeconds() {
+        return longValue(loadSettings().verificationCodeCooldownSeconds(), 60);
+    }
+
     private SecuritySettingsDTO loadSettings() {
         try {
             SecuritySettingsDTO settings = systemInternalApi.securitySettings(PlatformConstants.PLATFORM_TENANT_ID);
@@ -76,7 +84,9 @@ public class SecuritySettingsService {
                 securityProperties.getCaptchaType(),
                 securityProperties.getLoginDefenseWindowMinutes(),
                 securityProperties.getLoginMaxValidationAttempts(),
-                securityProperties.getLoginMaxFailureCount()
+                securityProperties.getLoginMaxFailureCount(),
+                300L,
+                60L
         );
     }
 

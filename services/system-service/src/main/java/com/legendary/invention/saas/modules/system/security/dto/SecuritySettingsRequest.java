@@ -21,6 +21,21 @@ public class SecuritySettingsRequest {
     private Boolean captchaEnabled;
     @NotBlank
     private String captchaType;
+    @NotNull
+    @Positive
+    private Long loginDefenseWindowMinutes;
+    @NotNull
+    @Positive
+    private Long loginMaxValidationAttempts;
+    @NotNull
+    @Positive
+    private Long loginMaxFailureCount;
+    @NotNull
+    @Positive
+    private Long verificationCodeExpireSeconds;
+    @NotNull
+    @Positive
+    private Long verificationCodeCooldownSeconds;
 
     public Long getIdleTimeoutSeconds() { return idleTimeoutSeconds; }
     public void setIdleTimeoutSeconds(Long idleTimeoutSeconds) { this.idleTimeoutSeconds = idleTimeoutSeconds; }
@@ -34,4 +49,14 @@ public class SecuritySettingsRequest {
     public void setCaptchaEnabled(Boolean captchaEnabled) { this.captchaEnabled = captchaEnabled; }
     public String getCaptchaType() { return captchaType; }
     public void setCaptchaType(String captchaType) { this.captchaType = captchaType; }
+    public Long getLoginDefenseWindowMinutes() { return loginDefenseWindowMinutes; }
+    public void setLoginDefenseWindowMinutes(Long loginDefenseWindowMinutes) { this.loginDefenseWindowMinutes = loginDefenseWindowMinutes; }
+    public Long getLoginMaxValidationAttempts() { return loginMaxValidationAttempts; }
+    public void setLoginMaxValidationAttempts(Long loginMaxValidationAttempts) { this.loginMaxValidationAttempts = loginMaxValidationAttempts; }
+    public Long getLoginMaxFailureCount() { return loginMaxFailureCount; }
+    public void setLoginMaxFailureCount(Long loginMaxFailureCount) { this.loginMaxFailureCount = loginMaxFailureCount; }
+    public Long getVerificationCodeExpireSeconds() { return verificationCodeExpireSeconds; }
+    public void setVerificationCodeExpireSeconds(Long verificationCodeExpireSeconds) { this.verificationCodeExpireSeconds = verificationCodeExpireSeconds; }
+    public Long getVerificationCodeCooldownSeconds() { return verificationCodeCooldownSeconds; }
+    public void setVerificationCodeCooldownSeconds(Long verificationCodeCooldownSeconds) { this.verificationCodeCooldownSeconds = verificationCodeCooldownSeconds; }
 }

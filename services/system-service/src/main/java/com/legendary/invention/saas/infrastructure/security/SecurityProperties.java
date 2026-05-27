@@ -22,6 +22,8 @@ public class SecurityProperties {
     private long loginDefenseWindowMinutes = 5;
     private long loginMaxValidationAttempts = 100;
     private long loginMaxFailureCount = 10;
+    private long verificationCodeExpireSeconds = 300;
+    private long verificationCodeCooldownSeconds = 60;
     private long passwordMinLength = 6;
     private boolean passwordRequireUppercase = false;
     private boolean passwordRequireLowercase = false;
@@ -131,6 +133,22 @@ public class SecurityProperties {
 
     public void setLoginMaxFailureCount(long loginMaxFailureCount) {
         this.loginMaxFailureCount = loginMaxFailureCount;
+    }
+
+    public long getVerificationCodeExpireSeconds() {
+        return verificationCodeExpireSeconds;
+    }
+
+    public void setVerificationCodeExpireSeconds(long verificationCodeExpireSeconds) {
+        this.verificationCodeExpireSeconds = verificationCodeExpireSeconds;
+    }
+
+    public long getVerificationCodeCooldownSeconds() {
+        return verificationCodeCooldownSeconds;
+    }
+
+    public void setVerificationCodeCooldownSeconds(long verificationCodeCooldownSeconds) {
+        this.verificationCodeCooldownSeconds = verificationCodeCooldownSeconds;
     }
 
     public long getPasswordMinLength() {

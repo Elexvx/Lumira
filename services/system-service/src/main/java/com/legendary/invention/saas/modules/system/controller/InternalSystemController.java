@@ -183,7 +183,9 @@ public class InternalSystemController {
                 settings.getCaptchaType(),
                 settings.getLoginDefenseWindowMinutes(),
                 settings.getLoginMaxValidationAttempts(),
-                settings.getLoginMaxFailureCount()
+                settings.getLoginMaxFailureCount(),
+                settings.getVerificationCodeExpireSeconds(),
+                settings.getVerificationCodeCooldownSeconds()
         );
     }
 
@@ -310,6 +312,7 @@ public class InternalSystemController {
         dto.setMaskedContact(challenge.getMaskedContact());
         dto.setPromptMessage(challenge.getPromptMessage());
         dto.setExpiresInSeconds(challenge.getExpiresInSeconds());
+        dto.setCooldownSeconds(challenge.getCooldownSeconds());
         dto.setDebugCode(challenge.getDebugCode());
         return dto;
     }

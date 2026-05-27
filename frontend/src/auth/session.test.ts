@@ -2,15 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   refreshToken: vi.fn(),
+  logout: vi.fn(),
   getRefreshToken: vi.fn(),
   setTokens: vi.fn(),
+  clearTokenState: vi.fn(),
+  historyReplace: vi.fn(),
 }));
 
 vi.mock('@/services/auth', () => ({
   authService: {
     refreshToken: mocks.refreshToken,
     currentUser: vi.fn(),
-    logout: vi.fn(),
+    logout: mocks.logout,
   },
 }));
 
@@ -28,14 +31,14 @@ vi.mock('@/auth/token', () => ({
     getTokenGeneration: vi.fn(() => 0),
     hasToken: vi.fn(() => true),
     getTokenState: vi.fn(() => null),
-    clearTokenState: vi.fn(),
+    clearTokenState: mocks.clearTokenState,
   },
 }));
 
 vi.mock('@umijs/max', () => ({
   history: {
     location: { pathname: '/dashboard/home' },
-    replace: vi.fn(),
+    replace: mocks.historyReplace,
   },
 }));
 
@@ -75,8 +78,11 @@ vi.mock('@/i18n/locale', () => ({
 describe('tryRefreshToken', () => {
   beforeEach(() => {
     mocks.refreshToken.mockReset();
+    mocks.logout.mockReset();
     mocks.getRefreshToken.mockReset();
     mocks.setTokens.mockReset();
+    mocks.clearTokenState.mockReset();
+    mocks.historyReplace.mockReset();
     mocks.getRefreshToken.mockReturnValue('refresh-token');
   });
 
@@ -110,5 +116,25 @@ describe('tryRefreshToken', () => {
     await expect(first).resolves.toBe(true);
     await expect(second).resolves.toBe(true);
     expect(mocks.setTokens).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('performLogout', () => {
+  beforeEach(() => {
+    mocks.refreshToken.mockReset();
+    mocks.logout.mockReset();
+    mocks.clearTokenState.mockReset();
+    mocks.historyReplace.mockReset();
+  });
+
+  it('clears local session and redirects without waiting for server logout', async () => {
+    const { performLogout } = await import('@/auth/session');
+    mocks.logout.mockImplementation(() => new Promise(() => undefined));
+
+    await performLogout();
+
+    expect(mocks.logout).toHaveBeenCalledTimes(1);
+    expect(mocks.clearTokenState).toHaveBeenCalledTimes(1);
+    expect(mocks.historyReplace).toHaveBeenCalledWith('/user/login');
   });
 });
