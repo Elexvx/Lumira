@@ -306,21 +306,7 @@
 .saas-ai-assistant-composer__header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.saas-ai-assistant-composer__agents {
-  display: flex;
-  flex-wrap: wrap;
   gap: 6px;
-}
-
-.saas-ai-assistant-composer__agents .ant-tag {
-  max-width: 180px;
-  margin-inline-end: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .saas-ai-assistant-agent-suggestion .ant-cascader-dropdown {
@@ -344,18 +330,21 @@
   border-color: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
   border-radius: 8px;
   background: var(--ant-color-bg-container, #fff);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.saas-ai-assistant-sender .ant-sender-content {
+  gap: 6px;
+  padding: 8px 12px 4px;
 }
 
 .saas-ai-assistant-sender .ant-sender-input {
-  min-height: 64px;
-  padding-top: 10px;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .saas-ai-assistant-sender .ant-sender-footer {
-  padding-top: 8px;
+  padding: 4px 12px 10px;
 }
 
 .saas-ai-assistant-sender .ant-sender-actions-list {
@@ -379,17 +368,17 @@
 }
 
 .saas-ai-assistant-composer__tools .ant-btn {
-  min-height: 34px;
+  min-height: 32px;
   border-radius: 8px;
 }
 
 .saas-ai-assistant-composer__agent-button {
-  max-width: 180px;
+  max-width: 120px;
 }
 
 .saas-ai-assistant-composer__agent-label {
   display: inline-block;
-  max-width: 132px;
+  max-width: 72px;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: bottom;
@@ -415,13 +404,13 @@
 .saas-ai-assistant-composer__actions::before {
   content: '';
   width: 1px;
-  height: 24px;
+  height: 22px;
   background: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
 }
 
 .saas-ai-assistant-composer__attachments {
   width: 100%;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 .saas-ai-assistant-file-card-list {
