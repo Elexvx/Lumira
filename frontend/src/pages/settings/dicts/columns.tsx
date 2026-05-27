@@ -5,6 +5,8 @@ import { Tag, Typography } from 'antd';
 import { renderStatusLabel } from '@/pages/settings/dicts/constants';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 
+const isSystemDict = (record: DictTypeRecord) => Number(record.isSystem) !== 0;
+
 interface BuildDictTypeColumnsOptions {
   isDesktop: boolean;
   isMobile: boolean;
@@ -46,7 +48,7 @@ export const buildDictTypeColumns = ({
     dataIndex: 'isSystem',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    render: (_, record) => <Tag color={record.isSystem ? 'green' : 'default'}>{record.isSystem ? '是' : '否'}</Tag>,
+    render: (_, record) => <Tag color={isSystemDict(record) ? 'green' : 'default'}>{isSystemDict(record) ? '是' : '否'}</Tag>,
   },
   {
     title: '备注',
@@ -89,7 +91,7 @@ export const buildDictTypeColumns = ({
             label: '删除',
             permission: 'system:dict:delete',
             danger: true,
-            disabled: Boolean(record.isSystem),
+            disabled: isSystemDict(record),
             onClick: () => onDelete(record),
           },
         ])}
@@ -171,7 +173,7 @@ export const dictTypeDetailColumns: ProDescriptionsItemProps<DictTypeRecord>[] =
   {
     title: '系统内置',
     dataIndex: 'isSystem',
-    renderText: (value) => (value ? '是' : '否'),
+    renderText: (value) => (Number(value) !== 0 ? '是' : '否'),
   },
   { title: '备注', dataIndex: 'remark', renderText: (value) => value || '-' },
 ];

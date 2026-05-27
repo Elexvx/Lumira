@@ -1023,39 +1023,71 @@ public class SystemManagementAppService {
     public boolean deleteDictType(CurrentUser currentUser, Long id) {
         Long tenantId = currentTenantId(currentUser);
         SystemVO.DictTypeVO type = getDictType(currentUser, id);
-        if (Boolean.TRUE.equals(type.getIsSystem())) {
+        if (isSystemDictType(type)) {
             throw new BizException(ErrorCode.FORBIDDEN, "系统字典不允许删除");
         }
-        jdbcTemplate.update("update sys_dict_item set deleted = 1, updated_by = ?, updated_at = ? where dict_type_id = ? and deleted = 0", currentUser.getUserId(), LocalDateTime.now(), id);
-        jdbcTemplate.update("update sys_dict_type set deleted = 1, updated_by = ?, updated_at = ? where id = ? and (tenant_id is null or tenant_id = ?) and deleted = 0", currentUser.getUserId(), LocalDateTime.now(), id, tenantId);
+        jdbcTemplate.update(
+                """
+                        update sys_dict_item
+                        set deleted = 1,
+                            item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
+                            updated_by = ?,
+                            updated_at = ?
+                        where tenant_id = ? and dict_type_id = ? and deleted = 0
+                        """,
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                tenantId,
+                id
+        );
+        jdbcTemplate.update(
+                """
+                        update sys_dict_type
+                        set deleted = 1,
+                            dict_code = concat(left(dict_code, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
+                            updated_by = ?,
+                            updated_at = ?
+                        where id = ? and (tenant_id is null or tenant_id = ?) and deleted = 0
+                        """,
+                currentUser.getUserId(),
+                LocalDateTime.now(),
+                id,
+                tenantId
+        );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
         return true;
     }
 
     public List<SystemVO.DictItemVO> listDictItems(CurrentUser currentUser, Long dictTypeId) {
+        Long tenantId = currentTenantId(currentUser);
+        getDictType(currentUser, dictTypeId);
         return jdbcTemplate.query(
                 """
                         select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
                                sort_no as sortNo, status, remark
                         from sys_dict_item
-                        where dict_type_id = ? and deleted = 0
+                        where tenant_id = ? and dict_type_id = ? and deleted = 0
                         order by sort_no asc, id asc
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.DictItemVO.class),
+                tenantId,
                 dictTypeId
         );
     }
 
-    public SystemVO.DictItemVO getDictItem(Long dictTypeId, Long itemId) {
+    public SystemVO.DictItemVO getDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
+        Long tenantId = currentTenantId(currentUser);
+        getDictType(currentUser, dictTypeId);
         SystemVO.DictItemVO item = queryOne(
                 """
                         select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
                                sort_no as sortNo, status, remark
                         from sys_dict_item
-                        where id = ? and dict_type_id = ? and deleted = 0
+                        where id = ? and tenant_id = ? and dict_type_id = ? and deleted = 0
                         """,
                 SystemVO.DictItemVO.class,
                 itemId,
+                tenantId,
                 dictTypeId
         );
         if (item == null) {
@@ -1066,26 +1098,38 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.DictItemVO createDictItem(CurrentUser currentUser, Long dictTypeId, SystemDTO.DictItemUpsertRequest request) {
-        Long id = upsertDictItem(null, dictTypeId, request, currentUser.getUserId());
+        Long tenantId = currentTenantId(currentUser);
+        getDictType(currentUser, dictTypeId);
+        Long id = upsertDictItem(null, tenantId, dictTypeId, request, currentUser.getUserId());
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-create", "CREATE", "SUCCESS", "创建字典项: " + request.getItemLabel());
-        return getDictItem(dictTypeId, id);
+        return getDictItem(currentUser, dictTypeId, id);
     }
 
     @Transactional
     public SystemVO.DictItemVO updateDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId, SystemDTO.DictItemUpsertRequest request) {
-        upsertDictItem(itemId, dictTypeId, request, currentUser.getUserId());
+        Long tenantId = currentTenantId(currentUser);
+        upsertDictItem(itemId, tenantId, dictTypeId, request, currentUser.getUserId());
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
-        return getDictItem(dictTypeId, itemId);
+        return getDictItem(currentUser, dictTypeId, itemId);
     }
 
     @Transactional
     public boolean deleteDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
-        SystemVO.DictItemVO item = getDictItem(dictTypeId, itemId);
+        Long tenantId = currentTenantId(currentUser);
+        SystemVO.DictItemVO item = getDictItem(currentUser, dictTypeId, itemId);
         jdbcTemplate.update(
-                "update sys_dict_item set deleted = 1, updated_by = ?, updated_at = ? where id = ? and dict_type_id = ? and deleted = 0",
+                """
+                        update sys_dict_item
+                        set deleted = 1,
+                            item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
+                            updated_by = ?,
+                            updated_at = ?
+                        where id = ? and tenant_id = ? and dict_type_id = ? and deleted = 0
+                        """,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
                 itemId,
+                tenantId,
                 dictTypeId
         );
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
@@ -2527,7 +2571,7 @@ public class SystemManagementAppService {
                     operatorId
             );
             return jdbcTemplate.queryForObject(
-                    "select id from sys_dict_type where tenant_id <=> ? and dict_code = ? and deleted = 0 order by id desc limit 1",
+                    "select id from sys_dict_type where tenant_id = ? and dict_code = ? and deleted = 0 order by id desc limit 1",
                     Long.class,
                     tenantId,
                     request.getDictCode()
@@ -2550,13 +2594,14 @@ public class SystemManagementAppService {
         return id;
     }
 
-    private Long upsertDictItem(Long id, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId) {
+    private Long upsertDictItem(Long id, Long tenantId, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId) {
         if (id == null) {
             jdbcTemplate.update(
                     """
-                            insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_dict_item (tenant_id, dict_type_id, item_label, item_value, sort_no, status, remark, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
+                    tenantId,
                     dictTypeId,
                     request.getItemLabel(),
                     request.getItemValue(),
@@ -2567,8 +2612,9 @@ public class SystemManagementAppService {
                     operatorId
             );
             return jdbcTemplate.queryForObject(
-                    "select id from sys_dict_item where dict_type_id = ? and item_value = ? and deleted = 0 order by id desc limit 1",
+                    "select id from sys_dict_item where tenant_id = ? and dict_type_id = ? and item_value = ? and deleted = 0 order by id desc limit 1",
                     Long.class,
+                    tenantId,
                     dictTypeId,
                     request.getItemValue()
             );
@@ -2577,7 +2623,7 @@ public class SystemManagementAppService {
                 """
                         update sys_dict_item
                         set item_label = ?, item_value = ?, sort_no = ?, status = ?, remark = ?, updated_by = ?, updated_at = ?
-                        where id = ? and dict_type_id = ? and deleted = 0
+                        where id = ? and tenant_id = ? and dict_type_id = ? and deleted = 0
                         """,
                 request.getItemLabel(),
                 request.getItemValue(),
@@ -2587,9 +2633,14 @@ public class SystemManagementAppService {
                 operatorId,
                 LocalDateTime.now(),
                 id,
+                tenantId,
                 dictTypeId
         );
         return id;
+    }
+
+    private boolean isSystemDictType(SystemVO.DictTypeVO type) {
+        return type != null && type.getIsSystem() != null && type.getIsSystem() != 0;
     }
 
     private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
