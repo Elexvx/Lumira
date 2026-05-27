@@ -168,6 +168,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/system-service
+        SERVICE_MODULE: services/system-service
     image: legendary/system-service:0.1.0
     container_name: legendary-system-service
     restart: unless-stopped
@@ -206,6 +207,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/gateway-service
+        SERVICE_MODULE: services/gateway-service
     image: legendary/gateway-service:0.1.0
     container_name: legendary-gateway-service
     restart: unless-stopped
@@ -240,6 +242,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/auth-service
+        SERVICE_MODULE: services/auth-service
     image: legendary/auth-service:0.1.0
     container_name: legendary-auth-service
     restart: unless-stopped
@@ -264,6 +267,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/file-service
+        SERVICE_MODULE: services/file-service
     image: legendary/file-service:0.1.0
     container_name: legendary-file-service
     restart: unless-stopped
@@ -287,6 +291,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/message-service
+        SERVICE_MODULE: services/message-service
     image: legendary/message-service:0.1.0
     container_name: legendary-message-service
     restart: unless-stopped
@@ -310,6 +315,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/plugin-service
+        SERVICE_MODULE: services/plugin-service
     image: legendary/plugin-service:0.1.0
     container_name: legendary-plugin-service
     restart: unless-stopped
@@ -339,6 +345,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/localization-service
+        SERVICE_MODULE: services/localization-service
     image: legendary/localization-service:0.1.0
     container_name: legendary-localization-service
     restart: unless-stopped
@@ -361,6 +368,7 @@ services:
       <<: *service-build
       args:
         SERVICE_DIR: services/job-executor
+        SERVICE_MODULE: services/job-executor
     image: legendary/job-executor:0.1.0
     container_name: legendary-job-executor
     restart: unless-stopped

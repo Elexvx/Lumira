@@ -42,7 +42,13 @@ COPY services/job-executor/pom.xml services/job-executor/pom.xml
 
 COPY . .
 
-RUN --mount=type=cache,target=/root/.m2 mvn -DskipTests package
+ARG SERVICE_MODULE
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    if [ -n "$SERVICE_MODULE" ]; then \
+      mvn -pl "$SERVICE_MODULE" -am -DskipTests package; \
+    else \
+      mvn -DskipTests package; \
+    fi
 
 ARG SERVICE_DIR
 RUN set -eux; \
