@@ -151,6 +151,23 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 AiVO.ToolPlanVO plan = proposedTool.get();
                 if ("BLOCKED".equalsIgnoreCase(plan.getStatus())) {
                     emit(onEvent, AiVO.ChatStreamEventVO.toolBlocked(plan, firstText(plan.getPolicyMessage(), plan.getSupervisorMessage(), "该操作已被平台防护规则拦截")));
+                } else if (!Boolean.TRUE.equals(plan.getRequiresConfirm())) {
+                    aiSkillPermissionChecker.verifyAllowed(tenantId, employeeId, List.of(plan.getToolCode()), false);
+                    AiDTO.ToolConfirmRequest confirmRequest = new AiDTO.ToolConfirmRequest();
+                    confirmRequest.setPendingToolCallId(plan.getId());
+                    AiVO.ToolExecuteResultVO result = aiToolOrchestrationService.confirm(currentUser, confirmRequest);
+                    emit(onEvent, AiVO.ChatStreamEventVO.toolResult(result));
+                    AiVO.ChatResponseVO response = new AiVO.ChatResponseVO();
+                    response.setConversationId(conversationId);
+                    response.setConversationCode(queryConversationCode(tenantId, conversationId));
+                    response.setEmployeeId(employeeId);
+                    response.setReplyRole("ASSISTANT");
+                    response.setReplyText(buildToolResultReply(result));
+                    response.setToolPlan(plan);
+                    response.setToolResult(result);
+                    response.setReplyAt(LocalDateTime.now());
+                    aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
+                    return response;
                 } else {
                     emit(onEvent, AiVO.ChatStreamEventVO.toolProposal(plan));
                 }
@@ -350,6 +367,25 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             return employee.getNickname().trim();
         }
         return employee.getUsername();
+    }
+
+    private String buildToolResultReply(AiVO.ToolExecuteResultVO result) {
+        if (result == null) {
+            return "系统工具已执行完成。";
+        }
+        if ("system.user.search".equals(result.getToolCode()) && result.getData() != null) {
+            Object total = result.getData().get("total");
+            Object count = result.getData().get("count");
+            Object limit = result.getData().get("limit");
+            return "查询完成：当前权限和租户范围内共有 " + firstText(textValue(total), textValue(count), "0")
+                    + " 个系统用户。本次返回 " + firstText(textValue(count), "0")
+                    + " 条脱敏用户记录，最多展示 " + firstText(textValue(limit), "0") + " 条。";
+        }
+        return StringUtils.hasText(result.getMessage()) ? result.getMessage() : "系统工具已执行完成。";
+    }
+
+    private String textValue(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     private List<AiVO.KnowledgeReferenceVO> resolveKnowledgeReferences(CurrentUser currentUser, Long employeeId, AiDTO.ChatRequest request) {

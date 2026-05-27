@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -103,6 +104,46 @@ class AiEmployeeRuntimeServiceTest {
         assertThat(jdbcTemplate.lastUpdateArgs[9]).isEqualTo("技能已被禁用: data.export");
     }
 
+    @Test
+    void autoExecutesReadOnlyUserSearchTool() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiConversationService conversationService = mock(AiConversationService.class);
+        AiToolOrchestrationService orchestrationService = mock(AiToolOrchestrationService.class);
+        DefaultAiEmployeeRuntimeService service = newService(
+                jdbcTemplate,
+                mock(AiLlmServiceConfigProvider.class),
+                mock(AiChatModelFactory.class),
+                conversationService,
+                mock(AiToolRegistry.class),
+                mock(AiSkillPermissionChecker.class),
+                mock(AiKnowledgeBaseAppService.class),
+                orchestrationService
+        );
+        AiDTO.ChatRequest request = chatRequest(List.of());
+        request.setMessage("查看系统有几个用户？");
+        AiVO.ToolPlanVO plan = new AiVO.ToolPlanVO();
+        plan.setId(9L);
+        plan.setStatus("PENDING");
+        plan.setRequiresConfirm(false);
+        plan.setToolCode("system.user.search");
+        AiVO.ToolExecuteResultVO toolResult = new AiVO.ToolExecuteResultVO();
+        toolResult.setToolCode("system.user.search");
+        toolResult.setResultStatus("SUCCESS");
+        toolResult.setMessage("工具调用成功");
+        toolResult.setData(Map.of("total", 3L, "count", 1, "limit", 1));
+
+        when(conversationService.ensureConversation(anyLong(), anyLong(), anyLong(), isNull(), any())).thenReturn(10L);
+        when(conversationService.recordMessage(anyLong(), eq(10L), eq("USER"), any())).thenReturn(100L);
+        when(orchestrationService.tryPropose(any(), any())).thenReturn(Optional.of(plan));
+        when(orchestrationService.confirm(any(), any())).thenReturn(toolResult);
+
+        AiVO.ChatResponseVO response = service.chat(currentUser(), request);
+
+        assertThat(response.getReplyText()).contains("共有 3 个系统用户");
+        assertThat(response.getToolResult()).isEqualTo(toolResult);
+        assertThat(response.getToolPlan()).isEqualTo(plan);
+    }
+
     private DefaultAiEmployeeRuntimeService newService(
             MyBatisQueryOperations jdbcTemplate,
             AiLlmServiceConfigProvider configProvider,
@@ -112,6 +153,28 @@ class AiEmployeeRuntimeServiceTest {
             AiSkillPermissionChecker permissionChecker,
             AiKnowledgeBaseAppService knowledgeBaseAppService
     ) {
+        return newService(
+                jdbcTemplate,
+                configProvider,
+                chatModelFactory,
+                conversationService,
+                toolRegistry,
+                permissionChecker,
+                knowledgeBaseAppService,
+                null
+        );
+    }
+
+    private DefaultAiEmployeeRuntimeService newService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiLlmServiceConfigProvider configProvider,
+            AiChatModelFactory chatModelFactory,
+            AiConversationService conversationService,
+            AiToolRegistry toolRegistry,
+            AiSkillPermissionChecker permissionChecker,
+            AiKnowledgeBaseAppService knowledgeBaseAppService,
+            AiToolOrchestrationService orchestrationService
+    ) {
         return new DefaultAiEmployeeRuntimeService(
                 jdbcTemplate,
                 configProvider,
@@ -119,7 +182,8 @@ class AiEmployeeRuntimeServiceTest {
                 conversationService,
                 toolRegistry,
                 permissionChecker,
-                knowledgeBaseAppService
+                knowledgeBaseAppService,
+                orchestrationService
         );
     }
 

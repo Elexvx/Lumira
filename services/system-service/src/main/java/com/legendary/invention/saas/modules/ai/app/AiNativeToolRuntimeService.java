@@ -441,9 +441,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         int limit = limitArg(context.arguments());
         List<Object> args = new java.util.ArrayList<>();
         args.add(context.tenantId());
-        StringBuilder sql = new StringBuilder("""
-                select u.id, u.username, u.nickname, u.real_name as realName, u.mobile, u.email,
-                       u.status, u.created_at as createdAt, u.updated_at as updatedAt
+        StringBuilder filterSql = new StringBuilder("""
                 from sys_user u
                 join sys_user_tenant ut
                   on ut.user_id = u.id
@@ -451,6 +449,31 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                  and ut.deleted = 0
                 where u.deleted = 0
                 """);
+        appendUserSearchFilters(filterSql, args, keyword, status);
+        Long total = jdbcTemplate.queryForObject("select count(1) " + filterSql, Long.class, args.toArray());
+
+        List<Object> queryArgs = new java.util.ArrayList<>(args);
+        StringBuilder sql = new StringBuilder("""
+                select u.id, u.username, u.nickname, u.real_name as realName, u.mobile, u.email,
+                       u.status, u.created_at as createdAt, u.updated_at as updatedAt
+                """);
+        sql.append(filterSql);
+        sql.append(" order by u.id desc limit ?");
+        queryArgs.add(limit);
+        List<Map<String, Object>> users = jdbcTemplate.queryForList(sql.toString(), queryArgs.toArray());
+        for (Map<String, Object> user : users) {
+            user.put("mobile", maskMobile(user.get("mobile")));
+            user.put("email", maskEmail(user.get("email")));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("items", users);
+        data.put("limit", limit);
+        data.put("count", users.size());
+        data.put("total", total == null ? users.size() : total);
+        return data;
+    }
+
+    private void appendUserSearchFilters(StringBuilder sql, List<Object> args, String keyword, String status) {
         if (StringUtils.hasText(keyword)) {
             sql.append("""
                      and (
@@ -469,18 +492,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             sql.append(" and u.status = ?");
             args.add(status.trim().toUpperCase(Locale.ROOT));
         }
-        sql.append(" order by u.id desc limit ?");
-        args.add(limit);
-        List<Map<String, Object>> users = jdbcTemplate.queryForList(sql.toString(), args.toArray());
-        for (Map<String, Object> user : users) {
-            user.put("mobile", maskMobile(user.get("mobile")));
-            user.put("email", maskEmail(user.get("email")));
-        }
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("items", users);
-        data.put("limit", limit);
-        data.put("count", users.size());
-        return data;
     }
 
     private Map<String, Object> createUser(ToolExecutionContext context) {
