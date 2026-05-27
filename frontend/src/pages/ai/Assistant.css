@@ -358,6 +358,19 @@
   border-radius: 8px;
 }
 
+.saas-ai-assistant-composer__agent-button {
+  max-width: 180px;
+}
+
+.saas-ai-assistant-composer__agent-label {
+  display: inline-block;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
 .saas-ai-assistant-composer__tools .ant-sender-switch {
   border-radius: 8px;
 }
