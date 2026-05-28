@@ -418,7 +418,6 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         employee.setPosition("通用对话");
         employee.setEnabled(true);
         employee.setSystemPrompt("你是企业后台系统中的通用 AI 助手。用户未选择任何数字员工时，你应作为普通对话助手提供清晰、准确、简洁的帮助；不要声称自己拥有特定数字员工的身份、技能、知识库或业务工具权限。");
-        employee.setSkills(List.of());
         return employee;
     }
 
@@ -587,31 +586,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         if (employee == null) {
             throw new com.legendary.invention.saas.common.exception.BizException(com.legendary.invention.saas.common.enums.ErrorCode.NOT_FOUND, "数字员工不存在");
         }
-        employee.setSkills(queryEmployeeSkills(tenantId, employeeId));
         return employee;
-    }
-
-    private List<AiVO.EmployeeSkillVO> queryEmployeeSkills(Long tenantId, Long employeeId) {
-        return jdbcTemplate.query(
-                """
-                        select k.id, k.skill_code as skillCode, k.skill_name as skillName, k.category, k.description,
-                               k.risk_level as riskLevel, k.read_only as readOnly, k.need_confirm as needConfirm,
-                               k.enabled,
-                               coalesce(r.permission_mode, case when k.read_only = 1 then 'visit' else 'deny' end) as permissionMode
-                        from ai_skill k
-                        left join ai_employee_skill r
-                          on r.skill_code = k.skill_code
-                         and r.tenant_id = ?
-                         and r.employee_id = ?
-                         and r.is_deleted = 0
-                        where k.is_deleted = 0
-                          and k.enabled = 1
-                        order by k.category asc, k.skill_code asc
-                        """,
-                new BeanPropertyRowMapper<>(AiVO.EmployeeSkillVO.class),
-                tenantId,
-                employeeId
-        );
     }
 
     private String queryConversationCode(Long tenantId, Long conversationId) {

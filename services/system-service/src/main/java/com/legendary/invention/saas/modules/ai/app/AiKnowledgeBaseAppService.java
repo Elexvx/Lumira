@@ -472,7 +472,7 @@ public class AiKnowledgeBaseAppService {
                 employeeId
         );
         if (boundIds == null || boundIds.isEmpty()) {
-            return retrieve(currentUser, query, List.of(), limit, true);
+            return List.of();
         }
         return retrieve(currentUser, query, boundIds, limit, false);
     }

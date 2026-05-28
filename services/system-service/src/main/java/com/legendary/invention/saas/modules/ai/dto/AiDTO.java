@@ -3,7 +3,6 @@ package com.legendary.invention.saas.modules.ai.dto;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
@@ -27,8 +26,6 @@ public final class AiDTO {
         private String systemPrompt;
         private Long defaultLlmServiceId;
         private Integer sortOrder;
-        @Valid
-        private List<EmployeeSkillItem> skills;
 
         public String getUsername() {
             return username;
@@ -102,50 +99,6 @@ public final class AiDTO {
             this.sortOrder = sortOrder;
         }
 
-        public List<EmployeeSkillItem> getSkills() {
-            return skills;
-        }
-
-        public void setSkills(List<EmployeeSkillItem> skills) {
-            this.skills = skills;
-        }
-    }
-
-    public static class EmployeeSkillItem {
-        @NotBlank
-        private String skillCode;
-        @NotBlank
-        private String permissionMode;
-
-        public String getSkillCode() {
-            return skillCode;
-        }
-
-        public void setSkillCode(String skillCode) {
-            this.skillCode = skillCode;
-        }
-
-        public String getPermissionMode() {
-            return permissionMode;
-        }
-
-        public void setPermissionMode(String permissionMode) {
-            this.permissionMode = permissionMode;
-        }
-    }
-
-    public static class EmployeeSkillsUpdateRequest {
-        @NotEmpty
-        @Valid
-        private List<EmployeeSkillItem> skills;
-
-        public List<EmployeeSkillItem> getSkills() {
-            return skills;
-        }
-
-        public void setSkills(List<EmployeeSkillItem> skills) {
-            this.skills = skills;
-        }
     }
 
     public static class EmployeeKnowledgeBasesUpdateRequest {
@@ -157,6 +110,42 @@ public final class AiDTO {
 
         public void setKnowledgeBaseIds(List<Long> knowledgeBaseIds) {
             this.knowledgeBaseIds = knowledgeBaseIds;
+        }
+    }
+
+    public static class EmployeeCapabilityItem {
+        @NotBlank
+        private String capabilityCode;
+        @NotBlank
+        private String permissionMode;
+
+        public String getCapabilityCode() {
+            return capabilityCode;
+        }
+
+        public void setCapabilityCode(String capabilityCode) {
+            this.capabilityCode = capabilityCode;
+        }
+
+        public String getPermissionMode() {
+            return permissionMode;
+        }
+
+        public void setPermissionMode(String permissionMode) {
+            this.permissionMode = permissionMode;
+        }
+    }
+
+    public static class EmployeeCapabilitiesUpdateRequest {
+        @Valid
+        private List<EmployeeCapabilityItem> capabilities;
+
+        public List<EmployeeCapabilityItem> getCapabilities() {
+            return capabilities;
+        }
+
+        public void setCapabilities(List<EmployeeCapabilityItem> capabilities) {
+            this.capabilities = capabilities;
         }
     }
 

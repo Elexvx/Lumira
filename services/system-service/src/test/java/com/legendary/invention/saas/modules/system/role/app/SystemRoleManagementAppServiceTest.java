@@ -76,7 +76,7 @@ class SystemRoleManagementAppServiceTest {
 
         assertTrue(jdbcTemplate.insertedRole);
         assertTrue(jdbcTemplate.deletedRolePermissions);
-        assertEquals(List.of("audit:view", "audit:export"), jdbcTemplate.insertedPermissionKeys);
+        assertTrue(jdbcTemplate.insertedPermissionKeys.isEmpty());
         verify(permissionSnapshotService).invalidateTenant(1001L);
         assertEquals(2001L, role.getId());
     }

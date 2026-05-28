@@ -34,6 +34,26 @@ const CATALOG_LABEL_BY_PERMISSION_KEY = new Map<string, string>([
   ['profile:view', 'nav.user.personalCenter'],
 ]);
 
+const ROLE_PERMISSION_EXCLUDED_ROUTE_PREFIXES = ['/settings'];
+const ROLE_PERMISSION_EXCLUDED_ROUTE_PATHS = new Set([
+  '/user-center/personal-center',
+  '/user-center/personal-center/profile',
+  '/user-center/files',
+]);
+
+const isRoleAssignableRoutePath = (routePath: string) => {
+  const normalizedPath = routePath.trim();
+  if (!normalizedPath) {
+    return false;
+  }
+  if (ROLE_PERMISSION_EXCLUDED_ROUTE_PATHS.has(normalizedPath)) {
+    return false;
+  }
+  return !ROLE_PERMISSION_EXCLUDED_ROUTE_PREFIXES.some(
+    (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
+  );
+};
+
 const resolveCanonicalPageName = (node: PermissionTreeRecord, routePath: string) => {
   const routeMeta = routePath ? realPageRouteMetaMap.get(routePath) ?? backendRouteMetaMap.get(routePath) : undefined;
   if (routeMeta?.name) {
@@ -72,6 +92,14 @@ export const normalizePermissionTree = (
     const routeMeta = routePath ? realPageRouteMetaMap.get(routePath) : undefined;
     const routeMatched = Boolean(routeMeta) || nodeType === 'CATALOG';
     const routeMismatch = nodeType === 'PAGE' && (!routePath || !allowedRoutePaths.has(routePath));
+    const routeExcluded = nodeType === 'PAGE' && Boolean(routePath) && !isRoleAssignableRoutePath(routePath);
+    if (routeExcluded) {
+      if (children.length) {
+        result.push(...children);
+      }
+      return;
+    }
+
     if (routeMismatch) {
       if (children.length) {
         result.push(...children);
@@ -207,6 +235,26 @@ export const collectActionPermissionPageMap = (
   return result;
 };
 
+export const collectAssignablePermissionKeys = (
+  nodes: NormalizedPermissionTreeRecord[],
+  result = new Set<string>(),
+) => {
+  nodes.forEach((node) => {
+    if (node.nodeType === 'PAGE' && node.selectable && node.permissionKey) {
+      result.add(node.permissionKey);
+      node.actionPermissions?.forEach((action: PermissionActionRecord) => {
+        if (action.permissionKey) {
+          result.add(action.permissionKey);
+        }
+      });
+    }
+    if (node.children?.length) {
+      collectAssignablePermissionKeys(node.children, result);
+    }
+  });
+  return result;
+};
+
 export const collectExpandableKeys = (nodes: NormalizedPermissionTreeRecord[], result: string[] = []) => {
   nodes.forEach((node) => {
     if (node.children?.length) {
@@ -222,11 +270,16 @@ export const normalizePermissionKeysByPages = (
   nextPageKeys: string[],
   allPageKeys: Set<string>,
   actionPermissionPageMap: Map<string, string>,
+  assignablePermissionKeys?: Set<string>,
 ) => {
   const nextPageKeySet = new Set(nextPageKeys);
   const nextPermissionKeys = new Set<string>();
 
   currentPermissionKeys.forEach((permissionKey) => {
+    if (assignablePermissionKeys && !assignablePermissionKeys.has(permissionKey)) {
+      return;
+    }
+
     if (nextPageKeySet.has(permissionKey)) {
       nextPermissionKeys.add(permissionKey);
       return;

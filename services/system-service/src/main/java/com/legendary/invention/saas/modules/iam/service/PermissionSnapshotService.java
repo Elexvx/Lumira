@@ -28,6 +28,33 @@ public class PermissionSnapshotService {
 
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
     private static final String VERSION_SUFFIX = "permission_version";
+    private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
+            "ai:employee:",
+            "ai:llm:",
+            "ai:tool:",
+            "audit:",
+            "localization:",
+            "plugin:management:",
+            "system:config:",
+            "system:dict:",
+            "system:file:manage",
+            "system:menu:",
+            "system:monitor:",
+            "system:notification:",
+            "system:profile-field:",
+            "system:profile_field:",
+            "system:security:",
+            "system:tenant:",
+            "system:update:",
+            "system:verification:"
+    );
+    private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_KEYS = Set.of(
+            "plugin:management:view",
+            "audit:view",
+            "localization:view",
+            "system:file:manage",
+            "system:monitor:view"
+    );
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final CacheTemplate cacheTemplate;
@@ -197,7 +224,7 @@ public class PermissionSnapshotService {
     }
 
     private Set<String> queryPermissions(Long tenantId, Long userId) {
-        return new LinkedHashSet<>(jdbcTemplate.query(
+        List<String> permissions = jdbcTemplate.query(
                 """
                         select distinct rp.permission_key
                         from sys_user_role ur
@@ -213,7 +240,8 @@ public class PermissionSnapshotService {
                 (rs, rowNum) -> rs.getString("permission_key"),
                 tenantId,
                 userId
-        ));
+        );
+        return filterRoleAssignablePermissionKeys(permissions);
     }
 
     private Set<Long> queryRoleIds(Long tenantId, Long userId) {
@@ -362,7 +390,7 @@ public class PermissionSnapshotService {
     }
 
     private Set<String> queryRolePermissions(Long tenantId, Long roleId) {
-        return new LinkedHashSet<>(jdbcTemplate.query(
+        List<String> permissions = jdbcTemplate.query(
                 """
                         select distinct rp.permission_key
                         from sys_role_permission rp
@@ -374,7 +402,34 @@ public class PermissionSnapshotService {
                 (rs, rowNum) -> rs.getString("permission_key"),
                 tenantId,
                 roleId
-        ));
+        );
+        return filterRoleAssignablePermissionKeys(permissions);
+    }
+
+    private LinkedHashSet<String> filterRoleAssignablePermissionKeys(List<String> permissions) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        for (String permission : permissions) {
+            if (isRoleAssignablePermissionKey(permission)) {
+                result.add(permission);
+            }
+        }
+        return result;
+    }
+
+    private boolean isRoleAssignablePermissionKey(String permissionKey) {
+        if (!StringUtils.hasText(permissionKey)) {
+            return false;
+        }
+        String normalizedKey = permissionKey.trim();
+        if (ADMIN_ONLY_ROLE_PERMISSION_KEYS.contains(normalizedKey)) {
+            return false;
+        }
+        for (String prefix : ADMIN_ONLY_ROLE_PERMISSION_PREFIXES) {
+            if (normalizedKey.startsWith(prefix)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String serialize(PermissionSnapshot snapshot) {

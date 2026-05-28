@@ -64,20 +64,15 @@ class SystemPermissionTreeAssemblerTest {
         Set<String> personalActionKeys = tree.get(0).getActionPermissions().stream()
                 .map(SystemVO.PermissionActionVO::getPermissionKey)
                 .collect(Collectors.toSet());
-        Set<String> tenantActionKeys = tree.get(1).getActionPermissions().stream()
-                .map(SystemVO.PermissionActionVO::getPermissionKey)
-                .collect(Collectors.toSet());
-
         assertTrue(personalActionKeys.contains("system:file:upload"));
         assertTrue(personalActionKeys.contains("system:file:delete"));
         assertFalse(personalActionKeys.contains("system:file:manage"));
         assertFalse(personalActionKeys.contains("system:file:manage:delete"));
-        assertTrue(tenantActionKeys.contains("system:file:manage:delete"));
-        assertFalse(tenantActionKeys.contains("system:file:upload"));
+        assertFalse(tree.stream().anyMatch(node -> "/settings/files/all".equals(node.getRoutePath())));
     }
 
     @Test
-    void shouldKeepSettingsPagesInPermissionTree() {
+    void shouldHideSettingsPagesFromRolePermissionTree() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
 
         List<SystemVO.PermissionTreeVO> tree = assembler.build(
@@ -85,8 +80,7 @@ class SystemPermissionTreeAssemblerTest {
                 List.of(permission("system:menu:view", "查看菜单"))
         );
 
-        assertFalse(tree.isEmpty());
-        assertTrue(tree.getFirst().isSelectable());
+        assertTrue(tree.isEmpty());
     }
 
     private SystemVO.MenuVO menu(String name, String path, String permissionKey) {

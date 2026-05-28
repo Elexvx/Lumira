@@ -8,6 +8,7 @@ import type {
   AiConversationMessageRecord,
   AiConversationRecord,
   AiEmployeeDetailRecord,
+  AiEmployeeCapabilityRecord,
   AiEmployeeRecord,
   AiEmployeeUpsertPayload,
   AiGovernanceOverviewRecord,
@@ -19,8 +20,6 @@ import type {
   AiLlmServiceTestResult,
   AiLlmServiceUpsertPayload,
   AiPromptTemplateRecord,
-  AiSkillRecord,
-  AiEmployeeSkillRecord,
   AiToolExecuteResultRecord,
   AiToolPlanRecord,
   AiToolPolicyRecord,
@@ -139,11 +138,6 @@ export const aiService = {
       data: payload,
       ...options,
     }),
-  skills: (options: RequestOptions = {}) =>
-    request<AiSkillRecord[]>('/ai/skills', {
-      method: 'GET',
-      ...options,
-    }),
   knowledgeBases: (params: AiKnowledgeBaseQuery = {}, options: RequestOptions = {}) =>
     request<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
       method: 'GET',
@@ -210,9 +204,15 @@ export const aiService = {
       data: { knowledgeBaseIds },
       ...options,
     }),
-  employeeSkills: (id: number, options: RequestOptions = {}) =>
-    request<AiEmployeeSkillRecord[]>(`/ai/employees/${id}/skills`, {
+  employeeCapabilities: (id: number, options: RequestOptions = {}) =>
+    request<AiEmployeeCapabilityRecord[]>(`/ai/employees/${id}/capabilities`, {
       method: 'GET',
+      ...options,
+    }),
+  updateEmployeeCapabilities: (id: number, capabilities: Array<{ capabilityCode: string; permissionMode: AiEmployeeCapabilityRecord['permissionMode'] }>, options: RequestOptions = {}) =>
+    request<boolean>(`/ai/employees/${id}/capabilities`, {
+      method: 'PUT',
+      data: { capabilities },
       ...options,
     }),
   assistant: (options: RequestOptions = {}) =>
@@ -256,12 +256,6 @@ export const aiService = {
   conversationMessages: (id: number, options: RequestOptions = {}) =>
     request<AiConversationMessageRecord[]>(`/ai/conversations/${id}/messages`, {
       method: 'GET',
-      ...options,
-    }),
-  updateEmployeeSkills: (id: number, payload: { skills: Array<{ skillCode: string; permissionMode: AiEmployeeSkillRecord['permissionMode'] }> }, options: RequestOptions = {}) =>
-    request<boolean>(`/ai/employees/${id}/skills`, {
-      method: 'PUT',
-      data: payload,
       ...options,
     }),
   toolPolicies: (params: AiPageQuery = {}, options: RequestOptions = {}) =>
