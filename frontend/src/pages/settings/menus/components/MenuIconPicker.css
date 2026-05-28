@@ -6,10 +6,10 @@
 .saas-menu-icon-picker__trigger {
   display: inline-flex;
   max-width: 100%;
-  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.15));
+  border: 1px solid var(--ant-color-border);
   border-radius: 8px;
   overflow: hidden;
-  background: var(--ant-color-bg-container, #fff);
+  background: var(--ant-color-bg-container);
 }
 
 .saas-menu-icon-picker__button.ant-btn {
@@ -25,12 +25,12 @@
   min-width: 36px;
   height: 36px;
   border-width: 0 0 0 1px;
-  border-color: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
+  border-color: var(--ant-color-border-secondary);
   border-radius: 0;
 }
 
 .saas-menu-icon-picker__placeholder {
-  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  color: var(--ant-color-text-tertiary);
 }
 
 .saas-menu-icon-picker__overlay {
@@ -64,7 +64,7 @@
   justify-content: center;
   border: 0;
   border-radius: 6px;
-  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+  color: var(--ant-color-text);
   background: transparent;
   cursor: pointer;
   font-size: 21px;
@@ -72,14 +72,14 @@
 }
 
 .saas-menu-icon-picker__option:hover {
-  color: var(--ant-color-primary, #1677ff);
-  background: var(--ant-color-fill-tertiary, rgba(0, 0, 0, 0.04));
+  color: var(--ant-color-primary);
+  background: var(--ant-color-fill-tertiary);
 }
 
 .saas-menu-icon-picker__option--active,
 .saas-menu-icon-picker__option--active:hover {
-  color: var(--ant-color-primary, #1677ff);
-  background: var(--ant-color-primary-bg, #e6f4ff);
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
 }
 
 .saas-menu-icon-picker-popover .ant-popover-inner {
@@ -88,7 +88,7 @@
 }
 
 .saas-menu-icon-picker-popover .ant-popover-arrow {
-  --antd-arrow-background-color: var(--ant-color-bg-elevated, #fff);
+  --antd-arrow-background-color: var(--ant-color-bg-elevated);
 }
 
 .saas-menu-icon-preview {

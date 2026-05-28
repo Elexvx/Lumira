@@ -1,6 +1,6 @@
 import { HolderOutlined } from '@ant-design/icons';
 import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
-import { Button, Form, Input, InputNumber, Select, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Space, Spin, Tabs, Tag, Typography, message, theme } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -112,6 +112,7 @@ const buildMainRouteMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
     }));
 
 const SettingsRoutesTab = () => {
+  const { token } = theme.useToken();
   const { setInitialState } = useInitialStateModel();
   const responsive = useResponsive();
   const [routeEditorForm] = Form.useForm<SettingsRouteEditorValues>();
@@ -220,7 +221,7 @@ const SettingsRoutesTab = () => {
       width: 96,
       search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: () => <HolderOutlined style={{ color: '#8c8c8c', cursor: 'default' }} />,
+      render: () => <HolderOutlined style={{ color: token.colorTextTertiary, cursor: 'default' }} />,
     },
     {
       title: '菜单编码',
@@ -384,6 +385,7 @@ const SettingsRoutesTab = () => {
 const MenuManagementPage = () => {
   const menuCrud = useCrudPageState<MenuRecord>();
   const [editorForm] = Form.useForm();
+  const { token } = theme.useToken();
   const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const { setInitialState } = useInitialStateModel();
   const [menuTree, setMenuTree] = useState<MenuRecord[]>([]);
@@ -673,6 +675,7 @@ const MenuManagementPage = () => {
         canReorderMenus,
         expandedRowKeys,
         expandableMenuIds,
+        dragHandleColor: token.colorTextTertiary,
         buildRowActions: actionPermission.buildTableActions,
         isReadonlyMenu: isBuiltinMenu,
         onToggleExpand: (menuId) =>
@@ -691,6 +694,7 @@ const MenuManagementPage = () => {
       expandableMenuIds,
       responsive.isDesktop,
       responsive.isMobile,
+      token.colorTextTertiary,
     ],
   );
 
@@ -725,13 +729,13 @@ const MenuManagementPage = () => {
                     opacity: dragState?.draggedId === record.id ? 0.35 : 1,
                     backgroundColor:
                       dragState?.targetId === record.id && dragState.position === 'inside'
-                        ? 'rgba(22, 119, 255, 0.08)'
+                        ? token.colorPrimaryBg
                         : undefined,
                     boxShadow:
                       dragState?.targetId === record.id && dragState.position === 'before'
-                        ? 'inset 0 2px 0 #1677ff'
+                        ? `inset 0 2px 0 ${token.colorPrimary}`
                         : dragState?.targetId === record.id && dragState.position === 'after'
-                          ? 'inset 0 -2px 0 #1677ff'
+                          ? `inset 0 -2px 0 ${token.colorPrimary}`
                           : undefined,
                   },
                 })}

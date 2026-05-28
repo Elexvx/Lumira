@@ -29,6 +29,7 @@ import {
   Tag,
   Typography,
   message,
+  theme,
 } from 'antd';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
@@ -74,12 +75,12 @@ const EMPLOYEE_TAB_KEY: AiPageTabKey = 'employees';
 const LLM_TAB_KEY: AiPageTabKey = 'llm-services';
 
 const AVATAR_OPTIONS: AvatarOption[] = [
-  { key: 'avatar-purple-01', label: '紫色', color: '#6E56CF', icon: <RobotOutlined /> },
-  { key: 'avatar-blue-01', label: '蓝色', color: '#1677ff', icon: <UserOutlined /> },
-  { key: 'avatar-green-01', label: '绿色', color: '#13c2c2', icon: <TeamOutlined /> },
-  { key: 'avatar-orange-01', label: '橙色', color: '#fa8c16', icon: <CustomerServiceOutlined /> },
-  { key: 'avatar-red-01', label: '红色', color: '#ff4d4f', icon: <SafetyCertificateOutlined /> },
-  { key: 'avatar-gray-01', label: '灰色', color: '#8c8c8c', icon: <AppstoreOutlined /> },
+  { key: 'avatar-purple-01', label: '主色', color: 'colorPrimary', icon: <RobotOutlined /> },
+  { key: 'avatar-blue-01', label: '信息', color: 'colorInfo', icon: <UserOutlined /> },
+  { key: 'avatar-green-01', label: '成功', color: 'colorSuccess', icon: <TeamOutlined /> },
+  { key: 'avatar-orange-01', label: '警告', color: 'colorWarning', icon: <CustomerServiceOutlined /> },
+  { key: 'avatar-red-01', label: '错误', color: 'colorError', icon: <SafetyCertificateOutlined /> },
+  { key: 'avatar-gray-01', label: '中性', color: 'colorTextTertiary', icon: <AppstoreOutlined /> },
 ];
 
 const PROVIDER_OPTIONS = [
@@ -120,8 +121,8 @@ const parseTabKey = (value?: string | null): AiPageTabKey => {
   return EMPLOYEE_TAB_KEY;
 };
 
-const getAvatarOption = (avatarKey?: string | null) =>
-  AVATAR_OPTIONS.find((option) => option.key === avatarKey) || AVATAR_OPTIONS[0];
+const getAvatarOption = (options: AvatarOption[], avatarKey?: string | null) =>
+  options.find((option) => option.key === avatarKey) || options[0];
 
 const CAPABILITY_GROUP_LABEL: Record<string, string> = {
   system: '系统管理',
@@ -139,6 +140,7 @@ const groupCapabilities = (capabilities: AiEmployeeCapabilityRecord[]) =>
 
 const AiEmployeesPage = () => {
   const location = useLocation();
+  const { token } = theme.useToken();
   const { actionPermission, responsive, buildToolbarButtons } = usePagePermissionActions();
   const [employeeForm] = Form.useForm();
   const [llmForm] = Form.useForm();
@@ -162,6 +164,14 @@ const AiEmployeesPage = () => {
 
   const canSaveEmployee = actionPermission.can(employeeState.drawer.editingId ? 'ai:employee:update' : 'ai:employee:create');
   const canSaveLlmService = actionPermission.can(llmState.drawer.editingId ? 'ai:llm:update' : 'ai:llm:create');
+  const avatarOptions = useMemo<AvatarOption[]>(
+    () =>
+      AVATAR_OPTIONS.map((option) => ({
+        ...option,
+        color: token[option.color as keyof typeof token] as string,
+      })),
+    [token],
+  );
 
   useEffect(() => {
     let active = true;
@@ -509,7 +519,7 @@ const AiEmployeesPage = () => {
         dataIndex: 'avatarKey',
         width: 96,
         render: (_, record) => {
-          const avatar = getAvatarOption(record.avatarKey);
+          const avatar = getAvatarOption(avatarOptions, record.avatarKey);
           return (
             <Space>
               <Avatar style={{ backgroundColor: avatar.color }} icon={avatar.icon} />
@@ -549,7 +559,7 @@ const AiEmployeesPage = () => {
         ),
       },
     ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, avatarOptions, responsive.isDesktop, responsive.isMobile],
   );
 
   const llmColumns = useMemo<ProColumns<AiLlmServiceRecord>[]>(
@@ -722,7 +732,7 @@ const AiEmployeesPage = () => {
                     <Form.Item label="头像" name="avatarKey">
                       <Radio.Group>
                         <Space wrap>
-                          {AVATAR_OPTIONS.map((option) => (
+                          {avatarOptions.map((option) => (
                             <Radio key={option.key} value={option.key}>
                               <Space direction="vertical" align="center" size={0}>
                                 <Avatar style={{ backgroundColor: option.color }} icon={option.icon} />

@@ -1,13 +1,13 @@
 .agreement-markdown-editor {
   overflow: hidden;
-  border: 1px solid var(--ant-color-border, var(--saas-border-color));
+  border: 1px solid var(--ant-color-border);
   border-radius: 8px;
-  background: var(--ant-color-bg-container, var(--saas-surface-bg));
+  background: var(--ant-color-bg-container);
 }
 
 .agreement-markdown-editor:focus-within {
-  border-color: var(--ant-color-primary, #1677ff);
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 2px var(--ant-color-primary-bg);
 }
 
 .agreement-markdown-editor__toolbar {
@@ -17,8 +17,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--ant-color-border-secondary, var(--saas-border-color));
-  background: var(--ant-color-bg-container, var(--saas-surface-bg));
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-container);
 }
 
 .agreement-markdown-editor__tools {
@@ -41,13 +41,13 @@
 
 .agreement-markdown-editor__body {
   min-height: 360px;
-  background: var(--ant-color-bg-container, var(--saas-surface-bg));
+  background: var(--ant-color-bg-container);
 }
 
 .agreement-markdown-editor__input {
   border: 0;
   border-radius: 0;
-  background: var(--ant-color-bg-container, var(--saas-surface-bg));
+  background: var(--ant-color-bg-container);
   box-shadow: none !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   line-height: 1.7;
@@ -57,31 +57,31 @@
 .agreement-markdown-editor__input:hover,
 .agreement-markdown-editor__input:focus,
 .agreement-markdown-editor__input:focus-within {
-  background: var(--ant-color-bg-container, var(--saas-surface-bg)) !important;
+  background: var(--ant-color-bg-container) !important;
 }
 
 .agreement-markdown-editor__input textarea {
-  background: var(--ant-color-bg-container, var(--saas-surface-bg)) !important;
+  background: var(--ant-color-bg-container) !important;
 }
 
 .agreement-markdown-editor__input textarea:hover,
 .agreement-markdown-editor__input textarea:focus {
-  background: var(--ant-color-bg-container, var(--saas-surface-bg)) !important;
+  background: var(--ant-color-bg-container) !important;
 }
 
 .agreement-markdown-editor__preview {
   overflow: auto;
   min-height: 360px;
   padding: 18px 20px;
-  background: var(--ant-color-bg-container, var(--saas-surface-bg));
+  background: var(--ant-color-bg-container);
 }
 
 .agreement-markdown-editor__preview-empty {
-  color: var(--ant-color-text-quaternary, var(--saas-text-placeholder));
+  color: var(--ant-color-text-quaternary);
 }
 
 .agreement-markdown-editor__preview-content {
-  color: var(--ant-color-text, var(--saas-text-primary));
+  color: var(--ant-color-text);
   font-size: 14px;
   line-height: 1.75;
 }
@@ -118,21 +118,21 @@
 
 .agreement-markdown-editor__preview-content blockquote {
   padding-left: 12px;
-  border-left: 3px solid var(--ant-color-border, var(--saas-border-color));
-  color: var(--ant-color-text-secondary, var(--saas-text-secondary));
+  border-left: 3px solid var(--ant-color-border);
+  color: var(--ant-color-text-secondary);
 }
 
 .agreement-markdown-editor__preview-content code {
   padding: 2px 5px;
   border-radius: 4px;
-  background: var(--ant-color-fill-tertiary, var(--saas-code-bg));
+  background: var(--ant-color-fill-tertiary);
 }
 
 .agreement-markdown-editor__preview-content pre {
   overflow: auto;
   padding: 12px;
   border-radius: 6px;
-  background: var(--ant-color-fill-quaternary, var(--saas-code-bg));
+  background: var(--ant-color-fill-quaternary);
 }
 
 .agreement-markdown-editor__preview-content pre code {
@@ -148,11 +148,11 @@
 .agreement-markdown-editor__preview-content th,
 .agreement-markdown-editor__preview-content td {
   padding: 8px 10px;
-  border: 1px solid var(--ant-color-border-secondary, var(--saas-border-color));
+  border: 1px solid var(--ant-color-border-secondary);
 }
 
 .agreement-markdown-editor__preview-content th {
-  background: var(--ant-color-fill-quaternary, var(--saas-action-bg));
+  background: var(--ant-color-fill-quaternary);
 }
 
 @media (max-width: 1024px) {

@@ -13,6 +13,8 @@ interface BuildAntdThemeConfigOptions {
 
 const buildComponentTokens = (mode: 'light' | 'dark'): NonNullable<AntdThemeConfig>['components'] => {
   const isDark = mode === 'dark';
+  const colorPrimary = '#1677ff';
+  const colorPrimaryHover = '#4096ff';
   const colorBgContainer = isDark ? '#151515' : '#ffffff';
   const colorBgElevated = isDark ? '#1b1b1b' : '#ffffff';
   const colorBgLayout = isDark ? '#0f1115' : '#f5f5f5';
@@ -29,8 +31,8 @@ const buildComponentTokens = (mode: 'light' | 'dark'): NonNullable<AntdThemeConf
       defaultBorderColor: colorBorder,
       defaultColor: colorText,
       defaultHoverBg: colorFillSecondary,
-      defaultHoverBorderColor: '#1677ff',
-      defaultHoverColor: '#1677ff',
+      defaultHoverBorderColor: colorPrimary,
+      defaultHoverColor: colorPrimary,
     },
     Card: {
       colorBgContainer,
@@ -70,8 +72,8 @@ const buildComponentTokens = (mode: 'light' | 'dark'): NonNullable<AntdThemeConf
       colorTextDisabled,
     },
     Switch: {
-      colorPrimary: '#1677ff',
-      colorPrimaryHover: '#4096ff',
+      colorPrimary,
+      colorPrimaryHover,
       colorTextQuaternary: colorFillSecondary,
       colorTextTertiary: colorFillTertiary,
     },
@@ -86,8 +88,8 @@ const buildComponentTokens = (mode: 'light' | 'dark'): NonNullable<AntdThemeConf
     Tabs: {
       colorText,
       itemColor: colorTextSecondary,
-      itemSelectedColor: '#1677ff',
-      itemHoverColor: '#1677ff',
+      itemSelectedColor: colorPrimary,
+      itemHoverColor: colorPrimary,
     },
     Typography: {
       colorText,

@@ -8,7 +8,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Drawer, Empty, Form, Input, Select, Space, Tabs, Tag, Typography, Upload, message } from 'antd';
+import { Button, Drawer, Empty, Form, Input, Select, Space, Tabs, Tag, Typography, Upload, message, theme } from 'antd';
 import type { UploadProps } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
@@ -65,6 +65,7 @@ const statusTag = (status?: string | null) => {
 const formatNumber = (value?: number | null) => (typeof value === 'number' ? value.toLocaleString() : '0');
 
 const AiKnowledgePage = () => {
+  const { token } = theme.useToken();
   const actionRef = useRef<ActionType>(null);
   const documentActionRef = useRef<ActionType>(null);
   const responsive = useResponsive();
@@ -388,7 +389,7 @@ const AiKnowledgePage = () => {
             {searchResults.length ? (
               <Space direction="vertical" style={{ width: '100%' }}>
                 {searchResults.map((item) => (
-                  <div key={item.chunkId} style={{ border: '1px solid #f0f0f0', borderRadius: 6, padding: 12 }}>
+                  <div key={item.chunkId} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: 12 }}>
                     <Space wrap>
                       <Tag color="blue">{item.knowledgeBaseName}</Tag>
                       <Typography.Text strong>{item.documentTitle || item.originalFileName}</Typography.Text>

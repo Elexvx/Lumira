@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Card, Col, Row, Space, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Space, Statistic, Typography, theme } from 'antd';
 import { ManagementPage, ManagementTable } from '@/features/management';
 import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
@@ -25,6 +25,7 @@ const TrendAreaChart = ({
   points: Array<{ label: string; value: number }>;
   valueFormatter: (value: number) => string;
 }) => {
+  const { token } = theme.useToken();
   const width = 420;
   const height = 220;
   const padding = { top: 24, right: 56, bottom: 54, left: 64 };
@@ -56,20 +57,20 @@ const TrendAreaChart = ({
         const y = padding.top + plotHeight - (tick / maxValue) * plotHeight;
         return (
           <g key={tick}>
-            <line className="saas-redis-trend-chart__grid" x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="rgba(0, 0, 0, 0.08)" strokeDasharray="4 4" strokeWidth={1} />
-            <text className="saas-redis-trend-chart__axis" x={padding.left - 8} y={y + 4} textAnchor="end" fill="rgba(0, 0, 0, 0.45)" fontSize={11}>
+            <line className="saas-redis-trend-chart__grid" x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke={token.colorBorderSecondary} strokeDasharray="4 4" strokeWidth={1} />
+            <text className="saas-redis-trend-chart__axis" x={padding.left - 8} y={y + 4} textAnchor="end" fill={token.colorTextTertiary} fontSize={11}>
               {valueFormatter(tick)}
             </text>
           </g>
         );
       })}
-      <path className="saas-redis-trend-chart__area" d={areaPath} fill="rgba(22, 119, 255, 0.16)" stroke="none" />
-      <path className="saas-redis-trend-chart__line" d={linePath} fill="none" stroke="#1677ff" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} />
+      <path className="saas-redis-trend-chart__area" d={areaPath} fill={token.colorPrimaryBg} stroke="none" />
+      <path className="saas-redis-trend-chart__line" d={linePath} fill="none" stroke={token.colorPrimary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} />
       {coordinates.map((item) => (
-        <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} fill="#ffffff" stroke="#1677ff" strokeWidth={2} />
+        <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} fill={token.colorBgContainer} stroke={token.colorPrimary} strokeWidth={2} />
       ))}
       {xAxisLabels.map((item) => (
-        <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - 10} textAnchor="middle" fill="rgba(0, 0, 0, 0.45)" fontSize={11}>
+        <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - 10} textAnchor="middle" fill={token.colorTextTertiary} fontSize={11}>
           {item.label}
         </text>
       ))}

@@ -464,7 +464,7 @@ const SystemFilesPage = () => {
         title: '默认存储空间',
         dataIndex: 'defaultStorage',
         width: 160,
-        render: (_, record) => (record.defaultStorage ? <span style={{ color: '#52c41a', fontSize: 20 }}>✓</span> : '-'),
+        render: (_, record) => (record.defaultStorage ? <span style={{ color: token.colorSuccess, fontSize: 20 }}>✓</span> : '-'),
       },
       {
         title: '文件数',
