@@ -1143,6 +1143,12 @@ export interface PlatformUpdateStatus {
   current?: PlatformUpdateCurrentVersion | null;
   latest?: PlatformUpdateLatestVersion | null;
   updateAvailable?: boolean;
+  status?: 'UP_TO_DATE' | 'UPDATE_AVAILABLE' | 'UNKNOWN' | 'CHECK_FAILED' | string;
+  currentKnown?: boolean;
+  latestKnown?: boolean;
+  comparisonBasis?: string | null;
+  actionRequired?: string | null;
+  sourceType?: string | null;
   sourceUrl?: string | null;
   checkedAt?: string | null;
   errorMessage?: string | null;

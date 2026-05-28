@@ -27,6 +27,10 @@ public class PlatformUpdateAppService {
     private static final Logger log = LoggerFactory.getLogger(PlatformUpdateAppService.class);
     private static final String DEFAULT_BRANCH = "main";
     private static final String DEFAULT_SOURCE_URL = "https://api.github.com/repos/Elexvx/legendary-invention/commits/main";
+    private static final String STATUS_UP_TO_DATE = "UP_TO_DATE";
+    private static final String STATUS_UPDATE_AVAILABLE = "UPDATE_AVAILABLE";
+    private static final String STATUS_UNKNOWN = "UNKNOWN";
+    private static final String STATUS_CHECK_FAILED = "CHECK_FAILED";
 
     private final Environment environment;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
@@ -65,16 +69,52 @@ public class PlatformUpdateAppService {
         current.setBuildTime(currentVersion.buildTime());
         status.setCurrent(current);
         status.setSourceUrl(resolveSourceUrl());
+        status.setSourceType(resolveSourceType(status.getSourceUrl()));
         status.setCheckedAt(LocalDateTime.now());
-        status.setNotes(List.of("GitHub 推送只用于发现新版本，不会自动执行更新。"));
+        status.setComparisonBasis("commit");
+        status.setCurrentKnown(hasKnownCommit(current.getCommitId()));
+        status.setLatestKnown(false);
+        status.setUpdateAvailable(false);
 
         try {
             PlatformUpdateVO.LatestVersionVO latest = fetchLatest(status.getSourceUrl());
             status.setLatest(latest);
-            status.setUpdateAvailable(isDifferentCommit(current.getCommitId(), latest.getCommitId()));
+            status.setLatestKnown(hasKnownCommit(latest.getCommitId()));
+            boolean comparable = Boolean.TRUE.equals(status.getCurrentKnown()) && Boolean.TRUE.equals(status.getLatestKnown());
+            boolean updateAvailable = comparable && isDifferentCommit(current.getCommitId(), latest.getCommitId());
+            status.setUpdateAvailable(updateAvailable);
+            if (!comparable) {
+                status.setStatus(STATUS_UNKNOWN);
+                status.setActionRequired("当前部署缺少可比对的提交信息，请在部署脚本中注入 GIT_COMMIT 后重新检查。");
+                status.setNotes(List.of(
+                        "更新源可访问，但当前版本或最新版本缺少提交号，不能可靠判断是否需要更新。",
+                        "系统只做只读检查，不会自动拉代码、执行命令或重启服务。"
+                ));
+            } else if (updateAvailable) {
+                status.setStatus(STATUS_UPDATE_AVAILABLE);
+                status.setActionRequired("有新提交可用，请按发布流程完成备份、部署和健康检查。");
+                status.setNotes(List.of(
+                        "已基于提交号确认当前部署落后于更新源。",
+                        "这个页面只提醒更新状态，不执行自动部署。"
+                ));
+            } else {
+                status.setStatus(STATUS_UP_TO_DATE);
+                status.setActionRequired("无需处理。");
+                status.setNotes(List.of(
+                        "当前部署提交与更新源一致。",
+                        "系统会定时检查，也可以手动刷新。"
+                ));
+            }
         } catch (Exception ex) {
             status.setUpdateAvailable(false);
+            status.setStatus(STATUS_CHECK_FAILED);
+            status.setLatestKnown(false);
+            status.setActionRequired("更新源检查失败，请确认网络、接口地址或令牌配置。");
             status.setErrorMessage(ex.getMessage());
+            status.setNotes(List.of(
+                    "检查失败不会影响当前系统运行。",
+                    "系统不会因为检查失败而执行任何更新动作。"
+            ));
         }
         cachedStatus = status;
         return status;
@@ -111,7 +151,7 @@ public class PlatformUpdateAppService {
         ));
         latest.setTitle(firstText(
                 root.path("title").asText(null),
-                root.path("commit").path("message").asText(null),
+                firstLine(root.path("commit").path("message").asText(null)),
                 "GitHub 最新提交"
         ));
         latest.setUrl(firstText(root.path("updateUrl").asText(null), root.path("html_url").asText(null)));
@@ -155,12 +195,27 @@ public class PlatformUpdateAppService {
     }
 
     private boolean isDifferentCommit(String currentCommit, String latestCommit) {
-        if (!StringUtils.hasText(currentCommit) || !StringUtils.hasText(latestCommit) || "unknown".equalsIgnoreCase(currentCommit)) {
-            return false;
-        }
         String normalizedCurrent = currentCommit.trim();
         String normalizedLatest = latestCommit.trim();
         return !normalizedLatest.startsWith(normalizedCurrent) && !normalizedCurrent.startsWith(normalizedLatest);
+    }
+
+    private boolean hasKnownCommit(String commit) {
+        return StringUtils.hasText(commit) && !"unknown".equalsIgnoreCase(commit.trim());
+    }
+
+    private String resolveSourceType(String sourceUrl) {
+        if (!StringUtils.hasText(sourceUrl)) {
+            return "unknown";
+        }
+        return sourceUrl.contains("api.github.com") || sourceUrl.contains("github.com") ? "github" : "custom";
+    }
+
+    private String firstLine(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.lines().findFirst().orElse(value).trim();
     }
 
     private String firstText(String... values) {

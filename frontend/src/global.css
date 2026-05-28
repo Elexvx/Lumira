@@ -339,6 +339,42 @@ body,
   stroke-width: 1;
 }
 
+.saas-update-center {
+  .ant-card,
+  .ant-alert {
+    border-radius: 8px;
+  }
+
+  .ant-statistic-content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ant-descriptions-view,
+  .ant-descriptions-view table {
+    width: 100%;
+    table-layout: fixed;
+  }
+}
+
+.saas-update-status-tag {
+  width: fit-content;
+  margin-inline-end: 0;
+}
+
+.saas-update-actions {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.saas-update-version-card {
+  height: 100%;
+}
+
+.saas-update-mono {
+  font-variant-numeric: tabular-nums;
+}
+
 .saas-redis-trend-chart__axis {
   fill: currentColor;
   font-size: 11px;

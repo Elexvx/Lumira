@@ -11,6 +11,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
 const envPath = path.join(repoRoot, 'deploy', '.env');
+const buildIdentityPath = process.env.BUILD_IDENTITY_FILE || path.join(repoRoot, 'deploy', 'build-identity.env');
 const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
 const alertRulesPath = path.join(repoRoot, 'deploy', 'observability', 'grafana', 'provisioning', 'alerting', 'rules.yml');
 const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafana-alerting');
@@ -140,11 +141,12 @@ function optionalOutput(command, commandArgs) {
 
 function configureBuildIdentity() {
   const env = parseEnvFile(envPath);
+  const buildIdentity = parseEnvFile(buildIdentityPath);
   const appVersion = process.env.APP_VERSION || env.APP_VERSION || '0.1.0';
-  const gitCommit = process.env.GIT_COMMIT || env.GIT_COMMIT || optionalOutput('git', ['rev-parse', '--short=12', 'HEAD']);
-  const gitBranch = process.env.GIT_BRANCH || env.GIT_BRANCH || optionalOutput('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
-  const buildTime = process.env.BUILD_TIME || env.BUILD_TIME || new Date().toISOString();
-  const buildVersion = process.env.BUILD_VERSION || env.BUILD_VERSION || (gitCommit ? `${appVersion}+${gitCommit}` : appVersion);
+  const gitCommit = process.env.GIT_COMMIT || buildIdentity.GIT_COMMIT || env.GIT_COMMIT || optionalOutput('git', ['rev-parse', '--short=12', 'HEAD']);
+  const gitBranch = process.env.GIT_BRANCH || buildIdentity.GIT_BRANCH || env.GIT_BRANCH || optionalOutput('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+  const buildTime = process.env.BUILD_TIME || buildIdentity.BUILD_TIME || env.BUILD_TIME || new Date().toISOString();
+  const buildVersion = process.env.BUILD_VERSION || buildIdentity.BUILD_VERSION || env.BUILD_VERSION || (gitCommit ? `${appVersion}+${gitCommit}` : appVersion);
 
   process.env.APP_VERSION = appVersion;
   process.env.BUILD_VERSION = buildVersion;
