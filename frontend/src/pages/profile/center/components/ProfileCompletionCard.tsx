@@ -1,5 +1,5 @@
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Card, Empty, Progress, Space, Tag, Typography } from 'antd';
+import { Button, Card, Empty, Progress, Space, Tag, Typography, theme } from 'antd';
 import type { ProfileCompletionItem, ProfileCompletionSummary } from '@/types/api';
 
 interface ProfileCompletionCardProps {
@@ -19,6 +19,7 @@ export const ProfileCompletionCard = ({
   compact = false,
   maxVisibleIncompleteItems = 3,
 }: ProfileCompletionCardProps) => {
+  const { token } = theme.useToken();
   const groups = summary?.groups || [];
   const incompleteItems = summary?.incompleteItems || [];
   const visibleIncompleteItems = incompleteItems.slice(0, maxVisibleIncompleteItems);
@@ -49,7 +50,7 @@ export const ProfileCompletionCard = ({
             <Progress
               percent={summary.completionRate}
               showInfo={false}
-              strokeColor={summary.completionRate === 100 ? '#52c41a' : '#1677ff'}
+              strokeColor={summary.completionRate === 100 ? token.colorSuccess : token.colorPrimary}
             />
             {visibleIncompleteItems.length ? (
               <Space size={[8, 8]} wrap>
@@ -101,7 +102,7 @@ export const ProfileCompletionCard = ({
             <Progress
               percent={summary.completionRate}
               showInfo={false}
-              strokeColor={{ '0%': '#1677ff', '100%': '#69c0ff' }}
+              strokeColor={{ '0%': token.colorPrimary, '100%': token.colorPrimaryHover }}
             />
             <Typography.Text type="secondary">
               按当前启用字段折算，总权重 {summary.totalWeight || 0}，完成得分 {summary.earnedWeight || 0}
@@ -143,9 +144,9 @@ export const ProfileCompletionCard = ({
                       >
                         <Space align="start" size={10} style={{ minWidth: 0, flex: 1 }}>
                           {item.completed ? (
-                            <CheckCircleFilled style={{ color: '#52c41a', fontSize: 18, marginTop: 3 }} />
+                            <CheckCircleFilled style={{ color: token.colorSuccess, fontSize: 18, marginTop: 3 }} />
                           ) : (
-                            <ExclamationCircleFilled style={{ color: '#fa8c16', fontSize: 18, marginTop: 3 }} />
+                            <ExclamationCircleFilled style={{ color: token.colorWarning, fontSize: 18, marginTop: 3 }} />
                           )}
                           <Space direction="vertical" size={4} style={{ minWidth: 0, flex: 1 }}>
                             <Space wrap size={8}>

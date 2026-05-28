@@ -71,8 +71,8 @@
   min-width: 22px;
   padding-inline: 6px;
   border-radius: 999px;
-  background: var(--saas-action-bg);
-  color: var(--saas-text-secondary);
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text-secondary);
   font-size: 12px;
   line-height: 20px;
   text-align: center;

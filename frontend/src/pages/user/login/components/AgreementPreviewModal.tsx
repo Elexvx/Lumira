@@ -24,7 +24,7 @@ export const AgreementPreviewModal = ({ open, title, markdown, onClose }: Agreem
         {markdown}
       </div>
     ) : (
-      <div style={{ color: 'var(--saas-text-secondary)' }}>
+      <div style={{ color: 'var(--ant-color-text-secondary)' }}>
         {formatMessage({ id: 'page.login.agreement.empty', defaultMessage: 'The backend has not configured this agreement yet.' })}
       </div>
     )}

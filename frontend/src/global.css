@@ -1,17 +1,4 @@
 :root {
-  --saas-page-bg: #f5f5f5;
-  --saas-text-primary: rgba(0, 0, 0, 0.88);
-  --saas-text-heading: rgba(0, 0, 0, 0.88);
-  --saas-text-secondary: rgba(0, 0, 0, 0.65);
-  --saas-text-placeholder: rgba(0, 0, 0, 0.45);
-  --saas-surface-bg: rgba(255, 255, 255, 0.82);
-  --saas-border-color: rgba(0, 0, 0, 0.08);
-  --saas-input-bg: rgba(255, 255, 255, 0.96);
-  --saas-icon-color: rgba(0, 0, 0, 0.45);
-  --saas-code-bg: rgba(0, 0, 0, 0.03);
-  --saas-action-bg: rgba(0, 0, 0, 0.04);
-  --saas-action-hover-bg: rgba(0, 0, 0, 0.08);
-  --saas-action-icon-color: rgba(0, 0, 0, 0.82);
   --saas-page-content-width: 1280px;
   --saas-page-content-width-compact: 1120px;
   --saas-page-gutter: clamp(16px, 2.4vw, 28px);
@@ -33,19 +20,6 @@
 }
 
 html[data-theme='dark'] {
-  --saas-page-bg: #0f1115;
-  --saas-text-primary: rgba(255, 255, 255, 0.88);
-  --saas-text-heading: rgba(255, 255, 255, 0.92);
-  --saas-text-secondary: rgba(255, 255, 255, 0.65);
-  --saas-text-placeholder: rgba(255, 255, 255, 0.45);
-  --saas-surface-bg: #151515;
-  --saas-border-color: rgba(255, 255, 255, 0.12);
-  --saas-input-bg: rgba(255, 255, 255, 0.04);
-  --saas-icon-color: rgba(255, 255, 255, 0.45);
-  --saas-code-bg: rgba(255, 255, 255, 0.06);
-  --saas-action-bg: rgba(255, 255, 255, 0.08);
-  --saas-action-hover-bg: rgba(255, 255, 255, 0.14);
-  --saas-action-icon-color: rgba(255, 255, 255, 0.88);
   color-scheme: dark;
 }
 
@@ -56,15 +30,15 @@ body,
 }
 
 html {
-  background: var(--saas-page-bg);
+  background: var(--ant-color-bg-layout);
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 
 body {
   margin: 0;
-  background: var(--saas-page-bg);
-  color: var(--saas-action-icon-color);
+  background: var(--ant-color-bg-layout);
+  color: var(--ant-color-text);
   overflow-x: hidden;
   width: 100%;
   min-width: 0;
@@ -80,7 +54,7 @@ body.ant-scrolling-effect {
 
 body,
 #root {
-  background-color: var(--saas-page-bg);
+  background-color: var(--ant-color-bg-layout);
 }
 
 .ant-drawer .ant-drawer-content {
@@ -98,8 +72,8 @@ body,
 .ant-drawer .ant-drawer-footer {
   flex: 0 0 auto;
   padding: 12px 24px;
-  border-top-color: var(--saas-border-color);
-  background: var(--ant-color-bg-elevated, var(--saas-surface-bg));
+  border-top-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-elevated);
 }
 
 .saas-drawer-footer {
@@ -121,7 +95,7 @@ body,
  * Keep this override scoped to ProLayout instead of globally patching all `.ant-*` containers.
  */
 .ant-pro-layout .ant-pro-layout-bg-list {
-  background-color: var(--saas-page-bg);
+  background-color: var(--ant-color-bg-layout);
   background-image: none !important;
   opacity: 1 !important;
 }
@@ -356,11 +330,11 @@ body,
   display: block;
   width: 100%;
   height: 100%;
-  color: var(--saas-text-placeholder);
+  color: var(--ant-color-text-tertiary);
 }
 
 .saas-redis-trend-chart__grid {
-  stroke: var(--saas-border-secondary);
+  stroke: var(--ant-color-border-secondary);
   stroke-dasharray: 4 4;
   stroke-width: 1;
 }
@@ -371,21 +345,21 @@ body,
 }
 
 .saas-redis-trend-chart__area {
-  fill: var(--ant-color-primary, #1677ff);
+  fill: var(--ant-color-primary);
   fill-opacity: 0.2;
 }
 
 .saas-redis-trend-chart__line {
   fill: none;
-  stroke: var(--ant-color-primary, #1677ff);
+  stroke: var(--ant-color-primary);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.5;
 }
 
 .saas-redis-trend-chart__point {
-  fill: var(--saas-surface-bg);
-  stroke: var(--ant-color-primary, #1677ff);
+  fill: var(--ant-color-bg-container);
+  stroke: var(--ant-color-primary);
   stroke-width: 2;
 }
 
@@ -625,7 +599,7 @@ body,
 
   .saas-profile-page__tenant-mark {
     margin: 0 !important;
-    color: #1677ff;
+    color: var(--ant-color-primary);
     text-align: right;
     word-break: break-word;
   }
@@ -651,7 +625,7 @@ body,
   }
 
   .saas-profile-page__name {
-    color: var(--saas-text-primary);
+    color: var(--ant-color-text);
     font-size: 20px;
     font-weight: 600;
     line-height: 1.35;
@@ -659,7 +633,7 @@ body,
   }
 
   .saas-profile-page__meta {
-    color: var(--saas-text-secondary);
+    color: var(--ant-color-text-secondary);
     font-size: 14px;
     line-height: 1.5;
     word-break: break-word;
@@ -674,12 +648,12 @@ body,
   }
 
   .saas-profile-page__descriptions .ant-descriptions-item-label {
-    color: var(--saas-text-secondary);
+    color: var(--ant-color-text-secondary);
     font-size: 16px;
   }
 
   .saas-profile-page__descriptions .ant-descriptions-item-content {
-    color: var(--saas-text-primary);
+    color: var(--ant-color-text);
     font-size: 16px;
     font-weight: 500;
     word-break: break-word;
@@ -772,7 +746,7 @@ body,
   height: 20px;
   object-fit: contain;
   border-radius: 4px;
-  background: var(--saas-surface-bg);
+  background: var(--ant-color-bg-container);
   padding: 1px;
 }
 
@@ -780,7 +754,7 @@ body,
   margin-top: auto;
   padding: 8px 12px 16px;
   text-align: center;
-  color: var(--saas-text-secondary);
+  color: var(--ant-color-text-secondary);
   font-size: 12px;
   line-height: 1.65;
 }
@@ -805,7 +779,7 @@ body,
 }
 
 .saas-theme-menu__item-check {
-  color: #1677ff;
+  color: var(--ant-color-primary);
 }
 
 .ant-pro-layout {
@@ -867,7 +841,7 @@ body,
     }
 
     .ant-pro-global-header-collapsed-button:hover {
-      background: var(--saas-action-bg);
+      background: var(--ant-color-fill-tertiary);
     }
 
     .ant-pro-global-header-collapsed-button .anticon {

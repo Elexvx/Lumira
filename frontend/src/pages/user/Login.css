@@ -9,8 +9,8 @@
   padding: 24px;
   box-sizing: border-box;
   overflow: hidden;
-  background: var(--saas-page-bg);
-  color: var(--saas-text-heading);
+  background: var(--ant-color-bg-layout);
+  color: var(--ant-color-text-heading);
 }
 
 .saas-login-page::before {
@@ -90,7 +90,7 @@
 }
 
 .saas-login-page .ant-pro-form-login-page-title {
-  color: var(--saas-text-heading);
+  color: var(--ant-color-text-heading);
   font-size: 26px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -100,12 +100,12 @@
 .saas-login-page .ant-pro-form-login-page-desc {
   margin-block-start: 10px;
   margin-block-end: 36px;
-  color: var(--saas-text-secondary);
+  color: var(--ant-color-text-secondary);
   font-size: 15px;
 }
 
 .saas-login-page__field-icon {
-  color: var(--saas-icon-color);
+  color: var(--ant-color-text-tertiary);
 }
 
 html[data-theme='dark'] .saas-login-page {
@@ -313,7 +313,7 @@ html[data-theme='dark'] .saas-login-page__actions {
   align-items: center;
   min-height: 24px;
   margin-top: 12px;
-  color: var(--saas-text-primary);
+  color: var(--ant-color-text);
 }
 
 .saas-login-page__mode-segmented {
@@ -371,7 +371,7 @@ html[data-theme='dark'] .saas-login-page__actions {
 
 .saas-login-page__agreement-modal .wmde-markdown {
   background: transparent;
-  color: var(--saas-text-primary);
+  color: var(--ant-color-text);
   font-size: 15px;
   line-height: 1.75;
 }
@@ -393,7 +393,7 @@ html[data-theme='dark'] .saas-login-page__actions {
 
 .saas-login-page__agreement-modal .wmde-markdown h1,
 .saas-login-page__agreement-modal .wmde-markdown h2 {
-  border-bottom-color: var(--saas-border-secondary);
+  border-bottom-color: var(--ant-color-border-secondary);
 }
 
 @media (max-width: 575px) {

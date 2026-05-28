@@ -926,7 +926,7 @@ const SystemVerificationPage = () => {
         width: 120,
         align: 'center',
         search: false,
-        render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: '#52c41a' }} /> : null),
+        render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: token.colorSuccess }} /> : null),
       },
       {
         title: '',

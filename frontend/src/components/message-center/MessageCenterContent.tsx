@@ -9,6 +9,7 @@ import {
   Tag,
   Space,
   Typography,
+  theme,
 } from 'antd';
 import { getLocale, useIntl } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -105,6 +106,7 @@ export interface MessageCenterContentProps {
 export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterContentProps) => {
   const { initialState } = useInitialStateModel();
   const intl = useIntl();
+  const { token } = theme.useToken();
   const [filter, setFilter] = useState<MessageCenterFilter>('unread');
   const [notices, setNotices] = useState<MessageCenterNotice[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -342,7 +344,7 @@ export const MessageCenterContent = ({ onUnreadCountChange }: MessageCenterConte
                     style={{
                       width: '100%',
                       padding: 16,
-                      border: '1px solid var(--saas-border-color)',
+                      border: `1px solid ${token.colorBorderSecondary}`,
                       borderRadius: 12,
                       background: 'transparent',
                     }}

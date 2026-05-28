@@ -12,6 +12,7 @@ interface BuildMenuColumnsOptions {
   canReorderMenus: boolean;
   expandedRowKeys: number[];
   expandableMenuIds: Set<number>;
+  dragHandleColor: string;
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   isReadonlyMenu: (record: MenuRecord) => boolean;
   onToggleExpand: (menuId: number) => void;
@@ -26,6 +27,7 @@ export const buildMenuColumns = ({
   canReorderMenus,
   expandedRowKeys,
   expandableMenuIds,
+  dragHandleColor,
   buildRowActions,
   isReadonlyMenu,
   onToggleExpand,
@@ -66,7 +68,7 @@ export const buildMenuColumns = ({
               justifyContent: 'center',
             }}
           />
-          <HolderOutlined style={{ color: '#8c8c8c', cursor: canReorderMenus && !readonly ? 'grab' : 'not-allowed' }} />
+          <HolderOutlined style={{ color: dragHandleColor, cursor: canReorderMenus && !readonly ? 'grab' : 'not-allowed' }} />
         </Space>
       );
     },
