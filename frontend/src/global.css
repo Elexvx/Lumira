@@ -223,6 +223,71 @@ body,
   overscroll-behavior-x: contain;
 }
 
+/*
+ * Keep management surfaces tied to the document theme variables without remounting
+ * the whole Ant Design provider. This covers ProComponents tables and settings
+ * cards when switching color mode in-place.
+ */
+.saas-management-page {
+  .ant-card,
+  .ant-pro-card,
+  .ant-pro-table,
+  .ant-pro-table-search,
+  .ant-pro-table-list,
+  .ant-table,
+  .ant-table-container,
+  .ant-table-content,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td,
+  .ant-tabs-content-holder {
+    background: var(--saas-surface-bg);
+    color: var(--saas-text-primary);
+  }
+
+  .ant-card,
+  .ant-pro-card,
+  .ant-table-wrapper,
+  .ant-table,
+  .ant-table-container,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    border-color: var(--saas-border-color);
+  }
+
+  .ant-form-item-label > label,
+  .ant-tabs-tab-btn,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    color: var(--saas-text-primary);
+  }
+
+  .ant-form-item-extra,
+  .ant-form-item-explain,
+  .ant-empty-description,
+  .ant-table-placeholder,
+  .ant-typography-secondary {
+    color: var(--saas-text-secondary);
+  }
+
+  .ant-input,
+  .ant-input-number,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-mentions,
+  .ant-upload-wrapper .ant-upload-drag {
+    background: var(--saas-input-bg);
+    border-color: var(--saas-border-color);
+    color: var(--saas-text-primary);
+  }
+
+  .ant-input::placeholder,
+  .ant-select-selection-placeholder,
+  .ant-picker-input > input::placeholder {
+    color: var(--saas-text-placeholder);
+  }
+}
+
 @media (max-width: 767px) {
   .saas-table-wrap .ant-table-body {
     max-height: none;
