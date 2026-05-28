@@ -20,6 +20,14 @@ const sampleTree: PermissionTreeRecord[] = [
     children: [
       {
         nodeType: 'PAGE',
+        pageKey: 'user-center-users',
+        pageName: '用户管理',
+        routePath: '/user-center/users',
+        permissionKey: 'system:user:view',
+        selectable: true,
+      },
+      {
+        nodeType: 'PAGE',
         pageKey: 'system-security',
         pageName: '安全设置',
         routePath: '/settings/security',
@@ -28,10 +36,10 @@ const sampleTree: PermissionTreeRecord[] = [
       },
       {
         nodeType: 'PAGE',
-        pageKey: 'legacy-configs',
-        pageName: '参数配置-历史',
-        routePath: '/system/configs',
-        permissionKey: 'system:config:view',
+        pageKey: 'legacy-users',
+        pageName: '用户管理-重复',
+        routePath: '/user-center/users',
+        permissionKey: 'system:user:view',
         selectable: true,
       },
       {
@@ -72,10 +80,10 @@ assert.equal(root?.nodeType, 'CATALOG', 'root should remain a catalog node');
 assert.equal(root?.children?.length, 2, 'alias nodes should flatten into valid children and invalid routes should be removed');
 
 const childNames = root?.children?.map((item) => item.pageName) || [];
-assert.ok(childNames.includes('安全设置'), 'valid page should remain');
+assert.ok(childNames.includes('用户管理'), 'valid assignable page should remain');
 assert.ok(childNames.includes('在线用户'), 'alias child should be promoted');
 
-const matchedPage = root?.children?.find((item) => item.pageName === '安全设置');
+const matchedPage = root?.children?.find((item) => item.pageName === '用户管理');
 assert.equal(matchedPage?.nodeType, 'PAGE');
 assert.equal(matchedPage?.selectable, true);
 assert.equal(matchedPage?.routeMatched, true);
@@ -88,8 +96,9 @@ assert.equal(selectablePages.length, 2, 'only valid PAGE nodes should be selecta
 const treeData = buildPermissionTreeData(normalized);
 assert.equal(treeData[0]?.disableCheckbox, false, 'catalog nodes with children should not be forced disabled');
 assert.deepEqual(collectExpandableKeys(normalized), ['system'], 'catalog root should still be expandable');
-assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:config:view')?.length, 1, 'duplicate route path should be deduplicated');
+assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:user:view')?.length, 1, 'duplicate route path should be deduplicated');
 assert.equal(collectActionPermissionPageMap(normalized).size, 0, 'no action permissions are present in the smoke tree');
+assert.ok(realPageRoutePaths.has('/user-center/users'), 'user management route should be registered');
 assert.ok(realPageRoutePaths.has('/settings/security'), 'system security route should be registered');
 assert.equal(realPageRouteMetaMap.get('/settings/security')?.name, 'nav.system.security', 'system security route should be named correctly');
 assert.ok(!realPageRoutePaths.has('/system/management'), 'legacy management route should not be registered');
