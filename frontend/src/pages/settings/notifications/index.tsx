@@ -1,6 +1,9 @@
-import { Button, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, Select, Space, Switch, Tag, Typography, message } from 'antd';
+import { DeleteOutlined, DownOutlined, PlusOutlined, CheckOutlined } from '@ant-design/icons';
+import { Button, Checkbox, DatePicker, Descriptions, Dropdown, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, Tag, Typography, message, theme } from 'antd';
+import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { buildTableRequest } from '@/features/table/proTable';
@@ -51,6 +54,7 @@ interface ChannelRecord {
 }
 
 const smtpFormInitialValues: SmtpSettings = {
+  enabled: true,
   host: '',
   port: 25,
   username: '',
@@ -122,13 +126,16 @@ const buildRangeSearch = () => ({
 });
 
 const NotificationsPage = () => {
+  const { token } = theme.useToken();
   const archiveActionRef = useRef<ActionType | undefined>(undefined);
   const logActionRef = useRef<ActionType | undefined>(undefined);
-  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
+  const { actionPermission, responsive, searchConfig } = usePagePermissionActions();
   const [detailRecord, setDetailRecord] = useState<MessageNoticeRecord | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [channelDrawerOpen, setChannelDrawerOpen] = useState(false);
   const [channelRecord, setChannelRecord] = useState<ChannelRecord | null>(null);
+  const [selectedChannelKeys, setSelectedChannelKeys] = useState<Key[]>([]);
+  const [togglingChannelKey, setTogglingChannelKey] = useState<MessageChannel | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings | null>(null);
@@ -157,7 +164,6 @@ const NotificationsPage = () => {
   const [wechatOfficialSettingsForm] = Form.useForm<WechatOfficialAccountSettings>();
   const [smtpTestForm] = Form.useForm<SmtpTestPayload>();
   const targetScope = Form.useWatch('targetScope', form);
-  const wechatOfficialEnabled = Form.useWatch('enabled', wechatOfficialSettingsForm) ?? false;
   const wechatOfficialAppSecretConfigured = wechatOfficialSettings?.appSecretConfigured ?? false;
   const detailDescriptionsProps = useDetailDescriptionsProps({
     column: responsive.isMobile ? 1 : 2,
@@ -311,7 +317,8 @@ const NotificationsPage = () => {
   }, [publishOpen, requestOptions, targetScope, userSearch]);
 
   const channelRecords = useMemo<ChannelRecord[]>(
-    () => [
+    () => {
+      const records: ChannelRecord[] = [
       {
         key: 'INBOX',
         order: 1,
@@ -342,7 +349,9 @@ const NotificationsPage = () => {
         enabled: Boolean(wechatOfficialSettings?.configured),
         configured: Boolean(wechatOfficialSettings?.configured),
       },
-    ],
+      ];
+      return records.filter((record) => record.key === 'INBOX' || record.configured);
+    },
     [smtpSettings?.configured, wechatOfficialSettings?.configured],
   );
 
@@ -398,7 +407,7 @@ const NotificationsPage = () => {
     }
   };
 
-  const handleOpenChannelDrawer = (record: ChannelRecord) => {
+  const handleOpenChannelDrawer = useCallback((record: ChannelRecord) => {
     setChannelRecord(record);
     setChannelDrawerOpen(true);
     if (record.key === 'EMAIL') {
@@ -407,7 +416,7 @@ const NotificationsPage = () => {
     if (record.key === 'WECHAT_OFFICIAL') {
       void loadWechatOfficialSettings();
     }
-  };
+  }, []);
 
   const handleSaveSmtpSettings = async () => {
     if (!canManageSmtp) {
@@ -418,6 +427,7 @@ const NotificationsPage = () => {
       const values = await smtpSettingsForm.validateFields();
       const payload = {
         ...values,
+        enabled: true,
         password: values.password === SMTP_PASSWORD_MASK ? undefined : values.password,
       };
       const nextSettings = await systemService.updateSmtpSettings(payload, requestOptions);
@@ -447,6 +457,7 @@ const NotificationsPage = () => {
       const values = await wechatOfficialSettingsForm.validateFields();
       const payload = {
         ...values,
+        enabled: true,
         appSecret: values.appSecret === WECHAT_APP_SECRET_MASK ? undefined : values.appSecret,
       };
       const nextSettings = await systemService.updateWechatOfficialAccountSettings(payload, requestOptions);
@@ -466,6 +477,91 @@ const NotificationsPage = () => {
       setSavingWechatOfficialSettings(false);
     }
   };
+
+  const handleDisableChannel = useCallback(async (record: ChannelRecord) => {
+    if (!canManageSmtp) {
+      return;
+    }
+    if (record.key === 'INBOX') {
+      message.warning('站内信是基础通知渠道，不能删除');
+      return;
+    }
+    setTogglingChannelKey(record.key);
+    try {
+      if (record.key === 'EMAIL') {
+        const nextSettings = await systemService.updateSmtpSettings({ enabled: false }, requestOptions);
+        setSmtpSettings(nextSettings);
+        message.success('邮箱通知已停用');
+      }
+      if (record.key === 'WECHAT_OFFICIAL') {
+        const nextSettings = await systemService.updateWechatOfficialAccountSettings({ enabled: false }, requestOptions);
+        setWechatOfficialSettings(nextSettings);
+        message.success('微信通知已停用');
+      }
+      setSelectedChannelKeys((keys) => keys.filter((key) => key !== record.key));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '通知渠道停用失败，请稍后重试');
+    } finally {
+      setTogglingChannelKey(null);
+    }
+  }, [canManageSmtp, requestOptions]);
+
+  const handleDeleteSelectedChannels = useCallback(async () => {
+    if (!selectedChannelKeys.length) {
+      message.info('请先选择要删除的通知渠道');
+      return;
+    }
+    const selectedRecords = channelRecords.filter((record) => selectedChannelKeys.includes(record.key));
+    for (const record of selectedRecords) {
+      await handleDisableChannel(record);
+    }
+  }, [channelRecords, handleDisableChannel, selectedChannelKeys]);
+
+  const handleAddChannel = useCallback((channel: MessageChannel) => {
+    const record = {
+      INBOX: channelRecords.find((item) => item.key === 'INBOX'),
+      EMAIL: {
+        key: 'EMAIL',
+        order: 2,
+        identifier: 'email_notice',
+        type: '邮箱',
+        title: '邮箱通知',
+        description: '通过 SMTP 向已绑定邮箱的用户发送系统通知。',
+        enabled: true,
+        configured: false,
+      },
+      WECHAT_OFFICIAL: {
+        key: 'WECHAT_OFFICIAL',
+        order: 3,
+        identifier: 'wechat_official_notice',
+        type: '微信',
+        title: '微信服务号通知',
+        description: '通过微信公众号/服务号模板消息向已绑定微信 OpenID 的用户发送通知。',
+        enabled: true,
+        configured: false,
+      },
+    }[channel] as ChannelRecord | undefined;
+    if (record) {
+      handleOpenChannelDrawer(record);
+    }
+  }, [channelRecords, handleOpenChannelDrawer]);
+
+  const addChannelItems = useMemo<MenuProps['items']>(
+    () =>
+      [
+        { key: 'EMAIL', label: '邮箱', configured: Boolean(smtpSettings?.configured), channel: 'EMAIL' as const },
+        { key: 'WECHAT_OFFICIAL', label: '微信', configured: Boolean(wechatOfficialSettings?.configured), channel: 'WECHAT_OFFICIAL' as const },
+      ]
+        .filter((item) => !item.configured)
+        .map((item) => ({
+          key: item.key,
+          label: item.label,
+          disabled: !canManageSmtp,
+          onClick: () => handleAddChannel(item.channel),
+        }))
+        .concat(canManualPublish ? [{ key: 'manual-send', label: '手动发布', disabled: false, onClick: openPublishDrawer }] : []),
+    [canManageSmtp, canManualPublish, handleAddChannel, smtpSettings?.configured, wechatOfficialSettings?.configured],
+  );
 
   const handleTestSmtpSettings = async () => {
     setTestingSmtpSettings(true);
@@ -516,16 +612,32 @@ const NotificationsPage = () => {
       { title: '通知类型', dataIndex: 'type', width: 140, search: false, render: (_, record) => renderTag(record.type, CHANNEL_LABELS[record.key]?.color || 'blue') },
       { title: '标题', dataIndex: 'title', width: 160, search: false, render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text> },
       { title: '描述', dataIndex: 'description', width: 220, search: false, ellipsis: true },
-      { title: '启用', dataIndex: 'enabled', width: 110, search: false, render: (_, record) => (record.enabled ? <Tag color="green">启用</Tag> : <Tag>未配置</Tag>) },
+      {
+        title: '启用',
+        dataIndex: 'enabled',
+        width: 120,
+        align: 'center',
+        search: false,
+        render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: token.colorSuccess }} /> : null),
+      },
       {
         title: '操作',
         valueType: 'option',
-        width: 220,
+        width: 240,
         fixed: responsive.isDesktop ? 'right' : undefined,
         render: (_, record) => (
           <TableActionBar
             isMobile={responsive.isMobile}
+            inlineCount={responsive.isMobile ? 0 : 3}
             items={[
+              {
+                key: 'toggle',
+                label: '禁用',
+                danger: true,
+                disabled: !canManageSmtp || record.key === 'INBOX',
+                loading: togglingChannelKey === record.key,
+                onClick: () => void handleDisableChannel(record),
+              },
               {
                 key: 'config',
                 label: '配置',
@@ -542,12 +654,13 @@ const NotificationsPage = () => {
                 hidden: record.key !== 'INBOX',
                 onClick: () => setArchiveOpen(true),
               },
+              { key: 'delete', label: '删除', danger: true, disabled: !canManageSmtp || record.key === 'INBOX', onClick: () => void handleDisableChannel(record) },
             ]}
           />
         ),
       },
     ],
-    [responsive.isDesktop, responsive.isMobile],
+    [canManageSmtp, handleDisableChannel, responsive.isDesktop, responsive.isMobile, token.colorSuccess, togglingChannelKey],
   );
 
   const archiveColumns = useMemo<ProColumns<MessageNoticeRecord>[]>(
@@ -628,17 +741,6 @@ const NotificationsPage = () => {
     [responsive.isMobile],
   );
 
-  const toolbar = useMemo(
-    () =>
-      buildToolbarButtons([
-        { key: 'logs', label: '发送日志', onClick: () => setLogOpen(true) },
-        { key: 'archive', label: '通知归档', onClick: () => setArchiveOpen(true) },
-        { key: 'refresh', label: '刷新', onClick: () => void loadSmtpSettings() },
-        { key: 'manual-send', permission: ['message:message:write', 'system:notification:write'], type: 'primary', label: '手动发布', onClick: openPublishDrawer },
-      ]),
-    [buildToolbarButtons],
-  );
-
   return (
     <ManagementPage title="通知中心">
       <ManagementTable<ChannelRecord>
@@ -648,7 +750,30 @@ const NotificationsPage = () => {
         isMobile={responsive.isMobile}
         pagination={{ pageSize: 50, showSizeChanger: true }}
         search={false}
-        toolBarRender={() => toolbar}
+        tableAlertRender={false}
+        rowSelection={{
+          selectedRowKeys: selectedChannelKeys,
+          onChange: setSelectedChannelKeys,
+        }}
+        toolBarRender={() => [
+          <Popconfirm
+            key="delete"
+            title="删除通知渠道"
+            description="选中的通知渠道会被停用，站内信会保留。"
+            okText="确认"
+            cancelText="取消"
+            onConfirm={() => void handleDeleteSelectedChannels()}
+          >
+            <Button disabled={!canManageSmtp} icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>,
+          <Dropdown key="add" trigger={['click']} menu={{ items: addChannelItems }} placement="bottomRight">
+            <Button type="primary" disabled={!addChannelItems?.length} icon={<PlusOutlined />}>
+              添加 <DownOutlined />
+            </Button>
+          </Dropdown>,
+        ]}
       />
 
       <ManagementDrawer
@@ -727,16 +852,13 @@ const NotificationsPage = () => {
           </Space>
         ) : (
           <Form {...wechatOfficialFormProps} disabled={loadingWechatOfficialSettings || !canManageSmtp}>
-            <Form.Item name="enabled" label="启用微信通知" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-            <Form.Item name="appId" label="AppID" rules={wechatOfficialEnabled ? [{ required: true, message: '请输入微信公众号 AppID' }] : undefined}>
+            <Form.Item name="appId" label="AppID" rules={[{ required: true, message: '请输入微信公众号 AppID' }]}>
               <Input placeholder="微信公众号或服务号 AppID" />
             </Form.Item>
-            <Form.Item name="appSecret" label="AppSecret" rules={wechatOfficialEnabled && !wechatOfficialAppSecretConfigured ? [{ required: true, message: '请输入微信公众号 AppSecret' }] : undefined} extra={wechatOfficialAppSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '用于获取公众号 access_token'}>
+            <Form.Item name="appSecret" label="AppSecret" rules={!wechatOfficialAppSecretConfigured ? [{ required: true, message: '请输入微信公众号 AppSecret' }] : undefined} extra={wechatOfficialAppSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '用于获取公众号 access_token'}>
               <Input.Password placeholder="留空则保持现有密钥" autoComplete="new-password" />
             </Form.Item>
-            <Form.Item name="templateId" label="模板消息 ID" rules={wechatOfficialEnabled ? [{ required: true, message: '请输入模板消息 ID' }] : undefined}>
+            <Form.Item name="templateId" label="模板消息 ID" rules={[{ required: true, message: '请输入模板消息 ID' }]}>
               <Input placeholder="公众号后台配置的模板消息 ID" />
             </Form.Item>
             <Form.Item name="detailUrl" label="通知详情链接" extra="模板消息点击后打开的页面，可留空">

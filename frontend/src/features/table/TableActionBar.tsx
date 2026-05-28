@@ -11,6 +11,7 @@ export interface TableActionItem {
   danger?: boolean;
   disabled?: boolean;
   hidden?: boolean;
+  loading?: boolean;
 }
 
 interface TableActionBarProps {
@@ -40,7 +41,7 @@ export const TableActionBar = ({ items, isMobile = false, inlineCount }: TableAc
   if (isMobile && visibleItems.length === 1) {
     const [item] = visibleItems;
     return (
-      <Button type="link" size="small" danger={item.danger} disabled={item.disabled} onClick={item.onClick}>
+      <Button type="link" size="small" danger={item.danger} disabled={item.disabled} loading={item.loading} onClick={item.onClick}>
         {item.label}
       </Button>
     );
@@ -49,7 +50,7 @@ export const TableActionBar = ({ items, isMobile = false, inlineCount }: TableAc
   return (
     <Space size={4} wrap={false}>
       {inlineItems.map((item) => (
-        <Button key={item.key} type="link" size="small" danger={item.danger} disabled={item.disabled} onClick={item.onClick}>
+        <Button key={item.key} type="link" size="small" danger={item.danger} disabled={item.disabled} loading={item.loading} onClick={item.onClick}>
           {item.label}
         </Button>
       ))}

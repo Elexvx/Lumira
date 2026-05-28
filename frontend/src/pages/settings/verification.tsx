@@ -957,33 +957,23 @@ const SystemVerificationPage = () => {
         render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: token.colorSuccess }} /> : null),
       },
       {
-        title: '',
-        dataIndex: 'toggle',
-        width: 96,
-        align: 'center',
-        search: false,
-        render: (_, record) => (
-          <Button
-            type="link"
-            size="small"
-            danger={record.enabled}
-            disabled={!canManageSettings}
-            loading={togglingAuthenticatorKey === record.key}
-            onClick={() => void handleToggleAuthenticator(record)}
-          >
-            {record.enabled ? '点击禁用' : '点击启用'}
-          </Button>
-        ),
-      },
-      {
         title: '操作',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 160,
+        width: 240,
         render: (_, record) => (
           <TableActionBar
             isMobile={responsive.isMobile}
+            inlineCount={responsive.isMobile ? 0 : 3}
             items={[
+              {
+                key: 'toggle',
+                label: record.enabled ? '禁用' : '启用',
+                danger: record.enabled,
+                disabled: !canManageSettings,
+                loading: togglingAuthenticatorKey === record.key,
+                onClick: () => void handleToggleAuthenticator(record),
+              },
               {
                 key: 'config',
                 label: '配置',
