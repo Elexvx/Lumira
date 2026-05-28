@@ -19,6 +19,7 @@ public class SmtpMailService {
 
     private static final Long PLATFORM_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String PLATFORM_SCOPE = "PLATFORM";
+    private static final String SMTP_ENABLED_KEY = "smtp.enabled";
     private static final String SMTP_HOST_KEY = "smtp.host";
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
@@ -36,6 +37,7 @@ public class SmtpMailService {
 
     public boolean isConfigured(Long tenantId) {
         Map<String, String> values = loadValues(tenantId);
+        boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_ENABLED_KEY), "true"));
         String host = defaultIfBlank(values.get(SMTP_HOST_KEY), "");
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), "");
         String portValue = defaultIfBlank(values.get(SMTP_PORT_KEY), "0");
@@ -47,7 +49,7 @@ public class SmtpMailService {
         }
         boolean authEnabled = Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_AUTH_ENABLED_KEY), "true"));
         boolean usernameRequired = authEnabled && !StringUtils.hasText(defaultIfBlank(values.get(SMTP_USERNAME_KEY), ""));
-        return StringUtils.hasText(host) && port > 0 && StringUtils.hasText(from) && !usernameRequired;
+        return enabled && StringUtils.hasText(host) && port > 0 && StringUtils.hasText(from) && !usernameRequired;
     }
 
     public void sendVerificationCode(Long tenantId, String toEmail, String verificationCode, String subjectPrefix) {
@@ -69,6 +71,7 @@ public class SmtpMailService {
     private Map<String, String> loadValues(Long tenantId) {
         Long effectiveTenantId = tenantId == null ? PLATFORM_TENANT_ID : tenantId;
         List<String> keys = List.of(
+                SMTP_ENABLED_KEY,
                 SMTP_HOST_KEY,
                 SMTP_PORT_KEY,
                 SMTP_USERNAME_KEY,

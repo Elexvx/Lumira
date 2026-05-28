@@ -64,6 +64,7 @@ public class SystemPlatformSettingsAppService {
     );
 
     private static final String SMTP_HOST_KEY = "smtp.host";
+    private static final String SMTP_ENABLED_KEY = "smtp.enabled";
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
     private static final String SMTP_PASSWORD_KEY = "smtp.password";
@@ -72,6 +73,7 @@ public class SystemPlatformSettingsAppService {
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
     private static final List<String> SMTP_CONFIG_KEYS = List.of(
+            SMTP_ENABLED_KEY,
             SMTP_HOST_KEY,
             SMTP_PORT_KEY,
             SMTP_USERNAME_KEY,
@@ -274,6 +276,7 @@ public class SystemPlatformSettingsAppService {
         Long operatorId = currentUser.getUserId();
         Map<String, String> currentValues = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
         SystemVO.SmtpSettingsVO current = loadSmtpSettings(tenantId);
+        boolean enabled = request.getEnabled() == null ? !Boolean.FALSE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
         String host = sanitizeText(request.getHost(), current.getHost());
         Integer port = request.getPort() == null ? current.getPort() : request.getPort();
         String username = sanitizeText(request.getUsername(), current.getUsername());
@@ -284,6 +287,7 @@ public class SystemPlatformSettingsAppService {
         boolean startTlsEnabled = request.getStartTlsEnabled() == null ? Boolean.TRUE.equals(current.getStartTlsEnabled()) : request.getStartTlsEnabled();
         boolean sslEnabled = request.getSslEnabled() == null ? Boolean.TRUE.equals(current.getSslEnabled()) : request.getSslEnabled();
 
+        upsertPlatformConfig(tenantId, SMTP_ENABLED_KEY, "SMTP 邮箱通知启用", String.valueOf(enabled), "是否启用邮箱通知渠道", operatorId);
         upsertPlatformConfig(tenantId, SMTP_HOST_KEY, "SMTP 主机", host, "邮件服务器地址", operatorId);
         upsertPlatformConfig(tenantId, SMTP_PORT_KEY, "SMTP 端口", String.valueOf(port == null ? 25 : port), "邮件服务器端口", operatorId);
         upsertPlatformConfig(tenantId, SMTP_USERNAME_KEY, "SMTP 用户名", username, "SMTP 登录用户名", operatorId);
@@ -406,6 +410,7 @@ public class SystemPlatformSettingsAppService {
     private SystemVO.SmtpSettingsVO loadSmtpSettings(Long tenantId) {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
         SystemVO.SmtpSettingsVO settings = new SystemVO.SmtpSettingsVO();
+        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_ENABLED_KEY), "true")));
         settings.setHost(defaultIfBlank(valueByKey.get(SMTP_HOST_KEY), ""));
         settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
         settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
@@ -416,7 +421,8 @@ public class SystemPlatformSettingsAppService {
         settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));
         settings.setSslEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_SSL_ENABLED_KEY), "false")));
         settings.setConfigured(
-                StringUtils.hasText(settings.getHost())
+                Boolean.TRUE.equals(settings.getEnabled())
+                        && StringUtils.hasText(settings.getHost())
                         && settings.getPort() != null
                         && settings.getPort() > 0
                         && StringUtils.hasText(settings.getFrom())

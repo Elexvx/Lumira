@@ -927,6 +927,7 @@ export interface SecondFactorVerification {
 }
 
 export interface SmtpSettings {
+  enabled?: boolean;
   host: string;
   port: number;
   username: string;
@@ -940,6 +941,7 @@ export interface SmtpSettings {
 }
 
 export interface SmtpSettingsPayload {
+  enabled?: boolean;
   host?: string;
   port?: number;
   username?: string;

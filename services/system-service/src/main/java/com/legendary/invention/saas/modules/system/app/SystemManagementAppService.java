@@ -95,6 +95,7 @@ public class SystemManagementAppService {
     );
 
     private static final String SMTP_HOST_KEY = "smtp.host";
+    private static final String SMTP_ENABLED_KEY = "smtp.enabled";
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
     private static final String SMTP_PASSWORD_KEY = "smtp.password";
@@ -103,6 +104,7 @@ public class SystemManagementAppService {
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
     private static final List<String> SMTP_CONFIG_KEYS = List.of(
+            SMTP_ENABLED_KEY,
             SMTP_HOST_KEY,
             SMTP_PORT_KEY,
             SMTP_USERNAME_KEY,
@@ -1666,6 +1668,7 @@ public class SystemManagementAppService {
     private SystemVO.SmtpSettingsVO loadSmtpSettings(Long tenantId) {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
         SystemVO.SmtpSettingsVO settings = new SystemVO.SmtpSettingsVO();
+        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_ENABLED_KEY), "true")));
         settings.setHost(defaultIfBlank(valueByKey.get(SMTP_HOST_KEY), ""));
         settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
         settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
@@ -1676,7 +1679,8 @@ public class SystemManagementAppService {
         settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));
         settings.setSslEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_SSL_ENABLED_KEY), "false")));
         settings.setConfigured(
-                StringUtils.hasText(settings.getHost())
+                Boolean.TRUE.equals(settings.getEnabled())
+                        && StringUtils.hasText(settings.getHost())
                         && settings.getPort() != null
                         && settings.getPort() > 0
                         && StringUtils.hasText(settings.getFrom())

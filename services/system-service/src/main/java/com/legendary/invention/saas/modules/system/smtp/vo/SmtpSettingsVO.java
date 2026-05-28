@@ -2,6 +2,7 @@ package com.legendary.invention.saas.modules.system.smtp.vo;
 
 public class SmtpSettingsVO {
 
+    private Boolean enabled;
     private String host;
     private Integer port;
     private String username;
@@ -13,6 +14,8 @@ public class SmtpSettingsVO {
     private Boolean configured;
     private Boolean passwordConfigured;
 
+    public Boolean getEnabled() { return enabled; }
+    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
     public String getHost() { return host; }
     public void setHost(String host) { this.host = host; }
     public Integer getPort() { return port; }

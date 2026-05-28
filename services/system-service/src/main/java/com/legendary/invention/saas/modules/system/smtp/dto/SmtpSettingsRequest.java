@@ -2,6 +2,7 @@ package com.legendary.invention.saas.modules.system.smtp.dto;
 
 public class SmtpSettingsRequest {
 
+    private Boolean enabled;
     private String host;
     private Integer port;
     private String username;
@@ -11,6 +12,8 @@ public class SmtpSettingsRequest {
     private Boolean startTlsEnabled;
     private Boolean sslEnabled;
 
+    public Boolean getEnabled() { return enabled; }
+    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
     public String getHost() { return host; }
     public void setHost(String host) { this.host = host; }
     public Integer getPort() { return port; }
