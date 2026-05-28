@@ -82,6 +82,19 @@ public class SystemPlatformSettingsAppService {
             SMTP_SSL_ENABLED_KEY
     );
 
+    private static final String WECHAT_OFFICIAL_ENABLED_KEY = "notification.wechat-official.enabled";
+    private static final String WECHAT_OFFICIAL_APP_ID_KEY = "notification.wechat-official.app-id";
+    private static final String WECHAT_OFFICIAL_APP_SECRET_KEY = "notification.wechat-official.app-secret";
+    private static final String WECHAT_OFFICIAL_TEMPLATE_ID_KEY = "notification.wechat-official.template-id";
+    private static final String WECHAT_OFFICIAL_DETAIL_URL_KEY = "notification.wechat-official.detail-url";
+    private static final List<String> WECHAT_OFFICIAL_CONFIG_KEYS = List.of(
+            WECHAT_OFFICIAL_ENABLED_KEY,
+            WECHAT_OFFICIAL_APP_ID_KEY,
+            WECHAT_OFFICIAL_APP_SECRET_KEY,
+            WECHAT_OFFICIAL_TEMPLATE_ID_KEY,
+            WECHAT_OFFICIAL_DETAIL_URL_KEY
+    );
+
     private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
     private static final String WATERMARK_MODE_KEY = "watermark.mode";
     private static final String WATERMARK_TEXT_LINES_KEY = "watermark.text-lines";
@@ -251,6 +264,10 @@ public class SystemPlatformSettingsAppService {
         return loadSmtpSettings(currentTenantId(currentUser));
     }
 
+    public SystemVO.WechatOfficialAccountSettingsVO getWechatOfficialAccountSettings(CurrentUser currentUser) {
+        return loadWechatOfficialAccountSettings(currentTenantId(currentUser));
+    }
+
     @Transactional
     public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
         Long tenantId = currentTenantId(currentUser);
@@ -277,6 +294,28 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "是否启用 SSL", operatorId);
         operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
         return loadSmtpSettings(tenantId);
+    }
+
+    @Transactional
+    public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        Map<String, String> currentValues = loadConfigValuesByKeys(tenantId, WECHAT_OFFICIAL_CONFIG_KEYS);
+        SystemVO.WechatOfficialAccountSettingsVO current = loadWechatOfficialAccountSettings(tenantId);
+        boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
+        String appId = sanitizeText(request.getAppId(), current.getAppId());
+        String existingSecret = defaultIfBlank(currentValues.get(WECHAT_OFFICIAL_APP_SECRET_KEY), "");
+        String appSecret = StringUtils.hasText(request.getAppSecret()) ? request.getAppSecret().trim() : existingSecret;
+        String templateId = sanitizeText(request.getTemplateId(), current.getTemplateId());
+        String detailUrl = sanitizeText(request.getDetailUrl(), current.getDetailUrl());
+
+        upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_ENABLED_KEY, "微信公众号通知启用", String.valueOf(enabled), "是否启用微信公众号/服务号模板消息通知", operatorId);
+        upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_APP_ID_KEY, "微信公众号 AppID", appId, "微信公众号或服务号 AppID", operatorId);
+        upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_APP_SECRET_KEY, "微信公众号 AppSecret", appSecret, "微信公众号或服务号 AppSecret", operatorId);
+        upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_TEMPLATE_ID_KEY, "微信公众号模板 ID", templateId, "用于系统通知的公众号模板消息 ID", operatorId);
+        upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_DETAIL_URL_KEY, "微信公众号通知详情链接", detailUrl, "模板消息点击后打开的系统链接，可留空", operatorId);
+        operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "更新微信公众号通知配置");
+        return loadWechatOfficialAccountSettings(tenantId);
     }
 
     @Transactional
@@ -381,6 +420,24 @@ public class SystemPlatformSettingsAppService {
                         && settings.getPort() != null
                         && settings.getPort() > 0
                         && StringUtils.hasText(settings.getFrom())
+        );
+        return settings;
+    }
+
+    private SystemVO.WechatOfficialAccountSettingsVO loadWechatOfficialAccountSettings(Long tenantId) {
+        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, WECHAT_OFFICIAL_CONFIG_KEYS);
+        SystemVO.WechatOfficialAccountSettingsVO settings = new SystemVO.WechatOfficialAccountSettingsVO();
+        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_ENABLED_KEY), "false")));
+        settings.setAppId(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_APP_ID_KEY), ""));
+        settings.setAppSecret("");
+        settings.setAppSecretConfigured(StringUtils.hasText(valueByKey.get(WECHAT_OFFICIAL_APP_SECRET_KEY)));
+        settings.setTemplateId(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_TEMPLATE_ID_KEY), ""));
+        settings.setDetailUrl(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_DETAIL_URL_KEY), ""));
+        settings.setConfigured(
+                Boolean.TRUE.equals(settings.getEnabled())
+                        && StringUtils.hasText(settings.getAppId())
+                        && Boolean.TRUE.equals(settings.getAppSecretConfigured())
+                        && StringUtils.hasText(settings.getTemplateId())
         );
         return settings;
     }

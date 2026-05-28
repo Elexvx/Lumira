@@ -1252,9 +1252,18 @@ public class SystemManagementAppService {
         return systemPlatformSettingsAppService.getSmtpSettings(currentUser);
     }
 
+    public SystemVO.WechatOfficialAccountSettingsVO getWechatOfficialAccountSettings(CurrentUser currentUser) {
+        return systemPlatformSettingsAppService.getWechatOfficialAccountSettings(currentUser);
+    }
+
     @Transactional
     public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
         return systemPlatformSettingsAppService.updateSmtpSettings(currentUser, request);
+    }
+
+    @Transactional
+    public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
+        return systemPlatformSettingsAppService.updateWechatOfficialAccountSettings(currentUser, request);
     }
 
     @Transactional

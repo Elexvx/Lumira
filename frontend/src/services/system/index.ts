@@ -21,6 +21,8 @@ import type {
   SmtpTestResult,
   TenantRecord,
   WatermarkSettings,
+  WechatOfficialAccountSettings,
+  WechatOfficialAccountSettingsPayload,
   WechatLoginSettings,
   WechatLoginSettingsPayload,
   PasskeySettings,
@@ -245,6 +247,17 @@ export const systemService = {
     }),
   updateSmtpSettings: (payload: SmtpSettingsPayload, options: RequestOptions = {}) =>
     request<SmtpSettings>('/v1/system/smtp-settings', {
+      method: 'PUT',
+      data: payload,
+      ...options,
+    }),
+  wechatOfficialAccountSettings: (options: RequestOptions = {}) =>
+    request<WechatOfficialAccountSettings>('/v1/system/notification/wechat-official-settings', {
+      method: 'GET',
+      ...options,
+    }),
+  updateWechatOfficialAccountSettings: (payload: WechatOfficialAccountSettingsPayload, options: RequestOptions = {}) =>
+    request<WechatOfficialAccountSettings>('/v1/system/notification/wechat-official-settings', {
       method: 'PUT',
       data: payload,
       ...options,

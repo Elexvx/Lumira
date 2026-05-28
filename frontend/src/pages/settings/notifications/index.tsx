@@ -11,7 +11,7 @@ import { iamService } from '@/services/iam';
 import { messageService } from '@/services/message';
 import { systemService } from '@/services/system';
 import { userService } from '@/services/user';
-import type { MessageChannel, MessageDeliveryLogRecord, MessageNoticeRecord, RoleRecord, SmtpSettings, SmtpTestPayload, UserRecord } from '@/types/api';
+import type { MessageChannel, MessageDeliveryLogRecord, MessageNoticeRecord, RoleRecord, SmtpSettings, SmtpTestPayload, UserRecord, WechatOfficialAccountSettings } from '@/types/api';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { confirmAction } from '@/utils/confirm';
 import { notifyMessageCenterRefresh } from '@/components/message-center/messageCenterEvents';
@@ -25,6 +25,7 @@ const TARGET_SCOPE_LABELS: Record<string, string> = {
 const CHANNEL_LABELS: Record<string, { color: string; text: string }> = {
   INBOX: { color: 'blue', text: '站内信' },
   EMAIL: { color: 'purple', text: '邮箱' },
+  WECHAT_OFFICIAL: { color: 'green', text: '微信' },
 };
 
 const PUBLISH_STATUS_LABELS: Record<string, { color: string; text: string }> = {
@@ -67,6 +68,7 @@ const smtpTestInitialValues: SmtpTestPayload = {
 };
 
 const SMTP_PASSWORD_MASK = '********';
+const WECHAT_APP_SECRET_MASK = '********';
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -130,8 +132,11 @@ const NotificationsPage = () => {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings | null>(null);
+  const [wechatOfficialSettings, setWechatOfficialSettings] = useState<WechatOfficialAccountSettings | null>(null);
   const [loadingSmtpSettings, setLoadingSmtpSettings] = useState(false);
   const [savingSmtpSettings, setSavingSmtpSettings] = useState(false);
+  const [loadingWechatOfficialSettings, setLoadingWechatOfficialSettings] = useState(false);
+  const [savingWechatOfficialSettings, setSavingWechatOfficialSettings] = useState(false);
   const [testingSmtpSettings, setTestingSmtpSettings] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -149,8 +154,11 @@ const NotificationsPage = () => {
     targetRoleId?: number;
   }>();
   const [smtpSettingsForm] = Form.useForm<SmtpSettings>();
+  const [wechatOfficialSettingsForm] = Form.useForm<WechatOfficialAccountSettings>();
   const [smtpTestForm] = Form.useForm<SmtpTestPayload>();
   const targetScope = Form.useWatch('targetScope', form);
+  const wechatOfficialEnabled = Form.useWatch('enabled', wechatOfficialSettingsForm) ?? false;
+  const wechatOfficialAppSecretConfigured = wechatOfficialSettings?.appSecretConfigured ?? false;
   const detailDescriptionsProps = useDetailDescriptionsProps({
     column: responsive.isMobile ? 1 : 2,
   });
@@ -168,6 +176,16 @@ const NotificationsPage = () => {
   const smtpFormProps = useStandardFormProps({
     form: smtpSettingsForm,
     initialValues: smtpFormInitialValues,
+  });
+  const wechatOfficialFormProps = useStandardFormProps({
+    form: wechatOfficialSettingsForm,
+    initialValues: {
+      enabled: false,
+      appId: '',
+      appSecret: '',
+      templateId: '',
+      detailUrl: '',
+    },
   });
   const smtpTestFormProps = useStandardFormProps({
     form: smtpTestForm,
@@ -209,8 +227,28 @@ const NotificationsPage = () => {
     }
   };
 
+  const loadWechatOfficialSettings = async () => {
+    setLoadingWechatOfficialSettings(true);
+    try {
+      const nextSettings = await systemService.wechatOfficialAccountSettings(requestOptions);
+      setWechatOfficialSettings(nextSettings);
+      wechatOfficialSettingsForm.setFieldsValue({
+        enabled: nextSettings.enabled ?? false,
+        appId: nextSettings.appId || '',
+        appSecret: nextSettings.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
+        templateId: nextSettings.templateId || '',
+        detailUrl: nextSettings.detailUrl || '',
+      });
+    } catch {
+      setWechatOfficialSettings(null);
+    } finally {
+      setLoadingWechatOfficialSettings(false);
+    }
+  };
+
   useEffect(() => {
     void loadSmtpSettings();
+    void loadWechatOfficialSettings();
   }, []);
 
   useEffect(() => {
@@ -294,8 +332,18 @@ const NotificationsPage = () => {
         enabled: Boolean(smtpSettings?.configured),
         configured: Boolean(smtpSettings?.configured),
       },
+      {
+        key: 'WECHAT_OFFICIAL',
+        order: 3,
+        identifier: 'wechat_official_notice',
+        type: '微信',
+        title: '微信服务号通知',
+        description: '通过微信公众号/服务号模板消息向已绑定微信 OpenID 的用户发送通知。',
+        enabled: Boolean(wechatOfficialSettings?.configured),
+        configured: Boolean(wechatOfficialSettings?.configured),
+      },
     ],
-    [smtpSettings?.configured],
+    [smtpSettings?.configured, wechatOfficialSettings?.configured],
   );
 
   const closePublishDrawer = () => {
@@ -356,6 +404,9 @@ const NotificationsPage = () => {
     if (record.key === 'EMAIL') {
       void loadSmtpSettings();
     }
+    if (record.key === 'WECHAT_OFFICIAL') {
+      void loadWechatOfficialSettings();
+    }
   };
 
   const handleSaveSmtpSettings = async () => {
@@ -384,6 +435,35 @@ const NotificationsPage = () => {
       message.error(error instanceof Error ? error.message : '邮箱通知配置保存失败，请稍后重试');
     } finally {
       setSavingSmtpSettings(false);
+    }
+  };
+
+  const handleSaveWechatOfficialSettings = async () => {
+    if (!canManageSmtp) {
+      return;
+    }
+    setSavingWechatOfficialSettings(true);
+    try {
+      const values = await wechatOfficialSettingsForm.validateFields();
+      const payload = {
+        ...values,
+        appSecret: values.appSecret === WECHAT_APP_SECRET_MASK ? undefined : values.appSecret,
+      };
+      const nextSettings = await systemService.updateWechatOfficialAccountSettings(payload, requestOptions);
+      setWechatOfficialSettings(nextSettings);
+      wechatOfficialSettingsForm.setFieldsValue({
+        ...nextSettings,
+        appSecret: nextSettings.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
+      });
+      message.success(nextSettings.configured ? '微信通知配置已保存' : '微信通知配置已保存，当前仍未完全启用');
+      setChannelDrawerOpen(false);
+    } catch (error) {
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        return;
+      }
+      message.error(error instanceof Error ? error.message : '微信通知配置保存失败，请稍后重试');
+    } finally {
+      setSavingWechatOfficialSettings(false);
     }
   };
 
@@ -433,7 +513,7 @@ const NotificationsPage = () => {
     () => [
       { title: '序号', dataIndex: 'order', width: 80, search: false },
       { title: '通知标识', dataIndex: 'identifier', width: 180, copyable: true, search: false },
-      { title: '通知类型', dataIndex: 'type', width: 140, search: false, render: (_, record) => renderTag(record.type, record.key === 'EMAIL' ? 'purple' : 'blue') },
+      { title: '通知类型', dataIndex: 'type', width: 140, search: false, render: (_, record) => renderTag(record.type, CHANNEL_LABELS[record.key]?.color || 'blue') },
       { title: '标题', dataIndex: 'title', width: 160, search: false, render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text> },
       { title: '描述', dataIndex: 'description', width: 220, search: false, ellipsis: true },
       { title: '启用', dataIndex: 'enabled', width: 110, search: false, render: (_, record) => (record.enabled ? <Tag color="green">启用</Tag> : <Tag>未配置</Tag>) },
@@ -520,8 +600,8 @@ const NotificationsPage = () => {
         title: '渠道',
         dataIndex: 'channel',
         width: 110,
-        valueEnum: { INBOX: { text: '站内信' }, EMAIL: { text: '邮箱' } },
-        renderFormItem: () => <Select allowClear options={[{ label: '站内信', value: 'INBOX' }, { label: '邮箱', value: 'EMAIL' }]} placeholder="全部" />,
+        valueEnum: { INBOX: { text: '站内信' }, EMAIL: { text: '邮箱' }, WECHAT_OFFICIAL: { text: '微信' } },
+        renderFormItem: () => <Select allowClear options={[{ label: '站内信', value: 'INBOX' }, { label: '邮箱', value: 'EMAIL' }, { label: '微信', value: 'WECHAT_OFFICIAL' }]} placeholder="全部" />,
         render: (_, record) => renderEnumTag(record.channel, CHANNEL_LABELS),
       },
       {
@@ -540,7 +620,7 @@ const NotificationsPage = () => {
         render: (_, record) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
       },
       { title: '收件人', dataIndex: 'targetUserName', width: 160, search: false, responsive: ['lg', 'xl', 'xxl'], render: (_, record) => record.targetUserName || (record.targetUserId ? String(record.targetUserId) : '-') },
-      { title: '邮箱', dataIndex: 'targetEmail', width: 220, ellipsis: true, search: false, responsive: ['lg', 'xl', 'xxl'], render: (_, record) => record.targetEmail || '-' },
+      { title: '接收标识', dataIndex: 'targetEmail', width: 220, ellipsis: true, search: false, responsive: ['lg', 'xl', 'xxl'], render: (_, record) => record.targetEmail || '-' },
       { title: '错误信息', dataIndex: 'errorMessage', ellipsis: true, search: false, responsive: ['xl', 'xxl'], render: (_, record) => record.errorMessage || '-' },
       { title: '发送时间', dataIndex: 'createdAt', width: 180, search: false, sorter: true, render: (_, record) => formatDateTime(record.sentAt || record.createdAt) },
       { title: '发送时间范围', dataIndex: 'publishedAtRange', hideInTable: true, renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />, search: buildRangeSearch() },
@@ -584,6 +664,11 @@ const NotificationsPage = () => {
                 { key: 'cancel', label: '取消', onClick: () => setChannelDrawerOpen(false) },
                 { key: 'save', label: '保存', type: 'primary', loading: savingSmtpSettings, disabled: !canManageSmtp, onClick: () => void handleSaveSmtpSettings() },
               ]
+            : channelRecord?.key === 'WECHAT_OFFICIAL'
+              ? [
+                  { key: 'cancel', label: '取消', onClick: () => setChannelDrawerOpen(false) },
+                  { key: 'save', label: '保存', type: 'primary', loading: savingWechatOfficialSettings, disabled: !canManageSmtp, onClick: () => void handleSaveWechatOfficialSettings() },
+                ]
             : undefined
         }
       >
@@ -594,7 +679,7 @@ const NotificationsPage = () => {
             <Descriptions.Item label="能力">消息中心、实时推送、已读状态、撤回</Descriptions.Item>
             <Descriptions.Item label="说明">站内信是系统默认通知渠道，无需额外配置。</Descriptions.Item>
           </Descriptions>
-        ) : (
+        ) : channelRecord?.key === 'EMAIL' ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Form {...smtpFormProps} disabled={loadingSmtpSettings || !canManageSmtp}>
               <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
@@ -640,6 +725,24 @@ const NotificationsPage = () => {
               </Button>
             </Form>
           </Space>
+        ) : (
+          <Form {...wechatOfficialFormProps} disabled={loadingWechatOfficialSettings || !canManageSmtp}>
+            <Form.Item name="enabled" label="启用微信通知" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Form.Item name="appId" label="AppID" rules={wechatOfficialEnabled ? [{ required: true, message: '请输入微信公众号 AppID' }] : undefined}>
+              <Input placeholder="微信公众号或服务号 AppID" />
+            </Form.Item>
+            <Form.Item name="appSecret" label="AppSecret" rules={wechatOfficialEnabled && !wechatOfficialAppSecretConfigured ? [{ required: true, message: '请输入微信公众号 AppSecret' }] : undefined} extra={wechatOfficialAppSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '用于获取公众号 access_token'}>
+              <Input.Password placeholder="留空则保持现有密钥" autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item name="templateId" label="模板消息 ID" rules={wechatOfficialEnabled ? [{ required: true, message: '请输入模板消息 ID' }] : undefined}>
+              <Input placeholder="公众号后台配置的模板消息 ID" />
+            </Form.Item>
+            <Form.Item name="detailUrl" label="通知详情链接" extra="模板消息点击后打开的页面，可留空">
+              <Input placeholder="例如：https://test.elexvx.com/messages" />
+            </Form.Item>
+          </Form>
         )}
       </ManagementDrawer>
 
@@ -752,6 +855,7 @@ const NotificationsPage = () => {
               options={[
                 { label: '站内信', value: 'INBOX' },
                 { label: '邮箱', value: 'EMAIL' },
+                { label: '微信', value: 'WECHAT_OFFICIAL' },
               ]}
             />
           </Form.Item>

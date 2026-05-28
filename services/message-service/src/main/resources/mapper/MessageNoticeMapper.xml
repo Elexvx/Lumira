@@ -217,12 +217,15 @@
     </insert>
 
     <select id="listUserRecipient" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
-        select u.id as userId, u.username, u.email
+        select u.id as userId, u.username, u.email, wb.openid as wechatOpenid
         from sys_user u
         join sys_user_tenant ut
           on ut.user_id = u.id
          and ut.tenant_id = #{tenantId}
          and ut.deleted = 0
+        left join sys_user_wechat_binding wb
+          on wb.user_id = u.id
+         and wb.deleted = 0
         where u.id = #{userId}
           and u.deleted = 0
           and u.status = 'ENABLED'
@@ -230,25 +233,31 @@
     </select>
 
     <select id="listRoleRecipients" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
-        select distinct u.id as userId, u.username, u.email
+        select distinct u.id as userId, u.username, u.email, wb.openid as wechatOpenid
         from sys_user u
         join sys_user_role ur
           on ur.user_id = u.id
          and ur.tenant_id = #{tenantId}
          and ur.role_id = #{roleId}
          and ur.deleted = 0
+        left join sys_user_wechat_binding wb
+          on wb.user_id = u.id
+         and wb.deleted = 0
         where u.deleted = 0
           and u.status = 'ENABLED'
         order by u.id asc
     </select>
 
     <select id="listTenantRecipients" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
-        select distinct u.id as userId, u.username, u.email
+        select distinct u.id as userId, u.username, u.email, wb.openid as wechatOpenid
         from sys_user u
         join sys_user_tenant ut
           on ut.user_id = u.id
          and ut.tenant_id = #{tenantId}
          and ut.deleted = 0
+        left join sys_user_wechat_binding wb
+          on wb.user_id = u.id
+         and wb.deleted = 0
         where u.deleted = 0
           and u.status = 'ENABLED'
         order by u.id asc

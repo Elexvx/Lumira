@@ -26,8 +26,8 @@ const TAB_KEYS = ['totp', 'sms', 'email', 'wechat', 'passkey'] as const;
 
 type VerificationTabKey = (typeof TAB_KEYS)[number];
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
-type LoginModeCode = 'passkey' | 'sms' | 'email' | 'password';
-type AuthenticatorCode = 'passkey_login' | 'sms_login' | 'email_login' | 'password_login';
+type LoginModeCode = 'passkey' | 'sms' | 'email' | 'wechat' | 'password';
+type AuthenticatorCode = 'passkey_login' | 'sms_login' | 'email_login' | 'wechat_login' | 'password_login';
 type ConfigDrawerMode = VerificationTabKey | 'basic';
 
 interface SmsProviderFieldConfig {
@@ -138,7 +138,7 @@ const verificationFormInitialValues: VerificationSettings = {
   enabled: true,
   emailLoginEnabled: false,
   passwordLoginEnabled: true,
-  loginModeOrder: ['passkey', 'sms', 'email', 'password'],
+  loginModeOrder: ['passkey', 'sms', 'email', 'wechat', 'password'],
 };
 
 const resolveLoginModeFromAuthenticatorKey = (key: AuthenticatorCode): LoginModeCode => {
@@ -150,6 +150,9 @@ const resolveLoginModeFromAuthenticatorKey = (key: AuthenticatorCode): LoginMode
   }
   if (key === 'email_login') {
     return 'email';
+  }
+  if (key === 'wechat_login') {
+    return 'wechat';
   }
   return 'password';
 };
@@ -640,6 +643,7 @@ const SystemVerificationPage = () => {
       passkeySettingsQuery.data?.enabled ? 'passkey_login' : null,
       smsSettingsQuery.data?.enabled ? 'sms_login' : null,
       verificationSettingsQuery.data?.emailLoginEnabled ? 'email_login' : null,
+      wechatSettingsQuery.data?.enabled ? 'wechat_login' : null,
       (verificationSettingsQuery.data?.passwordLoginEnabled ?? true) ? 'password_login' : null,
     ].filter(Boolean) as AuthenticatorCode[];
     if (enabledKeys.length <= 1 && enabledKeys.includes(key)) {
@@ -660,11 +664,16 @@ const SystemVerificationPage = () => {
       await handleSavePasskeySettings({ forceEnabled: false, closeDrawer: false });
       return;
     }
+    if (key === 'wechat_login') {
+      wechatSettingsForm.setFieldValue('enabled', false);
+      await handleSaveWechatSettings();
+      return;
+    }
     if (key === 'password_login') {
       verificationForm.setFieldValue('passwordLoginEnabled', false);
       await handleSaveVerificationSettings();
     }
-  }, [disableSmsAuthenticator, handleSavePasskeySettings, handleSaveVerificationSettings, passkeySettingsForm, passkeySettingsQuery.data?.enabled, smsSettingsQuery.data?.enabled, verificationForm, verificationSettingsQuery.data?.emailLoginEnabled, verificationSettingsQuery.data?.passwordLoginEnabled]);
+  }, [disableSmsAuthenticator, handleSavePasskeySettings, handleSaveVerificationSettings, handleSaveWechatSettings, passkeySettingsForm, passkeySettingsQuery.data?.enabled, smsSettingsQuery.data?.enabled, verificationForm, verificationSettingsQuery.data?.emailLoginEnabled, verificationSettingsQuery.data?.passwordLoginEnabled, wechatSettingsForm, wechatSettingsQuery.data?.enabled]);
 
   const handleDeleteSelectedAuthenticators = useCallback(async () => {
     if (!selectedAuthenticatorKeys.length) {
@@ -676,6 +685,7 @@ const SystemVerificationPage = () => {
       passkeySettingsQuery.data?.enabled ? 'passkey_login' : null,
       smsSettingsQuery.data?.enabled ? 'sms_login' : null,
       verificationSettingsQuery.data?.emailLoginEnabled ? 'email_login' : null,
+      wechatSettingsQuery.data?.enabled ? 'wechat_login' : null,
       (verificationSettingsQuery.data?.passwordLoginEnabled ?? true) ? 'password_login' : null,
     ].filter(Boolean) as AuthenticatorCode[];
     if (enabledKeys.length > 0 && enabledKeys.every((key) => selectedKeys.has(key))) {
@@ -693,11 +703,15 @@ const SystemVerificationPage = () => {
       passkeySettingsForm.setFieldValue('enabled', false);
       await handleSavePasskeySettings({ forceEnabled: false, closeDrawer: false });
     }
+    if (selectedAuthenticatorKeys.includes('wechat_login')) {
+      wechatSettingsForm.setFieldValue('enabled', false);
+      await handleSaveWechatSettings();
+    }
     if (selectedAuthenticatorKeys.includes('password_login')) {
       verificationForm.setFieldValue('passwordLoginEnabled', false);
       await handleSaveVerificationSettings();
     }
-  }, [disableSmsAuthenticator, handleSavePasskeySettings, handleSaveVerificationSettings, passkeySettingsForm, passkeySettingsQuery.data?.enabled, selectedAuthenticatorKeys, smsSettingsQuery.data?.enabled, verificationForm, verificationSettingsQuery.data?.emailLoginEnabled, verificationSettingsQuery.data?.passwordLoginEnabled]);
+  }, [disableSmsAuthenticator, handleSavePasskeySettings, handleSaveVerificationSettings, handleSaveWechatSettings, passkeySettingsForm, passkeySettingsQuery.data?.enabled, selectedAuthenticatorKeys, smsSettingsQuery.data?.enabled, verificationForm, verificationSettingsQuery.data?.emailLoginEnabled, verificationSettingsQuery.data?.passwordLoginEnabled, wechatSettingsForm, wechatSettingsQuery.data?.enabled]);
 
   const handleEnableAuthenticator = useCallback((mode: LoginModeCode) => {
     if (!canManageSettings) {
@@ -718,9 +732,14 @@ const SystemVerificationPage = () => {
       openConfigDrawer('passkey');
       return;
     }
+    if (mode === 'wechat') {
+      wechatSettingsForm.setFieldValue('enabled', true);
+      openConfigDrawer('wechat');
+      return;
+    }
     verificationForm.setFieldValue('passwordLoginEnabled', true);
     openConfigDrawer('basic');
-  }, [canManageSettings, openConfigDrawer, passkeySettingsForm, smsSettingsForm, verificationForm]);
+  }, [canManageSettings, openConfigDrawer, passkeySettingsForm, smsSettingsForm, verificationForm, wechatSettingsForm]);
 
   const handleToggleAuthenticator = useCallback(async (record: AuthenticatorRecord) => {
     if (!canManageSettings) {
@@ -749,15 +768,15 @@ const SystemVerificationPage = () => {
   const passkeyConfigEnabled = configDrawerMode === 'passkey';
   const smsAccessKeySecretConfigured = smsSettingsQuery.data?.accessKeySecretConfigured ?? false;
   const wechatAppSecretConfigured = wechatSettingsQuery.data?.appSecretConfigured ?? false;
-  const configuredLoginModeOrder = verificationSettingsQuery.data?.loginModeOrder || verificationForm.getFieldValue('loginModeOrder') || ['passkey', 'sms', 'email', 'password'];
+  const configuredLoginModeOrder = verificationSettingsQuery.data?.loginModeOrder || verificationForm.getFieldValue('loginModeOrder') || ['passkey', 'sms', 'email', 'wechat', 'password'];
   const normalizeLoginModeOrder = useCallback((order?: string[]) => {
     const result: LoginModeCode[] = [];
     (order || []).forEach((item) => {
-      if ((item === 'passkey' || item === 'sms' || item === 'email' || item === 'password') && !result.includes(item)) {
+      if ((item === 'passkey' || item === 'sms' || item === 'email' || item === 'wechat' || item === 'password') && !result.includes(item)) {
         result.push(item);
       }
     });
-    (['passkey', 'sms', 'email', 'password'] as LoginModeCode[]).forEach((item) => {
+    (['passkey', 'sms', 'email', 'wechat', 'password'] as LoginModeCode[]).forEach((item) => {
       if (!result.includes(item)) {
         result.push(item);
       }
@@ -792,6 +811,14 @@ const SystemVerificationPage = () => {
           description: '使用邮箱验证码登录',
           enabled: persistedEmailLoginEnabled,
         },
+        wechat: {
+          key: 'wechat_login',
+          identifier: '微信',
+          type: '微信',
+          title: '微信扫码登录',
+          description: '使用微信扫码登录，未注册用户可自动创建账号',
+          enabled: Boolean(wechatSettingsQuery.data?.enabled),
+        },
         password: {
           key: 'password_login',
           identifier: '密码',
@@ -808,7 +835,7 @@ const SystemVerificationPage = () => {
           order: index + 1,
         }));
     },
-    [configuredLoginModeOrder, normalizeLoginModeOrder, passkeySettingsQuery.data?.enabled, persistedEmailLoginEnabled, persistedPasswordLoginEnabled, smsSettingsQuery.data?.enabled],
+    [configuredLoginModeOrder, normalizeLoginModeOrder, passkeySettingsQuery.data?.enabled, persistedEmailLoginEnabled, persistedPasswordLoginEnabled, smsSettingsQuery.data?.enabled, wechatSettingsQuery.data?.enabled],
   );
 
   const addAuthenticatorItems = useMemo<MenuProps['items']>(
@@ -817,6 +844,7 @@ const SystemVerificationPage = () => {
         { key: 'passkey', label: '通行密钥', enabled: Boolean(passkeySettingsQuery.data?.enabled), mode: 'passkey' as const },
         { key: 'sms', label: '短信', enabled: Boolean(smsSettingsQuery.data?.enabled), mode: 'sms' as const },
         { key: 'email', label: '邮箱', enabled: persistedEmailLoginEnabled, mode: 'email' as const },
+        { key: 'wechat', label: '微信', enabled: Boolean(wechatSettingsQuery.data?.enabled), mode: 'wechat' as const },
         { key: 'password', label: '密码', enabled: Boolean(persistedPasswordLoginEnabled), mode: 'password' as const },
       ]
         .filter((item) => !item.enabled)
@@ -825,7 +853,7 @@ const SystemVerificationPage = () => {
           label: item.label,
           onClick: () => void handleEnableAuthenticator(item.mode),
         })),
-    [handleEnableAuthenticator, passkeySettingsQuery.data?.enabled, persistedEmailLoginEnabled, persistedPasswordLoginEnabled, smsSettingsQuery.data?.enabled],
+    [handleEnableAuthenticator, passkeySettingsQuery.data?.enabled, persistedEmailLoginEnabled, persistedPasswordLoginEnabled, smsSettingsQuery.data?.enabled, wechatSettingsQuery.data?.enabled],
   );
 
   const persistLoginModeOrder = useCallback(async (nextRows: AuthenticatorRecord[]) => {

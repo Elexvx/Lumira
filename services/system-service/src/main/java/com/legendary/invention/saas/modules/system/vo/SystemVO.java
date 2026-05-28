@@ -253,6 +253,9 @@ public final class SystemVO {
     public static class SmtpSettingsVO extends com.legendary.invention.saas.modules.system.smtp.vo.SmtpSettingsVO {
     }
 
+    public static class WechatOfficialAccountSettingsVO extends com.legendary.invention.saas.modules.system.notification.vo.WechatOfficialAccountSettingsVO {
+    }
+
     public static class SmsVerificationSettingsVO extends com.legendary.invention.saas.modules.system.verification.vo.SmsVerificationSettingsVO {
     }
 

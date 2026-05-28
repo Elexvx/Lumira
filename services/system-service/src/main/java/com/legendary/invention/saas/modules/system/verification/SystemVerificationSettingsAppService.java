@@ -24,7 +24,7 @@ public class SystemVerificationSettingsAppService {
     private static final String PASSWORD_LOGIN_ENABLED_KEY = "verification.password-login.enabled";
     private static final String EMAIL_LOGIN_ENABLED_KEY = "verification.email-login.enabled";
     private static final String LOGIN_MODE_ORDER_KEY = "verification.login-mode.order";
-    private static final List<String> DEFAULT_LOGIN_MODE_ORDER = List.of("passkey", "sms", "email", "password");
+    private static final List<String> DEFAULT_LOGIN_MODE_ORDER = List.of("passkey", "sms", "email", "wechat", "password");
     private static final String SMS_CONFIG_ENABLED_KEY = "verification.sms.enabled";
     private static final String SMS_CONFIG_PROVIDER_KEY = "verification.sms.provider";
     private static final String SMS_CONFIG_SIGN_NAME_KEY = "verification.sms.sign-name";
@@ -376,7 +376,7 @@ public class SystemVerificationSettingsAppService {
                 continue;
             }
             String mode = value.trim();
-            if (("passkey".equals(mode) || "sms".equals(mode) || "email".equals(mode) || "password".equals(mode)) && !normalized.contains(mode)) {
+            if (("passkey".equals(mode) || "sms".equals(mode) || "email".equals(mode) || "wechat".equals(mode) || "password".equals(mode)) && !normalized.contains(mode)) {
                 normalized.add(mode);
             }
         }
