@@ -12,6 +12,12 @@ public final class PlatformUpdateVO {
         private CurrentVersionVO current;
         private LatestVersionVO latest;
         private Boolean updateAvailable;
+        private String status;
+        private Boolean currentKnown;
+        private Boolean latestKnown;
+        private String comparisonBasis;
+        private String actionRequired;
+        private String sourceType;
         private String sourceUrl;
         private LocalDateTime checkedAt;
         private String errorMessage;
@@ -23,6 +29,18 @@ public final class PlatformUpdateVO {
         public void setLatest(LatestVersionVO latest) { this.latest = latest; }
         public Boolean getUpdateAvailable() { return updateAvailable; }
         public void setUpdateAvailable(Boolean updateAvailable) { this.updateAvailable = updateAvailable; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public Boolean getCurrentKnown() { return currentKnown; }
+        public void setCurrentKnown(Boolean currentKnown) { this.currentKnown = currentKnown; }
+        public Boolean getLatestKnown() { return latestKnown; }
+        public void setLatestKnown(Boolean latestKnown) { this.latestKnown = latestKnown; }
+        public String getComparisonBasis() { return comparisonBasis; }
+        public void setComparisonBasis(String comparisonBasis) { this.comparisonBasis = comparisonBasis; }
+        public String getActionRequired() { return actionRequired; }
+        public void setActionRequired(String actionRequired) { this.actionRequired = actionRequired; }
+        public String getSourceType() { return sourceType; }
+        public void setSourceType(String sourceType) { this.sourceType = sourceType; }
         public String getSourceUrl() { return sourceUrl; }
         public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
         public LocalDateTime getCheckedAt() { return checkedAt; }
