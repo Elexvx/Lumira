@@ -27,7 +27,6 @@ public final class SystemRouteCatalog {
             "/system/monitoring",
             "/system/monitoring/service",
             "/system/monitoring/redis",
-            "/system/monitoring/update",
             "/system/monitoring/api-docs",
             "/system/monitoring/audit",
             "/system/files",
@@ -52,7 +51,6 @@ public final class SystemRouteCatalog {
             "/settings/monitoring",
             "/settings/monitoring/service",
             "/settings/monitoring/redis",
-            "/settings/monitoring/update",
             "/settings/monitoring/api-docs",
             "/settings/monitoring/audit",
             "/settings/api-docs",
@@ -179,7 +177,6 @@ public final class SystemRouteCatalog {
                 menu(-1010L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
                 menu(-1011L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
                 monitoringRoot(),
-                menu(-1015L, -1000L, "settings.monitoring.update", "平台更新", "MENU", "/settings/monitoring/update", "redirect:/settings/monitoring?tab=update", "CloudSyncOutlined", 10, "system:update:view"),
                 menu(-1013L, -1000L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 11, "system:monitor:docs:view"),
                 menu(-1014L, -1000L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 12, "audit:view")
         )));

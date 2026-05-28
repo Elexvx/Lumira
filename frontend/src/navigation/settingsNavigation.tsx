@@ -108,12 +108,6 @@ const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSourceItem>
     access: 'canVisitSystemMonitoring',
   },
   {
-    path: '/settings/monitoring/update',
-    name: 'nav.system.monitoring.update',
-    icon: 'CloudSyncOutlined',
-    access: 'canVisitPlatformUpdate',
-  },
-  {
     path: '/settings/api-docs',
     name: 'nav.system.monitoring.apiDocs',
     icon: 'FileTextOutlined',
