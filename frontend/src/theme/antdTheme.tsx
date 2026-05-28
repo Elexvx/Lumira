@@ -11,37 +11,27 @@ interface BuildAntdThemeConfigOptions {
   resolvedColorMode?: 'light' | 'dark';
 }
 
-const buildCssVarThemeKey = (themePreference: ThemePreference, resolvedColorMode: 'light' | 'dark') =>
-  `saas-${themePreference}-${resolvedColorMode}`;
-
 export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): AntdThemeConfig => {
   const runtimeSnapshot = getThemeRuntimeSnapshot();
   const themePreference = options?.themePreference ?? runtimeSnapshot.themePreference;
   const resolvedColorMode = options?.resolvedColorMode ?? runtimeSnapshot.resolvedColorMode;
-  const cssVarKey = buildCssVarThemeKey(themePreference, resolvedColorMode);
 
   if (themePreference === 'compact') {
     return {
-      cssVar: {
-        key: cssVarKey,
-      },
+      cssVar: {},
       algorithm: [antdTheme.compactAlgorithm],
     };
   }
 
   if (resolvedColorMode !== 'dark') {
     return {
-      cssVar: {
-        key: cssVarKey,
-      },
+      cssVar: {},
       algorithm: [antdTheme.defaultAlgorithm],
     };
   }
 
   return {
-    cssVar: {
-      key: cssVarKey,
-    },
+    cssVar: {},
     algorithm: [antdTheme.darkAlgorithm],
     token: {
       colorBgBase: '#0f1115',
