@@ -197,12 +197,13 @@ const RoleManagementPage = () => {
 
     try {
       const detail = await iamService.roleDetail(record.id, { autoRedirectOnUnauthorized: false });
+      const permissionKeys = permissionEditor.sanitizePermissionKeys(detail.permissionKeys || []);
       editorForm.setFieldsValue({
         ...detail,
-        permissionKeys: detail.permissionKeys || [],
+        permissionKeys,
         dataScopes: detail.dataScopes?.length ? detail.dataScopes : DEFAULT_DATA_SCOPES,
       });
-      permissionEditor.syncActivePageByPermissionKeys(detail.permissionKeys || []);
+      permissionEditor.syncActivePageByPermissionKeys(permissionKeys);
     } catch {
       message.error('加载角色信息失败，请稍后重试');
       roleCrud.drawer.close();
@@ -226,8 +227,9 @@ const RoleManagementPage = () => {
     setSaving(true);
     try {
       const values = await editorForm.validateFields();
+      const permissionKeys = permissionEditor.sanitizePermissionKeys(values.permissionKeys || []);
       if (roleCrud.drawer.editingId && roleEditorMode === 'permissions') {
-        await iamService.updateRolePermissions(roleCrud.drawer.editingId, values.permissionKeys || [], { autoRedirectOnUnauthorized: false });
+        await iamService.updateRolePermissions(roleCrud.drawer.editingId, permissionKeys, { autoRedirectOnUnauthorized: false });
         message.success('角色权限已更新');
         closeEditorDrawer();
         roleCrud.reloadTable();
@@ -236,7 +238,7 @@ const RoleManagementPage = () => {
       const payload = {
         ...values,
         roleCode: typeof values.roleCode === 'string' ? values.roleCode.trim() : values.roleCode,
-        permissionKeys: values.permissionKeys || [],
+        permissionKeys,
         dataScopes: values.dataScopes?.length ? values.dataScopes : DEFAULT_DATA_SCOPES,
       };
       if (roleCrud.drawer.editingId) {

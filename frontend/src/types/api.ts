@@ -251,26 +251,6 @@ export interface MenuNode {
   children?: MenuNode[];
 }
 
-export type AiSkillPermissionMode = 'visit' | 'allow' | 'deny';
-
-export interface AiSkillRecord {
-  id: number;
-  skillCode: string;
-  skillName: string;
-  category?: string | null;
-  description?: string | null;
-  riskLevel?: string | null;
-  readOnly?: boolean | null;
-  needConfirm?: boolean | null;
-  enabled?: boolean | null;
-  createTime?: string | null;
-  updateTime?: string | null;
-}
-
-export interface AiEmployeeSkillRecord extends AiSkillRecord {
-  permissionMode: AiSkillPermissionMode;
-}
-
 export interface AiEmployeeRecord {
   id: number;
   tenantId?: number | null;
@@ -291,7 +271,19 @@ export interface AiEmployeeRecord {
 
 export interface AiEmployeeDetailRecord extends AiEmployeeRecord {
   defaultSystemPromptTemplate?: string | null;
-  skills?: AiEmployeeSkillRecord[];
+}
+
+export type AiEmployeeCapabilityMode = 'visit' | 'allow' | 'deny';
+
+export interface AiEmployeeCapabilityRecord {
+  capabilityCode: string;
+  capabilityName: string;
+  category?: string | null;
+  description?: string | null;
+  riskLevel?: string | null;
+  readOnly?: boolean | null;
+  needConfirm?: boolean | null;
+  permissionMode: AiEmployeeCapabilityMode;
 }
 
 export interface AiGovernanceOverviewRecord {
@@ -463,10 +455,6 @@ export interface AiEmployeeUpsertPayload {
   systemPrompt?: string | null;
   defaultLlmServiceId?: number | null;
   sortOrder?: number | null;
-  skills?: Array<{
-    skillCode: string;
-    permissionMode: AiSkillPermissionMode;
-  }>;
 }
 
 export interface AiLlmServiceUpsertPayload {

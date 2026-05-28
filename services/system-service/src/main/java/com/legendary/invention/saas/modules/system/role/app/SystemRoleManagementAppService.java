@@ -35,6 +35,33 @@ public class SystemRoleManagementAppService {
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
+            "ai:employee:",
+            "ai:llm:",
+            "ai:tool:",
+            "audit:",
+            "localization:",
+            "plugin:management:",
+            "system:config:",
+            "system:dict:",
+            "system:file:manage",
+            "system:menu:",
+            "system:monitor:",
+            "system:notification:",
+            "system:profile-field:",
+            "system:profile_field:",
+            "system:security:",
+            "system:tenant:",
+            "system:update:",
+            "system:verification:"
+    );
+    private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_KEYS = Set.of(
+            "plugin:management:view",
+            "audit:view",
+            "localization:view",
+            "system:file:manage",
+            "system:monitor:view"
+    );
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -297,7 +324,7 @@ public class SystemRoleManagementAppService {
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
         }
-        for (String permissionKey : new LinkedHashSet<>(permissionKeys)) {
+        for (String permissionKey : filterRoleAssignablePermissionKeys(permissionKeys)) {
             jdbcTemplate.update(
                     """
                             insert into sys_role_permission (tenant_id, role_id, permission_key, created_by, updated_by, deleted)
@@ -323,7 +350,36 @@ public class SystemRoleManagementAppService {
                 String.class,
                 roleId,
                 tenantId
-        );
+        ).stream().filter(this::isRoleAssignablePermissionKey).toList();
+    }
+
+    private LinkedHashSet<String> filterRoleAssignablePermissionKeys(List<String> permissionKeys) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        if (CollectionUtils.isEmpty(permissionKeys)) {
+            return result;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (isRoleAssignablePermissionKey(permissionKey)) {
+                result.add(permissionKey);
+            }
+        }
+        return result;
+    }
+
+    private boolean isRoleAssignablePermissionKey(String permissionKey) {
+        if (!StringUtils.hasText(permissionKey)) {
+            return false;
+        }
+        String normalizedKey = permissionKey.trim();
+        if (ADMIN_ONLY_ROLE_PERMISSION_KEYS.contains(normalizedKey)) {
+            return false;
+        }
+        for (String prefix : ADMIN_ONLY_ROLE_PERMISSION_PREFIXES) {
+            if (normalizedKey.startsWith(prefix)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private List<RoleDataScopeVO> listRoleDataScopes(Long roleId, Long tenantId) {

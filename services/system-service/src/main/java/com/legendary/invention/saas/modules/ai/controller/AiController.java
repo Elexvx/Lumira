@@ -171,12 +171,6 @@ public class AiController {
         return ApiResponse.success(aiManagementAppService.testLlmService(currentUser(), request), TraceContext.getRequestId());
     }
 
-    @GetMapping("/skills")
-    public ApiResponse<List<AiVO.SkillVO>> skills() {
-        require("ai:view");
-        return ApiResponse.success(aiManagementAppService.listSkills(currentUser()), TraceContext.getRequestId());
-    }
-
     @GetMapping("/tools")
     public ApiResponse<List<AiVO.ToolVO>> tools() {
         require("ai:tool:view");
@@ -322,17 +316,17 @@ public class AiController {
         return ApiResponse.success(aiKnowledgeBaseAppService.retrieve(currentUser(), request.getQuery(), request.getKnowledgeBaseIds(), limit), TraceContext.getRequestId());
     }
 
-    @GetMapping("/employees/{id}/skills")
-    public ApiResponse<List<AiVO.EmployeeSkillVO>> employeeSkills(@PathVariable("id") Long id) {
+    @GetMapping("/employees/{id}/capabilities")
+    public ApiResponse<List<AiVO.EmployeeCapabilityVO>> employeeCapabilities(@PathVariable("id") Long id) {
         require("ai:view");
-        return ApiResponse.success(aiManagementAppService.getEmployeeSkills(currentUser(), id), TraceContext.getRequestId());
+        return ApiResponse.success(aiManagementAppService.getEmployeeCapabilities(currentUser(), id), TraceContext.getRequestId());
     }
 
-    @PutMapping("/employees/{id}/skills")
+    @PutMapping("/employees/{id}/capabilities")
     @RepeatSubmit
-    public ApiResponse<Boolean> updateEmployeeSkills(@PathVariable("id") Long id, @Valid @RequestBody AiDTO.EmployeeSkillsUpdateRequest request) {
+    public ApiResponse<Boolean> updateEmployeeCapabilities(@PathVariable("id") Long id, @Valid @RequestBody AiDTO.EmployeeCapabilitiesUpdateRequest request) {
         require("ai:employee:skills");
-        return ApiResponse.success(aiManagementAppService.updateEmployeeSkills(currentUser(), id, request), TraceContext.getRequestId());
+        return ApiResponse.success(aiManagementAppService.updateEmployeeCapabilities(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/employees/{id}/knowledge-bases")

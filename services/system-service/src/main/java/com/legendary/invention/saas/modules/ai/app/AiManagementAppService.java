@@ -13,7 +13,6 @@ import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPrope
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.sql.PreparedStatement;
@@ -150,7 +149,6 @@ public class AiManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, id);
         employee.setDefaultSystemPromptTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE);
-        employee.setSkills(listEmployeeSkills(tenantId, id));
         return employee;
     }
 
@@ -182,9 +180,6 @@ public class AiManagementAppService {
                 now
         );
         Long employeeId = queryEmployeeId(tenantId, request.getUsername().trim());
-        if (request.getSkills() != null) {
-            replaceEmployeeSkills(tenantId, employeeId, request.getSkills());
-        }
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-create", "CREATE", "SUCCESS", "创建数字员工: " + request.getUsername());
         return getEmployee(currentUser, employeeId);
     }
@@ -215,9 +210,6 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
-        if (request.getSkills() != null) {
-            replaceEmployeeSkills(tenantId, id, request.getSkills());
-        }
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-update", "UPDATE", "SUCCESS", "更新数字员工: " + request.getUsername());
         return getEmployee(currentUser, id);
     }
@@ -274,6 +266,21 @@ public class AiManagementAppService {
         AiVO.PromptTemplateVO template = new AiVO.PromptTemplateVO();
         template.setDefaultSystemPromptTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE);
         return template;
+    }
+
+    public List<AiVO.EmployeeCapabilityVO> getEmployeeCapabilities(CurrentUser currentUser, Long employeeId) {
+        Long tenantId = currentTenantId(currentUser);
+        requireEmployee(tenantId, employeeId);
+        return listEmployeeCapabilities(tenantId, employeeId);
+    }
+
+    @Transactional
+    public boolean updateEmployeeCapabilities(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeCapabilitiesUpdateRequest request) {
+        Long tenantId = currentTenantId(currentUser);
+        requireEmployee(tenantId, employeeId);
+        replaceEmployeeCapabilities(tenantId, employeeId, request == null ? List.of() : request.getCapabilities());
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
+        return true;
     }
 
     public PageResponse<AiVO.LlmServiceVO> listLlmServices(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -458,28 +465,6 @@ public class AiManagementAppService {
             result.setLatencyMs(latencyMs);
             return result;
         }
-    }
-
-    public List<AiVO.SkillVO> listSkills(CurrentUser currentUser) {
-        currentTenantId(currentUser);
-        return jdbcTemplate.query(
-                """
-                        select id, skill_code as skillCode, skill_name as skillName, category, description, risk_level as riskLevel,
-                               read_only as readOnly, need_confirm as needConfirm, enabled,
-                               create_time as createTime, update_time as updateTime
-                        from ai_skill
-                        where is_deleted = 0
-                          and enabled = 1
-                        order by category asc, skill_code asc
-                        """,
-                new BeanPropertyRowMapper<>(AiVO.SkillVO.class)
-        );
-    }
-
-    public List<AiVO.EmployeeSkillVO> getEmployeeSkills(CurrentUser currentUser, Long employeeId) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, employeeId);
-        return listEmployeeSkills(tenantId, employeeId);
     }
 
     public AiVO.EmployeeVO getAssistantEmployee(CurrentUser currentUser) {
@@ -739,15 +724,6 @@ public class AiManagementAppService {
         return export;
     }
 
-    @Transactional
-    public boolean updateEmployeeSkills(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeSkillsUpdateRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, employeeId);
-        replaceEmployeeSkills(tenantId, employeeId, request.getSkills());
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-skills", "UPDATE", "SUCCESS", "更新数字员工技能: " + employeeId);
-        return true;
-    }
-
     public AiVO.ChatResponseVO chat(CurrentUser currentUser, AiDTO.ChatRequest request) {
         return aiEmployeeRuntimeService.chat(currentUser, request);
     }
@@ -760,7 +736,29 @@ public class AiManagementAppService {
         return employeeTemplate(null);
     }
 
-    private void replaceEmployeeSkills(Long tenantId, Long employeeId, List<AiDTO.EmployeeSkillItem> items) {
+    private List<AiVO.EmployeeCapabilityVO> listEmployeeCapabilities(Long tenantId, Long employeeId) {
+        return jdbcTemplate.query(
+                """
+                        select k.skill_code as capabilityCode, k.skill_name as capabilityName, k.category, k.description,
+                               k.risk_level as riskLevel, k.read_only as readOnly, k.need_confirm as needConfirm,
+                               coalesce(r.permission_mode, case when k.read_only = 1 then 'visit' else 'deny' end) as permissionMode
+                        from ai_skill k
+                        left join ai_employee_skill r
+                          on r.skill_code = k.skill_code
+                         and r.tenant_id = ?
+                         and r.employee_id = ?
+                         and r.is_deleted = 0
+                        where k.is_deleted = 0
+                          and k.enabled = 1
+                        order by k.category asc, k.skill_code asc
+                        """,
+                new BeanPropertyRowMapper<>(AiVO.EmployeeCapabilityVO.class),
+                tenantId,
+                employeeId
+        );
+    }
+
+    private void replaceEmployeeCapabilities(Long tenantId, Long employeeId, List<AiDTO.EmployeeCapabilityItem> items) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
@@ -772,17 +770,18 @@ public class AiManagementAppService {
                 tenantId,
                 employeeId
         );
-        if (CollectionUtils.isEmpty(items)) {
+        if (items == null || items.isEmpty()) {
             return;
         }
-        Map<String, AiEntitiesHelper.SkillRecord> skillMap = loadSkillRecords(items.stream().map(AiDTO.EmployeeSkillItem::getSkillCode).toList());
-        for (AiDTO.EmployeeSkillItem item : items) {
-            if (item == null || !StringUtils.hasText(item.getSkillCode())) {
+        Map<String, Boolean> capabilityReadOnlyMap = loadCapabilityReadOnlyMap(items.stream().map(AiDTO.EmployeeCapabilityItem::getCapabilityCode).toList());
+        for (AiDTO.EmployeeCapabilityItem item : items) {
+            if (item == null || !StringUtils.hasText(item.getCapabilityCode())) {
                 continue;
             }
-            AiEntitiesHelper.SkillRecord skill = skillMap.get(item.getSkillCode().trim());
-            if (skill == null) {
-                throw new BizException(ErrorCode.NOT_FOUND, "技能不存在: " + item.getSkillCode());
+            String capabilityCode = item.getCapabilityCode().trim();
+            Boolean readOnly = capabilityReadOnlyMap.get(capabilityCode);
+            if (readOnly == null) {
+                throw new BizException(ErrorCode.NOT_FOUND, "能力不存在: " + capabilityCode);
             }
             jdbcTemplate.update(
                     """
@@ -796,65 +795,64 @@ public class AiManagementAppService {
                             """,
                     tenantId,
                     employeeId,
-                    skill.getSkillCode(),
-                    normalizePermissionMode(item.getPermissionMode(), skill.getReadOnly()),
+                    capabilityCode,
+                    normalizeCapabilityMode(item.getPermissionMode(), readOnly),
                     now,
                     now
             );
         }
     }
 
-    private List<AiVO.EmployeeSkillVO> listEmployeeSkills(Long tenantId, Long employeeId) {
-        return jdbcTemplate.query(
-                """
-                        select k.id, k.skill_code as skillCode, k.skill_name as skillName, k.category, k.description,
-                               k.risk_level as riskLevel, k.read_only as readOnly, k.need_confirm as needConfirm,
-                               k.enabled,
-                               coalesce(r.permission_mode, case when k.read_only = 1 then 'visit' else 'deny' end) as permissionMode
-                        from ai_skill k
-                        left join ai_employee_skill r
-                          on r.skill_code = k.skill_code
-                         and r.tenant_id = ?
-                         and r.employee_id = ?
-                         and r.is_deleted = 0
-                        where k.is_deleted = 0
-                          and k.enabled = 1
-                        order by k.category asc, k.skill_code asc
-                        """,
-                new BeanPropertyRowMapper<>(AiVO.EmployeeSkillVO.class),
-                tenantId,
-                employeeId
-        );
-    }
-
-    private Map<String, AiEntitiesHelper.SkillRecord> loadSkillRecords(List<String> skillCodes) {
-        if (CollectionUtils.isEmpty(skillCodes)) {
-            return Map.of();
-        }
-        List<String> normalizedCodes = skillCodes.stream()
-                .filter(StringUtils::hasText)
-                .map(String::trim)
-                .distinct()
-                .toList();
+    private Map<String, Boolean> loadCapabilityReadOnlyMap(List<String> capabilityCodes) {
+        List<String> normalizedCodes = capabilityCodes == null
+                ? List.of()
+                : capabilityCodes.stream().filter(StringUtils::hasText).map(String::trim).distinct().toList();
         if (normalizedCodes.isEmpty()) {
             return Map.of();
         }
         String placeholders = String.join(",", normalizedCodes.stream().map(code -> "?").toList());
-        List<AiEntitiesHelper.SkillRecord> records = jdbcTemplate.query(
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 """
                         select skill_code as skillCode, read_only as readOnly
                         from ai_skill
                         where is_deleted = 0
+                          and enabled = 1
                           and skill_code in (%s)
                         """.formatted(placeholders),
-                new BeanPropertyRowMapper<>(AiEntitiesHelper.SkillRecord.class),
                 normalizedCodes.toArray()
         );
-        Map<String, AiEntitiesHelper.SkillRecord> result = new HashMap<>();
-        for (AiEntitiesHelper.SkillRecord record : records) {
-            result.put(record.getSkillCode(), record);
+        Map<String, Boolean> result = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            Object code = row.get("skillCode");
+            if (code != null) {
+                result.put(String.valueOf(code), toBoolean(row.get("readOnly")));
+            }
         }
         return result;
+    }
+
+    private String normalizeCapabilityMode(String permissionMode, Boolean readOnly) {
+        String normalized = StringUtils.hasText(permissionMode) ? permissionMode.trim().toLowerCase(Locale.ROOT) : "deny";
+        if ("deny".equals(normalized)) {
+            return normalized;
+        }
+        if (Boolean.TRUE.equals(readOnly) && "visit".equals(normalized)) {
+            return normalized;
+        }
+        if (!Boolean.TRUE.equals(readOnly) && "allow".equals(normalized)) {
+            return normalized;
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, Boolean.TRUE.equals(readOnly) ? "只读能力仅支持访问或禁用" : "操作能力仅支持允许或禁用");
+    }
+
+    private boolean toBoolean(Object value) {
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        return value != null && "true".equalsIgnoreCase(String.valueOf(value));
     }
 
     private AiVO.EmployeeDetailVO queryEmployeeDetail(Long tenantId, Long id) {
@@ -1308,40 +1306,8 @@ public class AiManagementAppService {
         return value.substring(0, maxLength);
     }
 
-    private String normalizePermissionMode(String permissionMode, Boolean readOnly) {
-        String normalized = StringUtils.hasText(permissionMode) ? permissionMode.trim().toLowerCase(Locale.ROOT) : null;
-        if (!StringUtils.hasText(normalized)) {
-            return Boolean.TRUE.equals(readOnly) ? "visit" : "allow";
-        }
-        if (!List.of("visit", "allow", "deny").contains(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "技能权限模式仅支持 visit / allow / deny");
-        }
-        return normalized;
-    }
-
     private static final class AiEntitiesHelper {
         private AiEntitiesHelper() {
-        }
-
-        public static class SkillRecord {
-            private String skillCode;
-            private Boolean readOnly;
-
-            public String getSkillCode() {
-                return skillCode;
-            }
-
-            public void setSkillCode(String skillCode) {
-                this.skillCode = skillCode;
-            }
-
-            public Boolean getReadOnly() {
-                return readOnly;
-            }
-
-            public void setReadOnly(Boolean readOnly) {
-                this.readOnly = readOnly;
-            }
         }
 
         public static class LlmServiceRecord {

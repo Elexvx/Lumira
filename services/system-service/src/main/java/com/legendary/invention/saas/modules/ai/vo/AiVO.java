@@ -150,7 +150,6 @@ public final class AiVO {
 
     public static class EmployeeDetailVO extends EmployeeVO {
         private String defaultSystemPromptTemplate;
-        private List<EmployeeSkillVO> skills;
 
         public String getDefaultSystemPromptTemplate() {
             return defaultSystemPromptTemplate;
@@ -159,13 +158,80 @@ public final class AiVO {
         public void setDefaultSystemPromptTemplate(String defaultSystemPromptTemplate) {
             this.defaultSystemPromptTemplate = defaultSystemPromptTemplate;
         }
+    }
 
-        public List<EmployeeSkillVO> getSkills() {
-            return skills;
+    public static class EmployeeCapabilityVO {
+        private String capabilityCode;
+        private String capabilityName;
+        private String category;
+        private String description;
+        private String riskLevel;
+        private Boolean readOnly;
+        private Boolean needConfirm;
+        private String permissionMode;
+
+        public String getCapabilityCode() {
+            return capabilityCode;
         }
 
-        public void setSkills(List<EmployeeSkillVO> skills) {
-            this.skills = skills;
+        public void setCapabilityCode(String capabilityCode) {
+            this.capabilityCode = capabilityCode;
+        }
+
+        public String getCapabilityName() {
+            return capabilityName;
+        }
+
+        public void setCapabilityName(String capabilityName) {
+            this.capabilityName = capabilityName;
+        }
+
+        public String getCategory() {
+            return category;
+        }
+
+        public void setCategory(String category) {
+            this.category = category;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getRiskLevel() {
+            return riskLevel;
+        }
+
+        public void setRiskLevel(String riskLevel) {
+            this.riskLevel = riskLevel;
+        }
+
+        public Boolean getReadOnly() {
+            return readOnly;
+        }
+
+        public void setReadOnly(Boolean readOnly) {
+            this.readOnly = readOnly;
+        }
+
+        public Boolean getNeedConfirm() {
+            return needConfirm;
+        }
+
+        public void setNeedConfirm(Boolean needConfirm) {
+            this.needConfirm = needConfirm;
+        }
+
+        public String getPermissionMode() {
+            return permissionMode;
+        }
+
+        public void setPermissionMode(String permissionMode) {
+            this.permissionMode = permissionMode;
         }
     }
 

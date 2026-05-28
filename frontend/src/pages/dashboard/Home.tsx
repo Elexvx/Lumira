@@ -10,6 +10,8 @@ import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import './Home.css';
 
 const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
+const LOGIN_LOG_TABLE_SCROLL_X = 920;
+const OPERATION_LOG_TABLE_SCROLL_X = 860;
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -97,20 +99,20 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
   {
     title: '用户',
     dataIndex: 'username',
-    width: 140,
+    width: 180,
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
     title: '登录方式',
     dataIndex: 'logType',
-    width: 120,
+    width: 140,
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatLoginType(record.logType || record.loginType)}</Typography.Text>,
   },
   {
     title: '结果',
     dataIndex: 'logResult',
-    width: 100,
+    width: 96,
     render: (_: unknown, record: AuditLogRecord) => (
       <Tag color={logResultColor(record.logResult || record.loginResult)}>
         {formatLogResult(record.logResult || record.loginResult)}
@@ -120,6 +122,7 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
   {
     title: '登录信息',
     dataIndex: 'loginIp',
+    width: 280,
     ellipsis: true,
     render: (_: unknown, record: AuditLogRecord) => {
       const result = record.logResult || record.loginResult;
@@ -139,14 +142,14 @@ const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<
   {
     title: '用户',
     dataIndex: 'username',
-    width: 140,
+    width: 180,
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
     title: '结果',
     dataIndex: 'logResult',
-    width: 120,
+    width: 100,
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => (
       <Tag color={logResultColor(record.logResult)}>
@@ -157,6 +160,7 @@ const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<
   {
     title: '内容',
     dataIndex: 'detailMessage',
+    width: 320,
     ellipsis: true,
     render: (_: unknown, record: AuditLogRecord) => {
       const content = record.detailMessage || record.failReason || record.operationType || record.actionName || record.moduleName || title;
@@ -227,6 +231,7 @@ const DashboardHomePage = () => {
                         pagination={false}
                         isMobile={responsive.isMobile}
                         search={false}
+                        scroll={{ x: LOGIN_LOG_TABLE_SCROLL_X }}
                         onRefresh={() => dashboardQuery.refetch()}
                         loading={dashboardQuery.isLoading && !summary}
                         columns={loginLogColumns}
@@ -247,6 +252,7 @@ const DashboardHomePage = () => {
                         pagination={false}
                         isMobile={responsive.isMobile}
                         search={false}
+                        scroll={{ x: OPERATION_LOG_TABLE_SCROLL_X }}
                         onRefresh={() => dashboardQuery.refetch()}
                         loading={dashboardQuery.isLoading && !summary}
                         columns={operationLogColumns}

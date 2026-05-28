@@ -82,6 +82,9 @@ public final class SystemPermissionTreeAssembler {
         if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
             return null;
         }
+        if (isAdminOnlySettingsPath(menu.getPath())) {
+            return null;
+        }
         List<SystemVO.PermissionTreeVO> children = new ArrayList<>();
         if (!CollectionUtils.isEmpty(menu.getChildren())) {
             for (SystemVO.MenuVO child : menu.getChildren()) {

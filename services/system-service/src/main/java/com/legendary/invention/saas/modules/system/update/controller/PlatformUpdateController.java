@@ -2,6 +2,7 @@ package com.legendary.invention.saas.modules.system.update.controller;
 
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.saas.common.annotation.RepeatSubmit;
 import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
 import com.legendary.invention.saas.modules.system.update.app.PlatformUpdateAppService;
@@ -36,6 +37,7 @@ public class PlatformUpdateController {
     }
 
     @PostMapping("/check")
+    @RepeatSubmit
     public ApiResponse<PlatformUpdateVO.StatusVO> check() {
         require("system:update:check");
         return ApiResponse.success(platformUpdateAppService.checkLatest(), TraceContext.getRequestId());

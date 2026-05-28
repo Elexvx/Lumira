@@ -6,6 +6,7 @@ import type { PermissionRecord, PermissionTreeRecord } from '@/types/api';
 import {
   buildPermissionTreeData,
   collectActionPermissionPageMap,
+  collectAssignablePermissionKeys,
   collectExpandableKeys,
   collectPermissionKeyToPageKeyMap,
   collectSelectablePageNodeMap,
@@ -87,6 +88,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
   const selectablePageNodeMap = useMemo(() => collectSelectablePageNodeMap(normalizedPermissionTree), [normalizedPermissionTree]);
   const permissionKeyToPageKeyMap = useMemo(() => collectPermissionKeyToPageKeyMap(normalizedPermissionTree), [normalizedPermissionTree]);
   const actionPermissionPageMap = useMemo(() => collectActionPermissionPageMap(normalizedPermissionTree), [normalizedPermissionTree]);
+  const assignablePermissionKeys = useMemo(() => collectAssignablePermissionKeys(normalizedPermissionTree), [normalizedPermissionTree]);
   const selectablePermissionKeys = useMemo(
     () => new Set(selectablePages.map((item) => item.permissionKey).filter(Boolean) as string[]),
     [selectablePages],
@@ -128,8 +130,10 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
     setActivePageKey(selectedPageNodeKeys[0] || selectablePages[0]?.pageKey || null);
   }, [activePageKey, editorOpen, selectablePages, selectedPageNodeKeys]);
 
+  const sanitizePermissionKeys = (permissionKeys: string[] = []) => permissionKeys.filter((permissionKey) => assignablePermissionKeys.has(permissionKey));
+
   const applyPermissionKeys = (nextPermissionKeys: string[]) => {
-    form.setFieldsValue({ permissionKeys: nextPermissionKeys });
+    form.setFieldsValue({ permissionKeys: sanitizePermissionKeys(nextPermissionKeys) });
     onDirty();
   };
 
@@ -139,7 +143,11 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
   };
 
   const syncActivePageByPermissionKeys = (permissionKeys?: string[]) => {
-    const initialPermissionKey = permissionKeys?.find((permissionKey) => selectablePermissionKeys.has(permissionKey)) || null;
+    const sanitizedPermissionKeys = sanitizePermissionKeys(permissionKeys);
+    if (permissionKeys && sanitizedPermissionKeys.length !== permissionKeys.length) {
+      form.setFieldsValue({ permissionKeys: sanitizedPermissionKeys });
+    }
+    const initialPermissionKey = sanitizedPermissionKeys.find((permissionKey) => selectablePermissionKeys.has(permissionKey)) || null;
     setActivePageKey(initialPermissionKey ? permissionKeyToPageKeyMap.get(initialPermissionKey)?.[0] || null : null);
   };
 
@@ -153,6 +161,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
       nextPagePermissionKeys,
       selectablePermissionKeys,
       actionPermissionPageMap,
+      assignablePermissionKeys,
     );
     applyPermissionKeys(nextPermissionKeys);
 
@@ -174,6 +183,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
       nextPagePermissionKeys,
       selectablePermissionKeys,
       actionPermissionPageMap,
+      assignablePermissionKeys,
     );
     applyPermissionKeys(nextPermissionKeys);
     setActivePageKey(nextPagePermissionKeys[0] ? permissionKeyToPageKeyMap.get(nextPagePermissionKeys[0])?.[0] || null : null);
@@ -192,7 +202,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
       return;
     }
 
-    const nextPermissionKeys = new Set<string>(watchedPermissionKeys);
+    const nextPermissionKeys = new Set<string>(watchedPermissionKeys.filter((permissionKey) => assignablePermissionKeys.has(permissionKey)));
     activePageActionPermissions.forEach((action) => {
       if (action.permissionKey) {
         nextPermissionKeys.delete(action.permissionKey);
@@ -231,5 +241,6 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
     handleSelectAllPages,
     handleExpandToggle,
     handleActionPermissionsChange,
+    sanitizePermissionKeys,
   };
 };

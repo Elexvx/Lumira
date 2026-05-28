@@ -15,12 +15,11 @@ import {
   Avatar,
   Button,
   Card,
+  Checkbox,
   Col,
-  Empty,
   Form,
   Input,
   InputNumber,
-  List,
   Radio,
   Row,
   Select,
@@ -42,12 +41,11 @@ import { confirmAction } from '@/utils/confirm';
 import { aiService } from '@/services/ai';
 import type {
   AiEmployeeDetailRecord,
+  AiEmployeeCapabilityRecord,
   AiEmployeeRecord,
-  AiEmployeeSkillRecord,
+  AiKnowledgeBaseRecord,
   AiLlmServiceRecord,
   AiLlmServiceTestResult,
-  AiSkillPermissionMode,
-  AiSkillRecord,
 } from '@/types/api';
 
 type AiPageTabKey = 'employees' | 'llm-services';
@@ -115,18 +113,6 @@ const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; defaultModel: string 
   },
 };
 
-const PERMISSION_MODE_OPTIONS: Array<{ label: string; value: AiSkillPermissionMode }> = [
-  { label: '访问', value: 'visit' },
-  { label: '允许', value: 'allow' },
-  { label: '禁用', value: 'deny' },
-];
-
-const RISK_LEVEL_COLOR: Record<string, string> = {
-  LOW: 'green',
-  MEDIUM: 'orange',
-  HIGH: 'red',
-};
-
 const parseTabKey = (value?: string | null): AiPageTabKey => {
   if (value === LLM_TAB_KEY) {
     return value;
@@ -134,89 +120,34 @@ const parseTabKey = (value?: string | null): AiPageTabKey => {
   return EMPLOYEE_TAB_KEY;
 };
 
-const buildSkillModeMap = (
-  catalog: AiSkillRecord[],
-  selectedSkills?: AiEmployeeSkillRecord[] | null,
-) => {
-  const map: Record<string, AiSkillPermissionMode> = {};
-  const selectedSkillMap = new Map((selectedSkills || []).map((skill) => [skill.skillCode, skill.permissionMode]));
-  catalog.forEach((skill) => {
-    map[skill.skillCode] = selectedSkillMap.get(skill.skillCode) || (skill.readOnly ? 'visit' : 'deny');
-  });
-  return map;
-};
-
 const getAvatarOption = (avatarKey?: string | null) =>
   AVATAR_OPTIONS.find((option) => option.key === avatarKey) || AVATAR_OPTIONS[0];
 
-const SkillSection = ({
-  title,
-  skills,
-  modes,
-  onModeChange,
-}: {
-  title: string;
-  skills: AiSkillRecord[];
-  modes: Record<string, AiSkillPermissionMode>;
-  onModeChange: (skillCode: string, mode: AiSkillPermissionMode) => void;
-}) => {
-  if (!skills.length) {
-    return (
-      <Card size="small" title={title}>
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无技能" />
-      </Card>
-    );
-  }
-
-  return (
-    <Card size="small" title={title}>
-      <List
-        dataSource={skills}
-        split
-        renderItem={(skill) => {
-          const selectedMode = modes[skill.skillCode] || (skill.readOnly ? 'visit' : 'deny');
-          return (
-            <List.Item style={{ display: 'block', paddingInline: 0 }}>
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Space wrap>
-                  <Typography.Text strong>{skill.skillName}</Typography.Text>
-                  <Tag>{skill.skillCode}</Tag>
-                  {skill.category ? <Tag color="default">{skill.category}</Tag> : null}
-                  {skill.riskLevel ? <Tag color={RISK_LEVEL_COLOR[skill.riskLevel] || 'default'}>{skill.riskLevel}</Tag> : null}
-                  {skill.needConfirm ? <Tag color="volcano">需二次确认</Tag> : null}
-                  {skill.readOnly ? <Tag color="blue">通用技能</Tag> : <Tag color="purple">自定义技能</Tag>}
-                  {skill.readOnly ? <Tag color="cyan">只读</Tag> : null}
-                </Space>
-                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  {skill.description || '暂无描述'}
-                </Typography.Paragraph>
-                <Space wrap align="center">
-                  <Typography.Text type="secondary">权限模式</Typography.Text>
-                  <Select
-                    value={selectedMode}
-                    options={PERMISSION_MODE_OPTIONS}
-                    style={{ minWidth: 140 }}
-                    onChange={(mode) => onModeChange(skill.skillCode, mode)}
-                  />
-                </Space>
-              </Space>
-            </List.Item>
-          );
-        }}
-      />
-    </Card>
-  );
+const CAPABILITY_GROUP_LABEL: Record<string, string> = {
+  system: '系统管理',
+  profile: '个人资料',
+  file: '文件中心',
+  audit: '审计查询',
 };
+
+const groupCapabilities = (capabilities: AiEmployeeCapabilityRecord[]) =>
+  capabilities.reduce<Record<string, AiEmployeeCapabilityRecord[]>>((result, capability) => {
+    const groupName = CAPABILITY_GROUP_LABEL[capability.category || ''] || capability.category || '其他能力';
+    result[groupName] = [...(result[groupName] || []), capability];
+    return result;
+  }, {});
 
 const AiEmployeesPage = () => {
   const location = useLocation();
   const { actionPermission, responsive, buildToolbarButtons } = usePagePermissionActions();
   const [employeeForm] = Form.useForm();
   const [llmForm] = Form.useForm();
-  const [employeeSkillCatalog, setEmployeeSkillCatalog] = useState<AiSkillRecord[]>([]);
   const [employeePromptTemplate, setEmployeePromptTemplate] = useState('');
   const [llmServiceOptions, setLlmServiceOptions] = useState<Array<{ label: string; value: number }>>([]);
-  const [employeeSkillModes, setEmployeeSkillModes] = useState<Record<string, AiSkillPermissionMode>>({});
+  const [knowledgeBaseOptions, setKnowledgeBaseOptions] = useState<Array<{ label: string; value: number }>>([]);
+  const [employeeKnowledgeBaseIds, setEmployeeKnowledgeBaseIds] = useState<number[]>([]);
+  const [employeeCapabilities, setEmployeeCapabilities] = useState<AiEmployeeCapabilityRecord[]>([]);
+  const [employeeCapabilityModes, setEmployeeCapabilityModes] = useState<Record<string, AiEmployeeCapabilityRecord['permissionMode']>>({});
   const [selectedLlmService, setSelectedLlmService] = useState<AiLlmServiceRecord | null>(null);
   const [employeeSaving, setEmployeeSaving] = useState(false);
   const [llmSaving, setLlmSaving] = useState(false);
@@ -229,8 +160,6 @@ const AiEmployeesPage = () => {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const activeTab = parseTabKey(searchParams.get('tab'));
 
-  const commonSkills = useMemo(() => employeeSkillCatalog.filter((skill) => Boolean(skill.readOnly)), [employeeSkillCatalog]);
-  const customSkills = useMemo(() => employeeSkillCatalog.filter((skill) => !skill.readOnly), [employeeSkillCatalog]);
   const canSaveEmployee = actionPermission.can(employeeState.drawer.editingId ? 'ai:employee:update' : 'ai:employee:create');
   const canSaveLlmService = actionPermission.can(llmState.drawer.editingId ? 'ai:llm:update' : 'ai:llm:create');
 
@@ -240,21 +169,24 @@ const AiEmployeesPage = () => {
     const loadBootstrapData = async () => {
       setBootstrapLoading(true);
       try {
-        const [skills, template, services] = await Promise.all([
-          aiService.skills({ autoRedirectOnUnauthorized: false }),
+        const [template, services, knowledgeBases] = await Promise.all([
           aiService.employeePromptTemplate({ autoRedirectOnUnauthorized: false }),
           aiService.llmServices({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false }),
+          aiService.knowledgeBases({ pageNo: 1, pageSize: 200, status: 'ENABLED' }, { autoRedirectOnUnauthorized: false }),
         ]);
 
         if (!active) {
           return;
         }
 
-        setEmployeeSkillCatalog(skills);
         setEmployeePromptTemplate(template.defaultSystemPromptTemplate);
         setLlmServiceOptions((services.records || []).map((service) => ({
           label: `${service.title} (${service.code})`,
           value: service.id,
+        })));
+        setKnowledgeBaseOptions((knowledgeBases.records || []).map((knowledgeBase: AiKnowledgeBaseRecord) => ({
+          label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'TENANT' ? '（企业）' : '（个人）'}`,
+          value: knowledgeBase.id,
         })));
       } catch (error) {
         if (active) {
@@ -280,10 +212,6 @@ const AiEmployeesPage = () => {
     history.replace(`${location.pathname}?${nextSearch.toString()}`);
   };
 
-  const setSkillModesFromDetail = (detail?: AiEmployeeDetailRecord | null) => {
-    setEmployeeSkillModes(buildSkillModeMap(employeeSkillCatalog, detail?.skills || []));
-  };
-
   const openEmployeeCreate = () => {
     employeeState.drawer.openCreate();
     employeeForm.resetFields();
@@ -297,13 +225,19 @@ const AiEmployeesPage = () => {
       systemPrompt: employeePromptTemplate,
       defaultLlmServiceId: undefined,
     });
-    setSkillModesFromDetail(null);
+    setEmployeeKnowledgeBaseIds([]);
+    setEmployeeCapabilities([]);
+    setEmployeeCapabilityModes({});
   };
 
   const openEmployeeEdit = async (record: AiEmployeeRecord) => {
     employeeState.drawer.openEdit(record, record.id);
     try {
-      const detail = await aiService.employee(record.id, { autoRedirectOnUnauthorized: false });
+      const [detail, knowledgeBases, capabilities] = await Promise.all([
+        aiService.employee(record.id, { autoRedirectOnUnauthorized: false }),
+        aiService.employeeKnowledgeBases(record.id, { autoRedirectOnUnauthorized: false }),
+        aiService.employeeCapabilities(record.id, { autoRedirectOnUnauthorized: false }),
+      ]);
       employeeForm.setFieldsValue({
         username: detail.username,
         nickname: detail.nickname,
@@ -314,7 +248,9 @@ const AiEmployeesPage = () => {
         systemPrompt: detail.systemPrompt ?? detail.defaultSystemPromptTemplate ?? employeePromptTemplate,
         defaultLlmServiceId: detail.defaultLlmServiceId || undefined,
       });
-      setSkillModesFromDetail(detail);
+      setEmployeeKnowledgeBaseIds(knowledgeBases.map((item) => item.id));
+      setEmployeeCapabilities(capabilities);
+      setEmployeeCapabilityModes(Object.fromEntries(capabilities.map((item) => [item.capabilityCode, item.permissionMode])));
     } catch {
       employeeState.drawer.reset();
     }
@@ -334,17 +270,28 @@ const AiEmployeesPage = () => {
         systemPrompt: values.systemPrompt?.trim?.() ? values.systemPrompt.trim() : null,
         defaultLlmServiceId: values.defaultLlmServiceId || null,
         sortOrder: 0,
-        skills: employeeSkillCatalog.map((skill) => ({
-          skillCode: skill.skillCode,
-          permissionMode: employeeSkillModes[skill.skillCode] || (skill.readOnly ? 'visit' : 'deny'),
-        })),
       };
 
       if (employeeState.drawer.editingId) {
-        await aiService.updateEmployee(employeeState.drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
+        const employeeId = employeeState.drawer.editingId;
+        await aiService.updateEmployee(employeeId, payload, { autoRedirectOnUnauthorized: false });
+        await Promise.all([
+          aiService.updateEmployeeKnowledgeBases(employeeId, employeeKnowledgeBaseIds, { autoRedirectOnUnauthorized: false }),
+          aiService.updateEmployeeCapabilities(
+            employeeId,
+            employeeCapabilities.map((item) => ({
+              capabilityCode: item.capabilityCode,
+              permissionMode: employeeCapabilityModes[item.capabilityCode] || (item.readOnly ? 'visit' : 'deny'),
+            })),
+            { autoRedirectOnUnauthorized: false },
+          ),
+        ]);
         message.success('数字员工已更新');
       } else {
-        await aiService.createEmployee(payload, { autoRedirectOnUnauthorized: false });
+        const created = await aiService.createEmployee(payload, { autoRedirectOnUnauthorized: false });
+        if (created.id) {
+          await aiService.updateEmployeeKnowledgeBases(created.id, employeeKnowledgeBaseIds, { autoRedirectOnUnauthorized: false });
+        }
         message.success('数字员工已创建');
       }
 
@@ -829,37 +776,65 @@ const AiEmployeesPage = () => {
                 ),
               },
               {
-                key: 'skills',
-                label: '技能',
+                key: 'security',
+                label: '能力边界',
                 children: (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
                     <Alert
                       type="info"
                       showIcon
-                      message="每个数字员工可独立配置技能边界；只读工具支持访问或禁用，写入类工具需二次确认。"
+                      message="能力边界按每个 AI 员工独立配置；查看类能力只允许访问或禁用，增删改启停类能力只允许允许或禁用，写入动作仍会二次确认。"
                     />
-                    <SkillSection
-                      title="通用技能"
-                      skills={commonSkills}
-                      modes={employeeSkillModes}
-                      onModeChange={(skillCode, mode) => {
-                        setEmployeeSkillModes((prev) => ({
-                          ...prev,
-                          [skillCode]: mode,
-                        }));
-                      }}
-                    />
-                    <SkillSection
-                      title="自定义技能"
-                      skills={customSkills}
-                      modes={employeeSkillModes}
-                      onModeChange={(skillCode, mode) => {
-                        setEmployeeSkillModes((prev) => ({
-                          ...prev,
-                          [skillCode]: mode,
-                        }));
-                      }}
-                    />
+                    <Form.Item label="绑定知识库">
+                      <Select
+                        mode="multiple"
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="选择该 AI 员工回答时可引用的知识库"
+                        options={knowledgeBaseOptions}
+                        value={employeeKnowledgeBaseIds}
+                        onChange={(values) => setEmployeeKnowledgeBaseIds(values.map(Number))}
+                      />
+                    </Form.Item>
+                    {employeeState.drawer.editingId ? (
+                      Object.entries(groupCapabilities(employeeCapabilities)).map(([groupName, items]) => (
+                        <Card key={groupName} size="small" title={groupName}>
+                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                            {items.map((capability) => {
+                              const enabledMode = capability.readOnly ? 'visit' : 'allow';
+                              const checked = (employeeCapabilityModes[capability.capabilityCode] || capability.permissionMode) !== 'deny';
+                              return (
+                                <div key={capability.capabilityCode} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                  <Space direction="vertical" size={2}>
+                                    <Space wrap>
+                                      <Typography.Text strong>{capability.capabilityName}</Typography.Text>
+                                      <Tag>{capability.capabilityCode}</Tag>
+                                      {capability.riskLevel ? <Tag color={capability.riskLevel === 'HIGH' ? 'red' : capability.riskLevel === 'MEDIUM' ? 'orange' : 'green'}>{capability.riskLevel}</Tag> : null}
+                                      {capability.needConfirm ? <Tag color="volcano">二次确认</Tag> : null}
+                                    </Space>
+                                    <Typography.Text type="secondary">{capability.description || '暂无描述'}</Typography.Text>
+                                  </Space>
+                                  <Checkbox
+                                    checked={checked}
+                                    onChange={(event) => {
+                                      setEmployeeCapabilityModes((current) => ({
+                                        ...current,
+                                        [capability.capabilityCode]: event.target.checked ? enabledMode : 'deny',
+                                      }));
+                                    }}
+                                  >
+                                    {capability.readOnly ? '可查看' : '可操作'}
+                                  </Checkbox>
+                                </div>
+                              );
+                            })}
+                          </Space>
+                        </Card>
+                      ))
+                    ) : (
+                      <Alert type="warning" showIcon message="请先创建 AI 员工，保存后再编辑它的能力边界。" />
+                    )}
                   </Space>
                 ),
               },
