@@ -86,10 +86,15 @@ INSERT INTO `sys_config` (`id`, `tenant_id`, `config_key`, `config_name`, `confi
 (7390,1001,'verification.passkey.allowed-origins','通行密钥允许 Origin','https://test.elexvx.com','PLATFORM',0,'WebAuthn 允许的前端 Origin',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7391,1001,'verification.passkey.challenge-ttl-seconds','通行密钥 Challenge TTL','120','PLATFORM',0,'WebAuthn challenge 有效期秒数',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7392,1001,'verification.password-login.enabled','密码登录','true','PLATFORM',0,'是否启用账号密码登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7393,1001,'verification.login-mode.order','登录方式排序','passkey,sms,email,password','PLATFORM',0,'登录页分段控制器展示顺序',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7393,1001,'verification.login-mode.order','登录方式排序','passkey,sms,email,wechat,password','PLATFORM',0,'登录页分段控制器展示顺序',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7394,1001,'floating-window.api-docs-qr-enabled','接口文档二维码开关','true','PLATFORM',0,'是否在全局悬浮窗展示接口文档二维码入口',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7395,1001,'floating-window.api-docs-qr-title','接口文档二维码标题','微信扫码联系我们','PLATFORM',0,'接口文档二维码弹层标题',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7396,1001,'floating-window.api-docs-qr-image-url','接口文档二维码图片','','PLATFORM',0,'接口文档悬浮入口展开后展示的二维码图片',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0);
+(7396,1001,'floating-window.api-docs-qr-image-url','接口文档二维码图片','','PLATFORM',0,'接口文档悬浮入口展开后展示的二维码图片',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7397,1001,'notification.wechat-official.enabled','微信公众号通知启用','false','PLATFORM',0,'是否启用微信公众号/服务号模板消息通知',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7398,1001,'notification.wechat-official.app-id','微信公众号 AppID','','PLATFORM',0,'微信公众号或服务号 AppID',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7399,1001,'notification.wechat-official.app-secret','微信公众号 AppSecret','','PLATFORM',0,'微信公众号或服务号 AppSecret',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7400,1001,'notification.wechat-official.template-id','微信公众号模板 ID','','PLATFORM',0,'用于系统通知的公众号模板消息 ID',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7401,1001,'notification.wechat-official.detail-url','微信公众号通知详情链接','','PLATFORM',0,'模板消息点击后打开的系统链接，可留空',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0);
 CREATE TABLE IF NOT EXISTS `sys_dict_item` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `tenant_id` bigint NOT NULL,

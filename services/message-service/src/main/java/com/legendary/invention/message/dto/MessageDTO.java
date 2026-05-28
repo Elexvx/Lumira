@@ -24,7 +24,7 @@ public final class MessageDTO {
         @NotBlank
         @Pattern(regexp = "^(TENANT|USER|ROLE)$", message = "targetScope只能是TENANT、USER或ROLE")
         private String targetScope;
-        private List<@Pattern(regexp = "^(INBOX|EMAIL)$", message = "channels只能包含INBOX或EMAIL") String> channels = List.of("INBOX");
+        private List<@Pattern(regexp = "^(INBOX|EMAIL|WECHAT_OFFICIAL)$", message = "channels只能包含INBOX、EMAIL或WECHAT_OFFICIAL") String> channels = List.of("INBOX");
         @Positive(message = "targetUserId必须大于0")
         private Long targetUserId;
         @Positive(message = "targetRoleId必须大于0")
@@ -100,7 +100,7 @@ public final class MessageDTO {
         private String sourceType;
         @Pattern(regexp = "^(PUBLISHED|RETRACTED)$", message = "publishStatus只能是PUBLISHED或RETRACTED")
         private String publishStatus;
-        @Pattern(regexp = "^(INBOX|EMAIL)$", message = "channel只能是INBOX或EMAIL")
+        @Pattern(regexp = "^(INBOX|EMAIL|WECHAT_OFFICIAL)$", message = "channel只能是INBOX、EMAIL或WECHAT_OFFICIAL")
         private String channel;
         @Pattern(regexp = "^(SUCCESS|FAILED|SKIPPED)$", message = "sendStatus只能是SUCCESS、FAILED或SKIPPED")
         private String sendStatus;

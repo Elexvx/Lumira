@@ -16,6 +16,7 @@ import com.legendary.invention.message.mapper.MessageDeliveryLogMapper;
 import com.legendary.invention.message.mapper.MessageNoticeMapper;
 import com.legendary.invention.message.service.MessagePushService;
 import com.legendary.invention.message.service.SmtpNotificationMailService;
+import com.legendary.invention.message.service.WechatOfficialAccountNotificationService;
 import com.legendary.invention.message.vo.MessageVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class MessageAppService {
     private static final String SOURCE_MANUAL = "MANUAL";
     private static final String CHANNEL_INBOX = "INBOX";
     private static final String CHANNEL_EMAIL = "EMAIL";
+    private static final String CHANNEL_WECHAT_OFFICIAL = "WECHAT_OFFICIAL";
     private static final String DELIVERY_SUCCESS = "SUCCESS";
     private static final String DELIVERY_FAILED = "FAILED";
     private static final String DELIVERY_SKIPPED = "SKIPPED";
@@ -47,19 +49,22 @@ public class MessageAppService {
     private final OperationAuditService operationAuditService;
     private final MessagePushService messagePushService;
     private final SmtpNotificationMailService smtpNotificationMailService;
+    private final WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService;
 
     public MessageAppService(
             MessageNoticeMapper messageNoticeMapper,
             MessageDeliveryLogMapper messageDeliveryLogMapper,
             OperationAuditService operationAuditService,
             MessagePushService messagePushService,
-            SmtpNotificationMailService smtpNotificationMailService
+            SmtpNotificationMailService smtpNotificationMailService,
+            WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService
     ) {
         this.messageNoticeMapper = messageNoticeMapper;
         this.messageDeliveryLogMapper = messageDeliveryLogMapper;
         this.operationAuditService = operationAuditService;
         this.messagePushService = messagePushService;
         this.smtpNotificationMailService = smtpNotificationMailService;
+        this.wechatOfficialAccountNotificationService = wechatOfficialAccountNotificationService;
     }
 
     public PageResponse<MessageVO.NoticeVO> listMessages(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -120,6 +125,9 @@ public class MessageAppService {
         }
         if (channels.contains(CHANNEL_EMAIL)) {
             sendEmailNotifications(currentUser, request, notice == null ? null : notice.getId());
+        }
+        if (channels.contains(CHANNEL_WECHAT_OFFICIAL)) {
+            sendWechatOfficialNotifications(currentUser, request, notice == null ? null : notice.getId());
         }
         operationAuditService.log(
                 tenantId(currentUser),
@@ -328,7 +336,7 @@ public class MessageAppService {
                 continue;
             }
             String value = channel.trim().toUpperCase();
-            if (!CHANNEL_INBOX.equals(value) && !CHANNEL_EMAIL.equals(value)) {
+            if (!CHANNEL_INBOX.equals(value) && !CHANNEL_EMAIL.equals(value) && !CHANNEL_WECHAT_OFFICIAL.equals(value)) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "不支持的通知渠道: " + channel);
             }
             normalized.add(value);
@@ -361,18 +369,47 @@ public class MessageAppService {
         }
     }
 
+    private void sendWechatOfficialNotifications(CurrentUser currentUser, MessageDTO.MessageCreateRequest request, Long noticeId) {
+        Long tenantId = tenantId(currentUser);
+        if (!wechatOfficialAccountNotificationService.isConfigured(tenantId)) {
+            insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "微信公众号通知未启用或配置不完整", currentUser.getUserId());
+            return;
+        }
+        List<Recipient> recipients = resolveRecipients(tenantId, request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
+        if (recipients.isEmpty()) {
+            insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收微信公众号通知的用户", currentUser.getUserId());
+            return;
+        }
+        for (Recipient recipient : recipients) {
+            if (!StringUtils.hasText(recipient.wechatOpenid())) {
+                insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定微信 OpenID", currentUser.getUserId());
+                continue;
+            }
+            try {
+                wechatOfficialAccountNotificationService.send(tenantId, recipient.wechatOpenid(), request.getTitle(), request.getContent());
+                insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+            } catch (Exception exception) {
+                insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
+            }
+        }
+    }
+
     private List<Recipient> resolveEmailRecipients(Long tenantId, String targetScope, Long targetUserId, Long targetRoleId) {
+        return resolveRecipients(tenantId, targetScope, targetUserId, targetRoleId);
+    }
+
+    private List<Recipient> resolveRecipients(Long tenantId, String targetScope, Long targetUserId, Long targetRoleId) {
         List<RecipientRow> rows;
         if (TARGET_SCOPE_USER.equals(targetScope)) {
             rows = messageNoticeMapper.listUserRecipient(tenantId, targetUserId);
-            return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail())).toList();
+            return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail(), row.getWechatOpenid())).toList();
         }
         if (TARGET_SCOPE_ROLE.equals(targetScope)) {
             rows = messageNoticeMapper.listRoleRecipients(tenantId, targetRoleId);
-            return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail())).toList();
+            return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail(), row.getWechatOpenid())).toList();
         }
         rows = messageNoticeMapper.listTenantRecipients(tenantId);
-        return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail())).toList();
+        return rows.stream().map(row -> new Recipient(row.getUserId(), row.getUsername(), row.getEmail(), row.getWechatOpenid())).toList();
     }
 
     private void insertDeliveryLog(
@@ -480,6 +517,6 @@ public class MessageAppService {
                 : currentUser.getCurrentTenantId();
     }
 
-    private record Recipient(Long userId, String username, String email) {
+    private record Recipient(Long userId, String username, String email, String wechatOpenid) {
     }
 }

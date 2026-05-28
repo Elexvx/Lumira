@@ -704,7 +704,7 @@ export type MessageNoticeType = 'MESSAGE';
 export type MessageTargetScope = 'TENANT' | 'USER' | 'ROLE';
 export type MessagePublishStatus = 'PUBLISHED' | 'RETRACTED';
 export type MessageSourceType = 'MANUAL';
-export type MessageChannel = 'INBOX' | 'EMAIL';
+export type MessageChannel = 'INBOX' | 'EMAIL' | 'WECHAT_OFFICIAL';
 export type MessageSendStatus = 'SUCCESS' | 'FAILED' | 'SKIPPED';
 
 export interface MessageNoticeRecord {
@@ -948,6 +948,24 @@ export interface SmtpSettingsPayload {
   authEnabled?: boolean;
   startTlsEnabled?: boolean;
   sslEnabled?: boolean;
+}
+
+export interface WechatOfficialAccountSettings {
+  enabled: boolean;
+  appId: string;
+  appSecret?: string;
+  templateId: string;
+  detailUrl: string;
+  configured?: boolean;
+  appSecretConfigured?: boolean;
+}
+
+export interface WechatOfficialAccountSettingsPayload {
+  enabled?: boolean;
+  appId?: string;
+  appSecret?: string;
+  templateId?: string;
+  detailUrl?: string;
 }
 
 export interface SmsVerificationSettings {

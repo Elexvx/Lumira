@@ -88,6 +88,7 @@ public final class MessageQueryModels {
         private Long userId;
         private String username;
         private String email;
+        private String wechatOpenid;
 
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
@@ -95,5 +96,7 @@ public final class MessageQueryModels {
         public void setUsername(String username) { this.username = username; }
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
+        public String getWechatOpenid() { return wechatOpenid; }
+        public void setWechatOpenid(String wechatOpenid) { this.wechatOpenid = wechatOpenid; }
     }
 }

@@ -8,6 +8,7 @@ import com.legendary.invention.message.mapper.MessageDeliveryLogMapper;
 import com.legendary.invention.message.mapper.MessageNoticeMapper;
 import com.legendary.invention.message.service.MessagePushService;
 import com.legendary.invention.message.service.SmtpNotificationMailService;
+import com.legendary.invention.message.service.WechatOfficialAccountNotificationService;
 import com.legendary.invention.message.vo.MessageVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class MessageAppServiceTest {
     @Mock
     private SmtpNotificationMailService smtpNotificationMailService;
 
+    @Mock
+    private WechatOfficialAccountNotificationService wechatOfficialAccountNotificationService;
+
     private MessageAppService messageAppService;
 
     @BeforeEach
@@ -52,7 +56,8 @@ class MessageAppServiceTest {
                 messageDeliveryLogMapper,
                 operationAuditService,
                 messagePushService,
-                smtpNotificationMailService
+                smtpNotificationMailService,
+                wechatOfficialAccountNotificationService
         );
     }
 
