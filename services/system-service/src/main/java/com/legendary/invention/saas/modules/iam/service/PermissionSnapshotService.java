@@ -26,6 +26,9 @@ public class PermissionSnapshotService {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionSnapshotService.class);
 
+    private static final Long PROTECTED_ADMIN_ID = 1001L;
+    private static final String PROTECTED_ADMIN_USERNAME = "admin";
+    private static final String SNAPSHOT_SCHEMA_VERSION = "admin-permissions-v2";
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
     private static final String VERSION_SUFFIX = "permission_version";
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
@@ -141,11 +144,11 @@ public class PermissionSnapshotService {
         String key = CacheKeyConstants.tenantKey(String.valueOf(tenantId), VERSION_SUFFIX);
         String version = cacheTemplate.get(key);
         if (StringUtils.hasText(version)) {
-            return version + ":" + queryRolePermissionVersion(tenantId);
+            return version + ":" + queryRolePermissionVersion(tenantId) + ":" + SNAPSHOT_SCHEMA_VERSION;
         }
         String newVersion = String.valueOf(System.currentTimeMillis());
         cacheTemplate.put(key, newVersion, Duration.ofDays(30));
-        return newVersion + ":" + queryRolePermissionVersion(tenantId);
+        return newVersion + ":" + queryRolePermissionVersion(tenantId) + ":" + SNAPSHOT_SCHEMA_VERSION;
     }
 
     private String queryRolePermissionVersion(Long tenantId) {
@@ -182,11 +185,11 @@ public class PermissionSnapshotService {
         String key = CacheKeyConstants.tenantKey(String.valueOf(tenantId), "role_permission_version:" + roleId);
         String version = cacheTemplate.get(key);
         if (StringUtils.hasText(version)) {
-            return version + ":" + querySingleRolePermissionVersion(tenantId, roleId);
+            return version + ":" + querySingleRolePermissionVersion(tenantId, roleId) + ":" + SNAPSHOT_SCHEMA_VERSION;
         }
         String newVersion = String.valueOf(System.currentTimeMillis());
         cacheTemplate.put(key, newVersion, Duration.ofDays(30));
-        return newVersion + ":" + querySingleRolePermissionVersion(tenantId, roleId);
+        return newVersion + ":" + querySingleRolePermissionVersion(tenantId, roleId) + ":" + SNAPSHOT_SCHEMA_VERSION;
     }
 
     private String querySingleRolePermissionVersion(Long tenantId, Long roleId) {
@@ -241,7 +244,29 @@ public class PermissionSnapshotService {
                 tenantId,
                 userId
         );
-        return filterRoleAssignablePermissionKeys(permissions);
+        return isProtectedAdminAccount(userId) ? new LinkedHashSet<>(permissions) : filterRoleAssignablePermissionKeys(permissions);
+    }
+
+    private boolean isProtectedAdminAccount(Long userId) {
+        if (PROTECTED_ADMIN_ID.equals(userId)) {
+            return true;
+        }
+        try {
+            String username = jdbcTemplate.queryForObject(
+                    """
+                            select username
+                            from sys_user
+                            where id = ?
+                              and deleted = 0
+                            """,
+                    String.class,
+                    userId
+            );
+            return StringUtils.hasText(username) && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(username.trim());
+        } catch (Throwable throwable) {
+            log.warn("Failed to resolve protected admin account userId={}", userId, throwable);
+            return false;
+        }
     }
 
     private Set<Long> queryRoleIds(Long tenantId, Long userId) {
