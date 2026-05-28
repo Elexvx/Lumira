@@ -22,6 +22,9 @@ interface ThemePreferenceContextValue {
 
 const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null);
 
+export const buildThemeScopeKey = (themePreference: ThemePreference, resolvedColorMode: 'light' | 'dark') =>
+  `${themePreference}-${resolvedColorMode}`;
+
 export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) => {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() =>
     normalizeThemePreference(getStoredThemePreference()),
@@ -69,6 +72,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       }),
     [resolvedColorMode, themePreference],
   );
+  const themeScopeKey = buildThemeScopeKey(themePreference, resolvedColorMode);
 
   useLayoutEffect(() => {
     commitThemePreference(themePreference, { systemDarkMode, persist: false });
@@ -92,7 +96,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
-      <ConfigProvider locale={resolveAntdLocale()} theme={themeConfig} variant="filled">
+      <ConfigProvider key={themeScopeKey} locale={resolveAntdLocale()} theme={themeConfig} variant="filled">
         <ProConfigProvider intl={resolveProComponentsIntl()}>
           <AntdApp>{children}</AntdApp>
         </ProConfigProvider>

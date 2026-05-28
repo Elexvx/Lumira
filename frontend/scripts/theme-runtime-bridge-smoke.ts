@@ -3,6 +3,7 @@ import {
   buildThemeRuntimeRevisionKey,
   shouldAdvanceThemeRevision,
 } from '../src/theme/layoutRevision';
+import { buildThemeScopeKey } from '../src/theme/ThemePreferenceProvider';
 
 const run = () => {
   const lightKey = buildThemeRuntimeRevisionKey('light', 'light');
@@ -15,6 +16,13 @@ const run = () => {
   assert.equal(shouldAdvanceThemeRevision(lightKey, lightKey), false, 'unchanged theme should not force layout refresh');
   assert.equal(shouldAdvanceThemeRevision(lightKey, darkKey), true, 'preference changes should refresh layout');
   assert.equal(shouldAdvanceThemeRevision(lightKey, systemDarkKey), true, 'resolved color changes should refresh layout');
+  assert.equal(buildThemeScopeKey('dark', 'dark'), 'dark-dark', 'theme provider scope should identify dark surfaces');
+  assert.equal(buildThemeScopeKey('light', 'light'), 'light-light', 'theme provider scope should identify light surfaces');
+  assert.notEqual(
+    buildThemeScopeKey('dark', 'dark'),
+    buildThemeScopeKey('light', 'light'),
+    'theme provider scope should remount antd surfaces when switching color mode',
+  );
 
   console.log('theme-runtime-bridge-smoke: ok');
 };
