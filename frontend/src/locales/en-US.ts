@@ -75,7 +75,6 @@ export default {
   'nav.system.monitoring.root': 'Monitoring',
   'nav.system.monitoring.service': 'Service Monitoring',
   'nav.system.monitoring.redis': 'Redis Monitoring',
-  'nav.system.monitoring.update': 'Platform Update',
   'nav.system.monitoring.apiDocs': 'API Docs',
   'nav.system.monitoring.audit': 'Audit Center',
   'nav.files.root': 'File Center',

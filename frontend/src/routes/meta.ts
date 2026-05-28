@@ -152,7 +152,6 @@ export const backendRoutes: BackendRouteRecord[] = [
       { path: '/settings/monitoring', component: '@/pages/settings/monitoring/index', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
       { path: '/settings/monitoring/service', redirect: '/settings/monitoring?tab=service' },
       { path: '/settings/monitoring/redis', redirect: '/settings/monitoring?tab=redis' },
-      { path: '/settings/monitoring/update', redirect: '/settings/monitoring?tab=update' },
       { path: '/settings/api-docs', component: '@/pages/settings/monitoring/ApiDocs', name: 'nav.system.monitoring.apiDocs', icon: 'FileTextOutlined', access: 'canVisitSystemMonitoringDocs' },
       { path: '/settings/audit', component: '@/pages/settings/monitoring/Audit', name: 'nav.system.monitoring.audit', icon: 'AuditOutlined', access: 'canVisitAudit' },
     ],

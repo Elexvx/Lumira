@@ -14,7 +14,6 @@ export const DEFAULT_SETTING_ROUTE_ORDER = [
   '/settings/files/all',
   '/settings/localization',
   '/settings/monitoring',
-  '/settings/monitoring/update',
   '/settings/api-docs',
   '/settings/audit',
 ];
