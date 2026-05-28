@@ -319,11 +319,13 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     collapsedButtonRender: (_, defaultDom) => <CollapsedButtonWithReturn defaultDom={defaultDom} />,
     menuRender: (_, defaultDom) => defaultDom,
     childrenRender: (dom) => (
-      <SessionActivityGuard>
-        <ThemeRuntimeBridge />
-        {dom}
-        <GlobalFloatActions />
-      </SessionActivityGuard>
+      <React.Fragment key={initialState?.themeRevision ?? 0}>
+        <SessionActivityGuard>
+          <ThemeRuntimeBridge />
+          {dom}
+          <GlobalFloatActions />
+        </SessionActivityGuard>
+      </React.Fragment>
     ),
     headerContentRender: () => null,
     rightContentRender: () => <TopActions />,
