@@ -15,14 +15,25 @@ const baseThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorPrimary: '#1677ff',
 };
 
+const resolveCssVarKey = (themePreference: ThemePreference, resolvedColorMode: 'light' | 'dark') => {
+  if (themePreference === 'compact') {
+    return 'legendary-compact';
+  }
+
+  return `legendary-${resolvedColorMode}`;
+};
+
 export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): AntdThemeConfig => {
   const runtimeSnapshot = getThemeRuntimeSnapshot();
   const themePreference = options?.themePreference ?? runtimeSnapshot.themePreference;
   const resolvedColorMode = options?.resolvedColorMode ?? runtimeSnapshot.resolvedColorMode;
+  const cssVar = {
+    key: resolveCssVarKey(themePreference, resolvedColorMode),
+  };
 
   if (themePreference === 'compact') {
     return {
-      cssVar: {},
+      cssVar,
       token: baseThemeToken,
       algorithm: [antdTheme.defaultAlgorithm, antdTheme.compactAlgorithm],
     };
@@ -30,14 +41,14 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
 
   if (resolvedColorMode !== 'dark') {
     return {
-      cssVar: {},
+      cssVar,
       token: baseThemeToken,
       algorithm: [antdTheme.defaultAlgorithm],
     };
   }
 
   return {
-    cssVar: {},
+    cssVar,
     algorithm: [antdTheme.darkAlgorithm],
     token: {
       ...baseThemeToken,
