@@ -30,7 +30,6 @@ const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/localization': '/settings/localization',
   '/settings/monitoring/api-docs': '/settings/api-docs',
   '/settings/monitoring/audit': '/settings/audit',
-  '/settings/monitoring/update': '/settings/monitoring',
 };
 
 export const SETTINGS_PROFILE_PATH = PROFILE_PATH;
@@ -107,6 +106,12 @@ const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSourceItem>
     name: 'nav.system.monitoring.root',
     icon: 'FundOutlined',
     access: 'canVisitSystemMonitoring',
+  },
+  {
+    path: '/settings/monitoring/update',
+    name: 'nav.system.monitoring.update',
+    icon: 'CloudSyncOutlined',
+    access: 'canVisitPlatformUpdate',
   },
   {
     path: '/settings/api-docs',

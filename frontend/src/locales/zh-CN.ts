@@ -80,6 +80,7 @@ export default {
   'nav.system.monitoring.root': '系统监控',
   'nav.system.monitoring.service': '服务监控',
   'nav.system.monitoring.redis': 'Redis监控',
+  'nav.system.monitoring.update': '平台更新',
   'nav.system.monitoring.apiDocs': '接口文档',
   'nav.system.monitoring.audit': '审计中心',
   'nav.files.root': '文件中心',
