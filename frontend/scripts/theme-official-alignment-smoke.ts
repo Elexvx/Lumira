@@ -7,6 +7,9 @@ import { buildAntdThemeConfig } from '../src/theme/antdTheme';
 const projectRoot = new URL('..', import.meta.url);
 const sourceFiles = [
   'src/theme/antdTheme.tsx',
+  'src/theme/ThemePreferenceProvider.tsx',
+  'src/theme/apply.ts',
+  'src/theme/settings.ts',
   'src/global.css',
   'src/pages/ai/Assistant.css',
   'src/pages/user/Login.css',
@@ -27,6 +30,13 @@ const legacyThemePatterns = [
   /buildComponentTokens/,
 ];
 
+const themeReloadPatterns = [
+  /location\.reload/,
+  /window\.location\.reload/,
+  /history\.go\(0\)/,
+  /<ConfigProvider[^>]*\skey=/,
+];
+
 const readProjectFile = (relativePath: string) =>
   readFileSync(join(projectRoot.pathname, relativePath), 'utf8');
 
@@ -35,6 +45,15 @@ const assertNoLegacyThemePatterns = () => {
     const content = readProjectFile(relativePath);
     for (const pattern of legacyThemePatterns) {
       assert.equal(pattern.test(content), false, `${relativePath} should not contain legacy theme pattern ${pattern}`);
+    }
+  }
+};
+
+const assertThemeSwitchDoesNotForcePageReload = () => {
+  for (const relativePath of ['src/theme/ThemePreferenceProvider.tsx', 'src/theme/apply.ts', 'src/theme/settings.ts']) {
+    const content = readProjectFile(relativePath);
+    for (const pattern of themeReloadPatterns) {
+      assert.equal(pattern.test(content), false, `${relativePath} should not force a full page reload or remount for theme switching`);
     }
   }
 };
@@ -62,6 +81,7 @@ const assertOfficialTokenDerivation = () => {
 const run = () => {
   assertOfficialTokenDerivation();
   assertNoLegacyThemePatterns();
+  assertThemeSwitchDoesNotForcePageReload();
   console.log('theme-official-alignment-smoke: ok');
 };
 
