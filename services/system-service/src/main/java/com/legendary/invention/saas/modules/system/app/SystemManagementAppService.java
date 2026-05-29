@@ -1585,7 +1585,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveAuthorizedAiAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
@@ -1625,6 +1625,22 @@ public class SystemManagementAppService {
                        'AI' as moduleName, l.tool_name as actionName, 'CALL' as operationType
                 """ + baseSql + " order by l.id desc";
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+    }
+
+    private Long resolveAuthorizedAiAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        if (requestedTenantId == null) {
+            return currentTenantId;
+        }
+        if (isPlatformAuditUser(currentUser, currentTenantId) || requestedTenantId.equals(currentTenantId)) {
+            return requestedTenantId;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "无权查看其他租户的 AI 调用审计日志");
+    }
+
+    private boolean isPlatformAuditUser(CurrentUser currentUser, Long currentTenantId) {
+        return DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId)
+                || (currentUser != null && currentUser.getPermissions().contains("*"));
     }
 
     public Integer countMenus(Long tenantId) {
