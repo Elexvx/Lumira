@@ -138,6 +138,14 @@ public class SystemManagementAppService {
     );
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
+    private static final String MASKED_CONFIG_VALUE = "******";
+    private static final Set<String> SENSITIVE_CONFIG_KEY_SUFFIXES = Set.of(
+            ".app-secret",
+            ".password",
+            ".secret",
+            ".access-key-secret",
+            ".private-key"
+    );
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("系统管理", "菜单、字典、配置与验证入口", "/settings/menus", "system:menu:view"),
             shortcut("验证管理", "2FA 开关与短信验证码配置", "/settings/verification", "system:verification:view"),
@@ -1204,7 +1212,9 @@ public class SystemManagementAppService {
                 select c.id, c.tenant_id as tenantId, c.config_key as configKey, c.config_name as configName,
                        c.config_value as configValue, c.config_scope as configScope, c.is_system as isSystem, c.remark
                 """ + baseSql + " order by c.is_system desc, c.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        PageResponse<SystemVO.ConfigVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        maskSensitiveConfigValues(page.getRecords());
+        return page;
     }
 
     public SystemVO.ConfigVO getConfig(CurrentUser currentUser, Long id) {
@@ -1223,7 +1233,29 @@ public class SystemManagementAppService {
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "配置不存在");
         }
+        maskSensitiveConfigValue(config);
         return config;
+    }
+
+    static boolean isSensitiveConfigKey(String configKey) {
+        if (!StringUtils.hasText(configKey)) {
+            return false;
+        }
+        String normalizedKey = configKey.trim().toLowerCase(Locale.ROOT);
+        return SENSITIVE_CONFIG_KEY_SUFFIXES.stream().anyMatch(normalizedKey::endsWith);
+    }
+
+    private static void maskSensitiveConfigValues(List<SystemVO.ConfigVO> configs) {
+        if (configs == null) {
+            return;
+        }
+        configs.forEach(SystemManagementAppService::maskSensitiveConfigValue);
+    }
+
+    static void maskSensitiveConfigValue(SystemVO.ConfigVO config) {
+        if (config != null && isSensitiveConfigKey(config.getConfigKey()) && StringUtils.hasText(config.getConfigValue())) {
+            config.setConfigValue(MASKED_CONFIG_VALUE);
+        }
     }
 
     @Transactional
@@ -1293,7 +1325,7 @@ public class SystemManagementAppService {
                 currentUser.getUserId()
         );
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
-        return jdbcTemplate.queryForObject(
+        SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
                 """
                         select id, tenant_id as tenantId, config_key as configKey, config_name as configName,
                                config_value as configValue, config_scope as configScope, is_system as isSystem, remark
@@ -1306,6 +1338,8 @@ public class SystemManagementAppService {
                 request.getConfigKey(),
                 tenantId
         );
+        maskSensitiveConfigValue(config);
+        return config;
     }
 
     public SystemVO.SecuritySettingsVO getSecuritySettings() {
