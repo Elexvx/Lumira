@@ -99,6 +99,9 @@ public class SystemManagementAppService {
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
     private static final String SMTP_PASSWORD_KEY = "smtp.password";
+    private static final String WECHAT_LOGIN_APP_SECRET_KEY = "verification.wechat-login.app-secret";
+    private static final String MASKED_CONFIG_VALUE = "******";
+    private static final Set<String> SENSITIVE_CONFIG_KEYS = Set.of(WECHAT_LOGIN_APP_SECRET_KEY);
     private static final String SMTP_FROM_KEY = "smtp.from";
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
@@ -1204,7 +1207,9 @@ public class SystemManagementAppService {
                 select c.id, c.tenant_id as tenantId, c.config_key as configKey, c.config_name as configName,
                        c.config_value as configValue, c.config_scope as configScope, c.is_system as isSystem, c.remark
                 """ + baseSql + " order by c.is_system desc, c.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        PageResponse<SystemVO.ConfigVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        page.getRecords().forEach(SystemManagementAppService::maskSensitiveConfigValue);
+        return page;
     }
 
     public SystemVO.ConfigVO getConfig(CurrentUser currentUser, Long id) {
@@ -1222,6 +1227,13 @@ public class SystemManagementAppService {
         );
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "配置不存在");
+        }
+        return maskSensitiveConfigValue(config);
+    }
+
+    static SystemVO.ConfigVO maskSensitiveConfigValue(SystemVO.ConfigVO config) {
+        if (config != null && SENSITIVE_CONFIG_KEYS.contains(config.getConfigKey()) && StringUtils.hasText(config.getConfigValue())) {
+            config.setConfigValue(MASKED_CONFIG_VALUE);
         }
         return config;
     }
