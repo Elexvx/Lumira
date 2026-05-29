@@ -2,6 +2,7 @@ package com.legendary.invention.saas.modules.system.controller;
 
 import com.legendary.invention.api.auth.LoginCodeChallengeDTO;
 import com.legendary.invention.api.auth.LoginCodeCompleteRequest;
+import com.legendary.invention.api.auth.LoginResponseDTO;
 import com.legendary.invention.api.auth.SecondFactorCompleteRequest;
 import com.legendary.invention.api.system.CaptchaValidationRequestDTO;
 import com.legendary.invention.api.system.LoginAuditRecordRequestDTO;
@@ -241,6 +242,13 @@ public class InternalSystemController {
     @PostMapping("/passkeys/{id}/delete")
     public Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
         return passkeyCredentialAppService.delete(id, tenantId, userId);
+    }
+
+    @GetMapping("/verification/login-options")
+    public List<LoginResponseDTO.SecondFactorOptionDTO> loginSecondFactorOptions(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
+        SysUserEntity user = userDomainService.findById(userId)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "用户不存在"));
+        return verificationAppService.listLoginOptions(user, tenantId).stream().map(this::toSecondFactorOption).toList();
     }
 
     @GetMapping("/verification/providers")
@@ -620,6 +628,16 @@ public class InternalSystemController {
                 tenantId
         );
         return StringUtils.hasText(roleCode) ? roleCode.trim() : DEFAULT_REGISTRATION_ROLE_CODE;
+    }
+
+    private LoginResponseDTO.SecondFactorOptionDTO toSecondFactorOption(com.legendary.invention.saas.modules.auth.vo.LoginResponseVO.SecondFactorOptionVO option) {
+        LoginResponseDTO.SecondFactorOptionDTO dto = new LoginResponseDTO.SecondFactorOptionDTO();
+        dto.setFactorCode(option.getFactorCode());
+        dto.setFactorName(option.getFactorName());
+        dto.setChallengeId(option.getChallengeId());
+        dto.setMaskedContact(option.getMaskedContact());
+        dto.setPromptMessage(option.getPromptMessage());
+        return dto;
     }
 
     private VerificationProviderDTO toProvider(com.legendary.invention.saas.modules.system.vo.SystemVO.VerificationProviderVO provider) {
