@@ -230,9 +230,7 @@ public class SystemUserManagementAppService {
     }
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
-        if (!canAccessUserRecord(currentUser, userId)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
-        }
+        requireAccessibleUserRecord(currentUser, userId);
         SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
         if (!canViewSensitiveUserInfo(currentUser)) {
             maskSensitiveUser(user);
@@ -263,6 +261,7 @@ public class SystemUserManagementAppService {
     @Transactional
     public SystemVO.UserDetailVO updateUser(CurrentUser currentUser, Long userId, SystemDTO.UserUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
+        requireAccessibleUserRecord(currentUser, userId);
         insertOrUpdateUser(userId, request, currentUser.getUserId());
         replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
         replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
@@ -273,7 +272,7 @@ public class SystemUserManagementAppService {
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
-        Long tenantId = currentTenantId(currentUser);
+        requireAccessibleUserRecord(currentUser, userId);
         String normalizedStatus = normalizeUserStatus(status);
         if (isProtectedAdminAccount(userId, null) && "DISABLED".equals(normalizedStatus)) {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
@@ -322,6 +321,7 @@ public class SystemUserManagementAppService {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被删除");
         }
         Long tenantId = currentTenantId(currentUser);
+        requireAccessibleUserRecord(currentUser, userId);
         SystemVO.UserVO user = queryUser(tenantId, userId);
         LocalDateTime now = LocalDateTime.now();
 
@@ -1112,6 +1112,12 @@ public class SystemUserManagementAppService {
 
     private Long currentTenantId(CurrentUser currentUser) {
         return currentUser == null || currentUser.getCurrentTenantId() == null ? DEFAULT_PUBLIC_TENANT_ID : currentUser.getCurrentTenantId();
+    }
+
+    private void requireAccessibleUserRecord(CurrentUser currentUser, Long userId) {
+        if (!canAccessUserRecord(currentUser, userId)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
     }
 
     private boolean canAccessUserRecord(CurrentUser currentUser, Long userId) {

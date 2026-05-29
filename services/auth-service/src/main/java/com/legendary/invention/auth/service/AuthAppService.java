@@ -6,6 +6,8 @@ import com.legendary.invention.api.system.LoginAuditRecordRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
+import com.legendary.invention.api.system.VerificationChallengeDTO;
+import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import com.legendary.invention.auth.config.SecurityProperties;
 import com.legendary.invention.common.constant.PlatformConstants;
@@ -25,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -122,8 +125,26 @@ public class AuthAppService {
         rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
 
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = systemInternalApi.listLoginSecondFactorOptions(currentTenantId, user.userId());
+        if (secondFactorOptions != null && !secondFactorOptions.isEmpty()) {
+            LoginResponseDTO response = new LoginResponseDTO();
+            response.setRequiresSecondFactor(Boolean.TRUE);
+            response.setSecondFactorOptions(secondFactorOptions);
+            recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+            return response;
+        }
 
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = collectBoundSecondFactorOptions(currentTenantId, user.userId());
+        if (!secondFactorOptions.isEmpty()) {
+            LoginResponseDTO pending = new LoginResponseDTO();
+            pending.setUser(toAuthUser(user, snapshot, null));
+            pending.setRequiresSecondFactor(Boolean.TRUE);
+            pending.setSecondFactorOptions(secondFactorOptions);
+            pending.setRequiresCaptcha(Boolean.FALSE);
+            return pending;
+        }
+
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         saveSessionWithMultiDevicePolicy(session);
         loginProtectionService.clearFailureState(account, loginIp);
@@ -188,6 +209,12 @@ public class AuthAppService {
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = collectSecondFactorOptions(currentTenantId, user.userId());
+        if (!secondFactorOptions.isEmpty()) {
+            recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+            return toPendingSecondFactorResponse(user, snapshot, secondFactorOptions);
+        }
+
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         saveSessionWithMultiDevicePolicy(session);
         recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
@@ -335,6 +362,45 @@ public class AuthAppService {
         }
     }
 
+    private LoginResponseDTO toPendingSecondFactorResponse(
+            SystemUserSnapshotDTO user,
+            PermissionSnapshotDTO snapshot,
+            List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions
+    ) {
+        LoginResponseDTO pending = new LoginResponseDTO();
+        pending.setUser(toAuthUser(user, snapshot, null));
+        pending.setRequiresSecondFactor(Boolean.TRUE);
+        pending.setSecondFactorOptions(secondFactorOptions);
+        pending.setRequiresCaptcha(Boolean.FALSE);
+        return pending;
+    }
+
+    private List<LoginResponseDTO.SecondFactorOptionDTO> collectSecondFactorOptions(Long tenantId, Long userId) {
+        List<VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(tenantId, userId);
+        if (providers == null || providers.isEmpty()) {
+            return List.of();
+        }
+        List<LoginResponseDTO.SecondFactorOptionDTO> options = new ArrayList<>();
+        for (VerificationProviderDTO provider : providers) {
+            if (provider == null || !provider.isEnabled() || !provider.isBound()) {
+                continue;
+            }
+            VerificationChallengeDTO challenge = systemInternalApi.verificationChallenge(tenantId, userId, provider.getFactorCode());
+            options.add(toSecondFactorOption(provider, challenge));
+        }
+        return options;
+    }
+
+    private LoginResponseDTO.SecondFactorOptionDTO toSecondFactorOption(VerificationProviderDTO provider, VerificationChallengeDTO challenge) {
+        LoginResponseDTO.SecondFactorOptionDTO option = new LoginResponseDTO.SecondFactorOptionDTO();
+        option.setFactorCode(challenge == null ? provider.getFactorCode() : challenge.getFactorCode());
+        option.setFactorName(challenge == null ? provider.getFactorName() : challenge.getFactorName());
+        option.setChallengeId(challenge == null ? provider.getChallengeId() : challenge.getChallengeId());
+        option.setMaskedContact(challenge == null ? provider.getMaskedContact() : challenge.getMaskedContact());
+        option.setPromptMessage(challenge == null ? provider.getPromptMessage() : challenge.getPromptMessage());
+        return option;
+    }
+
     private AuthSession buildSession(SystemUserSnapshotDTO user, Long currentTenantId, String loginIp, String userAgent, PermissionSnapshotDTO snapshot) {
         AuthSession session = new AuthSession();
         session.setSessionId(UUID.randomUUID().toString());
@@ -356,6 +422,11 @@ public class AuthAppService {
             authSessionStore.revokeUserSessions(session.getUserId(), true);
         }
         authSessionStore.save(session, true);
+    }
+
+    private List<LoginResponseDTO.SecondFactorOptionDTO> collectBoundSecondFactorOptions(Long tenantId, Long userId) {
+        List<LoginResponseDTO.SecondFactorOptionDTO> options = systemInternalApi.loginSecondFactorOptions(tenantId, userId);
+        return options == null ? List.of() : options;
     }
 
     private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {
