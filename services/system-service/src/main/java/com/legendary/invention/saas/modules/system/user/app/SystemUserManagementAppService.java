@@ -273,22 +273,43 @@ public class SystemUserManagementAppService {
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
+        Long tenantId = currentTenantId(currentUser);
         String normalizedStatus = normalizeUserStatus(status);
         if (isProtectedAdminAccount(userId, null) && "DISABLED".equals(normalizedStatus)) {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
         }
-        jdbcTemplate.update(
-                "update sys_user set status = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+        if (!canAccessUserRecord(currentUser, userId)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
+        int rows = jdbcTemplate.update(
+                """
+                        update sys_user
+                        set status = ?, updated_by = ?, updated_at = ?
+                        where id = ?
+                          and deleted = 0
+                          and exists (
+                              select 1
+                              from sys_user_tenant ut
+                              where ut.user_id = sys_user.id
+                                and ut.tenant_id = ?
+                                and ut.deleted = 0
+                                and ut.status = 'ENABLED'
+                          )
+                        """,
                 normalizedStatus,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                userId
+                userId,
+                tenantId
         );
+        if (rows == 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
         iamUserService.changeUserStatus(userId, normalizedStatus);
         if ("DISABLED".equals(normalizedStatus)) {
             onlineSessionManagementAppService.revokeUserSessions(userId);
         }
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
         return true;
     }
 
@@ -1090,7 +1111,7 @@ public class SystemUserManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return DEFAULT_PUBLIC_TENANT_ID;
+        return currentUser == null || currentUser.getCurrentTenantId() == null ? DEFAULT_PUBLIC_TENANT_ID : currentUser.getCurrentTenantId();
     }
 
     private boolean canAccessUserRecord(CurrentUser currentUser, Long userId) {

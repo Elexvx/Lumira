@@ -1416,7 +1416,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveTenantScopedFilter(currentUser, tenantId);
         String baseSql = """
                 from audit_login_log l
                 where 1 = 1
@@ -1492,7 +1492,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveTenantScopedFilter(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -1534,7 +1534,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveTenantScopedFilter(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where l.deleted = 0
@@ -1585,7 +1585,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveTenantScopedFilter(currentUser, tenantId);
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
@@ -2234,6 +2234,14 @@ public class SystemManagementAppService {
         } catch (EmptyResultDataAccessException ex) {
             return DEFAULT_LOCALE;
         }
+    }
+
+    private Long resolveTenantScopedFilter(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        if (requestedTenantId != null && !requestedTenantId.equals(currentTenantId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权访问其他租户的数据");
+        }
+        return currentTenantId;
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
