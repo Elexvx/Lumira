@@ -9,21 +9,6 @@ RUN set -eux; \
     curl --fail --show-error --location --retry 3 --retry-all-errors --connect-timeout 10 --max-time 180 "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
     jar tf /workspace/opentelemetry-javaagent.jar >/dev/null
 
-RUN mkdir -p /root/.m2 && cat > /root/.m2/settings.xml <<'EOF'
-<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
-  <mirrors>
-    <mirror>
-      <id>aliyun-public</id>
-      <mirrorOf>central</mirrorOf>
-      <name>Aliyun Maven Central Mirror</name>
-      <url>https://maven.aliyun.com/repository/public</url>
-    </mirror>
-  </mirrors>
-</settings>
-EOF
-
 COPY pom.xml ./
 COPY services/system-service/pom.xml services/system-service/pom.xml
 COPY libs/common-core/pom.xml libs/common-core/pom.xml
