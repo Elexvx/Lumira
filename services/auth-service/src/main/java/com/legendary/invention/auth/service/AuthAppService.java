@@ -125,6 +125,14 @@ public class AuthAppService {
         rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
 
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = systemInternalApi.listLoginSecondFactorOptions(currentTenantId, user.userId());
+        if (secondFactorOptions != null && !secondFactorOptions.isEmpty()) {
+            LoginResponseDTO response = new LoginResponseDTO();
+            response.setRequiresSecondFactor(Boolean.TRUE);
+            response.setSecondFactorOptions(secondFactorOptions);
+            recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+            return response;
+        }
 
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
         List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = collectBoundSecondFactorOptions(currentTenantId, user.userId());
