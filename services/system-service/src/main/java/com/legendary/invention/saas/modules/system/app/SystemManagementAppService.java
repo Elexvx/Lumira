@@ -99,6 +99,9 @@ public class SystemManagementAppService {
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
     private static final String SMTP_PASSWORD_KEY = "smtp.password";
+    private static final String WECHAT_LOGIN_APP_SECRET_KEY = "verification.wechat-login.app-secret";
+    private static final String MASKED_CONFIG_VALUE = "******";
+    private static final Set<String> SENSITIVE_CONFIG_KEYS = Set.of(WECHAT_LOGIN_APP_SECRET_KEY);
     private static final String SMTP_FROM_KEY = "smtp.from";
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
@@ -138,6 +141,14 @@ public class SystemManagementAppService {
     );
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
+    private static final String MASKED_CONFIG_VALUE = "******";
+    private static final Set<String> SENSITIVE_CONFIG_KEY_SUFFIXES = Set.of(
+            ".app-secret",
+            ".password",
+            ".secret",
+            ".access-key-secret",
+            ".private-key"
+    );
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("系统管理", "菜单、字典、配置与验证入口", "/settings/menus", "system:menu:view"),
             shortcut("验证管理", "2FA 开关与短信验证码配置", "/settings/verification", "system:verification:view"),
@@ -1204,7 +1215,9 @@ public class SystemManagementAppService {
                 select c.id, c.tenant_id as tenantId, c.config_key as configKey, c.config_name as configName,
                        c.config_value as configValue, c.config_scope as configScope, c.is_system as isSystem, c.remark
                 """ + baseSql + " order by c.is_system desc, c.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        PageResponse<SystemVO.ConfigVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        maskSensitiveConfigValues(page.getRecords());
+        return page;
     }
 
     public SystemVO.ConfigVO getConfig(CurrentUser currentUser, Long id) {
@@ -1223,7 +1236,29 @@ public class SystemManagementAppService {
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "配置不存在");
         }
+        maskSensitiveConfigValue(config);
         return config;
+    }
+
+    static boolean isSensitiveConfigKey(String configKey) {
+        if (!StringUtils.hasText(configKey)) {
+            return false;
+        }
+        String normalizedKey = configKey.trim().toLowerCase(Locale.ROOT);
+        return SENSITIVE_CONFIG_KEY_SUFFIXES.stream().anyMatch(normalizedKey::endsWith);
+    }
+
+    private static void maskSensitiveConfigValues(List<SystemVO.ConfigVO> configs) {
+        if (configs == null) {
+            return;
+        }
+        configs.forEach(SystemManagementAppService::maskSensitiveConfigValue);
+    }
+
+    static void maskSensitiveConfigValue(SystemVO.ConfigVO config) {
+        if (config != null && isSensitiveConfigKey(config.getConfigKey()) && StringUtils.hasText(config.getConfigValue())) {
+            config.setConfigValue(MASKED_CONFIG_VALUE);
+        }
     }
 
     @Transactional
@@ -1293,7 +1328,7 @@ public class SystemManagementAppService {
                 currentUser.getUserId()
         );
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
-        return jdbcTemplate.queryForObject(
+        SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
                 """
                         select id, tenant_id as tenantId, config_key as configKey, config_name as configName,
                                config_value as configValue, config_scope as configScope, is_system as isSystem, remark
@@ -1306,6 +1341,8 @@ public class SystemManagementAppService {
                 request.getConfigKey(),
                 tenantId
         );
+        maskSensitiveConfigValue(config);
+        return config;
     }
 
     public SystemVO.SecuritySettingsVO getSecuritySettings() {
@@ -1416,7 +1453,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_login_log l
                 where 1 = 1
@@ -1448,6 +1485,17 @@ public class SystemManagementAppService {
                        l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
                 """ + baseSql + " order by l.id desc";
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+    }
+
+    private Long resolveAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        if (requestedTenantId == null || requestedTenantId.equals(currentTenantId)) {
+            return requestedTenantId == null ? currentTenantId : requestedTenantId;
+        }
+        if (currentUser != null && currentUser.getPermissions().contains("*")) {
+            return requestedTenantId;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "只能查看当前租户的审计日志");
     }
 
     private List<SystemVO.AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
@@ -1492,7 +1540,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -1534,7 +1582,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveVerificationLogTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where l.deleted = 0
@@ -1585,7 +1633,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = resolveAuthorizedAiAuditTenantId(currentUser, tenantId);
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
@@ -2250,6 +2298,24 @@ public class SystemManagementAppService {
         } catch (EmptyResultDataAccessException ex) {
             return DEFAULT_LOCALE;
         }
+    }
+
+
+    private Long resolveVerificationLogTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        Long effectiveTenantId = requestedTenantId == null ? currentTenantId : requestedTenantId;
+        if (effectiveTenantId != null
+                && !effectiveTenantId.equals(currentTenantId)
+                && !canReadCrossTenantAuditLogs(currentUser, currentTenantId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权查看其他租户的验证码审计日志");
+        }
+        return effectiveTenantId;
+    }
+
+    private boolean canReadCrossTenantAuditLogs(CurrentUser currentUser, Long currentTenantId) {
+        return DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId)
+                && currentUser != null
+                && currentUser.getPermissions().contains("*");
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
