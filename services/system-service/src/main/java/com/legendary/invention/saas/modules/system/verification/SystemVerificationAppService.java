@@ -552,6 +552,17 @@ public class SystemVerificationAppService {
                         ));
                     });
         }
+        SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
+        if (smsSettings.enabled() && smsSettings.configured() && StringUtils.hasText(user.getMobile())) {
+            SystemVO.VerificationChallengeVO challenge = startLoginChallenge(tenantId, user.getId(), FACTOR_SMS);
+            result.add(buildSecondFactorOption(
+                    FACTOR_SMS,
+                    "短信验证码",
+                    challenge.getChallengeId(),
+                    challenge.getMaskedContact(),
+                    "验证码已发送至绑定手机号，请输入 6 位短信验证码完成验证"
+            ));
+        }
         return result;
     }
 
