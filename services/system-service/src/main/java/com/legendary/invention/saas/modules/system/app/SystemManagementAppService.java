@@ -1450,7 +1450,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_login_log l
                 where 1 = 1
@@ -1482,6 +1482,17 @@ public class SystemManagementAppService {
                        l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
                 """ + baseSql + " order by l.id desc";
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+    }
+
+    private Long resolveAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        if (requestedTenantId == null || requestedTenantId.equals(currentTenantId)) {
+            return requestedTenantId == null ? currentTenantId : requestedTenantId;
+        }
+        if (currentUser != null && currentUser.getPermissions().contains("*")) {
+            return requestedTenantId;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "只能查看当前租户的审计日志");
     }
 
     private List<SystemVO.AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
@@ -1526,7 +1537,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -1619,7 +1630,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
