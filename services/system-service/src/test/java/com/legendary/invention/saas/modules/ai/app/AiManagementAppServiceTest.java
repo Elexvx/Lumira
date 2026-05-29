@@ -8,13 +8,19 @@ import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.infrastructure.AiSecretCryptoService;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +49,51 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void testLlmServiceRejectsEndpointOverrideWhenReusingStoredApiKey() throws Exception {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiSecretCryptoService secretCryptoService = mock(AiSecretCryptoService.class);
+        AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                secretCryptoService,
+                mock(AiEmployeeRuntimeService.class),
+                chatModelFactory
+        );
+        Object existing = llmServiceRecord("deepseek", "https://api.deepseek.com", "encrypted-secret");
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        List existingServices = List.of(existing);
+        when(jdbcTemplate.query(anyString(), any(), any(), any())).thenReturn(existingServices);
+
+        AiDTO.LlmServiceTestRequest request = testRequest();
+        request.setServiceId(10L);
+        request.setApiKey(null);
+        request.setBaseUrl("https://attacker.example");
+
+        assertThatThrownBy(() -> service.testLlmService(currentUser(), request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("重新输入 API Key");
+    }
+
+    @Test
+    void aiChatModelFactoryRejectsPrivateBaseUrl() {
+        HttpAiChatModelFactory factory = new HttpAiChatModelFactory(new ObjectMapper());
+        AiLlmServiceConfig config = new AiLlmServiceConfig();
+        config.setProvider("deepseek");
+        config.setDefaultModel("deepseek-chat");
+        config.setBaseUrl("http://127.0.0.1:8080");
+        config.setApiKey("sk-test");
+        AiDTO.ChatRequest chatRequest = new AiDTO.ChatRequest();
+        chatRequest.setMessage("ping");
+        AiVO.EmployeeDetailVO employee = new AiVO.EmployeeDetailVO();
+        employee.setSystemPrompt("system");
+
+        assertThatThrownBy(() -> factory.create(config).chat(chatRequest, employee, List.of()))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("内网或本机地址");
+    }
+
+    @Test
     void testLlmServiceReturnsFailureProbeResult() {
         AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
         AiChatModelFactory.AiChatClient chatClient = mock(AiChatModelFactory.AiChatClient.class);
@@ -57,6 +108,29 @@ class AiManagementAppServiceTest {
         assertThat(result.getProvider()).isEqualTo("deepseek");
         assertThat(result.getModel()).isEqualTo("deepseek-chat");
         assertThat(result.getLatencyMs()).isNotNull();
+    }
+
+    private Object llmServiceRecord(String provider, String baseUrl, String apiKeyEncrypted) throws Exception {
+        Class<?> recordType = Class.forName("com.legendary.invention.saas.modules.ai.app.AiManagementAppService$AiEntitiesHelper$LlmServiceRecord");
+        Constructor<?> constructor = recordType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object record = constructor.newInstance();
+        setRecordValue(recordType, record, "setId", 10L);
+        setRecordValue(recordType, record, "setProvider", provider);
+        setRecordValue(recordType, record, "setCode", "deepseek");
+        setRecordValue(recordType, record, "setTitle", "DeepSeek");
+        setRecordValue(recordType, record, "setBaseUrl", baseUrl);
+        setRecordValue(recordType, record, "setApiKeyEncrypted", apiKeyEncrypted);
+        setRecordValue(recordType, record, "setDefaultModel", "deepseek-chat");
+        setRecordValue(recordType, record, "setTimeoutMs", 60000);
+        setRecordValue(recordType, record, "setMaxTokens", 64);
+        return record;
+    }
+
+    private void setRecordValue(Class<?> recordType, Object record, String methodName, Object value) throws Exception {
+        Method method = recordType.getMethod(methodName, value.getClass());
+        method.setAccessible(true);
+        method.invoke(record, value);
     }
 
     private AiManagementAppService newService(AiChatModelFactory chatModelFactory) {
