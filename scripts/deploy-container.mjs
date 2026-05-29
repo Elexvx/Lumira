@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -295,6 +295,15 @@ function generatedEnvDefaults() {
   };
 }
 
+function protectEnvFile() {
+  chmodSync(envPath, 0o600);
+}
+
+function writeProtectedEnvFile(content) {
+  writeFileSync(envPath, content, { mode: 0o600 });
+  protectEnvFile();
+}
+
 function ensureEnvFile() {
   const generatedValues = generatedEnvDefaults();
   const legacyGeneratedValues = new Map([
@@ -302,13 +311,14 @@ function ensureEnvFile() {
   ]);
 
   if (existsSync(envPath)) {
+    protectEnvFile();
     let content = readFileSync(envPath, 'utf8');
     const missingEntries = Object.entries(generatedValues)
       .filter(([key]) => !new RegExp(`^${key}=`, 'm').test(content));
 
     if (missingEntries.length > 0) {
       content = `${content.trimEnd()}\n${missingEntries.map(([key, value]) => `${key}=${value}`).join('\n')}\n`;
-      writeFileSync(envPath, content);
+      writeProtectedEnvFile(content);
       log(`Backfilled deploy/.env keys: ${missingEntries.map(([key]) => key).join(', ')}`);
     }
 
@@ -321,7 +331,7 @@ function ensureEnvFile() {
       return line;
     });
     if (migratedKeys.length > 0) {
-      writeFileSync(envPath, content);
+      writeProtectedEnvFile(content);
       log(`Migrated deploy/.env generated defaults: ${migratedKeys.join(', ')}`);
     }
     return;
@@ -332,7 +342,7 @@ function ensureEnvFile() {
     content = content.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${value}`);
   }
 
-  writeFileSync(envPath, content);
+  writeProtectedEnvFile(content);
   log('Generated deploy/.env with random local deployment secrets.');
 }
 
