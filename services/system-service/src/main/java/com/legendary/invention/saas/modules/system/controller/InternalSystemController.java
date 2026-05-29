@@ -256,6 +256,13 @@ public class InternalSystemController {
         return verificationAppService.listProviders(tenantId, userId).stream().map(this::toProvider).toList();
     }
 
+    @GetMapping("/verification/login-options")
+    public List<LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
+        return userDomainService.findById(userId)
+                .map(user -> verificationAppService.listLoginOptions(user, tenantId).stream().map(this::toSecondFactorOption).toList())
+                .orElseGet(List::of);
+    }
+
     @GetMapping("/verification/providers/{factorCode}")
     public VerificationProviderDTO verificationProvider(
             @RequestParam("tenantId") Long tenantId,
@@ -649,6 +656,16 @@ public class InternalSystemController {
         dto.setStatus(provider.getStatusMessage());
         dto.setPromptMessage(provider.getStatusMessage());
         dto.setMaskedContact(provider.getMaskedContact());
+        return dto;
+    }
+
+    private LoginResponseDTO.SecondFactorOptionDTO toSecondFactorOption(com.legendary.invention.saas.modules.auth.vo.LoginResponseVO.SecondFactorOptionVO option) {
+        LoginResponseDTO.SecondFactorOptionDTO dto = new LoginResponseDTO.SecondFactorOptionDTO();
+        dto.setFactorCode(option.getFactorCode());
+        dto.setFactorName(option.getFactorName());
+        dto.setChallengeId(option.getChallengeId());
+        dto.setMaskedContact(option.getMaskedContact());
+        dto.setPromptMessage(option.getPromptMessage());
         return dto;
     }
 
