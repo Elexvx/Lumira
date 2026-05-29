@@ -132,6 +132,16 @@ public class AuthAppService {
         }
 
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = collectBoundSecondFactorOptions(currentTenantId, user.userId());
+        if (!secondFactorOptions.isEmpty()) {
+            LoginResponseDTO pending = new LoginResponseDTO();
+            pending.setUser(toAuthUser(user, snapshot, null));
+            pending.setRequiresSecondFactor(Boolean.TRUE);
+            pending.setSecondFactorOptions(secondFactorOptions);
+            pending.setRequiresCaptcha(Boolean.FALSE);
+            return pending;
+        }
+
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
         saveSessionWithMultiDevicePolicy(session);
         loginProtectionService.clearFailureState(account, loginIp);
@@ -396,6 +406,11 @@ public class AuthAppService {
             authSessionStore.revokeUserSessions(session.getUserId(), true);
         }
         authSessionStore.save(session, true);
+    }
+
+    private List<LoginResponseDTO.SecondFactorOptionDTO> collectBoundSecondFactorOptions(Long tenantId, Long userId) {
+        List<LoginResponseDTO.SecondFactorOptionDTO> options = systemInternalApi.loginSecondFactorOptions(tenantId, userId);
+        return options == null ? List.of() : options;
     }
 
     private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {

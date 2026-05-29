@@ -12,7 +12,9 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -594,6 +596,7 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
         if (!StringUtils.hasText(baseUrl)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务未配置 Base URL");
         }
+        validatePublicHttpBaseUrl(baseUrl);
 
         String normalizedProvider = normalizeProvider(config.getProvider());
         String normalizedBaseUrl = stripTrailingSlash(baseUrl);
@@ -613,6 +616,49 @@ class HttpAiChatModelFactory implements AiChatModelFactory {
             return normalizedBaseUrl + "/chat/completions";
         }
         return normalizedBaseUrl + "/v1/chat/completions";
+    }
+
+    private void validatePublicHttpBaseUrl(String baseUrl) {
+        URI uri;
+        try {
+            uri = URI.create(baseUrl.trim());
+        } catch (IllegalArgumentException exception) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务 Base URL 无效");
+        }
+        String scheme = uri.getScheme();
+        if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务 Base URL 仅支持 HTTP 或 HTTPS");
+        }
+        if (uri.getRawUserInfo() != null || !StringUtils.hasText(uri.getHost())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务 Base URL 无效");
+        }
+        for (InetAddress address : resolveHostAddresses(uri.getHost())) {
+            if (isBlockedAddress(address)) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务 Base URL 不允许访问内网或本机地址");
+            }
+        }
+    }
+
+    private InetAddress[] resolveHostAddresses(String host) {
+        try {
+            return InetAddress.getAllByName(host);
+        } catch (UnknownHostException exception) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务 Base URL 主机无法解析");
+        }
+    }
+
+    private boolean isBlockedAddress(InetAddress address) {
+        byte[] bytes = address.getAddress();
+        return address.isAnyLocalAddress()
+                || address.isLoopbackAddress()
+                || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress()
+                || address.isMulticastAddress()
+                || isIpv6UniqueLocal(bytes);
+    }
+
+    private boolean isIpv6UniqueLocal(byte[] bytes) {
+        return bytes.length == 16 && (bytes[0] & 0xfe) == 0xfc;
     }
 
     private String defaultBaseUrlForProvider(String provider) {
