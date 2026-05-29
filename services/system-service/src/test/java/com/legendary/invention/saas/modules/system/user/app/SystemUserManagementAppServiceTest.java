@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -87,6 +88,44 @@ class SystemUserManagementAppServiceTest {
         assertEquals(2, jdbcTemplate.insertedUserDepartments);
     }
 
+    @Test
+    void updateUserShouldRejectInaccessibleUserBeforeMutating() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.userRecordAccessCount = 0L;
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateUser(currentUser(), 2001L, userRequest(List.of())));
+
+        assertEquals(ErrorCode.NOT_FOUND, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount);
+        assertFalse(jdbcTemplate.deletedUserRoles);
+        assertFalse(jdbcTemplate.deletedUserDepartments);
+    }
+
+    @Test
+    void updateUserStatusShouldRejectInaccessibleUserBeforeMutating() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.userRecordAccessCount = 0L;
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateUserStatus(currentUser(), 2001L, "DISABLED"));
+
+        assertEquals(ErrorCode.NOT_FOUND, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount);
+    }
+
+    @Test
+    void deleteUserShouldRejectInaccessibleUserBeforeMutating() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.userRecordAccessCount = 0L;
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        BizException exception = assertThrows(BizException.class, () -> service.deleteUser(currentUser(), 2001L));
+
+        assertEquals(ErrorCode.NOT_FOUND, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount);
+    }
+
     private SystemUserManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate) {
         IamUserService iamUserService = mock(IamUserService.class);
         when(iamUserService.listIdentities(anyLong())).thenReturn(List.of());
@@ -127,6 +166,8 @@ class SystemUserManagementAppServiceTest {
 
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
         private long existingRoleCount = 1L;
+        private long userRecordAccessCount = 1L;
+        private int updateCount;
         private int roleExistenceChecks;
         private int departmentExistenceChecks;
         private int insertedUserRoles;
@@ -136,6 +177,7 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public int update(String sql, Object... args) {
+            updateCount += 1;
             if (sql.contains("delete from sys_user_role")) {
                 deletedUserRoles = true;
             }
@@ -159,7 +201,7 @@ class SystemUserManagementAppServiceTest {
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             if (sql.contains("from sys_user u")) {
-                return requiredType.cast(1L);
+                return requiredType.cast(userRecordAccessCount);
             }
             if (sql.contains("from sys_role")) {
                 roleExistenceChecks += 1;

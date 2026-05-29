@@ -1258,6 +1258,10 @@ public class AiManagementAppService {
         if (!StringUtils.hasText(provider)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请选择 LLM 类型");
         }
+        boolean reusingStoredApiKey = reusingStoredApiKey(request, existing);
+        if (reusingStoredApiKey) {
+            rejectStoredSecretEndpointOverride(request, existing);
+        }
         AiLlmServiceConfig config = new AiLlmServiceConfig();
         config.setId(request.getServiceId());
         config.setProvider(provider);
@@ -1280,6 +1284,34 @@ public class AiManagementAppService {
             return null;
         }
         return aiSecretCryptoService.decrypt(existing.getApiKeyEncrypted());
+    }
+
+    private boolean reusingStoredApiKey(AiDTO.LlmServiceTestRequest request, AiEntitiesHelper.LlmServiceRecord existing) {
+        return !StringUtils.hasText(request.getApiKey()) && existing != null && StringUtils.hasText(existing.getApiKeyEncrypted());
+    }
+
+    private void rejectStoredSecretEndpointOverride(AiDTO.LlmServiceTestRequest request, AiEntitiesHelper.LlmServiceRecord existing) {
+        if (overridesText(request.getProvider(), existing.getProvider()) || overridesText(request.getBaseUrl(), existing.getBaseUrl())) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "修改 LLM 类型或 Base URL 时请重新输入 API Key 后再测试");
+        }
+    }
+
+    private boolean overridesText(String requested, String existing) {
+        if (!StringUtils.hasText(requested)) {
+            return false;
+        }
+        return !normalizeComparableText(requested).equals(normalizeComparableText(existing));
+    }
+
+    private String normalizeComparableText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        String normalized = value.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized.toLowerCase(Locale.ROOT);
     }
 
     private String firstText(String... values) {
