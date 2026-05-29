@@ -99,6 +99,9 @@ public class SystemManagementAppService {
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
     private static final String SMTP_PASSWORD_KEY = "smtp.password";
+    private static final String WECHAT_LOGIN_APP_SECRET_KEY = "verification.wechat-login.app-secret";
+    private static final String MASKED_CONFIG_VALUE = "******";
+    private static final Set<String> SENSITIVE_CONFIG_KEYS = Set.of(WECHAT_LOGIN_APP_SECRET_KEY);
     private static final String SMTP_FROM_KEY = "smtp.from";
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
