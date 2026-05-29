@@ -6,6 +6,8 @@ import com.legendary.invention.api.system.LoginAuditRecordRequestDTO;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
+import com.legendary.invention.api.system.VerificationChallengeDTO;
+import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
 import com.legendary.invention.auth.config.SecurityProperties;
 import com.legendary.invention.common.constant.PlatformConstants;
@@ -122,6 +124,12 @@ public class AuthAppService {
         rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
 
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = boundSecondFactorOptions(currentTenantId, user.userId());
+        if (!secondFactorOptions.isEmpty()) {
+            loginProtectionService.clearFailureState(account, loginIp);
+            recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "PENDING_SECOND_FACTOR", null, loginIp, userAgent);
+            return pendingSecondFactorResponse(secondFactorOptions);
+        }
 
         PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
         AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot);
@@ -152,6 +160,38 @@ public class AuthAppService {
                 "默认管理员弱密码登录已禁用，请通过部署初始化流程重置管理员密码",
                 ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
         );
+    }
+
+    private List<LoginResponseDTO.SecondFactorOptionDTO> boundSecondFactorOptions(Long tenantId, Long userId) {
+        List<VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(tenantId, userId);
+        if (providers == null) {
+            return List.of();
+        }
+        return providers.stream()
+                .filter(provider -> provider != null && provider.isEnabled() && provider.isBound())
+                .map(provider -> toLoginChallengeOption(tenantId, userId, provider))
+                .toList();
+    }
+
+    private LoginResponseDTO pendingSecondFactorResponse(List<LoginResponseDTO.SecondFactorOptionDTO> options) {
+        LoginResponseDTO response = new LoginResponseDTO();
+        response.setRequiresSecondFactor(Boolean.TRUE);
+        response.setSecondFactorOptions(options);
+        response.setRequiresCaptcha(Boolean.FALSE);
+        return response;
+    }
+
+    private LoginResponseDTO.SecondFactorOptionDTO toLoginChallengeOption(Long tenantId, Long userId, VerificationProviderDTO provider) {
+        VerificationChallengeDTO challenge = systemInternalApi.verificationChallenge(tenantId, userId, provider.getFactorCode());
+        LoginResponseDTO.SecondFactorOptionDTO option = toOption(provider);
+        if (challenge != null) {
+            option.setFactorCode(challenge.getFactorCode());
+            option.setFactorName(challenge.getFactorName());
+            option.setChallengeId(challenge.getChallengeId());
+            option.setMaskedContact(challenge.getMaskedContact());
+            option.setPromptMessage(challenge.getPromptMessage());
+        }
+        return option;
     }
 
     @SentinelResource(value = "auth-login-code-challenge", blockHandler = "loginCodeChallengeBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
@@ -252,14 +292,14 @@ public class AuthAppService {
     public List<LoginResponseDTO.SecondFactorOptionDTO> verificationProviders() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         Long currentTenantId = platformTenantId();
-        List<com.legendary.invention.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenantId, currentUser.getUserId());
+        List<VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenantId, currentUser.getUserId());
         if (providers == null) {
             return List.of();
         }
         return providers.stream().map(this::toOption).toList();
     }
 
-    public com.legendary.invention.api.system.VerificationProviderDTO verificationProvider(String factorCode) {
+    public VerificationProviderDTO verificationProvider(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         return systemInternalApi.verificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
     }
@@ -396,7 +436,7 @@ public class AuthAppService {
         return PlatformConstants.PLATFORM_TENANT_ID;
     }
 
-    private LoginResponseDTO.SecondFactorOptionDTO toOption(com.legendary.invention.api.system.VerificationProviderDTO provider) {
+    private LoginResponseDTO.SecondFactorOptionDTO toOption(VerificationProviderDTO provider) {
         LoginResponseDTO.SecondFactorOptionDTO option = new LoginResponseDTO.SecondFactorOptionDTO();
         option.setFactorCode(provider.getFactorCode());
         option.setFactorName(provider.getFactorName());
