@@ -1675,6 +1675,22 @@ public class SystemManagementAppService {
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
     }
 
+    private Long resolveAuthorizedAiAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        if (requestedTenantId == null) {
+            return currentTenantId;
+        }
+        if (isPlatformAuditUser(currentUser, currentTenantId) || requestedTenantId.equals(currentTenantId)) {
+            return requestedTenantId;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "无权查看其他租户的 AI 调用审计日志");
+    }
+
+    private boolean isPlatformAuditUser(CurrentUser currentUser, Long currentTenantId) {
+        return DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId)
+                || (currentUser != null && currentUser.getPermissions().contains("*"));
+    }
+
     public Integer countMenus(Long tenantId) {
         Long count = jdbcTemplate.queryForObject(
                 "select count(1) from sys_menu where tenant_id = ? and deleted = 0 and status = 'ENABLED'",
