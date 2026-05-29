@@ -87,6 +87,12 @@ public interface SystemInternalApi {
     @GetMapping("/verification/providers")
     List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
 
+    @GetMapping("/verification/login-options")
+    List<com.legendary.invention.api.auth.LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId
+    );
+
     @GetMapping("/verification/providers/{factorCode}")
     VerificationProviderDTO verificationProvider(
             @RequestParam("tenantId") Long tenantId,
