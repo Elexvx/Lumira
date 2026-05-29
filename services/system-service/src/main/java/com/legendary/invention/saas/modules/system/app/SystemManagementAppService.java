@@ -1568,7 +1568,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = tenantId == null ? currentTenantId(currentUser) : tenantId;
+        Long effectiveTenantId = resolveVerificationLogTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where l.deleted = 0
@@ -2268,6 +2268,24 @@ public class SystemManagementAppService {
         } catch (EmptyResultDataAccessException ex) {
             return DEFAULT_LOCALE;
         }
+    }
+
+
+    private Long resolveVerificationLogTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        Long currentTenantId = currentTenantId(currentUser);
+        Long effectiveTenantId = requestedTenantId == null ? currentTenantId : requestedTenantId;
+        if (effectiveTenantId != null
+                && !effectiveTenantId.equals(currentTenantId)
+                && !canReadCrossTenantAuditLogs(currentUser, currentTenantId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权查看其他租户的验证码审计日志");
+        }
+        return effectiveTenantId;
+    }
+
+    private boolean canReadCrossTenantAuditLogs(CurrentUser currentUser, Long currentTenantId) {
+        return DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId)
+                && currentUser != null
+                && currentUser.getPermissions().contains("*");
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
