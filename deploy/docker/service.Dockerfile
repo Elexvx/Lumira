@@ -22,8 +22,8 @@ COPY services/file-service/pom.xml services/file-service/pom.xml
 COPY services/message-service/pom.xml services/message-service/pom.xml
 COPY services/plugin-service/pom.xml services/plugin-service/pom.xml
 COPY services/localization-service/pom.xml services/localization-service/pom.xml
-COPY services/gateway-service/pom.xml services/gateway-service/pom.xml
 COPY services/job-executor/pom.xml services/job-executor/pom.xml
+COPY services/legendary-server/pom.xml services/legendary-server/pom.xml
 
 COPY . .
 
