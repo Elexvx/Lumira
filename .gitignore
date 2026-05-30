@@ -7,7 +7,6 @@ frontend/src/.umi-production/
 frontend/.umi/
 frontend/.umi-production/
 frontend/.cache/
-site-frontend/.next/
 frontend/playwright-report/
 frontend/test-results/
 .umi/

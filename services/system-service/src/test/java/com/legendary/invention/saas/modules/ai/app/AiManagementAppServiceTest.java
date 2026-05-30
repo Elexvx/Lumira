@@ -3,6 +3,7 @@ package com.legendary.invention.saas.modules.ai.app;
 import com.legendary.invention.saas.common.enums.ErrorCode;
 import com.legendary.invention.saas.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.legendary.invention.saas.infrastructure.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.infrastructure.AiSecretCryptoService;
@@ -63,7 +64,7 @@ class AiManagementAppServiceTest {
         Object existing = llmServiceRecord("deepseek", "https://api.deepseek.com", "encrypted-secret");
         @SuppressWarnings({"rawtypes", "unchecked"})
         List existingServices = List.of(existing);
-        when(jdbcTemplate.query(anyString(), any(), any(), any())).thenReturn(existingServices);
+        when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<Object>>any(), any(), any())).thenReturn(existingServices);
 
         AiDTO.LlmServiceTestRequest request = testRequest();
         request.setServiceId(10L);

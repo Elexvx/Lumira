@@ -4,9 +4,9 @@
 
 **目标：** 在当前微服务平台基础上，补齐通用数据权限、在线表单、流程设计、报表大屏、OA 办公、AI 知识库、模型管理和 AI 流程编排能力，形成可支撑大型业务系统的低代码平台。
 
-**架构：** 不另起一套孤立系统，而是在现有 `gateway-service`、`system-service`、`file-service`、`message-service`、`plugin-service`、`libs/*`、`frontend`、`site-frontend` 基础上扩展平台能力。低代码、流程、报表、大屏和 AI 编排共享统一认证、统一权限、统一文件、统一消息、统一审计、统一数据权限和统一插件扩展模型。
+**架构：** 不另起一套孤立系统，而是在现有 `gateway-service`、`system-service`、`file-service`、`message-service`、`plugin-service`、`libs/*`、`frontend` 基础上扩展平台能力。低代码、流程、报表、大屏和 AI 编排共享统一认证、统一权限、统一文件、统一消息、统一审计、统一数据权限和统一插件扩展模型。
 
-**Tech Stack:** Java 21、Spring Boot 4 / 3.5 兼容设计、Spring Cloud Alibaba、Spring Cloud Gateway、MyBatis-Plus、MySQL、Redis、Flyway、Spring Security、Spring AI / Spring AI Alibaba、Vue/React 管理端兼容设计、Ant Design 组件体系、Vite/Umi 前端工程、Next.js 官网端。
+**Tech Stack:** Java 21、Spring Boot 4 / 3.5 兼容设计、Spring Cloud Alibaba、Spring Cloud Gateway、MyBatis-Plus、MySQL、Redis、Flyway、Spring Security、Spring AI / Spring AI Alibaba、Vue/React 管理端兼容设计、Ant Design 组件体系、Vite/Umi 前端工程。
 
 ---
 
@@ -23,7 +23,7 @@
 | 大屏中心 | 大屏页面、组件编排、实时数据、发布展示 | `services/report-service` + `frontend` 大屏设计器 |
 | AI 知识库中心 | 文档导入、切片、向量化、检索、RAG 问答 | 新增 `services/ai-service` 或扩展现有 AI 模块 |
 | AI 编排中心 | AI 工作流、工具节点、模型节点、知识库节点、人工审批节点 | `services/ai-service` + `plugin-api` |
-| 门户/官网中心 | 门户页面、内容、表单入口、公开提交 | 已有 `site-frontend` + CMS 能力继续演进 |
+| 门户/内容中心 | 门户页面、内容、表单入口、公开提交 | 后续以通用内容、表单和提交模块建设 |
 
 第一阶段不要追求所有功能“看起来都有”。最重要的是先把统一数据权限、表单、流程和报表的数据契约打稳。否则后面 OA、门户、AI 编排都会重复造字段、重复做状态、重复做权限。
 

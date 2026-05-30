@@ -85,9 +85,6 @@ public interface SystemInternalApi {
     @PostMapping("/passkeys/{id}/delete")
     Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
 
-    @GetMapping("/verification/login-options")
-    List<LoginResponseDTO.SecondFactorOptionDTO> loginSecondFactorOptions(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
-
     @GetMapping("/verification/providers")
     List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
 

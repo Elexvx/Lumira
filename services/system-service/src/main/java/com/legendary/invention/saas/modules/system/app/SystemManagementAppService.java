@@ -141,7 +141,6 @@ public class SystemManagementAppService {
     );
     private static final int RECENT_LOGIN_LOG_LIMIT = 5;
 
-    private static final String MASKED_CONFIG_VALUE = "******";
     private static final Set<String> SENSITIVE_CONFIG_KEY_SUFFIXES = Set.of(
             ".app-secret",
             ".password",
@@ -1488,11 +1487,16 @@ public class SystemManagementAppService {
     }
 
     private Long resolveAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
+        return resolveAuditTenantId(currentUser, requestedTenantId, false);
+    }
+
+    private Long resolveAuditTenantId(CurrentUser currentUser, Long requestedTenantId, boolean allowPlatformTenantScope) {
         Long currentTenantId = currentTenantId(currentUser);
         if (requestedTenantId == null || requestedTenantId.equals(currentTenantId)) {
             return requestedTenantId == null ? currentTenantId : requestedTenantId;
         }
-        if (currentUser != null && currentUser.getPermissions().contains("*")) {
+        if ((allowPlatformTenantScope && DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId))
+                || (currentUser != null && currentUser.getPermissions().contains("*"))) {
             return requestedTenantId;
         }
         throw new BizException(ErrorCode.FORBIDDEN, "只能查看当前租户的审计日志");
@@ -1633,7 +1637,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId, true);
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
