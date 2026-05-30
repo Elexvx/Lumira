@@ -8,6 +8,7 @@ import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.auth.config.SecurityProperties;
+import com.legendary.invention.auth.support.ClientIpResolver;
 import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;

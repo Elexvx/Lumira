@@ -101,7 +101,7 @@ class AuthAppServiceTest {
         when(systemInternalApi.loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID))
                 .thenReturn(new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password")));
         when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(snapshot);
-        when(systemInternalApi.loginSecondFactorOptions(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(List.of(totpOption));
+        when(systemInternalApi.listLoginSecondFactorOptions(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(List.of(totpOption));
         when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
         when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
 
@@ -115,7 +115,7 @@ class AuthAppServiceTest {
         assertNull(response.getRefreshToken());
         assertEquals(1, response.getSecondFactorOptions().size());
         assertEquals("challenge-1", response.getSecondFactorOptions().get(0).getChallengeId());
-        verify(systemInternalApi).loginSecondFactorOptions(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi).listLoginSecondFactorOptions(PlatformConstants.PLATFORM_TENANT_ID, 42L);
         verify(authSessionStore, never()).save(any(), anyBoolean());
         verify(loginProtectionService, never()).clearFailureState("jane", "127.0.0.1");
     }

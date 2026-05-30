@@ -244,13 +244,6 @@ public class InternalSystemController {
         return passkeyCredentialAppService.delete(id, tenantId, userId);
     }
 
-    @GetMapping("/verification/login-options")
-    public List<LoginResponseDTO.SecondFactorOptionDTO> loginSecondFactorOptions(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
-        SysUserEntity user = userDomainService.findById(userId)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "用户不存在"));
-        return verificationAppService.listLoginOptions(user, tenantId).stream().map(this::toSecondFactorOption).toList();
-    }
-
     @GetMapping("/verification/providers")
     public List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
         return verificationAppService.listProviders(tenantId, userId).stream().map(this::toProvider).toList();
@@ -656,16 +649,6 @@ public class InternalSystemController {
         dto.setStatus(provider.getStatusMessage());
         dto.setPromptMessage(provider.getStatusMessage());
         dto.setMaskedContact(provider.getMaskedContact());
-        return dto;
-    }
-
-    private LoginResponseDTO.SecondFactorOptionDTO toSecondFactorOption(com.legendary.invention.saas.modules.auth.vo.LoginResponseVO.SecondFactorOptionVO option) {
-        LoginResponseDTO.SecondFactorOptionDTO dto = new LoginResponseDTO.SecondFactorOptionDTO();
-        dto.setFactorCode(option.getFactorCode());
-        dto.setFactorName(option.getFactorName());
-        dto.setChallengeId(option.getChallengeId());
-        dto.setMaskedContact(option.getMaskedContact());
-        dto.setPromptMessage(option.getPromptMessage());
         return dto;
     }
 

@@ -2,7 +2,7 @@
 
 **目标：** 将当前系统从“已有多个业务模块的 SaaS 后台”梳理成“底座能力稳定、业务模块可组合、插件能力可演进”的长期平台架构。
 
-**架构判断：** 当前仓库已经具备 `system-service`、网关、若干独立服务骨架、`common-*` 共享库、插件运行时、官网 CMS、审批、评审等模块。后续不应先把所有业务堆完再拆，也不应一开始把所有场景拆成独立服务，而应先建立模块注册协议和统一能力边界，在统一控制面内完成软插件化，再按成熟度迁移为独立服务或动态插件。
+**架构判断：** 当前仓库已经具备 `system-service`、网关、若干独立服务骨架、`common-*` 共享库、插件运行时、审批、评审等模块。后续不应先把所有业务堆完再拆，也不应一开始把所有场景拆成独立服务，而应先建立模块注册协议和统一能力边界，在统一控制面内完成软插件化，再按成熟度迁移为独立服务或动态插件。
 
 **技术栈：** Java 21、Spring Boot 4、Spring Cloud Alibaba、Spring Cloud Gateway、MyBatis Plus、MySQL、Redis、Flyway、React 19、Umi Max、Ant Design、Next.js App Router、插件 SPI、Maven 多模块。
 
@@ -48,7 +48,7 @@
 - `services/auth-service/`、`file-service/`、`message-service/`、`plugin-service/`、`localization-service/`、`job-executor/` 已有独立服务骨架。
 - `libs/common-core/`、`common-web/`、`common-security/`、`legendary-api/` 已承担共享契约和基础能力。
 - 管理前端 `frontend/` 已经以后端菜单和权限为主驱动菜单。
-- 官网前端 `site-frontend/` 已独立出来，通过公开 API 读取已发布内容。
+- 公开门户和内容发布能力当前不在运行代码中；后续如需恢复，应作为独立业务能力重新立项，并避免与管理端耦合。
 
 这说明当前项目已经适合走“平台控制面 + 能力模块 + 逐步服务化”的路线。
 
@@ -60,7 +60,7 @@
 | --- | --- | --- |
 | 审批 | `services/system-service/src/main/java/.../modules/approval`、`approval_*` 表 | 通用流程能力 |
 | 评审 | `services/system-service/src/main/java/.../modules/evaluation`、`evaluation_*` 表 | 通用评分/评审能力 |
-| 官网/CMS | `services/system-service/src/main/java/.../modules/site`、`site_*` 表、`site-frontend/` | 通用内容、页面、表单、提交能力雏形 |
+| 内容/门户 | 暂未落入运行代码 | 可作为后续通用内容、页面、表单、提交能力方向 |
 | 文件 | `services/file-service`、`file_object` | 平台底座能力 |
 | 消息 | `services/message-service`、站内信、WebSocket/outbox | 平台底座能力 |
 | 任务 | `services/system-service/modules/task`、`services/job-executor` | 通用任务中心和调度能力 |
@@ -68,7 +68,7 @@
 | 本地化 | `services/localization-service`、`frontend/src/services/localization` | 平台底座能力 |
 | AI | `services/system-service/modules/ai`、`frontend/src/pages/ai` | 业务增强能力，可作为可选模块 |
 
-其中 `approval`、`evaluation`、`site_form`、`site_form_submission` 最值得抽象成“业务模块可复用能力”，因为比赛、期刊、活动、会议都会重复使用。
+其中 `approval`、`evaluation` 适合作为“业务模块可复用能力”；表单、提交和内容发布能力后续应以通用命名重新设计，避免沿用旧官网边界。
 
 ### 2.3 当前插件能力边界
 
@@ -144,14 +144,14 @@
 | --- | --- | --- | --- |
 | `approval` | 审批流程 | 已有 `approval_*` | 为投稿、报名、发布、配置变更提供流程能力 |
 | `evaluation` | 评审评分 | 已有 `evaluation_*` | 为比赛评审、论文审稿、项目评分复用 |
-| `submission` | 提交/投稿/报名 | 目前散落在 `site_form_submission` | 抽成通用提交能力 |
-| `form` | 动态表单 | 目前在 `site_form.schema_json` | 抽成通用表单模型 |
-| `content` | 内容发布 | 目前在 `site_content`、`site_page` | 支持资讯、公告、期刊文章发布 |
+| `submission` | 提交/投稿/报名 | 尚未形成通用运行模块 | 抽成通用提交能力 |
+| `form` | 动态表单 | 尚未形成通用运行模块 | 抽成通用表单模型 |
+| `content` | 内容发布 | 尚未形成通用运行模块 | 支持资讯、公告、期刊文章发布 |
 | `notification` | 通知模板 | 已有消息能力 | 抽模板、触发条件、发送策略 |
 | `result` | 结果发布 | 目前可由 `evaluation_result` 支撑 | 比赛结果、录用结果、审核结果复用 |
 | `member` | 申请人/会员中心 | 暂未独立 | 对外用户提交、查看状态、补件、通知 |
 
-注意：`submission` 和 `form` 当前不要急着从 `site` 表里强拆，可以先通过新文档和新代码规范要求后续新增业务使用通用命名和通用服务接口，后续迁移时再把 `site_form` 逐步上升为 `form_definition` / `submission_record`。
+注意：`submission` 和 `form` 当前应直接按通用命名和通用服务接口设计，不再沿用历史官网边界。
 
 ### 3.3 业务场景模块层
 
@@ -161,11 +161,11 @@
 
 | 场景模块 | 组合能力 | 说明 |
 | --- | --- | --- |
-| `competition` | 表单、提交、文件、评审、结果、通知、官网发布 | 比赛、评选、奖项申报 |
+| `competition` | 表单、提交、文件、评审、结果、通知、公开发布 | 比赛、评选、奖项申报 |
 | `journal` | 投稿、文件、编辑初审、专家评审、录用通知、内容归档 | 期刊、论文、文章征集 |
 | `conference` | 报名、投稿、议程、评审、通知、证书 | 会议系统 |
 | `activity` | 报名表单、审核、签到、通知 | 活动管理 |
-| `official-site` | 站点、导航、页面、内容、表单、公开 API | 当前 `site` 模块已覆盖一部分 |
+| `portal` | 公开页面、内容、表单、公开 API | 后续按通用门户/内容能力建设 |
 | `ai-workbench` | AI 员工、技能、对话、工具调用 | 可作为高级可选能力 |
 
 业务场景模块不应该重复实现底层能力，而应该通过用例编排复用它们。
@@ -353,7 +353,7 @@ services/system-service/src/main/java/com/legendary/invention/saas/modules/<modu
 - `evaluation_template`
 - `approval_template`
 
-当前 `approval_*`、`evaluation_*`、`site_*` 命名是可接受的，应继续保持。
+当前 `approval_*`、`evaluation_*` 命名是可接受的，应继续保持；内容、表单和提交能力应使用通用模块命名。
 
 ### 5.4 模块间调用
 
@@ -487,7 +487,7 @@ frontend/src/services/<module>/
 - 专家评分底层能力。
 - 审批流程底层能力。
 - 消息通知。
-- 官网发布。
+- 公开发布。
 
 ### 7.2 推荐组合
 
@@ -499,7 +499,7 @@ competition_event
   -> evaluation_instance
   -> approval_instance
   -> message_notice
-  -> site_content
+  -> content_record
 ```
 
 ### 7.3 第一阶段最小闭环
@@ -513,7 +513,7 @@ competition_event
 - 创建评审实例。
 - 专家评分。
 - 归档结果。
-- 结果在官网展示。
+- 结果在公开页面展示。
 
 不交付：
 
@@ -599,8 +599,8 @@ DRAFT
 
 任务：
 
-1. 以当前 `site_form` 和 `site_form_submission` 为参照，设计通用 `form_definition` 与 `submission_record`。
-2. 保留 `site` 现有接口不破坏官网。
+1. 设计通用 `form_definition` 与 `submission_record`。
+2. 不依赖旧官网接口作为兼容边界。
 3. 新场景模块优先调用通用表单/提交 app service。
 4. 给 `submission_record` 预留 `source_module`、`source_business_type`、`source_business_id`。
 
@@ -765,19 +765,19 @@ rg -n "@RequestMapping\\(\"/api/(approvals|evaluations|tasks)" services/system-s
 **Files:**
 
 - Later Create: `docs/plans/2026-05-17-form-submission-capability-plan.md`
-- Later Review: `services/system-service/src/main/java/com/legendary/invention/saas/modules/site/app/SiteManagementAppService.java`
+- Later Review: 通用内容/表单/提交服务实现。
 - Later Review: `services/system-service/src/main/resources/db/migration/V1__baseline.sql`
 
 **Steps:**
 
-1. 从 `site_form`、`site_form_submission` 提取通用字段。
-2. 设计兼容迁移方案，不破坏现有官网。
+1. 定义通用表单和提交字段。
+2. 设计面向新模块的迁移方案。
 3. 定义 `form` 和 `submission` app service 接口。
 
 **Verify:**
 
 ```bash
-rg -n "site_form|site_form_submission|schema_json|submit_policy" services/system-service/src/main/resources/db/migration services/system-service/src/main/java
+rg -n "form_definition|submission_record|schema_json|submit_policy" services/system-service/src/main/resources/db/migration services/system-service/src/main/java
 ```
 
 ### Task 5: 选择第一个场景模块
@@ -814,7 +814,7 @@ rg -n "site_form|site_form_submission|schema_json|submit_policy" services/system
 
 - 比赛不是孤立比赛系统，而是 `competition + form + submission + evaluation + content`。
 - 期刊不是孤立期刊系统，而是 `journal + submission + approval + evaluation + content`。
-- 官网不是静态站，而是 `site + content + form + submission + public API`。
+- 门户不是静态站，而是 `portal + content + form + submission + public API`。
 - 插件不是另起炉灶，而是通过模块注册、菜单、权限、API 网关、运行时协议接入底座。
 
 最终系统会变成一个真正可长期演进的平台，而不是多个业务系统被强行塞进同一个后台。
