@@ -33,18 +33,10 @@ const observability = args.has('--observability');
 const skipDockerPrune = args.has('--skip-docker-prune');
 const serviceNames = parseServiceNames(rawArgs);
 const allowedServices = new Set([
-  'system-service',
+  'legendary-server',
   'mysql',
   'redis',
-  'nacos',
   'xxl-job-admin',
-  'gateway-service',
-  'auth-service',
-  'file-service',
-  'message-service',
-  'plugin-service',
-  'localization-service',
-  'job-executor',
   'api-proxy',
   'frontend',
   'prometheus',
@@ -453,14 +445,13 @@ function composeArgs(...extraArgs) {
 
 async function checkDeployment() {
   const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
-  const gatewayUrl = process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8081';
+  const backendUrl = 'http://127.0.0.1:8080';
 
   log('Running deployment health checks...');
   await waitForHttp(`${baseUrl}/health`, 'API proxy');
   await waitForHttp(`${baseUrl}/api/health`, 'system API through API proxy');
-  await waitForHttp(`${baseUrl}/api/version`, 'gateway version API');
-  await waitForHttp(`${baseUrl}/api/v1/system/version`, 'system-service version API');
-  await waitForHttp(`${gatewayUrl}/actuator/health`, 'gateway actuator');
+  await waitForHttp(`${baseUrl}/api/v1/system/version`, 'legendary-server version API');
+  await waitForHttp(`${backendUrl}/actuator/health`, 'legendary-server actuator');
   await waitForHttp(`${baseUrl}/api/v1/public/login-capabilities`, 'public login capabilities API');
   await waitForHttp(`${baseUrl}/api/v1/localization/languages`, 'protected localization management API is routed', { expectedStatus: 401 });
   if (observability) {
@@ -477,19 +468,11 @@ async function checkSelectedServiceReadiness() {
   const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
   const gatewayUrl = process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8081';
   const checks = {
-    'system-service': [
-      [`${baseUrl}/api/v1/public/security-settings`, 'system-service public settings API'],
-      [`${baseUrl}/api/health`, 'system-service health API'],
-    ],
-    'auth-service': [
-      [`${baseUrl}/api/v1/public/login-capabilities`, 'auth-service login capabilities API'],
-    ],
-    'gateway-service': [
-      [`${gatewayUrl}/actuator/health`, 'gateway actuator'],
-    ],
-    'localization-service': [
-      [`${baseUrl}/api/v1/localization/languages`, 'localization-service protected route', { expectedStatus: 401 }],
-    ],
+    'legendary-server': [
+      [`${baseUrl}/api/v1/public/security-settings`, 'legendary-server public settings API'],
+      [`${baseUrl}/api/health`, 'legendary-server health API'],
+      [`${baseUrl}/api/v1/public/login-capabilities`, 'legendary-server login capabilities API'],
+    ]
   };
 
   const selectedChecks = serviceNames.flatMap((serviceName) => checks[serviceName] ?? []);
