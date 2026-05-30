@@ -43,10 +43,24 @@ class SystemManagementAppServiceAiAuditTenantAuthorizationTest {
     }
 
     @Test
+    void shouldRejectAiAuditLogsForOtherTenantWhenPlatformUserLacksWildcardPermission() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemManagementAppService service = buildService(queryOperations);
+        CurrentUser platformAuditor = currentUser(1001L, Set.of("audit:operation:view"));
+
+        assertThrows(
+                BizException.class,
+                () -> service.listAiCallLogs(platformAuditor, 3003L, null, null, null, null, null, 1, 10)
+        );
+
+        assertNull(queryOperations.lastSql);
+    }
+
+    @Test
     void shouldAllowPlatformAdminToFilterAiAuditLogsByTenant() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SystemManagementAppService service = buildService(queryOperations);
-        CurrentUser platformAdmin = currentUser(1001L, Set.of("audit:operation:view"));
+        CurrentUser platformAdmin = currentUser(1001L, Set.of("*"));
 
         service.listAiCallLogs(platformAdmin, 3003L, null, null, null, null, null, 1, 10);
 
