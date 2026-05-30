@@ -38,9 +38,6 @@ spring:
     validate-on-migrate: false
     locations:
       - classpath:db/migration
-      - classpath:db/migration/file
-      - classpath:db/migration/plugin
-      - classpath:db/migration/message
     ignore-migration-patterns:
       - "*:missing"
     placeholders:
