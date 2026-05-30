@@ -267,8 +267,8 @@ services:
       context: ..
       dockerfile: deploy/docker/service.Dockerfile
       args:
-        SERVICE_DIR: services/system-service
-        SERVICE_MODULE: services/system-service
+        SERVICE_DIR: services/legendary-server
+        SERVICE_MODULE: services/legendary-server
     image: legendary/legendary-server:0.1.0
     container_name: legendary-server
     restart: unless-stopped
@@ -356,16 +356,7 @@ services:
       OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: ${OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED:-true}
       OTEL_RESOURCE_ATTRIBUTES: service.namespace=legendary-invention,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
       SERVER_PORT: 8080
-      OTEL_SERVICE_NAME: system-service
-      FILE_SERVICE_BASE_URL: http://file-service:8084
-      MONITOR_GATEWAY_SERVICE_BASE_URL: http://gateway-service:8081
-      MONITOR_AUTH_SERVICE_BASE_URL: http://auth-service:8082
-      MONITOR_SYSTEM_SERVICE_BASE_URL: http://system-service:8080
-      MONITOR_FILE_SERVICE_BASE_URL: http://file-service:8084
-      MONITOR_MESSAGE_SERVICE_BASE_URL: http://message-service:8085
-      MONITOR_PLUGIN_SERVICE_BASE_URL: http://plugin-service:8086
-      MONITOR_LOCALIZATION_SERVICE_BASE_URL: http://localization-service:8088
-      MONITOR_JOB_EXECUTOR_BASE_URL: http://job-executor:8089
+      OTEL_SERVICE_NAME: legendary-server
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
       PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
