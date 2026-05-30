@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.infrastructure.job;
 
-import com.legendary.invention.saas.common.api.ApiResponse;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.api.ApiResponse;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.event.PlatformEventOutboxRelay;
 import com.legendary.invention.saas.modules.system.online.OnlineSessionStreamService;
 import com.legendary.invention.common.web.InternalJobTokenValidator;

@@ -4,7 +4,7 @@ import com.legendary.invention.common.security.JwtTokenClaims;
 import com.legendary.invention.common.security.JwtTokenParser;
 import org.springframework.stereotype.Service;
 
-@Service
+@Service("messageJwtTokenService")
 public class JwtTokenService {
 
     private final JwtTokenParser jwtTokenParser;

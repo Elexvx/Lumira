@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.modules.system.support;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
 import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;
 import org.springframework.mail.SimpleMailMessage;

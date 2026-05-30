@@ -8,6 +8,8 @@ import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/ma
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { iamService } from '@/services/iam';
 import type { DepartmentRecord } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const STATUS_OPTIONS = [
   { label: '启用', value: 'ENABLED' },
@@ -42,7 +44,7 @@ const DepartmentManagementPage = () => {
   const loadDepartments = async () => {
     setLoading(true);
     try {
-      setDepartments(await iamService.departments({ autoRedirectOnUnauthorized: false }));
+      setDepartments(await iamService.departments(API_OPTS.NO_REDIRECT));
     } finally {
       setLoading(false);
     }
@@ -68,13 +70,13 @@ const DepartmentManagementPage = () => {
 
   const openEdit = async (record: DepartmentRecord) => {
     drawer.openEdit(record, record.id);
-    const detailResult = await iamService.departmentDetail(record.id, { autoRedirectOnUnauthorized: false });
+    const detailResult = await iamService.departmentDetail(record.id, API_OPTS.NO_REDIRECT);
     form.setFieldsValue(detailResult);
   };
 
   const openDetail = async (record: DepartmentRecord) => {
     detail.openEdit(record, record.id);
-    const detailResult = await iamService.departmentDetail(record.id, { autoRedirectOnUnauthorized: false });
+    const detailResult = await iamService.departmentDetail(record.id, API_OPTS.NO_REDIRECT);
     setSelectedDepartment(detailResult);
   };
 
@@ -88,10 +90,10 @@ const DepartmentManagementPage = () => {
         sortNo: values.sortNo ?? 0,
       };
       if (drawer.editingId) {
-        await iamService.updateDepartment(drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
+        await iamService.updateDepartment(drawer.editingId, payload, API_OPTS.NO_REDIRECT);
         message.success('部门已更新');
       } else {
-        await iamService.createDepartment(payload, { autoRedirectOnUnauthorized: false });
+        await iamService.createDepartment(payload, API_OPTS.NO_REDIRECT);
         message.success('部门已创建');
       }
       drawer.close();
@@ -102,7 +104,7 @@ const DepartmentManagementPage = () => {
   };
 
   const deleteDepartment = async (record: DepartmentRecord) => {
-    await iamService.deleteDepartment(record.id, { autoRedirectOnUnauthorized: false });
+    await iamService.deleteDepartment(record.id, API_OPTS.NO_REDIRECT);
     message.success('部门已删除');
     await loadDepartments();
   };

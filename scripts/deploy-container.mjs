@@ -7,8 +7,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(scriptDir, '..');
+import { parseEnvFile, randomSecret, randomBase64Secret } from './lib/env-utils.mjs';
+import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
+import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
+const log = createLogger('deploy');
+const repoRoot = resolveRepoRoot(import.meta.url);
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
 const envPath = path.join(repoRoot, 'deploy', '.env');
 const buildIdentityPath = process.env.BUILD_IDENTITY_FILE || path.join(repoRoot, 'deploy', 'build-identity.env');
@@ -51,9 +54,6 @@ const allowedServices = new Set([
   'grafana',
 ]);
 
-function log(message) {
-  console.log(`[deploy] ${message}`);
-}
 
 function parseServiceNames(argv) {
   const values = [];
@@ -94,18 +94,12 @@ function validateServiceNames() {
 }
 
 function run(command, commandArgs, options = {}) {
-  const result = spawnSync(command, commandArgs, {
-    cwd: repoRoot,
-    stdio: 'inherit',
-    shell: false,
-    ...options,
-  });
-
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+  try {
+    return execRun(command, commandArgs, { cwd: repoRoot, ...options });
+  } catch (err) {
+    process.exit(err.status ?? 1);
   }
 }
-
 function runWithRetry(command, commandArgs, retries = 1) {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const result = spawnSync(command, commandArgs, {
@@ -127,16 +121,11 @@ function runWithRetry(command, commandArgs, retries = 1) {
 }
 
 function output(command, commandArgs) {
-  return spawnSync(command, commandArgs, {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    shell: false,
-  });
+  return execRun(command, commandArgs, { cwd: repoRoot, check: false, encoding: "utf8", stdio: "pipe" });
 }
 
 function optionalOutput(command, commandArgs) {
-  const result = output(command, commandArgs);
-  return result.status === 0 ? result.stdout.trim() : '';
+  return execOptionalOutput(command, commandArgs, { cwd: repoRoot });
 }
 
 function configureBuildIdentity() {
@@ -220,13 +209,7 @@ function maybePruneDockerBuildCache(stage) {
   log(`Docker cleanup (${stage}) finished: free=${freeAfter ?? 'unknown'}MB.`);
 }
 
-function randomSecret(prefix) {
-  return `${prefix}-${randomBytes(24).toString('hex')}`;
-}
 
-function randomBase64Secret(byteLength = 48) {
-  return randomBytes(byteLength).toString('base64');
-}
 
 function generatedEnvDefaults() {
   return {
@@ -346,24 +329,6 @@ function ensureEnvFile() {
   log('Generated deploy/.env with random local deployment secrets.');
 }
 
-function parseEnvFile(filePath) {
-  if (!existsSync(filePath)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    readFileSync(filePath, 'utf8')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#') && line.includes('='))
-      .map((line) => {
-        const separatorIndex = line.indexOf('=');
-        const key = line.slice(0, separatorIndex).trim();
-        const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, '');
-        return [key, value];
-      })
-  );
-}
 
 function ensureWritableDirectory(hostPath, label) {
   run('mkdir', ['-p', hostPath]);
@@ -484,55 +449,7 @@ function composeArgs(...extraArgs) {
   return ['compose', '--env-file', 'deploy/.env', '-f', composeFile, ...profileArgs, ...extraArgs];
 }
 
-async function probeHttp(url, options = {}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 5_000);
 
-  try {
-    const response = await fetch(url, { signal: controller.signal, headers: options.headers ?? {} });
-    return {
-      ok: response.ok,
-      status: response.status,
-      text: await response.text(),
-    };
-  } catch (err) {
-    return {
-      ok: false,
-      status: 0,
-      text: err instanceof Error ? err.message : String(err),
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function waitForHttp(url, label, options = {}) {
-  const timeoutMs = options.timeoutMs ?? 240_000;
-  const intervalMs = options.intervalMs ?? 3_000;
-  const startedAt = Date.now();
-  let lastResult = null;
-
-  while (Date.now() - startedAt <= timeoutMs) {
-    // eslint-disable-next-line no-await-in-loop
-    const result = await probeHttp(url, { timeoutMs: options.requestTimeoutMs ?? 5_000 });
-    lastResult = result;
-
-    const body = result.text.toLowerCase();
-    const expected = options.includes?.toLowerCase();
-    const expectedStatus = options.expectedStatus;
-    const statusMatches = expectedStatus ? result.status === expectedStatus : result.ok;
-    if (statusMatches && (!expected || body.includes(expected))) {
-      log(`${label} is ready at ${url}`);
-      return;
-    }
-
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  const status = lastResult?.status ? `status=${lastResult.status}` : 'no HTTP response';
-  throw new Error(`${label} is not ready at ${url} (${status}).`);
-}
 
 async function checkDeployment() {
   const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';

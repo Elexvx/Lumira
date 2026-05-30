@@ -40,6 +40,8 @@ import {
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import './TopActions.css';
 import { TopActionsPasswordDrawer } from './TopActionsPasswordDrawer';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const THEME_OPTIONS: Array<{
   key: ThemePreference;
@@ -265,7 +267,7 @@ export const TopActions = () => {
       );
       setLocale(normalizedNextLocale, true);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
     } finally {
       setSwitchingLocale(false);
     }
@@ -318,7 +320,7 @@ export const TopActions = () => {
       );
       history.replace(DEFAULT_HOME_PATH);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
     } finally {
       setSwitchingRole(false);
     }
@@ -349,7 +351,7 @@ export const TopActions = () => {
       message.success(intl.formatMessage({ id: 'nav.user.password.updateSuccess', defaultMessage: '密码已修改' }));
       setPasswordDrawerOpen(false);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
     }
   };
 

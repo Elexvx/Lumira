@@ -27,6 +27,8 @@ import {
 import { monitorService } from '@/services/system/monitor';
 import type { PlatformUpdateStatus } from '@/types/api';
 import { formatDateTime } from './shared';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const UNKNOWN_VALUE = 'unknown';
 
@@ -120,7 +122,7 @@ const VersionCard = ({
 export const PlatformUpdateContent = () => {
   const query = useQuery({
     queryKey: ['platform-update-status'],
-    queryFn: async () => monitorService.updateStatus({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => monitorService.updateStatus(API_OPTS.NO_REDIRECT),
   });
 
   const updateStatus = query.data;
@@ -158,11 +160,11 @@ export const PlatformUpdateContent = () => {
 
   const handleCheck = async () => {
     try {
-      const result = await monitorService.checkUpdate({ autoRedirectOnUnauthorized: false });
+      const result = await monitorService.checkUpdate(API_OPTS.NO_REDIRECT);
       await query.refetch();
       message.success(result.updateAvailable ? '发现新版本' : result.status === 'UNKNOWN' ? '版本信息待确认' : '当前已经是最新版本');
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '检查更新失败');
+      showErrorMessage(error, '检查更新失败');
     }
   };
 

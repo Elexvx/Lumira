@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.modules.ai.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;

@@ -5,7 +5,7 @@ import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.message.entity.SysConfigEntity;
-import com.legendary.invention.message.mapper.SysConfigMapper;
+import com.legendary.invention.message.mapper.MessageSysConfigMapper;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
@@ -39,9 +39,9 @@ public class SmtpNotificationMailService {
             SMTP_SSL_ENABLED_KEY
     );
 
-    private final SysConfigMapper sysConfigMapper;
+    private final MessageSysConfigMapper sysConfigMapper;
 
-    public SmtpNotificationMailService(SysConfigMapper sysConfigMapper) {
+    public SmtpNotificationMailService(MessageSysConfigMapper sysConfigMapper) {
         this.sysConfigMapper = sysConfigMapper;
     }
 

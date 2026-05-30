@@ -1,12 +1,12 @@
 package com.legendary.invention.saas.modules.system.user.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.common.security.data.DataPermissionDecision;
 import com.legendary.invention.common.security.data.DataPermissionResolver;
 import com.legendary.invention.common.security.data.DataScopeType;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.service.PasswordPolicyService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.iam.service.IamUserAccount;
@@ -239,8 +239,9 @@ public class SystemUserManagementAppService {
         copyUser(detail, user);
         Long tenantId = currentTenantId(currentUser);
         detail.setRoleIds(listUserRoleIds(userId, tenantId));
-        detail.setDeptIds(listUserDeptIds(userId, tenantId));
-        detail.setPrimaryDeptId(queryPrimaryDeptId(userId, tenantId));
+        List<Long> deptIds = listUserDeptIds(userId, tenantId);
+        detail.setDeptIds(deptIds);
+        detail.setPrimaryDeptId(deptIds.isEmpty() ? null : deptIds.get(0));
         detail.setTenantIds(listUserTenantIds(userId));
         decorateIamUserDetail(detail, userId, canViewSensitiveUserInfo(currentUser));
         return detail;
@@ -720,28 +721,6 @@ public class SystemUserManagementAppService {
                 userId,
                 tenantId
         );
-    }
-
-    private Long queryPrimaryDeptId(Long userId, Long tenantId) {
-        List<Long> ids = jdbcTemplate.queryForList(
-                """
-                        select ud.dept_id
-                        from sys_user_department ud
-                        join sys_department d
-                          on d.id = ud.dept_id
-                         and d.tenant_id = ud.tenant_id
-                         and d.deleted = 0
-                        where ud.user_id = ?
-                          and ud.tenant_id = ?
-                          and ud.deleted = 0
-                        order by ud.primary_flag desc, ud.dept_id asc
-                        limit 1
-                        """,
-                Long.class,
-                userId,
-                tenantId
-        );
-        return ids.isEmpty() ? null : ids.get(0);
     }
 
     private List<String> listUserRoleNames(Long userId, Long tenantId) {

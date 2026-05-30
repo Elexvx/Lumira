@@ -20,6 +20,8 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { aiService, type AiKnowledgeBasePayload } from '@/services/ai';
 import type { AiKnowledgeBaseRecord, AiKnowledgeDocumentRecord, AiKnowledgeReferenceRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const KNOWLEDGE_FILE_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.md,.markdown,.txt';
 type UploadRequestOption = Parameters<NonNullable<UploadProps['customRequest']>>[0];
@@ -81,7 +83,7 @@ const AiKnowledgePage = () => {
   const [searchResults, setSearchResults] = useState<AiKnowledgeReferenceRecord[]>([]);
   const [activeScope, setActiveScope] = useState('ALL');
 
-  const requestOptions = useMemo(() => ({ autoRedirectOnUnauthorized: false }), []);
+  const requestOptions = useMemo(() => (API_OPTS.NO_REDIRECT), []);
   const canShareKnowledge = actionPermission.can(['*', 'ai:knowledge:share']);
   const canSaveKnowledgeBase = actionPermission.can(editingRecord ? 'ai:knowledge:update' : 'ai:knowledge:create');
   const canQueryKnowledge = actionPermission.can('ai:knowledge:query');

@@ -21,6 +21,8 @@ import {
 import type { AppInitialState } from '@/app.types';
 import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin } from '@/types/api';
 import { getLocale } from '@umijs/max';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
   const settings = normalizeBrandingSettings(
@@ -30,7 +32,7 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
           allowUnauthorizedWithoutRedirect: true,
           silent: true,
         }).catch(() => DEFAULT_BRANDING_SETTINGS)
-      : await systemService.publicBrandingSettings({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => DEFAULT_BRANDING_SETTINGS),
+      : await systemService.publicBrandingSettings(API_OPTS.SILENT_NO_REDIRECT).catch(() => DEFAULT_BRANDING_SETTINGS),
   );
   persistBrandingSettings(settings);
   applyFavicon(settings.websiteFaviconUrl);
@@ -60,7 +62,7 @@ const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
 
 const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
   const settings = normalizeSecuritySettings(
-    await systemService.publicSecuritySettings({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => DEFAULT_SECURITY_SETTINGS),
+    await systemService.publicSecuritySettings(API_OPTS.SILENT_NO_REDIRECT).catch(() => DEFAULT_SECURITY_SETTINGS),
   );
   persistSecuritySettings(settings);
   return settings;
@@ -68,11 +70,11 @@ const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
 
 const loadPublicAgreementSettings = async (): Promise<AgreementSettings> =>
   normalizeAgreementSettings(
-    await systemService.publicAgreementSettings({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => DEFAULT_AGREEMENT_SETTINGS),
+    await systemService.publicAgreementSettings(API_OPTS.SILENT_NO_REDIRECT).catch(() => DEFAULT_AGREEMENT_SETTINGS),
   );
 
 const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
-  await systemService.publicLoginCapabilities({ autoRedirectOnUnauthorized: false, silent: true }).catch(() => ({
+  await systemService.publicLoginCapabilities(API_OPTS.SILENT_NO_REDIRECT).catch(() => ({
     passwordLoginAvailable: true,
     smsLoginAvailable: false,
     emailLoginAvailable: false,

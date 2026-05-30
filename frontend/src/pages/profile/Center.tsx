@@ -20,6 +20,8 @@ import { ProfileCompletionCard } from '@/pages/profile/center/components/Profile
 import { ProfileBasicCard } from '@/pages/profile/center/components/ProfileBasicCard';
 import { buildVisibleProfileFields } from '@/pages/profile/center/utils';
 import type { ProfileCompletionItem, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const ProfileCenterPage = () => {
   const [profileForm] = Form.useForm();
@@ -27,7 +29,7 @@ const ProfileCenterPage = () => {
   const responsive = useResponsive();
   const profileQuery = useQuery({
     queryKey: ['profile-summary', initialState?.currentUser?.userId],
-    queryFn: async () => profileService.summary({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => profileService.summary(API_OPTS.NO_REDIRECT),
   });
   const summary = profileQuery.data;
   const currentUser = summary?.currentUser || initialState?.currentUser;
@@ -59,12 +61,12 @@ const ProfileCenterPage = () => {
   const profileFormProps = useStandardFormProps({ form: profileForm });
   const providersQuery = useQuery({
     queryKey: ['profile-second-factor-providers', currentUser?.userId],
-    queryFn: async () => secondFactorService.currentProviders({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => secondFactorService.currentProviders(API_OPTS.NO_REDIRECT),
     enabled: Boolean(currentUser),
   });
   const passkeyQuery = useQuery({
     queryKey: ['profile-passkeys', currentUser?.userId],
-    queryFn: async () => authService.passkeyCredentials({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => authService.passkeyCredentials(API_OPTS.NO_REDIRECT),
     enabled: Boolean(currentUser),
   });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -141,7 +143,7 @@ const ProfileCenterPage = () => {
       onSuccess?.(avatarUrl);
     } catch (error) {
       onError?.(error as Error);
-      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.avatar.uploadFailed', defaultMessage: 'Avatar upload failed, please try again later' }));
+      showErrorMessage(error, formatMessage({ id: 'page.profile.avatar.uploadFailed', defaultMessage: 'Avatar upload failed, please try again later' }));
     } finally {
       setAvatarUploading(false);
     }
@@ -201,11 +203,11 @@ const ProfileCenterPage = () => {
   const handleUnbind = (provider: SecondFactorProviderStatus) => {
     void (async () => {
       try {
-        await secondFactorService.currentUnbind(provider.factorCode, { autoRedirectOnUnauthorized: false });
+        await secondFactorService.currentUnbind(provider.factorCode, API_OPTS.NO_REDIRECT);
         message.success(formatMessage({ id: 'page.profile.bind.unbound', defaultMessage: 'Unbound' }));
         await providersQuery.refetch();
       } catch (error) {
-        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.unbindFailed', defaultMessage: 'Failed to unbind, please try again later' }));
+        showErrorMessage(error, formatMessage({ id: 'page.profile.bind.unbindFailed', defaultMessage: 'Failed to unbind, please try again later' }));
       }
     })();
   };
@@ -353,7 +355,7 @@ const ProfileCenterPage = () => {
               contactType: contactBindType,
               value: nextValue,
             },
-            { autoRedirectOnUnauthorized: false, silent: true },
+            API_OPTS.SILENT_NO_REDIRECT,
           );
           setContactBindChallenge(challenge);
           setContactBindChallengeTarget(nextValue);
@@ -389,7 +391,7 @@ const ProfileCenterPage = () => {
             challengeId: contactBindChallenge?.challengeId,
             verificationCode,
           },
-          { autoRedirectOnUnauthorized: false },
+          API_OPTS.NO_REDIRECT,
         );
         setInitialState((prev) =>
           prev
@@ -492,7 +494,7 @@ const ProfileCenterPage = () => {
           email: currentUser?.email || '',
           birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       setInitialState((prev) =>
         prev
@@ -543,7 +545,7 @@ const ProfileCenterPage = () => {
       return;
     }
     try {
-      const options = await authService.passkeyRegistrationOptions({ autoRedirectOnUnauthorized: false, silent: true });
+      const options = await authService.passkeyRegistrationOptions(API_OPTS.SILENT_NO_REDIRECT);
       const credential = await navigator.credentials.create({
         publicKey: toPublicKeyCreationOptions(options),
       });
@@ -560,7 +562,7 @@ const ProfileCenterPage = () => {
         message.info(formatMessage({ id: 'page.profile.passkey.cancelled', defaultMessage: '已取消通行密钥绑定' }));
         return;
       }
-      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥绑定失败' }));
+      showErrorMessage(error, formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥绑定失败' }));
     }
   };
 
@@ -569,7 +571,7 @@ const ProfileCenterPage = () => {
     if (!label?.trim()) {
       return;
     }
-    await authService.renamePasskeyCredential(id, label.trim(), { autoRedirectOnUnauthorized: false });
+    await authService.renamePasskeyCredential(id, label.trim(), API_OPTS.NO_REDIRECT);
     message.success(formatMessage({ id: 'page.profile.passkey.renamed', defaultMessage: '通行密钥已重命名' }));
     await passkeyQuery.refetch();
   };
@@ -597,7 +599,7 @@ const ProfileCenterPage = () => {
                   key="delete"
                   title={formatMessage({ id: 'page.profile.passkey.deleteConfirm', defaultMessage: '确认删除该通行密钥？' })}
                   onConfirm={async () => {
-                    await authService.deletePasskeyCredential(item.id, { autoRedirectOnUnauthorized: false });
+                    await authService.deletePasskeyCredential(item.id, API_OPTS.NO_REDIRECT);
                     message.success(formatMessage({ id: 'common.deleted', defaultMessage: '已删除' }));
                     await passkeyQuery.refetch();
                   }}
@@ -644,6 +646,67 @@ const ProfileCenterPage = () => {
     </Card>
   );
 
+  const accountPanel = (
+    <div className="saas-profile-page__top-row">
+      <Card className="saas-profile-page__summary-card">
+        <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
+          <section className="saas-profile-page__account-panel" aria-label="账户身份">
+            <Space align="center" size={responsive.isMobile ? 14 : 16} className="saas-profile-page__welcome-profile">
+              <Avatar size={responsive.isMobile ? 56 : 64} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
+              <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
+                {responsive.isMobile ? (
+                  <Typography.Title level={4} style={{ margin: 0 }}>{displayName}</Typography.Title>
+                ) : (
+                  <Typography.Title level={3} style={{ margin: 0 }}>{displayName}</Typography.Title>
+                )}
+                <Typography.Text>{activeRoleName}</Typography.Text>
+              </Space>
+            </Space>
+          </section>
+        </div>
+      </Card>
+    </div>
+  );
+
+  const profileBasicPanel = (
+    <div ref={profileBasicCardRef}>
+      <ProfileBasicCard
+        loading={profileQuery.isLoading}
+        hasVisibleProfileFields={hasVisibleProfileFields}
+        profileSaving={profileSaving}
+        profileFormProps={profileFormProps}
+        visibleProfileFields={visibleProfileFields}
+        currentUser={currentUser}
+        avatarValue={avatarValue}
+        avatarUploading={avatarUploading}
+        mobileLockedByVerification
+        emailLockedByVerification
+        editingOpen={profileEditingOpen}
+        onSave={() => void handleSaveProfile()}
+        onEditOpenChange={setProfileEditingOpen}
+        onAvatarBeforeCrop={handleAvatarBeforeCrop}
+        onAvatarUploadRequest={handleAvatarUploadRequest}
+      />
+    </div>
+  );
+
+  const accountStatusPanel = (
+    <>
+      <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+      <BoundProviderCard
+        canManageSecondFactor
+        loading={providersQuery.isLoading}
+        providers={providersQuery.data || []}
+        bindingLoading={bindingLoading}
+        bindingSubmitting={bindingSubmitting}
+        supplementalItems={supplementalItems}
+        onBind={(provider) => void openBindModal(provider)}
+        onUnbind={handleUnbind}
+      />
+      {passkeyCard}
+    </>
+  );
+
   return (
     <ManagementPage
       className="saas-profile-page"
@@ -652,57 +715,12 @@ const ProfileCenterPage = () => {
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         {responsive.isMobile ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <div className="saas-profile-page__top-row">
-              <Card className="saas-profile-page__summary-card">
-                <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
-                  <section className="saas-profile-page__account-panel" aria-label="账户身份">
-                    <Space align="center" size={14} className="saas-profile-page__welcome-profile">
-                      <Avatar size={56} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
-                      <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
-                        <Typography.Title level={4} style={{ margin: 0 }}>
-                          {displayName}
-                        </Typography.Title>
-                        <Typography.Text>{activeRoleName}</Typography.Text>
-                      </Space>
-                    </Space>
-                  </section>
-                </div>
-              </Card>
-            </div>
-            <div ref={profileBasicCardRef}>
-              <ProfileBasicCard
-                loading={profileQuery.isLoading}
-                hasVisibleProfileFields={hasVisibleProfileFields}
-                profileSaving={profileSaving}
-                profileFormProps={profileFormProps}
-                visibleProfileFields={visibleProfileFields}
-                currentUser={currentUser}
-                avatarValue={avatarValue}
-                avatarUploading={avatarUploading}
-                mobileLockedByVerification
-                emailLockedByVerification
-                editingOpen={profileEditingOpen}
-                onSave={() => void handleSaveProfile()}
-                onEditOpenChange={setProfileEditingOpen}
-                onAvatarBeforeCrop={handleAvatarBeforeCrop}
-                onAvatarUploadRequest={handleAvatarUploadRequest}
-              />
-            </div>
+            {accountPanel}
+            {profileBasicPanel}
             <section className="saas-profile-page__side-section" aria-label="账户状态">
               <Typography.Title level={4} style={{ margin: 0 }}>账户状态</Typography.Title>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
-                <BoundProviderCard
-                  canManageSecondFactor
-                  loading={providersQuery.isLoading}
-                  providers={providersQuery.data || []}
-                  bindingLoading={bindingLoading}
-                  bindingSubmitting={bindingSubmitting}
-                  supplementalItems={supplementalItems}
-                  onBind={(provider) => void openBindModal(provider)}
-                  onUnbind={handleUnbind}
-                />
-                {passkeyCard}
+                {accountStatusPanel}
               </Space>
             </section>
             {recentLoginCard}
@@ -711,60 +729,15 @@ const ProfileCenterPage = () => {
           <Row gutter={[16, 16]} align="stretch" className="saas-profile-page__three-blocks">
             <Col xs={24} xl={18} className="saas-profile-page__main-column">
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
-                <div className="saas-profile-page__top-row">
-                  <Card className="saas-profile-page__summary-card">
-                    <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
-                      <section className="saas-profile-page__account-panel" aria-label="账户身份">
-                        <Space align="center" size={16} className="saas-profile-page__welcome-profile">
-                          <Avatar size={64} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} className="saas-profile-page__account-avatar" />
-                          <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
-                            <Typography.Title level={3} style={{ margin: 0 }}>
-                              {displayName}
-                            </Typography.Title>
-                            <Typography.Text>{activeRoleName}</Typography.Text>
-                          </Space>
-                        </Space>
-                      </section>
-                    </div>
-                  </Card>
-                </div>
-                <div ref={profileBasicCardRef}>
-                  <ProfileBasicCard
-                    loading={profileQuery.isLoading}
-                    hasVisibleProfileFields={hasVisibleProfileFields}
-                    profileSaving={profileSaving}
-                    profileFormProps={profileFormProps}
-                    visibleProfileFields={visibleProfileFields}
-                    currentUser={currentUser}
-                    avatarValue={avatarValue}
-                    avatarUploading={avatarUploading}
-                    mobileLockedByVerification
-                    emailLockedByVerification
-                    editingOpen={profileEditingOpen}
-                    onSave={() => void handleSaveProfile()}
-                    onEditOpenChange={setProfileEditingOpen}
-                    onAvatarBeforeCrop={handleAvatarBeforeCrop}
-                    onAvatarUploadRequest={handleAvatarUploadRequest}
-                  />
-                </div>
+                {accountPanel}
+                {profileBasicPanel}
                 {recentLoginCard}
               </Space>
             </Col>
 
             <Col xs={24} xl={6} className="saas-profile-page__rail-column">
               <section className="saas-profile-page__rail-block" aria-label="账户状态">
-                <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
-                <BoundProviderCard
-                  canManageSecondFactor
-                  loading={providersQuery.isLoading}
-                  providers={providersQuery.data || []}
-                  bindingLoading={bindingLoading}
-                  bindingSubmitting={bindingSubmitting}
-                  supplementalItems={supplementalItems}
-                  onBind={(provider) => void openBindModal(provider)}
-                  onUnbind={handleUnbind}
-                />
-                {passkeyCard}
+                {accountStatusPanel}
               </section>
             </Col>
           </Row>

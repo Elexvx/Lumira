@@ -1,6 +1,6 @@
 package com.legendary.invention.saas.modules.config.controller;
 
-import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.web.TraceContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

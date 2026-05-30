@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.modules.system.app;
 
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.auth.vo.CurrentUserVO;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;

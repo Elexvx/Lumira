@@ -8,6 +8,8 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import './Home.css';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
 const LOGIN_LOG_TABLE_SCROLL_X = 920;
@@ -174,7 +176,7 @@ const DashboardHomePage = () => {
   const responsive = useResponsive();
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-summary', initialState?.menuVersion],
-    queryFn: async () => dashboardService.summary({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => dashboardService.summary(API_OPTS.NO_REDIRECT),
   });
 
   const summary = dashboardQuery.data as DashboardSummary | undefined;

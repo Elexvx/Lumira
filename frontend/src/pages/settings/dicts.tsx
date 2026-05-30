@@ -14,6 +14,8 @@ import { DictTypeForm } from '@/pages/settings/dicts/components/DictTypeForm';
 import { dictService } from '@/services/dict';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const DictManagementPage = () => {
   const typeCrud = useCrudPageState<DictTypeRecord>();
@@ -40,7 +42,7 @@ const DictManagementPage = () => {
   });
 
   const refreshDictItems = async (dictTypeId: number) => {
-    const dictItems = await dictService.items(dictTypeId, { autoRedirectOnUnauthorized: false });
+    const dictItems = await dictService.items(dictTypeId, API_OPTS.NO_REDIRECT);
     setItems(dictItems);
   };
 
@@ -52,7 +54,7 @@ const DictManagementPage = () => {
 
   const openEditType = async (record: DictTypeRecord) => {
     typeCrud.drawer.openEdit(record, record.id);
-    const detailResult = await dictService.typeDetail(record.id, { autoRedirectOnUnauthorized: false });
+    const detailResult = await dictService.typeDetail(record.id, API_OPTS.NO_REDIRECT);
     typeForm.setFieldsValue(detailResult);
   };
 
@@ -61,8 +63,8 @@ const DictManagementPage = () => {
     typeCrud.detail.setLoading(true);
     try {
       const [detailResult, dictItems] = await Promise.all([
-        dictService.typeDetail(record.id, { autoRedirectOnUnauthorized: false }),
-        dictService.items(record.id, { autoRedirectOnUnauthorized: false }),
+        dictService.typeDetail(record.id, API_OPTS.NO_REDIRECT),
+        dictService.items(record.id, API_OPTS.NO_REDIRECT),
       ]);
       setTypeDetail(detailResult);
       setItems(dictItems);
@@ -76,10 +78,10 @@ const DictManagementPage = () => {
     try {
       const values = await typeForm.validateFields();
       if (typeCrud.drawer.editingId) {
-        await dictService.updateType(typeCrud.drawer.editingId, values, { autoRedirectOnUnauthorized: false });
+        await dictService.updateType(typeCrud.drawer.editingId, values, API_OPTS.NO_REDIRECT);
         message.success('字典类型已更新');
       } else {
-        await dictService.createType(values, { autoRedirectOnUnauthorized: false });
+        await dictService.createType(values, API_OPTS.NO_REDIRECT);
         message.success('字典类型已创建');
       }
       typeCrud.drawer.close();
@@ -96,7 +98,7 @@ const DictManagementPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await dictService.deleteType(record.id, { autoRedirectOnUnauthorized: false });
+        await dictService.deleteType(record.id, API_OPTS.NO_REDIRECT);
         message.success('字典类型已删除');
         typeCrud.reloadTable();
       },
@@ -123,10 +125,10 @@ const DictManagementPage = () => {
     try {
       const values = await itemForm.validateFields();
       if (itemDrawer.editingId) {
-        await dictService.updateItem(dictTypeId, itemDrawer.editingId, values, { autoRedirectOnUnauthorized: false });
+        await dictService.updateItem(dictTypeId, itemDrawer.editingId, values, API_OPTS.NO_REDIRECT);
         message.success('字典项已更新');
       } else {
-        await dictService.createItem(dictTypeId, values, { autoRedirectOnUnauthorized: false });
+        await dictService.createItem(dictTypeId, values, API_OPTS.NO_REDIRECT);
         message.success('字典项已创建');
       }
       itemDrawer.close();
@@ -148,7 +150,7 @@ const DictManagementPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await dictService.deleteItem(dictTypeId, record.id, { autoRedirectOnUnauthorized: false });
+        await dictService.deleteItem(dictTypeId, record.id, API_OPTS.NO_REDIRECT);
         message.success('字典项已删除');
         await refreshDictItems(dictTypeId);
       },
@@ -188,7 +190,7 @@ const DictManagementPage = () => {
           columns={typeColumns}
           isMobile={responsive.isMobile}
           search={searchConfig}
-          request={buildTableRequest((params) => dictService.types(params, { autoRedirectOnUnauthorized: false }))}
+          request={buildTableRequest((params) => dictService.types(params, API_OPTS.NO_REDIRECT))}
           toolBarRender={() =>
             buildToolbarButtons([
               {

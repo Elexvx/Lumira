@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.modules.system.department.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.iam.service.PermissionSnapshotService;
 import com.legendary.invention.saas.modules.system.department.dto.DepartmentUpsertRequest;

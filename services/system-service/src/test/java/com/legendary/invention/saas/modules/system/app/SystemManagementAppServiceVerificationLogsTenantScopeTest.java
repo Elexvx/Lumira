@@ -1,10 +1,10 @@
 package com.legendary.invention.saas.modules.system.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

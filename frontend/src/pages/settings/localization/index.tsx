@@ -11,6 +11,8 @@ import { localizationService, type LocalizationEntryPayload } from '@/services/l
 import type { LocalizationEntry, LocalizationLanguage, LocalizationNamespace, LocalizationRelease } from '@/types/api';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { buildLocalizationSyncPayload } from './sourceScanner';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const DEFAULT_LOCALE = 'zh-CN';
 const PINNED_LOCALES = ['zh-CN', 'en-US'];
@@ -101,15 +103,15 @@ const LocalizationPage = () => {
     setLoadingMeta(true);
     try {
       const [languageList, namespaceList, releaseList] = await Promise.all([
-        localizationService.languages({ autoRedirectOnUnauthorized: false, silent: true }),
-        localizationService.namespaces({ localeCode: primaryLocale }, { autoRedirectOnUnauthorized: false, silent: true }),
-        localizationService.releases(primaryLocale, { autoRedirectOnUnauthorized: false, silent: true }),
+        localizationService.languages(API_OPTS.SILENT_NO_REDIRECT),
+        localizationService.namespaces({ localeCode: primaryLocale }, API_OPTS.SILENT_NO_REDIRECT),
+        localizationService.releases(primaryLocale, API_OPTS.SILENT_NO_REDIRECT),
       ]);
       setLanguages(languageList);
       setNamespaces(namespaceList);
       setReleases(releaseList);
     } catch (error) {
-      message.error(error instanceof Error && error.message ? error.message : '本地化数据加载失败');
+      showErrorMessage(error, '本地化数据加载失败');
     } finally {
       setLoadingMeta(false);
     }
@@ -158,7 +160,7 @@ const LocalizationPage = () => {
           status: record.status,
           translations,
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       setDrafts((current) => {
         const next = { ...current };
@@ -180,7 +182,7 @@ const LocalizationPage = () => {
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: async () => {
-        await localizationService.deleteEntry(record.id, { autoRedirectOnUnauthorized: false });
+        await localizationService.deleteEntry(record.id, API_OPTS.NO_REDIRECT);
         message.success('已删除');
         tableActionRef.current?.reload();
       },
@@ -221,9 +223,9 @@ const LocalizationPage = () => {
         translations,
       };
       if (editingEntry) {
-        await localizationService.updateEntry(editingEntry.id, payload, { autoRedirectOnUnauthorized: false });
+        await localizationService.updateEntry(editingEntry.id, payload, API_OPTS.NO_REDIRECT);
       } else {
-        await localizationService.createEntry(payload, { autoRedirectOnUnauthorized: false });
+        await localizationService.createEntry(payload, API_OPTS.NO_REDIRECT);
       }
       message.success('已保存');
       setEntryDrawerOpen(false);
@@ -427,7 +429,7 @@ const LocalizationPage = () => {
                     sortField: Object.keys(sorter || {}).find((key) => ['ascend', 'descend'].includes(String((sorter as Record<string, unknown>)[key]))) || undefined,
                     sortOrder: Object.values(sorter || {}).find((value) => value === 'ascend' || value === 'descend') as string | undefined,
                   },
-                  { autoRedirectOnUnauthorized: false, silent: true },
+                  API_OPTS.SILENT_NO_REDIRECT,
                 ),
               );
             }}

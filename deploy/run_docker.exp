@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+set timeout -1
+set password "151505"
+set host "192.168.1.102"
+set user "root"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host "systemctl start docker && docker ps"
+expect {
+    "*assword:*" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}

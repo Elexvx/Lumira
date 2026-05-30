@@ -3,7 +3,7 @@ package com.legendary.invention.file.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.file.mapper.PlatformEventOutboxMapper;
+import com.legendary.invention.file.mapper.FilePlatformEventOutboxMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,16 +12,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 
-@Service
+@Service("filePlatformEventOutboxService")
 public class PlatformEventOutboxService {
 
     public static final String STATUS_RECORDED = "RECORDED";
     private static final Logger logger = LoggerFactory.getLogger(PlatformEventOutboxService.class);
 
     private final ObjectMapper objectMapper;
-    private final PlatformEventOutboxMapper platformEventOutboxMapper;
+    private final FilePlatformEventOutboxMapper platformEventOutboxMapper;
 
-    public PlatformEventOutboxService(ObjectMapper objectMapper, PlatformEventOutboxMapper platformEventOutboxMapper) {
+    public PlatformEventOutboxService(ObjectMapper objectMapper, FilePlatformEventOutboxMapper platformEventOutboxMapper) {
         this.objectMapper = objectMapper;
         this.platformEventOutboxMapper = platformEventOutboxMapper;
     }

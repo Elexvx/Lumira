@@ -1,12 +1,12 @@
 package com.legendary.invention.saas.modules.ai.app;
 
 import com.legendary.invention.common.constant.PlatformConstants;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import org.springframework.beans.factory.annotation.Autowired;

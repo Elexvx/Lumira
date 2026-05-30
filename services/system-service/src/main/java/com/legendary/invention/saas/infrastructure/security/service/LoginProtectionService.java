@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.infrastructure.security.service;
 
 import com.legendary.invention.saas.common.constant.CacheKeyConstants;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.redis.CacheTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

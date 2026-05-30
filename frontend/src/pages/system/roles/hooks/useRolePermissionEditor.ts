@@ -3,6 +3,8 @@ import type { FormInstance } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { iamService } from '@/services/iam';
 import type { PermissionRecord, PermissionTreeRecord } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 import {
   buildPermissionTreeData,
   collectActionPermissionPageMap,
@@ -34,7 +36,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
     let active = true;
     setPermissionTreeLoading(true);
     void iamService
-      .permissionTree({ autoRedirectOnUnauthorized: false })
+      .permissionTree(API_OPTS.NO_REDIRECT)
       .then((result: PermissionTreeRecord[]) => {
         if (!active) {
           return;
@@ -62,7 +64,7 @@ export const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePe
     let active = true;
 
     void iamService
-      .permissions({ autoRedirectOnUnauthorized: false })
+      .permissions(API_OPTS.NO_REDIRECT)
       .then((result: PermissionRecord[]) => {
         if (active) {
           setPermissionCatalog(result);

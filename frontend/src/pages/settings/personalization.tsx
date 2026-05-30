@@ -18,6 +18,8 @@ import { BrandingTab } from '@/pages/settings/personalization/components/Brandin
 import { FloatingWindowTab } from '@/pages/settings/personalization/components/FloatingWindowTab';
 import { WatermarkTab } from '@/pages/settings/personalization/components/WatermarkTab';
 import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 type PersonalizationTabKey = 'branding' | 'watermark' | 'floating' | 'agreement';
 type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
@@ -90,10 +92,10 @@ const PersonalizationSettingsPage = () => {
     setLoading(true);
     try {
       const [brandingResult, watermarkResult, floatingResult, agreementResult] = await Promise.all([
-        systemService.brandingSettings({ autoRedirectOnUnauthorized: false, silent: true }),
-        systemService.watermarkSettings({ autoRedirectOnUnauthorized: false, silent: true }),
-        systemService.floatingWindowSettings({ autoRedirectOnUnauthorized: false, silent: true }),
-        systemService.agreementSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+        systemService.brandingSettings(API_OPTS.SILENT_NO_REDIRECT),
+        systemService.watermarkSettings(API_OPTS.SILENT_NO_REDIRECT),
+        systemService.floatingWindowSettings(API_OPTS.SILENT_NO_REDIRECT),
+        systemService.agreementSettings(API_OPTS.SILENT_NO_REDIRECT),
       ]);
       const normalizedBranding = normalizeBrandingSettings(brandingResult);
       const normalizedWatermark = {
@@ -139,7 +141,7 @@ const PersonalizationSettingsPage = () => {
 
       setUploadingTarget(target);
       try {
-        const uploadedUrl = await systemService.uploadImage(file, { autoRedirectOnUnauthorized: false });
+        const uploadedUrl = await systemService.uploadImage(file, API_OPTS.NO_REDIRECT);
         const normalizedUrl = normalizeUploadUrl(uploadedUrl);
         if (target === 'favicon') {
           brandingForm.setFieldValue('websiteFaviconUrl', normalizedUrl);
@@ -159,7 +161,7 @@ const PersonalizationSettingsPage = () => {
         }
         message.success('图片已上传');
       } catch (error) {
-        message.error(error instanceof Error ? error.message : '图片上传失败，请稍后重试');
+        showErrorMessage(error, '图片上传失败，请稍后重试');
       } finally {
         setUploadingTarget(null);
       }
@@ -172,7 +174,7 @@ const PersonalizationSettingsPage = () => {
     setBrandingSaving(true);
     try {
       const brandingValues = await brandingForm.validateFields();
-      const updatedBranding = await systemService.updateBrandingSettings(normalizeBrandingSettings(brandingValues), { autoRedirectOnUnauthorized: false });
+      const updatedBranding = await systemService.updateBrandingSettings(normalizeBrandingSettings(brandingValues), API_OPTS.NO_REDIRECT);
       brandingForm.setFieldsValue(updatedBranding);
       setInitialState((prev) => (prev ? { ...prev, brandingSettings: updatedBranding } : prev));
       setPreviewState(updatedBranding);
@@ -200,7 +202,7 @@ const PersonalizationSettingsPage = () => {
           mode: resolvedMode,
           imageUrl: normalizeUploadUrl(watermarkValues.imageUrl),
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       watermarkForm.setFieldsValue(updatedWatermark);
       setInitialState((prev) => (prev ? { ...prev, watermarkSettings: updatedWatermark } : prev));

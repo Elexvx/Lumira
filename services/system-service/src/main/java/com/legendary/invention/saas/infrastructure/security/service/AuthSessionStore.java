@@ -3,8 +3,8 @@ package com.legendary.invention.saas.infrastructure.security.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.legendary.invention.saas.common.constant.CacheKeyConstants;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.redis.CacheTemplate;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.saas.modules.system.online.OnlineSessionEvent;
@@ -149,27 +149,52 @@ public class AuthSessionStore {
     }
 
     public void revokeUserSessions(Long userId, boolean publishChange) {
-        for (String sessionId : listActiveUserSessionIds(userId)) {
-            findBySessionId(sessionId).ifPresentOrElse(
-                    session -> remove(session, publishChange),
-                    () -> removeSessionReferences(sessionId)
-            );
-        }
+        revokeSessions(listActiveUserSessionIds(userId), publishChange);
     }
 
     public void revokeUserSessionsExcept(Long userId, String excludedSessionId, boolean publishChange) {
         if (userId == null) {
             return;
         }
+        List<String> toRevoke = listActiveUserSessionIds(userId).stream()
+                .filter(id -> id != null && !id.equals(excludedSessionId))
+                .toList();
+        revokeSessions(toRevoke, publishChange);
+    }
 
-        for (String sessionId : listActiveUserSessionIds(userId)) {
-            if (sessionId != null && sessionId.equals(excludedSessionId)) {
+    private void revokeSessions(List<String> sessionIds, boolean publishChange) {
+        if (CollectionUtils.isEmpty(sessionIds)) {
+            return;
+        }
+
+        List<String> sessionKeys = sessionIds.stream().map(CacheKeyConstants::sessionKey).toList();
+        List<String> payloads = cacheTemplate.multiGet(sessionKeys);
+        List<String> keysToDelete = new ArrayList<>();
+
+        for (int i = 0; i < sessionIds.size(); i++) {
+            String sessionId = sessionIds.get(i);
+            String payload = payloads.get(i);
+            if (payload == null) {
+                removeSessionReferences(sessionId);
                 continue;
             }
-            findBySessionId(sessionId).ifPresentOrElse(
-                    session -> remove(session, publishChange),
-                    () -> removeSessionReferences(sessionId)
-            );
+            try {
+                AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+                keysToDelete.add(CacheKeyConstants.sessionKey(session.getSessionId()));
+                keysToDelete.add(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
+                cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
+                if (session.getCurrentTenantId() != null) {
+                    cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(session.getCurrentTenantId()), session.getSessionId());
+                }
+                if (publishChange) {
+                    publishEvent(OnlineSessionEvent.ACTION_REMOVED, session);
+                }
+            } catch (JsonProcessingException ex) {
+                removeSessionReferences(sessionId);
+            }
+        }
+        if (!keysToDelete.isEmpty()) {
+            cacheTemplate.remove(keysToDelete);
         }
     }
 
@@ -197,13 +222,8 @@ public class AuthSessionStore {
             if (sessionIds.size() <= 1) {
                 continue;
             }
-            for (int index = 1; index < sessionIds.size(); index++) {
-                String sessionId = sessionIds.get(index);
-                findBySessionId(sessionId).ifPresentOrElse(
-                        session -> remove(session, true),
-                        () -> removeSessionReferences(sessionId)
-                );
-            }
+            List<String> toRevoke = sessionIds.subList(1, sessionIds.size());
+            revokeSessions(toRevoke, true);
         }
     }
 

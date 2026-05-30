@@ -1,13 +1,13 @@
 package com.legendary.invention.saas.modules.ai.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
-import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
+import com.legendary.invention.common.security.PermissionGuard;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;

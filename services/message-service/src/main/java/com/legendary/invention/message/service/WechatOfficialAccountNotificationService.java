@@ -8,7 +8,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.message.entity.SysConfigEntity;
 import com.legendary.invention.message.infrastructure.redis.CacheTemplate;
-import com.legendary.invention.message.mapper.SysConfigMapper;
+import com.legendary.invention.message.mapper.MessageSysConfigMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -44,13 +44,13 @@ public class WechatOfficialAccountNotificationService {
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token";
     private static final String TEMPLATE_SEND_URL = "https://api.weixin.qq.com/cgi-bin/message/template/send";
 
-    private final SysConfigMapper sysConfigMapper;
+    private final MessageSysConfigMapper sysConfigMapper;
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public WechatOfficialAccountNotificationService(
-            SysConfigMapper sysConfigMapper,
+            MessageSysConfigMapper sysConfigMapper,
             CacheTemplate cacheTemplate,
             ObjectMapper objectMapper
     ) {

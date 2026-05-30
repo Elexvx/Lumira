@@ -1,9 +1,9 @@
 package com.legendary.invention.saas.modules.system.monitor.controller;
 
-import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
-import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
+import com.legendary.invention.common.security.SecurityContextFacade;
+import com.legendary.invention.common.security.PermissionGuard;
 import com.legendary.invention.saas.modules.system.monitor.app.SystemMonitorAppService;
 import com.legendary.invention.saas.modules.system.monitor.vo.SystemMonitorVO;
 import jakarta.servlet.ServletException;

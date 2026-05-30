@@ -7,6 +7,8 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { monitorService } from '@/services/system/monitor';
 import type { RedisMonitorClient, RedisMonitorCommandStat, RedisMonitorKeyspace, RedisMonitorSnapshot } from '@/types/api';
 import { formatBytes, formatDateTime, formatNumber, formatPercent } from './shared';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 type TrendPoint = {
   label: string;
@@ -82,7 +84,7 @@ export const RedisMonitorContent = () => {
   const responsive = useResponsive();
   const query = useQuery({
     queryKey: ['redis-monitor'],
-    queryFn: async () => monitorService.redis({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => monitorService.redis(API_OPTS.NO_REDIRECT),
   });
   const [samples, setSamples] = useState<TrendPoint[]>([]);
   const refreshRef = useRef(query.refetch);

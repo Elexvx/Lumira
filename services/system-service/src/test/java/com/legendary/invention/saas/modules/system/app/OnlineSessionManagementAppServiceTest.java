@@ -2,7 +2,7 @@ package com.legendary.invention.saas.modules.system.app;
 
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
@@ -134,6 +134,8 @@ class OnlineSessionManagementAppServiceTest {
         assertEquals(2, page.getRecords().size());
         assertEquals(newerSession.getSessionId(), page.getRecords().get(0).getSessionId());
         assertEquals(otherUserSession.getSessionId(), page.getRecords().get(1).getSessionId());
+        assertEquals(1, authSessionStore.latestSessionLookupCounts.get(2001L));
+        assertEquals(1, authSessionStore.latestSessionLookupCounts.get(2002L));
     }
 
     private static AuthSession buildSession(String sessionId, long tenantId, long userId, Instant lastActivityAt, Instant expireTime) {
@@ -152,6 +154,7 @@ class OnlineSessionManagementAppServiceTest {
 
     private static final class StubAuthSessionStore extends AuthSessionStore {
         private final Map<String, AuthSession> sessions = new HashMap<>();
+        private final Map<Long, Integer> latestSessionLookupCounts = new HashMap<>();
         private final List<String> sessionOrder = new ArrayList<>();
         private final List<AuthSession> removedSessions = new ArrayList<>();
 
@@ -209,6 +212,7 @@ class OnlineSessionManagementAppServiceTest {
 
         @Override
         public Optional<String> findLatestActiveUserSessionId(Long userId) {
+            latestSessionLookupCounts.merge(userId, 1, Integer::sum);
             return listActiveUserSessionIds(userId).stream().findFirst();
         }
 

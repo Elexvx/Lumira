@@ -22,7 +22,7 @@ spring:
       transport:
         port: ${SENTINEL_TRANSPORT_PORT:8719}
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver

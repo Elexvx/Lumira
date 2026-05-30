@@ -3,7 +3,7 @@ package com.legendary.invention.saas.modules.ai.app;
 import com.legendary.invention.saas.infrastructure.event.PlatformEventPublisher;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import org.junit.jupiter.api.Test;
 

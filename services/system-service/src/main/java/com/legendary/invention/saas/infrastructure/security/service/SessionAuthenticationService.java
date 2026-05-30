@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.infrastructure.security.service;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.saas.infrastructure.security.model.TokenClaims;
 import com.legendary.invention.saas.infrastructure.security.model.TokenType;

@@ -1,12 +1,12 @@
 package com.legendary.invention.saas.modules.ai.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
+import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.ai.app.AiManagementAppService;
 import com.legendary.invention.saas.modules.ai.app.AiKnowledgeBaseAppService;
 import com.legendary.invention.saas.modules.ai.app.AiNativeToolRuntimeService;
@@ -14,7 +14,7 @@ import com.legendary.invention.saas.modules.ai.app.AiToolOrchestrationService;
 import com.legendary.invention.saas.modules.ai.app.AiToolPolicyService;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
-import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
+import com.legendary.invention.common.security.PermissionGuard;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -443,7 +443,7 @@ public class AiController {
         return exception.getMessage() == null || exception.getMessage().isBlank() ? "AI 回复生成失败" : exception.getMessage();
     }
 
-    private com.legendary.invention.saas.infrastructure.security.CurrentUser currentUser() {
+    private com.legendary.invention.common.security.CurrentUser currentUser() {
         return securityContextFacade.getCurrentUser();
     }
 

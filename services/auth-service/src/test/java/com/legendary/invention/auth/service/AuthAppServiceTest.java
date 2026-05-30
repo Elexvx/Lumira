@@ -6,8 +6,8 @@ import com.legendary.invention.api.client.SystemInternalApi;
 import com.legendary.invention.api.system.LoginCapabilitiesDTO;
 import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
-import com.legendary.invention.auth.config.SecurityProperties;
-import com.legendary.invention.auth.support.ClientIpResolver;
+import com.legendary.invention.auth.config.AuthSecurityProperties;
+import com.legendary.invention.common.web.repeatsubmit.ClientIpResolver;
 import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,7 +47,7 @@ class AuthAppServiceTest {
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
         WechatLoginService wechatLoginService = mock(WechatLoginService.class);
-        SecurityProperties securityProperties = new SecurityProperties();
+        AuthSecurityProperties securityProperties = new AuthSecurityProperties();
         SecuritySettingsService securitySettingsService = mock(SecuritySettingsService.class);
 
         when(clientIpResolver.resolve(any(HttpServletRequest.class))).thenReturn("127.0.0.1");

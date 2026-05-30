@@ -12,6 +12,8 @@ import { PluginCardsGrid } from '@/pages/settings/plugins/components/PluginCards
 import { buildAvailablePluginMap, filterPluginDefinitions, getPreferredEnableVersion } from '@/pages/settings/plugins/utils';
 import { pluginService } from '@/services/plugin';
 import type { PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const PLATFORM_TENANT_ID = 1001;
 
@@ -42,16 +44,16 @@ const PluginsPage = () => {
     if (error instanceof ApiRequestError) {
       return;
     }
-    message.error(error instanceof Error && error.message ? error.message : fallbackMessage);
+    showErrorMessage(error, fallbackMessage);
   };
 
   const loadOverview = async () => {
     setLoading(true);
     try {
       const [definitionList, tenantPlugins, versionResult] = await Promise.all([
-        pluginService.definitions({ autoRedirectOnUnauthorized: false }),
-        pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
-        pluginService.allVersions({ autoRedirectOnUnauthorized: false }),
+        pluginService.definitions(API_OPTS.NO_REDIRECT),
+        pluginService.currentAvailable(API_OPTS.NO_REDIRECT),
+        pluginService.allVersions(API_OPTS.NO_REDIRECT),
       ]);
       const nextVersionMap: Record<string, PluginVersion[]> = { ...versionResult };
       definitionList.forEach((plugin) => {
@@ -86,8 +88,8 @@ const PluginsPage = () => {
 
   const refreshBootstrap = async () => {
     const [menuTree, available] = await Promise.all([
-      pluginService.currentMenus({ autoRedirectOnUnauthorized: false }),
-      pluginService.currentAvailable({ autoRedirectOnUnauthorized: false }),
+      pluginService.currentMenus(API_OPTS.NO_REDIRECT),
+      pluginService.currentAvailable(API_OPTS.NO_REDIRECT),
     ]);
     setInitialState((prev) =>
       prev
@@ -134,7 +136,7 @@ const PluginsPage = () => {
     showConfirm(formatMessage({ id: 'page.plugins.installVersion', defaultMessage: 'Install plugin version' }), `${pluginCode} @ ${version}`, async () => {
       setMutationLoading(true);
       try {
-        await pluginService.install({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
+        await pluginService.install({ pluginCode, version }, API_OPTS.NO_REDIRECT);
         message.success(formatMessage({ id: 'page.plugins.success.installed', defaultMessage: 'Plugin installed successfully' }));
         await refreshAfterMutation();
       } catch (error) {
@@ -149,7 +151,7 @@ const PluginsPage = () => {
     showConfirm(formatMessage({ id: 'page.plugins.activateVersion', defaultMessage: 'Activate plugin version' }), `${pluginCode} @ ${version}`, async () => {
       setMutationLoading(true);
       try {
-        await pluginService.upgrade({ pluginCode, version }, { autoRedirectOnUnauthorized: false });
+        await pluginService.upgrade({ pluginCode, version }, API_OPTS.NO_REDIRECT);
         message.success(formatMessage({ id: 'page.plugins.success.activated', defaultMessage: 'Plugin active version switched' }));
         await refreshAfterMutation();
       } catch (error) {
@@ -171,7 +173,7 @@ const PluginsPage = () => {
     showConfirm(formatMessage({ id: 'page.plugins.enable', defaultMessage: 'Enable plugin' }), `${pluginCode} @ ${versionToUse}`, async () => {
       setMutationLoading(true);
       try {
-        await pluginService.enable({ tenantId: PLATFORM_TENANT_ID, pluginCode, version: versionToUse }, { autoRedirectOnUnauthorized: false });
+        await pluginService.enable({ tenantId: PLATFORM_TENANT_ID, pluginCode, version: versionToUse }, API_OPTS.NO_REDIRECT);
         message.success(formatMessage({ id: 'page.plugins.success.enabled', defaultMessage: 'Plugin enabled' }));
         await refreshAfterMutation();
       } catch (error) {
@@ -186,7 +188,7 @@ const PluginsPage = () => {
     showConfirm(formatMessage({ id: 'page.plugins.disable', defaultMessage: 'Disable plugin' }), pluginCode, async () => {
       setMutationLoading(true);
       try {
-        await pluginService.disable({ tenantId: PLATFORM_TENANT_ID, pluginCode }, { autoRedirectOnUnauthorized: false });
+        await pluginService.disable({ tenantId: PLATFORM_TENANT_ID, pluginCode }, API_OPTS.NO_REDIRECT);
         message.success(formatMessage({ id: 'page.plugins.success.disabled', defaultMessage: 'Plugin disabled' }));
         await refreshAfterMutation();
       } catch (error) {
@@ -201,7 +203,7 @@ const PluginsPage = () => {
     showConfirm(formatMessage({ id: 'page.plugins.rollbackVersion', defaultMessage: 'Rollback plugin version' }), `${pluginCode} -> ${version}`, async () => {
       setMutationLoading(true);
       try {
-        await pluginService.rollback({ pluginCode, targetVersion: version }, { autoRedirectOnUnauthorized: false });
+        await pluginService.rollback({ pluginCode, targetVersion: version }, API_OPTS.NO_REDIRECT);
         message.success(formatMessage({ id: 'page.plugins.success.rollback', defaultMessage: 'Plugin rolled back' }));
         await refreshAfterMutation();
       } catch (error) {
@@ -228,7 +230,7 @@ const PluginsPage = () => {
       await pluginService.uninstall(
         uninstallTarget.pluginCode,
         { removeData: removePluginData },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       message.success(removePluginData ? formatMessage({ id: 'page.plugins.success.uninstalledAndDeleted', defaultMessage: 'Plugin uninstalled and database data removed' }) : formatMessage({ id: 'page.plugins.success.uninstalled', defaultMessage: 'Plugin uninstalled' }));
       setUninstallDialogOpen(false);
@@ -256,7 +258,7 @@ const PluginsPage = () => {
     }
     setMutationLoading(true);
     try {
-      await pluginService.upload(uploadFile, { autoRedirectOnUnauthorized: false });
+      await pluginService.upload(uploadFile, API_OPTS.NO_REDIRECT);
       setUploadVisible(false);
       setUploadFile(null);
       message.success(formatMessage({ id: 'page.plugins.success.uploaded', defaultMessage: 'Plugin uploaded and validated' }));
@@ -283,7 +285,7 @@ const PluginsPage = () => {
     setLogDrawerOpen(true);
     setLogsLoading(true);
     try {
-      setRuntimeLogs(await pluginService.runtimeLogs(plugin.pluginCode, { autoRedirectOnUnauthorized: false }));
+      setRuntimeLogs(await pluginService.runtimeLogs(plugin.pluginCode, API_OPTS.NO_REDIRECT));
     } catch (error) {
       handlePluginPageError(error, formatMessage({ id: 'page.plugins.error.logs', defaultMessage: 'Failed to load plugin logs, please try again later' }));
     } finally {

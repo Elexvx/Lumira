@@ -1,9 +1,9 @@
 package com.legendary.invention.saas.modules.system.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
@@ -172,17 +172,37 @@ public class OnlineSessionManagementAppService {
             return collected;
         }
 
+        Map<Long, String> latestSessionIds = loadLatestSessionIdsByUser(collected);
         List<AuthSession> latestSessions = new ArrayList<>();
         for (AuthSession session : collected) {
             if (session.getUserId() == null) {
                 continue;
             }
-            String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId()).orElse(null);
+            String latestSessionId = latestSessionIds.get(session.getUserId());
             if (session.getSessionId().equals(latestSessionId)) {
                 latestSessions.add(session);
             }
         }
         return latestSessions;
+    }
+
+    private Map<Long, String> loadLatestSessionIdsByUser(List<AuthSession> sessions) {
+        Set<Long> userIds = new LinkedHashSet<>();
+        for (AuthSession session : sessions) {
+            if (session.getUserId() != null) {
+                userIds.add(session.getUserId());
+            }
+        }
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> latestSessionIds = new LinkedHashMap<>();
+        for (Long userId : userIds) {
+            authSessionStore.findLatestActiveUserSessionId(userId)
+                    .ifPresent(sessionId -> latestSessionIds.put(userId, sessionId));
+        }
+        return latestSessionIds;
     }
 
     private boolean isOnlineSession(AuthSession session, long idleTimeoutSeconds) {

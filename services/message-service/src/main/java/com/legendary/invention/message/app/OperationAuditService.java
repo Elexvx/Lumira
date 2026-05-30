@@ -2,17 +2,17 @@ package com.legendary.invention.message.app;
 
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.message.entity.AuditOperationLogEntity;
-import com.legendary.invention.message.mapper.AuditOperationLogMapper;
+import com.legendary.invention.message.mapper.MessageAuditOperationLogMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
-@Service
+@Service("messageOperationAuditService")
 public class OperationAuditService {
 
-    private final AuditOperationLogMapper auditOperationLogMapper;
+    private final MessageAuditOperationLogMapper auditOperationLogMapper;
 
-    public OperationAuditService(AuditOperationLogMapper auditOperationLogMapper) {
+    public OperationAuditService(MessageAuditOperationLogMapper auditOperationLogMapper) {
         this.auditOperationLogMapper = auditOperationLogMapper;
     }
 

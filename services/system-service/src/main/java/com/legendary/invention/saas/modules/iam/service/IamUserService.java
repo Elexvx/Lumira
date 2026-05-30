@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.modules.iam.service;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.modules.user.entity.SysUserEntity;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;

@@ -17,6 +17,8 @@ import { iamService } from '@/services/iam';
 import type { RoleDataScope, RoleDetail, RoleRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
 import './roles.css';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const ROLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
@@ -160,8 +162,8 @@ const RoleManagementPage = () => {
     setDefaultRoleLoading(true);
     try {
       const [defaultRole, rolePage] = await Promise.all([
-        iamService.defaultRegistrationRole({ autoRedirectOnUnauthorized: false }),
-        iamService.roles({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false }),
+        iamService.defaultRegistrationRole(API_OPTS.NO_REDIRECT),
+        iamService.roles({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT),
       ]);
       setDefaultRoleId(defaultRole.id);
       setDefaultRoleOptions(rolePage.records || []);
@@ -179,7 +181,7 @@ const RoleManagementPage = () => {
     }
     setDefaultRoleSaving(true);
     try {
-      await iamService.updateDefaultRegistrationRole({ roleId: defaultRoleId }, { autoRedirectOnUnauthorized: false });
+      await iamService.updateDefaultRegistrationRole({ roleId: defaultRoleId }, API_OPTS.NO_REDIRECT);
       message.success('默认注册角色已更新');
       setDefaultRoleModalOpen(false);
       roleCrud.reloadTable();
@@ -196,7 +198,7 @@ const RoleManagementPage = () => {
     setEditorDirty(false);
 
     try {
-      const detail = await iamService.roleDetail(record.id, { autoRedirectOnUnauthorized: false });
+      const detail = await iamService.roleDetail(record.id, API_OPTS.NO_REDIRECT);
       const permissionKeys = permissionEditor.sanitizePermissionKeys(detail.permissionKeys || []);
       editorForm.setFieldsValue({
         ...detail,
@@ -216,7 +218,7 @@ const RoleManagementPage = () => {
     roleCrud.detail.openDetail(record);
     roleCrud.detail.setLoading(true);
     try {
-      const detail = await iamService.roleDetail(record.id, { autoRedirectOnUnauthorized: false });
+      const detail = await iamService.roleDetail(record.id, API_OPTS.NO_REDIRECT);
       setSelectedRoleDetail(detail);
     } finally {
       roleCrud.detail.setLoading(false);
@@ -229,7 +231,7 @@ const RoleManagementPage = () => {
       const values = await editorForm.validateFields();
       const permissionKeys = permissionEditor.sanitizePermissionKeys(values.permissionKeys || []);
       if (roleCrud.drawer.editingId && roleEditorMode === 'permissions') {
-        await iamService.updateRolePermissions(roleCrud.drawer.editingId, permissionKeys, { autoRedirectOnUnauthorized: false });
+        await iamService.updateRolePermissions(roleCrud.drawer.editingId, permissionKeys, API_OPTS.NO_REDIRECT);
         message.success('角色权限已更新');
         closeEditorDrawer();
         roleCrud.reloadTable();
@@ -242,10 +244,10 @@ const RoleManagementPage = () => {
         dataScopes: values.dataScopes?.length ? values.dataScopes : DEFAULT_DATA_SCOPES,
       };
       if (roleCrud.drawer.editingId) {
-        await iamService.updateRole(roleCrud.drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
+        await iamService.updateRole(roleCrud.drawer.editingId, payload, API_OPTS.NO_REDIRECT);
         message.success('角色已更新');
       } else {
-        await iamService.createRole(payload, { autoRedirectOnUnauthorized: false });
+        await iamService.createRole(payload, API_OPTS.NO_REDIRECT);
         message.success('角色已创建');
       }
       closeEditorDrawer();
@@ -262,7 +264,7 @@ const RoleManagementPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await iamService.deleteRole(record.id, { autoRedirectOnUnauthorized: false });
+        await iamService.deleteRole(record.id, API_OPTS.NO_REDIRECT);
         message.success('角色已删除');
         roleCrud.reloadTable();
       },
@@ -308,7 +310,7 @@ const RoleManagementPage = () => {
         columns={columns}
         isMobile={responsive.isMobile}
         search={searchConfig}
-        request={buildTableRequest((params) => iamService.roles(params, { autoRedirectOnUnauthorized: false }))}
+        request={buildTableRequest((params) => iamService.roles(params, API_OPTS.NO_REDIRECT))}
         toolBarRender={() =>
           buildToolbarButtons([
             {

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 
-@RestController
+@RestController("jobVersionController")
 public class VersionController {
 
     private final Environment environment;

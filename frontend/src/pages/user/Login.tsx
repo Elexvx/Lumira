@@ -35,6 +35,8 @@ import type {
   SecuritySettings,
 } from '@/types/api';
 import './Login.css';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
   passwordLoginAvailable: true,
@@ -205,7 +207,7 @@ const Login = () => {
           return key;
         })
       .catch((error) => {
-        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginEncryption', defaultMessage: 'Failed to load login encryption info, please refresh and try again' }));
+        showErrorMessage(error, formatMessage({ id: 'page.login.error.loginEncryption', defaultMessage: 'Failed to load login encryption info, please refresh and try again' }));
           return null;
         })
         .finally(() => {
@@ -366,7 +368,7 @@ const Login = () => {
           message.info(formatMessage({ id: 'page.login.code.debug', defaultMessage: 'Debug code: {code}' }, { code: challenge.debugCode }));
         }
       } catch (error) {
-        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.codeSendFailed', defaultMessage: 'Failed to send the verification code, please try again later' }));
+        showErrorMessage(error, formatMessage({ id: 'page.login.error.codeSendFailed', defaultMessage: 'Failed to send the verification code, please try again later' }));
       } finally {
         setSendingLoginType(null);
       }
@@ -453,7 +455,7 @@ const Login = () => {
       });
       window.location.assign(result.authorizeUrl);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+      showErrorMessage(error, formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
     } finally {
       setSubmitting(false);
     }
@@ -497,7 +499,7 @@ const Login = () => {
         message.info(formatMessage({ id: 'page.login.passkey.cancelled', defaultMessage: '已取消通行密钥验证' }));
         return;
       }
-      message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+      showErrorMessage(error, formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
     } finally {
       setPasskeySubmitting(false);
     }
@@ -535,7 +537,7 @@ const Login = () => {
         await completeSuccessfulLogin(loginResponse);
       })
       .catch((error) => {
-        message.error(error instanceof Error ? error.message : formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
+        showErrorMessage(error, formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
         history.replace(location.pathname);
       })
       .finally(() => {

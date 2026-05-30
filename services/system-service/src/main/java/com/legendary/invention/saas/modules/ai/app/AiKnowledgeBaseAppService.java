@@ -2,14 +2,14 @@ package com.legendary.invention.saas.modules.ai.app;
 
 import com.legendary.invention.api.client.FileInternalApi;
 import com.legendary.invention.api.file.FileObjectDTO;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.saas.infrastructure.event.PlatformEventPublisher;
 import com.legendary.invention.saas.infrastructure.event.PlatformEventTypes;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.SqlRow;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;

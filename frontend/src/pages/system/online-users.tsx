@@ -12,6 +12,8 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { systemService } from '@/services/system';
 import { connectOnlineSessionStream } from '@/services/system/onlineUsers';
 import type { OnlineSessionRecord } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -236,7 +238,7 @@ const OnlineUsersPage = () => {
                     cancelText: '取消',
                     okButtonProps: { danger: true },
                     onOk: async () => {
-                      await systemService.kickOnlineUser(record.sessionId, { autoRedirectOnUnauthorized: false });
+                      await systemService.kickOnlineUser(record.sessionId, API_OPTS.NO_REDIRECT);
                       message.success('会话已踢出');
                       actionRef.current?.reload();
                     },
@@ -257,7 +259,7 @@ const OnlineUsersPage = () => {
                     cancelText: '取消',
                     okButtonProps: { danger: true },
                     onOk: async () => {
-                      await systemService.banOnlineUser(record.userId, { autoRedirectOnUnauthorized: false });
+                      await systemService.banOnlineUser(record.userId, API_OPTS.NO_REDIRECT);
                       message.success('账号已封禁');
                       actionRef.current?.reload();
                     },
@@ -286,7 +288,7 @@ const OnlineUsersPage = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           scroll={{ x: 1980 }}
-          request={buildTableRequest((params) => systemService.onlineUsers(params, { autoRedirectOnUnauthorized: false }))}
+          request={buildTableRequest((params) => systemService.onlineUsers(params, API_OPTS.NO_REDIRECT))}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
               刷新

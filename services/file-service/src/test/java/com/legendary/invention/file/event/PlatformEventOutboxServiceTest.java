@@ -1,7 +1,7 @@
 package com.legendary.invention.file.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.legendary.invention.file.mapper.PlatformEventOutboxMapper;
+import com.legendary.invention.file.mapper.FilePlatformEventOutboxMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -16,7 +16,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldPersistSerializedPayload() {
-        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
 
         service.record(

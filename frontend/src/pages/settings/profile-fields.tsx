@@ -4,6 +4,8 @@ import { ManagementPage, ManagementPageBody } from '@/features/management';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { systemService } from '@/services/system';
 import type { ProfileFieldSetting } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const ProfileFieldManagementPage = () => {
   const actionPermission = useActionPermission();
@@ -16,7 +18,7 @@ const ProfileFieldManagementPage = () => {
   const loadItems = async () => {
     setLoading(true);
     try {
-      const result = await systemService.profileFieldSettings({ autoRedirectOnUnauthorized: false });
+      const result = await systemService.profileFieldSettings(API_OPTS.NO_REDIRECT);
       setItems(result);
     } finally {
       setLoading(false);
@@ -49,7 +51,7 @@ const ProfileFieldManagementPage = () => {
             weight: item.weight ?? 1,
           })),
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       setItems(result);
       message.success('字段展示与权重已保存');

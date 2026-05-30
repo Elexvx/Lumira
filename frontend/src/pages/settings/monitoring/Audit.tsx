@@ -9,6 +9,8 @@ import { auditService } from '@/services/audit';
 import type { AuditLogRecord } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 type AuditLogType = 'login' | 'operation' | 'ai' | 'verification';
 type AuditRecord = AuditLogRecord;
@@ -390,12 +392,12 @@ const AuditOverviewPage = () => {
           request={buildTableRequest((params) =>
             canReadActiveLog
               ? activeLogType === 'login'
-                ? auditService.loginLogs(params, { autoRedirectOnUnauthorized: false })
+                ? auditService.loginLogs(params, API_OPTS.NO_REDIRECT)
                 : activeLogType === 'ai'
-                  ? auditService.aiCallLogs(params, { autoRedirectOnUnauthorized: false })
+                  ? auditService.aiCallLogs(params, API_OPTS.NO_REDIRECT)
                   : activeLogType === 'verification'
-                    ? auditService.verificationLogs(params, { autoRedirectOnUnauthorized: false })
-                    : auditService.operationLogs(params, { autoRedirectOnUnauthorized: false })
+                    ? auditService.verificationLogs(params, API_OPTS.NO_REDIRECT)
+                    : auditService.operationLogs(params, API_OPTS.NO_REDIRECT)
               : Promise.resolve({ records: [], total: 0 }),
           )}
           toolBarRender={() => [

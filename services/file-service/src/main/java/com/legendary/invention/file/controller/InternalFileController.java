@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/internal/files")
-public class InternalFileController {
+public class InternalFileController implements com.legendary.invention.api.client.FileInternalApi {
 
     private final FileManagementAppService fileManagementAppService;
     private final SecurityContextFacade securityContextFacade;

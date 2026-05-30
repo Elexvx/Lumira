@@ -1,6 +1,6 @@
 package com.legendary.invention.saas.modules.system.app;
 
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;

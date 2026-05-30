@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+set timeout -1
+set password "151505"
+set host "192.168.1.102"
+set user "root"
+set local_file "project.tar.gz"
+set remote_dir "/opt/legendary-invention/"
+
+spawn scp -o StrictHostKeyChecking=no $local_file $user@$host:$remote_dir
+expect {
+    "*assword:*" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host "cd /opt/legendary-invention && rm -rf services libs scripts && tar -xzf project.tar.gz && node scripts/deploy-container.mjs --rebuild"
+expect {
+    "*assword:*" {
+        send "$password\r"
+        exp_continue
+    }
+    eof
+}

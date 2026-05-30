@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-@Service
+@Service("fileImageUploadService")
 public class ImageUploadService {
 
     private static final long MAX_IMAGE_PIXELS = 25_000_000L;

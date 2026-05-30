@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/internal/auth")
-public class AuthInternalController {
+public class AuthInternalController implements com.legendary.invention.api.client.AuthInternalApi {
 
     private final AuthSessionStore authSessionStore;
     private final AuthAppService authAppService;

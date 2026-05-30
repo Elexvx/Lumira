@@ -7,6 +7,8 @@ saas:
     trusted-proxy-cidrs:
       - 127.0.0.1/32
       - ::1/128
+  security:
+    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
 
 spring:
   flyway:
@@ -14,7 +16,3 @@ spring:
     placeholders:
       defaultAdminInitEnabled: true
       defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
-
-saas:
-  security:
-    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}

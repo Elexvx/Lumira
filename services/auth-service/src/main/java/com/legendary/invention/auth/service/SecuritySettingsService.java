@@ -2,21 +2,21 @@ package com.legendary.invention.auth.service;
 
 import com.legendary.invention.api.client.SystemInternalApi;
 import com.legendary.invention.api.system.SecuritySettingsDTO;
-import com.legendary.invention.auth.config.SecurityProperties;
+import com.legendary.invention.auth.config.AuthSecurityProperties;
 import com.legendary.invention.common.constant.PlatformConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-@Service
+@Service("authSecuritySettingsService")
 public class SecuritySettingsService {
 
     private static final Logger log = LoggerFactory.getLogger(SecuritySettingsService.class);
 
-    private final SecurityProperties securityProperties;
+    private final AuthSecurityProperties securityProperties;
     private final SystemInternalApi systemInternalApi;
 
-    public SecuritySettingsService(SecurityProperties securityProperties, SystemInternalApi systemInternalApi) {
+    public SecuritySettingsService(AuthSecurityProperties securityProperties, SystemInternalApi systemInternalApi) {
         this.securityProperties = securityProperties;
         this.systemInternalApi = systemInternalApi;
     }

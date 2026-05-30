@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.infrastructure.security.service;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.security.SecurityProperties;
 import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
 import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;

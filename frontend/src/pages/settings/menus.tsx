@@ -38,6 +38,8 @@ import {
   resetSettingRouteOrder,
 } from '@/navigation/settingsRouteOrder';
 import { isMainMenuHiddenSettingPath } from '@/navigation/settingsNavigation';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 interface MenuDragState {
   draggedId: number;
@@ -420,7 +422,7 @@ const MenuManagementPage = () => {
   }, [mainRouteMenuTree]);
 
   const loadMenus = useCallback(async () => {
-    const result = await iamService.menus({ autoRedirectOnUnauthorized: false });
+    const result = await iamService.menus(API_OPTS.NO_REDIRECT);
     const sortedResult = sortMenuTree(result);
     setMenuTree(sortedResult);
     setInitialState((prev) =>
@@ -484,7 +486,7 @@ const MenuManagementPage = () => {
           {
             items: flattenMenuOrder(normalizedTree).filter((item) => item.id > 0),
           },
-          { autoRedirectOnUnauthorized: false },
+          API_OPTS.NO_REDIRECT,
         );
         message.success('菜单顺序已更新');
         menuCrud.reloadTable();
@@ -520,7 +522,7 @@ const MenuManagementPage = () => {
       return;
     }
     menuCrud.drawer.openEdit(record, record.id);
-    const detail = await iamService.menuDetail(record.id, { autoRedirectOnUnauthorized: false });
+    const detail = await iamService.menuDetail(record.id, API_OPTS.NO_REDIRECT);
     editorForm.setFieldsValue({
       ...detail,
       parentId: detail.parentId ?? undefined,
@@ -537,7 +539,7 @@ const MenuManagementPage = () => {
     menuCrud.detail.openDetail(record);
     menuCrud.detail.setLoading(true);
     try {
-      const detail = await iamService.menuDetail(record.id, { autoRedirectOnUnauthorized: false });
+      const detail = await iamService.menuDetail(record.id, API_OPTS.NO_REDIRECT);
       menuCrud.detail.setCurrentRecord(detail);
     } finally {
       menuCrud.detail.setLoading(false);
@@ -549,10 +551,10 @@ const MenuManagementPage = () => {
     try {
       const values = await editorForm.validateFields();
       if (menuCrud.drawer.editingId) {
-        await iamService.updateMenu(menuCrud.drawer.editingId, values, { autoRedirectOnUnauthorized: false });
+        await iamService.updateMenu(menuCrud.drawer.editingId, values, API_OPTS.NO_REDIRECT);
         message.success('菜单已更新');
       } else {
-        await iamService.createMenu(values, { autoRedirectOnUnauthorized: false });
+        await iamService.createMenu(values, API_OPTS.NO_REDIRECT);
         message.success('菜单已创建');
       }
       menuCrud.drawer.close();
@@ -626,7 +628,7 @@ const MenuManagementPage = () => {
       message.warning('内置菜单不支持修改状态');
       return;
     }
-    await iamService.changeMenuStatus(record.id, status, { autoRedirectOnUnauthorized: false });
+    await iamService.changeMenuStatus(record.id, status, API_OPTS.NO_REDIRECT);
     message.success('状态已更新');
     await loadMenus();
     menuCrud.reloadTable();
@@ -660,7 +662,7 @@ const MenuManagementPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await iamService.deleteMenu(record.id, { autoRedirectOnUnauthorized: false });
+        await iamService.deleteMenu(record.id, API_OPTS.NO_REDIRECT);
         message.success('菜单已删除');
         await loadMenus();
         menuCrud.reloadTable();

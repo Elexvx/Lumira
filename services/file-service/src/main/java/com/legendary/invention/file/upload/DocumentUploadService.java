@@ -20,7 +20,7 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-@Service
+@Service("fileDocumentUploadService")
 public class DocumentUploadService {
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "md", "txt");

@@ -9,17 +9,16 @@ import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
-import com.legendary.invention.auth.config.SecurityProperties;
+import com.legendary.invention.auth.config.AuthSecurityProperties;
 import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.auth.model.AuthSession;
-import com.legendary.invention.auth.support.ClientIpResolver;
+import com.legendary.invention.common.web.repeatsubmit.ClientIpResolver;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.common.security.JwtTokenClaims;
 import com.legendary.invention.common.security.JwtTokenType;
 import com.legendary.invention.common.security.SecurityContextFacade;
-import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +47,7 @@ public class AuthAppService {
     private final SecurityContextFacade securityContextFacade;
     private final ClientIpResolver clientIpResolver;
     private final WechatLoginService wechatLoginService;
-    private final SecurityProperties securityProperties;
+    private final AuthSecurityProperties securityProperties;
     private final SecuritySettingsService securitySettingsService;
 
     public AuthAppService(
@@ -61,7 +60,7 @@ public class AuthAppService {
             SecurityContextFacade securityContextFacade,
             ClientIpResolver clientIpResolver,
             WechatLoginService wechatLoginService,
-            SecurityProperties securityProperties,
+            AuthSecurityProperties securityProperties,
             SecuritySettingsService securitySettingsService
     ) {
         this.systemInternalApi = systemInternalApi;
@@ -80,8 +79,6 @@ public class AuthAppService {
     public LoginEncryptionKeyDTO loginEncryptionKey() {
         return loginEncryptionService.getPublicKeyInfo();
     }
-
-    @SentinelResource(value = "auth-login", blockHandler = "loginBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public LoginResponseDTO login(LoginRequest request, HttpServletRequest httpServletRequest) {
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
@@ -165,14 +162,10 @@ public class AuthAppService {
                 ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
         );
     }
-
-    @SentinelResource(value = "auth-login-code-challenge", blockHandler = "loginCodeChallengeBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public LoginCodeChallengeDTO loginCodeChallenge(LoginCodeChallengeRequest request, HttpServletRequest httpServletRequest) {
         Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
         return systemInternalApi.loginCodeChallenge(tenantId, request.account(), request.loginType());
     }
-
-    @SentinelResource(value = "auth-login-code-complete", blockHandler = "completeLoginCodeLoginBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public LoginResponseDTO completeLoginCodeLogin(LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
         var verification = systemInternalApi.completeLoginCodeLogin(request);
         if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
@@ -211,8 +204,6 @@ public class AuthAppService {
         recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
-
-    @SentinelResource(value = "auth-second-factor-complete", blockHandler = "completeSecondFactorLoginBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public LoginResponseDTO completeSecondFactorLogin(SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
         var verification = systemInternalApi.completeSecondFactorLogin(request);
         if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
@@ -225,8 +216,6 @@ public class AuthAppService {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         authSessionStore.findBySessionId(currentUser.getSessionId()).ifPresent(session -> authSessionStore.remove(session, true));
     }
-
-    @SentinelResource(value = "auth-refresh-token", blockHandler = "refreshTokenBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public RefreshTokenResponseDTO refreshToken(RefreshTokenRequest request) {
         JwtTokenClaims claims = jwtTokenService.parseToken(request.refreshToken());
         if (claims.getTokenType() != JwtTokenType.REFRESH) {
@@ -244,8 +233,6 @@ public class AuthAppService {
                 jwtTokenService.getAccessTokenExpireSeconds()
         );
     }
-
-    @SentinelResource(value = "auth-current-user", blockHandler = "currentUserBlocked", blockHandlerClass = AuthSentinelBlockHandler.class)
     public CurrentUserDTO currentUser() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())

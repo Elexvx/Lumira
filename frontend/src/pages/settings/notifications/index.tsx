@@ -18,6 +18,8 @@ import type { MessageChannel, MessageDeliveryLogRecord, MessageNoticeRecord, Rol
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { confirmAction } from '@/utils/confirm';
 import { notifyMessageCenterRefresh } from '@/components/message-center/messageCenterEvents';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const TARGET_SCOPE_LABELS: Record<string, string> = {
   TENANT: '全员',
@@ -401,7 +403,7 @@ const NotificationsPage = () => {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return;
       }
-      message.error(error instanceof Error ? error.message : '通知发送失败，请稍后重试');
+      showErrorMessage(error, '通知发送失败，请稍后重试');
     } finally {
       setPublishing(false);
     }
@@ -442,7 +444,7 @@ const NotificationsPage = () => {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return;
       }
-      message.error(error instanceof Error ? error.message : '邮箱通知配置保存失败，请稍后重试');
+      showErrorMessage(error, '邮箱通知配置保存失败，请稍后重试');
     } finally {
       setSavingSmtpSettings(false);
     }
@@ -472,7 +474,7 @@ const NotificationsPage = () => {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return;
       }
-      message.error(error instanceof Error ? error.message : '微信通知配置保存失败，请稍后重试');
+      showErrorMessage(error, '微信通知配置保存失败，请稍后重试');
     } finally {
       setSavingWechatOfficialSettings(false);
     }
@@ -500,7 +502,7 @@ const NotificationsPage = () => {
       }
       setSelectedChannelKeys((keys) => keys.filter((key) => key !== record.key));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '通知渠道停用失败，请稍后重试');
+      showErrorMessage(error, '通知渠道停用失败，请稍后重试');
     } finally {
       setTogglingChannelKey(null);
     }
@@ -573,7 +575,7 @@ const NotificationsPage = () => {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return;
       }
-      message.error(error instanceof Error ? error.message : '测试邮件发送失败，请检查配置');
+      showErrorMessage(error, '测试邮件发送失败，请检查配置');
     } finally {
       setTestingSmtpSettings(false);
     }
@@ -599,7 +601,7 @@ const NotificationsPage = () => {
           archiveActionRef.current?.reload();
           logActionRef.current?.reload();
         } catch (error) {
-          message.error(error instanceof Error ? error.message : '站内信撤回失败，请稍后重试');
+          showErrorMessage(error, '站内信撤回失败，请稍后重试');
         }
       },
     });

@@ -1,10 +1,10 @@
 package com.legendary.invention.saas.modules.ai.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.RowMapper;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.infrastructure.AiSecretCryptoService;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,10 +23,50 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AiManagementAppServiceTest {
+
+    @Test
+    void governanceOverviewUsesAggregateStatsQueries() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+        when(jdbcTemplate.queryForList(contains("from ai_employee"), eq(1001L)))
+                .thenReturn(List.of(Map.of("employeeCount", 5L, "enabledEmployeeCount", 3L)));
+        when(jdbcTemplate.queryForList(contains("from ai_llm_service"), eq(1001L)))
+                .thenReturn(List.of(Map.of("llmServiceCount", 4L, "enabledLlmServiceCount", 2L, "missingApiKeyServiceCount", 1L)));
+        when(jdbcTemplate.queryForList(contains("from ai_skill")))
+                .thenReturn(List.of(Map.of("skillCount", 7L, "highRiskSkillCount", 2L, "confirmationRequiredSkillCount", 4L)));
+        when(jdbcTemplate.queryForObject(contains("from ai_employee_skill"), eq(Long.class), eq(1001L))).thenReturn(6L);
+
+        AiVO.GovernanceOverviewVO overview = service.governanceOverview(currentUser());
+
+        assertThat(overview.getEmployeeCount()).isEqualTo(5L);
+        assertThat(overview.getEnabledEmployeeCount()).isEqualTo(3L);
+        assertThat(overview.getLlmServiceCount()).isEqualTo(4L);
+        assertThat(overview.getEnabledLlmServiceCount()).isEqualTo(2L);
+        assertThat(overview.getMissingApiKeyServiceCount()).isEqualTo(1L);
+        assertThat(overview.getSkillCount()).isEqualTo(7L);
+        assertThat(overview.getHighRiskSkillCount()).isEqualTo(2L);
+        assertThat(overview.getConfirmationRequiredSkillCount()).isEqualTo(4L);
+        assertThat(overview.getHighRiskAllowedBindingCount()).isEqualTo(6L);
+        assertThat(overview.getSampledAt()).isNotNull();
+        verify(jdbcTemplate).queryForList(contains("from ai_employee"), eq(1001L));
+        verify(jdbcTemplate).queryForList(contains("from ai_llm_service"), eq(1001L));
+        verify(jdbcTemplate).queryForList(contains("from ai_skill"));
+        verify(jdbcTemplate, times(1)).queryForObject(anyString(), eq(Long.class), any());
+    }
 
     @Test
     void testLlmServiceReturnsSuccessfulProbeResult() {

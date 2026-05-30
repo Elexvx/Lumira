@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: legendary-server
+  profiles:
+    active: dev
+  main:
+    allow-bean-definition-overriding: true
+
+server:
+  port: 8080
+
+# Configure Feign clients to point to localhost (Monolith Mode)
+SYSTEM_SERVICE_BASE_URL: http://localhost:${server.port}
+AUTH_SERVICE_BASE_URL: http://localhost:${server.port}
+FILE_SERVICE_BASE_URL: http://localhost:${server.port}
+MESSAGE_SERVICE_BASE_URL: http://localhost:${server.port}
+PLUGIN_SERVICE_BASE_URL: http://localhost:${server.port}
+LOCALIZATION_SERVICE_BASE_URL: http://localhost:${server.port}
+JOB_EXECUTOR_BASE_URL: http://localhost:${server.port}
+
+# Disable Nacos / Sentinel
+spring.cloud.nacos.discovery.enabled: false
+spring.cloud.nacos.config.enabled: false
+spring.cloud.sentinel.enabled: false
+
+# Fallback basic DB config (will be overridden by env vars or system-service config)
+spring.datasource.url: ${DB_URL:jdbc:mysql://localhost:3306/legendary?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+spring.datasource.username: ${DB_USERNAME:root}
+spring.datasource.password: ${DB_PASSWORD:root}
+
+spring.data.redis.host: ${REDIS_HOST:localhost}
+spring.data.redis.port: ${REDIS_PORT:6379}
+spring.data.redis.password: ${REDIS_PASSWORD:}

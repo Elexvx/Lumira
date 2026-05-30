@@ -1,7 +1,7 @@
 package com.legendary.invention.saas.modules.system.app;
 
 import com.legendary.invention.saas.common.vo.PageResponse;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;

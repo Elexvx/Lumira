@@ -7,8 +7,8 @@ import com.legendary.invention.api.system.PermissionSnapshotDTO;
 import com.legendary.invention.api.system.SystemUserSnapshotDTO;
 import com.legendary.invention.api.system.VerificationChallengeDTO;
 import com.legendary.invention.api.system.VerificationProviderDTO;
-import com.legendary.invention.auth.config.SecurityProperties;
-import com.legendary.invention.auth.support.ClientIpResolver;
+import com.legendary.invention.auth.config.AuthSecurityProperties;
+import com.legendary.invention.common.web.repeatsubmit.ClientIpResolver;
 import com.legendary.invention.common.constant.PlatformConstants;
 import com.legendary.invention.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +37,7 @@ class AuthAppServiceWechatSecondFactorTest {
         WechatLoginService wechatLoginService = mock(WechatLoginService.class);
         ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
         HttpServletRequest request = mock(HttpServletRequest.class);
-        SecurityProperties securityProperties = new SecurityProperties();
+        AuthSecurityProperties securityProperties = new AuthSecurityProperties();
         SecuritySettingsService securitySettingsService = new SecuritySettingsService(securityProperties, systemInternalApi);
         AuthAppService service = new AuthAppService(
                 systemInternalApi,

@@ -7,6 +7,8 @@ import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } fro
 import { useResponsive } from '@/hooks/useResponsive';
 import { systemService } from '@/services/system';
 import './GlobalFloatActions.css';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 export const GlobalFloatActions = () => {
   const intl = useIntl();
@@ -14,7 +16,7 @@ export const GlobalFloatActions = () => {
   const { isMobile } = useResponsive();
   const floatingSettingsQuery = useQuery({
     queryKey: ['floating-window-settings'],
-    queryFn: () => systemService.floatingWindowSettings({ autoRedirectOnUnauthorized: false, silent: true }),
+    queryFn: () => systemService.floatingWindowSettings(API_OPTS.SILENT_NO_REDIRECT),
     enabled: isLoggedIn(),
     staleTime: 5 * 60 * 1000,
   });

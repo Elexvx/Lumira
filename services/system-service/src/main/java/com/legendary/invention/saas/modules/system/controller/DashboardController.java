@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.modules.system.controller;
 
-import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
+import com.legendary.invention.common.security.SecurityContextFacade;
 import com.legendary.invention.saas.modules.system.app.SystemManagementAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.legendary.invention.api.message.MessageEventDTO;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.message.mapper.PlatformEventOutboxMapper;
+import com.legendary.invention.message.mapper.MessagePlatformEventOutboxMapper;
 import com.legendary.invention.message.service.MessageEventFactory;
 import com.legendary.invention.message.service.MessageEventDeliveryService;
 import io.micrometer.core.instrument.Counter;
@@ -21,7 +21,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Service
+@Service("messagePlatformEventOutboxService")
 public class PlatformEventOutboxService {
 
     private static final Logger logger = LoggerFactory.getLogger(PlatformEventOutboxService.class);
@@ -33,14 +33,14 @@ public class PlatformEventOutboxService {
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_DISPATCH_LIMIT = 200;
 
-    private final PlatformEventOutboxMapper outboxMapper;
+    private final MessagePlatformEventOutboxMapper outboxMapper;
     private final ObjectMapper objectMapper;
     private final Counter recordedCounter;
     private final Counter deliveredCounter;
     private final Counter failedCounter;
     private final Counter replayCounter;
 
-    public PlatformEventOutboxService(PlatformEventOutboxMapper outboxMapper, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
+    public PlatformEventOutboxService(MessagePlatformEventOutboxMapper outboxMapper, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
         this.outboxMapper = outboxMapper;
         this.objectMapper = objectMapper;
         this.recordedCounter = Counter.builder("message.outbox.record.total").register(meterRegistry);

@@ -11,7 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-@Component
+@Component("messageCacheTemplate")
 public class CacheTemplate {
 
     private final StringRedisTemplate redisTemplate;

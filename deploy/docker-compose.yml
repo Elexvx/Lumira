@@ -1,6 +1,4 @@
 services:
-  # Local development stack only. Production must use docker-compose.prod.yml and
-  # explicitly provide strong secrets through deploy/.env.
   mysql:
     image: mysql:8.4
     container_name: legendary-mysql
@@ -8,62 +6,38 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-dev-mysql-password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-saas}
-      MYSQL_INITDB_SKIP_TZINFO: "1"
+      MYSQL_INITDB_SKIP_TZINFO: '1'
     ports:
-      - "3306:3306"
+    - 3306:3306
     volumes:
-      - mysql_data:/var/lib/mysql
-
+    - mysql_data:/var/lib/mysql
   redis:
     image: redis:7.4
     container_name: legendary-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+    - redis-server
+    - --appendonly
+    - 'yes'
     ports:
-      - "6379:6379"
+    - 6379:6379
     volumes:
-      - redis_data:/data
-
-  nacos:
-    image: nacos/nacos-server:v3.2.1
-    container_name: legendary-nacos
-    restart: unless-stopped
-    environment:
-      MODE: standalone
-      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-1fXccrT7n7GIlqoqGw38SKOGdRzbMHHq7LVCTsRrpCk=}
-      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-legendary-nacos-key}
-      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-legendary-nacos-value}
-    ports:
-      - "8848:8848"
-      - "9848:9848"
-    volumes:
-      - nacos_data:/home/nacos/data
-      - nacos_logs:/home/nacos/logs
-    depends_on:
-      - mysql
-
+    - redis_data:/data
   xxl-job-admin:
     image: xuxueli/xxl-job-admin:3.4.0
     container_name: legendary-xxl-job-admin
     restart: unless-stopped
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+    - host.docker.internal:host-gateway
     environment:
-      PARAMS: >-
-        --server.port=8080
-        --spring.datasource.url=jdbc:mysql://${XXL_JOB_DB_HOST:-mysql}:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
-        --spring.datasource.username=root
-        --spring.datasource.password=${MYSQL_ROOT_PASSWORD:-local-dev-mysql-password}
+      PARAMS: --server.port=8080 --spring.datasource.url=jdbc:mysql://${XXL_JOB_DB_HOST:-mysql}:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+        --spring.datasource.username=root --spring.datasource.password=${MYSQL_ROOT_PASSWORD:-local-dev-mysql-password}
         --xxl.job.accessToken=${XXL_JOB_ADMIN_ACCESS_TOKEN:-legendary-xxl-job-token}
-        --xxl.job.login.username=admin
-        --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:-local-dev-xxl-password}
+        --xxl.job.login.username=admin --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:-local-dev-xxl-password}
     ports:
-      - "8090:8080"
+    - 8090:8080
     depends_on:
-      - mysql
-
+    - mysql
 volumes:
-  mysql_data:
-  redis_data:
-  nacos_data:
-  nacos_logs:
+  mysql_data: null
+  redis_data: null

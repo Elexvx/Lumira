@@ -20,8 +20,8 @@ import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.VerificationVerificationDTO;
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.modules.system.verification.WechatLoginSettingsService;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.system.app.SystemRouteCatalog;
@@ -52,7 +52,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/internal/system")
-public class InternalSystemController {
+public class InternalSystemController implements com.legendary.invention.api.client.SystemInternalApi {
 
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";

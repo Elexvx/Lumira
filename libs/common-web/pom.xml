@@ -68,6 +68,7 @@
         <dependency>
             <groupId>io.github.openfeign</groupId>
             <artifactId>feign-core</artifactId>
+            <version>13.5</version>
         </dependency>
         <dependency>
             <groupId>com.legendary.invention</groupId>

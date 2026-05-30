@@ -17,133 +17,126 @@ import com.legendary.invention.api.system.VerificationProviderDTO;
 import com.legendary.invention.api.system.VerificationVerificationDTO;
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
 import com.legendary.invention.api.system.WechatLoginUserRequestDTO;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "system-service", contextId = "systemInternalApi", url = "${SYSTEM_SERVICE_BASE_URL:}", path = "/internal/system")
 public interface SystemInternalApi {
 
-    @GetMapping("/users/login/{account}")
-    SystemUserSnapshotDTO findLoginUser(@PathVariable("account") String account);
+    
+    SystemUserSnapshotDTO findLoginUser( String account);
 
-    @GetMapping("/users/{id}")
-    SystemUserSnapshotDTO findUserById(@PathVariable("id") Long id);
+    
+    SystemUserSnapshotDTO findUserById( Long id);
 
-    @PostMapping("/users/wechat-login")
-    SystemUserSnapshotDTO resolveWechatLoginUser(@RequestBody WechatLoginUserRequestDTO request);
+    
+    SystemUserSnapshotDTO resolveWechatLoginUser( WechatLoginUserRequestDTO request);
 
-    @GetMapping("/permissions/snapshot")
-    PermissionSnapshotDTO permissionSnapshot(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
+    
+    PermissionSnapshotDTO permissionSnapshot( Long tenantId,  Long userId);
 
-    @PostMapping("/permissions/invalidate")
-    Boolean invalidatePermissionSnapshot(@RequestParam("tenantId") Long tenantId);
+    
+    Boolean invalidatePermissionSnapshot( Long tenantId);
 
-    @PostMapping("/captcha/validate")
-    Boolean validateCaptcha(@RequestBody CaptchaValidationRequestDTO request);
+    
+    Boolean validateCaptcha( CaptchaValidationRequestDTO request);
 
-    @PostMapping("/audit/login")
-    Boolean recordLoginAudit(@RequestBody LoginAuditRecordRequestDTO request);
+    
+    Boolean recordLoginAudit( LoginAuditRecordRequestDTO request);
 
-    @GetMapping("/verification/login-capabilities")
-    LoginCapabilitiesDTO loginCapabilities(@RequestParam("tenantId") Long tenantId);
+    
+    LoginCapabilitiesDTO loginCapabilities( Long tenantId);
 
-    @GetMapping("/security/settings")
-    SecuritySettingsDTO securitySettings(@RequestParam("tenantId") Long tenantId);
+    
+    SecuritySettingsDTO securitySettings( Long tenantId);
 
-    @GetMapping("/verification/wechat-settings")
-    WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId);
+    
+    WechatLoginSettingsDTO wechatLoginSettings( Long tenantId);
 
-    @GetMapping("/verification/passkey-settings")
-    PasskeySettingsDTO passkeySettings(@RequestParam("tenantId") Long tenantId);
+    
+    PasskeySettingsDTO passkeySettings( Long tenantId);
 
-    @GetMapping("/passkeys/credential")
-    PasskeyCredentialDTO passkeyCredentialByCredentialId(@RequestParam("credentialId") String credentialId);
+    
+    PasskeyCredentialDTO passkeyCredentialByCredentialId( String credentialId);
 
-    @GetMapping("/passkeys")
-    List<PasskeyCredentialDTO> passkeyCredentials(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
+    
+    List<PasskeyCredentialDTO> passkeyCredentials( Long tenantId,  Long userId);
 
-    @PostMapping("/passkeys")
-    PasskeyCredentialDTO savePasskeyCredential(@RequestBody PasskeyCredentialSaveRequestDTO request);
+    
+    PasskeyCredentialDTO savePasskeyCredential( PasskeyCredentialSaveRequestDTO request);
 
-    @PostMapping("/passkeys/usage")
-    Boolean updatePasskeyCredentialUsage(@RequestBody PasskeyCredentialUsageRequestDTO request);
+    
+    Boolean updatePasskeyCredentialUsage( PasskeyCredentialUsageRequestDTO request);
 
-    @PostMapping("/passkeys/{id}/label")
+    
     PasskeyCredentialDTO renamePasskeyCredential(
-            @PathVariable("id") Long id,
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
-            @RequestParam("label") String label
+             Long id,
+             Long tenantId,
+             Long userId,
+             String label
     );
 
-    @PostMapping("/passkeys/{id}/delete")
-    Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
+    
+    Boolean deletePasskeyCredential( Long id,  Long tenantId,  Long userId);
 
-    @GetMapping("/verification/providers")
-    List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId);
+    
+    List<VerificationProviderDTO> listVerificationProviders( Long tenantId,  Long userId);
 
-    @GetMapping("/verification/login-options")
+    
     List<com.legendary.invention.api.auth.LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId
+             Long tenantId,
+             Long userId
     );
 
-    @GetMapping("/verification/providers/{factorCode}")
+    
     VerificationProviderDTO verificationProvider(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
-            @PathVariable("factorCode") String factorCode
+             Long tenantId,
+             Long userId,
+             String factorCode
     );
 
-    @PostMapping("/verification/providers/{factorCode}/bind")
+    
     VerificationChallengeDTO bindVerificationProvider(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
-            @PathVariable("factorCode") String factorCode
+             Long tenantId,
+             Long userId,
+             String factorCode
     );
 
-    @PostMapping("/verification/providers/{factorCode}/unbind")
+    
     Boolean unbindVerificationProvider(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
-            @PathVariable("factorCode") String factorCode
+             Long tenantId,
+             Long userId,
+             String factorCode
     );
 
-    @PostMapping("/verification/providers/{factorCode}/challenge")
+    
     VerificationChallengeDTO verificationChallenge(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
-            @PathVariable("factorCode") String factorCode
+             Long tenantId,
+             Long userId,
+             String factorCode
     );
 
-    @PostMapping("/verification/providers/{factorCode}/verify")
+    
     VerificationVerificationDTO verificationVerify(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("userId") Long userId,
-            @PathVariable("factorCode") String factorCode,
-            @RequestParam("challengeId") String challengeId,
-            @RequestParam("verificationCode") String verificationCode
+             Long tenantId,
+             Long userId,
+             String factorCode,
+             String challengeId,
+             String verificationCode
     );
 
-    @PostMapping("/verification/login-code/challenge")
+    
     com.legendary.invention.api.auth.LoginCodeChallengeDTO loginCodeChallenge(
-            @RequestParam("tenantId") Long tenantId,
-            @RequestParam("account") String account,
-            @RequestParam("loginType") String loginType
+             Long tenantId,
+             String account,
+             String loginType
     );
 
-    @PostMapping("/verification/login-code/complete")
-    VerificationVerificationDTO completeLoginCodeLogin(@RequestBody com.legendary.invention.api.auth.LoginCodeCompleteRequest request);
+    
+    VerificationVerificationDTO completeLoginCodeLogin( com.legendary.invention.api.auth.LoginCodeCompleteRequest request);
 
-    @PostMapping("/verification/second-factor/complete")
-    VerificationVerificationDTO completeSecondFactorLogin(@RequestBody com.legendary.invention.api.auth.SecondFactorCompleteRequest request);
+    
+    VerificationVerificationDTO completeSecondFactorLogin( com.legendary.invention.api.auth.SecondFactorCompleteRequest request);
 
-    @GetMapping("/menus/builtin")
+    
     java.util.List<MenuNodeDTO> builtinMenus();
 }

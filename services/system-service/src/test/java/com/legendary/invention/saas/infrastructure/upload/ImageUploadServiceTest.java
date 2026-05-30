@@ -1,6 +1,6 @@
 package com.legendary.invention.saas.infrastructure.upload;
 
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.exception.BizException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -26,7 +26,7 @@ class ImageUploadServiceTest {
         );
 
         BizException exception = assertThrows(BizException.class, () -> service.upload(file));
-        assertEquals("仅支持常见图片格式", exception.getErrorMessage());
+        assertEquals("仅支持常见图片格式", exception.getMessage());
     }
 
     @Test

@@ -1,8 +1,8 @@
 package com.legendary.invention.saas.modules.ai.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
 import org.slf4j.Logger;
@@ -584,7 +584,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 employeeId
         ).stream().findFirst().orElse(null);
         if (employee == null) {
-            throw new com.legendary.invention.saas.common.exception.BizException(com.legendary.invention.saas.common.enums.ErrorCode.NOT_FOUND, "数字员工不存在");
+            throw new com.legendary.invention.common.exception.BizException(com.legendary.invention.common.enums.ErrorCode.NOT_FOUND, "数字员工不存在");
         }
         return employee;
     }

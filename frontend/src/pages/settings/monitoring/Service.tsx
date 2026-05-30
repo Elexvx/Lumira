@@ -14,6 +14,8 @@ import type {
   ServiceMonitorSnapshot,
 } from '@/types/api';
 import { formatBytes, formatDateTime, formatDuration, formatNumber, formatPercent } from './shared';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 const stableNumericStyle = { fontVariantNumeric: 'tabular-nums' as const };
@@ -60,11 +62,11 @@ export const ServiceMonitorContent = () => {
   const { isDesktop, isMobile } = useResponsive();
   const query = useQuery({
     queryKey: ['service-monitor'],
-    queryFn: async () => monitorService.service({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => monitorService.service(API_OPTS.NO_REDIRECT),
   });
   const webSocketQuery = useQuery<MessageWebSocketRuntime>({
     queryKey: ['message-websocket-runtime'],
-    queryFn: async () => messageService.webSocketRuntime({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => messageService.webSocketRuntime(API_OPTS.NO_REDIRECT),
   });
   const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
   const fullRowSpan = isMobile ? 1 : 2;

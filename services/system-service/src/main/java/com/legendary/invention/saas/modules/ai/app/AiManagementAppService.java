@@ -1,9 +1,9 @@
 package com.legendary.invention.saas.modules.ai.app;
 
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.modules.ai.dto.AiDTO;
 import com.legendary.invention.saas.modules.ai.infrastructure.AiSecretCryptoService;
 import com.legendary.invention.saas.modules.ai.vo.AiVO;
@@ -90,48 +90,37 @@ public class AiManagementAppService {
     public AiVO.GovernanceOverviewVO governanceOverview(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
         AiVO.GovernanceOverviewVO overview = new AiVO.GovernanceOverviewVO();
-        overview.setEmployeeCount(count("""
-                select count(1)
+        Map<String, Object> employeeStats = querySingleRow("""
+                select count(1) as employeeCount,
+                       coalesce(sum(case when enabled = 1 then 1 else 0 end), 0) as enabledEmployeeCount
                 from ai_employee
                 where tenant_id = ? and is_deleted = 0
-                """, tenantId));
-        overview.setEnabledEmployeeCount(count("""
-                select count(1)
-                from ai_employee
-                where tenant_id = ? and enabled = 1 and is_deleted = 0
-                """, tenantId));
-        overview.setLlmServiceCount(count("""
-                select count(1)
+                """, tenantId);
+        overview.setEmployeeCount(longValue(employeeStats.get("employeeCount")));
+        overview.setEnabledEmployeeCount(longValue(employeeStats.get("enabledEmployeeCount")));
+
+        Map<String, Object> llmServiceStats = querySingleRow("""
+                select count(1) as llmServiceCount,
+                       coalesce(sum(case when enabled = 1 then 1 else 0 end), 0) as enabledLlmServiceCount,
+                       coalesce(sum(case when api_key_encrypted is null or api_key_encrypted = '' then 1 else 0 end), 0) as missingApiKeyServiceCount
                 from ai_llm_service
                 where tenant_id = ? and is_deleted = 0
-                """, tenantId));
-        overview.setEnabledLlmServiceCount(count("""
-                select count(1)
-                from ai_llm_service
-                where tenant_id = ? and enabled = 1 and is_deleted = 0
-                """, tenantId));
-        overview.setMissingApiKeyServiceCount(count("""
-                select count(1)
-                from ai_llm_service
-                where tenant_id = ?
-                  and is_deleted = 0
-                  and (api_key_encrypted is null or api_key_encrypted = '')
-                """, tenantId));
-        overview.setSkillCount(count("""
-                select count(1)
+                """, tenantId);
+        overview.setLlmServiceCount(longValue(llmServiceStats.get("llmServiceCount")));
+        overview.setEnabledLlmServiceCount(longValue(llmServiceStats.get("enabledLlmServiceCount")));
+        overview.setMissingApiKeyServiceCount(longValue(llmServiceStats.get("missingApiKeyServiceCount")));
+
+        Map<String, Object> skillStats = querySingleRow("""
+                select count(1) as skillCount,
+                       coalesce(sum(case when risk_level = 'HIGH' then 1 else 0 end), 0) as highRiskSkillCount,
+                       coalesce(sum(case when need_confirm = 1 then 1 else 0 end), 0) as confirmationRequiredSkillCount
                 from ai_skill
                 where enabled = 1 and is_deleted = 0
-                """));
-        overview.setHighRiskSkillCount(count("""
-                select count(1)
-                from ai_skill
-                where enabled = 1 and is_deleted = 0 and risk_level = 'HIGH'
-                """));
-        overview.setConfirmationRequiredSkillCount(count("""
-                select count(1)
-                from ai_skill
-                where enabled = 1 and is_deleted = 0 and need_confirm = 1
-                """));
+                """);
+        overview.setSkillCount(longValue(skillStats.get("skillCount")));
+        overview.setHighRiskSkillCount(longValue(skillStats.get("highRiskSkillCount")));
+        overview.setConfirmationRequiredSkillCount(longValue(skillStats.get("confirmationRequiredSkillCount")));
+
         overview.setHighRiskAllowedBindingCount(count("""
                 select count(1)
                 from ai_employee_skill es
@@ -1243,6 +1232,21 @@ public class AiManagementAppService {
     private Long count(String sql, Object... args) {
         Long count = jdbcTemplate.queryForObject(sql, Long.class, args);
         return count == null ? 0L : count;
+    }
+
+    private Map<String, Object> querySingleRow(String sql, Object... args) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, args);
+        return rows.isEmpty() ? Map.of() : rows.get(0);
+    }
+
+    private Long longValue(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
     }
 
     private String cleanNullable(String value) {

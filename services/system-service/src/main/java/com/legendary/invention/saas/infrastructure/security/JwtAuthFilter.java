@@ -1,9 +1,9 @@
 package com.legendary.invention.saas.infrastructure.security;
 
 import com.legendary.invention.saas.common.constant.HeaderConstants;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
+import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
@@ -13,7 +13,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.common.api.ApiResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -105,7 +105,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         response.setCharacterEncoding("UTF-8");
         ApiResponse<Void> body = ApiResponse.fail(
                 exception.getErrorCode(),
-                exception.getErrorMessage(),
+                exception.getMessage(),
                 exception.getUserMessage(),
                 TraceContext.getRequestId(),
                 request.getRequestURI()

@@ -6,6 +6,8 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { useResponsive } from '@/hooks/useResponsive';
 import { systemService, type TenantMutationPayload } from '@/services/system';
 import type { TenantRecord } from '@/types/api';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const statusOptions = [
   { value: 'ENABLED', label: '启用' },
@@ -28,7 +30,7 @@ const TenantManagement = () => {
   const load = async (nextPage = pageNo) => {
     setLoading(true);
     try {
-      const result = await systemService.tenants({ pageNo: nextPage, pageSize: 10 }, { autoRedirectOnUnauthorized: false });
+      const result = await systemService.tenants({ pageNo: nextPage, pageSize: 10 }, API_OPTS.NO_REDIRECT);
       setRecords(result.records || []);
       setTotal(result.total);
       setPageNo(nextPage);
@@ -55,9 +57,9 @@ const TenantManagement = () => {
   const save = async () => {
     const values = await form.validateFields();
     if (editing?.id) {
-      await systemService.updateTenant(editing.id, values, { autoRedirectOnUnauthorized: false });
+      await systemService.updateTenant(editing.id, values, API_OPTS.NO_REDIRECT);
     } else {
-      await systemService.createTenant(values, { autoRedirectOnUnauthorized: false });
+      await systemService.createTenant(values, API_OPTS.NO_REDIRECT);
     }
     message.success('租户已保存');
     setEditing(null);
@@ -97,7 +99,7 @@ const TenantManagement = () => {
                   title="删除租户"
                   description={`确认删除「${record.tenantName}」吗？`}
                   onConfirm={async () => {
-                    await systemService.deleteTenant(record.id, { autoRedirectOnUnauthorized: false });
+                    await systemService.deleteTenant(record.id, API_OPTS.NO_REDIRECT);
                     message.success('租户已删除');
                     await load();
                   }}

@@ -1,6 +1,6 @@
 package com.legendary.invention.auth.service;
 
-import com.legendary.invention.auth.config.SecurityProperties;
+import com.legendary.invention.auth.config.AuthSecurityProperties;
 import com.legendary.invention.auth.model.AuthSession;
 import com.legendary.invention.common.security.JwtSecretKeyFactory;
 import com.legendary.invention.common.security.JwtTokenClaims;
@@ -14,15 +14,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
-@Service
+@Service("authJwtTokenService")
 public class JwtTokenService {
 
-    private final SecurityProperties securityProperties;
+    private final AuthSecurityProperties securityProperties;
     private final SecuritySettingsService securitySettingsService;
     private final SecretKey secretKey;
     private final JwtTokenParser jwtTokenParser;
 
-    public JwtTokenService(SecurityProperties securityProperties, SecuritySettingsService securitySettingsService) {
+    public JwtTokenService(AuthSecurityProperties securityProperties, SecuritySettingsService securitySettingsService) {
         this.securityProperties = securityProperties;
         this.securitySettingsService = securitySettingsService;
         this.secretKey = JwtSecretKeyFactory.createHmacKey(securityProperties.getJwtSecret());

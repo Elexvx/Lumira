@@ -13,6 +13,30 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { systemService } from '@/services/system';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { SmsConfigTab, EmailConfigTab, WechatConfigTab, PasskeyConfigTab } from './components/verification/ConfigTabs';
+import {
+  SMS_PROVIDER_OPTIONS,
+  SMS_PROVIDER_SCHEMAS,
+  normalizeProviderCode,
+  normalizeDrawerMode,
+  resolveDrawerTitle,
+  verificationFormInitialValues,
+  resolveLoginModeFromAuthenticatorKey,
+  smtpFormInitialValues,
+  smtpTestInitialValues,
+  SMS_ACCESS_KEY_SECRET_MASK,
+  SMTP_PASSWORD_MASK,
+  WECHAT_APP_SECRET_MASK,
+} from './components/verification/config';
+import type {
+  AuthenticatorRecord,
+  SmsProviderCode,
+  AuthenticatorCode,
+  LoginModeCode,
+  ConfigDrawerMode,
+} from './components/verification/config';
+
 import type {
   SmsVerificationSettings,
   SmtpSettings,
@@ -25,158 +49,6 @@ import type {
 const TAB_KEYS = ['totp', 'sms', 'email', 'wechat', 'passkey'] as const;
 
 type VerificationTabKey = (typeof TAB_KEYS)[number];
-type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
-type LoginModeCode = 'passkey' | 'sms' | 'email' | 'wechat' | 'password';
-type AuthenticatorCode = 'passkey_login' | 'sms_login' | 'email_login' | 'wechat_login' | 'password_login';
-type ConfigDrawerMode = VerificationTabKey | 'basic';
-
-interface SmsProviderFieldConfig {
-  name: keyof SmsVerificationSettings;
-  label: string;
-  placeholder?: string;
-  required?: boolean;
-  password?: boolean;
-}
-
-interface SmsProviderSchema {
-  fields: SmsProviderFieldConfig[];
-}
-
-interface AuthenticatorRecord {
-  key: AuthenticatorCode;
-  order: number;
-  identifier: string;
-  type: string;
-  title: string;
-  description: string;
-  enabled: boolean;
-}
-
-const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
-  { label: '阿里云短信', value: 'aliyun' },
-  { label: '腾讯云短信', value: 'tencent' },
-  { label: '本地模拟', value: 'mock' },
-  { label: '自定义网关', value: 'custom' },
-];
-
-const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
-  aliyun: {
-    fields: [
-      { name: 'signName', label: '短信签名', placeholder: '例如：宏翔商道', required: true },
-      { name: 'templateCode', label: '模板编码', placeholder: '例如：SMS_123456789', required: true },
-      { name: 'accessKeyId', label: 'Access Key ID', placeholder: '短信服务访问密钥 ID', required: true },
-      { name: 'accessKeySecret', label: 'Access Key Secret', placeholder: '留空则保持现有密钥', password: true },
-      { name: 'endpoint', label: '服务地址', placeholder: '例如：https://dysmsapi.aliyuncs.com' },
-      { name: 'region', label: '地域', placeholder: '例如：cn-hangzhou' },
-    ],
-  },
-  tencent: {
-    fields: [
-      { name: 'signName', label: '短信签名', placeholder: '例如：宏翔商道', required: true },
-      { name: 'templateCode', label: '模板 ID', placeholder: '例如：1234567', required: true },
-      { name: 'accessKeyId', label: 'SecretId', placeholder: '腾讯云 SecretId', required: true },
-      { name: 'accessKeySecret', label: 'SecretKey', placeholder: '留空则保持现有密钥', password: true, required: true },
-      { name: 'endpoint', label: 'API 地址', placeholder: '例如：https://sms.tencentcloudapi.com' },
-      { name: 'region', label: '地域', placeholder: '例如：ap-guangzhou' },
-    ],
-  },
-  mock: {
-    fields: [
-      { name: 'signName', label: '模拟签名', placeholder: '例如：测试短信' },
-      { name: 'templateCode', label: '模拟模板编码', placeholder: '例如：MOCK_SMS_001' },
-    ],
-  },
-  custom: {
-    fields: [
-      { name: 'endpoint', label: '网关地址', placeholder: '例如：https://sms.example.com/api', required: true },
-      { name: 'accessKeyId', label: '网关账号', placeholder: '例如：gateway-user', required: true },
-      { name: 'accessKeySecret', label: '网关密钥', placeholder: '留空则保持现有密钥', password: true, required: true },
-      { name: 'signName', label: '签名', placeholder: '例如：宏翔商道', required: true },
-      { name: 'templateCode', label: '模板编码', placeholder: '例如：SMS_123456789', required: true },
-      { name: 'region', label: '地域', placeholder: '按网关要求填写' },
-    ],
-  },
-};
-
-const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
-  if (value === 'tencent' || value === 'mock' || value === 'custom') {
-    return value;
-  }
-  return 'aliyun';
-};
-
-const normalizeDrawerMode = (value?: string | null): ConfigDrawerMode | null => {
-  if (value === 'basic') {
-    return 'basic';
-  }
-  if (value === 'totp' || value === 'sms' || value === 'email' || value === 'wechat' || value === 'passkey') {
-    return value;
-  }
-  return null;
-};
-
-const resolveDrawerTitle = (mode: ConfigDrawerMode | null) => {
-  if (mode === 'sms') {
-    return '配置短信认证器';
-  }
-  if (mode === 'email') {
-    return '配置邮箱认证';
-  }
-  if (mode === 'wechat') {
-    return '配置微信登录';
-  }
-  if (mode === 'passkey') {
-    return '配置通行密钥';
-  }
-  if (mode === 'totp') {
-    return '配置 2FA';
-  }
-  return '配置密码认证器';
-};
-
-const verificationFormInitialValues: VerificationSettings = {
-  enabled: true,
-  emailLoginEnabled: false,
-  passwordLoginEnabled: true,
-  loginModeOrder: ['passkey', 'sms', 'email', 'wechat', 'password'],
-};
-
-const resolveLoginModeFromAuthenticatorKey = (key: AuthenticatorCode): LoginModeCode => {
-  if (key === 'passkey_login') {
-    return 'passkey';
-  }
-  if (key === 'sms_login') {
-    return 'sms';
-  }
-  if (key === 'email_login') {
-    return 'email';
-  }
-  if (key === 'wechat_login') {
-    return 'wechat';
-  }
-  return 'password';
-};
-
-const smtpFormInitialValues: SmtpSettings = {
-  host: '',
-  port: 25,
-  username: '',
-  password: '',
-  from: '',
-  authEnabled: true,
-  startTlsEnabled: true,
-  sslEnabled: false,
-};
-
-const smtpTestInitialValues: SmtpTestPayload = {
-  subject: 'SMTP 测试邮件',
-  content: '这是一封来自系统的 SMTP 测试邮件。',
-  toEmail: '',
-};
-
-const SMS_ACCESS_KEY_SECRET_MASK = '********';
-const SMTP_PASSWORD_MASK = '********';
-const WECHAT_APP_SECRET_MASK = '********';
 
 const SystemVerificationPage = () => {
   const { token } = theme.useToken();
@@ -212,27 +84,27 @@ const SystemVerificationPage = () => {
 
   const verificationSettingsQuery = useQuery({
     queryKey: ['verification-settings'],
-    queryFn: async () => systemService.verificationSettings({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => systemService.verificationSettings(API_OPTS.NO_REDIRECT),
     enabled: canViewVerification,
   });
   const smsSettingsQuery = useQuery({
     queryKey: ['sms-verification-settings'],
-    queryFn: async () => systemService.smsVerificationSettings({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => systemService.smsVerificationSettings(API_OPTS.NO_REDIRECT),
     enabled: canViewVerification,
   });
   const smtpSettingsQuery = useQuery({
     queryKey: ['smtp-settings'],
-    queryFn: async () => systemService.smtpSettings({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => systemService.smtpSettings(API_OPTS.NO_REDIRECT),
     enabled: canViewVerification,
   });
   const wechatSettingsQuery = useQuery({
     queryKey: ['wechat-login-settings'],
-    queryFn: async () => systemService.wechatLoginSettings({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => systemService.wechatLoginSettings(API_OPTS.NO_REDIRECT),
     enabled: canViewVerification,
   });
   const passkeySettingsQuery = useQuery({
     queryKey: ['passkey-settings'],
-    queryFn: async () => systemService.passkeySettings({ autoRedirectOnUnauthorized: false }),
+    queryFn: async () => systemService.passkeySettings(API_OPTS.NO_REDIRECT),
     enabled: canViewVerification,
   });
   const verificationFormProps = useStandardFormProps({
@@ -398,7 +270,7 @@ const SystemVerificationPage = () => {
     setVerificationSaving(true);
     try {
       const values = await verificationForm.validateFields();
-      const result = await systemService.updateVerificationSettings(values, { autoRedirectOnUnauthorized: false });
+      const result = await systemService.updateVerificationSettings(values, API_OPTS.NO_REDIRECT);
       verificationForm.setFieldsValue(result);
       message.success('验证设置已保存');
       await verificationSettingsQuery.refetch();
@@ -423,7 +295,7 @@ const SystemVerificationPage = () => {
         ...smtpValues,
         password: smtpValues.password === SMTP_PASSWORD_MASK ? undefined : smtpValues.password,
       };
-      const smtpResult = await systemService.updateSmtpSettings(smtpPayload, { autoRedirectOnUnauthorized: false });
+      const smtpResult = await systemService.updateSmtpSettings(smtpPayload, API_OPTS.NO_REDIRECT);
       smtpSettingsForm.setFieldsValue({
         ...smtpResult,
         password: smtpResult.passwordConfigured ? SMTP_PASSWORD_MASK : '',
@@ -435,7 +307,7 @@ const SystemVerificationPage = () => {
           ...verificationValues,
           emailLoginEnabled: true,
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       verificationForm.setFieldsValue(result);
 
@@ -467,7 +339,7 @@ const SystemVerificationPage = () => {
           enabled: true,
           accessKeySecret,
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       message.success(result.configured ? '短信验证码配置已保存' : '短信验证码配置已保存，当前仍未完全启用');
       await smsSettingsQuery.refetch();
@@ -490,7 +362,7 @@ const SystemVerificationPage = () => {
           ...values,
           appSecret,
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       wechatSettingsForm.setFieldsValue({
         ...result,
@@ -521,7 +393,7 @@ const SystemVerificationPage = () => {
           enabled: forceEnabled ? true : values.enabled,
           allowedOrigins: values.allowedOriginsText?.split('\n').map((item) => item.trim()).filter(Boolean) || [],
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       passkeySettingsForm.setFieldsValue({
         ...result,
@@ -544,7 +416,7 @@ const SystemVerificationPage = () => {
     setTestingSmtpSettings(true);
     try {
       const values = await smtpTestForm.validateFields();
-      const result = await systemService.testSmtpSettings(values, { autoRedirectOnUnauthorized: false });
+      const result = await systemService.testSmtpSettings(values, API_OPTS.NO_REDIRECT);
       message.success(result.message || '测试邮件已发送');
     } finally {
       setTestingSmtpSettings(false);
@@ -628,7 +500,7 @@ const SystemVerificationPage = () => {
           enabled: false,
           accessKeySecret,
         },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       message.success('短信认证器已停用');
       setSelectedAuthenticatorKeys((keys) => keys.filter((key) => key !== 'sms_login'));
@@ -865,7 +737,7 @@ const SystemVerificationPage = () => {
     try {
       const result = await systemService.updateVerificationSettings(
         { loginModeOrder },
-        { autoRedirectOnUnauthorized: false },
+        API_OPTS.NO_REDIRECT,
       );
       verificationForm.setFieldsValue(result);
       message.success('登录方式顺序已更新');
@@ -1010,182 +882,10 @@ const SystemVerificationPage = () => {
     </Space>
   );
 
-  const renderSmsTab = () => (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form {...smsFormProps}>
-        <Form.Item
-          name="provider"
-          label="服务商"
-          rules={smsConfigEnabled ? [{ required: true, message: '请选择短信服务商' }] : undefined}
-        >
-          <Select
-            disabled={!canManageSettings || !smsConfigEnabled}
-            options={SMS_PROVIDER_OPTIONS}
-            placeholder="请选择短信服务商"
-            onChange={handleSmsProviderChange}
-          />
-        </Form.Item>
-        {providerSchema.fields.map((field) => (
-          <Form.Item
-            key={String(field.name)}
-            name={field.name}
-            label={field.label}
-            rules={smsConfigEnabled && field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
-            extra={
-              field.password && field.name === 'accessKeySecret'
-                ? smsAccessKeySecretConfigured
-                  ? '当前密钥已脱敏显示，留空则保持现有密钥'
-                  : '留空则保持现有密钥'
-                : undefined
-            }
-          >
-            {field.password ? (
-              <Input.Password
-                disabled={!canManageSettings || !smsConfigEnabled}
-                placeholder={field.placeholder}
-              />
-            ) : (
-              <Input disabled={!canManageSettings || !smsConfigEnabled} placeholder={field.placeholder} />
-            )}
-          </Form.Item>
-        ))}
-      </Form>
-    </Space>
-  );
-
-  const renderEmailTab = () => (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card title="邮箱与 SMTP" loading={smtpSettingsQuery.isLoading || verificationSettingsQuery.isLoading}>
-        <Space direction="vertical" size={20} style={{ width: '100%' }}>
-          <div style={{ opacity: emailConfigEnabled ? 1 : 0.48, transition: 'opacity 0.2s ease' }}>
-            <Form {...smtpFormProps}>
-              <Typography.Title level={5} style={{ marginTop: 0 }}>
-                SMTP 基础配置
-              </Typography.Title>
-              <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
-                <Input disabled={!canManageSettings || !emailConfigEnabled} placeholder="smtp.example.com" />
-              </Form.Item>
-              <Form.Item name="port" label="SMTP 端口" rules={[{ required: true, message: '请输入 SMTP 端口' }]}>
-                <InputNumber disabled={!canManageSettings || !emailConfigEnabled} style={{ width: '100%' }} min={1} max={65535} />
-              </Form.Item>
-              <Form.Item name="username" label="SMTP 用户名" rules={[{ required: true, message: '请输入 SMTP 用户名' }]}>
-                <Input disabled={!canManageSettings || !emailConfigEnabled} placeholder="username@example.com" />
-              </Form.Item>
-              <Form.Item
-                name="password"
-                label="SMTP 密码"
-                extra={smtpSettingsQuery.data?.passwordConfigured ? '当前密码已脱敏显示，留空则保留现有密码' : '留空则保留现有密码'}
-              >
-                <Input.Password
-                  disabled={!canManageSettings || !emailConfigEnabled}
-                  placeholder="留空则保留现有密码"
-                />
-              </Form.Item>
-              <Form.Item name="from" label="发件人地址" rules={[{ required: true, message: '请输入发件人地址' }]}>
-                <Input disabled={!canManageSettings || !emailConfigEnabled} placeholder="noreply@example.com" />
-              </Form.Item>
-              <Form.Item name="authEnabled" label="启用认证" valuePropName="checked">
-                <Switch disabled={!canManageSettings || !emailConfigEnabled} />
-              </Form.Item>
-              <Form.Item name="startTlsEnabled" label="启用 STARTTLS" valuePropName="checked">
-                <Switch disabled={!canManageSettings || !emailConfigEnabled} />
-              </Form.Item>
-              <Form.Item name="sslEnabled" label="启用 SSL" valuePropName="checked">
-                <Switch disabled={!canManageSettings || !emailConfigEnabled} />
-              </Form.Item>
-            </Form>
-          </div>
-        </Space>
-      </Card>
-
-      <Card title="SMTP 测试发送" loading={smtpSettingsQuery.isLoading}>
-        <Form {...smtpTestFormProps}>
-          <Form.Item
-            name="toEmail"
-            label="收件人邮箱"
-            rules={[{ required: true, message: '请输入收件人邮箱' }, { type: 'email', message: '请输入有效邮箱地址' }]}
-          >
-            <Input disabled={!canManageSettings} placeholder="recipient@example.com" />
-          </Form.Item>
-          <Form.Item name="subject" label="邮件主题">
-            <Input disabled={!canManageSettings} />
-          </Form.Item>
-          <Form.Item name="content" label="邮件内容">
-            <Input.TextArea disabled={!canManageSettings} rows={6} />
-          </Form.Item>
-        </Form>
-      </Card>
-
-    </Space>
-  );
-
-  const renderWechatTab = () => (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form {...wechatFormProps}>
-        <Form.Item name="enabled" label="启用微信登录" valuePropName="checked">
-          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
-        </Form.Item>
-        <Form.Item
-          name="appId"
-          label="AppID"
-          rules={wechatEnabled ? [{ required: true, message: '请输入微信 AppID' }] : undefined}
-        >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder="微信开放平台网站应用 AppID" />
-        </Form.Item>
-        <Form.Item
-          name="appSecret"
-          label="AppSecret"
-          rules={wechatEnabled && !wechatAppSecretConfigured ? [{ required: true, message: '请输入微信 AppSecret' }] : undefined}
-          extra={wechatAppSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '留空则保持现有密钥'}
-        >
-          <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder="留空则保持现有密钥" />
-        </Form.Item>
-        <Form.Item
-          name="redirectUri"
-          label="回调地址"
-          rules={[
-            ...(wechatEnabled ? [{ required: true, message: '请输入微信回调地址' }] : []),
-            { type: 'url', message: '请输入有效 URL' },
-          ]}
-        >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder="https://你的域名/api/v1/auth/wechat/callback" />
-        </Form.Item>
-        <Form.Item
-          name="stateExpireMinutes"
-          label="状态有效期"
-          rules={wechatEnabled ? [{ required: true, message: '请输入状态有效期' }] : undefined}
-        >
-          <InputNumber disabled={!canManageSettings || !wechatEnabled} style={{ width: '100%' }} min={1} max={60} addonAfter="分钟" />
-        </Form.Item>
-      </Form>
-    </Space>
-  );
-
-  const renderPasskeyTab = () => (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form {...passkeyFormProps}>
-        <Form.Item name="passwordlessEnabled" label="允许无账号登录" valuePropName="checked" extra="开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。">
-          <Switch disabled={!canManageSettings || !passkeyConfigEnabled} checkedChildren="开启" unCheckedChildren="关闭" />
-        </Form.Item>
-        <Form.Item name="selfBindingEnabled" label="允许用户自助绑定" valuePropName="checked">
-          <Switch disabled={!canManageSettings || !passkeyConfigEnabled} checkedChildren="开启" unCheckedChildren="关闭" />
-        </Form.Item>
-        <Form.Item name="rpId" label="RP ID" rules={passkeyConfigEnabled ? [{ required: true, message: '请输入 RP ID' }] : undefined}>
-          <Input disabled={!canManageSettings || !passkeyConfigEnabled} placeholder="elexvx.com" />
-        </Form.Item>
-        <Form.Item name="rpName" label="RP 名称" rules={passkeyConfigEnabled ? [{ required: true, message: '请输入 RP 名称' }] : undefined}>
-          <Input disabled={!canManageSettings || !passkeyConfigEnabled} placeholder="宏翔商道后台管理系统" />
-        </Form.Item>
-        <Form.Item name="allowedOriginsText" label="允许的 Origin" rules={passkeyConfigEnabled ? [{ required: true, message: '请输入允许的 Origin' }] : undefined} extra="每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。">
-          <Input.TextArea disabled={!canManageSettings || !passkeyConfigEnabled} rows={4} placeholder="https://test.elexvx.com" />
-        </Form.Item>
-        <Form.Item name="challengeTtlSeconds" label="Challenge 有效期">
-          <InputNumber disabled={!canManageSettings || !passkeyConfigEnabled} style={{ width: '100%' }} min={30} max={600} addonAfter="秒" />
-        </Form.Item>
-      </Form>
-    </Space>
-  );
-
+  
+  
+  
+  
   const renderBasicConfig = () => (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Typography.Paragraph style={{ marginBottom: 0 }}>密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。</Typography.Paragraph>
@@ -1297,16 +997,42 @@ const SystemVerificationPage = () => {
 
   const renderConfigDrawerContent = () => {
     if (configDrawerMode === 'sms') {
-      return renderSmsTab();
+      return <SmsConfigTab 
+      smsFormProps={smsFormProps}
+      canManageSettings={canManageSettings}
+      smsConfigEnabled={smsConfigEnabled}
+      handleSmsProviderChange={handleSmsProviderChange}
+      smsAccessKeySecretConfigured={smsAccessKeySecretConfigured}
+      providerDrafts={providerDrafts}
+      provider={smsSettingsForm.getFieldValue('provider') || 'aliyun'}
+    />;
     }
     if (configDrawerMode === 'email') {
-      return renderEmailTab();
+      return <EmailConfigTab 
+      smtpFormProps={smtpFormProps}
+      smtpTestFormProps={{ form: smtpTestForm, onFinish: handleTestSmtp }}
+      canManageSettings={canManageSettings}
+      emailConfigEnabled={emailConfigEnabled}
+      smtpSettingsQuery={smtpSettingsQuery}
+      verificationSettingsQuery={verificationSettingsQuery}
+      smtpPasswordConfigured={smtpPasswordConfigured}
+      testingSmtpSettings={testingSmtpSettings}
+      handleTestSmtp={handleTestSmtp}
+    />;
     }
     if (configDrawerMode === 'wechat') {
-      return renderWechatTab();
+      return <WechatConfigTab 
+      wechatFormProps={wechatFormProps}
+      canManageSettings={canManageSettings}
+      wechatAppSecretConfigured={wechatAppSecretConfigured}
+    />;
     }
     if (configDrawerMode === 'passkey') {
-      return renderPasskeyTab();
+      return <PasskeyConfigTab 
+      passkeyFormProps={passkeyFormProps}
+      canManageSettings={canManageSettings}
+      passkeyConfigEnabled={passkeyConfigEnabled}
+    />;
     }
     if (configDrawerMode === 'totp') {
       return renderVerificationTab();

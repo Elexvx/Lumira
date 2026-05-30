@@ -8,7 +8,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.util.Locale;
 import java.util.Set;
 
-@Component
+@Component("fileUploadResourceSecurityInterceptor")
 public class UploadResourceSecurityInterceptor implements HandlerInterceptor {
 
     private static final Set<String> INLINE_IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "ico");

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.legendary.invention.api.message.MessageEventDTO;
 import com.legendary.invention.api.message.MessageNoticeDTO;
-import com.legendary.invention.message.mapper.PlatformEventOutboxMapper;
+import com.legendary.invention.message.mapper.MessagePlatformEventOutboxMapper;
 import com.legendary.invention.message.service.MessageEventDeliveryService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 class PlatformEventOutboxServiceTest {
 
     @Mock
-    private PlatformEventOutboxMapper outboxMapper;
+    private MessagePlatformEventOutboxMapper outboxMapper;
 
     @Mock
     private MessageEventDeliveryService deliveryService;

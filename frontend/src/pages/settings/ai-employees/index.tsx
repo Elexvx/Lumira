@@ -40,6 +40,8 @@ import { buildTableRequest } from '@/features/table/proTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { confirmAction } from '@/utils/confirm';
 import { aiService } from '@/services/ai';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 import type {
   AiEmployeeDetailRecord,
   AiEmployeeCapabilityRecord,
@@ -180,9 +182,9 @@ const AiEmployeesPage = () => {
       setBootstrapLoading(true);
       try {
         const [template, services, knowledgeBases] = await Promise.all([
-          aiService.employeePromptTemplate({ autoRedirectOnUnauthorized: false }),
-          aiService.llmServices({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false }),
-          aiService.knowledgeBases({ pageNo: 1, pageSize: 200, status: 'ENABLED' }, { autoRedirectOnUnauthorized: false }),
+          aiService.employeePromptTemplate(API_OPTS.NO_REDIRECT),
+          aiService.llmServices({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT),
+          aiService.knowledgeBases({ pageNo: 1, pageSize: 200, status: 'ENABLED' }, API_OPTS.NO_REDIRECT),
         ]);
 
         if (!active) {
@@ -200,7 +202,7 @@ const AiEmployeesPage = () => {
         })));
       } catch (error) {
         if (active) {
-          message.error(error instanceof Error && error.message ? error.message : '加载数字员工基础数据失败');
+          showErrorMessage(error, '加载数字员工基础数据失败');
         }
       } finally {
         if (active) {
@@ -244,9 +246,9 @@ const AiEmployeesPage = () => {
     employeeState.drawer.openEdit(record, record.id);
     try {
       const [detail, knowledgeBases, capabilities] = await Promise.all([
-        aiService.employee(record.id, { autoRedirectOnUnauthorized: false }),
-        aiService.employeeKnowledgeBases(record.id, { autoRedirectOnUnauthorized: false }),
-        aiService.employeeCapabilities(record.id, { autoRedirectOnUnauthorized: false }),
+        aiService.employee(record.id, API_OPTS.NO_REDIRECT),
+        aiService.employeeKnowledgeBases(record.id, API_OPTS.NO_REDIRECT),
+        aiService.employeeCapabilities(record.id, API_OPTS.NO_REDIRECT),
       ]);
       employeeForm.setFieldsValue({
         username: detail.username,
@@ -284,23 +286,23 @@ const AiEmployeesPage = () => {
 
       if (employeeState.drawer.editingId) {
         const employeeId = employeeState.drawer.editingId;
-        await aiService.updateEmployee(employeeId, payload, { autoRedirectOnUnauthorized: false });
+        await aiService.updateEmployee(employeeId, payload, API_OPTS.NO_REDIRECT);
         await Promise.all([
-          aiService.updateEmployeeKnowledgeBases(employeeId, employeeKnowledgeBaseIds, { autoRedirectOnUnauthorized: false }),
+          aiService.updateEmployeeKnowledgeBases(employeeId, employeeKnowledgeBaseIds, API_OPTS.NO_REDIRECT),
           aiService.updateEmployeeCapabilities(
             employeeId,
             employeeCapabilities.map((item) => ({
               capabilityCode: item.capabilityCode,
               permissionMode: employeeCapabilityModes[item.capabilityCode] || (item.readOnly ? 'visit' : 'deny'),
             })),
-            { autoRedirectOnUnauthorized: false },
+            API_OPTS.NO_REDIRECT,
           ),
         ]);
         message.success('数字员工已更新');
       } else {
-        const created = await aiService.createEmployee(payload, { autoRedirectOnUnauthorized: false });
+        const created = await aiService.createEmployee(payload, API_OPTS.NO_REDIRECT);
         if (created.id) {
-          await aiService.updateEmployeeKnowledgeBases(created.id, employeeKnowledgeBaseIds, { autoRedirectOnUnauthorized: false });
+          await aiService.updateEmployeeKnowledgeBases(created.id, employeeKnowledgeBaseIds, API_OPTS.NO_REDIRECT);
         }
         message.success('数字员工已创建');
       }
@@ -321,7 +323,7 @@ const AiEmployeesPage = () => {
         okText: '确认禁用',
         okButtonProps: { danger: true },
         onOk: async () => {
-          await aiService.updateEmployeeEnabled(record.id, false, { autoRedirectOnUnauthorized: false });
+          await aiService.updateEmployeeEnabled(record.id, false, API_OPTS.NO_REDIRECT);
           message.success('状态已更新');
           employeeState.reloadTable();
         },
@@ -329,7 +331,7 @@ const AiEmployeesPage = () => {
       return;
     }
 
-    await aiService.updateEmployeeEnabled(record.id, true, { autoRedirectOnUnauthorized: false });
+    await aiService.updateEmployeeEnabled(record.id, true, API_OPTS.NO_REDIRECT);
     message.success('状态已更新');
     employeeState.reloadTable();
   };
@@ -341,7 +343,7 @@ const AiEmployeesPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await aiService.deleteEmployee(record.id, { autoRedirectOnUnauthorized: false });
+        await aiService.deleteEmployee(record.id, API_OPTS.NO_REDIRECT);
         message.success('数字员工已删除');
         employeeState.reloadTable();
       },
@@ -371,7 +373,7 @@ const AiEmployeesPage = () => {
     llmState.drawer.openEdit(record, record.id);
     setLlmTestResult(null);
     try {
-      const detail = await aiService.llmService(record.id, { autoRedirectOnUnauthorized: false });
+      const detail = await aiService.llmService(record.id, API_OPTS.NO_REDIRECT);
       setSelectedLlmService(detail);
       llmForm.setFieldsValue({
         provider: detail.provider,
@@ -423,17 +425,17 @@ const AiEmployeesPage = () => {
       const payload = buildLlmPayload(values);
 
       if (llmState.drawer.editingId) {
-        await aiService.updateLlmService(llmState.drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
+        await aiService.updateLlmService(llmState.drawer.editingId, payload, API_OPTS.NO_REDIRECT);
         message.success('LLM 服务已更新');
       } else {
-        await aiService.createLlmService(payload, { autoRedirectOnUnauthorized: false });
+        await aiService.createLlmService(payload, API_OPTS.NO_REDIRECT);
         message.success('LLM 服务已创建');
       }
 
       llmState.drawer.reset();
       setSelectedLlmService(null);
       llmState.reloadTable();
-      const services = await aiService.llmServices({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false });
+      const services = await aiService.llmServices({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT);
       setLlmServiceOptions((services.records || []).map((service) => ({
         label: `${service.title} (${service.code})`,
         value: service.id,
@@ -454,7 +456,7 @@ const AiEmployeesPage = () => {
           ...buildLlmPayload(values),
           serviceId: llmState.drawer.editingId || selectedLlmService?.id || null,
         },
-        { autoRedirectOnUnauthorized: false, silent: true },
+        API_OPTS.SILENT_NO_REDIRECT,
       );
       setLlmTestResult(result);
       if (result.success) {
@@ -480,7 +482,7 @@ const AiEmployeesPage = () => {
         okText: '确认禁用',
         okButtonProps: { danger: true },
         onOk: async () => {
-          await aiService.updateLlmServiceEnabled(record.id, false, { autoRedirectOnUnauthorized: false });
+          await aiService.updateLlmServiceEnabled(record.id, false, API_OPTS.NO_REDIRECT);
           message.success('状态已更新');
           llmState.reloadTable();
         },
@@ -488,7 +490,7 @@ const AiEmployeesPage = () => {
       return;
     }
 
-    await aiService.updateLlmServiceEnabled(record.id, true, { autoRedirectOnUnauthorized: false });
+    await aiService.updateLlmServiceEnabled(record.id, true, API_OPTS.NO_REDIRECT);
     message.success('状态已更新');
     llmState.reloadTable();
   };
@@ -500,10 +502,10 @@ const AiEmployeesPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await aiService.deleteLlmService(record.id, { autoRedirectOnUnauthorized: false });
+        await aiService.deleteLlmService(record.id, API_OPTS.NO_REDIRECT);
         message.success('LLM 服务已删除');
         llmState.reloadTable();
-        const services = await aiService.llmServices({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false });
+        const services = await aiService.llmServices({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT);
         setLlmServiceOptions((services.records || []).map((service) => ({
           label: `${service.title} (${service.code})`,
           value: service.id,
@@ -607,7 +609,7 @@ const AiEmployeesPage = () => {
       isMobile={responsive.isMobile}
       loading={bootstrapLoading}
       search={false}
-      request={buildTableRequest((params) => aiService.employees(params, { autoRedirectOnUnauthorized: false }))}
+      request={buildTableRequest((params) => aiService.employees(params, API_OPTS.NO_REDIRECT))}
       toolBarRender={false}
     />
   );
@@ -620,7 +622,7 @@ const AiEmployeesPage = () => {
       isMobile={responsive.isMobile}
       loading={bootstrapLoading}
       search={false}
-      request={buildTableRequest((params) => aiService.llmServices(params, { autoRedirectOnUnauthorized: false }))}
+      request={buildTableRequest((params) => aiService.llmServices(params, API_OPTS.NO_REDIRECT))}
       toolBarRender={false}
     />
   );

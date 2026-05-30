@@ -1,9 +1,9 @@
 package com.legendary.invention.saas.infrastructure.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.legendary.invention.saas.common.api.ApiResponse;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.api.ApiResponse;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.web.TraceIdFilter;
 import com.legendary.invention.common.security.InternalServiceTokenAuthFilter;
@@ -86,7 +86,7 @@ public class SecurityConfig {
                 ? ApiResponse.fail(errorCode, TraceContext.getRequestId(), request.getRequestURI())
                 : ApiResponse.fail(
                         errorCode,
-                        bizException.getErrorMessage(),
+                        bizException.getMessage(),
                         bizException.getUserMessage(),
                         TraceContext.getRequestId(),
                         request.getRequestURI()

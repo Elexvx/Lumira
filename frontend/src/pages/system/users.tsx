@@ -18,6 +18,8 @@ import { userService } from '@/services/user';
 import type { DepartmentRecord, UserDetail, UserRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
 import './users.css';
+import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+
 
 const ALL_DEPARTMENTS_KEY = 'all';
 
@@ -101,7 +103,7 @@ const UserManagementPage = () => {
   const loadDepartments = useCallback(async () => {
     setDepartmentLoading(true);
     try {
-      const result = await iamService.departments({ autoRedirectOnUnauthorized: false });
+      const result = await iamService.departments(API_OPTS.NO_REDIRECT);
       setDepartments(result);
       setDepartmentOptions(flattenDepartments(result));
       setDepartmentOptionsLoaded(true);
@@ -114,7 +116,7 @@ const UserManagementPage = () => {
     if (roleOptionsLoaded) {
       return;
     }
-    const result = await iamService.roles({ pageNo: 1, pageSize: 200 }, { autoRedirectOnUnauthorized: false });
+    const result = await iamService.roles({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT);
     setRoleOptions(
       (result.records || []).map((role) => ({
         label: role.roleName,
@@ -178,7 +180,7 @@ const UserManagementPage = () => {
     drawer.openEdit(record, record.id);
     try {
       const [detailResult] = await Promise.all([
-        userService.detail(record.id, { autoRedirectOnUnauthorized: false }),
+        userService.detail(record.id, API_OPTS.NO_REDIRECT),
         ensureRoleOptionsLoaded(),
         ensureDepartmentOptionsLoaded(),
       ]);
@@ -198,7 +200,7 @@ const UserManagementPage = () => {
     detail.openDetail(record);
     detail.setLoading(true);
     try {
-      const detailResult = await userService.detail(record.id, { autoRedirectOnUnauthorized: false });
+      const detailResult = await userService.detail(record.id, API_OPTS.NO_REDIRECT);
       setSelectedUserDetail(detailResult);
     } catch {
       detail.setOpen(false);
@@ -221,10 +223,10 @@ const UserManagementPage = () => {
       };
 
       if (drawer.editingId) {
-        await userService.update(drawer.editingId, payload, { autoRedirectOnUnauthorized: false });
+        await userService.update(drawer.editingId, payload, API_OPTS.NO_REDIRECT);
         message.success('用户已更新');
       } else {
-        await userService.create(payload, { autoRedirectOnUnauthorized: false });
+        await userService.create(payload, API_OPTS.NO_REDIRECT);
         message.success('用户已创建');
       }
 
@@ -237,7 +239,7 @@ const UserManagementPage = () => {
   };
 
   const updateUserStatus = async (record: UserRecord, status: 'ENABLED' | 'DISABLED') => {
-    await userService.changeStatus(record.id, { status }, { autoRedirectOnUnauthorized: false });
+    await userService.changeStatus(record.id, { status }, API_OPTS.NO_REDIRECT);
     message.success('状态已更新');
     reloadTable();
   };
@@ -266,7 +268,7 @@ const UserManagementPage = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await userService.delete(record.id, { autoRedirectOnUnauthorized: false });
+        await userService.delete(record.id, API_OPTS.NO_REDIRECT);
         message.success('用户已删除');
         reloadTable();
         await loadDepartments();
@@ -351,7 +353,7 @@ const UserManagementPage = () => {
                   ...params,
                   deptId: selectedDepartmentId || undefined,
                 },
-                { autoRedirectOnUnauthorized: false },
+                API_OPTS.NO_REDIRECT,
               ),
             )}
             toolBarRender={() =>

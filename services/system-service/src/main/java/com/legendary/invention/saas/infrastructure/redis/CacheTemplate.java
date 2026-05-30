@@ -7,7 +7,9 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,12 +39,26 @@ public class CacheTemplate {
         return redisTemplate.opsForValue().getAndDelete(key);
     }
 
+    public List<String> multiGet(Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return List.of();
+        }
+        return redisTemplate.opsForValue().multiGet(keys);
+    }
+
     public Long increment(String key) {
         return redisTemplate.opsForValue().increment(key);
     }
 
     public void remove(String key) {
         redisTemplate.delete(key);
+    }
+
+    public void remove(Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        redisTemplate.delete(keys);
     }
 
     public Set<String> scan(String pattern) {

@@ -1,13 +1,13 @@
 package com.legendary.invention.saas.modules.system.controller;
 
-import com.legendary.invention.saas.common.api.ApiResponse;
+import com.legendary.invention.common.api.ApiResponse;
 import com.legendary.invention.saas.common.annotation.RepeatSubmit;
-import com.legendary.invention.saas.common.enums.ErrorCode;
-import com.legendary.invention.saas.common.exception.BizException;
+import com.legendary.invention.common.enums.ErrorCode;
+import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
-import com.legendary.invention.saas.infrastructure.security.CurrentUser;
-import com.legendary.invention.saas.infrastructure.security.SecurityContextFacade;
-import com.legendary.invention.saas.modules.iam.service.PermissionGuard;
+import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.SecurityContextFacade;
+import com.legendary.invention.common.security.PermissionGuard;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.verification.SystemVerificationAppService;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
