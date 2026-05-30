@@ -30,9 +30,9 @@ COPY . .
 ARG SERVICE_MODULE
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     if [ -n "$SERVICE_MODULE" ]; then \
-      mvn -pl "$SERVICE_MODULE" -am -DskipTests package; \
+      mvn -pl "$SERVICE_MODULE" -am -Dmaven.test.skip=true package; \
     else \
-      mvn -DskipTests package; \
+      mvn -Dmaven.test.skip=true package; \
     fi
 
 ARG SERVICE_DIR
