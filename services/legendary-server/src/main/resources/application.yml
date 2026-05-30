@@ -31,3 +31,76 @@ spring.datasource.password: ${DB_PASSWORD:root}
 spring.data.redis.host: ${REDIS_HOST:localhost}
 spring.data.redis.port: ${REDIS_PORT:6379}
 spring.data.redis.password: ${REDIS_PASSWORD:}
+
+# Security settings - forward environment variables to saas.security config
+saas:
+  security:
+    jwt-secret: ${JWT_SECRET:}
+    field-secret: ${FIELD_SECRET:}
+    issuer: saas-foundation
+    idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
+    access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
+    refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
+    captcha-enabled: ${CAPTCHA_ENABLED:false}
+    captcha-type: ${CAPTCHA_TYPE:IMAGE}
+    permit-paths:
+      - /api/v1/auth/login
+      - /api/v1/auth/login/code/challenge
+      - /api/v1/auth/login/code/complete
+      - /api/v1/auth/login-encryption-key
+      - /api/v1/auth/wechat/authorize-url
+      - /api/v1/auth/wechat/login
+      - /api/v1/auth/second-factor/complete
+      - /api/v1/auth/refresh-token
+      - /ws/message
+      - /api/v1/public/branding-settings
+      - /api/v1/public/agreement-settings
+      - /api/v1/public/login-capabilities
+      - /api/v1/public/security-settings
+      - /api/v1/public/captcha/**
+      - /api/uploads/**
+      - /api/version
+      - /api/v1/version
+      - /api/v1/*/version
+      - /actuator/health
+      - /actuator/info
+      - /actuator/prometheus
+      - /api/health
+  web:
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    trusted-proxy-cidrs:
+      - 127.0.0.1/32
+      - ::1/128
+  plugin:
+    platform-version: ${PLUGIN_PLATFORM_VERSION:0.1.0}
+    api-version: ${PLUGIN_API_VERSION:1.0.0}
+    storage-root: ${PLUGIN_STORAGE_ROOT:storage/plugins}
+    staging-root: ${PLUGIN_STAGING_ROOT:storage/plugin-staging}
+    signature-secret: ${PLUGIN_SIGNATURE_SECRET:}
+    shared-deps-version: ${PLUGIN_SHARED_DEPS_VERSION:1}
+  upload:
+    storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
+    public-path: /api/uploads
+    max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
+    max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}
+  job:
+    internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
+  event:
+    outbox:
+      relay-enabled: ${SAAS_EVENT_OUTBOX_RELAY_ENABLED:false}
+      relay-fixed-delay-ms: ${SAAS_EVENT_OUTBOX_RELAY_FIXED_DELAY_MS:5000}
+      batch-size: ${SAAS_EVENT_OUTBOX_BATCH_SIZE:100}
+      dispatcher: ${SAAS_EVENT_OUTBOX_DISPATCHER:logging}
+      redis-stream-key: ${SAAS_EVENT_REDIS_STREAM_KEY:saas:platform-events}
+  redis:
+    enabled: ${ELEXVX_REDIS_ENABLED:true}
+    clear-on-startup: ${ELEXVX_REDIS_CLEAR_ON_STARTUP:false}
+    allow-clear-on-startup-in-prod: ${ELEXVX_REDIS_ALLOW_CLEAR_ON_STARTUP_IN_PROD:false}
+  auth:
+    wechat:
+      enabled: ${WECHAT_LOGIN_ENABLED:false}
+      app-id: ${WECHAT_APP_ID:}
+      app-secret: ${WECHAT_APP_SECRET:}
+      redirect-uri: ${WECHAT_REDIRECT_URI:}
+      state-expire-minutes: ${WECHAT_STATE_EXPIRE_MINUTES:10}
