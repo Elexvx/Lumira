@@ -293,6 +293,7 @@ services:
       SPRING_FLYWAY_VALIDATE_ON_MIGRATE: 'false'
       SPRING_FLYWAY_IGNORE_MIGRATION_PATTERNS: '*:missing,*:future,*:ignored'
       SPRING_FLYWAY_OUT_OF_ORDER: 'true'
+      LEGENDARY_MONOLITH: 'true'
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}

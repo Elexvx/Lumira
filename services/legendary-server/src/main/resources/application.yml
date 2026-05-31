@@ -6,6 +6,10 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+# Monolith mode flag - disables sub-module security configs that would conflict
+legendary:
+  monolith: ${LEGENDARY_MONOLITH:true}
+
 server:
   port: 8080
 

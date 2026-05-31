@@ -11,6 +11,7 @@ import com.legendary.invention.localization.security.LocalizationJwtAuthFilter;
 import com.legendary.invention.localization.security.SecurityProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.io.IOException;
 
 @Configuration
+@ConditionalOnProperty(name = "legendary.monolith", havingValue = "false", matchIfMissing = true)
 @EnableConfigurationProperties({SecurityProperties.class, WebProperties.class})
 public class LocalizationSecurityConfig {
 
