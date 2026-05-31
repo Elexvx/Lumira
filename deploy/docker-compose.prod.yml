@@ -303,6 +303,11 @@ services:
         is required}
       SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN
         is required}
+      XXL_JOB_ADMIN_ADDRESSES: ${XXL_JOB_ADMIN_ADDRESSES:-http://legendary-xxl-job-admin:8080/xxl-job-admin}
+      XXL_JOB_ADMIN_ACCESS_TOKEN: ${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
+      XXL_JOB_EXECUTOR_APPNAME: ${XXL_JOB_EXECUTOR_APPNAME:-legendary-server}
+      XXL_JOB_EXECUTOR_PORT: ${XXL_JOB_EXECUTOR_PORT:-9998}
+      XXL_JOB_EXECUTOR_LOG_PATH: ${XXL_JOB_EXECUTOR_LOG_PATH:-storage/xxl-job/logs}
       TRUST_FORWARDED_HEADERS: 'true'
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18
         -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC
