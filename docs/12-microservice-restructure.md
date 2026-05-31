@@ -1,60 +1,61 @@
-# Spring Cloud Alibaba 微服务重构说明
+# 单体微服务架构收敛说明
 
 ## 1. 当前目标
 
-本仓库已经从“模块化单体底座”进入“微服务平台骨架”阶段。当前主线不是继续堆单体模块，而是把入口、注册、配置、治理、任务和事务能力按官方规范迁到 Spring Cloud Alibaba 体系内。
+本仓库当前主线是“单体微服务”：运行时收敛为一个后端进程 `services/legendary-server`，工程内继续保留 `services/*-service` 的模块边界、契约边界和数据 owner。这样可以先降低部署、联调和运维成本，同时为后续按业务边界拆成物理微服务保留路径。
 
-## 2. 官方版本锁定
+这不是回到历史 `backend` 单体，也不是多套架构并存。`legendary-server` 是唯一推荐后端启动入口；各服务模块是可拆分的业务边界。
 
-以下版本来自官方 release / compatibility / download 页面，作为当前工程的锁定基线：
+## 2. 运行入口
 
-- Spring Boot `4.0.6`
-- Spring Cloud `2025.1.1`
-- Spring Cloud Alibaba `2025.1.0.0`
-- Nacos Server `3.2.1`
-- Sentinel `1.8.9`
-- XXL-JOB `3.4.0`
-- Seata `2.6.0`
+- `services/legendary-server`：正式 Spring Boot 启动入口，默认端口 `8080`。
+- `LEGENDARY_MONOLITH=true`：默认单体微服务模式，关闭会与聚合运行冲突的子模块独立安全配置。
+- `deploy/docker-compose.prod.yml`：默认只启动 `legendary-server`、`api-proxy`、Redis、XXL-JOB Admin 和可选观测组件。
+- `api-proxy`：对外统一暴露 `/api/**`、`/ws/**`，上游指向 `legendary-server:8080`。
 
 ## 3. 模块边界
 
-- `services/gateway-service`：统一入口网关。
-- `services/system-service/`：当前作为 `system-service`，承接原有核心业务。
-- `services/auth-service`、`services/file-service`、`services/message-service`、`services/plugin-service`、`services/localization-service`、`services/job-executor`：后续拆分目标服务。审计能力目前仍归入 `services/system-service/system-service` 的内部模块。
-- `libs/common-core`、`libs/common-web`、`libs/common-security`、`libs/legendary-api`：共享契约和基础能力。
+- `services/system-service`：系统核心、IAM、配置、审计、AI、仪表盘等平台能力。
+- `services/auth-service`：认证协议、登录保护、刷新 token、二次验证、Passkey、微信登录。
+- `services/file-service`：文件对象、存储空间、上传校验、文件事件。
+- `services/message-service`：站内信、WebSocket、消息归档、投递日志。
+- `services/plugin-service`：插件定义、版本、启停、运行时和插件网关。
+- `services/localization-service`：语言、命名空间、翻译词条和发布版本。
+- `services/job-executor`：XXL-JOB 执行器和内部任务触发。
+- `libs/*`：公共契约、公共 Web、安全、领域基础和插件 SPI。
 
 ## 4. 配置规范
 
-- Nacos 配置必须使用 `spring.config.import`。
-- 不再使用 `bootstrap.yml` 作为主配置入口。
-- 服务名、Nacos namespace、server-addr、路由、灰度和限流规则都应以配置中心为准。
+- 当前默认不依赖 Nacos 服务发现；Nacos 仅作为未来拆分和配置中心预留。
 - 敏感配置只能通过环境变量或密钥系统注入，不应明文硬编码进仓库。
+- 聚合运行时，跨模块 base URL 默认指向 `http://localhost:${server.port}`。
+- 子模块独立端口和 Nacos 配置可以保留，但只能作为未来拆分准备，不能成为默认运行说明。
 
 ## 5. 启动顺序
 
-1. 启动 MySQL、Redis、Nacos。
-2. 启动 `services/system-service`。
-3. 启动 `services/gateway-service`。
-4. 后续再启用各独立服务模块和 XXL-Job / Seata。
+1. 启动 MySQL、Redis、XXL-JOB Admin。
+2. 启动 `services/legendary-server`。
+3. 启动 `api-proxy`。
+4. 启动前端或使用 Vercel 前端。
+5. 可选启动 Prometheus、Grafana、Loki、Tempo、Alloy。
 
-## 6. 进一步拆分顺序
+## 6. 后续拆分顺序
 
-- 第一批：`services/file-service`、`services/message-service`、`services/job-executor`
-- 第二批：`services/plugin-service`
-- 第三批：`services/auth-service`、`services/system-service/`（system-service）
-- 租户服务已从当前阶段剔除，后续如恢复多租户能力需重新设计接入边界。
+建议按低耦合、owner 清晰、外部副作用少的模块开始：
 
-## 7. 当前已落地的第一批
+1. `file-service`
+2. `message-service`
+3. `localization-service`
+4. `plugin-service`
+5. `auth-service`
+6. `job-executor`
+7. `system-service`
 
-- `services/gateway-service` 已收口 `/api/v1/files/**`、`/api/uploads/**`、`/api/v1/message/**`、`/ws/message` 路由。
-- `services/job-executor` 已接入 XXL-Job 执行器，并通过后端内部任务接口触发 outbox relay、message heartbeat、online-session heartbeat。
-- 后端业务进程已去掉上述三处 `@Scheduled`，调度职责开始外移到执行器。
+拆分一个模块时，必须同时完成：独立启动类、独立配置、健康检查、部署编排、API 路由、契约调用、数据 owner、迁移脚本和回滚方案。
 
-## 7. 官方参考
+## 7. 不允许的形态
 
-- [Spring Cloud](https://spring.io/projects/spring-cloud)
-- [Spring Cloud Alibaba Releases](https://github.com/alibaba/spring-cloud-alibaba/releases)
-- [Nacos Server Download](https://nacos.io/en/download/nacos-server/)
-- [Sentinel Releases](https://github.com/alibaba/Sentinel/releases)
-- [XXL-JOB 官方文档](https://github.com/xuxueli/xxl-job/blob/master/doc/XXL-JOB%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3.md)
-- [Seata Release History](https://seata.apache.org/release-history/seata-server/)
+- 新增历史 `backend` 单体入口。
+- 同一业务同时维护“聚合模块实现”和“独立服务实现”两份逻辑。
+- 为了拆服务直接跨库读写别的 owner 表。
+- 只拆 Docker 容器，不拆契约、数据 owner 和权限边界。

@@ -243,8 +243,8 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
   if (!skipNetworkChecks) {
     const apiProxyAvailable = await checkPortAvailability(8000);
     addEnvironmentCheck(checks, apiProxyAvailable ? 'pass' : 'warn', 'Port 8000', apiProxyAvailable ? 'available' : 'already in use');
-    const gatewayAvailable = await checkPortAvailability(8081);
-    addEnvironmentCheck(checks, gatewayAvailable ? 'pass' : 'warn', 'Port 8081', gatewayAvailable ? 'available' : 'already in use');
+    const backendAvailable = await checkPortAvailability(8080);
+    addEnvironmentCheck(checks, backendAvailable ? 'pass' : 'warn', 'Port 8080', backendAvailable ? 'available' : 'already in use');
 
     const dbEndpoint = parseDbEndpoint(envSource.DB_URL);
     if (dbEndpoint && !['localhost', '127.0.0.1', 'mysql'].includes(dbEndpoint.host)) {
@@ -533,16 +533,7 @@ function installContainers(options) {
     ...(options.useNacos ? ['nacos'] : []),
   ]);
   composeUp(options, 'job admin', ['xxl-job-admin']);
-  composeUp(options, 'backend services', [
-    'system-service',
-    'auth-service',
-    'file-service',
-    'message-service',
-    'plugin-service',
-    'localization-service',
-    'gateway-service',
-    'job-executor',
-  ]);
+  composeUp(options, 'monolith backend', ['legendary-server']);
   composeUp(options, 'API proxy', ['api-proxy']);
   composeUp(options, 'frontend container', options.useFrontendContainer ? ['frontend'] : []);
   composeUp(options, 'observability', options.useObservability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []);
@@ -553,11 +544,11 @@ function runVerification(options, profile) {
     return;
   }
   const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
-  const gatewayUrl = process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8081';
+  const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8080';
   run('node', ['scripts/check-deployment.mjs'], {
     env: {
       DEPLOY_CHECK_BASE_URL: baseUrl,
-      DEPLOY_CHECK_GATEWAY_URL: gatewayUrl,
+      DEPLOY_CHECK_BACKEND_URL: backendUrl,
     },
   });
   if (!skipSmoke) {

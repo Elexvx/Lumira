@@ -57,7 +57,7 @@
       "pluginVersion": "12.0.0",
       "targets": [
         {
-          "expr": "up{job=\"legendary-services\"}",
+          "expr": "up{job=\"legendary-server\"}",
           "legendFormat": "{{service_name}}",
           "refId": "A"
         }
@@ -449,7 +449,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=\"legendary-services\"}, service_name)",
+        "definition": "label_values(up{job=\"legendary-server\"}, service_name)",
         "hide": 0,
         "includeAll": true,
         "label": "service",
@@ -457,7 +457,7 @@
         "name": "service",
         "options": [],
         "query": {
-          "query": "label_values(up{job=\"legendary-services\"}, service_name)",
+          "query": "label_values(up{job=\"legendary-server\"}, service_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,

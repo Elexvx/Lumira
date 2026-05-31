@@ -12,6 +12,7 @@ public class LoginResponseDTO {
     private Boolean requiresSecondFactor;
     private List<SecondFactorOptionDTO> secondFactorOptions;
     private Boolean requiresCaptcha;
+    private Boolean requiresPasswordChange;
 
     public String getAccessToken() {
         return accessToken;
@@ -75,6 +76,14 @@ public class LoginResponseDTO {
 
     public void setRequiresCaptcha(Boolean requiresCaptcha) {
         this.requiresCaptcha = requiresCaptcha;
+    }
+
+    public Boolean getRequiresPasswordChange() {
+        return requiresPasswordChange;
+    }
+
+    public void setRequiresPasswordChange(Boolean requiresPasswordChange) {
+        this.requiresPasswordChange = requiresPasswordChange;
     }
 
     public static class SecondFactorOptionDTO {

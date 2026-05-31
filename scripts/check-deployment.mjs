@@ -3,12 +3,12 @@
 import process from 'node:process';
 
 const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
-const gatewayUrl = process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8081';
+const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8080';
 
 const checks = [
   { label: 'API proxy', url: `${baseUrl}/health` },
   { label: 'system API through API proxy', url: `${baseUrl}/api/health` },
-  { label: 'gateway actuator', url: `${gatewayUrl}/actuator/health` },
+  { label: 'legendary-server actuator', url: `${backendUrl}/actuator/health` },
   { label: 'public login capabilities API', url: `${baseUrl}/api/v1/public/login-capabilities` },
   { label: 'protected localization management API is routed', url: `${baseUrl}/api/v1/localization/languages`, expectedStatus: 401 },
 ];

@@ -41,6 +41,7 @@ export interface LoginResponse {
   requiresSecondFactor?: boolean;
   secondFactorOptions?: SecondFactorLoginOption[];
   requiresCaptcha?: boolean | null;
+  requiresPasswordChange?: boolean | null;
 }
 
 export interface LoginCapabilities {

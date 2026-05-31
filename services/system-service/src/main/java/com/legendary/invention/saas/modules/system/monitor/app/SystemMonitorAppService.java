@@ -46,14 +46,7 @@ public class SystemMonitorAppService {
     private static final Pattern CMD_STAT_PATTERN = Pattern.compile("^cmdstat_(.+)$");
     private static final Pattern KEYSPACE_PATTERN = Pattern.compile("^(db\\d+)$");
     private static final List<ServiceEndpoint> SERVICE_ENDPOINTS = List.of(
-            new ServiceEndpoint("gateway-service", "http://localhost:8081"),
-            new ServiceEndpoint("auth-service", "http://localhost:8082"),
-            new ServiceEndpoint("system-service", "http://localhost:8080"),
-            new ServiceEndpoint("file-service", "http://localhost:8084"),
-            new ServiceEndpoint("message-service", "http://localhost:8085"),
-            new ServiceEndpoint("plugin-service", "http://localhost:8086"),
-            new ServiceEndpoint("localization-service", "http://localhost:8088"),
-            new ServiceEndpoint("job-executor", "http://localhost:8089")
+            new ServiceEndpoint("legendary-server", "http://localhost:8080")
     );
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;

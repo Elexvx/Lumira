@@ -2,22 +2,22 @@
 
 ## 1. 目标
 
-这份文档定义当前微服务架构下的服务职责、数据库表归属和跨服务访问规则。它的作用是防止服务目录已经拆开、数据访问仍然互相穿透，最终形成“分布式单体”。
+这份文档定义当前单体微服务架构下的模块职责、数据库表归属和跨模块访问规则。它的作用是防止代码虽然聚合运行、业务边界却互相穿透，导致未来无法拆分。
 
 ## 2. 基本原则
 
-- 一个业务表只能有一个 owner service。
-- 只有 owner service 可以写入自己的业务表。
-- 其他服务需要数据时，优先通过 API、Feign client、事件投影或只读快照获取。
-- Flyway migration 应放在 owner service 的 `src/main/resources/db/migration` 下。
+- 一个业务表只能有一个 owner module。
+- 只有 owner module 可以写入自己的业务表。
+- 其他模块需要数据时，优先通过应用服务契约、内部 API、事件投影或只读快照获取。
+- Flyway migration 应放在 owner module 的 `src/main/resources/db/migration` 下。
 - 跨服务共享 DTO、Feign contract 和事件契约放入 `libs/legendary-api`，插件 SPI 放入 `libs/plugin-api`。
 - 业务服务不得直接依赖另一个服务的 mapper、entity 或 migration。
 
 ## 3. 服务 Ownership
 
-| 服务 | 当前职责 | 拥有的数据 |
+| 模块 | 当前职责 | 拥有的数据 |
 | --- | --- | --- |
-| `gateway-service` | 统一 API 入口、CORS、路由、限流、Trace 透传 | 不拥有业务表 |
+| `legendary-server` | 聚合运行入口、统一后端进程 | 不直接拥有业务表，数据仍归属各模块 |
 | `auth-service` | 登录、刷新 token、二次认证、Passkey、微信登录入口 | 认证会话、登录保护、认证挑战等认证域数据；用户主数据仍由 `system-service` 维护 |
 | `system-service` | 系统核心、IAM、菜单、角色、权限、配置、审计、AI 数字员工、知识库 | `sys_*`、`iam_*`、`ai_*`、审计和平台治理表 |
 | `file-service` | 文件上传、文件对象、存储空间、文件访问控制 | `file_object`、`file_storage_space` 及后续文件处理投影 |
@@ -47,8 +47,8 @@
 
 ### 5.1 读访问
 
-- UI 查询走 `gateway-service` 到目标 owner service。
-- 服务间查询优先通过 `libs/legendary-api` 中的 Feign contract。
+- UI 查询走 `/api` 到 `legendary-server` 中的目标 owner module。
+- 模块间查询优先通过 `libs/legendary-api` 中的契约或明确的应用服务接口。
 - 高频只读数据可以做本地缓存或 Redis 缓存，但缓存 key 必须包含租户、用户或版本维度。
 - 不能为了方便在一个服务里直接引入另一个服务的 mapper 或 entity。
 

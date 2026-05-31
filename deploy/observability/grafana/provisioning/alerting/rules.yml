@@ -20,7 +20,7 @@ groups:
                 type: prometheus
                 uid: prometheus
               editorMode: code
-              expr: up{job="legendary-services"} == 0
+              expr: up{job="legendary-server"} == 0
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -72,8 +72,8 @@ groups:
         execErrState: Error
         for: 2m
         annotations:
-          summary: "A backend service target is down."
-          description: "Prometheus reports one or more legendary-services targets as unavailable."
+          summary: "The backend service target is down."
+          description: "Prometheus reports the legendary-server target as unavailable."
         labels:
           severity: critical
           service_namespace: legendary-invention
@@ -94,9 +94,9 @@ groups:
               editorMode: code
               expr: |
                 (
-                  sum(rate(http_server_requests_seconds_count{job="legendary-services",status=~"5.."}[5m])) by (application, service)
+                  sum(rate(http_server_requests_seconds_count{job="legendary-server",status=~"5.."}[5m])) by (application, service)
                   /
-                  clamp_min(sum(rate(http_server_requests_seconds_count{job="legendary-services"}[5m])) by (application, service), 0.001)
+                  clamp_min(sum(rate(http_server_requests_seconds_count{job="legendary-server"}[5m])) by (application, service), 0.001)
                 ) > 0.05
               instant: true
               intervalMs: 1000
@@ -172,7 +172,7 @@ groups:
               expr: |
                 histogram_quantile(
                   0.95,
-                  sum(rate(http_server_requests_seconds_bucket{job="legendary-services"}[5m])) by (le, application, service)
+                  sum(rate(http_server_requests_seconds_bucket{job="legendary-server"}[5m])) by (le, application, service)
                 ) > 1
               instant: true
               intervalMs: 1000
@@ -247,9 +247,9 @@ groups:
               editorMode: code
               expr: |
                 (
-                  sum(jvm_memory_used_bytes{job="legendary-services",area="heap"}) by (application, service)
+                  sum(jvm_memory_used_bytes{job="legendary-server",area="heap"}) by (application, service)
                   /
-                  sum(jvm_memory_max_bytes{job="legendary-services",area="heap"}) by (application, service)
+                  sum(jvm_memory_max_bytes{job="legendary-server",area="heap"}) by (application, service)
                 ) > 0.85
               instant: true
               intervalMs: 1000
@@ -322,7 +322,7 @@ groups:
                 type: prometheus
                 uid: prometheus
               editorMode: code
-              expr: changes(up{job="legendary-services"}[10m]) > 3
+              expr: changes(up{job="legendary-server"}[10m]) > 3
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200

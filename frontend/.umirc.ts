@@ -70,11 +70,11 @@ export default defineConfig({
   routes: backendRoutes,
   proxy: {
     '/api': {
-      target: process.env.UMI_DEV_API_TARGET || 'http://localhost:8081',
+      target: process.env.UMI_DEV_API_TARGET || 'http://localhost:8080',
       changeOrigin: true,
     },
     '/ws': {
-      target: process.env.UMI_DEV_WS_TARGET || 'ws://localhost:8081',
+      target: process.env.UMI_DEV_WS_TARGET || 'ws://localhost:8080',
       changeOrigin: true,
       ws: true,
     },

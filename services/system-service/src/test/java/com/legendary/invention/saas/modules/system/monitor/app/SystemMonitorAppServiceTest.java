@@ -69,10 +69,10 @@ class SystemMonitorAppServiceTest {
 
     @Test
     void fallsBackToLocalBaseUrlWhenMonitorEnvironmentIsMissing() {
-        var endpoint = new SystemMonitorAppService.ServiceEndpoint("job-executor", "http://localhost:8089");
+        var endpoint = new SystemMonitorAppService.ServiceEndpoint("legendary-server", "http://localhost:8080");
 
         String baseUrl = SystemMonitorAppService.resolveBaseUrl(endpoint, Map.of());
 
-        assertEquals("http://localhost:8089", baseUrl);
+        assertEquals("http://localhost:8080", baseUrl);
     }
 }

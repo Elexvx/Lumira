@@ -15,7 +15,7 @@ expect {
     eof
 }
 
-spawn ssh -o StrictHostKeyChecking=no $user@$host "cd /opt/legendary-invention && rm -rf services libs scripts && tar -xzf project.tar.gz && node scripts/deploy-container.mjs --rebuild"
+spawn ssh -o StrictHostKeyChecking=no $user@$host "cd /opt/legendary-invention && cp deploy/.env /tmp/legendary-deploy.env && rm -rf services libs scripts && tar -xzf project.tar.gz && cp /tmp/legendary-deploy.env deploy/.env && node scripts/deploy-container.mjs --rebuild"
 expect {
     "*assword:*" {
         send "$password\r"

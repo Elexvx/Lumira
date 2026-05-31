@@ -1,6 +1,6 @@
 import { LoginFormPage } from '@ant-design/pro-components';
 import { formatMessage, history, useLocation } from '@umijs/max';
-import { Form, message, type FormProps } from 'antd';
+import { Alert, Button, Form, Input, Modal, message, type FormProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
@@ -15,6 +15,7 @@ import { initializeAfterLogin } from '@/auth/session';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { authService } from '@/services/auth';
+import { profileService } from '@/services/profile';
 import { pluginService } from '@/services/plugin';
 import { systemService } from '@/services/system';
 import { ApiRequestError } from '@/services/common/request';
@@ -50,6 +51,12 @@ const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
 
 type CodeLoginMode = Extract<LoginMode, 'sms' | 'email'>;
 const DEFAULT_LOGIN_MODE_ORDER: LoginMode[] = ['passkey', 'sms', 'email', 'password'];
+const INITIAL_PASSWORD = '123456';
+
+interface ForcedPasswordChangeFormValues {
+  newPassword: string;
+  confirmPassword: string;
+}
 
 const getAvailableLoginModes = (capabilities: LoginCapabilities): LoginMode[] => {
   const enabled: Record<LoginMode, boolean> = {
@@ -75,6 +82,9 @@ const Login = () => {
   const [passkeySubmitting, setPasskeySubmitting] = useState(false);
   const [sendingLoginType, setSendingLoginType] = useState<CodeLoginMode | null>(null);
   const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
+  const [pendingPasswordChangeLogin, setPendingPasswordChangeLogin] = useState<LoginResponse | null>(null);
+  const [pendingPasswordChangeCurrentPassword, setPendingPasswordChangeCurrentPassword] = useState(INITIAL_PASSWORD);
+  const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false);
   const [activeLoginMode, setActiveLoginMode] = useState<LoginMode>('password');
   const [loginCodeChallenges, setLoginCodeChallenges] = useState<Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>>({});
   const [loginCodeCooldownEndsAt, setLoginCodeCooldownEndsAt] = useState<Partial<Record<CodeLoginMode, number>>>({});
@@ -82,6 +92,7 @@ const Login = () => {
   const [agreementPreviewOpen, setAgreementPreviewOpen] = useState(false);
   const [agreementPreviewKind, setAgreementPreviewKind] = useState<'user' | 'privacy'>('user');
   const [loginForm] = Form.useForm<LoginFormValues>();
+  const [forcedPasswordChangeForm] = Form.useForm<ForcedPasswordChangeFormValues>();
   const { initialState, setInitialState } = useInitialStateModel();
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(
     normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS),
@@ -279,6 +290,9 @@ const Login = () => {
   }, [captchaChallenge?.captchaId, loginForm, securitySettings.captchaEnabled]);
 
   useEffect(() => {
+    if (pendingPasswordChangeLogin) {
+      return;
+    }
     const alreadyAuthenticated = isLoggedIn() || Boolean(initialState?.currentUser?.sessionId);
     if (!alreadyAuthenticated || submitting) {
       return;
@@ -289,7 +303,7 @@ const Login = () => {
     } else {
       history.replace(redirectTarget);
     }
-  }, [initialState?.currentUser, initialState?.menuTree, location.search, redirectTarget, submitting]);
+  }, [initialState?.currentUser, initialState?.menuTree, location.search, pendingPasswordChangeLogin, redirectTarget, submitting]);
 
   useEffect(() => {
     const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
@@ -432,6 +446,47 @@ const Login = () => {
     },
     [agreementSettings, initialState?.brandingSettings, initialState?.watermarkSettings, location.search, loginCapabilities, setInitialState],
   );
+
+  const startForcedPasswordChange = useCallback(
+    async (loginResponse: LoginResponse, currentPassword: string) => {
+      setPendingPasswordChangeLogin(loginResponse);
+      setPendingPasswordChangeCurrentPassword(currentPassword || INITIAL_PASSWORD);
+      forcedPasswordChangeForm.resetFields();
+      await initializeAfterLogin(loginResponse);
+      message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
+    },
+    [forcedPasswordChangeForm],
+  );
+
+  const handleForcedPasswordChange = useCallback(async () => {
+    if (!pendingPasswordChangeLogin) {
+      return;
+    }
+    const values = await forcedPasswordChangeForm.validateFields();
+    setPasswordChangeSubmitting(true);
+    try {
+      await profileService.changePassword({
+        currentPassword: pendingPasswordChangeCurrentPassword,
+        newPassword: values.newPassword,
+        confirmPassword: values.confirmPassword,
+      });
+      message.success(formatMessage({ id: 'page.login.initialPasswordChange.success', defaultMessage: '密码已修改，请使用新密码登录' }));
+      const loginResponse = pendingPasswordChangeLogin;
+      setPendingPasswordChangeLogin(null);
+      setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
+      forcedPasswordChangeForm.resetFields();
+      await completeSuccessfulLogin(loginResponse);
+    } catch (error) {
+      showErrorMessage(error, formatMessage({ id: 'page.login.initialPasswordChange.failed', defaultMessage: '密码修改失败，请检查后重试' }));
+    } finally {
+      setPasswordChangeSubmitting(false);
+    }
+  }, [
+    completeSuccessfulLogin,
+    forcedPasswordChangeForm,
+    pendingPasswordChangeCurrentPassword,
+    pendingPasswordChangeLogin,
+  ]);
 
   const handleWechatLogin = useCallback(async () => {
     if (agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown) {
@@ -645,6 +700,11 @@ const Login = () => {
         return false;
       }
 
+      if (loginResponse.requiresPasswordChange) {
+        await startForcedPasswordChange(loginResponse, activeLoginMode === 'password' ? values.passwordPassword || INITIAL_PASSWORD : INITIAL_PASSWORD);
+        return false;
+      }
+
       await completeSuccessfulLogin(loginResponse);
       return true;
     } catch (error) {
@@ -773,6 +833,64 @@ const Login = () => {
         title={agreementPreviewTitle}
         markdown={agreementPreviewMarkdown}
       />
+      <Modal
+        open={Boolean(pendingPasswordChangeLogin)}
+        title={formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}
+        closable={false}
+        maskClosable={false}
+        keyboard={false}
+        footer={null}
+        destroyOnClose
+      >
+        <Alert
+          type="warning"
+          showIcon
+          message={formatMessage({ id: 'page.login.initialPasswordChange.notice', defaultMessage: '当前账号仍在使用初始密码，必须修改后才能进入系统。' })}
+          style={{ marginBottom: 16 }}
+        />
+        <Form<ForcedPasswordChangeFormValues>
+          form={forcedPasswordChangeForm}
+          layout="vertical"
+          onFinish={() => void handleForcedPasswordChange()}
+        >
+          <Form.Item
+            name="newPassword"
+            label={formatMessage({ id: 'page.login.initialPasswordChange.newPassword', defaultMessage: '新密码' })}
+            rules={[
+              { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.newPasswordRequired', defaultMessage: '请输入新密码' }) },
+              {
+                validator: (_, value) =>
+                  value === INITIAL_PASSWORD
+                    ? Promise.reject(new Error(formatMessage({ id: 'page.login.initialPasswordChange.notInitial', defaultMessage: '新密码不能继续使用初始密码' })))
+                    : Promise.resolve(),
+              },
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label={formatMessage({ id: 'page.login.initialPasswordChange.confirmPassword', defaultMessage: '确认新密码' })}
+            dependencies={['newPassword']}
+            rules={[
+              { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.confirmPasswordRequired', defaultMessage: '请再次输入新密码' }) },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('newPassword') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error(formatMessage({ id: 'page.login.initialPasswordChange.passwordMismatch', defaultMessage: '两次输入的新密码不一致' })));
+                },
+              }),
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" block loading={passwordChangeSubmitting}>
+            {formatMessage({ id: 'page.login.initialPasswordChange.submit', defaultMessage: '确认修改' })}
+          </Button>
+        </Form>
+      </Modal>
     </div>
   );
 };

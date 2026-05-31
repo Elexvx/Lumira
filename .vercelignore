@@ -18,3 +18,7 @@ frontend/.turbopack/**
 coverage
 coverage/**
 *.log
+*.tar
+*.tar.gz
+*.tgz
+project.tar.gz

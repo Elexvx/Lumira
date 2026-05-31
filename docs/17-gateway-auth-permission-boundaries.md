@@ -1,19 +1,25 @@
-# 网关、认证与权限职责边界
+# API 入口、认证与权限职责边界
 
 ## 1. 请求主链路
 
 ```text
-frontend -> /api -> gateway-service -> target service -> database/cache/outbox
+frontend -> /api -> api-proxy -> legendary-server -> module -> database/cache/outbox
 ```
 
-前端不直接绑定业务服务地址。所有业务 API 都从 `/api` 进入 `gateway-service`，由网关按路径路由到目标服务。
+当前单体微服务模式下，请求主链路是：
+
+```text
+frontend -> /api -> api-proxy -> legendary-server -> module -> database/cache/outbox
+```
+
+前端不直接绑定业务模块地址。所有业务 API 都从 `/api` 进入 `api-proxy`，由 `legendary-server` 内部聚合模块处理。未来拆回物理微服务时，可以恢复 `gateway-service -> target service` 这条路径，但前端调用路径保持不变。
 
 ## 2. 职责矩阵
 
 | 层 | 应做 | 不应做 |
 | --- | --- | --- |
 | 前端 | 登录态恢复、路由守卫、按钮显隐、统一错误提示、携带 token 和 requestId | 作为唯一权限边界、硬编码服务地址、绕过网关 |
-| `gateway-service` | CORS、路由、Trace 透传、基础限流、基础 token 形态校验、请求头清理 | 复杂业务鉴权、直接查业务表、生成菜单 |
+| `api-proxy` / 未来 `gateway-service` | CORS、路由、Trace 透传、基础限流、请求头清理 | 复杂业务鉴权、直接查业务表、生成菜单 |
 | `auth-service` | 登录、登出、刷新 token、二次认证、Passkey、微信登录、登录保护 | 维护角色菜单、决定业务数据范围 |
 | `system-service` IAM | 用户主数据、角色、菜单、权限快照、数据范围 | 处理登录协议、替代网关路由 |
 | 业务服务 | 资源级权限、数据权限、业务规则、审计、事件发布 | 自己实现一套登录和权限字符串体系 |
@@ -47,7 +53,7 @@ frontend -> /api -> gateway-service -> target service -> database/cache/outbox
 
 落点：
 
-- 登录态由 `auth-service`、共享安全组件和业务服务安全过滤器共同校验。
+- 登录态由 `auth-service` 模块、共享安全组件和业务模块安全过滤器共同校验。
 - 路由和按钮权限由 `system-service` 生成权限快照，前端消费。
 - 操作权限在后端业务服务必须再次校验。
 - 数据权限由 owner service 根据权限快照、组织关系和资源 owner 执行。
@@ -76,9 +82,9 @@ frontend -> /api -> gateway-service -> target service -> database/cache/outbox
 - 新增 key 必须同时补菜单/权限 migration、前端 access、后端校验点。
 - 不允许页面私有字符串和后端私有字符串各写一套。
 
-## 6. 网关路由策略
+## 6. 路由策略
 
-当前网关按路径路由：
+当前 `legendary-server` 聚合处理以下路径。未来拆分时，这些路径可以迁移为网关路由：
 
 - `/api/v1/auth/**` -> `auth-service`
 - `/api/v1/files/**`、`/api/uploads/**` -> `file-service`
@@ -87,7 +93,7 @@ frontend -> /api -> gateway-service -> target service -> database/cache/outbox
 - `/api/v1/localization/**` -> `localization-service`
 - `/api/v1/system/**`、`/api/v1/profile/**`、`/api/v1/dashboard/**`、`/api/v1/audit/**`、`/api/ai/**` -> `system-service`
 
-新增服务时，先在 owner service 完成 API，再在 `gateway-service` 增加路由，最后前端服务层只调用 `/api` 下的相对路径。
+新增模块时，先在 owner module 完成 API 和权限边界；如果未来拆成独立服务，再在网关增加路由。前端服务层始终只调用 `/api` 下的相对路径。
 
 ## 7. 常见错误
 

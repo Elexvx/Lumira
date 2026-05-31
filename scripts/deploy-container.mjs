@@ -147,7 +147,7 @@ function printHelp() {
 
 Options:
   --rebuild   Force image rebuild.
-  --services  Deploy only selected services, comma-separated. Example: --services system-service
+  --services  Deploy only selected services, comma-separated. Example: --services legendary-server
   --stop      Stop the deployment.
   --reset     Stop and remove volumes. This deletes database and uploaded data.
   --logs      Follow service logs.
@@ -235,7 +235,7 @@ function generatedEnvDefaults() {
     GRAFANA_SMTP_FROM_NAME: 'Legendary Observability',
     GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
     GRAFANA_ALERT_WEBHOOK_URL: '',
-    CORS_ALLOWED_ORIGIN_PATTERNS: 'http://localhost:*,http://127.0.0.1:*',
+    CORS_ALLOWED_ORIGIN_PATTERNS: 'https://test.elexvx.com,https://elexvx.com',
     REDIS_MAXMEMORY: '256mb',
     REDIS_MEM_LIMIT: '384m',
     JAVA_OPTS: '-XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom',
@@ -466,7 +466,6 @@ async function checkSelectedServiceReadiness() {
   }
 
   const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
-  const gatewayUrl = process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8081';
   const checks = {
     'legendary-server': [
       [`${baseUrl}/api/v1/public/security-settings`, 'legendary-server public settings API'],
@@ -489,7 +488,7 @@ async function checkSelectedServiceReadiness() {
 }
 
 async function waitForPrometheusTargets() {
-  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22legendary-services%22%7D';
+  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22legendary-server%22%7D';
   const timeoutMs = 240_000;
   const intervalMs = 3_000;
   const startedAt = Date.now();
@@ -628,4 +627,4 @@ if (!skipCheck) {
 
 log('Complete deployment started.');
 log('API proxy: http://127.0.0.1:8000');
-log('Gateway health: http://127.0.0.1:8081/actuator/health');
+log('legendary-server health: http://127.0.0.1:8080/actuator/health');

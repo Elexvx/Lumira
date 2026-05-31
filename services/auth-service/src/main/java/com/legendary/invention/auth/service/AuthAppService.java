@@ -36,6 +36,7 @@ public class AuthAppService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthAppService.class);
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final String INITIAL_ADMIN_PASSWORD = "123456";
     private static final Set<String> UNSAFE_DEFAULT_ADMIN_PASSWORDS = Set.of("123456", "admin", "password");
 
     private final SystemInternalApi systemInternalApi;
@@ -119,6 +120,7 @@ public class AuthAppService {
             recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
             throw new BizException(ErrorCode.PASSWORD_ERROR, "登录失败，密码错误: " + user.username(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
+        boolean requiresPasswordChange = requiresInitialAdminPasswordChange(account, user, loginPassword);
         rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
 
         Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
@@ -137,7 +139,12 @@ public class AuthAppService {
         saveSessionWithMultiDevicePolicy(session);
         loginProtectionService.clearFailureState(account, loginIp);
         recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
-        return toLoginResponse(session, user, snapshot);
+        return toLoginResponse(session, user, snapshot, requiresPasswordChange);
+    }
+
+    private boolean requiresInitialAdminPasswordChange(String account, SystemUserSnapshotDTO user, String loginPassword) {
+        boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
+        return adminAccount && INITIAL_ADMIN_PASSWORD.equals(loginPassword);
     }
 
     private void rejectUnsafeDefaultAdminLogin(
@@ -152,6 +159,9 @@ public class AuthAppService {
         }
         boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
         if (!adminAccount || !UNSAFE_DEFAULT_ADMIN_PASSWORDS.contains(loginPassword)) {
+            return;
+        }
+        if (INITIAL_ADMIN_PASSWORD.equals(loginPassword)) {
             return;
         }
         loginProtectionService.recordFailure(account, loginIp);
@@ -403,6 +413,10 @@ public class AuthAppService {
     }
 
     private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {
+        return toLoginResponse(session, user, snapshot, false);
+    }
+
+    private LoginResponseDTO toLoginResponse(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot, boolean requiresPasswordChange) {
         LoginResponseDTO response = new LoginResponseDTO();
         response.setAccessToken(jwtTokenService.generateAccessToken(session));
         response.setRefreshToken(jwtTokenService.generateRefreshToken(session, session.getRefreshTokenId()));
@@ -411,6 +425,7 @@ public class AuthAppService {
         response.setUser(toAuthUser(user, snapshot, session.getSessionId()));
         response.setRequiresSecondFactor(Boolean.FALSE);
         response.setRequiresCaptcha(Boolean.FALSE);
+        response.setRequiresPasswordChange(requiresPasswordChange);
         return response;
     }
 

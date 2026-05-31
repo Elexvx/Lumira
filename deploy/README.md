@@ -1,6 +1,6 @@
-# Vercel 前端 + 完整后端部署说明
+# Vercel 前端 + 单体微服务后端部署说明
 
-这套部署用于高安全、高稳定的准生产演示环境。前端托管在 Vercel，服务器负责完整后端平台和统一 API 入口。
+这套部署用于高安全、高稳定的准生产演示环境。前端托管在 Vercel，服务器负责单体微服务后端和统一 API 入口。
 
 ## 部署形态
 
@@ -12,19 +12,19 @@
 
 api.elexvx.com / HTTPS / CDN / WAF
   -> 服务器 API proxy Nginx
-    -> /api/** 反向代理到 gateway-service
-    -> /ws/** 反向代理到 gateway-service
-    -> /api/health 反向代理到 system-service
-  -> gateway-service
-    -> auth-service
-    -> system-service
-    -> file-service
-    -> message-service
-    -> plugin-service
-    -> localization-service
-    -> job-executor
+    -> /api/** 反向代理到 legendary-server
+    -> /ws/** 反向代理到 legendary-server
+    -> /api/health 反向代理到 legendary-server
+  -> legendary-server
+    -> auth module
+    -> system module
+    -> file module
+    -> message module
+    -> plugin module
+    -> localization module
+    -> job module
   -> MySQL / Redis / XXL-Job
-  -> Nacos（仅在启用 Nacos 配置/发现时启动）
+  -> Nacos（仅为未来拆分和配置中心预留，默认不启动）
 ```
 
 ## 默认启动组件
@@ -34,14 +34,7 @@ api.elexvx.com / HTTPS / CDN / WAF
 - Nacos：`nacos/nacos-server:v3.2.1`，默认不启动；只有 `NACOS_CONFIG_ENABLED=true`、`NACOS_DISCOVERY_ENABLED=true` 或显式传入 `--nacos` 时启动
 - XXL-Job Admin：`xuxueli/xxl-job-admin:3.4.0`
 - api-proxy：Nginx 后端统一入口
-- gateway-service：统一后端网关
-- system-service：系统核心服务
-- auth-service：认证服务
-- file-service：文件服务
-- message-service：消息服务
-- plugin-service：插件服务
-- localization-service：本地化服务
-- job-executor：任务执行器
+- legendary-server：单体微服务后端入口，聚合系统、认证、文件、消息、插件、本地化和任务模块
 
 `frontend` 容器只作为本地备用预览，默认不随生产部署启动。正式前端由 Vercel 托管。
 
@@ -78,7 +71,7 @@ node scripts/install-platform.mjs
 - 交互确认 API 域名、前端 Origin、是否启用内置 MySQL、Nacos、前端容器和观测栈。
 - 按服务器规格自动写入 `deploy/.env` 的 JVM、容器内存、Redis、数据库连接池、Tomcat 线程池、限流和日志轮转参数。
 - 检查 Docker；Linux 服务器缺少 Docker 时可自动安装。
-- 按阶段启动基础组件、业务服务、API proxy、可选前端容器和可选观测栈。
+- 按阶段启动基础组件、`legendary-server`、API proxy、可选前端容器和可选观测栈。
 - 自动运行部署健康检查和轻量并发冒烟。
 
 无人值守安装：
@@ -120,7 +113,7 @@ node scripts/deploy-container.mjs --rebuild
 - API 健康检查：`http://127.0.0.1:8000/api/health`
 - 版本检查：`http://127.0.0.1:8000/api/version`
 - 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/legendary-invention/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
-- Gateway 健康检查：`http://127.0.0.1:8081/actuator/health`
+- legendary-server 健康检查：`http://127.0.0.1:8080/actuator/health`
 - 公开登录配置接口：`http://127.0.0.1:8000/api/v1/public/login-capabilities`
 
 ## 可观测性闭环
@@ -139,14 +132,14 @@ node scripts/deploy-container.mjs --rebuild --observability
 - Tempo：`http://127.0.0.1:3200`
 - Alloy：`http://127.0.0.1:12345`
 
-Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Observability Overview` 看板。服务运行时会暴露 `/actuator/prometheus`，并在启用观测栈时通过 OpenTelemetry Java Agent 把 trace 发送到 Alloy。
+Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Observability Overview` 看板。`legendary-server` 会暴露 `/actuator/prometheus`，并在启用观测栈时通过 OpenTelemetry Java Agent 把 trace 发送到 Alloy。
 
 4C4G 服务器上不建议常驻完整观测栈；需要排查性能问题时短时开启，排查结束后停止观测栈释放内存。
 
 ## 4C4G 稳定运行建议
 
 - 默认使用外部或 1Panel MySQL；本仓库内置 MySQL 仅用于 `local-mysql` profile。
-- 默认不启动 Nacos，本地配置和服务发现都是 optional；确实需要 Nacos 时运行 `node scripts/deploy-container.mjs --rebuild --nacos`。
+- 默认不启动 Nacos；当前单体微服务模式不依赖服务发现。确实要演练未来拆分时，可运行 `node scripts/deploy-container.mjs --rebuild --nacos`。
 - 默认不启动 `frontend` 容器，正式前端走 Vercel；服务器只承担后端和 API proxy。
 - `deploy/.env` 里的 `*_MEM_LIMIT`、`SERVER_TOMCAT_THREADS_MAX`、`SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE` 和 `SAAS_TRAFFIC_*_QPS` 是小机器容量闸门。先压测观察，再逐步调大。
 - API proxy 对单 IP 做基础限流和连接数限制；业务层 Sentinel 继续保护登录、公开配置、验证码和后端路由。
@@ -250,7 +243,7 @@ DRY_RUN=1 bash deploy/restore-platform.sh backups/20260520-120000
 
 ```bash
 DEPLOY_CHECK_BASE_URL=https://api.elexvx.com \
-DEPLOY_CHECK_GATEWAY_URL=http://127.0.0.1:8081 \
+DEPLOY_CHECK_BACKEND_URL=http://127.0.0.1:8080 \
 node scripts/check-deployment.mjs
 ```
 
@@ -299,4 +292,4 @@ node scripts/deploy-container.mjs --reset
 - 前端请求后端：`/api`
 - WebSocket：`/ws`
 - 本机 API proxy：`http://127.0.0.1:8000`
-- 本机 Gateway 健康检查：`http://127.0.0.1:8081/actuator/health`
+- 本机 legendary-server 健康检查：`http://127.0.0.1:8080/actuator/health`
