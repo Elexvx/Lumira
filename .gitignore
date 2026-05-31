@@ -32,6 +32,7 @@ backend/.env.*
 *.cache
 *.pid
 *.seed
+*.tar.gz
 output/
 services/*/storage/
 
