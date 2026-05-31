@@ -21,3 +21,11 @@
 .saas-dashboard-home__panel .ant-tabs {
   min-height: 100%;
 }
+
+.saas-dashboard-home__activity-table.ant-pro-table .ant-pro-card-body {
+  padding-inline: 0;
+}
+
+.saas-dashboard-home__activity-table .ant-pro-table-list-toolbar {
+  padding-inline: 0;
+}

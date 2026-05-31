@@ -228,6 +228,7 @@ const DashboardHomePage = () => {
                     label: `登录记录 (${recentLoginLogs.length})`,
                     children: (
                       <ManagementTable<AuditLogRecord>
+                        className="saas-dashboard-home__activity-table"
                         size="small"
                         rowKey="id"
                         pagination={false}
@@ -249,6 +250,7 @@ const DashboardHomePage = () => {
                     label: `操作记录 (${recentOperationLogs.length})`,
                     children: (
                       <ManagementTable<AuditLogRecord>
+                        className="saas-dashboard-home__activity-table"
                         size="small"
                         rowKey="id"
                         pagination={false}
