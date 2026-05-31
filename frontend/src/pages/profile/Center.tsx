@@ -16,6 +16,7 @@ import { systemService } from '@/services/system';
 import { BindSecondFactorModal } from '@/pages/profile/center/components/BindSecondFactorModal';
 import { BoundProviderCard } from '@/pages/profile/center/components/BoundProviderCard';
 import { ContactBindModal } from '@/pages/profile/center/components/ContactBindModal';
+import { LoginMethodCard } from '@/pages/profile/center/components/LoginMethodCard';
 import { ProfileCompletionCard } from '@/pages/profile/center/components/ProfileCompletionCard';
 import { ProfileBasicCard } from '@/pages/profile/center/components/ProfileBasicCard';
 import { buildVisibleProfileFields } from '@/pages/profile/center/utils';
@@ -421,17 +422,17 @@ const ProfileCenterPage = () => {
     }
   };
 
-  const supplementalItems = [
+  const loginMethodItems = [
     ...(mobileBindingVisible
       ? [
           {
             key: 'mobile',
-            title: formatMessage({ id: 'page.profile.contact.mobile', defaultMessage: 'Mobile number' }),
+            title: formatMessage({ id: 'page.profile.loginMethod.mobile', defaultMessage: '手机号登录' }),
             statusLabel: currentUser?.mobile ? formatMessage({ id: 'page.profile.contact.bound', defaultMessage: 'Bound' }) : formatMessage({ id: 'page.profile.contact.unbound', defaultMessage: 'Unbound' }),
             statusColor: currentUser?.mobile ? 'green' : 'default',
             value: currentUser?.mobile ? maskMobile(currentUser.mobile) : formatMessage({ id: 'page.profile.contact.notSetMobile', defaultMessage: 'Mobile number not set' }),
-            verificationLabel: formatMessage({ id: 'page.profile.contact.verificationRequired', defaultMessage: 'Verification required' }),
-            verificationColor: 'blue',
+            methodLabel: formatMessage({ id: 'page.profile.loginMethod.smsCode', defaultMessage: '短信登录' }),
+            methodColor: 'blue',
             actionLabel: currentUser?.mobile ? formatMessage({ id: 'page.profile.contact.editMobile', defaultMessage: 'Change mobile number' }) : formatMessage({ id: 'page.profile.contact.bindMobile', defaultMessage: 'Bind mobile number' }),
             actionLoading: contactBindType === 'mobile' && (contactBindSubmitting || contactBindChallengeLoading),
             disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
@@ -443,12 +444,12 @@ const ProfileCenterPage = () => {
       ? [
           {
             key: 'email',
-            title: formatMessage({ id: 'page.profile.contact.email', defaultMessage: 'Email' }),
+            title: formatMessage({ id: 'page.profile.loginMethod.email', defaultMessage: '邮箱登录' }),
             statusLabel: currentUser?.email ? formatMessage({ id: 'page.profile.contact.bound', defaultMessage: 'Bound' }) : formatMessage({ id: 'page.profile.contact.unbound', defaultMessage: 'Unbound' }),
             statusColor: currentUser?.email ? 'green' : 'default',
             value: currentUser?.email ? maskEmail(currentUser.email) : formatMessage({ id: 'page.profile.contact.notSetEmail', defaultMessage: 'Email not set' }),
-            verificationLabel: formatMessage({ id: 'page.profile.contact.verificationRequired', defaultMessage: 'Verification required' }),
-            verificationColor: 'blue',
+            methodLabel: formatMessage({ id: 'page.profile.loginMethod.emailCode', defaultMessage: '邮箱登录' }),
+            methodColor: 'blue',
             actionLabel: currentUser?.email ? formatMessage({ id: 'page.profile.contact.editEmail', defaultMessage: 'Change email' }) : formatMessage({ id: 'page.profile.contact.bindEmail', defaultMessage: 'Bind email' }),
             actionLoading: contactBindType === 'email' && (contactBindSubmitting || contactBindChallengeLoading),
             disabled: contactBindSubmitting || contactBindChallengeLoading || contactBindSettingsLoading,
@@ -679,8 +680,6 @@ const ProfileCenterPage = () => {
         currentUser={currentUser}
         avatarValue={avatarValue}
         avatarUploading={avatarUploading}
-        mobileLockedByVerification
-        emailLockedByVerification
         editingOpen={profileEditingOpen}
         onSave={() => void handleSaveProfile()}
         onEditOpenChange={setProfileEditingOpen}
@@ -693,13 +692,17 @@ const ProfileCenterPage = () => {
   const accountStatusPanel = (
     <>
       <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+      <LoginMethodCard
+        canManage
+        loading={profileQuery.isLoading || loginCapabilitiesQuery.isLoading}
+        items={loginMethodItems}
+      />
       <BoundProviderCard
         canManageSecondFactor
         loading={providersQuery.isLoading}
         providers={providersQuery.data || []}
         bindingLoading={bindingLoading}
         bindingSubmitting={bindingSubmitting}
-        supplementalItems={supplementalItems}
         onBind={(provider) => void openBindModal(provider)}
         onUnbind={handleUnbind}
       />

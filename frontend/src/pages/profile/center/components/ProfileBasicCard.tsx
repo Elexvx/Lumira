@@ -1,7 +1,6 @@
-import { EditOutlined, EyeInvisibleOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { EditOutlined, UserOutlined } from '@ant-design/icons';
 import { Avatar, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input, Row, Select, Space, Tooltip, Upload, type DescriptionsProps, type FormProps, type UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
-import { useState } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { GENDER_OPTIONS } from '@/pages/profile/center/constants';
 import type { CurrentUser } from '@/types/api';
@@ -16,39 +15,12 @@ interface ProfileBasicCardProps {
   currentUser: CurrentUser | null | undefined;
   avatarValue?: string;
   avatarUploading: boolean;
-  mobileLockedByVerification?: boolean;
-  emailLockedByVerification?: boolean;
   editingOpen: boolean;
   onSave: () => void;
   onEditOpenChange: (open: boolean) => void;
   onAvatarBeforeCrop: (file: File) => boolean;
   onAvatarUploadRequest: UploadProps['customRequest'];
 }
-
-const maskMobile = (mobile?: string | null) => {
-  if (!mobile) {
-    return '-';
-  }
-
-  return mobile.length >= 7 ? `${mobile.slice(0, 3)}****${mobile.slice(-4)}` : mobile;
-};
-
-const maskEmail = (email?: string | null) => {
-  if (!email) {
-    return '-';
-  }
-
-  const [localPart, domainPart] = email.split('@');
-  if (!domainPart) {
-    return email;
-  }
-
-  if (localPart.length <= 2) {
-    return `**@${domainPart}`;
-  }
-
-  return `${localPart.slice(0, 2)}***@${domainPart}`;
-};
 
 export const ProfileBasicCard = ({
   loading,
@@ -59,18 +31,12 @@ export const ProfileBasicCard = ({
   currentUser,
   avatarValue,
   avatarUploading,
-  mobileLockedByVerification = false,
-  emailLockedByVerification = false,
   editingOpen,
   onSave,
   onEditOpenChange,
   onAvatarBeforeCrop,
   onAvatarUploadRequest,
 }: ProfileBasicCardProps) => {
-  const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
-  const showSensitiveToggle = mobileLockedByVerification || emailLockedByVerification;
-  const displayMobile = showSensitiveInfo ? currentUser?.mobile || '-' : maskMobile(currentUser?.mobile);
-  const displayEmail = showSensitiveInfo ? currentUser?.email || '-' : maskEmail(currentUser?.email);
   const displayGender = GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-';
   const visibleField = (fieldKey: string) => visibleProfileFields.has(fieldKey);
 
@@ -83,12 +49,6 @@ export const ProfileBasicCard = ({
   }
   if (visibleField('realName')) {
     profileItems.push({ key: 'realName', label: '姓名', children: currentUser?.realName || '-' });
-  }
-  if (visibleField('mobile')) {
-    profileItems.push({ key: 'mobile', label: '手机号', children: displayMobile });
-  }
-  if (visibleField('email')) {
-    profileItems.push({ key: 'email', label: '邮箱', children: displayEmail });
   }
   if (visibleField('birthMonth')) {
     profileItems.push({ key: 'birthMonth', label: '出生年月', children: currentUser?.birthMonth || '-' });
@@ -111,17 +71,6 @@ export const ProfileBasicCard = ({
         style={{ width: '100%' }}
         extra={(
           <Space size={4}>
-            {showSensitiveToggle ? (
-              <Tooltip title={showSensitiveInfo ? '隐藏敏感信息' : '显示敏感信息'}>
-                <Button
-                  type="text"
-                  shape="circle"
-                  aria-label={showSensitiveInfo ? '隐藏敏感信息' : '显示敏感信息'}
-                  icon={showSensitiveInfo ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-                  onClick={() => setShowSensitiveInfo((current) => !current)}
-                />
-              </Tooltip>
-            ) : null}
             <Tooltip title="编辑资料">
               <Button
                 type="text"
@@ -197,20 +146,6 @@ export const ProfileBasicCard = ({
                 <Col xs={24}>
                   <Form.Item name="realName" label="姓名">
                     <Input placeholder="请输入姓名" />
-                  </Form.Item>
-                </Col>
-              ) : null}
-              {visibleProfileFields.has('mobile') ? (
-                <Col xs={24}>
-                  <Form.Item label="手机号">
-                    <Input value={displayMobile} disabled />
-                  </Form.Item>
-                </Col>
-              ) : null}
-              {visibleProfileFields.has('email') ? (
-                <Col xs={24}>
-                  <Form.Item label="邮箱">
-                    <Input value={displayEmail} disabled autoComplete="off" />
                   </Form.Item>
                 </Col>
               ) : null}
