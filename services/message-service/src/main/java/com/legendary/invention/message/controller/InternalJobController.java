@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController("messageInternalJobController")
-@RequestMapping("/internal/jobs")
+@RequestMapping("/message/internal/jobs")
 public class InternalJobController {
 
     private final MessageWebSocketRegistry messageWebSocketRegistry;
