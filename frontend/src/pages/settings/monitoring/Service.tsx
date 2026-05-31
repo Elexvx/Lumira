@@ -172,6 +172,7 @@ export const ServiceMonitorContent = () => {
 
         <Card title="基础服务健康" loading={query.isLoading && !service}>
           <ManagementTable<ServiceInstanceStatus>
+            className="saas-service-monitor-page__flush-table"
             rowKey="serviceName"
             size="small"
             pagination={false}

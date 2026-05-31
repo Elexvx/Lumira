@@ -324,6 +324,14 @@ body,
     padding: 0;
     height: auto;
   }
+
+  .saas-service-monitor-page__flush-table.ant-pro-table .ant-pro-card-body {
+    padding-inline: 0;
+  }
+
+  .saas-service-monitor-page__flush-table .ant-pro-table-list-toolbar {
+    padding-inline: 0;
+  }
 }
 
 .saas-redis-trend-chart {
