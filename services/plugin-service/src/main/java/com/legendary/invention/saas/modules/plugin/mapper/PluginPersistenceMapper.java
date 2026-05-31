@@ -9,10 +9,12 @@ import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginR
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
 import com.legendary.invention.saas.modules.plugin.vo.PluginVO;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
+@Mapper
 public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity> {
 
     void upsertDefinition(@Param("entity") PluginDefinitionEntity entity);
