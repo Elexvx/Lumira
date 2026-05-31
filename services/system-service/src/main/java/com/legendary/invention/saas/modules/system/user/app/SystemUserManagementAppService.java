@@ -231,6 +231,10 @@ public class SystemUserManagementAppService {
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
         requireAccessibleUserRecord(currentUser, userId);
+        return buildUserDetail(currentUser, userId);
+    }
+
+    private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId) {
         SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
         if (!canViewSensitiveUserInfo(currentUser)) {
             maskSensitiveUser(user);
@@ -256,7 +260,7 @@ public class SystemUserManagementAppService {
         replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), true);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
-        return getUser(currentUser, userId);
+        return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
@@ -268,7 +272,7 @@ public class SystemUserManagementAppService {
         replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
-        return getUser(currentUser, userId);
+        return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
