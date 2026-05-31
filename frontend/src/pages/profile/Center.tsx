@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { KeyOutlined, UserOutlined } from '@ant-design/icons';
+import { UserOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Avatar, Button, Card, Col, Empty, Form, List, Popconfirm, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
+import { Avatar, Card, Col, Empty, Form, Row, Space, Timeline, Typography, Upload, message, type UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
@@ -577,53 +577,11 @@ const ProfileCenterPage = () => {
     await passkeyQuery.refetch();
   };
 
-  const passkeyCard = (
-    <Card
-      title={formatMessage({ id: 'page.profile.passkey.title', defaultMessage: '我的通行密钥' })}
-      extra={
-        <Button icon={<KeyOutlined />} onClick={() => void handleBindPasskey()}>
-          {formatMessage({ id: 'page.profile.passkey.add', defaultMessage: '新增' })}
-        </Button>
-      }
-      loading={passkeyQuery.isLoading}
-    >
-      {passkeyQuery.data?.length ? (
-        <List
-          dataSource={passkeyQuery.data}
-          renderItem={(item) => (
-            <List.Item
-              actions={[
-                <Button key="rename" type="link" onClick={() => void handleRenamePasskey(item.id, item.label)}>
-                  {formatMessage({ id: 'common.rename', defaultMessage: '重命名' })}
-                </Button>,
-                <Popconfirm
-                  key="delete"
-                  title={formatMessage({ id: 'page.profile.passkey.deleteConfirm', defaultMessage: '确认删除该通行密钥？' })}
-                  onConfirm={async () => {
-                    await authService.deletePasskeyCredential(item.id, API_OPTS.NO_REDIRECT);
-                    message.success(formatMessage({ id: 'common.deleted', defaultMessage: '已删除' }));
-                    await passkeyQuery.refetch();
-                  }}
-                >
-                  <Button type="link" danger>
-                    {formatMessage({ id: 'common.delete', defaultMessage: '删除' })}
-                  </Button>
-                </Popconfirm>,
-              ]}
-            >
-              <List.Item.Meta
-                avatar={<KeyOutlined />}
-                title={item.label || formatMessage({ id: 'page.profile.passkey.defaultLabel', defaultMessage: '通行密钥' })}
-                description={`${formatMessage({ id: 'page.profile.passkey.createdAt', defaultMessage: '创建时间' })}: ${item.createdAt || '-'} · ${formatMessage({ id: 'page.profile.passkey.lastUsedAt', defaultMessage: '最后使用' })}: ${item.lastUsedAt || '-'}`}
-              />
-            </List.Item>
-          )}
-        />
-      ) : (
-        <Empty description={formatMessage({ id: 'page.profile.passkey.empty', defaultMessage: '还没有绑定通行密钥' })} />
-      )}
-    </Card>
-  );
+  const handleDeletePasskey = async (id: number) => {
+    await authService.deletePasskeyCredential(id, API_OPTS.NO_REDIRECT);
+    message.success(formatMessage({ id: 'common.deleted', defaultMessage: '已删除' }));
+    await passkeyQuery.refetch();
+  };
 
   const recentLoginCard = (
     <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={profileQuery.isLoading}>
@@ -689,25 +647,35 @@ const ProfileCenterPage = () => {
     </div>
   );
 
-  const accountStatusPanel = (
-    <>
-      <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
-      <LoginMethodCard
-        canManage
-        loading={profileQuery.isLoading || loginCapabilitiesQuery.isLoading}
-        items={loginMethodItems}
-      />
-      <BoundProviderCard
-        canManageSecondFactor
-        loading={providersQuery.isLoading}
-        providers={providersQuery.data || []}
-        bindingLoading={bindingLoading}
-        bindingSubmitting={bindingSubmitting}
-        onBind={(provider) => void openBindModal(provider)}
-        onUnbind={handleUnbind}
-      />
-      {passkeyCard}
-    </>
+  const accountCompletionPanel = (
+    <ProfileCompletionCard compact loading={profileQuery.isLoading} summary={profileCompletionSummary} onActionItem={handleProfileCompletionAction} />
+  );
+
+  const accountBindingPanel = (
+    <Row gutter={[16, 16]} align="stretch">
+      <Col xs={24} lg={12}>
+        <LoginMethodCard
+          canManage
+          loading={profileQuery.isLoading || loginCapabilitiesQuery.isLoading || passkeyQuery.isLoading}
+          items={loginMethodItems}
+          passkeys={passkeyQuery.data || []}
+          onBindPasskey={() => void handleBindPasskey()}
+          onRenamePasskey={(id, label) => void handleRenamePasskey(id, label)}
+          onDeletePasskey={(id) => void handleDeletePasskey(id)}
+        />
+      </Col>
+      <Col xs={24} lg={12}>
+        <BoundProviderCard
+          canManageSecondFactor
+          loading={providersQuery.isLoading}
+          providers={providersQuery.data || []}
+          bindingLoading={bindingLoading}
+          bindingSubmitting={bindingSubmitting}
+          onBind={(provider) => void openBindModal(provider)}
+          onUnbind={handleUnbind}
+        />
+      </Col>
+    </Row>
   );
 
   return (
@@ -723,27 +691,20 @@ const ProfileCenterPage = () => {
             <section className="saas-profile-page__side-section" aria-label="账户状态">
               <Typography.Title level={4} style={{ margin: 0 }}>账户状态</Typography.Title>
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {accountStatusPanel}
+                {accountCompletionPanel}
+                {accountBindingPanel}
               </Space>
             </section>
             {recentLoginCard}
           </Space>
         ) : (
-          <Row gutter={[16, 16]} align="stretch" className="saas-profile-page__three-blocks">
-            <Col xs={24} xl={18} className="saas-profile-page__main-column">
-              <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
-                {accountPanel}
-                {profileBasicPanel}
-                {recentLoginCard}
-              </Space>
-            </Col>
-
-            <Col xs={24} xl={6} className="saas-profile-page__rail-column">
-              <section className="saas-profile-page__rail-block" aria-label="账户状态">
-                {accountStatusPanel}
-              </section>
-            </Col>
-          </Row>
+          <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-profile-page__main-stack">
+            {accountPanel}
+            {profileBasicPanel}
+            {accountCompletionPanel}
+            {accountBindingPanel}
+            {recentLoginCard}
+          </Space>
         )}
       </Space>
 
