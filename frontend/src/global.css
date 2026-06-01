@@ -206,12 +206,15 @@ body,
 .saas-table-wrap .ant-table-cell,
 .saas-table-wrap .ant-table-cell .ant-typography,
 .saas-table-wrap .ant-table-cell .ant-tag {
-  min-width: 0;
-  max-width: 100%;
+  max-width: none;
 }
 
 .saas-table-wrap .ant-table-cell .ant-typography {
   vertical-align: middle;
+}
+
+.saas-table-wrap .ant-table-cell {
+  white-space: nowrap;
 }
 
 .saas-ai-employees-card .ant-tabs-content .saas-table-wrap .ant-pro-card-body {
@@ -221,10 +224,7 @@ body,
 .saas-menu-tree-cell {
   box-sizing: border-box;
   display: block;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
   white-space: nowrap;
 }
 

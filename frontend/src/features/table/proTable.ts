@@ -1,5 +1,6 @@
 import type { ProColumns } from '@ant-design/pro-components';
 import type { TablePaginationConfig } from 'antd';
+import type { TableProps } from 'antd/es/table';
 
 const TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD = 1100;
 
@@ -77,6 +78,57 @@ export const buildTableScroll = <RecordType extends object>(
 
   return hasFixedColumn || estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD || isMobile ? { x: 'max-content' } : undefined;
 };
+
+export const buildAutoWidthScroll = <RecordType extends object>(
+  scroll: TableProps<RecordType>['scroll'] | undefined,
+  fallbackScroll: TableProps<RecordType>['scroll'] | undefined,
+) => {
+  const resolvedScroll = scroll ?? fallbackScroll;
+  if (!resolvedScroll) {
+    return { x: 'max-content' };
+  }
+
+  return {
+    ...resolvedScroll,
+    x: 'max-content',
+  };
+};
+
+const parseColumnWidth = (width: ProColumns['width']) => {
+  if (typeof width === 'number') {
+    return width;
+  }
+  if (typeof width === 'string' && /^\d+$/.test(width)) {
+    return Number(width);
+  }
+  return undefined;
+};
+
+export const buildAutoWidthColumns = <RecordType extends object>(
+  columns: ProColumns<RecordType>[],
+): ProColumns<RecordType>[] =>
+  columns.map((column) => {
+    const children = Array.isArray(column.children) ? buildAutoWidthColumns(column.children as ProColumns<RecordType>[]) : column.children;
+    const isFixedColumn = Boolean(column.fixed);
+    const isActionColumn = column.valueType === 'option';
+    const isIndexColumn = column.valueType === 'index';
+
+    if (isFixedColumn || isActionColumn || isIndexColumn) {
+      return {
+        ...column,
+        children,
+      };
+    }
+
+    const width = parseColumnWidth(column.width);
+    return {
+      ...column,
+      children,
+      width: undefined,
+      minWidth: column.minWidth ?? width,
+      ellipsis: false,
+    };
+  });
 
 export const buildTableRequest = <RecordType, Params extends PageRequestPayload = PageRequestPayload>(
   request: (

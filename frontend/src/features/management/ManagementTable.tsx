@@ -1,6 +1,6 @@
 import { ProTable, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
 import { Button } from 'antd';
-import { buildMobilePagination, buildTableScroll } from '@/features/table/proTable';
+import { buildAutoWidthColumns, buildAutoWidthScroll, buildMobilePagination, buildTableScroll } from '@/features/table/proTable';
 
 type ManagementTableOptions = Exclude<ProTableProps<object, Record<string, unknown>>['options'], false | undefined>;
 
@@ -67,10 +67,11 @@ export const ManagementTable = <RecordType extends object = object, Params exten
   <div className="saas-table-wrap">
     <ProTable<RecordType, Params>
       {...props}
-      columns={columns}
+      columns={buildAutoWidthColumns(columns)}
       options={buildManagementTableOptions(options, onRefresh)}
       pagination={buildMobilePagination(pagination, isMobile) as ProTableProps<RecordType, Params>['pagination']}
-      scroll={scroll ?? buildTableScroll(columns, isMobile)}
+      scroll={buildAutoWidthScroll(scroll, buildTableScroll(columns, isMobile))}
+      tableLayout="auto"
       toolBarRender={buildManagementToolbar(toolBarRender, onRefresh)}
     />
   </div>
