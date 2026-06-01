@@ -28,7 +28,7 @@ public class PermissionSnapshotService {
 
     private static final Long PROTECTED_ADMIN_ID = 1001L;
     private static final String PROTECTED_ADMIN_USERNAME = "admin";
-    private static final String SNAPSHOT_SCHEMA_VERSION = "admin-permissions-v3";
+    private static final String SNAPSHOT_SCHEMA_VERSION = "data-scope-cache-v4";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
     private static final String VERSION_SUFFIX = "permission_version";
@@ -164,7 +164,11 @@ public class PermissionSnapshotService {
                                 count(*),
                                 ':',
                                 (
-                                    select count(*)
+                                    select concat(
+                                        coalesce(date_format(max(rds.updated_at), '%Y%m%d%H%i%s'), '0'),
+                                        ':',
+                                        count(*)
+                                    )
                                     from sys_role_data_scope rds
                                     where rds.tenant_id = ?
                                       and rds.deleted = 0
@@ -205,7 +209,11 @@ public class PermissionSnapshotService {
                                 count(*),
                                 ':',
                                 (
-                                    select count(*)
+                                    select concat(
+                                        coalesce(date_format(max(rds.updated_at), '%Y%m%d%H%i%s'), '0'),
+                                        ':',
+                                        count(*)
+                                    )
                                     from sys_role_data_scope rds
                                     where rds.tenant_id = ?
                                       and rds.role_id = ?
