@@ -168,7 +168,12 @@ const UserManagementPage = () => {
   const openCreate = async () => {
     drawer.openCreate();
     editorForm.resetFields();
-    editorForm.setFieldsValue({ status: 'ENABLED', roleIds: [], deptIds: [] });
+    editorForm.setFieldsValue({
+      status: 'ENABLED',
+      roleIds: [],
+      deptIds: selectedDepartmentId ? [selectedDepartmentId] : [],
+      primaryDeptId: selectedDepartmentId || null,
+    });
     try {
       await Promise.all([ensureRoleOptionsLoaded(), ensureDepartmentOptionsLoaded()]);
     } catch {
