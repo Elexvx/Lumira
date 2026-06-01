@@ -2,6 +2,7 @@ package com.legendary.invention.saas.infrastructure.security.service;
 
 import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -13,11 +14,11 @@ public class InitialPasswordChangeGuard {
     private static final String INITIAL_ADMIN_PASSWORD = "123456";
 
     private final MyBatisQueryOperations jdbcTemplate;
-    private final PasswordEncoder passwordEncoder;
+    private final ObjectProvider<PasswordEncoder> passwordEncoderProvider;
 
-    public InitialPasswordChangeGuard(MyBatisQueryOperations jdbcTemplate, PasswordEncoder passwordEncoder) {
+    public InitialPasswordChangeGuard(MyBatisQueryOperations jdbcTemplate, ObjectProvider<PasswordEncoder> passwordEncoderProvider) {
         this.jdbcTemplate = jdbcTemplate;
-        this.passwordEncoder = passwordEncoder;
+        this.passwordEncoderProvider = passwordEncoderProvider;
     }
 
     public boolean requiresPasswordChange(CurrentUser currentUser) {
@@ -30,6 +31,7 @@ public class InitialPasswordChangeGuard {
                 String.class,
                 DEFAULT_ADMIN_USERNAME
         );
-        return StringUtils.hasText(passwordHash) && passwordEncoder.matches(INITIAL_ADMIN_PASSWORD, passwordHash);
+        return StringUtils.hasText(passwordHash)
+                && passwordEncoderProvider.getObject().matches(INITIAL_ADMIN_PASSWORD, passwordHash);
     }
 }
