@@ -255,7 +255,6 @@ public class SystemUserManagementAppService {
     @Transactional
     public SystemVO.UserDetailVO createUser(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
-        validateUserDepartmentsRequired(request);
         Long userId = insertOrUpdateUser(null, request, currentUser.getUserId());
         upsertUserTenantRelation(userId, tenantId, true, currentUser.getUserId());
         replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
@@ -269,7 +268,6 @@ public class SystemUserManagementAppService {
     public SystemVO.UserDetailVO updateUser(CurrentUser currentUser, Long userId, SystemDTO.UserUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
         requireAccessibleUserRecord(currentUser, userId);
-        validateUserDepartmentsRequired(request);
         insertOrUpdateUser(userId, request, currentUser.getUserId());
         replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
         replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
@@ -645,18 +643,6 @@ public class SystemUserManagementAppService {
                     operatorId,
                     operatorId
             );
-        }
-    }
-
-    private void validateUserDepartmentsRequired(SystemDTO.UserUpsertRequest request) {
-        if (request == null || CollectionUtils.isEmpty(request.getDeptIds())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请选择所属部门");
-        }
-        if (request.getPrimaryDeptId() == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请选择主部门");
-        }
-        if (!request.getDeptIds().contains(request.getPrimaryDeptId())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "主部门必须在所属部门中");
         }
     }
 
