@@ -116,7 +116,7 @@ node scripts/deploy-container.mjs --reset
 node scripts/deploy-container.mjs --rebuild
 ```
 
-`--reset` 会删除数据库、上传文件、插件文件和任务日志数据，不能用于需要保留业务数据的环境。
+`--reset` 会删除数据库、上传文件、插件文件和任务日志数据，不能用于需要保留业务数据的环境。脚本会要求在交互终端输入 `DELETE_LEGENDARY_DATA`；CI 或自动化环境必须显式设置 `DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA`，否则拒绝执行。
 
 默认部署按 4C4G 小型服务器收敛资源占用：Java 服务限制堆比例和元空间，Tomcat 线程池、Hikari 连接池、Redis 内存、Docker 日志和 API 入口限流都有默认上限。高流量时优先返回 429 或排队，而不是让 JVM、数据库连接和磁盘日志把服务器打满。
 
@@ -285,10 +285,10 @@ node scripts/deploy-container.mjs --stop
 停止并删除数据卷：
 
 ```bash
-node scripts/deploy-container.mjs --reset
+DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --reset
 ```
 
-`--reset` 会删除数据库、上传文件、插件文件和任务日志数据，只能在确认不需要保留数据时使用。
+`--reset` 会删除数据库、上传文件、插件文件和任务日志数据，只能在确认不需要保留数据时使用。不要把 `DEPLOY_RESET_CONFIRM` 写入 `deploy/.env`、CI 默认变量或公开脚本里，只在确实需要清库的那一次命令前临时传入。
 
 ## 安全配置
 

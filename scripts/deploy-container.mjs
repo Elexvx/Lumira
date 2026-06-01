@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
+import readline from 'node:readline/promises';
 
 import { parseEnvFile, randomSecret, randomBase64Secret } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
@@ -32,6 +33,7 @@ const skipReadiness = args.has('--skip-readiness');
 const observability = args.has('--observability');
 const skipDockerPrune = args.has('--skip-docker-prune');
 const serviceNames = parseServiceNames(rawArgs);
+const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
 const allowedServices = new Set([
   'legendary-server',
   'mysql',
@@ -150,6 +152,7 @@ Options:
   --services  Deploy only selected services, comma-separated. Example: --services legendary-server
   --stop      Stop the deployment.
   --reset     Stop and remove volumes. This deletes database and uploaded data.
+              Requires typing ${resetConfirmPhrase} or setting DEPLOY_RESET_CONFIRM=${resetConfirmPhrase}.
   --logs      Follow service logs.
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
@@ -159,6 +162,44 @@ Options:
   --nacos     Start the bundled Nacos container. This is also enabled when Nacos config or discovery is enabled in deploy/.env.
   -h, --help  Show this help message.
 `);
+}
+
+async function confirmReset() {
+  if (!reset) {
+    return;
+  }
+
+  const suppliedConfirmation = process.env.DEPLOY_RESET_CONFIRM || '';
+  if (suppliedConfirmation === resetConfirmPhrase) {
+    log('Reset confirmation accepted from DEPLOY_RESET_CONFIRM.');
+    return;
+  }
+
+  const env = existsSync(envPath) ? parseEnvFile(envPath) : {};
+  const apiDomain = env.API_DOMAIN || process.env.API_DOMAIN || 'unknown-api-domain';
+  const frontendOrigin = env.FRONTEND_ORIGIN || process.env.FRONTEND_ORIGIN || 'unknown-frontend-origin';
+
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    console.error('Refusing --reset in a non-interactive session without explicit confirmation.');
+    console.error(`Set DEPLOY_RESET_CONFIRM=${resetConfirmPhrase} only after confirming that database, uploads, plugins, and job logs can be deleted.`);
+    process.exit(1);
+  }
+
+  console.error('');
+  console.error('DANGER: --reset deletes database volumes, uploaded files, plugins, and job logs.');
+  console.error(`Target API domain: ${apiDomain}`);
+  console.error(`Target frontend origin: ${frontendOrigin}`);
+  console.error(`Type ${resetConfirmPhrase} to continue.`);
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question('Reset confirmation: ');
+    if (answer.trim() !== resetConfirmPhrase) {
+      console.error('Reset cancelled: confirmation phrase did not match.');
+      process.exit(1);
+    }
+  } finally {
+    rl.close();
+  }
 }
 
 function ensureDockerReady() {
@@ -576,6 +617,7 @@ if (help) {
 
 ensureEnvFile();
 configureBuildIdentity();
+await confirmReset();
 ensureDockerReady();
 ensureHostMountedDirectories();
 ensureObservabilityProvisioning();

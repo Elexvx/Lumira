@@ -26,8 +26,10 @@ node scripts/deploy-container.mjs --stop
 如果要彻底删除数据库、上传文件和容器卷：
 
 ```bash
-node scripts/deploy-container.mjs --reset
+DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --reset
 ```
+
+`--reset` 是高危操作。交互终端会要求输入 `DELETE_LEGENDARY_DATA`；非交互环境必须临时传入 `DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA`，不要把这个变量写入长期配置。
 
 ## 1Panel 部署方式
 
