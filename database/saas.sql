@@ -3293,3 +3293,49 @@ SET
   `updated_at` = CURRENT_TIMESTAMP
 WHERE `tenant_id` = 1001
   AND `menu_code` = 'settings.monitoring.update';
+
+
+-- -----------------------------------------------------------------------------
+-- Direct SQL seed marker
+-- -----------------------------------------------------------------------------
+-- When this file is imported directly into an empty database, create the Flyway
+-- history row that marks the folded baseline as already applied. On the next
+-- application startup, Flyway can continue with V2+ migrations instead of trying
+-- to execute V1__baseline.sql against the preloaded schema.
+CREATE TABLE IF NOT EXISTS `flyway_schema_history` (
+  `installed_rank` int NOT NULL,
+  `version` varchar(50) DEFAULT NULL,
+  `description` varchar(200) NOT NULL,
+  `type` varchar(20) NOT NULL,
+  `script` varchar(1000) NOT NULL,
+  `checksum` int DEFAULT NULL,
+  `installed_by` varchar(100) NOT NULL,
+  `installed_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `execution_time` int NOT NULL,
+  `success` tinyint(1) NOT NULL,
+  PRIMARY KEY (`installed_rank`),
+  KEY `flyway_schema_history_s_idx` (`success`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `flyway_schema_history` (
+  `installed_rank`,
+  `version`,
+  `description`,
+  `type`,
+  `script`,
+  `checksum`,
+  `installed_by`,
+  `installed_on`,
+  `execution_time`,
+  `success`
+)
+VALUES
+  (1, '1', 'baseline', 'SQL', 'V1__baseline.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1)
+ON DUPLICATE KEY UPDATE
+  `version` = VALUES(`version`),
+  `description` = VALUES(`description`),
+  `type` = VALUES(`type`),
+  `script` = VALUES(`script`),
+  `checksum` = VALUES(`checksum`),
+  `installed_by` = VALUES(`installed_by`),
+  `success` = VALUES(`success`);
