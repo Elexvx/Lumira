@@ -36,6 +36,17 @@ public class SecuritySettingsRequest {
     @NotNull
     @Positive
     private Long verificationCodeCooldownSeconds;
+    @NotNull
+    @Positive
+    private Long passwordMinLength;
+    @NotNull
+    private Boolean passwordRequireUppercase;
+    @NotNull
+    private Boolean passwordRequireLowercase;
+    @NotNull
+    private Boolean passwordRequireSpecialCharacter;
+    @NotNull
+    private Boolean passwordAllowConsecutiveCharacters;
 
     public Long getIdleTimeoutSeconds() { return idleTimeoutSeconds; }
     public void setIdleTimeoutSeconds(Long idleTimeoutSeconds) { this.idleTimeoutSeconds = idleTimeoutSeconds; }
@@ -59,4 +70,14 @@ public class SecuritySettingsRequest {
     public void setVerificationCodeExpireSeconds(Long verificationCodeExpireSeconds) { this.verificationCodeExpireSeconds = verificationCodeExpireSeconds; }
     public Long getVerificationCodeCooldownSeconds() { return verificationCodeCooldownSeconds; }
     public void setVerificationCodeCooldownSeconds(Long verificationCodeCooldownSeconds) { this.verificationCodeCooldownSeconds = verificationCodeCooldownSeconds; }
+    public Long getPasswordMinLength() { return passwordMinLength; }
+    public void setPasswordMinLength(Long passwordMinLength) { this.passwordMinLength = passwordMinLength; }
+    public Boolean getPasswordRequireUppercase() { return passwordRequireUppercase; }
+    public void setPasswordRequireUppercase(Boolean passwordRequireUppercase) { this.passwordRequireUppercase = passwordRequireUppercase; }
+    public Boolean getPasswordRequireLowercase() { return passwordRequireLowercase; }
+    public void setPasswordRequireLowercase(Boolean passwordRequireLowercase) { this.passwordRequireLowercase = passwordRequireLowercase; }
+    public Boolean getPasswordRequireSpecialCharacter() { return passwordRequireSpecialCharacter; }
+    public void setPasswordRequireSpecialCharacter(Boolean passwordRequireSpecialCharacter) { this.passwordRequireSpecialCharacter = passwordRequireSpecialCharacter; }
+    public Boolean getPasswordAllowConsecutiveCharacters() { return passwordAllowConsecutiveCharacters; }
+    public void setPasswordAllowConsecutiveCharacters(Boolean passwordAllowConsecutiveCharacters) { this.passwordAllowConsecutiveCharacters = passwordAllowConsecutiveCharacters; }
 }

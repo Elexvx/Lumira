@@ -4,11 +4,13 @@ import { Button, Card, Empty, Form, Input, Spin, Tree, message } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useStandardFormProps } from '@/features/form/config';
 import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { buildTableRequest } from '@/features/table/proTable';
 import { buildUserColumns, userDetailColumns } from '@/pages/system/users/columns';
 import { UserEditorForm } from '@/pages/system/users/components/UserEditorForm';
@@ -77,6 +79,7 @@ const buildDepartmentTreeNodes = (items: DepartmentRecord[], keyword: string): D
 const UserManagementPage = () => {
   const { actionRef, drawer, detail, reloadTable } = useCrudPageState<UserRecord>();
   const [editorForm] = Form.useForm();
+  const { initialState } = useInitialStateModel();
   const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
   const [saving, setSaving] = useState(false);
@@ -91,6 +94,10 @@ const UserManagementPage = () => {
   const [departmentKeyword, setDepartmentKeyword] = useState('');
   const protectedAdminSelected = isProtectedAdminAccount(drawer.currentRecord);
   const canSaveUser = actionPermission.can(drawer.editingId ? 'system:user:update' : 'system:user:create');
+  const securitySettings = useMemo(
+    () => normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS),
+    [initialState?.securitySettings],
+  );
   const editorFormProps = useStandardFormProps({
     form: editorForm,
     initialValues: { status: 'ENABLED', roleIds: [], deptIds: [] },
@@ -401,6 +408,7 @@ const UserManagementPage = () => {
           roleOptions={roleOptions}
           departmentOptions={departmentOptions}
           protectedAdminSelected={protectedAdminSelected}
+          securitySettings={securitySettings}
         />
       </ManagementDrawer>
 

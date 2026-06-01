@@ -2171,11 +2171,11 @@ public class SystemManagementAppService {
         snapshot.setLoginMaxFailureCount(request.getLoginMaxFailureCount());
         snapshot.setVerificationCodeExpireSeconds(request.getVerificationCodeExpireSeconds());
         snapshot.setVerificationCodeCooldownSeconds(request.getVerificationCodeCooldownSeconds());
-        snapshot.setPasswordMinLength(current.getPasswordMinLength());
-        snapshot.setPasswordRequireUppercase(current.isPasswordRequireUppercase());
-        snapshot.setPasswordRequireLowercase(current.isPasswordRequireLowercase());
-        snapshot.setPasswordRequireSpecialCharacter(current.isPasswordRequireSpecialCharacter());
-        snapshot.setPasswordAllowConsecutiveCharacters(current.isPasswordAllowConsecutiveCharacters());
+        snapshot.setPasswordMinLength(request.getPasswordMinLength());
+        snapshot.setPasswordRequireUppercase(Boolean.TRUE.equals(request.getPasswordRequireUppercase()));
+        snapshot.setPasswordRequireLowercase(Boolean.TRUE.equals(request.getPasswordRequireLowercase()));
+        snapshot.setPasswordRequireSpecialCharacter(Boolean.TRUE.equals(request.getPasswordRequireSpecialCharacter()));
+        snapshot.setPasswordAllowConsecutiveCharacters(Boolean.TRUE.equals(request.getPasswordAllowConsecutiveCharacters()));
         return snapshot;
     }
 
