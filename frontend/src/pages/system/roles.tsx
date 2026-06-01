@@ -437,12 +437,10 @@ const RoleManagementPage = () => {
               showSearch
               disabled={isPermissionOnlyEditor}
               classNames={{ popup: { root: 'role-default-home-select-popup' } }}
-              getPopupContainer={(trigger) => trigger.parentElement || document.body}
               listHeight={360}
               optionFilterProp="label"
               options={defaultHomeOptions}
               placeholder="请选择登录后的默认访问页面"
-              styles={{ popup: { list: { maxHeight: 360, overflowY: 'auto' } } }}
             />
           </Form.Item>
           <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
