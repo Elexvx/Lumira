@@ -103,6 +103,21 @@ node scripts/install-platform.mjs --local-mysql --nacos --frontend
 node scripts/deploy-container.mjs --rebuild
 ```
 
+注意：上面的重建命令会保留现有 MySQL 数据，不会重置 `admin` 密码。全新部署的默认管理员账号来自 Flyway 基线数据：
+
+- 用户名：`admin`
+- 初始密码：`123456`
+- 首次登录后会强制修改初始密码
+
+如果需要在测试环境彻底重装数据库，先确认数据可以删除，再执行：
+
+```bash
+node scripts/deploy-container.mjs --reset
+node scripts/deploy-container.mjs --rebuild
+```
+
+`--reset` 会删除数据库、上传文件、插件文件和任务日志数据，不能用于需要保留业务数据的环境。
+
 默认部署按 4C4G 小型服务器收敛资源占用：Java 服务限制堆比例和元空间，Tomcat 线程池、Hikari 连接池、Redis 内存、Docker 日志和 API 入口限流都有默认上限。高流量时优先返回 429 或排队，而不是让 JVM、数据库连接和磁盘日志把服务器打满。
 
 首次运行会自动生成 `deploy/.env`，并为数据库、JWT、插件签名、任务内部调用等配置生成随机密钥。
