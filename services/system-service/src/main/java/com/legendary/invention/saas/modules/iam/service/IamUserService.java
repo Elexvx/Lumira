@@ -121,14 +121,15 @@ public class IamUserService {
             return;
         }
         IdentityBinding existing = queryIdentityBinding(normalizedType, normalizedIdentifier);
-        if (existing != null && !userId.equals(existing.userId())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "登录身份已被其他用户绑定");
+        if (existing != null && !userId.equals(existing.userId()) && existing.deleted() == 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "登录身份已被其他用户绑定", "登录身份已被其他用户绑定");
         }
         if (existing != null) {
             jdbcTemplate.update(
                     """
                             update iam_user_identity
-                            set identifier = ?,
+                            set user_id = ?,
+                                identifier = ?,
                                 verified = greatest(verified, ?),
                                 primary_identity = greatest(primary_identity, ?),
                                 status = 'ENABLED',
@@ -136,6 +137,7 @@ public class IamUserService {
                                 updated_at = current_timestamp
                             where id = ?
                             """,
+                    userId,
                     identifier.trim(),
                     verified ? 1 : 0,
                     primaryIdentity ? 1 : 0,
@@ -332,14 +334,15 @@ public class IamUserService {
             return;
         }
         IdentityBinding existing = queryIdentityBinding(normalizedType, normalizedIdentifier);
-        if (existing != null && !userId.equals(existing.userId())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "登录身份已被其他用户绑定");
+        if (existing != null && !userId.equals(existing.userId()) && existing.deleted() == 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "登录身份已被其他用户绑定", "登录身份已被其他用户绑定");
         }
         if (existing != null) {
             jdbcTemplate.update(
                     """
                             update iam_user_identity
-                            set identifier = ?,
+                            set user_id = ?,
+                                identifier = ?,
                                 verified = greatest(verified, ?),
                                 primary_identity = greatest(primary_identity, ?),
                                 status = ?,
@@ -347,6 +350,7 @@ public class IamUserService {
                                 updated_at = current_timestamp
                             where id = ?
                             """,
+                    userId,
                     identifier.trim(),
                     verified ? 1 : 0,
                     primaryIdentity ? 1 : 0,
@@ -755,11 +759,12 @@ public class IamUserService {
         List<IdentityBinding> bindings = jdbcTemplate.query(
                 """
                         select id, user_id
+                             , deleted
                         from iam_user_identity
                         where identity_type = ? and identifier_normalized = ?
                         limit 1
                         """,
-                (rs, rowNum) -> new IdentityBinding(rs.getLong("id"), rs.getLong("user_id")),
+                (rs, rowNum) -> new IdentityBinding(rs.getLong("id"), rs.getLong("user_id"), rs.getInt("deleted")),
                 identityType,
                 identifierNormalized
         );
@@ -880,7 +885,7 @@ public class IamUserService {
         }
     }
 
-    private record IdentityBinding(Long id, Long userId) {
+    private record IdentityBinding(Long id, Long userId, int deleted) {
     }
 
     private record DeviceInfo(String deviceName, String deviceType, String os, String browser) {

@@ -543,6 +543,20 @@ public class SystemUserManagementAppService {
         if (existingUserId != null && !existingUserId.equals(currentUserId)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
         }
+        Long existingIdentityUserId = queryNullableLong(
+                """
+                        select user_id
+                        from iam_user_identity
+                        where identity_type = 'USERNAME'
+                          and identifier_normalized = ?
+                          and deleted = 0
+                        limit 1
+                        """,
+                iamUserService.normalizeIdentifier(IamUserService.IDENTITY_USERNAME, username)
+        );
+        if (existingIdentityUserId != null && !existingIdentityUserId.equals(currentUserId)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试", "用户名已存在，请更换后重试");
+        }
     }
 
     private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {

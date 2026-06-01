@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -33,7 +34,7 @@ class IamUserServiceSyncTest {
     @Test
     void syncDisabledSysUserDoesNotReEnableIdentityOrCredential() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 1001L));
+        jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 1001L, 0));
         IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
 
         service.syncSysUser(buildUser(1001L, "DISABLED", 0), "SYS_USER_SYNC");
@@ -45,7 +46,7 @@ class IamUserServiceSyncTest {
     @Test
     void syncDeletedSysUserDoesNotRestoreDeletedIamRecords() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 1001L));
+        jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 1001L, 0));
         IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
 
         service.syncSysUser(buildUser(1001L, "ENABLED", 1), "SYS_USER_SYNC");
@@ -53,6 +54,24 @@ class IamUserServiceSyncTest {
         assertIdentitySynced(jdbcTemplate, "alice", "DISABLED", 1);
         assertCredentialSynced(jdbcTemplate, "DISABLED", 1);
         assertSecuritySettingSynced(jdbcTemplate, 1);
+    }
+
+    @Test
+    void createUserWithIdentityCanReuseDeletedIdentityBinding() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.identityBindings.put("USERNAME:alice", new IdentityRow(11L, 2002L, 1));
+        IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
+
+        assertDoesNotThrow(() -> service.createUserWithIdentity(buildUser(1001L, "ENABLED", 0), "alice", "ADMIN_CREATE"));
+
+        SqlCall call = jdbcTemplate.updates.stream()
+                .filter(update -> update.sql.contains("update iam_user_identity"))
+                .filter(update -> update.sql.contains("set user_id = ?"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1001L, call.args[0]);
+        assertEquals("alice", call.args[1]);
+        assertEquals(0, call.args[5]);
     }
 
     private static SysUserEntity buildUser(Long userId, String status, int deleted) {
@@ -81,8 +100,8 @@ class IamUserServiceSyncTest {
             assertEquals(deleted, call.args[7]);
             return;
         }
-        assertEquals(status, call.args[3]);
-        assertEquals(deleted, call.args[4]);
+        assertEquals(status, call.args[4]);
+        assertEquals(deleted, call.args[5]);
     }
 
     private static void assertCredentialSynced(RecordingJdbcTemplate jdbcTemplate, String status, int deleted) {
@@ -134,11 +153,12 @@ class IamUserServiceSyncTest {
     private record SqlCall(String sql, Object[] args) {
     }
 
-    private record IdentityRow(Long id, Long userId) {
+    private record IdentityRow(Long id, Long userId, int deleted) {
         private ResultSet toResultSet() throws SQLException {
             ResultSet resultSet = mock(ResultSet.class);
             when(resultSet.getLong("id")).thenReturn(id);
             when(resultSet.getLong("user_id")).thenReturn(userId);
+            when(resultSet.getInt("deleted")).thenReturn(deleted);
             return resultSet;
         }
     }
