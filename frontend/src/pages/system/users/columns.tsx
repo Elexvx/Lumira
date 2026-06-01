@@ -49,7 +49,7 @@ export const buildUserColumns = ({
   {
     title: '手机号',
     dataIndex: 'mobile',
-    search: true,
+    search: false,
     ellipsis: true,
     render: (_, record) => {
       const content = maskMobile(record.mobile) || '';
@@ -65,7 +65,7 @@ export const buildUserColumns = ({
   {
     title: '邮箱',
     dataIndex: 'email',
-    search: true,
+    search: false,
     ellipsis: true,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => {
@@ -80,9 +80,7 @@ export const buildUserColumns = ({
       ENABLED: { text: '启用', status: 'Success' },
       DISABLED: { text: '禁用', status: 'Default' },
     },
-    search: {
-      transform: (value) => ({ status: value }),
-    },
+    search: false,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
   },
   {
@@ -97,18 +95,14 @@ export const buildUserColumns = ({
       ADMIN_CREATE: { text: '后台创建' },
       SYSTEM: { text: '系统' },
     },
+    search: false,
     responsive: ['lg', 'xl', 'xxl'],
   },
   {
     title: '注册时间',
     dataIndex: 'registeredAt',
     valueType: 'dateRange',
-    search: {
-      transform: (value) => ({
-        registeredStart: value?.[0],
-        registeredEnd: value?.[1],
-      }),
-    },
+    search: false,
     responsive: ['lg', 'xl', 'xxl'],
     renderText: (value) => value || '-',
   },
@@ -116,12 +110,7 @@ export const buildUserColumns = ({
     title: '最近登录',
     dataIndex: 'lastLoginAt',
     valueType: 'dateRange',
-    search: {
-      transform: (value) => ({
-        lastLoginStart: value?.[0],
-        lastLoginEnd: value?.[1],
-      }),
-    },
+    search: false,
     responsive: ['xl', 'xxl'],
     renderText: (value) => value || '-',
   },
