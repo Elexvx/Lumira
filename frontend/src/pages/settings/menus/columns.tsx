@@ -106,6 +106,7 @@ export const buildMenuColumns = ({
     valueEnum: {
       CATALOG: { text: '目录' },
       MENU: { text: '菜单' },
+      TAB: { text: '页签' },
       BUTTON: { text: '按钮' },
     },
   },
@@ -208,7 +209,7 @@ export const buildMenuColumns = ({
 
 export const menuDetailColumns: ProDescriptionsItemProps<MenuRecord>[] = [
   { title: '菜单名称', dataIndex: 'menuName' },
-  { title: '菜单类型', dataIndex: 'menuType' },
+  { title: '菜单类型', dataIndex: 'menuType', renderText: (value) => ({ CATALOG: '目录', MENU: '菜单', TAB: '页签', BUTTON: '按钮' }[value as string] || value) },
   { title: '路由', dataIndex: 'path', renderText: (value) => value || '-' },
   { title: '图标', dataIndex: 'icon', renderText: (value) => value || '-' },
   { title: '组件', dataIndex: 'component', renderText: (value) => value || '-' },

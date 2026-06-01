@@ -11,6 +11,7 @@ interface MenuEditorFormProps {
 const MENU_TYPE_OPTIONS = [
   { label: '目录', value: 'CATALOG' },
   { label: '菜单', value: 'MENU' },
+  { label: '页签', value: 'TAB' },
   { label: '按钮', value: 'BUTTON' },
 ];
 

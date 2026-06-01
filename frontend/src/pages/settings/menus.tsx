@@ -86,7 +86,7 @@ const buildSettingsRouteRecords = (routeOrder: string[], routeIcons: Record<stri
     id: path,
     menuCode: `settings:${path.replace(/^\/settings\/?/, '').replace(/\//g, ':') || 'root'}`,
     menuName: meta ? formatRouteName(meta.name) : path,
-    menuType: 'MENU',
+    menuType: 'TAB',
     path,
     icon: customIcon || defaultIcon,
     defaultIcon,
@@ -251,7 +251,7 @@ const SettingsRoutesTab = () => {
       dataIndex: 'menuType',
       width: 120,
       valueEnum: {
-        MENU: { text: '菜单' },
+        TAB: { text: '页签' },
       },
     },
     {
@@ -307,10 +307,10 @@ const SettingsRoutesTab = () => {
     {
       title: '操作',
       valueType: 'option',
-      width: 180,
+      width: 144,
       fixed: 'right',
       render: (_, record, index) => (
-        <Space>
+        <Space size={4}>
           <Button type="link" onClick={() => openEditRoute(record)}>编辑</Button>
           <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
             上移
@@ -329,7 +329,7 @@ const SettingsRoutesTab = () => {
         rowKey="id"
         dataSource={records}
         pagination={false}
-        scroll={{ x: 1780 }}
+        scroll={{ x: 'max-content' }}
         tableLayout="fixed"
         isMobile={responsive.isMobile}
         search={false}
@@ -358,7 +358,7 @@ const SettingsRoutesTab = () => {
             <Input disabled value={editingRoute?.menuName} />
           </Form.Item>
           <Form.Item label="菜单类型">
-            <Select disabled value="MENU" options={[{ label: '菜单', value: 'MENU' }]} />
+            <Select disabled value="TAB" options={[{ label: '页签', value: 'TAB' }]} />
           </Form.Item>
           <Form.Item label="路由">
             <Input disabled value={editingRoute?.path} />
@@ -717,7 +717,7 @@ const MenuManagementPage = () => {
                 isMobile={responsive.isMobile}
                 search={searchConfig}
                 pagination={false}
-                scroll={{ x: 1780 }}
+                scroll={{ x: 'max-content' }}
                 tableLayout="fixed"
                 onRow={(record) => ({
                   draggable: canReorderMenus && !isBuiltinMenu(record),
