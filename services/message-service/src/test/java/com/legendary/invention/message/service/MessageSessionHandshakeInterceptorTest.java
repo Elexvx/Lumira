@@ -89,7 +89,8 @@ class MessageSessionHandshakeInterceptorTest {
                 null,
                 List.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                false
         );
     }
 }

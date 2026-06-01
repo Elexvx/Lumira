@@ -147,6 +147,12 @@ public class AuthAppService {
         return adminAccount && INITIAL_ADMIN_PASSWORD.equals(loginPassword);
     }
 
+    private boolean requiresInitialAdminPasswordChange(SystemUserSnapshotDTO user) {
+        return user != null
+                && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username())
+                && passwordEncoder.matches(INITIAL_ADMIN_PASSWORD, user.passwordHash());
+    }
+
     private void rejectUnsafeDefaultAdminLogin(
             String account,
             SystemUserSnapshotDTO user,
@@ -489,7 +495,8 @@ public class AuthAppService {
                 snapshot.primaryDeptId(),
                 snapshot.deptIds(),
                 snapshot.descendantDeptIds(),
-                snapshot.dataScopes()
+                snapshot.dataScopes(),
+                requiresInitialAdminPasswordChange(user)
         );
     }
 

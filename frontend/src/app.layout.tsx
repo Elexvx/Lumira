@@ -369,6 +369,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       const path = location.pathname;
       const loggedIn = isLoggedIn();
       const isPublicPath = PUBLIC_PATHS.has(path);
+      const requiresPasswordChange = Boolean(initialState?.currentUser?.requiresPasswordChange);
 
       if (!loggedIn && !isPublicPath) {
         const redirect = `${path}${location.search || ''}`;
@@ -376,7 +377,16 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         return;
       }
 
+      if (loggedIn && requiresPasswordChange && path !== LOGIN_PATH) {
+        const redirect = `${path}${location.search || ''}`;
+        history.replace(`${LOGIN_PATH}?forcePasswordChange=1&redirect=${encodeURIComponent(redirect)}`);
+        return;
+      }
+
       if (loggedIn && path === LOGIN_PATH) {
+        if (requiresPasswordChange) {
+          return;
+        }
         history.replace(resolveLoginRedirectTarget(location.search || '', DEFAULT_HOME_PATH));
         return;
       }

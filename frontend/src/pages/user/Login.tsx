@@ -5,13 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { flushSync } from 'react-dom';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
-import { isLoggedIn } from '@/auth/session';
+import { initializeAfterLogin, isLoggedIn, restoreSession } from '@/auth/session';
 import { loadCaptchaChallenge } from '@/auth/captcha';
 import { createCaptchaRefreshController } from '@/auth/captchaRefreshController';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { encryptLoginPassword } from '@/auth/loginEncryption';
 import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
-import { initializeAfterLogin } from '@/auth/session';
 import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
 import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { authService } from '@/services/auth';
@@ -83,6 +82,7 @@ const Login = () => {
   const [sendingLoginType, setSendingLoginType] = useState<CodeLoginMode | null>(null);
   const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
   const [pendingPasswordChangeLogin, setPendingPasswordChangeLogin] = useState<LoginResponse | null>(null);
+  const [restoredPasswordChangeRequired, setRestoredPasswordChangeRequired] = useState(false);
   const [pendingPasswordChangeCurrentPassword, setPendingPasswordChangeCurrentPassword] = useState(INITIAL_PASSWORD);
   const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false);
   const [activeLoginMode, setActiveLoginMode] = useState<LoginMode>('password');
@@ -290,7 +290,7 @@ const Login = () => {
   }, [captchaChallenge?.captchaId, loginForm, securitySettings.captchaEnabled]);
 
   useEffect(() => {
-    if (pendingPasswordChangeLogin) {
+    if (pendingPasswordChangeLogin || restoredPasswordChangeRequired || initialState?.currentUser?.requiresPasswordChange) {
       return;
     }
     const alreadyAuthenticated = isLoggedIn() || Boolean(initialState?.currentUser?.sessionId);
@@ -303,7 +303,17 @@ const Login = () => {
     } else {
       history.replace(redirectTarget);
     }
-  }, [initialState?.currentUser, initialState?.menuTree, location.search, pendingPasswordChangeLogin, redirectTarget, submitting]);
+  }, [initialState?.currentUser, initialState?.menuTree, location.search, pendingPasswordChangeLogin, redirectTarget, restoredPasswordChangeRequired, submitting]);
+
+  useEffect(() => {
+    if (!isLoggedIn() || !initialState?.currentUser?.requiresPasswordChange) {
+      return;
+    }
+    setRestoredPasswordChangeRequired(true);
+    setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
+    forcedPasswordChangeForm.resetFields();
+    message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
+  }, [forcedPasswordChangeForm, initialState?.currentUser?.requiresPasswordChange]);
 
   useEffect(() => {
     const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
@@ -459,7 +469,7 @@ const Login = () => {
   );
 
   const handleForcedPasswordChange = useCallback(async () => {
-    if (!pendingPasswordChangeLogin) {
+    if (!pendingPasswordChangeLogin && !restoredPasswordChangeRequired && !initialState?.currentUser?.requiresPasswordChange) {
       return;
     }
     const values = await forcedPasswordChangeForm.validateFields();
@@ -473,9 +483,36 @@ const Login = () => {
       message.success(formatMessage({ id: 'page.login.initialPasswordChange.success', defaultMessage: '密码已修改，请使用新密码登录' }));
       const loginResponse = pendingPasswordChangeLogin;
       setPendingPasswordChangeLogin(null);
+      setRestoredPasswordChangeRequired(false);
       setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
       forcedPasswordChangeForm.resetFields();
-      await completeSuccessfulLogin(loginResponse);
+      if (loginResponse) {
+        await completeSuccessfulLogin({
+          ...loginResponse,
+          requiresPasswordChange: false,
+        });
+        return;
+      }
+
+      const restoredSession = await restoreSession();
+      if (restoredSession?.currentUser) {
+        const currentUser = {
+          ...restoredSession.currentUser,
+          requiresPasswordChange: false,
+        };
+        flushSync(() => {
+          setInitialState((prev: AppInitialState | undefined) =>
+            prev
+              ? {
+                  ...prev,
+                  currentUser,
+                  securitySettings: restoredSession.securitySettings,
+                }
+              : prev,
+          );
+        });
+        history.replace(resolveAuthorizedLoginRedirectTarget(location.search, currentUser, initialState?.menuTree || []));
+      }
     } catch (error) {
       showErrorMessage(error, formatMessage({ id: 'page.login.initialPasswordChange.failed', defaultMessage: '密码修改失败，请检查后重试' }));
     } finally {
@@ -484,8 +521,13 @@ const Login = () => {
   }, [
     completeSuccessfulLogin,
     forcedPasswordChangeForm,
+    initialState?.currentUser?.requiresPasswordChange,
+    initialState?.menuTree,
+    location.search,
     pendingPasswordChangeCurrentPassword,
     pendingPasswordChangeLogin,
+    restoredPasswordChangeRequired,
+    setInitialState,
   ]);
 
   const handleWechatLogin = useCallback(async () => {
@@ -834,7 +876,7 @@ const Login = () => {
         markdown={agreementPreviewMarkdown}
       />
       <Modal
-        open={Boolean(pendingPasswordChangeLogin)}
+        open={Boolean(pendingPasswordChangeLogin) || restoredPasswordChangeRequired || Boolean(initialState?.currentUser?.requiresPasswordChange)}
         title={formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}
         closable={false}
         maskClosable={false}

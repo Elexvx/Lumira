@@ -264,6 +264,7 @@ const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => 
     permissionsVersion: storedSessionMeta?.permissionsVersion,
     sessionVersion: storedSessionMeta?.sessionVersion,
     permissions: storedCurrentUser?.permissions || [],
+    requiresPasswordChange: loginResponse.requiresPasswordChange ?? null,
   };
 };
 

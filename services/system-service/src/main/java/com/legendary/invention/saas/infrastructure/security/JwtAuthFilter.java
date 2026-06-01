@@ -7,6 +7,7 @@ import com.legendary.invention.common.security.CurrentUser;
 import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
+import com.legendary.invention.saas.infrastructure.security.service.InitialPasswordChangeGuard;
 import com.legendary.invention.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -32,15 +33,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final SessionAuthenticationService sessionAuthenticationService;
     private final AuthSessionStore authSessionStore;
+    private final InitialPasswordChangeGuard initialPasswordChangeGuard;
     private final ObjectMapper objectMapper;
 
     public JwtAuthFilter(
             SessionAuthenticationService sessionAuthenticationService,
             AuthSessionStore authSessionStore,
+            InitialPasswordChangeGuard initialPasswordChangeGuard,
             ObjectMapper objectMapper
     ) {
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.authSessionStore = authSessionStore;
+        this.initialPasswordChangeGuard = initialPasswordChangeGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -69,7 +73,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             SessionAuthenticationService.AuthenticatedAccess authenticatedAccess = sessionAuthenticationService.authenticateAccessToken(token);
             AuthSession session = authenticatedAccess.session();
             Instant now = Instant.now();
-            setAuthentication(authenticatedAccess.currentUser());
+            CurrentUser currentUser = authenticatedAccess.currentUser();
+            setAuthentication(currentUser);
+            if (initialPasswordChangeGuard.requiresPasswordChange(currentUser) && !isPasswordChangeAllowedRequest(request)) {
+                writeForbiddenResponse(request, response);
+                return;
+            }
             if (sessionAuthenticationService.shouldPersistActivity(session, now)) {
                 session.setLastActivityAt(now);
                 authSessionStore.save(session);
@@ -92,6 +101,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private boolean isPasswordChangeAllowedRequest(HttpServletRequest request) {
+        String method = request.getMethod();
+        String path = request.getRequestURI();
+        return ("GET".equalsIgnoreCase(method) && ("/api/v1/auth/current-user".equals(path) || "/api/auth/current-user".equals(path)))
+                || ("PUT".equalsIgnoreCase(method) && "/api/v1/profile/password".equals(path))
+                || ("POST".equalsIgnoreCase(method) && ("/api/v1/auth/logout".equals(path) || "/api/auth/logout".equals(path)))
+                || ("POST".equalsIgnoreCase(method) && ("/api/v1/auth/refresh-token".equals(path) || "/api/auth/refresh-token".equals(path)))
+                || path.startsWith("/api/health")
+                || path.startsWith("/api/version")
+                || path.startsWith("/actuator/");
+    }
+
     private void setAuthentication(CurrentUser authenticatedUser) {
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(authenticatedUser, null, Collections.emptyList());
@@ -107,6 +128,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 exception.getErrorCode(),
                 exception.getMessage(),
                 exception.getUserMessage(),
+                TraceContext.getRequestId(),
+                request.getRequestURI()
+        );
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+    }
+
+    private void writeForbiddenResponse(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setStatus(ErrorCode.FORBIDDEN.getHttpStatus());
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        ApiResponse<Void> body = ApiResponse.fail(
+                ErrorCode.FORBIDDEN,
+                "当前账号仍在使用初始密码，请先修改密码",
+                "当前账号仍在使用初始密码，请先修改密码",
                 TraceContext.getRequestId(),
                 request.getRequestURI()
         );

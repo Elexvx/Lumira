@@ -228,6 +228,7 @@ export interface CurrentUser {
   deptIds?: number[];
   descendantDeptIds?: number[];
   dataScopes?: RoleDataScope[];
+  requiresPasswordChange?: boolean | null;
 }
 
 export interface CurrentUserRoleOption {

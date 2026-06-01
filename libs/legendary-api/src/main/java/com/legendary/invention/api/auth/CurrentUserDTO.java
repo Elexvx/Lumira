@@ -26,6 +26,7 @@ public record CurrentUserDTO(
         Long primaryDeptId,
         List<Long> deptIds,
         List<Long> descendantDeptIds,
-        List<DataPermissionRule> dataScopes
+        List<DataPermissionRule> dataScopes,
+        Boolean requiresPasswordChange
 ) {
 }

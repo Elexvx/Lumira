@@ -6,6 +6,7 @@ import com.legendary.invention.saas.infrastructure.security.model.AuthSession;
 import com.legendary.invention.saas.infrastructure.security.model.TokenClaims;
 import com.legendary.invention.saas.infrastructure.security.model.TokenType;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
+import com.legendary.invention.saas.infrastructure.security.service.InitialPasswordChangeGuard;
 import com.legendary.invention.saas.infrastructure.security.service.JwtTokenService;
 import com.legendary.invention.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
@@ -114,6 +115,7 @@ class JwtAuthFilterTest {
         JwtAuthFilter filter = new JwtAuthFilter(
                 sessionAuthenticationService,
                 authSessionStore,
+                new StubInitialPasswordChangeGuard(),
                 new ObjectMapper() {
                     @Override
                     public String writeValueAsString(Object value) {
@@ -238,6 +240,17 @@ class JwtAuthFilterTest {
         @Override
         public boolean isAllowMultiDeviceLogin() {
             return true;
+        }
+    }
+
+    private static final class StubInitialPasswordChangeGuard extends InitialPasswordChangeGuard {
+        private StubInitialPasswordChangeGuard() {
+            super(null, null);
+        }
+
+        @Override
+        public boolean requiresPasswordChange(com.legendary.invention.common.security.CurrentUser currentUser) {
+            return false;
         }
     }
 
