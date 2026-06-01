@@ -4,6 +4,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.common.security.data.DataPermissionDecision;
+import com.legendary.invention.common.security.data.DataPermissionRule;
 import com.legendary.invention.common.security.data.DataPermissionResolver;
 import com.legendary.invention.common.security.data.DataScopeType;
 import com.legendary.invention.common.security.CurrentUser;
@@ -1135,13 +1136,25 @@ public class SystemUserManagementAppService {
     }
 
     private DataPermissionSql userDataPermissionClause(CurrentUser currentUser, String userAlias) {
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
+                currentTenantId(currentUser),
+                currentUser.getUserId()
+        );
+        Set<String> permissions = !snapshot.getPermissions().isEmpty()
+                ? snapshot.getPermissions()
+                : currentUser.getPermissions();
+        Set<Long> deptIdsFromSnapshot = snapshot.getDeptIds();
+        Set<Long> descendantDeptIdsFromSnapshot = snapshot.getDescendantDeptIds();
+        List<DataPermissionRule> dataScopes = !snapshot.getDataScopes().isEmpty()
+                ? snapshot.getDataScopes()
+                : currentUser.getDataScopes();
         DataPermissionDecision decision = DataPermissionResolver.resolve(
                 RESOURCE_SYSTEM_USER,
                 currentUser.getUserId(),
-                currentUser.getDeptIds(),
-                currentUser.getDescendantDeptIds(),
-                currentUser.getDataScopes(),
-                currentUser.getPermissions()
+                !deptIdsFromSnapshot.isEmpty() ? deptIdsFromSnapshot : currentUser.getDeptIds(),
+                !descendantDeptIdsFromSnapshot.isEmpty() ? descendantDeptIdsFromSnapshot : currentUser.getDescendantDeptIds(),
+                dataScopes,
+                permissions
         );
         if (decision.scopeType() == DataScopeType.ALL || decision.scopeType() == DataScopeType.TENANT) {
             return DataPermissionSql.empty();
