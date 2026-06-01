@@ -24,7 +24,7 @@ public class VersionController {
         this.buildPropertiesProvider = buildPropertiesProvider;
     }
 
-    @GetMapping({"/api/version", "/api/v1/version", "/api/v1/system/version"})
+    @GetMapping("/api/v1/system/version")
     public ApiResponse<ServiceVersionInfo> version(HttpServletRequest request) {
         return ApiResponse.success(current(), TraceContext.getRequestId(), request.getRequestURI());
     }
