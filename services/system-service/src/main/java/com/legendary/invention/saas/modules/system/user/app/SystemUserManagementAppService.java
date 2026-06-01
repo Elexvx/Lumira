@@ -20,6 +20,7 @@ import com.legendary.invention.saas.modules.user.domain.UserDomainService;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.legendary.invention.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -444,22 +445,58 @@ public class SystemUserManagementAppService {
         if (userId != null && isProtectedAdminAccount(userId, request.getUsername()) && "DISABLED".equals(normalizedStatus)) {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
         }
+        ensureUsernameAvailable(request.getUsername(), userId);
         if (userId == null) {
             if (!StringUtils.hasText(request.getPassword())) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "初始密码不能为空");
             }
             String password = request.getPassword();
             passwordPolicyService.validatePassword(password);
+            try {
+                jdbcTemplate.update(
+                        """
+                                insert into sys_user (
+                                    username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                                    available_time, id_card_number, status,
+                                    created_by, updated_by, deleted
+                                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                                """,
+                        request.getUsername(),
+                        passwordEncoder.encode(password),
+                        normalizeNullableText(request.getMobile()),
+                        normalizeNullableText(request.getNickname()),
+                        normalizeNullableText(request.getRealName()),
+                        normalizeNullableText(request.getAvatarUrl()),
+                        normalizeNullableText(request.getEmail()),
+                        normalizeNullableText(request.getBirthMonth()),
+                        normalizeNullableText(request.getGender()),
+                        normalizeNullableText(request.getRegion()),
+                        normalizeNullableText(request.getAvailableTime()),
+                        normalizeNullableText(request.getIdCardNumber()),
+                        normalizedStatus,
+                        operatorId,
+                        operatorId
+                );
+            } catch (DuplicateKeyException exception) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
+            }
+            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, request.getUsername());
+            userDomainService.findById(createdUserId).ifPresent(user -> {
+                iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
+                iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
+            });
+            return createdUserId;
+        }
+        try {
             jdbcTemplate.update(
                     """
-                            insert into sys_user (
-                                username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
-                                available_time, id_card_number, status,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            update sys_user
+                            set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?,
+                                birth_month = ?, gender = ?, region = ?, available_time = ?, id_card_number = ?, status = ?,
+                                updated_by = ?, updated_at = ?
+                            where id = ? and deleted = 0
                             """,
                     request.getUsername(),
-                    passwordEncoder.encode(password),
                     normalizeNullableText(request.getMobile()),
                     normalizeNullableText(request.getNickname()),
                     normalizeNullableText(request.getRealName()),
@@ -472,39 +509,12 @@ public class SystemUserManagementAppService {
                     normalizeNullableText(request.getIdCardNumber()),
                     normalizedStatus,
                     operatorId,
-                    operatorId
+                    LocalDateTime.now(),
+                    userId
             );
-            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, request.getUsername());
-            userDomainService.findById(createdUserId).ifPresent(user -> {
-                iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
-                iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
-            });
-            return createdUserId;
+        } catch (DuplicateKeyException exception) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
         }
-        jdbcTemplate.update(
-                """
-                        update sys_user
-                        set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?,
-                            birth_month = ?, gender = ?, region = ?, available_time = ?, id_card_number = ?, status = ?,
-                            updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
-                        """,
-                request.getUsername(),
-                normalizeNullableText(request.getMobile()),
-                normalizeNullableText(request.getNickname()),
-                normalizeNullableText(request.getRealName()),
-                normalizeNullableText(request.getAvatarUrl()),
-                normalizeNullableText(request.getEmail()),
-                normalizeNullableText(request.getBirthMonth()),
-                normalizeNullableText(request.getGender()),
-                normalizeNullableText(request.getRegion()),
-                normalizeNullableText(request.getAvailableTime()),
-                normalizeNullableText(request.getIdCardNumber()),
-                normalizedStatus,
-                operatorId,
-                LocalDateTime.now(),
-                userId
-        );
         if (StringUtils.hasText(request.getPassword())) {
             passwordPolicyService.validatePassword(request.getPassword());
             String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -519,6 +529,19 @@ public class SystemUserManagementAppService {
         }
         userDomainService.findById(userId).ifPresent(iamUserService::updateProfile);
         return userId;
+    }
+
+    private void ensureUsernameAvailable(String username, Long currentUserId) {
+        if (!StringUtils.hasText(username)) {
+            return;
+        }
+        Long existingUserId = queryNullableLong(
+                "select id from sys_user where username = ? and deleted = 0 limit 1",
+                username
+        );
+        if (existingUserId != null && !existingUserId.equals(currentUserId)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
+        }
     }
 
     private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {
@@ -1158,6 +1181,14 @@ public class SystemUserManagementAppService {
     private <T> T queryOne(String sql, Class<T> voClass, Object... params) {
         try {
             return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(voClass), params);
+        } catch (EmptyResultDataAccessException exception) {
+            return null;
+        }
+    }
+
+    private Long queryNullableLong(String sql, Object... params) {
+        try {
+            return jdbcTemplate.queryForObject(sql, Long.class, params);
         } catch (EmptyResultDataAccessException exception) {
             return null;
         }
