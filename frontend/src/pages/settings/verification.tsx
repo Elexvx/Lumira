@@ -1010,14 +1010,14 @@ const SystemVerificationPage = () => {
     if (configDrawerMode === 'email') {
       return <EmailConfigTab 
       smtpFormProps={smtpFormProps}
-      smtpTestFormProps={{ form: smtpTestForm, onFinish: handleTestSmtp }}
+      smtpTestFormProps={{ form: smtpTestForm, onFinish: handleTestSmtpSettings }}
       canManageSettings={canManageSettings}
       emailConfigEnabled={emailConfigEnabled}
       smtpSettingsQuery={smtpSettingsQuery}
       verificationSettingsQuery={verificationSettingsQuery}
-      smtpPasswordConfigured={smtpPasswordConfigured}
+      smtpPasswordConfigured={Boolean(smtpSettingsQuery.data?.passwordConfigured)}
       testingSmtpSettings={testingSmtpSettings}
-      handleTestSmtp={handleTestSmtp}
+      handleTestSmtp={handleTestSmtpSettings}
     />;
     }
     if (configDrawerMode === 'wechat') {

@@ -27,6 +27,7 @@ public record CurrentUserDTO(
         List<Long> deptIds,
         List<Long> descendantDeptIds,
         List<DataPermissionRule> dataScopes,
-        Boolean requiresPasswordChange
+        Boolean requiresPasswordChange,
+        String defaultHomePath
 ) {
 }

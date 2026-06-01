@@ -28,7 +28,8 @@ public class PermissionSnapshotService {
 
     private static final Long PROTECTED_ADMIN_ID = 1001L;
     private static final String PROTECTED_ADMIN_USERNAME = "admin";
-    private static final String SNAPSHOT_SCHEMA_VERSION = "admin-permissions-v2";
+    private static final String SNAPSHOT_SCHEMA_VERSION = "admin-permissions-v3";
+    private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
     private static final String VERSION_SUFFIX = "permission_version";
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
@@ -90,6 +91,7 @@ public class PermissionSnapshotService {
         DepartmentSnapshot departmentSnapshot = queryDepartments(tenantId, userId);
         Set<String> permissions = queryPermissions(tenantId, userId);
         List<DataPermissionRule> dataScopes = queryDataScopes(tenantId, roleIds);
+        String defaultHomePath = queryRoleDefaultHomePath(tenantId, roleIds);
         PermissionSnapshot snapshot = new PermissionSnapshot(
                 version,
                 permissions,
@@ -97,7 +99,8 @@ public class PermissionSnapshotService {
                 departmentSnapshot.primaryDeptId(),
                 departmentSnapshot.deptIds(),
                 departmentSnapshot.descendantDeptIds(),
-                dataScopes
+                dataScopes,
+                defaultHomePath
         );
         cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
         return snapshot;
@@ -124,7 +127,7 @@ public class PermissionSnapshotService {
 
         Set<String> permissions = queryRolePermissions(tenantId, roleId);
         List<DataPermissionRule> dataScopes = queryDataScopes(tenantId, Set.of(roleId));
-        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions, Set.of(roleId), null, Set.of(), Set.of(), dataScopes);
+        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions, Set.of(roleId), null, Set.of(), Set.of(), dataScopes, queryRoleDefaultHomePath(tenantId, Set.of(roleId)));
         cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
         return snapshot;
     }
@@ -283,6 +286,36 @@ public class PermissionSnapshotService {
                 tenantId,
                 userId
         ));
+    }
+
+    private String queryRoleDefaultHomePath(Long tenantId, Set<Long> roleIds) {
+        if (tenantId == null || roleIds == null || roleIds.isEmpty()) {
+            return DEFAULT_HOME_PATH;
+        }
+        String placeholders = roleIds.stream().map(id -> "?").collect(java.util.stream.Collectors.joining(", "));
+        List<Object> params = new ArrayList<>(roleIds);
+        params.add(tenantId);
+        try {
+            String path = jdbcTemplate.queryForObject(
+                    """
+                            select default_home_path
+                            from sys_role
+                            where id in (%s)
+                              and tenant_id = ?
+                              and deleted = 0
+                              and default_home_path is not null
+                              and trim(default_home_path) <> ''
+                            order by id asc
+                            limit 1
+                            """.formatted(placeholders),
+                    String.class,
+                    params.toArray()
+            );
+            return StringUtils.hasText(path) ? path.trim() : DEFAULT_HOME_PATH;
+        } catch (Throwable throwable) {
+            log.warn("Failed to query role default home path tenantId={} roleIds={}", tenantId, roleIds, throwable);
+            return DEFAULT_HOME_PATH;
+        }
     }
 
     private DepartmentSnapshot queryDepartments(Long tenantId, Long userId) {
@@ -481,12 +514,13 @@ public class PermissionSnapshotService {
         private Set<Long> deptIds;
         private Set<Long> descendantDeptIds;
         private List<DataPermissionRule> dataScopes;
+        private String defaultHomePath;
 
         public PermissionSnapshot() {
         }
 
         public PermissionSnapshot(String version, Set<String> permissions) {
-            this(version, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
+            this(version, permissions, Set.of(), null, Set.of(), Set.of(), List.of(), DEFAULT_HOME_PATH);
         }
 
         public PermissionSnapshot(
@@ -496,7 +530,8 @@ public class PermissionSnapshotService {
                 Long primaryDeptId,
                 Set<Long> deptIds,
                 Set<Long> descendantDeptIds,
-                List<DataPermissionRule> dataScopes) {
+                List<DataPermissionRule> dataScopes,
+                String defaultHomePath) {
             this.version = version;
             this.permissions = permissions;
             this.roleIds = roleIds;
@@ -504,6 +539,7 @@ public class PermissionSnapshotService {
             this.deptIds = deptIds;
             this.descendantDeptIds = descendantDeptIds;
             this.dataScopes = dataScopes;
+            this.defaultHomePath = defaultHomePath;
         }
 
         public static PermissionSnapshot empty() {
@@ -568,6 +604,14 @@ public class PermissionSnapshotService {
 
         public void setDataScopes(List<DataPermissionRule> dataScopes) {
             this.dataScopes = dataScopes;
+        }
+
+        public String getDefaultHomePath() {
+            return StringUtils.hasText(defaultHomePath) ? defaultHomePath : DEFAULT_HOME_PATH;
+        }
+
+        public void setDefaultHomePath(String defaultHomePath) {
+            this.defaultHomePath = defaultHomePath;
         }
     }
 

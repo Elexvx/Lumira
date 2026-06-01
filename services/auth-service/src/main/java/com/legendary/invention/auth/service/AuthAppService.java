@@ -496,7 +496,8 @@ public class AuthAppService {
                 snapshot.deptIds(),
                 snapshot.descendantDeptIds(),
                 snapshot.dataScopes(),
-                requiresInitialAdminPasswordChange(user)
+                requiresInitialAdminPasswordChange(user),
+                snapshot.defaultHomePath()
         );
     }
 

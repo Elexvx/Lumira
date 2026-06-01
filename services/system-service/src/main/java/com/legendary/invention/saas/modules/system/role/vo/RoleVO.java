@@ -9,6 +9,7 @@ public class RoleVO {
     private String roleCode;
     private String roleName;
     private String roleType;
+    private String defaultHomePath;
     private Integer permissionCount;
     private Integer userCount;
     private Boolean defaultRegistrationRole;
@@ -25,6 +26,8 @@ public class RoleVO {
     public void setRoleName(String roleName) { this.roleName = roleName; }
     public String getRoleType() { return roleType; }
     public void setRoleType(String roleType) { this.roleType = roleType; }
+    public String getDefaultHomePath() { return defaultHomePath; }
+    public void setDefaultHomePath(String defaultHomePath) { this.defaultHomePath = defaultHomePath; }
     public Integer getPermissionCount() { return permissionCount; }
     public void setPermissionCount(Integer permissionCount) { this.permissionCount = permissionCount; }
     public Integer getUserCount() { return userCount; }

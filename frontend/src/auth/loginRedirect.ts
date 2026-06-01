@@ -69,9 +69,14 @@ export const resolveAuthorizedLoginRedirectTarget = (
   menuTree?: MenuNode[],
   fallback = DEFAULT_HOME_PATH,
 ) => {
-  const redirectTarget = resolveLoginRedirectTarget(search, fallback);
+  const preferredFallback = currentUser.defaultHomePath?.trim() || fallback;
+  const redirectTarget = resolveLoginRedirectTarget(search, preferredFallback);
   if (canVisitPath(redirectTarget, currentUser)) {
     return redirectTarget;
+  }
+
+  if (canVisitPath(preferredFallback, currentUser)) {
+    return preferredFallback;
   }
 
   const menuTarget = findFirstAccessibleMenuPath(menuTree, currentUser);

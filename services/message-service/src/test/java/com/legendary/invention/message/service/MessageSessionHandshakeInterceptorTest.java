@@ -90,7 +90,8 @@ class MessageSessionHandshakeInterceptorTest {
                 List.of(),
                 List.of(),
                 List.of(),
-                false
+                false,
+                "/dashboard/home"
         );
     }
 }

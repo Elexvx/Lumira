@@ -54,6 +54,13 @@ export const buildRoleColumns = ({
     },
   },
   {
+    title: '默认访问页',
+    dataIndex: 'defaultHomePath',
+    search: false,
+    responsive: ['lg', 'xl', 'xxl'],
+    render: (_, record) => record.defaultHomePath || '/dashboard/home',
+  },
+  {
     title: '权限数',
     dataIndex: 'permissionCount',
     search: false,
@@ -116,6 +123,7 @@ export const roleDetailColumns: ProDescriptionsItemProps<RoleDetail>[] = [
     dataIndex: 'roleType',
     renderText: (value) => ROLE_TYPE_LABEL_MAP[String(value)] || String(value || '-'),
   },
+  { title: '默认访问页', dataIndex: 'defaultHomePath' },
   { title: '权限数', dataIndex: 'permissionCount' },
   { title: '用户数', dataIndex: 'userCount' },
 ];

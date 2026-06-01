@@ -265,6 +265,7 @@ const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => 
     sessionVersion: storedSessionMeta?.sessionVersion,
     permissions: storedCurrentUser?.permissions || [],
     requiresPasswordChange: loginResponse.requiresPasswordChange ?? null,
+    defaultHomePath: storedCurrentUser?.defaultHomePath || '/dashboard/home',
   };
 };
 

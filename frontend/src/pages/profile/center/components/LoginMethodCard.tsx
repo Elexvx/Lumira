@@ -94,7 +94,7 @@ export const LoginMethodCard = ({
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前暂无可绑定登录方式" />
         )}
 
-        <Divider orientation="left" plain style={{ margin: 0 }}>
+        <Divider plain style={{ margin: 0 }}>
           通行密钥
         </Divider>
         {passkeys.length ? (

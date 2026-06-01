@@ -34,6 +34,7 @@ public class SystemRoleManagementAppService {
     private static final Long DEFAULT_PUBLIC_TENANT_ID = com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
+    private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
             "ai:employee:",
@@ -99,7 +100,7 @@ public class SystemRoleManagementAppService {
         }
         String selectSql = """
                 select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                       r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                       r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                 """ + baseSql + " order by r.id desc";
         PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
         String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode(tenantId);
@@ -119,7 +120,7 @@ public class SystemRoleManagementAppService {
         SystemVO.RoleVO role = queryOne(
                 """
                         select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_role r
                         where r.id = ? and r.tenant_id = ? and r.deleted = 0
                         """,
@@ -146,7 +147,7 @@ public class SystemRoleManagementAppService {
         SystemVO.RoleVO role = queryOne(
                 """
                         select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_role r
                         where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
                         order by r.id desc
@@ -160,7 +161,7 @@ public class SystemRoleManagementAppService {
             role = queryOne(
                     """
                             select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                                   r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                                   r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                             from sys_role r
                             where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
                             order by r.id desc
@@ -183,7 +184,7 @@ public class SystemRoleManagementAppService {
         SystemVO.RoleVO role = queryOne(
                 """
                         select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
+                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_role r
                         where r.id = ? and r.tenant_id = ? and r.deleted = 0
                         """,
@@ -281,13 +282,14 @@ public class SystemRoleManagementAppService {
         if (roleId == null) {
             jdbcTemplate.update(
                     """
-                            insert into sys_role (tenant_id, role_code, role_name, role_type, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_role (tenant_id, role_code, role_name, role_type, default_home_path, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     tenantId,
                     request.getRoleCode(),
                     request.getRoleName(),
                     request.getRoleType(),
+                    normalizeDefaultHomePath(request.getDefaultHomePath()),
                     operatorId,
                     operatorId
             );
@@ -301,18 +303,30 @@ public class SystemRoleManagementAppService {
         jdbcTemplate.update(
                 """
                         update sys_role
-                        set role_code = ?, role_name = ?, role_type = ?, updated_by = ?, updated_at = ?
+                        set role_code = ?, role_name = ?, role_type = ?, default_home_path = ?, updated_by = ?, updated_at = ?
                         where id = ? and tenant_id = ? and deleted = 0
                         """,
                 request.getRoleCode(),
                 request.getRoleName(),
                 request.getRoleType(),
+                normalizeDefaultHomePath(request.getDefaultHomePath()),
                 operatorId,
                 LocalDateTime.now(),
                 roleId,
                 tenantId
         );
         return roleId;
+    }
+
+    private String normalizeDefaultHomePath(String defaultHomePath) {
+        if (!StringUtils.hasText(defaultHomePath)) {
+            return DEFAULT_HOME_PATH;
+        }
+        String normalized = defaultHomePath.trim();
+        if (!normalized.startsWith("/") || normalized.startsWith("//") || normalized.length() > 255) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "默认访问页面必须是有效站内路径");
+        }
+        return normalized;
     }
 
     private void replaceRolePermissions(Long tenantId, Long roleId, List<String> permissionKeys, Long operatorId) {

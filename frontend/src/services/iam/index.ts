@@ -14,6 +14,7 @@ export interface RoleMutationPayload {
   roleCode: string;
   roleName: string;
   roleType: string;
+  defaultHomePath?: string;
   permissionKeys?: string[];
   dataScopes?: RoleDataScope[];
 }

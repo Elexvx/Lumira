@@ -174,6 +174,8 @@ export const WechatConfigTab = ({
   canManageSettings,
   wechatAppSecretConfigured
 }: WechatTabProps) => {
+  const wechatEnabled = Boolean(Form.useWatch('enabled', wechatFormProps.form));
+
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Form {...wechatFormProps}>

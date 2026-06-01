@@ -23,6 +23,7 @@ public class CurrentUserVO {
     private String permissionsVersion;
     private Integer sessionVersion;
     private List<String> permissions;
+    private String defaultHomePath;
 
     public Long getUserId() {
         return userId;
@@ -174,6 +175,14 @@ public class CurrentUserVO {
 
     public void setPermissions(List<String> permissions) {
         this.permissions = permissions;
+    }
+
+    public String getDefaultHomePath() {
+        return defaultHomePath;
+    }
+
+    public void setDefaultHomePath(String defaultHomePath) {
+        this.defaultHomePath = defaultHomePath;
     }
 
     public static class RoleOptionVO {

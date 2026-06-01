@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { DEFAULT_HOME_PATH } from '../src/app.constants';
-import { resolveLoginRedirectTarget, resolveRouteAccessStatus } from '../src/auth/loginRedirect';
+import { resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget, resolveRouteAccessStatus } from '../src/auth/loginRedirect';
 import type { CurrentUser } from '../src/types/api';
 
 const run = () => {
@@ -39,6 +39,20 @@ const run = () => {
     resolveRouteAccessStatus('/not-a-real-route', ordinaryUser),
     'unknown',
     'unknown routes should remain available for the 404 route',
+  );
+
+  const dashboardUser: CurrentUser = {
+    userId: 11,
+    username: 'dashboard',
+    sessionId: 'session-dashboard',
+    permissions: ['dashboard:view'],
+    defaultHomePath: '/dashboard/home',
+  };
+
+  assert.equal(
+    resolveAuthorizedLoginRedirectTarget('?redirect=%2Fsettings%2Fprofile-fields', dashboardUser, []),
+    '/dashboard/home',
+    'denied redirect should fall back to the role default home when it is accessible',
   );
 
   console.log('login-redirect-target-smoke: ok');

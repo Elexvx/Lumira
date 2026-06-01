@@ -547,6 +547,7 @@ CREATE TABLE IF NOT EXISTS `sys_role` (
   `role_code` varchar(64) NOT NULL,
   `role_name` varchar(128) NOT NULL,
   `role_type` varchar(32) NOT NULL DEFAULT 'CUSTOM',
+  `default_home_path` varchar(255) NOT NULL DEFAULT '/dashboard/home',
   `created_by` bigint DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
@@ -555,7 +556,7 @@ CREATE TABLE IF NOT EXISTS `sys_role` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_role_code` (`tenant_id`,`role_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-INSERT INTO `sys_role` (`id`, `tenant_id`, `role_code`, `role_name`, `role_type`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES (2001,1001,'ADMIN','平台管理员','BUILTIN',0,'2026-03-30 14:28:54',0,'2026-03-30 14:28:54',0),(2003,1001,'commonuser','普通用户','CUSTOM',1001,'2026-04-23 02:09:41',1001,'2026-04-25 09:04:23',0);
+INSERT INTO `sys_role` (`id`, `tenant_id`, `role_code`, `role_name`, `role_type`, `default_home_path`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES (2001,1001,'ADMIN','平台管理员','BUILTIN','/dashboard/home',0,'2026-03-30 14:28:54',0,'2026-03-30 14:28:54',0),(2003,1001,'commonuser','普通用户','CUSTOM','/dashboard/home',1001,'2026-04-23 02:09:41',1001,'2026-04-25 09:04:23',0);
 CREATE TABLE IF NOT EXISTS `sys_role_permission` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `tenant_id` bigint NOT NULL,

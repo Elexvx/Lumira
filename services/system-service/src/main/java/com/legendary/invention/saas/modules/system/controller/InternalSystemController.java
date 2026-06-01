@@ -127,7 +127,8 @@ public class InternalSystemController implements com.legendary.invention.api.cli
                 snapshot.getPrimaryDeptId(),
                 snapshot.getDeptIds().stream().toList(),
                 snapshot.getDescendantDeptIds().stream().toList(),
-                snapshot.getDataScopes()
+                snapshot.getDataScopes(),
+                snapshot.getDefaultHomePath()
         );
     }
 

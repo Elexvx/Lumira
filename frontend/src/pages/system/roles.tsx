@@ -13,6 +13,7 @@ import { buildRoleColumns, roleDetailColumns } from '@/pages/system/roles/column
 import { RolePermissionEditor } from '@/pages/system/roles/components/RolePermissionEditor';
 import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermissionEditor';
 import { buildRolePermissionDisplayGroups } from '@/pages/system/rolesPermissionTree';
+import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree';
 import { iamService } from '@/services/iam';
 import type { RoleDataScope, RoleDetail, RoleRecord } from '@/types/api';
 import { confirmAction } from '@/utils/confirm';
@@ -35,6 +36,26 @@ const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc
   return acc;
 }, {});
 type RoleEditorMode = 'create' | 'edit' | 'permissions';
+
+const DEFAULT_HOME_PATH = '/dashboard/home';
+
+const collectDefaultHomeOptions = (nodes: NormalizedPermissionTreeRecord[] = []) => {
+  const options: { label: string; value: string }[] = [];
+  const seen = new Set<string>();
+  const walk = (items: NormalizedPermissionTreeRecord[]) => {
+    items.forEach((item) => {
+      if (item.nodeType === 'PAGE' && item.selectable && item.routePath && !seen.has(item.routePath)) {
+        seen.add(item.routePath);
+        options.push({ label: `${item.pageName}（${item.routePath}）`, value: item.routePath });
+      }
+      if (item.children?.length) {
+        walk(item.children);
+      }
+    });
+  };
+  walk(nodes);
+  return options;
+};
 
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
@@ -71,7 +92,7 @@ const RoleManagementPage = () => {
   const isPermissionOnlyEditor = roleEditorMode === 'permissions';
   const editorFormProps = useStandardFormProps({
     form: editorForm,
-    initialValues: { roleType: 'CUSTOM', permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES },
+    initialValues: { roleType: 'CUSTOM', defaultHomePath: DEFAULT_HOME_PATH, permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES },
     onValuesChange: () => setEditorDirty(true),
     className: 'role-editor-form',
   });
@@ -93,6 +114,7 @@ const RoleManagementPage = () => {
       ),
     [permissionEditor.pageTreeData, permissionEditor.permissionCatalogMap, selectedRoleDetail?.permissionKeys],
   );
+  const defaultHomeOptions = useMemo(() => collectDefaultHomeOptions(permissionEditor.pageTreeData), [permissionEditor.pageTreeData]);
 
   const permissionDetailTreeData = useMemo<TreeProps['treeData']>(
     () =>
@@ -154,7 +176,7 @@ const RoleManagementPage = () => {
     setEditorDirty(false);
     permissionEditor.setEditorLoading(false);
     editorForm.resetFields();
-    editorForm.setFieldsValue({ roleType: 'CUSTOM', permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES });
+    editorForm.setFieldsValue({ roleType: 'CUSTOM', defaultHomePath: DEFAULT_HOME_PATH, permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES });
   };
 
   const openDefaultRoleModal = async () => {
@@ -202,6 +224,7 @@ const RoleManagementPage = () => {
       const permissionKeys = permissionEditor.sanitizePermissionKeys(detail.permissionKeys || []);
       editorForm.setFieldsValue({
         ...detail,
+        defaultHomePath: detail.defaultHomePath || DEFAULT_HOME_PATH,
         permissionKeys,
         dataScopes: detail.dataScopes?.length ? detail.dataScopes : DEFAULT_DATA_SCOPES,
       });
@@ -240,6 +263,7 @@ const RoleManagementPage = () => {
       const payload = {
         ...values,
         roleCode: typeof values.roleCode === 'string' ? values.roleCode.trim() : values.roleCode,
+        defaultHomePath: typeof values.defaultHomePath === 'string' ? values.defaultHomePath.trim() : DEFAULT_HOME_PATH,
         permissionKeys,
         dataScopes: values.dataScopes?.length ? values.dataScopes : DEFAULT_DATA_SCOPES,
       };
@@ -403,6 +427,19 @@ const RoleManagementPage = () => {
           </Form.Item>
           <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
             <Select disabled={isPermissionOnlyEditor} options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
+          </Form.Item>
+          <Form.Item
+            name="defaultHomePath"
+            label="默认访问页面"
+            rules={[{ required: true, message: '请选择默认访问页面' }]}
+          >
+            <Select
+              showSearch
+              disabled={isPermissionOnlyEditor}
+              optionFilterProp="label"
+              options={defaultHomeOptions}
+              placeholder="请选择登录后的默认访问页面"
+            />
           </Form.Item>
           <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
           <Form.Item

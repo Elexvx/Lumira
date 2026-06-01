@@ -229,6 +229,7 @@ export interface CurrentUser {
   descendantDeptIds?: number[];
   dataScopes?: RoleDataScope[];
   requiresPasswordChange?: boolean | null;
+  defaultHomePath?: string | null;
 }
 
 export interface CurrentUserRoleOption {
@@ -1333,6 +1334,7 @@ export interface RoleRecord {
   roleCode: string;
   roleName: string;
   roleType: string;
+  defaultHomePath?: string | null;
   permissionCount?: number;
   userCount?: number;
   defaultRegistrationRole?: boolean;

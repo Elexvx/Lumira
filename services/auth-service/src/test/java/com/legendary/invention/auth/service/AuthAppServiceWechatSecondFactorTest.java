@@ -69,7 +69,7 @@ class AuthAppServiceWechatSecondFactorTest {
                 null,
                 "zh-CN"
         );
-        PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(1L), null, List.of(), List.of(), List.of());
+        PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(1L), null, List.of(), List.of(), List.of(), "/dashboard/home");
         VerificationProviderDTO provider = new VerificationProviderDTO();
         provider.setFactorCode("totp");
         provider.setFactorName("2FA");

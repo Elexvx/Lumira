@@ -16,6 +16,10 @@ public class RoleUpsertRequest {
     private String roleName;
     @NotBlank
     private String roleType;
+    @NotBlank
+    @Size(max = 255, message = "默认访问页面长度不能超过255个字符")
+    @Pattern(regexp = "^/[A-Za-z0-9/_?=&.:%-]*$", message = "默认访问页面必须是站内路径")
+    private String defaultHomePath = "/dashboard/home";
     private List<String> permissionKeys;
     private List<RoleDataScopeRequest> dataScopes;
 
@@ -25,6 +29,8 @@ public class RoleUpsertRequest {
     public void setRoleName(String roleName) { this.roleName = roleName; }
     public String getRoleType() { return roleType; }
     public void setRoleType(String roleType) { this.roleType = roleType; }
+    public String getDefaultHomePath() { return defaultHomePath; }
+    public void setDefaultHomePath(String defaultHomePath) { this.defaultHomePath = defaultHomePath == null ? null : defaultHomePath.trim(); }
     public List<String> getPermissionKeys() { return permissionKeys; }
     public void setPermissionKeys(List<String> permissionKeys) { this.permissionKeys = permissionKeys; }
     public List<RoleDataScopeRequest> getDataScopes() { return dataScopes; }

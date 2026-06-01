@@ -89,7 +89,7 @@ class AuthAppServiceTest {
                 null,
                 "zh-CN"
         );
-        PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(), null, List.of(), List.of(), List.of());
+        PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(), null, List.of(), List.of(), List.of(), "/dashboard/home");
         LoginResponseDTO.SecondFactorOptionDTO totpOption = new LoginResponseDTO.SecondFactorOptionDTO();
         totpOption.setFactorCode("totp");
         totpOption.setFactorName("2FA");

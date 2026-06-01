@@ -2234,6 +2234,7 @@ public class SystemManagementAppService {
         response.setPermissionsVersion(snapshot.getVersion());
         response.setSessionVersion(currentUser.getSessionVersion());
         response.setPermissions(snapshot.getPermissionList());
+        response.setDefaultHomePath(snapshot.getDefaultHomePath());
         return response;
     }
 
