@@ -214,6 +214,7 @@ const UserManagementPage = () => {
     setSaving(true);
     try {
       const values = await editorForm.validateFields();
+      const isCreating = !drawer.editingId;
       const payload = {
         ...values,
         birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
@@ -231,7 +232,11 @@ const UserManagementPage = () => {
       }
 
       drawer.close();
-      reloadTable();
+      if (isCreating && selectedDepartmentId !== null) {
+        setSelectedDepartmentId(null);
+      } else {
+        reloadTable();
+      }
       await loadDepartments();
     } finally {
       setSaving(false);

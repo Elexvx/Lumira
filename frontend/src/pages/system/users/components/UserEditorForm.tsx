@@ -19,10 +19,10 @@ export const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOp
     <Form.Item name="roleIds" label="角色" rules={[{ required: true, message: '请选择角色' }]} extra="可为用户分配一个或多个角色">
       <Select mode="multiple" allowClear options={roleOptions} placeholder="请选择角色" />
     </Form.Item>
-    <Form.Item name="deptIds" label="所属部门" extra="部门用于本部门、本部门及下级等数据权限范围">
+    <Form.Item name="deptIds" label="所属部门" rules={[{ required: true, message: '请选择所属部门' }]} extra="部门用于本部门、本部门及下级等数据权限范围">
       <Select mode="multiple" allowClear options={departmentOptions} placeholder="请选择部门" />
     </Form.Item>
-    <Form.Item name="primaryDeptId" label="主部门">
+    <Form.Item name="primaryDeptId" label="主部门" rules={[{ required: true, message: '请选择主部门' }]}>
       <Select allowClear options={departmentOptions} placeholder="请选择主部门" />
     </Form.Item>
     <Form.Item
