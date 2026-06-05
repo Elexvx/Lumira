@@ -12,6 +12,7 @@ import type {
   WechatLoginSettings,
 } from '@/types/api';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { useAuthenticatorConfigDrawer } from './useAuthenticatorConfigDrawer';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -324,15 +325,17 @@ const buildAuthenticatorRows = ({
 
 const buildAuthenticatorOrderColumn = ({
   tokenColorTextSecondary,
+  isMobile,
 }: {
   tokenColorTextSecondary: string;
+  isMobile: boolean;
 }): ProColumns<AuthenticatorRecord> => ({
   title: '',
   dataIndex: 'order',
-  width: 96,
+  width: 'var(--saas-spacing-96)',
   search: false,
   render: (_, record) => (
-    <Space size={16}>
+    <Space size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)}>
       <HolderOutlined style={{ color: tokenColorTextSecondary }} />
       <Typography.Text>{record.order}</Typography.Text>
     </Space>
@@ -342,14 +345,14 @@ const buildAuthenticatorOrderColumn = ({
 const buildAuthenticatorIdentityColumn = (): ProColumns<AuthenticatorRecord> => ({
   title: '认证标识',
   dataIndex: 'identifier',
-  width: 180,
+  width: 'var(--saas-spacing-180)',
   search: false,
 });
 
 const buildAuthenticatorTypeColumn = (): ProColumns<AuthenticatorRecord> => ({
   title: '认证类型',
   dataIndex: 'type',
-  width: 160,
+  width: 'var(--saas-spacing-160)',
   search: false,
   render: (_, record) => <Tag>{record.type}</Tag>,
 });
@@ -357,7 +360,7 @@ const buildAuthenticatorTypeColumn = (): ProColumns<AuthenticatorRecord> => ({
 const buildAuthenticatorTitleColumn = (): ProColumns<AuthenticatorRecord> => ({
   title: '标题',
   dataIndex: 'title',
-  width: 180,
+  width: 'var(--saas-spacing-180)',
   search: false,
 });
 
@@ -368,7 +371,7 @@ const buildAuthenticatorStatusColumn = ({
 }): ProColumns<AuthenticatorRecord> => ({
   title: '启用',
   dataIndex: 'enabled',
-  width: 120,
+  width: 'var(--saas-spacing-120)',
   align: 'center',
   search: false,
   render: (_, record) => (record.enabled ? <CheckOutlined style={{ color: tokenColorSuccess }} /> : null),
@@ -460,7 +463,7 @@ const buildAuthenticatorActionColumn = ({
   title: '操作',
   valueType: 'option',
   fixed: 'right',
-  width: 240,
+  width: 'var(--saas-spacing-240)',
   render: (_, record) => (
     <TableActionBar
       isMobile={isMobile}
@@ -486,7 +489,7 @@ const buildAuthenticatorColumns = ({
   onOpenConfigDrawer,
   onDeleteAuthenticator,
 }: BuildAuthenticatorColumnsParams): ProColumns<AuthenticatorRecord>[] => [
-  buildAuthenticatorOrderColumn({ tokenColorTextSecondary }),
+  buildAuthenticatorOrderColumn({ tokenColorTextSecondary, isMobile }),
   buildAuthenticatorIdentityColumn(),
   buildAuthenticatorTypeColumn(),
   buildAuthenticatorTitleColumn(),

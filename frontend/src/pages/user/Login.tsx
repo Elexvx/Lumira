@@ -4,8 +4,11 @@ import { type CSSProperties } from 'react';
 import { LoginFormPage } from '@ant-design/pro-components';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
+import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
+import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import './Login.css';
 
 const INITIAL_PASSWORD = '123456';
@@ -103,7 +106,7 @@ const LoginPageMainSection = ({
       }}
       containerStyle={{
         width: '100%',
-        maxWidth: 536,
+        maxWidth: 'var(--saas-spacing-536)',
         boxSizing: 'border-box',
       }}
       style={{
@@ -111,7 +114,7 @@ const LoginPageMainSection = ({
         minHeight: '100%',
         background: 'transparent',
       }}
-      mainStyle={{ width: '100%', maxWidth: 440, margin: '0 auto', background: 'transparent' }}
+      mainStyle={{ width: '100%', maxWidth: 'var(--saas-spacing-440)', margin: '0 auto', background: 'transparent' }}
     >
       <LoginFormFields
         activeLoginMode={activeLoginMode}
@@ -146,6 +149,8 @@ const LoginPageMainSection = ({
 
 const Login = () => {
   const loginFlow = useLoginFlow();
+  const responsive = useResponsive();
+  const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const loginSubTitle =
     loginFlow.activeLoginMode === 'password'
       ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
@@ -202,7 +207,7 @@ const Login = () => {
         open={loginFlow.dialogState.agreementPreviewOpen}
         onCancel={() => loginFlow.dialogState.setAgreementPreviewOpen(false)}
         footer={null}
-        width={720}
+        width={resolveResponsiveValue(AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT, responsive.isMobile)}
         centered
         title={loginFlow.dialogState.agreementPreviewTitle}
         destroyOnHidden
@@ -230,7 +235,7 @@ const Login = () => {
           type="warning"
           showIcon
           message={formatMessage({ id: 'page.login.initialPasswordChange.notice', defaultMessage: '当前账号仍在使用初始密码，必须修改后才能进入系统。' })}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: alertBottomGap }}
         />
         <Form<ForcedPasswordChangeFormValues>
           form={loginFlow.forcedPasswordChangeForm}

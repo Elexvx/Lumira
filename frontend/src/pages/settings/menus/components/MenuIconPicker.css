@@ -7,23 +7,23 @@
   display: inline-flex;
   max-width: 100%;
   border: 1px solid var(--ant-color-border);
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
   overflow: hidden;
   background: var(--ant-color-bg-container);
 }
 
 .saas-menu-icon-picker__button.ant-btn {
-  width: 42px;
-  min-width: 42px;
-  height: 36px;
+  width: var(--saas-spacing-42);
+  min-width: var(--saas-spacing-42);
+  height: var(--saas-spacing-36);
   border: 0;
   border-radius: 0;
 }
 
 .saas-menu-icon-picker__clear.ant-btn {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
+  width: var(--saas-spacing-36);
+  min-width: var(--saas-spacing-36);
+  height: var(--saas-spacing-36);
   border-width: 0 0 0 1px;
   border-color: var(--ant-color-border-secondary);
   border-radius: 0;
@@ -34,36 +34,36 @@
 }
 
 .saas-menu-icon-picker__overlay {
-  width: min(420px, calc(100vw - 48px));
+  width: min(var(--saas-spacing-420), calc(100vw - var(--saas-spacing-lg)));
 }
 
 .saas-menu-icon-picker__search {
-  margin-bottom: 10px;
+  margin-bottom: calc(var(--saas-spacing-sm) - var(--saas-spacing-xxs));
 }
 
 .saas-menu-icon-picker__styles {
-  margin-bottom: 12px;
+  margin-bottom: var(--saas-spacing-sm);
 }
 
 .saas-menu-icon-picker__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 28px);
+  grid-template-columns: repeat(auto-fill, var(--saas-spacing-28));
   justify-content: start;
-  gap: 10px 12px;
-  max-height: 280px;
+  gap: calc(var(--saas-spacing-sm) - var(--saas-spacing-xxs)) var(--saas-spacing-sm);
+  max-height: var(--saas-spacing-280);
   overflow: auto;
-  padding-right: 4px;
+  padding-right: var(--saas-spacing-2xs);
 }
 
 .saas-menu-icon-picker__option {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: var(--saas-spacing-28);
+  height: var(--saas-spacing-28);
   padding: 0;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--saas-spacing-6);
   color: var(--ant-color-text);
   background: transparent;
   cursor: pointer;
@@ -83,8 +83,8 @@
 }
 
 .saas-menu-icon-picker-popover .ant-popover-inner {
-  padding: 14px 16px;
-  border-radius: 8px;
+  padding: var(--saas-spacing-14) var(--saas-spacing-sm);
+  border-radius: var(--saas-card-radius);
 }
 
 .saas-menu-icon-picker-popover .ant-popover-arrow {
@@ -96,7 +96,7 @@
   max-width: 100%;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: var(--saas-spacing-6);
 }
 
 .saas-menu-icon-preview__icon {

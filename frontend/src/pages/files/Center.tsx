@@ -139,14 +139,14 @@ const buildFileObjectColumns = ({
     {
       title: formatMessage({ id: 'system.files.field.fileName', defaultMessage: 'File name' }),
       dataIndex: 'originalFileName',
-      width: 260,
+      width: 'var(--saas-spacing-260)',
       ellipsis: true,
       render: (_: unknown, record: FileObjectRecord) => (
-        <Space size={APP_SPACING.tagWrapGap.desktop} wrap={false}>
+        <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap={false}>
           <FileOutlined />
           <Typography.Link
             title={record.originalFileName}
-            style={{ maxWidth: isMobile ? 180 : 300 }}
+            style={{ maxWidth: isMobile ? 'var(--saas-spacing-180)' : 'var(--saas-spacing-300)' }}
             ellipsis
             onClick={() => void onOpenPreviewDrawer(record)}
           >
@@ -158,13 +158,13 @@ const buildFileObjectColumns = ({
     {
       title: formatMessage({ id: 'system.files.field.type', defaultMessage: 'Type' }),
       dataIndex: 'fileExtension',
-      width: 100,
+      width: 'var(--saas-spacing-100)',
       render: (_: unknown, record: FileObjectRecord) => <Tag>{resolveFileTypeLabel(record.fileExtension)}</Tag>,
     },
     {
       title: formatMessage({ id: 'system.files.field.size', defaultMessage: 'Size' }),
       dataIndex: 'fileSizeBytes',
-      width: 110,
+      width: 'var(--saas-spacing-110)',
       sorter: true,
       render: (_: unknown, record: FileObjectRecord) => record.fileSizeLabel || formatFileSize(record.fileSizeBytes),
     },
@@ -172,7 +172,7 @@ const buildFileObjectColumns = ({
       title: formatMessage({ id: 'system.files.field.category', defaultMessage: 'Category' }),
       key: 'categoryColumn',
       dataIndex: 'category',
-      width: 160,
+      width: 'var(--saas-spacing-160)',
       ...(isMobile ? { responsive: ['md', 'lg', 'xl', 'xxl'] as const } : {}),
       ellipsis: true,
       render: (_: unknown, record: FileObjectRecord) => (record.category ? <Tag color="blue">{record.category}</Tag> : '-'),
@@ -180,7 +180,7 @@ const buildFileObjectColumns = ({
     {
       title: formatMessage({ id: 'system.files.field.tags', defaultMessage: 'Tags' }),
       dataIndex: 'tags',
-      width: 180,
+      width: 'var(--saas-spacing-180)',
       responsive: ['md', 'lg', 'xl', 'xxl'],
       ellipsis: true,
       render: (_: unknown, record: FileObjectRecord) => renderTags(record.tags),
@@ -188,7 +188,7 @@ const buildFileObjectColumns = ({
     {
       title: formatMessage({ id: 'system.files.field.uploader', defaultMessage: 'Uploader' }),
       dataIndex: 'uploadedByName',
-      width: 120,
+      width: 'var(--saas-spacing-120)',
       responsive: ['md', 'lg', 'xl', 'xxl'],
       ellipsis: true,
       render: (_: unknown, record: FileObjectRecord) => record.uploadedByName || '-',
@@ -196,7 +196,7 @@ const buildFileObjectColumns = ({
     {
       title: formatMessage({ id: 'system.files.field.uploadTime', defaultMessage: 'Upload time' }),
       dataIndex: 'createdAt',
-      width: 170,
+      width: 'var(--saas-spacing-170)',
       responsive: ['md', 'lg', 'xl', 'xxl'],
       sorter: true,
       render: (_: unknown, record: FileObjectRecord) => formatDateTime(record.createdAt),
@@ -207,7 +207,7 @@ const buildFileObjectColumns = ({
     title: formatMessage({ id: 'system.files.field.actions', defaultMessage: 'Actions' }),
     valueType: 'option',
     fixed: 'right',
-    width: 220,
+    width: 'var(--saas-spacing-220)',
     render: (_: unknown, record: FileObjectRecord) => (
       <TableActionBar
         isMobile={isMobile}
@@ -269,7 +269,10 @@ const FileStorageDrawer = ({
   renameStrategyOptions: Array<{ label: string; value: FileRenameStrategy }>;
   onClose: () => void;
   onSave: () => void;
-}) => (
+}) => {
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+
+  return (
   <ManagementDrawer
     title={mode === 'edit' ? `编辑 - ${editingStorageSpace?.title || '存储空间'}` : '新增存储空间'}
     open={open}
@@ -326,7 +329,7 @@ const FileStorageDrawer = ({
           <Radio.Group options={renameStrategyOptions} />
         </Form.Item>
         <Form.Item name="maxFileSizeMb" label="文件大小限制" rules={[{ required: true, message: '请输入文件大小限制' }]}>
-          <InputNumber min={1} addonAfter="MB" style={{ width: 220 }} />
+          <InputNumber min={1} addonAfter="MB" style={{ width: 'var(--saas-spacing-220)' }} />
         </Form.Item>
         <Form.Item name="allowedMimeTypes" label="允许的文件类型（MIME 格式）">
           <Input placeholder="*" />
@@ -443,8 +446,8 @@ const FileUploadDrawer = ({
     >
       <Form form={form} layout="vertical">
       <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
-          <Card title="Select files" bodyStyle={{ padding: 0 }} style={{ borderRadius: 8 }}>
-            <Upload.Dragger {...uploadDraggerProps} style={{ borderRadius: 8 }}>
+          <Card title="Select files" bodyStyle={{ padding: 0 }} style={{ borderRadius: 'var(--saas-card-radius)' }}>
+            <Upload.Dragger {...uploadDraggerProps} style={{ borderRadius: 'var(--saas-card-radius)' }}>
               <p className="ant-upload-drag-icon">
                 <InboxOutlined />
               </p>
@@ -528,7 +531,7 @@ const FilePreviewDrawer = ({
     }
   >
     {record ? (
-      <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
+      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
         <Descriptions bordered column={isMobile ? 1 : 2} size="small">
           <Descriptions.Item label="File name">{record.originalFileName}</Descriptions.Item>
           <Descriptions.Item label="Type">{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
@@ -552,10 +555,21 @@ const FilePreviewDrawer = ({
           spinning={loading || textLoading || fileLoading}
           tip={fileLoading ? 'Loading file preview' : textLoading ? 'Loading text content' : 'Loading file details'}
         >
-          <div style={{ minHeight: isMobile ? 240 : 520, padding: APP_SPACING.sectionGap.desktop, background: backgroundColor }}>
+          <div
+            style={{
+              minHeight: isMobile ? 'var(--saas-spacing-240)' : 'var(--saas-spacing-520)',
+              padding: sectionGap,
+              background: backgroundColor,
+            }}
+          >
             {previewMode === 'IMAGE' ? (
               filePreviewUrl ? (
-                <Image src={filePreviewUrl} alt={record.originalFileName} preview={false} style={{ width: '100%', maxHeight: isMobile ? 360 : 560, objectFit: 'contain' }} />
+                <Image
+                  src={filePreviewUrl}
+                  alt={record.originalFileName}
+                  preview={false}
+                  style={{ width: '100%', maxHeight: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)', objectFit: 'contain' }}
+                />
               ) : null
             ) : null}
             {previewMode === 'PDF' ? (
@@ -563,20 +577,20 @@ const FilePreviewDrawer = ({
                 <iframe
                   title={record.originalFileName}
                   src={`${filePreviewUrl}#view=FitH`}
-                  style={{ width: '100%', height: isMobile ? 360 : 560, border: 0, background: containerBackgroundColor }}
+                  style={{ width: '100%', height: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)', border: 0, background: containerBackgroundColor }}
                 />
               ) : null
             ) : null}
             {previewMode === 'TEXT' ? (
               <Typography.Paragraph
-                style={{
-                  marginBottom: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  maxHeight: isMobile ? 360 : 560,
-                  overflow: 'auto',
-                }}
-              >
+                  style={{
+                    marginBottom: 0,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    maxHeight: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)',
+                    overflow: 'auto',
+                  }}
+                >
                 {previewText || 'No text content yet'}
               </Typography.Paragraph>
             ) : null}
@@ -596,7 +610,8 @@ const FilePreviewDrawer = ({
       <Empty description="No file details yet" />
     )}
   </ManagementDrawer>
-);
+);}
+;
 
 const SystemFilesPage = () => {
   const { token } = theme.useToken();
@@ -746,7 +761,7 @@ const SystemFilesPage = () => {
       {
         title: '标题',
         dataIndex: 'title',
-        width: 260,
+        width: 'var(--saas-spacing-260)',
         render: (_, record) => (
           <Typography.Link onClick={() => enterStorageSpace(record)}>
             {record.title}
@@ -756,37 +771,37 @@ const SystemFilesPage = () => {
       {
         title: '存储空间标识',
         dataIndex: 'storageKey',
-        width: 220,
+        width: 'var(--saas-spacing-220)',
       },
       {
         title: '类型',
         dataIndex: 'provider',
-        width: 160,
+        width: 'var(--saas-spacing-160)',
         render: (_, record) => <Tag>{STORAGE_PROVIDER_LABELS[record.provider] || record.provider}</Tag>,
       },
       {
         title: '默认存储空间',
         dataIndex: 'defaultStorage',
-        width: 160,
+        width: 'var(--saas-spacing-160)',
         render: (_, record) => (record.defaultStorage ? <span style={{ color: token.colorSuccess, fontSize: 20 }}>✓</span> : '-'),
       },
       {
         title: '文件数',
         dataIndex: 'fileCount',
-        width: 120,
+        width: 'var(--saas-spacing-120)',
         render: (_, record) => record.fileCount ?? 0,
       },
       {
         title: '容量',
         dataIndex: 'totalSizeLabel',
-        width: 120,
+        width: 'var(--saas-spacing-120)',
         render: (_, record) => record.totalSizeLabel || formatFileSize(record.totalSizeBytes),
       },
       {
         title: '操作',
         valueType: 'option',
         fixed: 'right',
-        width: 180,
+        width: 'var(--saas-spacing-180)',
         render: (_, record) => (
           <TableActionBar
             isMobile={responsive.isMobile}

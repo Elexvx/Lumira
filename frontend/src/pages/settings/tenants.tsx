@@ -154,18 +154,18 @@ const TenantManagementPage = () => {
         search={false}
         onRefresh={() => load()}
         columns={[
-          { title: '租户编码', dataIndex: 'tenantCode', width: 180 },
+          { title: '租户编码', dataIndex: 'tenantCode', width: 'var(--saas-spacing-180)' },
           { title: '租户名称', dataIndex: 'tenantName', ellipsis: true },
           {
             title: '状态',
             dataIndex: 'status',
-            width: 120,
+            width: 'var(--saas-spacing-120)',
             render: (value) => <Tag color={value === 'ENABLED' ? 'green' : 'default'}>{value === 'ENABLED' ? '启用' : '停用'}</Tag>,
           },
           { title: '备注', dataIndex: 'remark', ellipsis: true, render: (value) => value || '-' },
           {
             title: '操作',
-            width: 160,
+            width: 'var(--saas-spacing-160)',
             render: (_, record) => (
             <Space>
                 <Button type="link" disabled={!canUpdate} onClick={() => open(record)}>

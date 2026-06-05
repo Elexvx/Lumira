@@ -1,8 +1,10 @@
 import { Button, Card, Empty, Form, Image, Input, InputNumber, Segmented, Space, Switch, Typography, Watermark, Upload, theme } from 'antd';
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import type { FormProps } from 'antd';
+import { useResponsive } from '@/hooks/useResponsive';
 import type { BrandingSettings, WatermarkSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -32,6 +34,9 @@ const renderImageUploadPreviewField = ({
   emptyDescription = '未上传',
   onUpload,
   onClear,
+  sectionGap,
+  tagWrapGap,
+  cardPadding,
 }: {
   target: PersonalizationUploadTarget;
   previewSrc?: string | null;
@@ -46,9 +51,12 @@ const renderImageUploadPreviewField = ({
   emptyDescription?: string;
   onUpload: (target: PersonalizationUploadTarget, file: File) => Promise<void>;
   onClear: () => void;
+  sectionGap: number | number[];
+  tagWrapGap: number | number[];
+  cardPadding: number;
 }) => (
-  <Space align="start" size={16} wrap>
-    <Card size="small" style={{ width: cardWidth }} bodyStyle={{ padding: 12 }}>
+  <Space align="start" size={sectionGap} wrap>
+    <Card size="small" style={{ width: cardWidth }} bodyStyle={{ padding: cardPadding }}>
       <div style={{ width: '100%', height: cardHeight, display: 'grid', placeItems: 'center' }}>
         {previewSrc ? (
           <Image
@@ -63,7 +71,7 @@ const renderImageUploadPreviewField = ({
         )}
       </div>
     </Card>
-    <Space direction="vertical" size={8}>
+    <Space direction="vertical" size={tagWrapGap}>
       <Upload
         accept="image/*"
         showUploadList={false}
@@ -96,9 +104,16 @@ export const WatermarkTab = ({
   onSave,
 }: WatermarkTabProps) => {
   const { token } = theme.useToken();
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
+  const cardPadding = resolveResponsiveValue(
+    { desktop: APP_SPACING.antdDesktopTokens.padding, mobile: APP_SPACING.antdMobileTokens.padding },
+    isMobile,
+  );
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
         <Form.Item name="enabled" label="启用水印" valuePropName="checked">
           <Switch />
@@ -140,6 +155,9 @@ export const WatermarkTab = ({
               clearLabel: '清除',
               onUpload,
               onClear: onClearWatermarkImage,
+              sectionGap,
+              tagWrapGap,
+              cardPadding,
             })}
           </Form.Item>
         ) : null}
@@ -171,7 +189,7 @@ export const WatermarkTab = ({
         >
           <div
             style={{
-              height: 180,
+              height: 'var(--saas-spacing-180)',
               display: 'grid',
               placeItems: 'center',
               background: token.colorFillAlter,

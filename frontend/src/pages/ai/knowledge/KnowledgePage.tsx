@@ -9,6 +9,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { adaptPageResult } from '@/features/table/proTableRequest';
 import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { DeleteOutlined, EditOutlined, FileSearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { request } from '@/services/common/request';
@@ -415,6 +416,8 @@ const KnowledgeDocumentDrawer = ({
   onSearchSubmit: (values: { query: string }) => void;
 }) => {
   const { token } = theme.useToken();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
   return (
     <Drawer
       width={isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
@@ -424,7 +427,7 @@ const KnowledgeDocumentDrawer = ({
       destroyOnHidden
     >
       {selectedKnowledgeBase ? (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
           <Upload.Dragger
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md"
             multiple
@@ -445,10 +448,10 @@ const KnowledgeDocumentDrawer = ({
             request={documentRequest}
           />
 
-          <Form form={searchForm} layout="inline" onFinish={onSearchSubmit} style={{ gap: 8 }}>
-            <Form.Item name="query" rules={[{ required: true, message: '请输入检索内容' }]} style={{ flex: 1, minWidth: 260 }}>
-              <Input.Search placeholder="测试这个知识库能否检索到答案依据" />
-            </Form.Item>
+          <Form form={searchForm} layout="inline" onFinish={onSearchSubmit} style={{ gap: tagWrapGap[0] }}>
+              <Form.Item name="query" rules={[{ required: true, message: '请输入检索内容' }]} style={{ flex: 1, minWidth: 'var(--saas-spacing-260)' }}>
+                <Input.Search placeholder="测试这个知识库能否检索到答案依据" />
+              </Form.Item>
             <Button htmlType="submit" loading={searching} disabled={!canQueryKnowledge}>
               检索测试
             </Button>
@@ -457,13 +460,16 @@ const KnowledgeDocumentDrawer = ({
           {searchResults.length ? (
             <Space direction="vertical" style={{ width: '100%' }}>
               {searchResults.map((item) => (
-                <div key={item.chunkId} style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, padding: 12 }}>
+                <div
+                  key={item.chunkId}
+                  style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 'var(--saas-spacing-6)', padding: sectionGap }}
+                >
                   <Space wrap>
                     <Tag color="blue">{item.knowledgeBaseName}</Tag>
                     <Typography.Text strong>{item.documentTitle || item.originalFileName}</Typography.Text>
                     <Typography.Text type="secondary">片段 {Number(item.chunkIndex || 0) + 1}</Typography.Text>
                   </Space>
-                  <Typography.Paragraph style={{ margin: '8px 0 0' }} ellipsis={{ rows: 4, expandable: true }}>
+                  <Typography.Paragraph style={{ marginTop: tagWrapGap[0] }} ellipsis={{ rows: 4, expandable: true }}>
                     {item.content}
                   </Typography.Paragraph>
                 </div>
@@ -498,23 +504,23 @@ const buildKnowledgeBaseColumns = ({
   {
     title: '知识库名称',
     dataIndex: 'name',
-    width: 220,
+    width: 'var(--saas-spacing-220)',
     render: (_, record) => (
       <Button type="link" style={{ padding: 0 }} onClick={() => onSelectKnowledgeBase(record)}>
         {record.name}
       </Button>
     ),
   },
-  { title: '状态', dataIndex: 'status', width: 100, valueEnum: { ENABLED: { text: '启用' }, DISABLED: { text: '停用' } }, render: (_, record) => statusTag(record.status) },
-  { title: '范围', dataIndex: 'visibilityScope', width: 100, search: false, render: (_, record) => visibilityTag(record.visibilityScope) },
-  { title: '文档数', dataIndex: 'documentCount', width: 100, search: false, renderText: formatNumber },
-  { title: '切片数', dataIndex: 'chunkCount', width: 100, search: false, renderText: formatNumber },
+  { title: '状态', dataIndex: 'status', width: 'var(--saas-spacing-100)', valueEnum: { ENABLED: { text: '启用' }, DISABLED: { text: '停用' } }, render: (_, record) => statusTag(record.status) },
+  { title: '范围', dataIndex: 'visibilityScope', width: 'var(--saas-spacing-100)', search: false, render: (_, record) => visibilityTag(record.visibilityScope) },
+  { title: '文档数', dataIndex: 'documentCount', width: 'var(--saas-spacing-100)', search: false, renderText: formatNumber },
+  { title: '切片数', dataIndex: 'chunkCount', width: 'var(--saas-spacing-100)', search: false, renderText: formatNumber },
   { title: '说明', dataIndex: 'description', ellipsis: true, search: false },
   {
     title: '操作',
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
-    width: 220,
+    width: 'var(--saas-spacing-220)',
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
@@ -541,16 +547,16 @@ const buildKnowledgeDocumentColumns = ({
   onReindexDocument: (record: AiKnowledgeDocumentRecord) => Promise<void> | void;
   onDeleteDocument: (record: AiKnowledgeDocumentRecord) => void;
 }): ProColumns<AiKnowledgeDocumentRecord>[] => [
-  { title: '文档', dataIndex: 'title', width: 220, ellipsis: true },
-  { title: '格式', dataIndex: 'fileExtension', width: 90, renderText: (value) => String(value || '-').toUpperCase() },
-  { title: '状态', dataIndex: 'status', width: 100, render: (_, record) => statusTag(record.status) },
-  { title: '字数', dataIndex: 'extractedCharCount', width: 100, renderText: formatNumber },
-  { title: '切片', dataIndex: 'chunkCount', width: 80, renderText: formatNumber },
+  { title: '文档', dataIndex: 'title', width: 'var(--saas-spacing-220)', ellipsis: true },
+  { title: '格式', dataIndex: 'fileExtension', width: 'var(--saas-spacing-90)', renderText: (value) => String(value || '-').toUpperCase() },
+  { title: '状态', dataIndex: 'status', width: 'var(--saas-spacing-100)', render: (_, record) => statusTag(record.status) },
+  { title: '字数', dataIndex: 'extractedCharCount', width: 'var(--saas-spacing-100)', renderText: formatNumber },
+  { title: '切片', dataIndex: 'chunkCount', width: 'var(--saas-spacing-80)', renderText: formatNumber },
   {
     title: '操作',
     valueType: 'option',
     fixed: 'right',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}

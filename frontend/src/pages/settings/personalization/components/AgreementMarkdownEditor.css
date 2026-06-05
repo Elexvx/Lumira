@@ -1,7 +1,7 @@
 .agreement-markdown-editor {
   overflow: hidden;
   border: 1px solid var(--ant-color-border);
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
   background: var(--ant-color-bg-container);
 }
 
@@ -13,10 +13,10 @@
 .agreement-markdown-editor__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--saas-spacing-6);
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: var(--saas-spacing-10) var(--saas-spacing-sm);
   border-bottom: 1px solid var(--ant-color-border-secondary);
   background: var(--ant-color-bg-container);
 }
@@ -25,14 +25,14 @@
   display: flex;
   flex: 1 1 auto;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--saas-spacing-6);
   align-items: center;
   min-width: 0;
 }
 
 .agreement-markdown-editor__tools .ant-btn {
-  width: 32px;
-  height: 32px;
+  width: var(--saas-spacing-32);
+  height: var(--saas-spacing-32);
 }
 
 .agreement-markdown-editor__mode {
@@ -40,7 +40,7 @@
 }
 
 .agreement-markdown-editor__body {
-  min-height: 360px;
+  min-height: var(--saas-spacing-360);
   background: var(--ant-color-bg-container);
 }
 
@@ -71,8 +71,8 @@
 
 .agreement-markdown-editor__preview {
   overflow: auto;
-  min-height: 360px;
-  padding: 18px 20px;
+  min-height: var(--saas-spacing-360);
+  padding: var(--saas-spacing-18) var(--saas-spacing-20);
   background: var(--ant-color-bg-container);
 }
 
@@ -97,7 +97,7 @@
 .agreement-markdown-editor__preview-content h1,
 .agreement-markdown-editor__preview-content h2,
 .agreement-markdown-editor__preview-content h3 {
-  margin: 18px 0 10px;
+  margin: var(--saas-spacing-18) 0 var(--saas-spacing-10);
   font-weight: 600;
   line-height: 1.35;
 }
@@ -108,30 +108,30 @@
 .agreement-markdown-editor__preview-content blockquote,
 .agreement-markdown-editor__preview-content pre,
 .agreement-markdown-editor__preview-content table {
-  margin: 0 0 12px;
+  margin: 0 0 var(--saas-spacing-md);
 }
 
 .agreement-markdown-editor__preview-content ul,
 .agreement-markdown-editor__preview-content ol {
-  padding-left: 22px;
+  padding-left: var(--saas-spacing-22);
 }
 
 .agreement-markdown-editor__preview-content blockquote {
-  padding-left: 12px;
+  padding-left: var(--saas-spacing-sm);
   border-left: 3px solid var(--ant-color-border);
   color: var(--ant-color-text-secondary);
 }
 
 .agreement-markdown-editor__preview-content code {
-  padding: 2px 5px;
-  border-radius: 4px;
+  padding: var(--saas-spacing-xxs) var(--saas-spacing-5);
+  border-radius: var(--saas-spacing-2xs);
   background: var(--ant-color-fill-tertiary);
 }
 
 .agreement-markdown-editor__preview-content pre {
   overflow: auto;
-  padding: 12px;
-  border-radius: 6px;
+  padding: var(--saas-spacing-sm);
+  border-radius: var(--saas-spacing-6);
   background: var(--ant-color-fill-quaternary);
 }
 
@@ -147,7 +147,7 @@
 
 .agreement-markdown-editor__preview-content th,
 .agreement-markdown-editor__preview-content td {
-  padding: 8px 10px;
+  padding: var(--saas-spacing-xs) var(--saas-spacing-10);
   border: 1px solid var(--ant-color-border-secondary);
 }
 

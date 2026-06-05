@@ -9,6 +9,8 @@ import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
 import { loadSecuritySettings, saveSecuritySettings } from '@/auth/sessionSecurity';
 import type { SecuritySettings } from '@/types/api';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { formatMessage } from '@umijs/max';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 
@@ -39,7 +41,10 @@ const SecuritySettingsPage = () => {
   const [form] = Form.useForm<SecuritySettings>();
   const { setInitialState } = useInitialStateModel();
   const actionPermission = useActionPermission();
+  const { responsive } = useResponsive();
   const canUpdate = actionPermission.can('system:config:update');
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
+  const cardPaddingTop = resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)[0];
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const captchaType = Form.useWatch('captchaType', form) || DEFAULT_SECURITY_SETTINGS.captchaType;
@@ -116,7 +121,16 @@ const SecuritySettingsPage = () => {
   return (
     <ManagementPage className="saas-crud-page" title={formatMessage({ id: 'page.security.title', defaultMessage: 'Security settings' })}>
       <ManagementPageBody>
-        <Card className="saas-crud-form-card" loading={loading} bodyStyle={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <Card
+          className="saas-crud-form-card"
+          loading={loading}
+          bodyStyle={{
+            paddingTop: cardPaddingTop,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: sectionGap,
+          }}
+        >
           <Form {...formProps}>
             <Tabs
               defaultActiveKey="token"
@@ -125,7 +139,7 @@ const SecuritySettingsPage = () => {
                   key: 'token',
                   label: formatMessage({ id: 'page.security.tokenStrategy', defaultMessage: 'Token strategy' }),
                   children: (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                       <Form.Item
                         name="idleTimeoutSeconds"
                         label={formatMessage({ id: 'page.security.idleTimeout', defaultMessage: 'Idle timeout (seconds)' })}
@@ -175,7 +189,7 @@ const SecuritySettingsPage = () => {
                   key: 'captcha',
                   label: formatMessage({ id: 'page.security.captchaSettings', defaultMessage: 'Captcha settings' }),
                   children: (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                       <Form.Item
                         name="captchaEnabled"
                         label={formatMessage({ id: 'page.security.enableCaptcha', defaultMessage: 'Enable captcha' })}
@@ -215,7 +229,7 @@ const SecuritySettingsPage = () => {
                   key: 'defense',
                   label: formatMessage({ id: 'page.security.defenseThreshold', defaultMessage: 'Defense thresholds' }),
                   children: (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                       <Form.Item
                         name="loginDefenseWindowMinutes"
                         label={formatMessage({ id: 'page.security.window', defaultMessage: 'Window (minutes)' })}
@@ -279,7 +293,7 @@ const SecuritySettingsPage = () => {
                   key: 'password',
                   label: formatMessage({ id: 'page.security.passwordPolicy', defaultMessage: 'Password policy' }),
                   children: (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                       <Form.Item
                         name="passwordMinLength"
                         label={formatMessage({ id: 'page.security.password.minLength', defaultMessage: 'Minimum length' })}

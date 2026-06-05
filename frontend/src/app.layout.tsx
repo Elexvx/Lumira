@@ -27,7 +27,7 @@ import { resolveBuiltinMessage } from '@/i18n/messages';
 import { buildVisibleSettingsNavigationItems } from '@/navigation/settingsNavigationRuntime';
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
-import { backendRouteMeta, realPageRouteMetaMap } from '@/routes/meta';
+import { backendRouteMeta, realPageRouteMetaMap, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useCallback, useEffect, useRef } from 'react';
@@ -35,12 +35,14 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
 import { resolveThemeRuntimeSnapshot } from '@/theme/runtime';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './layouts/components/GlobalFloatActions.css';
 import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
-const LAYOUT_HEADER_HEIGHT = 48;
+const resolveIsMobileViewport = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
@@ -254,7 +256,7 @@ const CollapsedButtonWithReturn = ({ defaultDom }: { defaultDom: ReactNode }) =>
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: resolveResponsiveValue(APP_SPACING.microGap, isMobile) }}>
       {defaultDom}
       <Tooltip title="返回主路由">
         <Button type="text" icon={<ArrowLeftOutlined />} aria-label="返回主路由" onClick={() => history.push(DEFAULT_HOME_PATH)} />
@@ -447,8 +449,8 @@ const GlobalFloatActions = () => {
       className="saas-global-float-actions"
       shape="square"
       style={{
-        right: isAssistantPage ? (isMobile ? 12 : 16) : isMobile ? 16 : 32,
-        bottom: isAssistantPage ? (isMobile ? 24 : 56) : isMobile ? 24 : 40,
+        right: isAssistantPage ? (isMobile ? 'var(--saas-spacing-12)' : 'var(--saas-spacing-16)') : isMobile ? 'var(--saas-spacing-16)' : 'var(--saas-spacing-32)',
+        bottom: isAssistantPage ? (isMobile ? 'var(--saas-spacing-24)' : 'var(--saas-spacing-56)') : isMobile ? 'var(--saas-spacing-24)' : 'var(--saas-spacing-40)',
       }}
     >
       {showApiDocsQr ? (
@@ -496,7 +498,14 @@ const GlobalFloatActions = () => {
 
 const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialState | undefined }) => () => {
   const { location } = history;
-  const path = location.pathname;
+  const path = resolveCanonicalRoutePath(location.pathname);
+  const canonicalLocation = `${path}${location.search || ''}`;
+
+  if (canonicalLocation !== `${location.pathname}${location.search || ''}`) {
+    history.replace(canonicalLocation);
+    return;
+  }
+
   const loggedIn = isLoggedIn();
   const isPublicPath = PUBLIC_PATHS.has(path);
   const requiresPasswordChange = Boolean(initialState?.currentUser?.requiresPasswordChange);
@@ -586,12 +595,13 @@ const translateVisibleLocalMenuDataForLayout = (
   return items
     .map((item) => {
       const localItem = item as RuntimeMenuDataItem & { redirect?: string };
+      const normalizedPath = item.path ? resolveCanonicalRoutePath(item.path) : item.path;
       if (localItem.redirect) {
         return null;
       }
 
-      const routeMeta = item.path ? routeMetaMap.get(item.path) : undefined;
-      const hasRealPageRoute = item.path ? realPagePathSet.has(item.path) : false;
+      const routeMeta = normalizedPath ? routeMetaMap.get(normalizedPath) : undefined;
+      const hasRealPageRoute = normalizedPath ? realPagePathSet.has(normalizedPath) : false;
       const children = item.children?.length ? translateVisibleLocalMenuDataForLayout(initialState, item.children) : [];
       if ((!routeMeta || !hasRealPageRoute) && !children.length) {
         return null;
@@ -606,7 +616,7 @@ const translateVisibleLocalMenuDataForLayout = (
       const labelId = typeof item.locale === 'string' ? item.locale : item.name || item.title || item.path;
       return {
         ...item,
-        path: routeMeta?.path || item.path,
+        path: routeMeta?.path || normalizedPath || item.path,
         name: typeof labelId === 'string'
           ? resolveBuiltinMessage(labelId, typeof item.name === 'string' ? item.name : undefined)
           : item.name,
@@ -626,10 +636,11 @@ const composeMenuItemForLayout = (
     return null;
   }
 
-  const localMeta = localByPath.get(backendNode.path);
-  const mergedMeta = routeMetaMap.get(backendNode.path || '');
+  const normalizedPath = resolveCanonicalRoutePath(backendNode.path || '');
+  const localMeta = localByPath.get(normalizedPath);
+  const mergedMeta = routeMetaMap.get(normalizedPath);
   const hasLocalRoute = Boolean(
-    (backendNode.path && realPagePathSet.has(backendNode.path))
+    (backendNode.path && realPagePathSet.has(normalizedPath))
       || isPluginRuntimePath(backendNode.path),
   );
   const children = (backendNode.children || [])
@@ -648,7 +659,7 @@ const composeMenuItemForLayout = (
 
   return {
     ...localItemMeta,
-    path: isRedirectGroup ? undefined : backendNode.path || localMeta?.path,
+    path: isRedirectGroup ? undefined : normalizedPath || localMeta?.path,
     name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
     locale: false as const,
     icon,
@@ -733,6 +744,9 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const currentPathname = history.location.pathname;
   const siderMenuMode = resolveSiderMenuMode(currentPathname);
+  const isMobile = resolveIsMobileViewport();
+  const LAYOUT_HEADER_HEIGHT = resolveResponsiveValue(APP_SPACING.layout.headerHeight, isMobile);
+  const LAYOUT_SIDER_WIDTH = resolveResponsiveValue(APP_SPACING.layout.siderWidth, isMobile);
 
   applyFavicon(brandingSettings.websiteFaviconUrl);
 
@@ -741,7 +755,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     logo: hasBrandLogo ? brandingSettings.websiteLogoUrl : false,
     fixedHeader: false,
     fixSiderbar: true,
-    siderWidth: 200,
+    siderWidth: LAYOUT_SIDER_WIDTH,
     layout: 'mix',
     token: {
       header: {

@@ -7,8 +7,8 @@
 }
 
 .saas-global-float-actions__qr-popover .ant-popover-inner {
-  border-radius: 10px;
-  padding: 10px 12px 12px;
+  border-radius: var(--saas-spacing-10);
+  padding: var(--saas-spacing-10) var(--saas-spacing-sm) var(--saas-spacing-sm);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
 }
 
@@ -17,26 +17,26 @@
 }
 
 .saas-global-float-actions__qr-card {
-  width: min(156px, calc(100vw - 80px));
+  width: min(var(--saas-spacing-156), calc(100vw - var(--saas-spacing-80)));
   text-align: center;
 }
 
 .saas-global-float-actions__qr-title {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: var(--saas-spacing-xs);
   font-size: 13px;
   line-height: 1.4;
 }
 
 .saas-global-float-actions__qr-image-wrap {
-  min-height: 132px;
+  min-height: var(--saas-qrcode-size);
   display: grid;
   place-items: center;
 }
 
 .saas-global-float-actions__qr-image {
-  width: 132px;
-  height: 132px;
+  width: var(--saas-qrcode-size);
+  height: var(--saas-qrcode-size);
   object-fit: contain;
   display: block;
 }
@@ -47,20 +47,20 @@ html[data-theme='dark'] .saas-global-float-actions .ant-float-btn {
 
 @media (max-width: 767px) {
   .saas-global-float-actions .ant-float-btn {
-    width: 40px;
-    height: 40px;
+    width: var(--saas-spacing-40);
+    height: var(--saas-spacing-40);
   }
 
   .saas-global-float-actions__qr-card {
-    width: min(148px, calc(100vw - 64px));
+    width: min(var(--saas-spacing-148), calc(100vw - var(--saas-spacing-64)));
   }
 
   .saas-global-float-actions__qr-image-wrap {
-    min-height: 124px;
+    min-height: var(--saas-qrcode-size-mobile);
   }
 
   .saas-global-float-actions__qr-image {
-    width: 124px;
-    height: 124px;
+    width: var(--saas-qrcode-size-mobile);
+    height: var(--saas-qrcode-size-mobile);
   }
 }

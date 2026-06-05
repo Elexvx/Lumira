@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import type { AiEmployeeCapabilityRecord } from '@/types/api';
+import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 export type AvatarOption = {
   key: string;
@@ -71,6 +73,11 @@ export const EmployeeDrawer = ({
   onKnowledgeBaseIdsChange,
   onCapabilityModeChange,
 }: EmployeeDrawerProps) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const microGap = resolveResponsiveValue(APP_SPACING.microGap, isMobile);
+  const mediumGap = resolveResponsiveValue(APP_SPACING.modalFooterGap, isMobile);
   const groupedCapabilities = groupCapabilities(employeeCapabilities);
 
   return (
@@ -92,8 +99,8 @@ export const EmployeeDrawer = ({
               key: 'basic',
               label: '员工资料',
               children: (
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                  <Row gutter={16}>
+                <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+                  <Row gutter={rowGutter}>
                     <Col xs={24} md={12}>
                       <Form.Item
                         label="用户名"
@@ -112,7 +119,7 @@ export const EmployeeDrawer = ({
                       </Form.Item>
                     </Col>
                   </Row>
-                  <Row gutter={16}>
+                  <Row gutter={rowGutter}>
                     <Col xs={24} md={12}>
                       <Form.Item label="职位" name="position">
                         <Input placeholder="例如：智能客服" />
@@ -150,7 +157,7 @@ export const EmployeeDrawer = ({
               key: 'prompt',
               label: '人物设定',
               children: (
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                   <Alert type="info" showIcon message="AI 模型的系统提示词，决定了‘我’是谁，遵循哪些要求来工作和完成任务。" />
                   <Space wrap>
                     <Button
@@ -178,7 +185,7 @@ export const EmployeeDrawer = ({
               key: 'security',
               label: '能力边界',
               children: (
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                   <Alert
                     type="info"
                     showIcon
@@ -199,12 +206,12 @@ export const EmployeeDrawer = ({
                   {editingId ? (
                     Object.entries(groupedCapabilities).map(([groupName, items]) => (
                       <Card key={groupName} size="small" title={groupName}>
-                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        <Space direction="vertical" size={mediumGap} style={{ width: '100%' }}>
                           {items.map((capability) => {
                             const checked = (employeeCapabilityModes[capability.capabilityCode] || capability.permissionMode) !== 'deny';
                             return (
-                              <div key={capability.capabilityCode} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                                <Space direction="vertical" size={2}>
+                              <div key={capability.capabilityCode} style={{ display: 'flex', justifyContent: 'space-between', gap: mediumGap }}>
+                                <Space direction="vertical" size={microGap}>
                                   <Space wrap>
                                     <Typography.Text strong>{capability.capabilityName}</Typography.Text>
                                     <Tag>{capability.capabilityCode}</Tag>

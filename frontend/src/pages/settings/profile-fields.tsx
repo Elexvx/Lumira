@@ -6,10 +6,16 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { request } from '@/services/common/request';
 import type { ProfileFieldSetting } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const ProfileFieldManagementPage = () => {
   const actionPermission = useActionPermission();
+  const { isMobile } = useResponsive();
   const canUpdate = actionPermission.can('system:config:update');
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
+  const microGap = resolveResponsiveValue(APP_SPACING.microGap, isMobile);
   const [items, setItems] = useState<ProfileFieldSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -82,7 +88,7 @@ const ProfileFieldManagementPage = () => {
             </Button>
           }
         >
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
             <Alert
               type={enabledWeight === 100 ? 'success' : 'info'}
               showIcon
@@ -90,7 +96,7 @@ const ProfileFieldManagementPage = () => {
               description="个人中心会按当前启用字段的权重比例折算为 100 分，字段开关和评分权重会一起保存。"
             />
             {loading ? (
-              <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
+              <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
                 <Spin />
               </div>
             ) : items.length ? (
@@ -98,10 +104,18 @@ const ProfileFieldManagementPage = () => {
                 dataSource={items}
                 renderItem={(item) => (
                   <List.Item>
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, width: '100%' }}>
-                        <Space direction="vertical" size={4} style={{ minWidth: 0 }}>
-                          <Space wrap size={8}>
+                    <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: sectionGap,
+                          width: '100%',
+                        }}
+                      >
+                        <Space direction="vertical" size={microGap} style={{ minWidth: 0 }}>
+                          <Space wrap size={tagWrapGap}>
                             <Typography.Text strong>{item.fieldLabel}</Typography.Text>
                             {item.groupLabel ? <Tag color="blue">{item.groupLabel}</Tag> : null}
                           </Space>
@@ -115,7 +129,7 @@ const ProfileFieldManagementPage = () => {
                             controls={false}
                             disabled={!canUpdate}
                             value={item.weight ?? 1}
-                            style={{ width: 100 }}
+                            style={{ width: 'var(--saas-spacing-100)' }}
                             onChange={(value) => handleWeightChange(item.fieldKey, value)}
                           />
                           <Switch

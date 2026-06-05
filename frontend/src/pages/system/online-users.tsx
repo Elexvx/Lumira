@@ -18,6 +18,7 @@ import { request } from '@/services/common/request';
 import { readEventStream } from '@/services/common/requestInternalsStream';
 import type { OnlineSessionEventRecord, OnlineSessionRecord, PagedResult } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 interface OnlineSessionStreamOptions {
   onEvent: (event: OnlineSessionEventRecord) => void;
@@ -153,7 +154,7 @@ const formatDateTime = (value?: string | null) => {
 const buildOnlineUserColumns = ({
   currentUserId,
   currentSessionId,
-  isMobile,
+  userCellGap,
   buildActions,
   onShowDetail,
   onKick,
@@ -161,7 +162,7 @@ const buildOnlineUserColumns = ({
 }: {
   currentUserId?: OnlineSessionRecord['userId'];
   currentSessionId?: OnlineSessionRecord['sessionId'];
-  isMobile: boolean;
+  userCellGap: string | number;
   buildActions: (items: any[]) => any[];
   onShowDetail: (record: OnlineSessionRecord) => void;
   onKick: (record: OnlineSessionRecord) => void;
@@ -170,9 +171,9 @@ const buildOnlineUserColumns = ({
   {
     title: '用户',
     dataIndex: 'username',
-    width: 360,
+    width: 'var(--saas-spacing-360)',
     render: (_, record) => (
-      <Space className="saas-online-users-page__user-cell" size={6} wrap={false}>
+      <Space className="saas-online-users-page__user-cell" size={userCellGap} wrap={false}>
         <Typography.Text className="saas-online-users-page__user-name" strong ellipsis={{ tooltip: record.realName || record.nickname || record.username }}>
           {record.realName || record.nickname || record.username}
         </Typography.Text>
@@ -189,7 +190,7 @@ const buildOnlineUserColumns = ({
     dataIndex: 'clientType',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    width: 120,
+    width: 'var(--saas-spacing-120)',
     render: (_, record) => (
       <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: record.clientType || '-' }}>
         {record.clientType || '-'}
@@ -201,7 +202,7 @@ const buildOnlineUserColumns = ({
     dataIndex: 'loginIp',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    width: 160,
+    width: 'var(--saas-spacing-160)',
     render: (_, record) => (
       <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: record.loginIp || '-' }}>
         {record.loginIp || '-'}
@@ -213,7 +214,7 @@ const buildOnlineUserColumns = ({
     dataIndex: 'loginTime',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: formatDateTime(record.loginTime) }}>
         {formatDateTime(record.loginTime)}
@@ -225,7 +226,7 @@ const buildOnlineUserColumns = ({
     dataIndex: 'lastActivityAt',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: formatDateTime(record.lastActivityAt) }}>
         {formatDateTime(record.lastActivityAt)}
@@ -237,7 +238,7 @@ const buildOnlineUserColumns = ({
     dataIndex: 'expireTime',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <Typography.Text className="saas-online-users-page__cell-text" ellipsis={{ tooltip: formatDateTime(record.expireTime) }}>
         {formatDateTime(record.expireTime)}
@@ -248,7 +249,7 @@ const buildOnlineUserColumns = ({
     title: '会话 ID',
     dataIndex: 'sessionId',
     search: false,
-    width: 260,
+    width: 'var(--saas-spacing-260)',
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) => (
@@ -262,7 +263,7 @@ const buildOnlineUserColumns = ({
     dataIndex: 'userAgent',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
-    width: 360,
+    width: 'var(--saas-spacing-360)',
     ellipsis: true,
     render: (_, record) =>
       record.userAgent ? (
@@ -277,7 +278,7 @@ const buildOnlineUserColumns = ({
     title: '操作',
     valueType: 'option',
     fixed: 'right',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => {
       const isSelfUser = record.userId === currentUserId;
       return (
@@ -440,7 +441,7 @@ const OnlineUsersPage = () => {
       buildOnlineUserColumns({
         currentUserId: currentUser?.userId,
         currentSessionId: currentUser?.sessionId,
-        isMobile: responsive.isMobile,
+        userCellGap: resolveResponsiveValue(APP_SPACING.microOffset, responsive.isMobile),
         buildActions,
         onShowDetail,
         onKick,

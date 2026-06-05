@@ -6,6 +6,7 @@ import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ManagementTableProps } from '@/features/management/ManagementTable';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const dictStatusOptions = [
   { label: '启用', value: 'ENABLED' },
@@ -117,8 +118,11 @@ export const DictManagementDrawers = ({
   itemFormProps,
   onCloseItemDrawer,
   onSaveItem,
-}: DictManagementDrawersProps) => (
-  <>
+}: DictManagementDrawersProps) => {
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+
+  return (
+    <>
     <ManagementDrawer
       title={typeDrawerTitle}
       open={typeDrawerOpen}
@@ -133,11 +137,11 @@ export const DictManagementDrawers = ({
 
     <ManagementDrawer title={typeDetailDrawerTitle} open={typeDetailDrawerOpen} onClose={onCloseDetailDrawer}>
       {typeDetailLoading ? (
-        <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
+        <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
           <Spin />
         </div>
       ) : typeDetail ? (
-        <Space direction="vertical" style={{ width: '100%' }} size={16}>
+        <Space direction="vertical" style={{ width: '100%' }} size={sectionGap}>
           <ProDescriptions<DictTypeRecord> {...detailProps} columns={dictTypeDetailColumns} />
           <ManagementTable<DictItemRecord>
             rowKey="id"
@@ -173,5 +177,6 @@ export const DictManagementDrawers = ({
     >
       <DictItemForm formProps={itemFormProps} />
     </ManagementDrawer>
-  </>
-);
+    </>
+  );
+};

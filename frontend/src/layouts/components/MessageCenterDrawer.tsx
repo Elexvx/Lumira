@@ -3,14 +3,16 @@ import { Alert, Badge, Button, Empty, List, Space, Spin, Tag, Tabs, Typography, 
 import type { NotificationArgsProps } from 'antd';
 import { getLocale, useIntl } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MESSAGE_CENTER_DRAWER_WIDTH } from '@/constants/ui';
+import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useResponsive } from '@/hooks/useResponsive';
 import { API_ORIGIN } from '@/constants/http';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { normalizeLocale } from '@/i18n/locale';
 import type { MessageNoticeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
 import type { MessageUnreadCount, PagedResult } from '@/types/api';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const MESSAGE_CENTER_REFRESH_EVENT = 'saas-message-center:refresh';
 const MESSAGE_NOTIFICATION_DURATION_SECONDS = 4.5;
@@ -543,6 +545,9 @@ const MessageCenterContentBody = ({
 }) => {
   const intl = useIntl();
   const { token } = theme.useToken();
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
 
   return (
     <>
@@ -575,15 +580,15 @@ const MessageCenterContentBody = ({
                   <div
                     style={{
                       width: '100%',
-                      padding: 16,
+                      padding: sectionGap,
                       border: `1px solid ${token.colorBorderSecondary}`,
-                      borderRadius: 12,
+                      borderRadius: 'var(--saas-spacing-sm)',
                       background: 'transparent',
                     }}
                   >
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                        <Space size={8} wrap>
+                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: tagWrapGap[0], alignItems: 'flex-start' }}>
+                        <Space size={tagWrapGap[0]} wrap>
                           <Typography.Text strong>{notice.title}</Typography.Text>
                           <Tag color={isUnread ? 'red' : 'blue'} bordered={false}>
                             {isUnread
@@ -630,6 +635,9 @@ export const MessageCenterDrawer = () => {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifiedNoticeKeysRef = useRef(new Set<string>());
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
 
   const permissions = useMemo(() => new Set(initialState?.currentUser?.permissions || []), [initialState?.currentUser?.permissions]);
   const canOpenMessageCenter =
@@ -718,7 +726,7 @@ export const MessageCenterDrawer = () => {
 
   return (
     <>
-      <Badge count={unreadCount} overflowCount={99} offset={[0, 6]}>
+      <Badge count={unreadCount} overflowCount={99} offset={[0, resolveResponsiveValue(APP_SPACING.microOffset, isMobile)]}>
         <Button
           type="text"
           icon={<NotificationOutlined />}
@@ -731,12 +739,12 @@ export const MessageCenterDrawer = () => {
         title={intl.formatMessage({ id: 'message.center.title', defaultMessage: '消息中心' })}
         open={open}
         onClose={() => setOpen(false)}
-        width={MESSAGE_CENTER_DRAWER_WIDTH}
+        width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
         destroyOnHidden={false}
       >
         {contentModel.canOpenMessageCenter ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: tagWrapGap[0], flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
                 <Typography.Title level={4} style={{ margin: 0 }}>
                   {contentModel.title}

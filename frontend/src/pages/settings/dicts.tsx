@@ -143,7 +143,7 @@ const buildDictTypeColumns = ({
     title: '操作',
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}

@@ -16,6 +16,7 @@ import type { MessageDeliveryLogRecord, MessageNoticeRecord } from '@/types/api'
 import type { SmtpSettings, SmtpTestPayload, WechatOfficialAccountSettings } from '@/types/api';
 import type { MessageChannel } from '@/types/api';
 import type { FormProps } from 'antd';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 type NotificationPublishTargetScope = 'TENANT' | 'USER' | 'ROLE';
 
@@ -163,7 +164,7 @@ const NotificationEmailChannelSettingsForm = ({
   smtpTestFormProps: FormProps<SmtpTestPayload>;
   onTestSmtpSettings: () => void;
 }) => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Form {...smtpFormProps} disabled={loadingSmtpSettings || !canManageSmtp}>
       <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
         <Input placeholder="例如：smtp.example.com" />
@@ -269,7 +270,7 @@ const buildArchiveColumns = ({
     {
       title: '目标范围',
       dataIndex: 'targetScope',
-      width: 120,
+      width: 'var(--saas-spacing-120)',
       valueEnum: { TENANT: { text: '全员' }, USER: { text: '指定用户' }, ROLE: { text: '角色分组' } },
       renderFormItem: () => <Select allowClear options={[{ label: '全员', value: 'TENANT' }, { label: '指定用户', value: 'USER' }, { label: '角色分组', value: 'ROLE' }]} placeholder="全部" />,
       render: (_: unknown, record: MessageNoticeRecord) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
@@ -277,7 +278,7 @@ const buildArchiveColumns = ({
     {
       title: '目标用户',
       dataIndex: 'targetUserName',
-      width: 160,
+      width: 'var(--saas-spacing-160)',
       search: false,
       responsive: ['lg', 'xl', 'xxl'],
       render: (_: unknown, record: MessageNoticeRecord) => (record.targetScope === 'USER' ? record.targetUserName || (record.targetUserId ? String(record.targetUserId) : '-') : '-'),
@@ -285,7 +286,7 @@ const buildArchiveColumns = ({
     {
       title: '目标角色',
       dataIndex: 'targetRoleName',
-      width: 160,
+      width: 'var(--saas-spacing-160)',
       search: false,
       responsive: ['lg', 'xl', 'xxl'],
       render: (_: unknown, record: MessageNoticeRecord) => (record.targetScope === 'ROLE' ? record.targetRoleName || (record.targetRoleId ? String(record.targetRoleId) : '-') : '-'),
@@ -293,7 +294,7 @@ const buildArchiveColumns = ({
     {
       title: '状态',
       dataIndex: 'publishStatus',
-      width: 110,
+      width: 'var(--saas-spacing-110)',
       valueEnum: { PUBLISHED: { text: '已发布' }, RETRACTED: { text: '已撤回' } },
       renderFormItem: () => <Select allowClear options={[{ label: '已发布', value: 'PUBLISHED' }, { label: '已撤回', value: 'RETRACTED' }]} placeholder="全部" />,
       render: (_: unknown, record: MessageNoticeRecord) => renderEnumTag(record.publishStatus, PUBLISH_STATUS_LABELS),
@@ -301,7 +302,7 @@ const buildArchiveColumns = ({
     {
       title: '发布时间',
       dataIndex: 'publishedAt',
-      width: 180,
+      width: 'var(--saas-spacing-180)',
       search: false,
       sorter: true,
       render: (_: unknown, record: MessageNoticeRecord) => formatDateTime(record.publishedAt || record.createdAt),
@@ -316,7 +317,7 @@ const buildArchiveColumns = ({
     {
       title: '操作',
       valueType: 'option',
-      width: 160,
+      width: 'var(--saas-spacing-160)',
       render: (_: unknown, record: MessageNoticeRecord) => (
         <TableActionBar
           isMobile={false}
@@ -351,7 +352,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
     {
       title: '渠道',
       dataIndex: 'channel',
-      width: 110,
+      width: 'var(--saas-spacing-110)',
       valueEnum: { INBOX: { text: '站内信' }, EMAIL: { text: '邮箱' }, WECHAT_OFFICIAL: { text: '微信' } },
       renderFormItem: () => <Select allowClear options={[{ label: '站内信', value: 'INBOX' }, { label: '邮箱', value: 'EMAIL' }, { label: '微信', value: 'WECHAT_OFFICIAL' }]} placeholder="全部" />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderEnumTag(record.channel, CHANNEL_LABELS),
@@ -359,7 +360,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
     {
       title: '状态',
       dataIndex: 'sendStatus',
-      width: 110,
+      width: 'var(--saas-spacing-110)',
       valueEnum: { SUCCESS: { text: '成功' }, FAILED: { text: '失败' }, SKIPPED: { text: '跳过' } },
       renderFormItem: () => <Select allowClear options={[{ label: '成功', value: 'SUCCESS' }, { label: '失败', value: 'FAILED' }, { label: '跳过', value: 'SKIPPED' }]} placeholder="全部" />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderEnumTag(record.sendStatus, SEND_STATUS_LABELS),
@@ -367,14 +368,14 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
     {
       title: '目标范围',
       dataIndex: 'targetScope',
-      width: 120,
+      width: 'var(--saas-spacing-120)',
       renderFormItem: () => <Select allowClear options={[{ label: '全员', value: 'TENANT' }, { label: '指定用户', value: 'USER' }, { label: '角色分组', value: 'ROLE' }]} placeholder="全部" />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
     },
     {
       title: '收件人',
       dataIndex: 'targetUserName',
-      width: 160,
+      width: 'var(--saas-spacing-160)',
       search: false,
       responsive: ['lg', 'xl', 'xxl'],
       render: (_: unknown, record: MessageDeliveryLogRecord) => record.targetUserName || (record.targetUserId ? String(record.targetUserId) : '-'),
@@ -382,7 +383,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
     {
       title: '接收标识',
       dataIndex: 'targetEmail',
-      width: 220,
+      width: 'var(--saas-spacing-220)',
       ellipsis: true,
       search: false,
       responsive: ['lg', 'xl', 'xxl'],
@@ -399,7 +400,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
     {
       title: '发送时间',
       dataIndex: 'createdAt',
-      width: 180,
+      width: 'var(--saas-spacing-180)',
       search: false,
       sorter: true,
       render: (_: unknown, record: MessageDeliveryLogRecord) => formatDateTime(record.sentAt || record.createdAt),
@@ -437,21 +438,21 @@ const buildChannelColumns = ({
   handleDisableChannel: (record: NotificationChannelRecord) => void;
   handleOpenChannelDrawer: (record: NotificationChannelRecord) => void;
 }): ProColumns<NotificationChannelRecord>[] => [
-  { title: '序号', dataIndex: 'order', width: 80, search: false },
-  { title: '通知标识', dataIndex: 'identifier', width: 180, copyable: true, search: false },
+  { title: '序号', dataIndex: 'order', width: 'var(--saas-spacing-80)', search: false },
+  { title: '通知标识', dataIndex: 'identifier', width: 'var(--saas-spacing-180)', copyable: true, search: false },
   {
     title: '通知类型',
     dataIndex: 'type',
-    width: 140,
+    width: 'var(--saas-spacing-140)',
     search: false,
     render: (_: unknown, record: NotificationChannelRecord) => renderTag(record.type, CHANNEL_LABELS[record.key]?.color || 'blue'),
   },
-  { title: '标题', dataIndex: 'title', width: 160, search: false, render: (_: unknown, record: NotificationChannelRecord) => <Typography.Text strong>{record.title}</Typography.Text> },
-  { title: '描述', dataIndex: 'description', width: 220, search: false, ellipsis: true },
+  { title: '标题', dataIndex: 'title', width: 'var(--saas-spacing-160)', search: false, render: (_: unknown, record: NotificationChannelRecord) => <Typography.Text strong>{record.title}</Typography.Text> },
+  { title: '描述', dataIndex: 'description', width: 'var(--saas-spacing-220)', search: false, ellipsis: true },
   {
     title: '启用',
     dataIndex: 'enabled',
-    width: 120,
+    width: 'var(--saas-spacing-120)',
     align: 'center',
     search: false,
     render: (_: unknown, record: NotificationChannelRecord) => (record.enabled ? <CheckOutlined style={{ color: tokenColorSuccess }} /> : null),
@@ -459,7 +460,7 @@ const buildChannelColumns = ({
   {
     title: '操作',
     valueType: 'option',
-    width: 240,
+    width: 'var(--saas-spacing-240)',
     fixed: isDesktop ? 'right' : undefined,
     render: (_: unknown, record: NotificationChannelRecord) => (
       <TableActionBar
@@ -508,6 +509,7 @@ const NotificationsPage = () => {
   const archiveActionRef = useRef<ActionType | undefined>(undefined);
   const logActionRef = useRef<ActionType | undefined>(undefined);
   const { actionPermission, responsive, searchConfig } = usePagePermissionActions();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const detailDescriptionsProps = useDetailDescriptionsProps({
     column: responsive.isMobile ? 1 : 2,
   });
@@ -703,7 +705,7 @@ const NotificationsPage = () => {
         }
       >
         {notificationCenter.detailRecord ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
             <Descriptions {...detailDescriptionsProps} bordered>
               <Descriptions.Item label="标题">{notificationCenter.detailRecord.title}</Descriptions.Item>
               <Descriptions.Item label="目标范围">{TARGET_SCOPE_LABELS[notificationCenter.detailRecord.targetScope] || notificationCenter.detailRecord.targetScope}</Descriptions.Item>

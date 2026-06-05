@@ -96,26 +96,26 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
   {
     title: '时间',
     dataIndex: 'createdAt',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatDateTime(record.createdAt)}</Typography.Text>,
   },
   {
     title: '用户',
     dataIndex: 'username',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
     title: '登录方式',
     dataIndex: 'logType',
-    width: 140,
+    width: 'var(--saas-spacing-140)',
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatLoginType(record.logType || record.loginType)}</Typography.Text>,
   },
   {
     title: '结果',
     dataIndex: 'logResult',
-    width: 96,
+    width: 'var(--saas-spacing-96)',
     render: (_, record) => (
       <Tag color={logResultColor(record.logResult || record.loginResult)}>
         {formatLogResult(record.logResult || record.loginResult)}
@@ -125,7 +125,7 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
   {
     title: '登录信息',
     dataIndex: 'loginIp',
-    width: 280,
+    width: 'var(--saas-spacing-280)',
     ellipsis: true,
     render: (_: unknown, record: AuditLogRecord) => {
       const result = record.logResult || record.loginResult;
@@ -139,20 +139,20 @@ const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<
   {
     title: '时间',
     dataIndex: 'createdAt',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatDateTime(record.createdAt)}</Typography.Text>,
   },
   {
     title: '用户',
     dataIndex: 'username',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
     title: '结果',
     dataIndex: 'logResult',
-    width: 100,
+    width: 'var(--saas-spacing-100)',
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => (
       <Tag color={logResultColor(record.logResult)}>
@@ -163,7 +163,7 @@ const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<
   {
     title: '内容',
     dataIndex: 'detailMessage',
-    width: 320,
+    width: 'var(--saas-spacing-320)',
     ellipsis: true,
     render: (_: unknown, record: AuditLogRecord) => {
       const content = record.detailMessage || record.failReason || record.operationType || record.actionName || record.moduleName || title;
@@ -243,7 +243,7 @@ const DashboardHomePage = () => {
             <Col xs={24}>
               <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
                 <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
-                  <Avatar size={64} src={currentUser?.avatarUrl || undefined}>
+                  <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={currentUser?.avatarUrl || undefined}>
                     {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
                   </Avatar>
                   <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>

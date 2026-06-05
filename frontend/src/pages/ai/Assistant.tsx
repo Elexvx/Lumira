@@ -2,7 +2,9 @@ import { Alert, Button, Input, Modal, Result, Spin, Tabs } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { history } from '@umijs/max';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useAssistantPageAccess } from './hooks/useAssistantPageAccess';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 import './Assistant.css';
 
@@ -21,13 +23,16 @@ const AiAssistantPage = () => {
     closeRenameModal,
     applyRename,
   } = useAssistantPageAccess();
+  const responsive = useResponsive();
+  const pagePaddingInline = resolveResponsiveValue(APP_SPACING.pageContainerPaddingInline, responsive.isMobile);
+  const pagePaddingBlock = resolveResponsiveValue(APP_SPACING.pageContainerPaddingBlock, responsive.isMobile);
 
   return (
     <PageContainer
       title={pageTitle}
       ghost
       className="saas-ai-assistant-page"
-      token={{ paddingInlinePageContainerContent: 24, paddingBlockPageContainerContent: 20 }}
+      token={{ paddingInlinePageContainerContent: pagePaddingInline, paddingBlockPageContainerContent: pagePaddingBlock }}
       extra={isShareMode ? <Button icon={<RobotOutlined />} onClick={() => history.push('/ai/assistant')}>返回 AI 助手</Button> : null}
     >
       {isShareMode ? (

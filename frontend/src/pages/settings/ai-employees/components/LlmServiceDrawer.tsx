@@ -2,6 +2,9 @@ import { Alert, Col, Form, Input, InputNumber, Row, Select, Space, Switch, Typog
 import { SyncOutlined } from '@ant-design/icons';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import type { AiLlmServiceRecord, AiLlmServiceTestResult } from '@/types/api';
+import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { LLM_SERVICE_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 
 export type LlmFormValues = {
   provider?: string;
@@ -51,17 +54,22 @@ export const LlmServiceDrawer = ({
   onTest,
   onValuesChange,
 }: LlmServiceDrawerProps) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const microGap = resolveResponsiveValue(APP_SPACING.microGap, isMobile);
+
   return (
     <ManagementDrawer
       title={title}
       open={open}
       onClose={onClose}
-      width={700}
+      width={resolveResponsiveValue(LLM_SERVICE_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       footerActions={[
         {
           key: 'test',
           label: (
-            <Space size={4}>
+            <Space size={microGap}>
               <SyncOutlined />
               测试连接
             </Space>
@@ -75,8 +83,8 @@ export const LlmServiceDrawer = ({
       ]}
     >
       <Form layout="vertical" form={form} onValuesChange={onValuesChange}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Row gutter={16}>
+      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+          <Row gutter={rowGutter}>
             <Col xs={24} md={12}>
               <Form.Item label="LLM 类型" name="provider" rules={[{ required: true, message: '请选择 LLM 类型' }]}>
                 <Select options={providerOptions} placeholder="请选择供应商类型" onChange={onProviderChange} />
@@ -88,7 +96,7 @@ export const LlmServiceDrawer = ({
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16}>
+          <Row gutter={rowGutter}>
             <Col xs={24} md={12}>
               <Form.Item label="标题" name="title" rules={[{ required: true, message: '请输入标题' }]}>
                 <Input placeholder="例如：默认对话模型" />
@@ -115,7 +123,7 @@ export const LlmServiceDrawer = ({
               type={llmTestResult.success ? 'success' : 'error'}
               message={llmTestResult.success ? '测试通过' : '测试失败'}
               description={
-                <Space direction="vertical" size={4}>
+                <Space direction="vertical" size={microGap}>
                   <Typography.Text>
                     {llmTestResult.message || (llmTestResult.success ? '当前 LLM 服务可正常响应' : '请检查 Base URL、模型和 API Key')}
                   </Typography.Text>
@@ -134,7 +142,7 @@ export const LlmServiceDrawer = ({
               }
             />
           ) : null}
-          <Row gutter={16}>
+          <Row gutter={rowGutter}>
             <Col xs={24} md={8}>
               <Form.Item label="超时时间（毫秒）" name="timeoutMs">
                 <InputNumber min={1000} step={1000} style={{ width: '100%' }} />

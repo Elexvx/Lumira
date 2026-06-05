@@ -2,6 +2,7 @@ import { MoreOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import { useMemo } from 'react';
+import { APP_SPACING } from '@/theme/spacing';
 
 export interface TableActionItem {
   key: string;
@@ -48,7 +49,7 @@ export const TableActionBar = ({ items, isMobile = false, inlineCount }: TableAc
   }
 
   return (
-    <Space size={4} wrap={false}>
+    <Space size={APP_SPACING.microGap.desktop} wrap={false}>
       {inlineItems.map((item) => (
         <Button key={item.key} type="link" size="small" danger={item.danger} disabled={item.disabled} loading={item.loading} onClick={item.onClick}>
           {item.label}

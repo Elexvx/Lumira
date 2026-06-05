@@ -3,10 +3,10 @@
   --saas-page-content-width-compact: 1120px;
   --saas-page-gutter: clamp(16px, 2.4vw, 28px);
   --saas-page-section-gap: clamp(16px, 2vw, 24px);
-  --saas-form-item-gap: 8px;
-  --saas-form-label-gap: 8px;
+  --saas-form-item-gap: var(--saas-spacing-xs);
+  --saas-form-label-gap: var(--saas-spacing-xs);
   --saas-form-control-max-width: 720px;
-  --saas-card-radius: 8px;
+  --saas-card-radius: var(--ant-border-radius-lg);
   --saas-card-padding: clamp(18px, 2.2vw, 24px);
   --saas-control-height: 56px;
   --saas-control-height-compact: 48px;
@@ -17,6 +17,76 @@
   --saas-auth-shell-min-height: 760px;
   --saas-auth-hero-width: minmax(0, 1.1fr);
   --saas-auth-panel-width: minmax(0, 520px);
+  --saas-spacing-xxs: 2px;
+  --saas-spacing-2xs: 4px;
+  --saas-spacing-5: 5px;
+  --saas-spacing-xs: 8px;
+  --saas-spacing-sm: 12px;
+  --saas-spacing-md: 16px;
+  --saas-spacing-6: 6px;
+  --saas-spacing-10: 10px;
+  --saas-spacing-14: 14px;
+  --saas-spacing-18: 18px;
+  --saas-spacing-20: 20px;
+  --saas-spacing-22: 22px;
+  --saas-spacing-lg: 24px;
+  --saas-spacing-24: 24px;
+  --saas-spacing-28: 28px;
+  --saas-spacing-32: 32px;
+  --saas-spacing-36: 36px;
+  --saas-spacing-40: 40px;
+  --saas-spacing-42: 42px;
+  --saas-spacing-48: 48px;
+  --saas-spacing-64: 64px;
+  --saas-spacing-56: 56px;
+  --saas-spacing-58: 58px;
+  --saas-spacing-72: 72px;
+  --saas-spacing-80: 80px;
+  --saas-spacing-88: 88px;
+  --saas-spacing-90: 90px;
+  --saas-spacing-96: 96px;
+  --saas-spacing-112: 112px;
+  --saas-spacing-110: 110px;
+  --saas-spacing-120: 120px;
+  --saas-spacing-124: 124px;
+  --saas-spacing-148: 148px;
+  --saas-spacing-150: 150px;
+  --saas-spacing-140: 140px;
+  --saas-spacing-144: 144px;
+  --saas-spacing-100: 100px;
+  --saas-spacing-156: 156px;
+  --saas-spacing-160: 160px;
+  --saas-spacing-168: 168px;
+  --saas-spacing-170: 170px;
+  --saas-spacing-176: 176px;
+  --saas-spacing-180: 180px;
+  --saas-spacing-208: 208px;
+  --saas-spacing-200: 200px;
+  --saas-spacing-220: 220px;
+  --saas-spacing-210: 210px;
+  --saas-spacing-240: 240px;
+  --saas-spacing-260: 260px;
+  --saas-spacing-280: 280px;
+  --saas-spacing-300: 300px;
+  --saas-spacing-340: 340px;
+  --saas-spacing-320: 320px;
+  --saas-spacing-360: 360px;
+  --saas-spacing-368: 368px;
+  --saas-spacing-400: 400px;
+  --saas-spacing-420: 420px;
+  --saas-spacing-440: 440px;
+  --saas-spacing-520: 520px;
+  --saas-spacing-536: 536px;
+  --saas-spacing-560: 560px;
+  --saas-spacing-700: 700px;
+  --saas-spacing-720: 720px;
+  --saas-spacing-760: 760px;
+  --saas-spacing-780: 780px;
+  --saas-spacing-840: 840px;
+  --saas-spacing-940: 940px;
+  --saas-spacing-xl: 20px;
+  --saas-qrcode-size: 132px;
+  --saas-qrcode-size-mobile: 124px;
 }
 
 html[data-theme='dark'] {
@@ -71,7 +141,7 @@ body,
 
 .ant-drawer .ant-drawer-footer {
   flex: 0 0 auto;
-  padding: 12px 24px;
+  padding: var(--saas-spacing-sm) var(--saas-spacing-lg);
   border-top-color: var(--ant-color-border-secondary);
   background: var(--ant-color-bg-elevated);
 }
@@ -87,7 +157,7 @@ body,
 }
 
 .saas-drawer-footer .ant-btn {
-  min-width: 88px;
+  min-width: var(--saas-spacing-88);
 }
 
 /*
@@ -253,11 +323,11 @@ body,
 }
 
 .saas-online-users-page .saas-online-users-page__user-name {
-  max-width: 120px;
+  max-width: var(--saas-spacing-120);
 }
 
 .saas-online-users-page .saas-online-users-page__username {
-  max-width: 88px;
+  max-width: var(--saas-spacing-88);
 }
 
 .saas-online-users-page .ant-table-cell .ant-tag {
@@ -306,7 +376,7 @@ body,
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: var(--saas-spacing-2xs);
   }
 
   .saas-monitor-expandable-text__content {
@@ -350,7 +420,7 @@ body,
 .saas-update-center {
   .ant-card,
   .ant-alert {
-    border-radius: 8px;
+    border-radius: var(--saas-card-radius);
   }
 
   .ant-statistic-content {
@@ -438,11 +508,11 @@ body,
 
 .saas-management-page .ant-form-item .ant-form-item-extra,
 .saas-management-page .ant-form-item .ant-form-item-explain {
-  margin-top: 8px;
+  margin-top: var(--saas-spacing-xs);
 }
 
 .saas-management-page .ant-form-item-control-input {
-  min-height: 40px;
+  min-height: var(--saas-spacing-40);
 }
 
 @media (min-width: 992px) {
@@ -458,28 +528,28 @@ body,
 
 @media (max-width: 767px) {
   .saas-management-page-body {
-    gap: 12px;
+    gap: var(--saas-spacing-sm);
   }
 
   .saas-management-page .ant-btn:not(.ant-btn-link):not(.ant-btn-text) {
-    height: 32px;
-    min-height: 32px;
-    padding-inline: 12px;
+    height: var(--saas-spacing-32);
+    min-height: var(--saas-spacing-32);
+    padding-inline: var(--saas-spacing-sm);
   }
 
   .saas-management-page .ant-btn:not(.ant-btn-link):not(.ant-btn-text).ant-btn-icon-only {
-    width: 32px;
+    width: var(--saas-spacing-32);
     padding-inline: 0;
   }
 
   .saas-management-page .ant-card-body,
   .saas-management-page .ant-pro-card-body {
-    padding: 14px 12px;
+    padding: var(--saas-spacing-14) var(--saas-spacing-sm);
   }
 
   .saas-management-page .ant-card-head,
   .saas-management-page .ant-pro-card-head {
-    padding-inline: 12px;
+    padding-inline: var(--saas-spacing-sm);
   }
 
   .saas-management-page .ant-card-head-title,
@@ -494,12 +564,12 @@ body,
 
   .saas-table-wrap .ant-table-thead > tr > th,
   .saas-table-wrap .ant-table-cell {
-    padding: 10px 8px;
+    padding: var(--saas-spacing-10) var(--saas-spacing-xs);
     font-size: 13px;
   }
 
   .saas-table-wrap .ant-table-pagination {
-    margin-top: 12px;
+    margin-top: var(--saas-spacing-sm);
   }
 }
 
@@ -546,8 +616,8 @@ body,
 
   .saas-profile-page__three-blocks {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.85fr);
-    gap: 16px;
+    grid-template-columns: minmax(0, 1.45fr) minmax(var(--saas-spacing-340), 0.85fr);
+    gap: var(--saas-spacing-md);
     align-items: flex-start;
   }
 
@@ -563,7 +633,7 @@ body,
     flex-direction: column;
     width: 100%;
     min-width: 0;
-    gap: 16px;
+    gap: var(--saas-spacing-md);
   }
 
   .saas-profile-page__top-row {
@@ -573,7 +643,7 @@ body,
   .saas-profile-page__summary-card,
   .saas-profile-page__personal-card,
   .saas-profile-page__rail-block {
-    border-radius: 8px;
+    border-radius: var(--saas-card-radius);
   }
 
   .saas-profile-page__summary-card {
@@ -586,8 +656,8 @@ body,
 
   .saas-profile-page__summary-content {
     display: grid;
-    min-height: 112px;
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+    min-height: var(--saas-spacing-112);
+    grid-template-columns: minmax(0, 1fr) minmax(var(--saas-spacing-240), var(--saas-spacing-340));
     align-items: stretch;
   }
 
@@ -603,11 +673,11 @@ body,
   }
 
   .saas-profile-page__welcome-panel {
-    padding: 28px 32px;
+    padding: var(--saas-spacing-28) var(--saas-spacing-32);
   }
 
   .saas-profile-page__account-panel {
-    padding: 28px;
+    padding: var(--saas-spacing-28);
     color: var(--ant-color-white);
     background: var(--ant-color-primary);
   }
@@ -618,7 +688,7 @@ body,
     min-width: 0;
     align-items: center;
     justify-content: space-between;
-    gap: 32px;
+    gap: var(--saas-spacing-32);
   }
 
   .saas-profile-page__tenant-mark {
@@ -634,7 +704,7 @@ body,
 
   .saas-profile-page__personal-card .ant-card-body {
     min-height: unset;
-    padding: 28px 32px 20px;
+    padding: var(--saas-spacing-28) var(--saas-spacing-32) var(--saas-spacing-20);
   }
 
   .saas-profile-page__descriptions {
@@ -645,7 +715,7 @@ body,
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: var(--saas-spacing-lg);
     min-width: 0;
   }
 
@@ -692,7 +762,7 @@ body,
   }
 
   .saas-profile-page__descriptions .ant-descriptions-item {
-    padding-bottom: 18px;
+    padding-bottom: var(--saas-spacing-18);
   }
 
   .saas-profile-page__descriptions .ant-descriptions-row:last-child .ant-descriptions-item {
@@ -731,7 +801,7 @@ body,
 
   .saas-profile-page__completion-summary {
     display: flex;
-    gap: 16px;
+    gap: var(--saas-spacing-md);
     min-width: 0;
     align-items: center;
   }
@@ -742,11 +812,11 @@ body,
     min-width: 0;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--saas-spacing-sm);
   }
 
   .saas-profile-page__completion-group-progress {
-    width: 72px;
+    width: var(--saas-spacing-72);
     flex: none;
   }
 
@@ -764,16 +834,16 @@ body,
 
     .saas-profile-page__personal-card .ant-card-body {
       min-height: unset;
-      padding: 24px;
+      padding: var(--saas-spacing-24);
     }
 
     .saas-profile-page__summary-content {
-      grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+      grid-template-columns: minmax(0, 1fr) minmax(var(--saas-spacing-220), var(--saas-spacing-300));
     }
 
     .saas-profile-page__welcome-panel,
     .saas-profile-page__account-panel {
-      padding: 24px;
+      padding: var(--saas-spacing-24);
     }
 
     .saas-profile-page__welcome-content {
@@ -790,7 +860,7 @@ body,
 @media (max-width: 767px) {
   .saas-profile-page {
     .saas-profile-page__three-blocks {
-      gap: 12px;
+      gap: var(--saas-spacing-sm);
     }
 
     .saas-profile-page__summary-content {
@@ -800,17 +870,17 @@ body,
 }
 
 .saas-brand-logo {
-  width: 20px;
-  height: 20px;
+  width: var(--saas-spacing-20);
+  height: var(--saas-spacing-20);
   object-fit: contain;
-  border-radius: 4px;
+  border-radius: var(--saas-spacing-2xs);
   background: var(--ant-color-bg-container);
-  padding: 1px;
+  padding: var(--saas-spacing-2xs);
 }
 
 .saas-layout-footer {
   margin-top: auto;
-  padding: 8px 12px 16px;
+  padding: var(--saas-spacing-xs) var(--saas-spacing-sm) var(--saas-spacing-md);
   text-align: center;
   color: var(--ant-color-text-secondary);
   font-size: 12px;
@@ -822,18 +892,18 @@ body,
 }
 
 .saas-theme-menu__item {
-  min-width: 156px;
+  min-width: var(--saas-spacing-156);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--saas-spacing-sm);
 }
 
 .saas-theme-menu__item-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  width: var(--saas-spacing-18);
 }
 
 .saas-theme-menu__item-check {
@@ -886,12 +956,12 @@ body,
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      min-width: 40px;
-      height: 40px;
-      margin-inline-end: 4px;
+      width: var(--saas-spacing-40);
+      min-width: var(--saas-spacing-40);
+      height: var(--saas-spacing-40);
+      margin-inline-end: var(--saas-spacing-2xs);
       border: none;
-      border-radius: 12px;
+      border-radius: var(--saas-spacing-sm);
       box-shadow: none;
       background: transparent;
       line-height: 1;

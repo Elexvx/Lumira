@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { DEFAULT_HOME_PATH } from '../src/app.constants';
 import { resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget, resolveRouteAccessStatus } from '../src/auth/loginRedirect';
+import { resolveCanonicalRoutePath } from '../src/routes/meta';
 import type { CurrentUser } from '../src/types/api';
 
 const run = () => {
@@ -53,6 +54,34 @@ const run = () => {
     resolveAuthorizedLoginRedirectTarget('?redirect=%2Fsettings%2Fprofile-fields', dashboardUser, []),
     '/dashboard/home',
     'denied redirect should fall back to the role default home when it is accessible',
+  );
+
+  assert.equal(
+    resolveAuthorizedLoginRedirectTarget('', { ...dashboardUser, defaultHomePath: '/dashboard' }, []),
+    '/dashboard/home',
+    'legacy dashboard shortcut path should normalize to canonical dashboard home',
+  );
+
+  assert.equal(
+    resolveAuthorizedLoginRedirectTarget('', { ...dashboardUser, defaultHomePath: '/dashboard/' }, []),
+    '/dashboard/home',
+    'trailing slash dashboard shortcut path should normalize to canonical dashboard home',
+  );
+
+  assert.equal(
+    resolveAuthorizedLoginRedirectTarget(
+      '?redirect=%2Fdashboard%2F%2F',
+      dashboardUser,
+      [],
+    ),
+    '/dashboard/home',
+    'redirect to dashed dashboard path should normalize to canonical dashboard home',
+  );
+
+  assert.equal(
+    resolveCanonicalRoutePath('/dashboard//'),
+    '/dashboard/home',
+    'dashboard alias with extra trailing slashes should normalize to canonical dashboard home',
   );
 
   console.log('login-redirect-target-smoke: ok');

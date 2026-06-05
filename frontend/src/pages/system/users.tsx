@@ -410,7 +410,7 @@ const UserManagementPage = () => {
 
       <ManagementDrawer title={detail.currentRecord?.username ? `用户详情 · ${detail.currentRecord.username}` : '用户详情'} open={detail.open} onClose={detail.close}>
         {detail.loading ? (
-          <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
+          <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
             <Spin />
           </div>
         ) : selectedUserDetail ? (

@@ -2,6 +2,8 @@ import { createElement, useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, Avatar, Button, Spin, Space, Tag, Typography, message } from 'antd';
 import type { MenuProps } from 'antd';
 import { useParams } from '@umijs/max';
+import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { Conversations as XConversations } from '@ant-design/x';
@@ -714,10 +716,10 @@ const downloadText = (content: string, fileName: string, mimeType: string) => {
   window.URL.revokeObjectURL(url);
 };
 
-const buildWelcomePanel = (isShareMode: boolean) => (
+const buildWelcomePanel = (isShareMode: boolean, sectionGap: number, isMobile: boolean) => (
   <div className="saas-ai-assistant-shell__welcome">
-    <Space direction="vertical" align="center" size={16}>
-      <Avatar size={64} icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
+    <Space direction="vertical" align="center" size={sectionGap}>
+      <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, isMobile)} icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
       <Typography.Title level={4} style={{ margin: 0 }}>
         {isShareMode ? '分享会话为空' : '你好，我是企业 AI 助手'}
       </Typography.Title>
@@ -1480,6 +1482,7 @@ export const useAssistantPageAccess = () => {
       })),
     [activeSession?.messages, confirmingToolId, handleConfirmTool, handleCopyMessage],
   );
+  const responsive = useResponsive();
   const bubbleRole = useMemo(
     () => ({
       user: {
@@ -1493,10 +1496,10 @@ export const useAssistantPageAccess = () => {
         variant: 'borderless' as const,
         shape: 'round' as const,
         footerPlacement: 'outer-end' as const,
-        avatar: <Avatar size={32} icon={<RobotOutlined />} />,
+        avatar: <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.tiny, responsive.isMobile)} icon={<RobotOutlined />} />,
       },
     }),
-    [],
+    [responsive.isMobile],
   );
   const handleDropFiles = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -1505,11 +1508,12 @@ export const useAssistantPageAccess = () => {
     if (!nextFiles.length) return;
     void uploadAttachments(nextFiles, { isShareMode, activeSession, updateSession });
   };
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const chatPanel = (
     <section className="saas-ai-assistant-layout__chat">
       <div className="saas-ai-assistant-shell__chat-body" onDrop={handleDropFiles} onDragOver={(event) => event.preventDefault()}>
         {!activeSession?.messages?.length ? (
-          buildWelcomePanel(isShareMode)
+          buildWelcomePanel(isShareMode, sectionGap, responsive.isMobile)
         ) : (
           <Bubble.List items={activeMessageItems} role={bubbleRole} autoScroll className="saas-ai-assistant-bubbles" />
         )}

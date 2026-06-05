@@ -114,8 +114,8 @@ const RuntimeContainer = () => {
 
   return (
     <PluginErrorBoundary>
-      <Card bodyStyle={{ position: 'relative', minHeight: 'calc(100vh - 160px)' }}>
-        <div ref={containerRef} style={{ minHeight: 'calc(100vh - 220px)' }} />
+      <Card bodyStyle={{ position: 'relative', minHeight: 'calc(100vh - var(--saas-spacing-160))' }}>
+        <div ref={containerRef} style={{ minHeight: 'calc(100vh - var(--saas-spacing-220))' }} />
         {loading ? (
           <div
             style={{

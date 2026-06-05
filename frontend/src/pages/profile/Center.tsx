@@ -6,8 +6,9 @@ import { StepsForm } from '@ant-design/pro-components';
 import { useEffect } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { EditOutlined, ExclamationCircleFilled, KeyOutlined, UserOutlined } from '@ant-design/icons';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profile/center/hooks/useProfileCenterPageAccess';
 import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
@@ -25,15 +26,17 @@ const BindSecondFactorSubmitter = ({
   hasChallenge,
   onCancel,
   onRetry,
+  isMobile,
 }: {
   bindingSubmitting: boolean;
   bindingLoading: boolean;
   hasChallenge: boolean;
   onCancel: () => void;
   onRetry: () => void;
+  isMobile: boolean;
 }) => ({
   render: (props: { step: number; onPre?: () => void; onSubmit?: () => void }) => (
-    <Space size={APP_SPACING.tagWrapGap.desktop} wrap>
+    <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
       <Button onClick={onCancel} disabled={bindingSubmitting}>
         取消
       </Button>
@@ -63,14 +66,16 @@ const BindSecondFactorTotpPreviewStep = ({
   bindingLoading,
   singleColumnDescriptionsProps,
   onRetry,
+  isMobile,
 }: {
   bindingProvider: SecondFactorProviderStatus | null;
   bindingChallenge: SecondFactorChallenge | null;
   bindingLoading: boolean;
   singleColumnDescriptionsProps: DescriptionsProps;
   onRetry: () => void;
+  isMobile: boolean;
 }) => (
-  <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
+  <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
     <Alert
       showIcon
       type="info"
@@ -84,9 +89,9 @@ const BindSecondFactorTotpPreviewStep = ({
     {bindingLoading ? (
       <Card loading />
     ) : bindingChallenge ? (
-      <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
         <div className="saas-profile-2fa-binding__qr">
-          <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={188} bordered />
+          <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={resolveResponsiveValue(APP_SPACING.qrCodeSize, isMobile)} bordered />
         </div>
         <Descriptions {...singleColumnDescriptionsProps}>
           <Descriptions.Item label="验证方式">{bindingChallenge.factorName || '2FA'}</Descriptions.Item>
@@ -110,7 +115,7 @@ const BindSecondFactorTotpPreviewStep = ({
     ) : (
       <Empty
         description={
-            <Space direction="vertical" size={APP_SPACING.tagWrapGap.desktop}>
+            <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)}>
             <span>绑定信息尚未加载，请重试</span>
             <Button type="primary" onClick={onRetry} disabled={!bindingProvider}>
               重新获取绑定信息
@@ -122,8 +127,8 @@ const BindSecondFactorTotpPreviewStep = ({
   </Space>
 );
 
-const BindSecondFactorTotpVerifyStep = () => (
-    <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
+const BindSecondFactorTotpVerifyStep = ({ isMobile }: { isMobile: boolean }) => (
+    <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
     <Alert
       showIcon
       type="info"
@@ -152,6 +157,7 @@ const BindSecondFactorTotpSteps = ({
   onCancel,
   onRetry,
   onVerify,
+  isMobile,
 }: {
   bindingProvider: SecondFactorProviderStatus | null;
   bindingChallenge: SecondFactorChallenge | null;
@@ -162,6 +168,7 @@ const BindSecondFactorTotpSteps = ({
   onCancel: () => void;
   onRetry: () => void;
   onVerify: (values: { verificationCode?: string }) => Promise<boolean>;
+  isMobile: boolean;
 }) => (
   <StepsForm
     submitter={BindSecondFactorSubmitter({
@@ -170,12 +177,13 @@ const BindSecondFactorTotpSteps = ({
       hasChallenge: Boolean(bindingChallenge),
       onCancel,
       onRetry,
+      isMobile,
     })}
     stepsProps={{ responsive: false }}
     formProps={{ layout: 'vertical' }}
     onFinish={onVerify}
     stepsFormRender={(formDom, submitterDom) => (
-    <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
+    <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
         {bindingAlert ? <Alert showIcon type={bindingAlert.type} message={bindingAlert.message} /> : null}
         {formDom}
         {submitterDom}
@@ -187,12 +195,13 @@ const BindSecondFactorTotpSteps = ({
         bindingProvider={bindingProvider}
         bindingChallenge={bindingChallenge}
         bindingLoading={bindingLoading}
+        isMobile={isMobile}
         singleColumnDescriptionsProps={singleColumnDescriptionsProps}
         onRetry={onRetry}
       />
     </StepsForm.StepForm>
     <StepsForm.StepForm name="bind-verify" title="验证首个验证码">
-      <BindSecondFactorTotpVerifyStep />
+      <BindSecondFactorTotpVerifyStep isMobile={isMobile} />
     </StepsForm.StepForm>
   </StepsForm>
 );
@@ -214,6 +223,7 @@ const ContactBindModal = ({
   formProps,
   onCancel,
   onConfirm,
+  isMobile,
 }: {
   open: boolean;
   title: string;
@@ -231,6 +241,7 @@ const ContactBindModal = ({
   formProps: FormProps;
   onCancel: () => void;
   onConfirm: () => void;
+  isMobile: boolean;
 }) => {
   useEffect(() => {
     if (!open) {
@@ -251,7 +262,7 @@ const ContactBindModal = ({
       destroyOnHidden
       maskClosable={false}
     >
-    <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
+    <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
         <Alert showIcon type="info" message={title} description={description} />
         {verificationRequired ? (
           <Alert
@@ -300,6 +311,7 @@ const ContactBindModal = ({
 };
 
 const ProfileBasicEditDrawer = ({
+  isMobile,
   profileSaving,
   profileFormProps,
   visibleProfileFields,
@@ -312,6 +324,7 @@ const ProfileBasicEditDrawer = ({
   onAvatarBeforeCrop,
   onAvatarUploadRequest,
 }: {
+  isMobile: boolean;
   profileSaving: boolean;
   profileFormProps: FormProps;
   visibleProfileFields: Set<string>;
@@ -327,7 +340,7 @@ const ProfileBasicEditDrawer = ({
   <Drawer
     title="编辑个人资料"
     open={editingOpen}
-    width={STANDARD_DRAWER_WIDTH}
+    width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
     destroyOnClose={false}
     onClose={() => onEditOpenChange(false)}
     footer={
@@ -348,11 +361,11 @@ const ProfileBasicEditDrawer = ({
 
       {visibleProfileFields.has('avatarUrl') ? (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Space direction="vertical" align="center" size={APP_SPACING.sectionGap.desktop}>
+          <Space direction="vertical" align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)}>
             <ImgCrop rotationSlider aspect={1} modalTitle="裁切头像" beforeCrop={onAvatarBeforeCrop}>
               <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
                 <Tooltip title="点击头像修改" placement="top">
-                  <Avatar size={96} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                  <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.large, isMobile)} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
                 </Tooltip>
               </Upload>
             </ImgCrop>
@@ -361,7 +374,7 @@ const ProfileBasicEditDrawer = ({
       ) : null}
 
       {visibleProfileFields.size ? (
-        <Row gutter={[16, 0]}>
+        <Row gutter={[resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile)[0], 0]}>
           <Col xs={24}>
             <Form.Item label="用户名">
               <Input value={currentUser?.username || '-'} disabled />
@@ -529,6 +542,7 @@ const ProfileCenterOverviewSection = ({
           )}
         </Card>
         <ProfileBasicEditDrawer
+          isMobile={isMobile}
           profileSaving={profileSaving}
           profileFormProps={profileFormProps}
           visibleProfileFields={visibleProfileFields}
@@ -568,11 +582,17 @@ const ProfileCenterOverviewSection = ({
 
 type ProfileCenterCompletionCardProps = {
   loading: boolean;
+  isMobile: boolean;
   profileCompletionSummary?: ProfileCompletionSummary | null;
   onProfileCompletionAction: (item: ProfileCompletionSummary['incompleteItems'][number]) => void;
 };
 
-const ProfileCenterCompletionCard = ({ loading, profileCompletionSummary, onProfileCompletionAction }: ProfileCenterCompletionCardProps) => {
+const ProfileCenterCompletionCard = ({
+  loading,
+  isMobile,
+  profileCompletionSummary,
+  onProfileCompletionAction,
+}: ProfileCenterCompletionCardProps) => {
   const { token } = theme.useToken();
   const incompleteItems = profileCompletionSummary?.incompleteItems || [];
   const visibleIncompleteItems = incompleteItems.slice(0, 3);
@@ -588,7 +608,7 @@ const ProfileCenterCompletionCard = ({ loading, profileCompletionSummary, onProf
     >
       {profileCompletionSummary ? (
         <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
-          <Space align="baseline" size={APP_SPACING.tagWrapGap.desktop} wrap>
+          <Space align="baseline" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
             <Typography.Title level={3} style={{ margin: 0 }}>
               {profileCompletionSummary.completionRate}%
             </Typography.Title>
@@ -605,7 +625,7 @@ const ProfileCenterCompletionCard = ({ loading, profileCompletionSummary, onProf
             strokeColor={profileCompletionSummary.completionRate === 100 ? token.colorSuccess : token.colorPrimary}
           />
           {visibleIncompleteItems.length ? (
-            <Space size={APP_SPACING.tagWrapGap.desktop} wrap>
+            <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
               {visibleIncompleteItems.map((item) =>
                 item.actionAvailable === false ? (
                   <Tag key={item.fieldKey}>待开启 · {item.fieldLabel}</Tag>
@@ -680,7 +700,7 @@ const ProfileCenterBindingSection = ({
                 alignItems: isMobile ? 'stretch' : 'flex-start',
               }}
             >
-              <Space direction="vertical" size={APP_SPACING.microGap.desktop} style={{ minWidth: 0, width: '100%' }}>
+              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)} style={{ minWidth: 0, width: '100%' }}>
                 <Space wrap>
                   <Typography.Text strong>{item.title}</Typography.Text>
                   <Tag color={item.statusColor || (item.value ? 'green' : 'default')}>{item.statusLabel || (item.value ? '已绑定' : '未绑定')}</Tag>
@@ -732,7 +752,7 @@ const ProfileCenterBindingSection = ({
                 alignItems: isMobile ? 'stretch' : 'flex-start',
               }}
             >
-                <Space direction="vertical" size={APP_SPACING.microGap.desktop} style={{ minWidth: 0, width: '100%' }}>
+                <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)} style={{ minWidth: 0, width: '100%' }}>
                 <Space wrap>
                   <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
                   {provider.systemEnabled === false ? <Tag color="red">系统已关闭</Tag> : null}
@@ -917,6 +937,7 @@ const ProfileCenterPage = () => {
           <div className="saas-profile-page__rail-block">
             <ProfileCenterCompletionCard
               loading={profileSectionAccess.loading}
+              isMobile={responsive.isMobile}
               profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
               onProfileCompletionAction={handleProfileCompletionAction}
             />
@@ -947,7 +968,7 @@ const ProfileCenterPage = () => {
         open={interactionAccess.securityAccess.bindModalOpen}
         onCancel={interactionAccess.securityAccess.closeBindModal}
         footer={null}
-        width={780}
+        width={resolveResponsiveValue(PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT, responsive.isMobile)}
         destroyOnHidden
         maskClosable={false}
       >
@@ -992,6 +1013,7 @@ const ProfileCenterPage = () => {
             bindingLoading={interactionAccess.securityAccess.bindingLoading}
             bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
             bindingAlert={interactionAccess.securityAccess.bindingAlert}
+            isMobile={responsive.isMobile}
             singleColumnDescriptionsProps={{ column: 1 }}
             onCancel={interactionAccess.securityAccess.closeBindModal}
             onRetry={() => void interactionAccess.securityAccess.retryBindChallenge()}
@@ -1000,6 +1022,7 @@ const ProfileCenterPage = () => {
         )}
       </Modal>
       <ContactBindModal
+        isMobile={responsive.isMobile}
         open={interactionAccess.contactBindAccess.contactBindOpen}
         title={interactionAccess.contactBindAccess.contactBindTitle}
         description={interactionAccess.contactBindAccess.contactBindDescription}

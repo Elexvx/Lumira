@@ -15,6 +15,8 @@ import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
 import { useStandardFormProps } from '@/features/form/config';
 import type { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
+import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 type ConfigDrawerMode = 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | 'basic';
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
@@ -140,7 +142,7 @@ type DrawerContentRouteParams = {
 };
 
 const renderBasicDrawerContent = () => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Typography.Paragraph style={{ marginBottom: 0 }}>
       密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。
     </Typography.Paragraph>
@@ -157,7 +159,7 @@ const renderTotpDrawerContent = ({
   canManageSettings: boolean;
   verificationFormProps: ReturnType<typeof useStandardFormProps>;
 }) => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Form {...verificationFormProps}>
       <Form.Item
         name="enabled"
@@ -186,7 +188,7 @@ const SmsDrawerContent = ({
   const providerSchema = SMS_PROVIDER_SCHEMAS[provider] ?? SMS_PROVIDER_SCHEMAS.aliyun;
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...smsFormProps}>
         <Form.Item
           name="provider"
@@ -239,7 +241,7 @@ const EmailDrawerContent = ({
   smtpTestFormProps: ReturnType<typeof useStandardFormProps>;
   smtpSettingsData?: SmtpSettings & { passwordConfigured?: boolean };
 }) => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Card title="邮箱与 SMTP" loading={verificationLoading}>
       <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
         <Form {...smtpFormProps}>
@@ -331,7 +333,7 @@ const WechatDrawerContent = ({
   const wechatEnabled = Boolean(Form.useWatch('enabled', wechatFormProps.form));
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...wechatFormProps}>
         <Form.Item name="enabled" label="启用微信登录" valuePropName="checked">
           <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
@@ -376,7 +378,7 @@ const PasskeyDrawerContent = ({
   canManageSettings: boolean;
   passkeyFormProps: ReturnType<typeof useStandardFormProps>;
 }) => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Form {...passkeyFormProps}>
       <Form.Item
         name="passwordlessEnabled"
@@ -589,6 +591,8 @@ export const useAuthenticatorConfigDrawer = ({
   onWechatSettingsRefetch,
   onPasskeySettingsRefetch,
 }: UseAuthenticatorConfigDrawerParams) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
     if (value === 'tencent' || value === 'mock' || value === 'custom') {
       return value;

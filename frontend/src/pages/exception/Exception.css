@@ -6,17 +6,17 @@
 }
 
 .saas-exception-result {
-  min-height: min(560px, calc(100vh - 220px));
-  padding: clamp(48px, 8vh, 88px) 24px 40px;
+  min-height: min(var(--saas-spacing-560), calc(100vh - var(--saas-spacing-220)));
+  padding: clamp(var(--saas-spacing-48), 8vh, var(--saas-spacing-88)) var(--saas-spacing-lg) var(--saas-spacing-40);
 }
 
 @media (max-width: 767px) {
   .saas-exception-page-shell {
-    padding: 16px;
+    padding: var(--saas-spacing-md);
   }
 
   .saas-exception-result {
     min-height: auto;
-    padding: 40px 12px 24px;
+    padding: var(--saas-spacing-40) var(--saas-spacing-sm) var(--saas-spacing-md);
   }
 }

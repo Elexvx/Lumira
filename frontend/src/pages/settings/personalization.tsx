@@ -5,6 +5,7 @@ import type { AppInitialState } from '@/app.types';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { applyFavicon, DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { normalizeAgreementSettings } from '@/agreement/settings';
@@ -16,6 +17,7 @@ import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS } from '@/floatingWindow/settings';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { persistWatermarkSettings } from '@/watermark/settingsStorage';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { AgreementMarkdownEditor } from './personalization/components/AgreementMarkdownEditor';
 import { BrandingTab } from './personalization/components/BrandingTab';
 import { FloatingWindowTab } from './personalization/components/FloatingWindowTab';
@@ -105,6 +107,9 @@ const PersonalizationSettingsPage = () => {
   const location = useLocation();
   const { initialState, setInitialState } = useInitialStateModel();
   const actionPermission = useActionPermission();
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const cardPaddingTop = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)[0];
   const [loading, setLoading] = useState(false);
   const [brandingForm] = Form.useForm<BrandingSettings>();
   const [watermarkForm] = Form.useForm<WatermarkSettings>();
@@ -443,7 +448,7 @@ const PersonalizationSettingsPage = () => {
   return (
     <ManagementPage className="saas-crud-page" ghost title="个性化设置" style={{ height: '100%', minHeight: 0 }} content={null}>
       <ManagementPageBody>
-        <Card loading={loading} bodyStyle={{ paddingTop: 8 }}>
+        <Card loading={loading} bodyStyle={{ paddingTop: cardPaddingTop }}>
           <Tabs
             activeKey={activeTab}
             destroyInactiveTabPane={false}
@@ -505,7 +510,7 @@ const PersonalizationSettingsPage = () => {
                 key: 'agreement',
                 label: '协议设置',
                 children: (
-                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                     <Form {...agreementFormProps} disabled={!canUpdate}>
                       <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
                         <AgreementMarkdownEditor placeholder="请输入用户协议 Markdown 内容" />

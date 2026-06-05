@@ -16,8 +16,10 @@ import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { request, type RequestOptions } from '@/services/common/request';
 import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const PluginCardsGrid = ({
+  isMobile,
   loading,
   definitions,
   currentAvailableMap,
@@ -32,6 +34,7 @@ const PluginCardsGrid = ({
   onOpenLogs,
   onUninstall,
 }: {
+  isMobile: boolean;
   loading: boolean;
   definitions: PluginDefinition[];
   currentAvailableMap: Map<string, TenantPlugin>;
@@ -46,16 +49,19 @@ const PluginCardsGrid = ({
   onOpenLogs: (plugin: PluginDefinition) => void;
   onUninstall: (plugin: PluginDefinition) => void;
 }) => {
+  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+
   if (!loading && !definitions.length) {
     return (
-      <div style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}>
+      <div style={{ minHeight: 'var(--saas-spacing-240)', display: 'grid', placeItems: 'center' }}>
         <Empty description="暂无插件定义" />
       </div>
     );
   }
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row gutter={rowGutter}>
       {definitions.map((plugin) => {
         const preferredEnableVersion = getPreferredEnableVersion(plugin.pluginCode);
         const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
@@ -84,7 +90,7 @@ const PluginCardsGrid = ({
                 />
               }
             >
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                 <Typography.Paragraph style={{ marginBottom: 0 }}>{plugin.description || '暂无插件描述'}</Typography.Paragraph>
                 <Space wrap>
                   <Button onClick={() => onOpenDetails(plugin)}>详情</Button>
@@ -772,7 +778,7 @@ const PluginVersionDrawer = ({
     open={versionDrawerOpen}
     onClose={() => setVersionDrawerOpen(false)}
   >
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
       <Descriptions bordered column={responsive.isMobile ? 1 : 2} size="small">
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.pluginCode', defaultMessage: 'Plugin code' })}>{selectedPlugin?.pluginCode || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentEnabledVersion', defaultMessage: 'Current enabled version' })}>{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
@@ -845,10 +851,10 @@ const PluginLogDrawer = ({
   setLogDrawerOpen: (open: boolean) => void;
 }) => {
   const logColumns: ProColumns<PluginRuntimeLog>[] = [
-    { title: '时间', dataIndex: 'createdAt', width: 180 },
-    { title: '操作类型', dataIndex: 'operationType', width: 120 },
-    { title: '生命周期', dataIndex: 'lifecycleStatus', width: 120 },
-    { title: '结果', dataIndex: 'resultStatus', width: 120 },
+    { title: '时间', dataIndex: 'createdAt', width: 'var(--saas-spacing-180)' },
+    { title: '操作类型', dataIndex: 'operationType', width: 'var(--saas-spacing-120)' },
+    { title: '生命周期', dataIndex: 'lifecycleStatus', width: 'var(--saas-spacing-120)' },
+    { title: '结果', dataIndex: 'resultStatus', width: 'var(--saas-spacing-120)' },
     {
       title: '详情',
       dataIndex: 'detailMessage',
@@ -887,6 +893,7 @@ const PluginLogDrawer = ({
 
 const PluginUninstallModal = ({
   token,
+  isMobile,
   uninstallDialogOpen,
   uninstallTarget,
   removePluginData,
@@ -905,67 +912,82 @@ const PluginUninstallModal = ({
   setUninstallTarget: (plugin: PluginDefinition | null) => void;
   setRemovePluginData: (remove: boolean) => void;
   confirmUninstall: () => Promise<void>;
-}) => (
-  <Modal
-    title={uninstallTarget ? formatMessage({ id: 'page.plugins.uninstallWithName', defaultMessage: 'Uninstall {name}' }, { name: uninstallTarget.pluginName }) : formatMessage({ id: 'page.plugins.uninstall', defaultMessage: 'Uninstall plugin' })}
-    open={uninstallDialogOpen}
-    onCancel={() => {
-      if (mutationLoading) {
-        return;
+  isMobile: boolean;
+}) => {
+  const rowGutterPanel = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const microOffset = resolveResponsiveValue(APP_SPACING.microOffset, isMobile);
+  const rowGutterPadHorizontal = rowGutterPanel[1] + microOffset;
+
+  return (
+    <Modal
+      title={
+        uninstallTarget
+          ? formatMessage({ id: 'page.plugins.uninstallWithName', defaultMessage: 'Uninstall {name}' }, { name: uninstallTarget.pluginName })
+          : formatMessage({ id: 'page.plugins.uninstall', defaultMessage: 'Uninstall plugin' })
       }
-      setUninstallDialogOpen(false);
-      setUninstallTarget(null);
-    }}
-    okText={formatMessage({ id: 'page.plugins.confirm', defaultMessage: 'Confirm uninstall' })}
-    cancelText={formatMessage({ id: 'page.plugins.cancel', defaultMessage: 'Cancel' })}
-    confirmLoading={mutationLoading}
-    onOk={() => void confirmUninstall()}
-    destroyOnHidden
-  >
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Typography.Paragraph style={{ marginBottom: 0 }}>
-        {formatMessage({ id: 'page.plugins.confirmUninstall', defaultMessage: 'You are about to uninstall {name}.' }, { name: uninstallTarget?.pluginName || uninstallTarget?.pluginCode || '-' })}
-      </Typography.Paragraph>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        {formatMessage({ id: 'page.plugins.uninstallDesc', defaultMessage: 'You can choose whether to delete the plugin-related database data as well. If selected, plugin runtime logs, platform bindings, version records, and plugin definitions will be removed.' })}
-      </Typography.Paragraph>
-      <Radio.Group value={removePluginData} onChange={(event) => setRemovePluginData(event.target.value)} style={{ width: '100%' }}>
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Radio
-            value={false}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              marginInlineStart: 0,
-              padding: '16px 20px',
-              borderRadius: 10,
-              border: `1px solid ${removePluginData ? token.colorBorderSecondary : token.colorPrimary}`,
-              background: removePluginData ? token.colorBgContainer : token.colorPrimaryBg,
-            }}
-          >
-            {formatMessage({ id: 'page.plugins.onlyUninstall', defaultMessage: 'Only uninstall the plugin, do not delete database data' })}
-          </Radio>
-          <Radio
-            value={true}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              marginInlineStart: 0,
-              padding: '16px 20px',
-              borderRadius: 10,
-              border: `1px solid ${removePluginData ? token.colorError : token.colorBorderSecondary}`,
-              background: removePluginData ? token.colorErrorBg : token.colorBgContainer,
-            }}
-          >
-            {formatMessage({ id: 'page.plugins.uninstallAndDeleteData', defaultMessage: 'Uninstall and delete database data' })}
-          </Radio>
-        </Space>
-      </Radio.Group>
-    </Space>
-  </Modal>
-);
+      open={uninstallDialogOpen}
+      onCancel={() => {
+        if (mutationLoading) {
+          return;
+        }
+        setUninstallDialogOpen(false);
+        setUninstallTarget(null);
+      }}
+      okText={formatMessage({ id: 'page.plugins.confirm', defaultMessage: 'Confirm uninstall' })}
+      cancelText={formatMessage({ id: 'page.plugins.cancel', defaultMessage: 'Cancel' })}
+      confirmLoading={mutationLoading}
+      onOk={() => void confirmUninstall()}
+      destroyOnHidden
+    >
+      <Space
+        direction="vertical"
+        size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)}
+        style={{ width: '100%' }}
+      >
+        <Typography.Paragraph style={{ marginBottom: 0 }}>
+          {formatMessage({ id: 'page.plugins.confirmUninstall', defaultMessage: 'You are about to uninstall {name}.' }, { name: uninstallTarget?.pluginName || uninstallTarget?.pluginCode || '-' })}
+        </Typography.Paragraph>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {formatMessage({ id: 'page.plugins.uninstallDesc', defaultMessage: 'You can choose whether to delete the plugin-related database data as well. If selected, plugin runtime logs, platform bindings, version records, and plugin definitions will be removed.' })}
+        </Typography.Paragraph>
+        <Radio.Group value={removePluginData} onChange={(event) => setRemovePluginData(event.target.value)} style={{ width: '100%' }}>
+          <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.modalFooterGap, isMobile)} style={{ width: '100%' }}>
+            <Radio
+              value={false}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                marginInlineStart: 0,
+                padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
+                borderRadius: 'var(--saas-spacing-10)',
+                border: `1px solid ${removePluginData ? token.colorBorderSecondary : token.colorPrimary}`,
+                background: removePluginData ? token.colorBgContainer : token.colorPrimaryBg,
+              }}
+            >
+              {formatMessage({ id: 'page.plugins.onlyUninstall', defaultMessage: 'Only uninstall the plugin, do not delete database data' })}
+            </Radio>
+            <Radio
+              value={true}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                marginInlineStart: 0,
+                padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
+                borderRadius: 'var(--saas-spacing-10)',
+                border: `1px solid ${removePluginData ? token.colorError : token.colorBorderSecondary}`,
+                background: removePluginData ? token.colorErrorBg : token.colorBgContainer,
+              }}
+            >
+              {formatMessage({ id: 'page.plugins.uninstallAndDeleteData', defaultMessage: 'Uninstall and delete database data' })}
+            </Radio>
+          </Space>
+        </Radio.Group>
+      </Space>
+    </Modal>
+  );
+};
 
 const PluginUploadModal = ({
   uploadVisible,
@@ -1075,13 +1097,19 @@ const PluginsPage = () => {
       style={{ height: '100%', minHeight: 0 }}
     >
       <ManagementPageBody>
-        <Card bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Card
+          bodyStyle={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile),
+          }}
+        >
           <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
             <Input.Search
               allowClear
               placeholder={formatMessage({ id: 'page.plugins.searchPlaceholder', defaultMessage: 'Enter plugin code or name' })}
               onChange={(event) => setSearchKeyword(event.target.value)}
-              style={{ width: 320, maxWidth: '100%', flex: '0 1 320px' }}
+              style={{ width: 'var(--saas-spacing-320)', maxWidth: '100%', flex: '0 1 var(--saas-spacing-320)' }}
             />
             <Space wrap>
               <Button icon={<SyncOutlined />} onClick={() => void pluginPageDataPack.loadOverview()} loading={loading || mutationLoading}>
@@ -1101,6 +1129,7 @@ const PluginsPage = () => {
             canEnable={canEnablePlugin}
             canDisable={canDisablePlugin}
             canViewLogs={canViewPluginLogs}
+            isMobile={responsive.isMobile}
             onToggleEnable={(pluginCode, enabled, versionLabel) =>
               void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
             }
@@ -1148,6 +1177,7 @@ const PluginsPage = () => {
         setUninstallTarget={setUninstallTarget}
         setRemovePluginData={setRemovePluginData}
         confirmUninstall={confirmUninstall}
+        isMobile={responsive.isMobile}
       />
       <PluginUploadModal
         uploadVisible={uploadVisible}

@@ -1,13 +1,13 @@
 .saas-ai-assistant-page {
-  --saas-ai-chat-column-width: 940px;
-  --saas-ai-chat-gutter: 24px;
+  --saas-ai-chat-column-width: var(--saas-spacing-940);
+  --saas-ai-chat-gutter: var(--saas-spacing-lg);
 
-  height: calc(100vh - 48px);
+  height: calc(100vh - var(--saas-spacing-48));
   overflow: hidden;
 }
 
 .saas-ai-assistant-page .ant-pro-page-container-children-container {
-  height: calc(100vh - 168px);
+  height: calc(100vh - var(--saas-spacing-168));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -19,7 +19,7 @@
   flex: 1;
   min-height: 0;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
   overflow: hidden;
   background: var(--ant-color-bg-container);
   box-shadow: 0 16px 42px rgba(15, 23, 42, 0.06);
@@ -31,7 +31,7 @@
 
 .saas-ai-assistant-desktop-shell {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: var(--saas-spacing-280) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -54,7 +54,7 @@
 
 .saas-ai-assistant-mobile-tabs .ant-tabs-nav {
   margin-bottom: 0;
-  padding: 0 12px;
+  padding: 0 var(--saas-spacing-sm);
 }
 
 .saas-ai-assistant-mobile-tabs .ant-tabs-content-holder {
@@ -80,14 +80,14 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 12px;
+  padding: var(--saas-spacing-sm);
 }
 
 .saas-ai-assistant-conversations .ant-btn {
   justify-content: flex-start;
-  min-height: 36px;
-  padding-inline: 10px;
-  border-radius: 8px;
+  min-height: var(--saas-spacing-36);
+  padding-inline: var(--saas-spacing-10);
+  border-radius: var(--saas-card-radius);
   text-align: left;
 }
 
@@ -96,13 +96,13 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
 }
 
 .saas-ai-assistant-conversation-item {
   flex: 1 1 auto;
   min-width: 0;
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
 }
 
 .saas-ai-assistant-conversation-item--active {
@@ -111,7 +111,7 @@
 
 .saas-ai-assistant-conversation-item__main.ant-btn {
   width: 100%;
-  padding-right: 40px;
+  padding-right: var(--saas-spacing-40);
   color: var(--ant-color-text);
 }
 
@@ -134,9 +134,9 @@
 
 .saas-ai-assistant-conversation-item__more.ant-btn {
   position: absolute;
-  right: 4px;
-  width: 32px;
-  min-width: 32px;
+  right: var(--saas-spacing-2xs);
+  width: var(--saas-spacing-32);
+  min-width: var(--saas-spacing-32);
   color: var(--ant-color-text-tertiary);
   opacity: 0;
   pointer-events: none;
@@ -169,18 +169,18 @@
 .saas-ai-assistant-conversations__groups {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 14px;
+  gap: var(--saas-spacing-14);
+  margin-top: var(--saas-spacing-14);
 }
 
 .saas-ai-assistant-conversations__group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--saas-spacing-2xs);
 }
 
 .saas-ai-assistant-conversations__group-title {
-  padding: 0 8px;
+  padding: 0 var(--saas-spacing-xs);
   color: var(--ant-color-text-tertiary);
   font-size: 12px;
 }
@@ -203,26 +203,26 @@
 }
 
 .saas-ai-assistant-shell__welcome {
-  max-width: 840px;
+  max-width: var(--saas-spacing-840);
   margin: 0 auto;
-  padding-top: 32px;
+  padding-top: var(--saas-spacing-32);
   text-align: center;
 }
 
 .saas-ai-assistant-welcome__icon {
-  margin-bottom: 16px;
+  margin-bottom: var(--saas-spacing-md);
   color: var(--ant-color-primary);
   font-size: 44px;
 }
 
 .saas-ai-assistant-shell__welcome h2 {
-  margin-bottom: 10px;
+  margin-bottom: var(--saas-spacing-10);
   font-size: 26px;
   line-height: 1.28;
 }
 
 .saas-ai-assistant-shell__welcome p {
-  margin-bottom: 16px;
+  margin-bottom: var(--saas-spacing-md);
   color: var(--ant-color-text-secondary);
 }
 
@@ -234,16 +234,16 @@
 .saas-ai-assistant-bubbles {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--saas-spacing-md);
   width: min(var(--saas-ai-chat-column-width), 100%);
   margin: 0 auto;
-  padding: 4px 0 8px;
+  padding: var(--saas-spacing-2xs) 0 var(--saas-spacing-xs);
 }
 
 .saas-ai-assistant-bubble {
   display: flex;
   flex-direction: column;
-  max-width: min(760px, 100%);
+  max-width: min(var(--saas-spacing-760), 100%);
 }
 
 .saas-ai-assistant-bubble--user {
@@ -259,16 +259,16 @@
 .saas-ai-assistant-bubble__header {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--saas-spacing-xs);
+  margin-bottom: var(--saas-spacing-xs);
   color: var(--ant-color-text-secondary);
   font-size: 13px;
   font-weight: 600;
 }
 
 .saas-ai-assistant-bubble__content {
-  padding: 12px 14px;
-  border-radius: 8px;
+  padding: var(--saas-spacing-sm) var(--saas-spacing-14);
+  border-radius: var(--saas-card-radius);
   background: var(--ant-color-fill-tertiary);
   color: var(--ant-color-text);
   line-height: 1.7;
@@ -291,11 +291,11 @@
 }
 
 .saas-ai-assistant-share-alert {
-  margin-bottom: 16px;
+  margin-bottom: var(--saas-spacing-md);
 }
 
 .saas-ai-assistant-loading {
-  min-height: 360px;
+  min-height: var(--saas-spacing-360);
   display: grid;
   place-items: center;
 }
@@ -308,15 +308,15 @@
 .saas-ai-assistant-composer__header {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--saas-spacing-6);
 }
 
 .saas-ai-assistant-agent-suggestion .ant-cascader-dropdown {
-  min-width: min(360px, calc(100vw - 48px));
+  min-width: min(var(--saas-spacing-360), calc(100vw - var(--saas-spacing-48)));
 }
 
 .saas-ai-assistant-agent-suggestion .ant-cascader-menu {
-  min-width: min(360px, calc(100vw - 48px));
+  min-width: min(var(--saas-spacing-360), calc(100vw - var(--saas-spacing-48)));
 }
 
 .saas-ai-assistant-composer {
@@ -330,14 +330,14 @@
 .saas-ai-assistant-sender {
   width: 100%;
   border-color: var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
   background: var(--ant-color-bg-container);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 .saas-ai-assistant-sender .ant-sender-content {
-  gap: 6px;
-  padding: 8px 12px 4px;
+  gap: var(--saas-spacing-6);
+  padding: var(--saas-spacing-xs) var(--saas-spacing-sm) var(--saas-spacing-2xs);
 }
 
 .saas-ai-assistant-sender .ant-sender-input {
@@ -346,7 +346,7 @@
 }
 
 .saas-ai-assistant-sender .ant-sender-footer {
-  padding: 4px 12px 10px;
+  padding: var(--saas-spacing-2xs) var(--saas-spacing-sm) var(--saas-spacing-sm);
 }
 
 .saas-ai-assistant-sender .ant-sender-actions-list {
@@ -357,7 +357,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(var(--saas-spacing-sm) - var(--saas-spacing-2xs));
   width: 100%;
 }
 
@@ -365,22 +365,22 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
   min-width: 0;
 }
 
 .saas-ai-assistant-composer__tools .ant-btn {
-  min-height: 32px;
-  border-radius: 8px;
+  min-height: var(--saas-spacing-32);
+  border-radius: var(--saas-card-radius);
 }
 
 .saas-ai-assistant-composer__agent-button {
-  max-width: 120px;
+  max-width: var(--saas-spacing-120);
 }
 
 .saas-ai-assistant-composer__agent-label {
   display: inline-block;
-  max-width: 72px;
+  max-width: var(--saas-spacing-72);
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: bottom;
@@ -388,7 +388,7 @@
 }
 
 .saas-ai-assistant-composer__tools .ant-sender-switch {
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
 }
 
 .saas-ai-assistant-composer__tools .ant-sender-switch:not(.ant-sender-switch-checked) .ant-sender-switch-content {
@@ -400,19 +400,19 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--saas-spacing-sm) - var(--saas-spacing-2xs));
 }
 
 .saas-ai-assistant-composer__actions::before {
   content: '';
   width: 1px;
-  height: 22px;
+  height: var(--saas-spacing-22);
   background: var(--ant-color-border-secondary);
 }
 
 .saas-ai-assistant-composer__attachments {
   width: 100%;
-  padding-bottom: 6px;
+  padding-bottom: var(--saas-spacing-6);
 }
 
 .saas-ai-assistant-file-card-list {
@@ -420,11 +420,11 @@
 }
 
 .saas-ai-assistant-file-card-list .ant-file-card {
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
 }
 
 .saas-ai-assistant-file-card-list--pending .ant-file-card-list-content {
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .saas-ai-assistant-file-card-list--pending .ant-file-card {
@@ -432,7 +432,7 @@
 }
 
 .saas-ai-assistant-file-card-list--message {
-  max-width: min(100%, 520px);
+  max-width: min(100%, var(--saas-spacing-520));
 }
 
 .saas-ai-assistant-message-attachments {
@@ -440,7 +440,7 @@
 }
 
 .saas-ai-assistant-bubble__footer {
-  max-width: min(100%, 760px);
+  max-width: min(100%, var(--saas-spacing-760));
 }
 
 .saas-ai-assistant-bubble__actions {
@@ -467,7 +467,7 @@
 .saas-ai-assistant-markdown blockquote,
 .saas-ai-assistant-markdown pre,
 .saas-ai-assistant-markdown table {
-  margin: 0 0 12px;
+  margin: 0 0 var(--saas-spacing-md);
 }
 
 .saas-ai-assistant-markdown ul,
@@ -476,27 +476,27 @@
 }
 
 .saas-ai-assistant-markdown li + li {
-  margin-top: 4px;
+  margin-top: var(--saas-spacing-2xs);
 }
 
 .saas-ai-assistant-markdown blockquote {
-  padding-left: 12px;
+  padding-left: var(--saas-spacing-xs);
   color: var(--ant-color-text-secondary);
   border-left: 3px solid var(--ant-color-border);
 }
 
 .saas-ai-assistant-markdown code {
-  padding: 2px 5px;
+  padding: var(--saas-spacing-xxs) var(--saas-spacing-5);
   font-size: 0.92em;
   background: var(--ant-color-fill-tertiary);
-  border-radius: 4px;
+  border-radius: var(--saas-spacing-2xs);
 }
 
 .saas-ai-assistant-markdown pre {
   overflow: auto;
-  padding: 12px;
+  padding: var(--saas-spacing-sm);
   background: var(--ant-color-fill-quaternary);
-  border-radius: 6px;
+  border-radius: var(--saas-spacing-6);
 }
 
 .saas-ai-assistant-markdown pre code {
@@ -507,11 +507,11 @@
 .saas-ai-assistant-markdown-placeholder {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 2px 4px;
+  gap: var(--saas-spacing-xs);
+  padding: var(--saas-spacing-xxs) var(--saas-spacing-2xs);
   color: var(--ant-color-text-tertiary);
   border: 1px dashed var(--ant-color-border);
-  border-radius: 6px;
+  border-radius: var(--saas-spacing-6);
 }
 
 .saas-ai-assistant-markdown pre:has(.saas-ai-assistant-code),
@@ -528,7 +528,7 @@
 
 .saas-ai-assistant-markdown th,
 .saas-ai-assistant-markdown td {
-  padding: 6px 8px;
+  padding: var(--saas-spacing-6) var(--saas-spacing-xs);
   border: 1px solid var(--ant-color-border-secondary);
 }
 
@@ -539,18 +539,18 @@
 .saas-ai-assistant-ai-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--saas-spacing-sm);
 }
 
 .saas-ai-assistant-thinking {
-  width: min(100%, 760px);
+  width: min(100%, var(--saas-spacing-760));
   color: var(--ant-color-text-secondary);
 }
 
 .saas-ai-assistant-thinking__status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
   width: fit-content;
   font-weight: 600;
   color: var(--ant-color-text);
@@ -564,17 +564,17 @@
 .saas-ai-assistant-thinking__loading {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .saas-ai-tool-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding: 12px;
+  gap: calc(var(--saas-spacing-sm) - var(--saas-spacing-2xs));
+  margin-bottom: var(--saas-spacing-sm);
+  padding: var(--saas-spacing-sm);
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--saas-card-radius);
   background: var(--ant-color-bg-container);
 }
 
@@ -588,7 +588,7 @@
 .saas-ai-tool-card__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
   flex-wrap: wrap;
 }
 
@@ -612,18 +612,18 @@
 }
 
 .saas-ai-tool-card__args {
-  max-height: 180px;
+  max-height: var(--saas-spacing-180);
   overflow: auto;
   margin: 0;
-  padding: 10px;
-  border-radius: 6px;
+  padding: var(--saas-spacing-xs);
+  border-radius: var(--saas-spacing-6);
   background: var(--ant-color-fill-secondary);
   font-size: 12px;
   line-height: 1.5;
 }
 
 .saas-ai-tool-card__alert {
-  border-radius: 6px;
+  border-radius: var(--saas-spacing-6);
 }
 
 .saas-ai-assistant-sources {
@@ -640,13 +640,13 @@
 }
 
 .saas-ai-assistant-sources__content {
-  margin-top: 8px;
+  margin-top: var(--saas-spacing-xs);
 }
 
 .saas-ai-assistant-sources__content .ant-sources-list-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .saas-ai-assistant-sources__content .ant-sources-link {
@@ -664,13 +664,13 @@
 
 @media (max-width: 992px) {
   .saas-ai-assistant-desktop-shell {
-    grid-template-columns: 208px minmax(0, 1fr);
+    grid-template-columns: var(--saas-spacing-208) minmax(0, 1fr);
   }
 }
 
 @media (max-width: 768px) {
   .saas-ai-assistant-page {
-    --saas-ai-chat-gutter: 16px;
+    --saas-ai-chat-gutter: var(--saas-spacing-md);
   }
 
   .saas-ai-assistant-layout {
@@ -698,8 +698,8 @@
     min-height: 0;
   }
 
-  .saas-ai-assistant-mobile-shell .saas-ai-assistant-conversations {
-    max-height: 220px;
+    .saas-ai-assistant-mobile-shell .saas-ai-assistant-conversations {
+    max-height: var(--saas-spacing-220);
   }
 
   .saas-ai-assistant-composer__footer {

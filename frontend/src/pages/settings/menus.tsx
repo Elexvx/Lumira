@@ -27,6 +27,7 @@ import type { MenuNode, MenuRecord } from '@/types/api';
 import { TableActionBar, type TableActionItem } from '@/features/table/TableActionBar';
 import type { PermissionAwareTableAction } from '@/features/permissions/useActionPermission';
 import { isMainMenuHiddenSettingPath } from '@/navigation/settingsNavigationRuntime';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const MENU_TYPE_LABELS = {
   CATALOG: '目录',
@@ -437,7 +438,7 @@ const buildMenuColumns = ({
   {
     title: '拖拽',
     dataIndex: 'dragHandle',
-    width: 96,
+    width: 'var(--saas-spacing-96)',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => {
@@ -446,7 +447,7 @@ const buildMenuColumns = ({
       const readonly = isReadonlyMenu(record);
 
       return (
-        <Space size={8}>
+        <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)}>
           <Button
             type="text"
             size="small"
@@ -458,8 +459,8 @@ const buildMenuColumns = ({
               onToggleExpand(record.id);
             }}
             style={{
-              width: 24,
-              height: 24,
+              width: 'var(--saas-spacing-lg)',
+              height: 'var(--saas-spacing-lg)',
               padding: 0,
               display: 'inline-flex',
               alignItems: 'center',
@@ -475,7 +476,7 @@ const buildMenuColumns = ({
     title: '菜单编码',
     dataIndex: 'menuCode',
     search: false,
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) =>
@@ -484,11 +485,15 @@ const buildMenuColumns = ({
   {
     title: '菜单名称',
     dataIndex: 'menuName',
-    width: 260,
+    width: 'var(--saas-spacing-260)',
     search: true,
     ellipsis: true,
     render: (_, record) => (
-      <Typography.Text className="saas-menu-tree-cell" ellipsis={{ tooltip: record.menuName }} style={{ paddingInlineStart: `${(record.level || 0) * 24}px` }}>
+      <Typography.Text
+        className="saas-menu-tree-cell"
+        ellipsis={{ tooltip: record.menuName }}
+        style={{ paddingInlineStart: `calc(${(record.level || 0)} * var(--saas-spacing-lg))` }}
+      >
         {record.menuName}
       </Typography.Text>
     ),
@@ -496,7 +501,7 @@ const buildMenuColumns = ({
   {
     title: '菜单类型',
     dataIndex: 'menuType',
-    width: 120,
+    width: 'var(--saas-spacing-120)',
     valueEnum: {
       CATALOG: { text: '目录' },
       MENU: { text: '菜单' },
@@ -508,7 +513,7 @@ const buildMenuColumns = ({
     title: '路由',
     dataIndex: 'path',
     search: false,
-    width: 220,
+    width: 'var(--saas-spacing-220)',
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
   },
@@ -516,7 +521,7 @@ const buildMenuColumns = ({
     title: '图标',
     dataIndex: 'icon',
     search: false,
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) => <MenuIconPreview icon={record.icon} />,
@@ -525,14 +530,14 @@ const buildMenuColumns = ({
     title: '组件',
     dataIndex: 'component',
     search: false,
-    width: 300,
+    width: 'var(--saas-spacing-300)',
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
   },
   {
     title: '权限标识',
     dataIndex: 'permissionKey',
-    width: 220,
+    width: 'var(--saas-spacing-220)',
     search: true,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
@@ -543,14 +548,14 @@ const buildMenuColumns = ({
     title: '排序',
     dataIndex: 'sortNo',
     search: false,
-    width: 88,
+    width: 'var(--saas-spacing-88)',
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => record.sortNo ?? 0,
   },
   {
     title: '状态',
     dataIndex: 'status',
-    width: 120,
+    width: 'var(--saas-spacing-120)',
     search: false,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
   },
@@ -558,7 +563,7 @@ const buildMenuColumns = ({
     title: '操作',
     valueType: 'option',
     fixed: 'right',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => {
       const readonly = isReadonlyMenu(record);
       return (
@@ -1097,11 +1102,12 @@ const SettingsRoutesTab = () => {
     { key: 'save', label: '保存', type: 'primary', onClick: () => void saveRouteEditor() },
   ];
   const { token } = theme.useToken();
+  const microGap = resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile);
   const columns: ProColumns<SettingsRouteRecord>[] = [
     {
       title: '拖拽',
       dataIndex: 'dragHandle',
-      width: 96,
+      width: 'var(--saas-spacing-96)',
       search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       render: () => <HolderOutlined style={{ color: token.colorTextTertiary, cursor: 'default' }} />,
@@ -1110,7 +1116,7 @@ const SettingsRoutesTab = () => {
       title: '菜单编码',
       dataIndex: 'menuCode',
       search: false,
-      width: 180,
+      width: 'var(--saas-spacing-180)',
       responsive: ['lg', 'xl', 'xxl'],
       ellipsis: true,
       render: (_, record) => <Typography.Text ellipsis={{ tooltip: record.menuCode }}>{record.menuCode}</Typography.Text>,
@@ -1118,7 +1124,7 @@ const SettingsRoutesTab = () => {
     {
       title: '菜单名称',
       dataIndex: 'menuName',
-      width: 260,
+      width: 'var(--saas-spacing-260)',
       search: true,
       ellipsis: true,
       render: (_, record) => (
@@ -1130,7 +1136,7 @@ const SettingsRoutesTab = () => {
     {
       title: '菜单类型',
       dataIndex: 'menuType',
-      width: 120,
+      width: 'var(--saas-spacing-120)',
       valueEnum: {
         TAB: { text: '页签' },
       },
@@ -1139,7 +1145,7 @@ const SettingsRoutesTab = () => {
       title: '路由',
       dataIndex: 'path',
       search: false,
-      width: 220,
+      width: 'var(--saas-spacing-220)',
       responsive: ['md', 'lg', 'xl', 'xxl'],
       ellipsis: true,
     },
@@ -1147,7 +1153,7 @@ const SettingsRoutesTab = () => {
       title: '图标',
       dataIndex: 'icon',
       search: false,
-      width: 180,
+      width: 'var(--saas-spacing-180)',
       responsive: ['md', 'lg', 'xl', 'xxl'],
       ellipsis: true,
       render: (_, record) => <MenuIconPreview icon={record.icon} />,
@@ -1156,14 +1162,14 @@ const SettingsRoutesTab = () => {
       title: '组件',
       dataIndex: 'component',
       search: false,
-      width: 300,
+      width: 'var(--saas-spacing-300)',
       responsive: ['lg', 'xl', 'xxl'],
       ellipsis: true,
     },
     {
       title: '权限标识',
       dataIndex: 'permissionKey',
-      width: 220,
+      width: 'var(--saas-spacing-220)',
       search: true,
       responsive: ['md', 'lg', 'xl', 'xxl'],
       ellipsis: true,
@@ -1174,24 +1180,24 @@ const SettingsRoutesTab = () => {
       title: '排序',
       dataIndex: 'sortNo',
       search: false,
-      width: 88,
+      width: 'var(--saas-spacing-88)',
       responsive: ['md', 'lg', 'xl', 'xxl'],
       render: (_, record) => record.sortNo,
     },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 120,
+      width: 'var(--saas-spacing-120)',
       search: false,
       render: (_, record) => <Tag color="green">{record.status}</Tag>,
     },
     {
       title: '操作',
       valueType: 'option',
-      width: 144,
+      width: 'var(--saas-spacing-144)',
       fixed: 'right',
       render: (_, record, index) => (
-        <Space size={4}>
+        <Space size={microGap}>
           <Button type="link" onClick={() => openEditRoute(record)}>
             编辑
           </Button>
@@ -1474,7 +1480,7 @@ const MenuManagementPage = () => {
 
       <ManagementDrawer title={menuDetailDrawerProps.title} open={menuDetailDrawerProps.open} onClose={menuDetailDrawerProps.onClose}>
         {menuDetailDrawerProps.loading ? (
-          <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
+          <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
             <Spin />
           </div>
         ) : menuDetailDrawerProps.currentRecord ? (

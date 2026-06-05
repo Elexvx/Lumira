@@ -26,6 +26,7 @@ import type {
 import { EmployeeDrawer, type EmployeeFormValues } from './components/EmployeeDrawer';
 import { LlmServiceDrawer } from './components/LlmServiceDrawer';
 import type { LlmFormValues } from './components/LlmServiceDrawer';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const EMPLOYEE_TAB_KEY = 'employees';
 const LLM_TAB_KEY = 'llm-services';
@@ -294,7 +295,7 @@ const buildEmployeeColumns = ({
   {
     title: '头像',
     dataIndex: 'avatarKey',
-    width: 96,
+    width: 'var(--saas-spacing-96)',
     render: (_, record) => {
       const avatar = resolveAvatar(record.avatarKey);
       return (
@@ -305,20 +306,20 @@ const buildEmployeeColumns = ({
       );
     },
   },
-  { title: '用户名', dataIndex: 'username', width: 180 },
-  { title: '昵称', dataIndex: 'nickname', width: 180 },
-  { title: '职位', dataIndex: 'position', width: 160, ellipsis: true, render: (_, record) => record.position || '-' },
+  { title: '用户名', dataIndex: 'username', width: 'var(--saas-spacing-180)' },
+  { title: '昵称', dataIndex: 'nickname', width: 'var(--saas-spacing-180)' },
+  { title: '职位', dataIndex: 'position', width: 'var(--saas-spacing-160)', ellipsis: true, render: (_, record) => record.position || '-' },
   {
     title: '启用状态',
     dataIndex: 'enabled',
-    width: 120,
+    width: 'var(--saas-spacing-120)',
     render: (_, record) => <Tag color={record.enabled ? 'green' : 'default'}>{record.enabled ? '已启用' : '已禁用'}</Tag>,
   },
   {
     title: '操作',
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
@@ -407,21 +408,21 @@ const buildLlmColumns = ({
   onToggle: (record: AiLlmServiceRecord) => void;
   onDelete: (record: AiLlmServiceRecord) => void;
 }): ProColumns<AiLlmServiceRecord>[] => [
-  { title: '唯一标识', dataIndex: 'code', width: 180 },
-  { title: '标题', dataIndex: 'title', width: 220, ellipsis: true },
-  { title: 'LLM 类型', dataIndex: 'provider', width: 180 },
-  { title: '默认模型', dataIndex: 'defaultModel', width: 180, render: (_, record) => record.defaultModel || '-' },
+  { title: '唯一标识', dataIndex: 'code', width: 'var(--saas-spacing-180)' },
+  { title: '标题', dataIndex: 'title', width: 'var(--saas-spacing-220)', ellipsis: true },
+  { title: 'LLM 类型', dataIndex: 'provider', width: 'var(--saas-spacing-180)' },
+  { title: '默认模型', dataIndex: 'defaultModel', width: 'var(--saas-spacing-180)', render: (_, record) => record.defaultModel || '-' },
   {
     title: '启用状态',
     dataIndex: 'enabled',
-    width: 120,
+    width: 'var(--saas-spacing-120)',
     render: (_, record) => <Tag color={record.enabled ? 'green' : 'default'}>{record.enabled ? '已启用' : '已禁用'}</Tag>,
   },
   {
     title: '操作',
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
-    width: 180,
+    width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
@@ -882,6 +883,7 @@ const AiEmployeesPage = () => {
   ]);
 
   const tabBarExtraContent = activeTab === EMPLOYEE_TAB_KEY ? employeeToolbarButtons : llmToolbarButtons;
+  const cardPaddingTop = resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)[0];
 
   const employeeTabProps = {
     actionRef: employeeState.actionRef,
@@ -918,7 +920,7 @@ const AiEmployeesPage = () => {
   return (
     <ManagementPage className="saas-crud-page" ghost title="数字员工" style={{ height: '100%', minHeight: 0 }} content={null}>
       <ManagementPageBody>
-        <Card className="saas-ai-employees-card" bodyStyle={{ paddingTop: 8 }}>
+        <Card className="saas-ai-employees-card" bodyStyle={{ paddingTop: cardPaddingTop }}>
           <Tabs
             activeKey={activeTab}
             destroyInactiveTabPane={false}

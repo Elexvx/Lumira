@@ -19,6 +19,7 @@ import type { FormInstance } from 'antd';
 import type { PermissionTreeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
 import type { PagedResult } from '@/types/api';
+import { APP_SPACING } from '@/theme/spacing';
 
 const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
 const DEFAULT_HOME_PATH = '/dashboard/home';
@@ -225,7 +226,7 @@ const roleDataColumns: ProColumns<RoleRecord>[] = [
     dataIndex: 'roleName',
     search: true,
     render: (_, record) => (
-      <Space size={6} wrap>
+      <Space size={APP_SPACING.tagWrapGap.desktop[0]} wrap>
         <span>{record.roleName}</span>
         {record.defaultRegistrationRole ? <Tag color="blue">默认注册</Tag> : null}
       </Space>
@@ -282,7 +283,7 @@ const buildRoleActionColumn = ({
   title: '操作',
   valueType: 'option',
   fixed: isDesktop ? 'right' : undefined,
-  width: 180,
+  width: 'var(--saas-spacing-180)',
   render: (_, record) => (
     <TableActionBar
       isMobile={isMobile}

@@ -40,7 +40,7 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     search: {
       transform: (value) => ({ userId: value ? Number(value) : undefined }),
     },
-    width: 96,
+    width: 'var(--saas-spacing-96)',
   },
   {
     title: '用户编号',
@@ -190,7 +190,7 @@ const buildUserColumns = ({
     title: '操作',
     valueType: 'option',
     fixed: 'right',
-    width: 220,
+    width: 'var(--saas-spacing-220)',
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}

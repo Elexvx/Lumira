@@ -1,27 +1,27 @@
 .saas-user-management-layout {
   display: grid;
-  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(var(--saas-spacing-240), var(--saas-spacing-280)) minmax(0, 1fr);
+  gap: var(--saas-spacing-md);
   align-items: start;
 }
 
 .saas-user-department-card {
   position: sticky;
-  top: 16px;
+  top: var(--saas-spacing-md);
   min-width: 0;
 }
 
 .saas-user-department-card .ant-card-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 420px;
-  padding: 16px;
+  gap: var(--saas-spacing-sm);
+  min-height: var(--saas-spacing-420);
+  padding: var(--saas-spacing-md);
 }
 
 .saas-user-department-card__title {
   display: inline-flex;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
   align-items: center;
 }
 
@@ -32,7 +32,7 @@
 .saas-user-department-card__loading {
   display: grid;
   flex: 1;
-  min-height: 240px;
+  min-height: var(--saas-spacing-240);
   place-items: center;
 }
 
@@ -56,7 +56,7 @@
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .saas-user-department-tree__name {
@@ -68,13 +68,13 @@
 
 .saas-user-department-tree__count {
   flex: none;
-  min-width: 22px;
-  padding-inline: 6px;
-  border-radius: 999px;
+  min-width: var(--saas-spacing-22);
+  padding-inline: var(--saas-spacing-6);
+  border-radius: 50%;
   background: var(--ant-color-fill-tertiary);
   color: var(--ant-color-text-secondary);
   font-size: 12px;
-  line-height: 20px;
+  line-height: var(--saas-spacing-20);
   text-align: center;
 }
 

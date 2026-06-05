@@ -1,25 +1,25 @@
 .role-editor-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--saas-spacing-sm);
 }
 
 .role-editor-form .ant-form-item {
-  margin-bottom: 12px;
+  margin-bottom: var(--saas-spacing-sm);
 }
 
 .role-editor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--saas-spacing-sm);
   align-items: stretch;
 }
 
 .role-editor-section {
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 12px;
+  border-radius: var(--saas-card-radius);
   background: var(--ant-color-bg-container);
-  padding: 12px;
+  padding: var(--saas-spacing-sm);
   min-height: 0;
 }
 
@@ -27,8 +27,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--saas-spacing-sm);
+  margin-bottom: var(--saas-spacing-xs);
 }
 
 .role-editor-section__title {
@@ -38,14 +38,14 @@
 }
 
 .role-editor-section__meta {
-  margin-top: 2px;
+  margin-top: var(--saas-spacing-2xs);
   color: var(--ant-color-text-secondary);
   font-size: 12px;
   line-height: 1.5;
 }
 
 .role-permission-tree {
-  max-height: 400px;
+  max-height: var(--saas-spacing-400);
   overflow: auto;
 }
 
@@ -72,9 +72,9 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--saas-spacing-xs) + var(--saas-spacing-xxs));
   min-width: 0;
-  padding-block: 4px;
+  padding-block: var(--saas-spacing-2xs);
 }
 
 .role-page-row--mismatch .role-page-row__name,
@@ -95,7 +95,7 @@
 .role-page-row__meta {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
   min-width: 0;
   flex: 0 1 auto;
 }
@@ -103,12 +103,12 @@
 .role-page-row__kind {
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
-  border-radius: 999px;
+  padding: 0 var(--saas-spacing-xs);
+  border-radius: 50%;
   background: var(--ant-color-primary-bg);
   color: var(--ant-color-primary);
   font-size: 12px;
-  line-height: 20px;
+  line-height: var(--saas-spacing-20);
   white-space: nowrap;
 }
 
@@ -139,7 +139,7 @@
 .role-action-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .role-action-panel__page-name {
@@ -149,7 +149,7 @@
 }
 
 .role-action-panel__empty {
-  min-height: 176px;
+  min-height: var(--saas-spacing-176);
   display: grid;
   place-items: center;
 }
@@ -162,7 +162,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .role-permission-detail__page-tree-row .role-page-row__meta {
@@ -172,7 +172,7 @@
 .role-action-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: var(--saas-spacing-xs) var(--saas-spacing-sm);
 }
 
 .role-action-grid .ant-checkbox-wrapper {
@@ -180,5 +180,5 @@
 }
 
 .role-action-grid .ant-checkbox + span {
-  padding-inline-start: 8px;
+  padding-inline-start: var(--saas-spacing-xs);
 }

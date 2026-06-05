@@ -448,14 +448,14 @@ const LocalizationPage = () => {
       },
       {
         title: '',
-        width: 64,
+        width: 'var(--saas-spacing-64)',
         align: 'center',
         render: (_: unknown, __: import('@/types/api').LocalizationEntry, index: number) => index + 1,
       },
       {
         title: '标识符',
         dataIndex: 'messageKey',
-        width: 360,
+        width: 'var(--saas-spacing-360)',
         fixed: responsive.isMobile ? undefined : 'left',
         ellipsis: true,
         render: (_: unknown, record: import('@/types/api').LocalizationEntry) => createElement(Typography.Text, { copyable: true }, record.messageKey),
@@ -463,7 +463,7 @@ const LocalizationPage = () => {
       ...languageColumns.map<ProColumns<import('@/types/api').LocalizationEntry>>((language) => ({
         title: localeLabel(language),
         dataIndex: ['translations', language.localeCode],
-        width: 320,
+        width: 'var(--saas-spacing-320)',
         render: (_: unknown, record: import('@/types/api').LocalizationEntry) =>
           createElement(Input.TextArea, {
             value: getDraftValue(record, language.localeCode),
@@ -474,13 +474,13 @@ const LocalizationPage = () => {
       })),
       {
         title: '模块',
-        width: 150,
+        width: 'var(--saas-spacing-150)',
         render: (_: unknown, record: import('@/types/api').LocalizationEntry) => createElement(Tag, null, record.namespaceName || record.namespaceCode),
       },
       {
         title: '操作',
         valueType: 'option',
-        width: 210,
+        width: 'var(--saas-spacing-210)',
         fixed: responsive.isMobile ? undefined : 'right',
         render: (_: unknown, record: import('@/types/api').LocalizationEntry) =>
           createElement(TableActionBar, {

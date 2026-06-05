@@ -3,11 +3,11 @@
 }
 
 .saas-dashboard-home__hero {
-  border-radius: 12px;
+  border-radius: var(--saas-spacing-12);
 }
 
 .saas-dashboard-home__todo .ant-empty {
-  margin-block: 4px 0;
+  margin-block: var(--saas-spacing-2xs) 0;
 }
 
 .saas-dashboard-home__panel {

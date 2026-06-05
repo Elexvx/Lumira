@@ -2,8 +2,10 @@ import { Button, Card, Empty, Form, Image, Space, Switch, Typography, Upload } f
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import ImgCrop from 'antd-img-crop';
 import type { FormProps } from 'antd';
+import { useResponsive } from '@/hooks/useResponsive';
 import type { BrandingSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 type BrandingAssetField = 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl';
 type BrandingAssetTarget = 'favicon' | 'logo' | 'loginBackground';
@@ -111,6 +113,8 @@ const renderBrandingUploadField = ({
   beforeCrop,
   onUpload,
   onClear,
+  tagWrapGap,
+  cardPadding,
 }: {
   target: BrandingAssetTarget;
   previewSrc?: string | null;
@@ -131,6 +135,8 @@ const renderBrandingUploadField = ({
   beforeCrop?: (file: File) => boolean | Promise<boolean>;
   onUpload: BrandingTabProps['onUpload'];
   onClear: () => void;
+  tagWrapGap: number | number[];
+  cardPadding: number;
 }) => {
   const uploadButton = (
     <Upload
@@ -149,7 +155,7 @@ const renderBrandingUploadField = ({
   );
 
   return (
-    <Space direction="vertical" size={8}>
+    <Space direction="vertical" size={tagWrapGap}>
       {useCrop ? (
         <ImgCrop modalTitle={cropModalTitle} rotationSlider aspect={cropAspect} beforeCrop={beforeCrop}>
           {uploadButton}
@@ -161,7 +167,7 @@ const renderBrandingUploadField = ({
         {clearLabel}
       </Button>
       {note ? <span style={{ color: 'var(--ant-color-text-secondary)' }}>{note}</span> : null}
-      <Card size="small" style={{ width: cardWidth, height: cardHeight }} bodyStyle={{ padding: 12, height: '100%' }}>
+      <Card size="small" style={{ width: cardWidth, height: cardHeight }} bodyStyle={{ padding: cardPadding, height: '100%' }}>
         <div
           style={{
             width: '100%',
@@ -198,97 +204,109 @@ export const BrandingTab = ({
   onUpload,
   onClearField,
   onSave,
-}: BrandingTabProps) => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
-    <Form {...formProps} disabled={!canUpdate}>
-      <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
-        <input />
-      </Form.Item>
+}: BrandingTabProps) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
+  const cardPadding = resolveResponsiveValue(
+    { desktop: APP_SPACING.antdDesktopTokens.padding, mobile: APP_SPACING.antdMobileTokens.padding },
+    isMobile,
+  );
 
-      {BRANDING_ASSET_ITEM_CONFIGS.map((config) => (
-        <Form.Item key={config.field} name={config.field} hidden>
+  return (
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+      <Form {...formProps} disabled={!canUpdate}>
+        <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
           <input />
         </Form.Item>
-      ))}
 
-      {BRANDING_ASSET_ITEM_CONFIGS.map((config) => {
-        const assetConfig = config as BrandingAssetItemConfig;
+        {BRANDING_ASSET_ITEM_CONFIGS.map((config) => (
+          <Form.Item key={config.field} name={config.field} hidden>
+            <input />
+          </Form.Item>
+        ))}
 
-        return (
-          <Form.Item key={assetConfig.field} label={assetConfig.label}>
-            {renderBrandingUploadField({
-              target: assetConfig.target,
-              previewSrc: previewState[assetConfig.previewKey],
-              canUpdate,
-              uploadingTarget,
-              cardWidth: assetConfig.cardWidth,
-              cardHeight: assetConfig.cardHeight,
-              imageWidth: assetConfig.imageWidth,
-              imageHeight: assetConfig.imageHeight,
-              cropModalTitle: assetConfig.cropModalTitle,
-              cropAspect: assetConfig.cropAspect,
-              accept: assetConfig.accept,
-              buttonLabel: assetConfig.buttonLabel,
-              clearLabel: '清除',
-              emptyDescription: assetConfig.emptyDescription,
-              note: assetConfig.note,
-              useCrop: assetConfig.useCrop,
-              beforeCrop: assetConfig.beforeCrop,
-              onUpload,
-              onClear: () => onClearField(assetConfig.field, assetConfig.clearLabel),
-            })}
-          </Form.Item>
-        );
-      })}
-      <Form.Item label="GitHub 链接">
-        <Space direction="vertical" size={8} style={{ width: '100%' }}>
-          <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
-            <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
-          </Form.Item>
-          <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
-            {({ getFieldValue }) => (
-              <Form.Item name="githubLinkUrl" noStyle>
-                <input disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
-              </Form.Item>
-            )}
-          </Form.Item>
+        {BRANDING_ASSET_ITEM_CONFIGS.map((config) => {
+          const assetConfig = config as BrandingAssetItemConfig;
+
+          return (
+            <Form.Item key={assetConfig.field} label={assetConfig.label}>
+              {renderBrandingUploadField({
+                target: assetConfig.target,
+                previewSrc: previewState[assetConfig.previewKey],
+                canUpdate,
+                uploadingTarget,
+                cardWidth: assetConfig.cardWidth,
+                cardHeight: assetConfig.cardHeight,
+                imageWidth: assetConfig.imageWidth,
+                imageHeight: assetConfig.imageHeight,
+                cropModalTitle: assetConfig.cropModalTitle,
+                cropAspect: assetConfig.cropAspect,
+                accept: assetConfig.accept,
+                buttonLabel: assetConfig.buttonLabel,
+                clearLabel: '清除',
+                emptyDescription: assetConfig.emptyDescription,
+                note: assetConfig.note,
+                useCrop: assetConfig.useCrop,
+                beforeCrop: assetConfig.beforeCrop,
+                onUpload,
+                onClear: () => onClearField(assetConfig.field, assetConfig.clearLabel),
+                tagWrapGap,
+                cardPadding,
+              })}
+            </Form.Item>
+          );
+        })}
+        <Form.Item label="GitHub 链接">
+          <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
+            <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
+              <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+            </Form.Item>
+            <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
+              {({ getFieldValue }) => (
+                <Form.Item name="githubLinkUrl" noStyle>
+                  <input disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
+                </Form.Item>
+              )}
+            </Form.Item>
+          </Space>
+        </Form.Item>
+        <Form.Item label="帮助链接">
+          <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
+            <Form.Item name="helpLinkEnabled" valuePropName="checked" noStyle>
+              <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+            </Form.Item>
+            <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
+              {({ getFieldValue }) => (
+                <Form.Item name="helpLinkUrl" noStyle>
+                  <input disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
+                </Form.Item>
+              )}
+            </Form.Item>
+          </Space>
+        </Form.Item>
+        <Form.Item name="footerIcp" label="Footer ICP">
+          <input />
+        </Form.Item>
+        <Form.Item name="footerCopyright" label="Footer 版权声明">
+          <textarea rows={3} />
+        </Form.Item>
+      </Form>
+
+      <Card title="预览">
+        <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
+          <Typography.Title level={4} style={{ marginBottom: 0 }}>
+            {previewState.websiteName}
+          </Typography.Title>
+          <Typography.Text type="secondary">{previewState.footerCopyright || '版权信息会显示在页面底部'}</Typography.Text>
         </Space>
-      </Form.Item>
-      <Form.Item label="帮助链接">
-        <Space direction="vertical" size={8} style={{ width: '100%' }}>
-          <Form.Item name="helpLinkEnabled" valuePropName="checked" noStyle>
-            <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
-          </Form.Item>
-          <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
-            {({ getFieldValue }) => (
-              <Form.Item name="helpLinkUrl" noStyle>
-                <input disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
-              </Form.Item>
-            )}
-          </Form.Item>
-        </Space>
-      </Form.Item>
-      <Form.Item name="footerIcp" label="Footer ICP">
-        <input />
-      </Form.Item>
-      <Form.Item name="footerCopyright" label="Footer 版权声明">
-        <textarea rows={3} />
-      </Form.Item>
-    </Form>
+      </Card>
 
-    <Card title="预览">
-      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-        <Typography.Title level={4} style={{ marginBottom: 0 }}>
-          {previewState.websiteName}
-        </Typography.Title>
-        <Typography.Text type="secondary">{previewState.footerCopyright || '版权信息会显示在页面底部'}</Typography.Text>
-      </Space>
-    </Card>
-
-    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-      <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
-        保存设置
-      </Button>
-    </div>
-  </Space>
-);
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
+          保存设置
+        </Button>
+      </div>
+    </Space>
+  );
+};

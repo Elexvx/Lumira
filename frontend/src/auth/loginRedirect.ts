@@ -2,7 +2,7 @@ import { DEFAULT_HOME_PATH, LOGIN_PATH } from '@/app.constants';
 import buildAccess from '@/access';
 import { buildStorageKey } from '@/cache/storage';
 import { TOKEN_STORAGE_KEY } from '@/auth/token';
-import { realPageRouteMetaList } from '@/routes/meta';
+import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
 import type { CurrentUser, MenuNode } from '@/types/api';
 
 export const AUTH_TOKEN_STORAGE_KEY = buildStorageKey(TOKEN_STORAGE_KEY);
@@ -16,7 +16,23 @@ export const resolveLoginRedirectTarget = (search: string, fallback = DEFAULT_HO
   return redirect;
 };
 
-const normalizePathname = (target: string) => target.split('?')[0].split('#')[0] || DEFAULT_HOME_PATH;
+const normalizePathname = (target: string) => {
+  const raw = target.split('?')[0].split('#')[0];
+  const normalized = resolveCanonicalRoutePath(raw || DEFAULT_HOME_PATH);
+  return normalized || DEFAULT_HOME_PATH;
+};
+
+const normalizeTargetWithOriginalQuery = (target: string) => {
+  if (!target.startsWith('/')) {
+    return target;
+  }
+
+  const [pathAndQuery, ...hashParts] = target.split('#');
+  const hashSuffix = hashParts.length ? `#${hashParts.join('#')}` : '';
+  const [pathname, ...queryParts] = pathAndQuery.split('?');
+  const querySuffix = queryParts.length ? `?${queryParts.join('?')}` : '';
+  return `${resolveCanonicalRoutePath(pathname)}${querySuffix}${hashSuffix}`;
+};
 
 const routePathMatches = (routePath: string, pathname: string) => {
   const pattern = routePath
@@ -69,10 +85,11 @@ export const resolveAuthorizedLoginRedirectTarget = (
   menuTree?: MenuNode[],
   fallback = DEFAULT_HOME_PATH,
 ) => {
-  const preferredFallback = currentUser.defaultHomePath?.trim() || fallback;
+  const preferredFallback = resolveCanonicalRoutePath(currentUser.defaultHomePath?.trim() || fallback);
   const redirectTarget = resolveLoginRedirectTarget(search, preferredFallback);
-  if (canVisitPath(redirectTarget, currentUser)) {
-    return redirectTarget;
+  const canonicalRedirectTarget = normalizeTargetWithOriginalQuery(redirectTarget);
+  if (canVisitPath(canonicalRedirectTarget, currentUser)) {
+    return canonicalRedirectTarget;
   }
 
   if (canVisitPath(preferredFallback, currentUser)) {
@@ -81,10 +98,11 @@ export const resolveAuthorizedLoginRedirectTarget = (
 
   const menuTarget = findFirstAccessibleMenuPath(menuTree, currentUser);
   if (menuTarget) {
-    return menuTarget;
+    return resolveCanonicalRoutePath(menuTarget);
   }
 
-  return canVisitPath(fallback, currentUser) ? fallback : '/403';
+  const canonicalFallback = resolveCanonicalRoutePath(fallback);
+  return canVisitPath(canonicalFallback, currentUser) ? canonicalFallback : '/403';
 };
 
 export const isAuthTokenStorageEvent = (event: Pick<StorageEvent, 'key' | 'newValue'>) =>

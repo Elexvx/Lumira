@@ -4,6 +4,8 @@ import { formatMessage } from '@umijs/max';
 import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { LockOutlined } from '@ant-design/icons';
+import { useResponsive } from '@/hooks/useResponsive';
+import { resolveResponsiveValue } from '@/theme/spacing';
 import {
   getLoginInputValueFromEvent,
   rejectUnsafeLoginInput,
@@ -13,6 +15,7 @@ import {
 } from '@/pages/user/login/hooks/useLoginFlowRuntime';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import { MailOutlined, MobileOutlined } from '@ant-design/icons';
+import { LOGIN_SLIDER_CAPTCHA_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 
 const CAPTCHA_ALLOWED_CHAR_PATTERN = /^[A-Za-z0-9]$/;
 const CAPTCHA_SANITIZE_PATTERN = /[^A-Za-z0-9]/g;
@@ -350,46 +353,50 @@ const PasswordLoginSliderCaptcha = ({
   onSliderCaptchaChallengeChange: (challenge: CaptchaChallenge | null) => void;
   onSliderCaptchaVerified: (captchaProof: string) => void;
   onSliderCaptchaReset: () => void;
-}) => (
-  <>
-    <Form.Item
-      name="captchaProof"
-      hidden
-      rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }) }]}
-    >
-      <Input />
-    </Form.Item>
-    {sliderVerificationStatus === 'verified' ? (
-      <div className="saas-login-page__slider-verified" aria-live="polite">
-        <span>{formatMessage({ id: 'page.login.captcha.sliderVerified', defaultMessage: '已验证' })}</span>
-        <CheckOutlined />
-      </div>
-    ) : (
-      <Button block size="large" icon={<SafetyCertificateOutlined />} onClick={onStartSliderCaptcha} className="saas-login-page__slider-placeholder">
-        {formatMessage({ id: 'page.login.captcha.startSlider', defaultMessage: '验证' })}
-      </Button>
-    )}
-    <Modal
-      centered
-      destroyOnHidden
-      footer={null}
-      open={sliderCaptchaOpen}
-      title={formatMessage({ id: 'page.login.captcha.sliderTitle', defaultMessage: '拖动验证' })}
-      width={368}
-      onCancel={onCloseSliderCaptcha}
-      className="saas-login-page__slider-modal"
-    >
-      <SliderCaptchaBox
-        mode="embed"
-        onChallengeChange={onSliderCaptchaChallengeChange}
-        onVerified={(result) => {
-          onSliderCaptchaVerified(result.captchaProof);
-        }}
-        onReset={onSliderCaptchaReset}
-      />
-    </Modal>
-  </>
-);
+}) => {
+  const responsive = useResponsive();
+
+  return (
+    <>
+      <Form.Item
+        name="captchaProof"
+        hidden
+        rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }) }]}
+      >
+        <Input />
+      </Form.Item>
+      {sliderVerificationStatus === 'verified' ? (
+        <div className="saas-login-page__slider-verified" aria-live="polite">
+          <span>{formatMessage({ id: 'page.login.captcha.sliderVerified', defaultMessage: '已验证' })}</span>
+          <CheckOutlined />
+        </div>
+      ) : (
+        <Button block size="large" icon={<SafetyCertificateOutlined />} onClick={onStartSliderCaptcha} className="saas-login-page__slider-placeholder">
+          {formatMessage({ id: 'page.login.captcha.startSlider', defaultMessage: '验证' })}
+        </Button>
+      )}
+      <Modal
+        centered
+        destroyOnHidden
+        footer={null}
+        open={sliderCaptchaOpen}
+        title={formatMessage({ id: 'page.login.captcha.sliderTitle', defaultMessage: '拖动验证' })}
+        width={resolveResponsiveValue(LOGIN_SLIDER_CAPTCHA_MODAL_WIDTH_BY_BREAKPOINT, responsive.isMobile)}
+        onCancel={onCloseSliderCaptcha}
+        className="saas-login-page__slider-modal"
+      >
+        <SliderCaptchaBox
+          mode="embed"
+          onChallengeChange={onSliderCaptchaChallengeChange}
+          onVerified={(result) => {
+            onSliderCaptchaVerified(result.captchaProof);
+          }}
+          onReset={onSliderCaptchaReset}
+        />
+      </Modal>
+    </>
+  );
+};
 
 export type LoginMode = 'passkey' | 'sms' | 'email' | 'password';
 type SliderVerificationStatus = 'idle' | 'verified';

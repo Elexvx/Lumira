@@ -1,5 +1,5 @@
 .saas-user-menu__header-item {
-  padding-block: 2px 4px;
+  padding-block: var(--saas-spacing-xxs) var(--saas-spacing-2xs);
   color: var(--ant-color-text-tertiary);
   font-size: 14px;
   line-height: 1.5714;
@@ -24,21 +24,21 @@
 }
 
 .saas-role-simulation-tag {
-  margin-inline: 2px 6px;
+  margin-inline: var(--saas-spacing-xxs) calc(var(--saas-spacing-xxs) + var(--saas-spacing-2xs));
   font-weight: 600;
 }
 
 .saas-role-menu__item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 180px;
+  gap: var(--saas-spacing-xxs);
+  min-width: var(--saas-spacing-180);
 }
 
 .saas-role-menu__item-title-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--saas-spacing-xs);
 }
 
 .saas-role-menu__item-title {
@@ -57,12 +57,12 @@
 .saas-user-menu-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding-inline: 6px;
+  gap: var(--saas-spacing-xs);
+  padding-inline: var(--saas-spacing-6);
 }
 
 .saas-user-menu-trigger__name {
-  max-width: 120px;
+  max-width: var(--saas-spacing-120);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

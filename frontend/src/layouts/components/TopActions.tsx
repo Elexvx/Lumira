@@ -2,7 +2,7 @@ import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, Tag, message, typ
 import { getLocale, history, setLocale, useIntl } from '@umijs/max';
 import { useAccess, useLocation } from '@umijs/max';
 import { useEffect, useMemo, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
 import { performLogout } from '@/auth/sessionLifecycle';
@@ -10,6 +10,7 @@ import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeLocale } from '@/i18n/locale';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { request } from '@/services/common/request';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import {
@@ -107,7 +108,7 @@ const TopActionsPasswordDrawer = ({
     <Drawer
       title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: '修改密码' })}
       open={open}
-      width={isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
+      width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       destroyOnHidden
       onClose={onClose}
       footer={
@@ -332,7 +333,7 @@ export const TopActions = () => {
         key: item.key,
         label: (
           <div className="saas-theme-menu__item">
-            <Space size={10}>
+            <Space size={APP_SPACING.compactSectionGap.desktop}>
               <span className="saas-theme-menu__item-icon">{item.icon}</span>
               <span>{intl.formatMessage({ id: `theme.${item.key}`, defaultMessage: item.label })}</span>
             </Space>
@@ -485,7 +486,10 @@ export const TopActions = () => {
 
   return (
     <Space size="small" align="center">
-      <Space size={model.isMobile ? 4 : 8} wrap={false}>
+      <Space
+            size={resolveResponsiveValue(APP_SPACING.tagWrapGap, model.isMobile)}
+            wrap={false}
+          >
         <Dropdown
           trigger={['click']}
           placement="bottomRight"

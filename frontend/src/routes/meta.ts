@@ -18,6 +18,28 @@ export interface BackendRouteRecord {
   routes?: BackendRouteRecord[];
 }
 
+const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
+  '/dashboard': '/dashboard/home',
+  '/dashboard/': '/dashboard/home',
+  '/dashboard/home/': '/dashboard/home',
+};
+
+export const resolveCanonicalRoutePath = (path: string) => {
+  if (typeof path !== 'string') {
+    return path;
+  }
+
+  const trimmed = path.trim();
+  if (!trimmed) {
+    return '/';
+  }
+
+  const pathnameOnly = trimmed.split('?')[0].split('#')[0];
+  const normalized = pathnameOnly.replace(/\/+$/, '');
+  const canonical = normalized || '/';
+  return WORKBENCH_ROUTE_ALIASES[canonical] || canonical;
+};
+
 const aiRouteMeta: BackendRouteMeta[] = [
   { path: '/ai/share/:token', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant', hideInMenu: true },
   { path: '/ai', name: 'nav.ai.root', icon: 'RobotOutlined', access: 'canVisitAi' },
@@ -167,6 +189,9 @@ const dashboardRouteMeta: BackendRouteMeta[] = [
 ];
 
 const dashboardRoutes: BackendRouteRecord[] = [
+  { path: '/dashboard', redirect: '/dashboard/home' },
+  { path: '/dashboard/home/', redirect: '/dashboard/home' },
+  { path: '/dashboard/', redirect: '/dashboard/home' },
   { path: '/', redirect: '/dashboard/home' },
   { path: '/dashboard/home', component: '@/pages/dashboard/Home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
 ];

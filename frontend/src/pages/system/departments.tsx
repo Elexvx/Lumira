@@ -7,6 +7,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
 import type { DepartmentRecord } from '@/types/api';
@@ -38,32 +39,32 @@ const buildDepartmentColumns = ({
   {
     title: '部门名称',
     dataIndex: 'deptName',
-    width: 260,
+    width: 'var(--saas-spacing-260)',
   },
   {
     title: '部门编码',
     dataIndex: 'deptCode',
-    width: 180,
+    width: 'var(--saas-spacing-180)',
   },
   {
     title: '状态',
     dataIndex: 'status',
-    width: 100,
+    width: 'var(--saas-spacing-100)',
     render: (status) => <Tag color={status === 'ENABLED' ? 'green' : 'default'}>{status === 'ENABLED' ? '启用' : '停用'}</Tag>,
   },
   {
     title: '用户数',
     dataIndex: 'userCount',
-    width: 100,
+    width: 'var(--saas-spacing-100)',
   },
   {
     title: '排序',
     dataIndex: 'sortNo',
-    width: 90,
+    width: 'var(--saas-spacing-90)',
   },
   {
     title: '操作',
-    width: 260,
+    width: 'var(--saas-spacing-260)',
     fixed: 'right',
     render: (_, record) => {
       const userCount = record.userCount ?? 0;
@@ -72,7 +73,7 @@ const buildDepartmentColumns = ({
       const deleteDisabledReason = hasChildren ? '该部门存在下级部门，不能删除' : userCount > 0 ? `该部门下仍有 ${userCount} 名用户，不能删除` : null;
 
       return (
-        <Space size={8} wrap>
+        <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} wrap>
           <Button type="link" size="small" onClick={() => void openDetail(record)}>
             详情
           </Button>

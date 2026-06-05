@@ -128,8 +128,8 @@ const resolveStatusKey = (status?: PlatformUpdateStatus | null) => {
 
 const buildServiceColumns = () => {
   const websocketColumns = [
-    { title: '租户', dataIndex: 'tenantId', width: 180 },
-    { title: '连接数', dataIndex: 'connectionCount', width: 120 },
+    { title: '租户', dataIndex: 'tenantId', width: 'var(--saas-spacing-180)' },
+    { title: '连接数', dataIndex: 'connectionCount', width: 'var(--saas-spacing-120)' },
   ];
 
   const serviceColumns = [
@@ -138,21 +138,21 @@ const buildServiceColumns = () => {
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 'var(--saas-spacing-100)',
       render: (_: unknown, record: ServiceInstanceStatus) => <Tag color={record.status === 'UP' ? 'green' : 'red'}>{record.status || 'DOWN'}</Tag>,
     },
-    { title: '响应', dataIndex: 'responseTimeMs', width: 100, render: (_: unknown, record: ServiceInstanceStatus) => (record.responseTimeMs == null ? '-' : `${record.responseTimeMs} ms`) },
-    { title: '检测时间', dataIndex: 'checkedAt', width: 180, render: (_: unknown, record: ServiceInstanceStatus) => formatDateTime(record.checkedAt) },
+    { title: '响应', dataIndex: 'responseTimeMs', width: 'var(--saas-spacing-100)', render: (_: unknown, record: ServiceInstanceStatus) => (record.responseTimeMs == null ? '-' : `${record.responseTimeMs} ms`) },
+    { title: '检测时间', dataIndex: 'checkedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record: ServiceInstanceStatus) => formatDateTime(record.checkedAt) },
     { title: '说明', dataIndex: 'errorMessage', ellipsis: true, render: (_: unknown, record: ServiceInstanceStatus) => record.errorMessage || '-' },
   ];
 
   const apiDocColumns = [
-    { title: '服务', dataIndex: 'serviceName', width: 180 },
+    { title: '服务', dataIndex: 'serviceName', width: 'var(--saas-spacing-180)' },
     { title: 'OpenAPI 地址', dataIndex: 'url', ellipsis: true },
     {
       title: '服务状态',
       dataIndex: 'status',
-      width: 120,
+      width: 'var(--saas-spacing-120)',
       render: (_: unknown, record: ServiceApiDocStatus) => <Tag color={record.status === 'UP' ? 'green' : 'red'}>{record.status || 'DOWN'}</Tag>,
     },
   ];
@@ -162,29 +162,29 @@ const buildServiceColumns = () => {
 
 const buildRedisColumns = ({ isDesktop }: { isDesktop: boolean }) => {
   const commandColumns: ProColumns<RedisMonitorCommandStat>[] = [
-    { title: '命令', dataIndex: 'command', width: 180, fixed: isDesktop ? ('left' as const) : undefined },
-    { title: '调用次数', dataIndex: 'calls', width: 140, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.calls) },
-    { title: '耗时(ms)', dataIndex: 'totalUsec', width: 160, responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.totalUsec) },
-    { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 160, responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => record.avgUsec.toFixed(2) },
-    { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 120, responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.rejectedCalls) },
-    { title: '失败次数', dataIndex: 'failedCalls', width: 120, responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.failedCalls) },
+    { title: '命令', dataIndex: 'command', width: 'var(--saas-spacing-180)', fixed: isDesktop ? ('left' as const) : undefined },
+    { title: '调用次数', dataIndex: 'calls', width: 'var(--saas-spacing-140)', render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.calls) },
+    { title: '耗时(ms)', dataIndex: 'totalUsec', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.totalUsec) },
+    { title: '平均耗时(ms)', dataIndex: 'avgUsec', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => record.avgUsec.toFixed(2) },
+    { title: '拒绝次数', dataIndex: 'rejectedCalls', width: 'var(--saas-spacing-120)', responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.rejectedCalls) },
+    { title: '失败次数', dataIndex: 'failedCalls', width: 'var(--saas-spacing-120)', responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.failedCalls) },
   ];
 
   const keyspaceColumns: ProColumns<RedisMonitorKeyspace>[] = [
-    { title: '数据库', dataIndex: 'database', width: 120 },
-    { title: '键数量', dataIndex: 'keys', width: 120, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.keys) },
-    { title: '过期键数量', dataIndex: 'expires', width: 140, responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.expires) },
-    { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 160, responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.avgTtl) },
+    { title: '数据库', dataIndex: 'database', width: 'var(--saas-spacing-120)' },
+    { title: '键数量', dataIndex: 'keys', width: 'var(--saas-spacing-120)', render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.keys) },
+    { title: '过期键数量', dataIndex: 'expires', width: 'var(--saas-spacing-140)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.expires) },
+    { title: '平均TTL(ms)', dataIndex: 'avgTtl', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.avgTtl) },
   ];
 
   const clientColumns: ProColumns<RedisMonitorClient>[] = [
-    { title: '地址', dataIndex: 'addressPort', width: 180 },
-    { title: '名称', dataIndex: 'name', width: 160 },
-    { title: '空闲(s)', dataIndex: 'idle', width: 100, responsive: ['md', 'lg', 'xl', 'xxl'] as const },
-    { title: '年龄(s)', dataIndex: 'age', width: 100, responsive: ['md', 'lg', 'xl', 'xxl'] as const },
-    { title: '数据库', dataIndex: 'databaseId', width: 100, responsive: ['md', 'lg', 'xl', 'xxl'] as const },
-    { title: '标记', dataIndex: 'flags', width: 140, responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
-    { title: '最后命令', dataIndex: 'lastCommand', width: 140, responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
+    { title: '地址', dataIndex: 'addressPort', width: 'var(--saas-spacing-180)' },
+    { title: '名称', dataIndex: 'name', width: 'var(--saas-spacing-160)' },
+    { title: '空闲(s)', dataIndex: 'idle', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
+    { title: '年龄(s)', dataIndex: 'age', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
+    { title: '数据库', dataIndex: 'databaseId', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
+    { title: '标记', dataIndex: 'flags', width: 'var(--saas-spacing-140)', responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
+    { title: '最后命令', dataIndex: 'lastCommand', width: 'var(--saas-spacing-140)', responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
   ];
 
   return { commandColumns, keyspaceColumns, clientColumns };
@@ -275,7 +275,7 @@ const serializeForScript = (value: unknown) =>
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
 
-const buildSwaggerHtml = (apiSpec: unknown) => {
+const buildSwaggerHtml = (apiSpec: unknown, schemeContainerVerticalPadding: number) => {
   const serializedSpec = serializeForScript(apiSpec);
 
   return `<!doctype html>
@@ -287,7 +287,7 @@ const buildSwaggerHtml = (apiSpec: unknown) => {
     <style>
       html, body, #swagger-ui { height: 100%; margin: 0; background: #fff; }
       .swagger-ui .topbar { display: none; }
-      .swagger-ui .scheme-container { padding: 12px 0; box-shadow: none; }
+      .swagger-ui .scheme-container { padding: ${schemeContainerVerticalPadding}px 0; box-shadow: none; }
     </style>
   </head>
   <body>
@@ -317,6 +317,8 @@ const buildSwaggerHtml = (apiSpec: unknown) => {
 
 const ApiDocsContent = () => {
   const { token } = theme.useToken();
+  const { isMobile } = useResponsive();
+  const schemeContainerVerticalPadding = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const isLoggedIn = tokenManager.hasToken();
   const [apiSpec, setApiSpec] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState(isLoggedIn);
@@ -382,10 +384,10 @@ const ApiDocsContent = () => {
         </Space>
       }
     >
-      <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 16 }}>
-        <div style={{ minHeight: 'calc(100vh - 220px)', background: token.colorBgContainer }}>
+      <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-spacing-md)' }}>
+        <div style={{ minHeight: 'calc(100vh - var(--saas-spacing-220))', background: token.colorBgContainer }}>
           {isLoading ? (
-            <div style={{ display: 'grid', minHeight: 'calc(100vh - 220px)', placeItems: 'center' }}>
+            <div style={{ display: 'grid', minHeight: 'calc(100vh - var(--saas-spacing-220))', placeItems: 'center' }}>
               <Spin tip="正在加载接口文档..." />
             </div>
           ) : loadError ? (
@@ -395,11 +397,11 @@ const ApiDocsContent = () => {
           ) : (
             <iframe
               title="接口文档"
-              srcDoc={buildSwaggerHtml(apiSpec)}
+              srcDoc={buildSwaggerHtml(apiSpec, schemeContainerVerticalPadding)}
               sandbox="allow-scripts allow-forms allow-popups"
               style={{
                 width: '100%',
-                minHeight: 'calc(100vh - 220px)',
+                minHeight: 'calc(100vh - var(--saas-spacing-220))',
                 border: 0,
                 display: 'block',
               }}
@@ -457,9 +459,12 @@ const TrendAreaChart = ({
   valueFormatter: (value: number) => string;
 }) => {
   const { token } = theme.useToken();
-  const width = 420;
-  const height = 220;
-  const padding = { top: 24, right: 56, bottom: 54, left: 64 };
+  const width = APP_SPACING.monitoringTrendChart.width;
+  const height = APP_SPACING.monitoringTrendChart.height;
+  const padding = APP_SPACING.monitoringTrendChart.padding;
+  const chartAxisOffsetX = APP_SPACING.monitoringTrendChart.axisOffsetX;
+  const chartAxisOffsetY = APP_SPACING.monitoringTrendChart.axisOffsetY;
+  const chartAxisFontSize = APP_SPACING.monitoringTrendChart.axisFontSize;
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
   const values = points.map((item) => item.value);
@@ -488,7 +493,7 @@ const TrendAreaChart = ({
         return (
           <g key={tick}>
             <line className="saas-redis-trend-chart__grid" x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke={token.colorBorderSecondary} strokeDasharray="4 4" strokeWidth={1} />
-            <text className="saas-redis-trend-chart__axis" x={padding.left - 8} y={y + 4} textAnchor="end" fill={token.colorTextTertiary} fontSize={11}>
+            <text className="saas-redis-trend-chart__axis" x={padding.left - chartAxisOffsetX} y={y + chartAxisOffsetY} textAnchor="end" fill={token.colorTextTertiary} fontSize={chartAxisFontSize}>
               {valueFormatter(tick)}
             </text>
           </g>
@@ -500,7 +505,7 @@ const TrendAreaChart = ({
         <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} fill={token.colorBgContainer} stroke={token.colorPrimary} strokeWidth={2} />
       ))}
       {xAxisLabels.map((item) => (
-        <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - 10} textAnchor="middle" fill={token.colorTextTertiary} fontSize={11}>
+          <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - chartAxisOffsetY} textAnchor="middle" fill={token.colorTextTertiary} fontSize={chartAxisFontSize}>
           {item.label}
         </text>
       ))}
@@ -782,7 +787,7 @@ const PlatformUpdateContent = () => {
           </Descriptions>
         </Card>
         <Card title="安全边界">
-          <Space direction="vertical" size={APP_SPACING.tagWrapGap.desktop}>
+          <Space direction="vertical" size={sectionGap}>
             <Typography.Text>
               <SafetyCertificateOutlined /> 只读检查更新源，不自动拉取代码。
             </Typography.Text>
@@ -867,7 +872,7 @@ const RedisMonitorContent = () => {
         {trendCharts.map((chart) => (
           <Col key={chart.title} xs={24} lg={12}>
             <Card title={chart.title} extra={<Typography.Text type="secondary">{chart.subtitle}</Typography.Text>}>
-              <div style={{ height: 220 }}>
+              <div style={{ height: 'var(--saas-spacing-220)' }}>
                 <TrendAreaChart points={chart.points} valueFormatter={chart.valueFormatter || ((value) => value.toFixed(0))} />
               </div>
             </Card>

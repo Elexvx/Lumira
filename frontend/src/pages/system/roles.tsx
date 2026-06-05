@@ -50,6 +50,7 @@ const DefaultRegistrationRoleModal = ({
   onChange,
   onSubmit,
   onCancel,
+  isMobile,
 }: {
   open: boolean;
   loading: boolean;
@@ -60,8 +61,12 @@ const DefaultRegistrationRoleModal = ({
   onChange: (roleId?: number) => void;
   onSubmit: () => void;
   onCancel: () => void;
-}) => (
-  <Modal
+  isMobile: boolean;
+}) => {
+  const modalFooterGap = resolveResponsiveValue(APP_SPACING.modalFooterGap, isMobile);
+
+  return (
+    <Modal
     title="默认注册角色"
     open={open}
     confirmLoading={saving}
@@ -71,7 +76,7 @@ const DefaultRegistrationRoleModal = ({
     okText="保存"
     cancelText="取消"
   >
-    <Space direction="vertical" size={APP_SPACING.modalFooterGap.desktop} style={{ width: '100%' }}>
+    <Space direction="vertical" size={modalFooterGap} style={{ width: '100%' }}>
       <Typography.Text type="secondary">
         新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。
       </Typography.Text>
@@ -90,7 +95,8 @@ const DefaultRegistrationRoleModal = ({
       />
     </Space>
   </Modal>
-);
+  );
+};
 
 const RolePermissionEditor = ({
   permissionTree,
@@ -112,6 +118,7 @@ const RolePermissionEditor = ({
   onPageTreeCheck,
   onActivePageChange,
   onActionPermissionsChange,
+  isMobile,
 }: {
   permissionTree: PermissionTreeRecord[];
   permissionTreeLoading: boolean;
@@ -132,10 +139,13 @@ const RolePermissionEditor = ({
   onPageTreeCheck: (keys: string[]) => void;
   onActivePageChange: (pageKey: string | null) => void;
   onActionPermissionsChange: (keys: string[]) => void;
+  isMobile: boolean;
 }) => {
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
+
   if (editorLoading) {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: 420 }}>
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-420)' }}>
         <Spin size="large" />
       </div>
     );
@@ -164,7 +174,7 @@ const RolePermissionEditor = ({
           </div>
           <div className="role-permission-tree">
             {permissionTreeLoading ? (
-              <div style={{ display: 'grid', placeItems: 'center', minHeight: 320 }}>
+              <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-320)' }}>
                 <Spin />
               </div>
             ) : pageTreeData.length ? (
@@ -191,7 +201,7 @@ const RolePermissionEditor = ({
                 }}
               />
             ) : (
-              <Empty description="暂无可配置页面权限" style={{ padding: '48px 0' }} />
+              <Empty description="暂无可配置页面权限" style={{ padding: 'var(--saas-spacing-48) 0' }} />
             )}
           </div>
         </section>
@@ -209,11 +219,11 @@ const RolePermissionEditor = ({
               <div className="role-action-panel__page-name">
                 {activePageNode?.pageName || '请从左侧选择页面'}
                 {activePageNode?.routeMatched && activePageNode?.routePath ? (
-                  <Tag style={{ marginInlineStart: 8 }} color="blue">
+                  <Tag style={{ marginInlineStart: tagWrapGap }} color="blue">
                     {activePageNode?.routePath}
                   </Tag>
                 ) : activePageNode?.nodeType === 'PAGE' ? (
-                  <Tag style={{ marginInlineStart: 8 }} color="red">
+                  <Tag style={{ marginInlineStart: tagWrapGap }} color="red">
                     路由失配
                   </Tag>
                 ) : null}
@@ -378,6 +388,7 @@ const RoleManagementPage = () => {
         onChange={defaultRoleModal.onChange}
         onSubmit={defaultRoleModal.onSubmit}
         onCancel={defaultRoleModal.onCancel}
+        isMobile={responsive.isMobile}
       />
 
       <ManagementDrawer title={editorDrawer.title} open={editorDrawer.open} onClose={editorDrawer.onClose} footerActions={editorDrawer.footerActions}>
@@ -401,6 +412,7 @@ const RoleManagementPage = () => {
             activePageSelectedActionKeys={editorDrawer.permissionEditor.activePageSelectedActionKeys}
             isActivePageSelected={editorDrawer.permissionEditor.isActivePageSelected}
             expandedKeys={editorDrawer.permissionEditor.expandedKeys}
+            isMobile={responsive.isMobile}
             onExpandChange={editorDrawer.permissionEditor.setExpandedKeys}
             onExpandToggle={editorDrawer.permissionEditor.handleExpandToggle}
             onSelectAllPages={editorDrawer.permissionEditor.handleSelectAllPages}
@@ -413,7 +425,7 @@ const RoleManagementPage = () => {
 
       <ManagementDrawer title={detailDrawer.title} open={detailDrawer.open} onClose={detailDrawer.onClose}>
         {detailDrawer.loading ? (
-          <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
+          <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
             <Spin />
           </div>
         ) : detailDrawer.selectedRoleDetail ? (
@@ -434,8 +446,8 @@ const RoleManagementPage = () => {
               dataSource={detailDrawer.selectedRoleDetail}
               column={detailDrawer.column}
             />
-            <div style={{ marginTop: 16 }}>
-              <Space wrap size={[8, 8]}>
+            <div style={{ marginTop: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile) }}>
+              <Space wrap size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)}>
                 <Typography.Text strong>数据范围</Typography.Text>
                 {(detailDrawer.selectedRoleDetail.dataScopes?.length ? detailDrawer.selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
                   <Tag key={`${scope.resourceCode}:${scope.scopeType}`} color="purple">
@@ -444,8 +456,8 @@ const RoleManagementPage = () => {
                 ))}
               </Space>
             </div>
-            <div style={{ marginTop: 16 }}>
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <div style={{ marginTop: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile) }}>
+              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} style={{ width: '100%' }}>
                 <Typography.Text strong>当前权限</Typography.Text>
                 {detailDrawer.permissionDetailTreeData?.length ? (
                   <div className="role-permission-tree role-permission-detail-tree">

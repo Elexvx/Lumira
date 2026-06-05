@@ -2,9 +2,8 @@ import SliderCaptcha from 'rc-slider-captcha';
 import { useCallback, useRef, useState } from 'react';
 import { request } from '@/services/common/request';
 import type { CaptchaChallenge, CaptchaVerifyResult } from '@/types/api';
-
-const SLIDER_CAPTCHA_WIDTH = 320;
-const SLIDER_CAPTCHA_HEIGHT = 160;
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface SliderCaptchaBoxProps {
   mode?: 'embed' | 'float';
@@ -16,7 +15,13 @@ interface SliderCaptchaBoxProps {
 export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified, onReset }: SliderCaptchaBoxProps) => {
   const captchaRootRef = useRef<HTMLDivElement | null>(null);
   const activeChallengeRef = useRef<CaptchaChallenge | null>(null);
-  const [puzzleSize, setPuzzleSize] = useState({ width: 58, height: 58, left: 0, top: 48 });
+  const { isMobile } = useResponsive();
+  const sliderCaptchaWidth = resolveResponsiveValue(APP_SPACING.sliderCaptcha.width, isMobile);
+  const sliderCaptchaHeight = resolveResponsiveValue(APP_SPACING.sliderCaptcha.height, isMobile);
+  const sliderPuzzleSize = resolveResponsiveValue(APP_SPACING.sliderCaptcha.puzzleSize, isMobile);
+  const sliderPuzzleTop = resolveResponsiveValue(APP_SPACING.sliderCaptcha.puzzleTop, isMobile);
+  const [puzzleSize, setPuzzleSize] = useState({ width: sliderPuzzleSize, height: sliderPuzzleSize, left: 0, top: sliderPuzzleTop });
+  const panelPaddingTop = isMobile ? APP_SPACING.antdMobileTokens.paddingSM : APP_SPACING.antdDesktopTokens.paddingSM;
   const getRenderedWidthScale = useCallback(() => {
     const renderedWidth = captchaRootRef.current
       ?.querySelector('.rc-slider-captcha-jigsaw')
@@ -27,8 +32,8 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
       return 1;
     }
 
-    return SLIDER_CAPTCHA_WIDTH / renderedWidth;
-  }, []);
+    return sliderCaptchaWidth / renderedWidth;
+  }, [sliderCaptchaWidth]);
 
   const requestSliderCaptcha = useCallback(async () => {
     onReset?.();
@@ -41,10 +46,10 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
     });
     activeChallengeRef.current = challenge;
     setPuzzleSize({
-      width: challenge.puzzleWidth ?? 58,
-      height: challenge.puzzleHeight ?? 58,
+      width: challenge.puzzleWidth ?? sliderPuzzleSize,
+      height: challenge.puzzleHeight ?? sliderPuzzleSize,
       left: challenge.puzzleLeft ?? 0,
-      top: challenge.puzzleTop ?? 48,
+      top: challenge.puzzleTop ?? sliderPuzzleTop,
     });
     onChallengeChange?.(challenge);
 
@@ -56,7 +61,7 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
       bgUrl: challenge.bgUrl,
       puzzleUrl: challenge.puzzleUrl,
     };
-  }, [onChallengeChange, onReset]);
+  }, [onChallengeChange, onReset, sliderPuzzleSize, sliderPuzzleTop]);
 
   const verifySliderCaptcha = useCallback(
     async (data: import('rc-slider-captcha').VerifyParam) => {
@@ -95,20 +100,20 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
         mode={mode}
         request={requestSliderCaptcha}
         onVerify={verifySliderCaptcha}
-        style={{ width: SLIDER_CAPTCHA_WIDTH, maxWidth: '100%', margin: '0 auto' }}
-        bgSize={{ width: SLIDER_CAPTCHA_WIDTH, height: SLIDER_CAPTCHA_HEIGHT }}
+        style={{ width: sliderCaptchaWidth, maxWidth: '100%', margin: '0 auto' }}
+        bgSize={{ width: sliderCaptchaWidth, height: sliderCaptchaHeight }}
         puzzleSize={puzzleSize}
         styles={{
           panel: {
-            width: SLIDER_CAPTCHA_WIDTH,
+            width: sliderCaptchaWidth,
             maxWidth: '100%',
-            paddingTop: 12,
+            paddingTop: panelPaddingTop,
           },
           jigsaw: {
-            width: SLIDER_CAPTCHA_WIDTH,
+            width: sliderCaptchaWidth,
             maxWidth: '100%',
             overflow: 'hidden',
-            borderRadius: 8,
+            borderRadius: 'var(--saas-card-radius)',
             boxShadow: '0 12px 24px rgba(0, 0, 0, 0.16)',
             border: '1px solid var(--ant-color-border-secondary)',
             backgroundColor: 'var(--ant-color-bg-container)',
@@ -127,7 +132,7 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
             opacity: 1,
           },
           control: {
-            width: SLIDER_CAPTCHA_WIDTH,
+            width: sliderCaptchaWidth,
             maxWidth: '100%',
           },
         }}

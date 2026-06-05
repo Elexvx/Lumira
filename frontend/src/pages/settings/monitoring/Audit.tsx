@@ -67,7 +67,7 @@ const buildDetailActionColumn = (
   title: '操作',
   valueType: 'option',
   fixed: isDesktop ? 'right' : undefined,
-  width: 100,
+  width: 'var(--saas-spacing-100)',
   render: (_: unknown, record: AuditRecord) => (
     <TableActionBar
       isMobile={isMobile}
