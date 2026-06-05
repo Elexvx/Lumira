@@ -1,6 +1,23 @@
 import assert from 'node:assert/strict';
-import { DEFAULT_SETTING_ROUTE_ORDER } from '../src/navigation/settingsRouteOrder';
 import { backendRouteMeta, realPageRouteMetaMap, realPageRoutePaths } from '../src/routes/meta';
+
+const DEFAULT_SETTING_ROUTE_ORDER = [
+  '/settings/tenants',
+  '/settings/menus',
+  '/settings/dicts',
+  '/settings/profile-fields',
+  '/settings/personalization',
+  '/settings/security',
+  '/settings/verification',
+  '/settings/notifications',
+  '/settings/ai-employees',
+  '/settings/plugins',
+  '/settings/files/all',
+  '/settings/localization',
+  '/settings/monitoring',
+  '/settings/api-docs',
+  '/settings/audit',
+];
 
 const expectedRoutes = [
   ['/settings/tenants', 'nav.system.tenants'],

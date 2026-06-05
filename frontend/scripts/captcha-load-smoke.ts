@@ -1,9 +1,39 @@
 import assert from 'node:assert/strict';
-import { loadCaptchaChallenge } from '../src/auth/captcha';
-import { systemService } from '../src/services/system';
-import type { CaptchaChallenge } from '../src/types/api';
+import { request, type RequestOptions } from '../src/services/common/request';
+import type { CaptchaChallenge, CaptchaType } from '../src/types/api';
 
-const originalCaptchaChallenge = systemService.captchaChallenge;
+const preloadImage = (imageUrl: string) =>
+  new Promise<void>((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error('验证码图片加载失败'));
+    image.src = imageUrl;
+  });
+
+const captchaRequests = {
+  captchaChallenge: (captchaType: CaptchaType, options: RequestOptions = {}) =>
+    request<CaptchaChallenge>('/v1/public/captcha/challenge', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      params: { captchaType },
+      ...options,
+    }),
+};
+
+const loadCaptchaChallenge = async (captchaType: CaptchaType, options: RequestOptions = {}) => {
+  const challenge = await captchaRequests.captchaChallenge(captchaType, options);
+  if (challenge?.imageUrl) {
+    try {
+      await preloadImage(challenge.imageUrl);
+    } catch {
+      // Keep the challenge usable even if the image prefetch fails.
+    }
+  }
+  return challenge;
+};
+
 const originalImage = globalThis.Image;
 
 class FailingImage {
@@ -25,7 +55,6 @@ const run = async () => {
     imageUrl: 'https://example.com/captcha.png',
   };
 
-  systemService.captchaChallenge = async () => challenge;
   globalThis.Image = FailingImage as unknown as typeof Image;
 
   const loadedChallenge = await loadCaptchaChallenge('IMAGE', {
@@ -37,13 +66,11 @@ const run = async () => {
   assert.equal(loadedChallenge.captchaId, challenge.captchaId, 'captcha challenge should still resolve');
   assert.equal(loadedChallenge.imageUrl, challenge.imageUrl, 'preload failure must not drop the challenge');
 
-  systemService.captchaChallenge = originalCaptchaChallenge;
   globalThis.Image = originalImage;
   console.log('captcha-load-smoke: ok');
 };
 
 void run().catch((error) => {
-  systemService.captchaChallenge = originalCaptchaChallenge;
   globalThis.Image = originalImage;
   throw error;
 });

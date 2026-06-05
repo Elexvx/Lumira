@@ -1,11 +1,11 @@
-import { Alert, Button, Card, Empty, InputNumber, List, Space, Spin, Switch, Tag, Typography, message } from 'antd';
-import { useEffect, useState } from 'react';
-import { ManagementPage, ManagementPageBody } from '@/features/management';
+import { Alert, Button, Card, Empty, InputNumber, List, Space, Spin, Switch, Tag, Typography } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { systemService } from '@/services/system';
+import { request } from '@/services/common/request';
 import type { ProfileFieldSetting } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
-
 
 const ProfileFieldManagementPage = () => {
   const actionPermission = useActionPermission();
@@ -13,13 +13,22 @@ const ProfileFieldManagementPage = () => {
   const [items, setItems] = useState<ProfileFieldSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const enabledWeight = items.filter((item) => item.visible).reduce((total, item) => total + (item.weight || 0), 0);
+
+  const enabledWeight = useMemo(
+    () => items.filter((item) => item.visible).reduce((total, item) => total + (item.weight || 0), 0),
+    [items],
+  );
 
   const loadItems = async () => {
     setLoading(true);
     try {
-      const result = await systemService.profileFieldSettings(API_OPTS.NO_REDIRECT);
+      const result = await request<ProfileFieldSetting[]>('/v1/system/profile-field-settings', {
+        method: 'GET',
+        ...API_OPTS.NO_REDIRECT,
+      });
       setItems(result);
+    } catch (error) {
+      showErrorMessage(error, '加载字段配置失败');
     } finally {
       setLoading(false);
     }
@@ -43,18 +52,20 @@ const ProfileFieldManagementPage = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const result = await systemService.updateProfileFieldSettings(
-        {
+      const result = await request<ProfileFieldSetting[]>('/v1/system/profile-field-settings', {
+        method: 'PUT',
+        data: {
           items: items.map((item) => ({
             fieldKey: item.fieldKey,
             visible: Boolean(item.visible),
             weight: item.weight ?? 1,
           })),
         },
-        API_OPTS.NO_REDIRECT,
-      );
+        ...API_OPTS.NO_REDIRECT,
+      });
       setItems(result);
-      message.success('字段展示与权重已保存');
+    } catch (error) {
+      showErrorMessage(error, '保存字段配置失败');
     } finally {
       setSaving(false);
     }

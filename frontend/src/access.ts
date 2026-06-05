@@ -1,6 +1,11 @@
 import type { CurrentUser } from '@/types/api';
 import { tokenManager } from '@/auth/token';
-import { isProtectedAdminAccount } from '@/auth/admin';
+
+const PROTECTED_ADMIN_ID = 1001;
+const PROTECTED_ADMIN_USERNAME = 'admin';
+
+const isProtectedAdminAccount = (user?: Pick<CurrentUser, 'userId' | 'username'> | null) =>
+  Boolean(user && (user.userId === PROTECTED_ADMIN_ID || user.username?.toLowerCase() === PROTECTED_ADMIN_USERNAME));
 
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
 

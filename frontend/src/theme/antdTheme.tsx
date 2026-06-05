@@ -1,6 +1,8 @@
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
 import type { ReactNode } from 'react';
-import { resolveAntdLocale } from '@/i18n/antdLocale';
+import { resolveRuntimeLocale } from '@/i18n/locale';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
 import type { ThemePreference } from '@/theme/settings';
 
@@ -22,6 +24,8 @@ const resolveCssVarKey = (themePreference: ThemePreference, resolvedColorMode: '
 
   return `legendary-${resolvedColorMode}`;
 };
+
+const resolveAntdLocale = () => (resolveRuntimeLocale().startsWith('en') ? enUS : zhCN);
 
 export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): AntdThemeConfig => {
   const runtimeSnapshot = getThemeRuntimeSnapshot();

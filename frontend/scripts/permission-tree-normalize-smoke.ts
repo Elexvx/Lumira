@@ -1,15 +1,71 @@
 import assert from 'node:assert/strict';
 import type { PermissionTreeRecord } from '../src/types/api';
 import { realPageRouteMetaMap, realPageRoutePaths } from '../src/routes/meta';
-import {
-  buildPermissionTreeData,
-  collectActionPermissionPageMap,
-  collectExpandableKeys,
-  collectPermissionKeyToPageKeyMap,
-  collectSelectablePages,
-  normalizePermissionTree,
-  type NormalizedPermissionTreeRecord,
-} from '../src/pages/system/rolesPermissionTree';
+import { normalizePermissionTree, type NormalizedPermissionTreeRecord } from '../src/pages/system/rolesPermissionTree/normalize';
+
+const walkPermissionTree = (nodes: NormalizedPermissionTreeRecord[], visit: (node: NormalizedPermissionTreeRecord) => void) => {
+  nodes.forEach((node) => {
+    visit(node);
+    if (node.children?.length) {
+      walkPermissionTree(node.children, visit);
+    }
+  });
+};
+
+const collectSelectablePages = (nodes: NormalizedPermissionTreeRecord[], result: NormalizedPermissionTreeRecord[] = []) => {
+  walkPermissionTree(nodes, (node) => {
+    if (node.nodeType === 'PAGE' && node.selectable && node.permissionKey) {
+      result.push(node);
+    }
+  });
+  return result;
+};
+
+const collectPermissionKeyToPageKeyMap = (nodes: NormalizedPermissionTreeRecord[], result = new Map<string, string[]>()) => {
+  walkPermissionTree(nodes, (node) => {
+    if (node.nodeType === 'PAGE' && node.selectable && node.permissionKey) {
+      const pageKeys = result.get(node.permissionKey) ?? [];
+      if (!pageKeys.includes(node.pageKey)) {
+        pageKeys.push(node.pageKey);
+      }
+      result.set(node.permissionKey, pageKeys);
+    }
+  });
+  return result;
+};
+
+const collectExpandableKeys = (nodes: NormalizedPermissionTreeRecord[], result: string[] = []) => {
+  walkPermissionTree(nodes, (node) => {
+    if (node.children?.length) {
+      result.push(node.pageKey);
+    }
+  });
+  return result;
+};
+
+const collectActionPermissionPageMap = (nodes: NormalizedPermissionTreeRecord[], result = new Map<string, string>()) => {
+  walkPermissionTree(nodes, (node) => {
+    if (node.nodeType === 'PAGE' && node.selectable && node.permissionKey) {
+      node.actionPermissions?.forEach((action) => {
+        if (action.permissionKey) {
+          result.set(action.permissionKey, node.permissionKey as string);
+        }
+      });
+    }
+  });
+  return result;
+};
+
+const buildPermissionTreeData = (nodes: NormalizedPermissionTreeRecord[]): any[] =>
+  nodes.map((node) => ({
+    ...node,
+    key: node.pageKey,
+    checkable: node.nodeType === 'PAGE',
+    disableCheckbox: node.nodeType === 'PAGE' ? !node.selectable : !node.children?.length,
+    selectable: node.selectable,
+    title: node.pageName,
+    children: node.children?.length ? buildPermissionTreeData(node.children) : undefined,
+  }));
 
 const sampleTree: PermissionTreeRecord[] = [
   {

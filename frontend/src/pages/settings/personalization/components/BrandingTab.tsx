@@ -1,9 +1,84 @@
+import { Button, Card, Empty, Form, Image, Space, Switch, Typography, Upload } from 'antd';
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { Button, Card, Empty, Form, Image, Input, Space, Switch, Typography, Upload, theme } from 'antd';
-import type { FormProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
-import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import type { FormProps } from 'antd';
 import type { BrandingSettings } from '@/types/api';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
+
+type BrandingAssetField = 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl';
+type BrandingAssetTarget = 'favicon' | 'logo' | 'loginBackground';
+
+type BrandingAssetItemConfig = {
+  field: BrandingAssetField;
+  label: string;
+  clearLabel: string;
+  target: BrandingAssetTarget;
+  previewKey: keyof Pick<BrandingSettings, 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl'>;
+  cardWidth: number;
+  cardHeight?: number;
+  imageWidth?: number | string;
+  imageHeight?: number | string;
+  cropModalTitle?: string;
+  cropAspect?: number;
+  accept: string;
+  buttonLabel: string;
+  emptyDescription?: string | false;
+  note?: string;
+  useCrop?: boolean;
+  beforeCrop?: (file: File) => boolean | Promise<boolean>;
+};
+
+const BRANDING_ASSET_ITEM_CONFIGS = [
+  {
+    field: 'websiteFaviconUrl',
+    label: '网站 Icon（本地上传）',
+    clearLabel: '网站 Icon',
+    target: 'favicon',
+    previewKey: 'websiteFaviconUrl',
+    cardWidth: 104,
+    cardHeight: 104,
+    imageWidth: 72,
+    imageHeight: 72,
+    cropModalTitle: '裁切网站 Icon',
+    cropAspect: 1,
+    accept: 'image/*,.ico',
+    buttonLabel: '上传 Icon',
+    emptyDescription: false,
+    useCrop: true,
+    beforeCrop: (file: File) => {
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith('.ico') || file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon') {
+        return false;
+      }
+      return true;
+    },
+  },
+  {
+    field: 'websiteLogoUrl',
+    label: 'Logo（本地上传）',
+    clearLabel: 'Logo',
+    target: 'logo',
+    previewKey: 'websiteLogoUrl',
+    cardWidth: 200,
+    imageWidth: 180,
+    imageHeight: 72,
+    cropModalTitle: '裁切 Logo',
+    cropAspect: 25 / 9,
+    accept: 'image/*',
+    buttonLabel: '上传 Logo',
+  },
+  {
+    field: 'loginBackgroundUrl',
+    label: '登录页背景图（本地上传）',
+    clearLabel: '登录页背景图',
+    target: 'loginBackground',
+    previewKey: 'loginBackgroundUrl',
+    cardWidth: 280,
+    accept: 'image/*',
+    buttonLabel: '上传背景图',
+    note: '建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。',
+  },
+] as const satisfies readonly BrandingAssetItemConfig[];
 
 interface BrandingTabProps {
   formProps: FormProps;
@@ -16,6 +91,104 @@ interface BrandingTabProps {
   onSave: () => void;
 }
 
+const renderBrandingUploadField = ({
+  target,
+  previewSrc,
+  canUpdate,
+  uploadingTarget,
+  cardWidth,
+  cardHeight,
+  imageWidth,
+  imageHeight,
+  cropModalTitle,
+  cropAspect,
+  accept,
+  buttonLabel,
+  clearLabel,
+  emptyDescription,
+  note,
+  useCrop,
+  beforeCrop,
+  onUpload,
+  onClear,
+}: {
+  target: BrandingAssetTarget;
+  previewSrc?: string | null;
+  canUpdate: boolean;
+  uploadingTarget: BrandingTabProps['uploadingTarget'];
+  cardWidth: number;
+  cardHeight?: number;
+  imageWidth?: number | string;
+  imageHeight?: number | string;
+  cropModalTitle?: string;
+  cropAspect?: number;
+  accept: string;
+  buttonLabel: string;
+  clearLabel: string;
+  emptyDescription?: string | false;
+  note?: string;
+  useCrop?: boolean;
+  beforeCrop?: (file: File) => boolean | Promise<boolean>;
+  onUpload: BrandingTabProps['onUpload'];
+  onClear: () => void;
+}) => {
+  const uploadButton = (
+    <Upload
+      accept={accept}
+      showUploadList={false}
+      beforeUpload={async (file) => {
+        await onUpload(target, file);
+        return Upload.LIST_IGNORE;
+      }}
+      disabled={!canUpdate}
+    >
+      <Button icon={<UploadOutlined />} loading={uploadingTarget === target} disabled={!canUpdate}>
+        {buttonLabel}
+      </Button>
+    </Upload>
+  );
+
+  return (
+    <Space direction="vertical" size={8}>
+      {useCrop ? (
+        <ImgCrop modalTitle={cropModalTitle} rotationSlider aspect={cropAspect} beforeCrop={beforeCrop}>
+          {uploadButton}
+        </ImgCrop>
+      ) : (
+        uploadButton
+      )}
+      <Button icon={<DeleteOutlined />} onClick={onClear} disabled={!canUpdate || !previewSrc}>
+        {clearLabel}
+      </Button>
+      {note ? <span style={{ color: 'var(--ant-color-text-secondary)' }}>{note}</span> : null}
+      <Card size="small" style={{ width: cardWidth, height: cardHeight }} bodyStyle={{ padding: 12, height: '100%' }}>
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'grid',
+            placeItems: 'center',
+            background: 'var(--ant-color-fill-quaternary)',
+            color: 'var(--ant-color-text-secondary)',
+          }}
+        >
+          {previewSrc ? (
+            <Image
+              width={imageWidth ?? '100%'}
+              height={imageHeight ?? '100%'}
+              preview={false}
+              src={normalizeUploadUrl(previewSrc)}
+              style={{ objectFit: target === 'loginBackground' ? 'cover' : 'contain' }}
+            />
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyDescription ?? '未上传'} />
+          )}
+        </div>
+      </Card>
+    </Space>
+  );
+};
+
 export const BrandingTab = ({
   formProps,
   previewState,
@@ -25,163 +198,48 @@ export const BrandingTab = ({
   onUpload,
   onClearField,
   onSave,
-}: BrandingTabProps) => {
-  const { token } = theme.useToken();
-  const previewCardStyle = {
-    background: token.colorBgContainer,
-    borderColor: token.colorBorderSecondary,
-  };
-  const previewPlaceholderStyle = {
-    background: token.colorFillQuaternary,
-    color: token.colorTextSecondary,
-  };
+}: BrandingTabProps) => (
+  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Form {...formProps} disabled={!canUpdate}>
+      <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
+        <input />
+      </Form.Item>
 
-  return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
-          <Input />
+      {BRANDING_ASSET_ITEM_CONFIGS.map((config) => (
+        <Form.Item key={config.field} name={config.field} hidden>
+          <input />
         </Form.Item>
+      ))}
 
-        <Form.Item name="websiteFaviconUrl" hidden>
-          <Input />
-        </Form.Item>
-        <Form.Item label="网站 Icon（本地上传）">
-          <Space align="start" size={16} wrap>
-            <Card size="small" style={{ width: 104, height: 104, ...previewCardStyle }} bodyStyle={{ padding: 12, height: '100%' }}>
-              <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', ...previewPlaceholderStyle }}>
-                {previewState.websiteFaviconUrl ? (
-                  <Image width={72} height={72} preview={false} src={normalizeUploadUrl(previewState.websiteFaviconUrl)} style={{ objectFit: 'contain' }} />
-                ) : (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={false}
-                    styles={{
-                      image: { height: 28, marginBottom: 0 },
-                    }}
-                  />
-                )}
-              </div>
-            </Card>
-            <Space direction="vertical" size={8}>
-              <ImgCrop
-                modalTitle="裁切网站 Icon"
-                rotationSlider
-                aspect={1}
-                beforeCrop={(file) => {
-                  const lowerName = file.name.toLowerCase();
-                  if (lowerName.endsWith('.ico') || file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon') {
-                    return false;
-                  }
-                  return true;
-                }}
-              >
-                <Upload
-                  accept="image/*,.ico"
-                  showUploadList={false}
-                  beforeUpload={async (file) => {
-                    await onUpload('favicon', file);
-                    return Upload.LIST_IGNORE;
-                  }}
-                  disabled={!canUpdate}
-                >
-                  <Button icon={<UploadOutlined />} loading={uploadingTarget === 'favicon'} disabled={!canUpdate}>
-                    上传 Icon
-                  </Button>
-                </Upload>
-              </ImgCrop>
-              <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteFaviconUrl', '网站 Icon')} disabled={!canUpdate || !previewState.websiteFaviconUrl}>
-                清除
-              </Button>
-            </Space>
-          </Space>
-        </Form.Item>
+      {BRANDING_ASSET_ITEM_CONFIGS.map((config) => {
+        const assetConfig = config as BrandingAssetItemConfig;
 
-        <Form.Item name="websiteLogoUrl" hidden>
-          <Input />
-        </Form.Item>
-        <Form.Item label="Logo（本地上传）">
-          <Space align="start" size={16} wrap>
-            <Card size="small" style={{ width: 200, ...previewCardStyle }} bodyStyle={{ padding: 12 }}>
-              <div style={{ width: '100%', height: 72, display: 'grid', placeItems: 'center', ...previewPlaceholderStyle }}>
-                {previewState.websiteLogoUrl ? (
-                  <Image
-                    width={180}
-                    height={72}
-                    preview={false}
-                    src={normalizeUploadUrl(previewState.websiteLogoUrl)}
-                    style={{ objectFit: 'contain' }}
-                  />
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
-                )}
-              </div>
-            </Card>
-            <Space direction="vertical" size={8}>
-              <ImgCrop modalTitle="裁切 Logo" rotationSlider aspect={25 / 9}>
-                <Upload
-                  accept="image/*"
-                  showUploadList={false}
-                  beforeUpload={async (file) => {
-                    await onUpload('logo', file);
-                    return Upload.LIST_IGNORE;
-                  }}
-                  disabled={!canUpdate}
-                >
-                  <Button icon={<UploadOutlined />} loading={uploadingTarget === 'logo'} disabled={!canUpdate}>
-                    上传 Logo
-                  </Button>
-                </Upload>
-              </ImgCrop>
-              <Button icon={<DeleteOutlined />} onClick={() => onClearField('websiteLogoUrl', 'Logo')} disabled={!canUpdate || !previewState.websiteLogoUrl}>
-                清除
-              </Button>
-            </Space>
-          </Space>
-        </Form.Item>
-
-        <Form.Item name="loginBackgroundUrl" hidden>
-          <Input />
-        </Form.Item>
-        <Form.Item label="登录页背景图（本地上传）">
-          <Space align="start" size={16} wrap>
-            <Card size="small" style={{ width: 280, ...previewCardStyle }} bodyStyle={{ padding: 12 }}>
-              <div style={{ width: '100%', aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', overflow: 'hidden', ...previewPlaceholderStyle }}>
-                {previewState.loginBackgroundUrl ? (
-                  <Image
-                    width="100%"
-                    height="100%"
-                    preview={false}
-                    src={normalizeUploadUrl(previewState.loginBackgroundUrl)}
-                    style={{ objectFit: 'cover' }}
-                  />
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
-                )}
-              </div>
-            </Card>
-            <Space direction="vertical" size={8}>
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={async (file) => {
-                  await onUpload('loginBackground', file);
-                  return Upload.LIST_IGNORE;
-                }}
-                disabled={!canUpdate}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadingTarget === 'loginBackground'} disabled={!canUpdate}>
-                  上传背景图
-                </Button>
-              </Upload>
-              <Button icon={<DeleteOutlined />} onClick={() => onClearField('loginBackgroundUrl', '登录页背景图')} disabled={!canUpdate || !previewState.loginBackgroundUrl}>
-                清除
-              </Button>
-              <Typography.Text type="secondary">建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。</Typography.Text>
-            </Space>
-          </Space>
-        </Form.Item>
-
+        return (
+          <Form.Item key={assetConfig.field} label={assetConfig.label}>
+            {renderBrandingUploadField({
+              target: assetConfig.target,
+              previewSrc: previewState[assetConfig.previewKey],
+              canUpdate,
+              uploadingTarget,
+              cardWidth: assetConfig.cardWidth,
+              cardHeight: assetConfig.cardHeight,
+              imageWidth: assetConfig.imageWidth,
+              imageHeight: assetConfig.imageHeight,
+              cropModalTitle: assetConfig.cropModalTitle,
+              cropAspect: assetConfig.cropAspect,
+              accept: assetConfig.accept,
+              buttonLabel: assetConfig.buttonLabel,
+              clearLabel: '清除',
+              emptyDescription: assetConfig.emptyDescription,
+              note: assetConfig.note,
+              useCrop: assetConfig.useCrop,
+              beforeCrop: assetConfig.beforeCrop,
+              onUpload,
+              onClear: () => onClearField(assetConfig.field, assetConfig.clearLabel),
+            })}
+          </Form.Item>
+        );
+      })}
       <Form.Item label="GitHub 链接">
         <Space direction="vertical" size={8} style={{ width: '100%' }}>
           <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
@@ -190,7 +248,7 @@ export const BrandingTab = ({
           <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
             {({ getFieldValue }) => (
               <Form.Item name="githubLinkUrl" noStyle>
-                <Input allowClear disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
+                <input disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
               </Form.Item>
             )}
           </Form.Item>
@@ -204,17 +262,17 @@ export const BrandingTab = ({
           <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
             {({ getFieldValue }) => (
               <Form.Item name="helpLinkUrl" noStyle>
-                <Input allowClear disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
+                <input disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
               </Form.Item>
             )}
           </Form.Item>
         </Space>
       </Form.Item>
       <Form.Item name="footerIcp" label="Footer ICP">
-        <Input allowClear />
+        <input />
       </Form.Item>
       <Form.Item name="footerCopyright" label="Footer 版权声明">
-        <Input.TextArea rows={3} />
+        <textarea rows={3} />
       </Form.Item>
     </Form>
 
@@ -231,7 +289,6 @@ export const BrandingTab = ({
       <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
         保存设置
       </Button>
-      </div>
-    </Space>
-  );
-};
+    </div>
+  </Space>
+);

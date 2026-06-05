@@ -1,882 +1,224 @@
+import { formatMessage } from '@umijs/max';
+import { Alert, Button, Form, Input, Modal } from 'antd';
+import { type CSSProperties } from 'react';
 import { LoginFormPage } from '@ant-design/pro-components';
-import { formatMessage, history, useLocation } from '@umijs/max';
-import { Alert, Button, Form, Input, Modal, message, type FormProps } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { flushSync } from 'react-dom';
-import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
-import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
-import { initializeAfterLogin, isLoggedIn, restoreSession } from '@/auth/session';
-import { loadCaptchaChallenge } from '@/auth/captcha';
-import { createCaptchaRefreshController } from '@/auth/captchaRefreshController';
-import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
-import { encryptLoginPassword } from '@/auth/loginEncryption';
-import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
-import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
-import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget, resolveLoginRedirectTarget } from '@/auth/loginRedirect';
-import { authService } from '@/services/auth';
-import { profileService } from '@/services/profile';
-import { pluginService } from '@/services/plugin';
-import { systemService } from '@/services/system';
-import { ApiRequestError } from '@/services/common/request';
-import type { AppInitialState } from '@/app';
-import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { DEFAULT_WATERMARK_SETTINGS, persistWatermarkSettings } from '@/watermark/settings';
+import type { FormInstance, FormProps } from 'antd';
+import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
+import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
-import { AgreementPreviewModal } from '@/pages/user/login/components/AgreementPreviewModal';
-import { resolveLoginErrorFeedback } from '@/pages/user/login/loginErrorFeedback';
-import { sanitizeLoginInputValue } from '@/pages/user/login/loginInputGuards';
-import type {
-  AgreementSettings,
-  CaptchaChallenge,
-  LoginCapabilities,
-  LoginCodeChallenge,
-  LoginEncryptionKey,
-  LoginResponse,
-  SecuritySettings,
-} from '@/types/api';
 import './Login.css';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 
-
-const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilities = {
-  passwordLoginAvailable: true,
-  smsLoginAvailable: false,
-  emailLoginAvailable: false,
-  wechatLoginAvailable: false,
-  passkeyLoginAvailable: false,
-  passkeyPasswordlessAvailable: false,
-  loginModeOrder: ['passkey', 'sms', 'email', 'password'],
-};
-
-type CodeLoginMode = Extract<LoginMode, 'sms' | 'email'>;
-const DEFAULT_LOGIN_MODE_ORDER: LoginMode[] = ['passkey', 'sms', 'email', 'password'];
 const INITIAL_PASSWORD = '123456';
-
-interface ForcedPasswordChangeFormValues {
+type ForcedPasswordChangeFormValues = {
   newPassword: string;
   confirmPassword: string;
-}
-
-const getAvailableLoginModes = (capabilities: LoginCapabilities): LoginMode[] => {
-  const enabled: Record<LoginMode, boolean> = {
-    passkey: Boolean(capabilities.passkeyLoginAvailable && capabilities.passkeyPasswordlessAvailable),
-    sms: Boolean(capabilities.smsLoginAvailable),
-    email: Boolean(capabilities.emailLoginAvailable),
-    password: Boolean(capabilities.passwordLoginAvailable),
-  };
-  const configuredOrder = capabilities.loginModeOrder?.filter((mode): mode is LoginMode =>
-    mode === 'passkey' || mode === 'sms' || mode === 'email' || mode === 'password',
-  ) || [];
-  const order = [...configuredOrder, ...DEFAULT_LOGIN_MODE_ORDER.filter((mode) => !configuredOrder.includes(mode))];
-  const modes = order.filter((mode) => enabled[mode]);
-  return modes.length ? modes : ['password'];
 };
 
-const defaultLoginMode = (capabilities: LoginCapabilities): LoginMode => {
-  return getAvailableLoginModes(capabilities)[0] || 'password';
+type LoginPageMainSectionProps = {
+  loginForm: FormInstance<LoginFormValues>;
+  loginPageStyle: CSSProperties;
+  brandingWebsiteName: string;
+  loginSubTitle: string;
+  submitButtonText: string;
+  activeLoginMode: LoginMode;
+  availableLoginModes: LoginMode[];
+  agreementSettings: AgreementSettings;
+  pendingSecondFactorLogin: LoginResponse | null;
+  pendingSecondFactorPrompt: string;
+  securityCaptchaEnabled: boolean;
+  securityCaptchaType: CaptchaChallenge['captchaType'];
+  captchaChallenge: CaptchaChallenge | null;
+  captchaLoading: boolean;
+  captchaImageLoadFailed: boolean;
+  sendingLoginType: 'sms' | 'email' | null;
+  loginCodeChallenges: Partial<Record<'sms' | 'email', LoginCodeChallenge | null>>;
+  loginCodeCooldownSeconds: Partial<Record<'sms' | 'email', number>>;
+  loginCapabilities: LoginCapabilities;
+  submitting: boolean;
+  passkeySubmitting: boolean;
+  setActiveLoginMode: (mode: LoginMode) => void;
+  openAgreementPreview: (previewKind: 'user' | 'privacy') => void;
+  handleSendLoginCode: (mode: 'sms' | 'email') => void;
+  handleWechatLogin: () => void;
+  handlePasskeyLogin: () => void;
+  refreshCaptcha: () => void;
+  setCaptchaImageLoadFailed: (value: boolean) => void;
+  setCaptchaChallenge: (challenge: CaptchaChallenge | null) => void;
+  handleSubmit: (values: LoginFormValues) => Promise<boolean>;
+  handleFinishFailed: NonNullable<FormProps<LoginFormValues>['onFinishFailed']>;
+  setCaptchaProof: (value: string) => void;
+  resetCaptchaProof: () => void;
 };
+
+const LoginPageMainSection = ({
+  loginForm,
+  loginPageStyle,
+  brandingWebsiteName,
+  loginSubTitle,
+  submitButtonText,
+  activeLoginMode,
+  availableLoginModes,
+  agreementSettings,
+  pendingSecondFactorLogin,
+  pendingSecondFactorPrompt,
+  securityCaptchaEnabled,
+  securityCaptchaType,
+  captchaChallenge,
+  captchaLoading,
+  captchaImageLoadFailed,
+  sendingLoginType,
+  loginCodeChallenges,
+  loginCodeCooldownSeconds,
+  loginCapabilities,
+  submitting,
+  passkeySubmitting,
+  setActiveLoginMode,
+  openAgreementPreview,
+  handleSendLoginCode,
+  handleWechatLogin,
+  handlePasskeyLogin,
+  refreshCaptcha,
+  setCaptchaImageLoadFailed,
+  setCaptchaChallenge,
+  handleSubmit,
+  handleFinishFailed,
+  setCaptchaProof,
+  resetCaptchaProof,
+}: LoginPageMainSectionProps) => (
+  <div className="saas-login-page" style={loginPageStyle}>
+    <LoginFormPage<LoginFormValues>
+      form={loginForm}
+      title={brandingWebsiteName}
+      subTitle={loginSubTitle}
+      onFinish={handleSubmit}
+      onFinishFailed={handleFinishFailed}
+      submitter={{
+        submitButtonProps: {
+          children: submitButtonText,
+          loading: submitting,
+          block: true,
+          style: activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? { display: 'none' } : undefined,
+        },
+        resetButtonProps: false,
+      }}
+      containerStyle={{
+        width: '100%',
+        maxWidth: 536,
+        boxSizing: 'border-box',
+      }}
+      style={{
+        width: '100%',
+        minHeight: '100%',
+        background: 'transparent',
+      }}
+      mainStyle={{ width: '100%', maxWidth: 440, margin: '0 auto', background: 'transparent' }}
+    >
+      <LoginFormFields
+        activeLoginMode={activeLoginMode}
+        availableLoginModes={availableLoginModes}
+        agreementSettings={agreementSettings}
+        pendingSecondFactorLogin={pendingSecondFactorLogin}
+        pendingSecondFactorPrompt={pendingSecondFactorPrompt}
+        securityCaptchaEnabled={securityCaptchaEnabled}
+        securityCaptchaType={securityCaptchaType}
+        captchaChallenge={captchaChallenge}
+        captchaLoading={captchaLoading}
+        captchaImageLoadFailed={captchaImageLoadFailed}
+        sendingLoginType={sendingLoginType}
+        loginCodeChallenges={loginCodeChallenges}
+        loginCodeCooldownSeconds={loginCodeCooldownSeconds}
+        wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
+        passkeyLoading={passkeySubmitting}
+        onModeChange={setActiveLoginMode}
+        onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
+        onWechatLogin={() => void handleWechatLogin()}
+        onPasskeyLogin={() => void handlePasskeyLogin()}
+        onRefreshCaptcha={() => void refreshCaptcha()}
+        onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
+        onSliderCaptchaChallengeChange={setCaptchaChallenge}
+        onSliderCaptchaVerified={setCaptchaProof}
+        onSliderCaptchaReset={resetCaptchaProof}
+        onOpenAgreementPreview={openAgreementPreview}
+      />
+    </LoginFormPage>
+  </div>
+);
 
 const Login = () => {
-  const [submitting, setSubmitting] = useState(false);
-  const [passkeySubmitting, setPasskeySubmitting] = useState(false);
-  const [sendingLoginType, setSendingLoginType] = useState<CodeLoginMode | null>(null);
-  const [pendingSecondFactorLogin, setPendingSecondFactorLogin] = useState<LoginResponse | null>(null);
-  const [pendingPasswordChangeLogin, setPendingPasswordChangeLogin] = useState<LoginResponse | null>(null);
-  const [restoredPasswordChangeRequired, setRestoredPasswordChangeRequired] = useState(false);
-  const [pendingPasswordChangeCurrentPassword, setPendingPasswordChangeCurrentPassword] = useState(INITIAL_PASSWORD);
-  const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false);
-  const [activeLoginMode, setActiveLoginMode] = useState<LoginMode>('password');
-  const [loginCodeChallenges, setLoginCodeChallenges] = useState<Partial<Record<CodeLoginMode, LoginCodeChallenge | null>>>({});
-  const [loginCodeCooldownEndsAt, setLoginCodeCooldownEndsAt] = useState<Partial<Record<CodeLoginMode, number>>>({});
-  const [loginCodeClock, setLoginCodeClock] = useState(() => Date.now());
-  const [agreementPreviewOpen, setAgreementPreviewOpen] = useState(false);
-  const [agreementPreviewKind, setAgreementPreviewKind] = useState<'user' | 'privacy'>('user');
-  const [loginForm] = Form.useForm<LoginFormValues>();
-  const [forcedPasswordChangeForm] = Form.useForm<ForcedPasswordChangeFormValues>();
-  const { initialState, setInitialState } = useInitialStateModel();
-  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(
-    normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS),
-  );
-  const [captchaChallenge, setCaptchaChallenge] = useState<CaptchaChallenge | null>(null);
-  const [captchaLoading, setCaptchaLoading] = useState(false);
-  const [captchaImageLoadFailed, setCaptchaImageLoadFailed] = useState(false);
-  const [loginEncryptionKey, setLoginEncryptionKey] = useState<LoginEncryptionKey | null>(null);
-  const [loginEncryptionLoading, setLoginEncryptionLoading] = useState(false);
-  const location = useLocation();
-  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
-  const loginPageStyle = useMemo(
-    () =>
-      ({
-        '--saas-login-background-image': brandingSettings.loginBackgroundUrl
-          ? `url("${brandingSettings.loginBackgroundUrl.replace(/"/g, '\\"')}")`
-          : undefined,
-      }) as CSSProperties,
-    [brandingSettings.loginBackgroundUrl],
-  );
-  const agreementSettings = normalizeAgreementSettings(initialState?.agreementSettings || DEFAULT_AGREEMENT_SETTINGS);
-  const loginCapabilities = initialState?.loginCapabilities || DEFAULT_LOGIN_CAPABILITIES;
-  const availableLoginModes = useMemo(() => getAvailableLoginModes(loginCapabilities), [loginCapabilities]);
-  const redirectTarget = resolveLoginRedirectTarget(location.search);
-  const loginCodeCooldownSeconds = useMemo(
-    () => ({
-      sms: Math.max(0, Math.ceil(((loginCodeCooldownEndsAt.sms || 0) - loginCodeClock) / 1000)),
-      email: Math.max(0, Math.ceil(((loginCodeCooldownEndsAt.email || 0) - loginCodeClock) / 1000)),
-    }),
-    [loginCodeClock, loginCodeCooldownEndsAt.email, loginCodeCooldownEndsAt.sms],
-  );
-  const securitySettingsRef = useRef(securitySettings);
-  const loginEncryptionLoadPromiseRef = useRef<Promise<LoginEncryptionKey | null> | null>(null);
-  const wechatCallbackHandledRef = useRef(false);
-  const captchaRefreshControllerRef = useRef(
-    createCaptchaRefreshController({
-      getCaptchaEnabled: () => securitySettingsRef.current.captchaEnabled,
-      getCaptchaType: () => securitySettingsRef.current.captchaType,
-      loadChallenge: (captchaType) =>
-        loadCaptchaChallenge(captchaType, {
-          autoRedirectOnUnauthorized: false,
-          silent: true,
-          skipAuth: true,
-        }),
-      setCaptchaChallenge,
-      setCaptchaLoading,
-      setCaptchaImageLoadFailed,
-      onRefreshFailure: () => message.warning(formatMessage({ id: 'page.login.error.refreshCaptcha', defaultMessage: 'Captcha refresh failed, please try again later' })),
-    }),
-  );
-
-  useEffect(() => {
-    const normalizedSecuritySettings = normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS);
-    persistSecuritySettings(normalizedSecuritySettings);
-    setSecuritySettings(normalizedSecuritySettings);
-  }, [initialState?.securitySettings]);
-
-  useEffect(() => {
-    securitySettingsRef.current = securitySettings;
-  }, [securitySettings]);
-
-  useEffect(() => {
-    const hasActiveCooldown = loginCodeCooldownSeconds.sms > 0 || loginCodeCooldownSeconds.email > 0;
-    if (!hasActiveCooldown) {
-      return;
-    }
-    const timer = window.setInterval(() => setLoginCodeClock(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [loginCodeCooldownSeconds.email, loginCodeCooldownSeconds.sms]);
-
-  useEffect(() => {
-    setActiveLoginMode((current) => (availableLoginModes.includes(current) ? current : defaultLoginMode(loginCapabilities)));
-  }, [availableLoginModes, loginCapabilities]);
-
-  useEffect(() => {
-    let disposed = false;
-    void systemService
-      .publicLoginCapabilities({
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-        silent: true,
-      })
-      .then((capabilities) => {
-        if (disposed) {
-          return;
-        }
-        setInitialState((prev: AppInitialState | undefined) =>
-          prev
-            ? {
-                ...prev,
-                loginCapabilities: {
-                  ...DEFAULT_LOGIN_CAPABILITIES,
-                  ...capabilities,
-                },
-              }
-            : prev,
-        );
-      })
-      .catch(() => {
-        // Keep the bootstrap snapshot values when the public capability endpoint is temporarily unavailable.
-      });
-
-    return () => {
-      disposed = true;
-    };
-  }, [setInitialState]);
-
-  const loadLoginEncryptionKey = useCallback(async () => {
-    if (loginEncryptionKey) {
-      return loginEncryptionKey;
-    }
-
-    if (!loginEncryptionLoadPromiseRef.current) {
-      setLoginEncryptionLoading(true);
-      loginEncryptionLoadPromiseRef.current = authService
-        .loginEncryptionKey({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        })
-        .then((key) => {
-          setLoginEncryptionKey(key);
-          return key;
-        })
-      .catch((error) => {
-        showErrorMessage(error, formatMessage({ id: 'page.login.error.loginEncryption', defaultMessage: 'Failed to load login encryption info, please refresh and try again' }));
-          return null;
-        })
-        .finally(() => {
-          setLoginEncryptionLoading(false);
-          loginEncryptionLoadPromiseRef.current = null;
-        });
-    }
-
-    return loginEncryptionLoadPromiseRef.current;
-  }, [loginEncryptionKey]);
-
-  const refreshCaptcha = useCallback(async () => captchaRefreshControllerRef.current.refresh(), []);
-  const pendingSecondFactorOptions = pendingSecondFactorLogin?.secondFactorOptions || [];
-  const pendingSecondFactorOption = pendingSecondFactorOptions[0] || null;
-  const pendingSecondFactorPrompt =
-    pendingSecondFactorOption?.promptMessage ||
-    (pendingSecondFactorOption?.factorName
-      ? formatMessage(
-          { id: 'page.login.secondFactor.prompt', defaultMessage: '{name} requires second-factor verification' },
-          { name: pendingSecondFactorOption.factorName },
-        )
-      : formatMessage({ id: 'page.login.code.secondFactor', defaultMessage: 'Please enter the verification code to complete second-factor verification' }));
-
-  const resetSecondFactorFlow = useCallback(() => {
-    setPendingSecondFactorLogin(null);
-    loginForm.setFieldsValue({ verificationCode: undefined });
-  }, [loginForm]);
-
-  const resetCodeFlow = useCallback((mode: CodeLoginMode) => {
-    setLoginCodeChallenges((prev) => ({
-      ...prev,
-      [mode]: null,
-    }));
-    loginForm.setFieldsValue({
-      [mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode']: undefined,
-    } as Partial<LoginFormValues>);
-  }, [loginForm]);
-
-  useEffect(() => {
-    void loadLoginEncryptionKey();
-  }, [loadLoginEncryptionKey]);
-
-  useEffect(() => {
-    if (!securitySettings.captchaEnabled) {
-      setCaptchaChallenge(null);
-      setCaptchaImageLoadFailed(false);
-      setCaptchaLoading(false);
-      captchaRefreshControllerRef.current.invalidate();
-      return;
-    }
-
-    if (securitySettings.captchaType === 'SLIDER') {
-      captchaRefreshControllerRef.current.invalidate();
-      setCaptchaImageLoadFailed(false);
-      setCaptchaLoading(false);
-      return;
-    }
-
-    if (!captchaChallenge?.captchaId || captchaChallenge.captchaType !== securitySettings.captchaType) {
-      void refreshCaptcha();
-    }
-  }, [captchaChallenge?.captchaId, captchaChallenge?.captchaType, refreshCaptcha, securitySettings.captchaEnabled, securitySettings.captchaType]);
-
-  useEffect(() => {
-    if (securitySettings.captchaEnabled) {
-      loginForm.setFieldValue('captchaCode', undefined);
-      loginForm.setFieldValue('captchaProof', undefined);
-    }
-  }, [captchaChallenge?.captchaId, loginForm, securitySettings.captchaEnabled]);
-
-  useEffect(() => {
-    if (pendingPasswordChangeLogin || restoredPasswordChangeRequired || initialState?.currentUser?.requiresPasswordChange) {
-      return;
-    }
-    const alreadyAuthenticated = isLoggedIn() || Boolean(initialState?.currentUser?.sessionId);
-    if (!alreadyAuthenticated || submitting) {
-      return;
-    }
-
-    if (initialState?.currentUser) {
-      history.replace(resolveAuthorizedLoginRedirectTarget(location.search, initialState.currentUser, initialState.menuTree));
-    } else {
-      history.replace(redirectTarget);
-    }
-  }, [initialState?.currentUser, initialState?.menuTree, location.search, pendingPasswordChangeLogin, redirectTarget, restoredPasswordChangeRequired, submitting]);
-
-  useEffect(() => {
-    if (!isLoggedIn() || !initialState?.currentUser?.requiresPasswordChange) {
-      return;
-    }
-    setRestoredPasswordChangeRequired(true);
-    setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
-    forcedPasswordChangeForm.resetFields();
-    message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
-  }, [forcedPasswordChangeForm, initialState?.currentUser?.requiresPasswordChange]);
-
-  useEffect(() => {
-    const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
-      window.location.replace(target);
-    });
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [redirectTarget]);
-
-  const openAgreementPreview = useCallback((kind: 'user' | 'privacy') => {
-    setAgreementPreviewKind(kind);
-    setAgreementPreviewOpen(true);
-  }, []);
-
-  const handleSendLoginCode = useCallback(
-    async (mode: CodeLoginMode) => {
-      if (!availableLoginModes.includes(mode)) {
-        message.warning(
-          mode === 'sms'
-            ? formatMessage({ id: 'page.login.error.smsDisabled', defaultMessage: 'SMS login is not enabled' })
-            : formatMessage({ id: 'page.login.error.emailDisabled', defaultMessage: 'Email login is not enabled' }),
-        );
-        return;
-      }
-      const remainingCooldownSeconds = loginCodeCooldownSeconds[mode] || 0;
-      if (remainingCooldownSeconds > 0) {
-        message.warning(
-          formatMessage(
-            { id: 'page.login.code.cooldown', defaultMessage: 'Please wait {seconds}s before sending again' },
-            { seconds: remainingCooldownSeconds },
-          ),
-        );
-        return;
-      }
-      const accountField = mode === 'sms' ? 'smsAccount' : 'emailAccount';
-      let account = '';
-      try {
-        await loginForm.validateFields([accountField]);
-        account = sanitizeLoginInputValue(loginForm.getFieldValue(accountField), mode === 'sms' ? 'mobile' : 'email');
-        loginForm.setFieldsValue({ [accountField]: account } as Partial<LoginFormValues>);
-      } catch {
-        return;
-      }
-
-      setSendingLoginType(mode);
-      try {
-        const challenge = await authService.loginCodeChallenge(
-          {
-            loginType: mode,
-            account,
-          },
-          {
-            autoRedirectOnUnauthorized: false,
-            silent: true,
-          },
-        );
-        setLoginCodeChallenges((prev) => ({
-          ...prev,
-          [mode]: challenge,
-        }));
-        const cooldownSeconds = Math.max(
-          1,
-          Math.floor(challenge.cooldownSeconds || securitySettings.verificationCodeCooldownSeconds || DEFAULT_SECURITY_SETTINGS.verificationCodeCooldownSeconds),
-        );
-        setLoginCodeCooldownEndsAt((prev) => ({
-          ...prev,
-          [mode]: Date.now() + cooldownSeconds * 1000,
-        }));
-        setLoginCodeClock(Date.now());
-        loginForm.setFieldsValue({
-          [mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode']: undefined,
-        } as Partial<LoginFormValues>);
-        message.success(formatMessage({ id: 'page.login.success.codeSent', defaultMessage: 'Verification code sent' }));
-        if (challenge.debugCode) {
-          message.info(formatMessage({ id: 'page.login.code.debug', defaultMessage: 'Debug code: {code}' }, { code: challenge.debugCode }));
-        }
-      } catch (error) {
-        showErrorMessage(error, formatMessage({ id: 'page.login.error.codeSendFailed', defaultMessage: 'Failed to send the verification code, please try again later' }));
-      } finally {
-        setSendingLoginType(null);
-      }
-    },
-    [availableLoginModes, loginCodeCooldownSeconds, loginForm, securitySettings.verificationCodeCooldownSeconds],
-  );
-
-  const completeSuccessfulLogin = useCallback(
-    async (loginResponse: LoginResponse) => {
-      const sessionResult = await initializeAfterLogin(loginResponse);
-      const [menuResult, pluginResult, brandingResult, watermarkResult] = await Promise.allSettled([
-        pluginService.currentMenus({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        pluginService.currentAvailable({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        systemService.brandingSettings({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        systemService.watermarkSettings({
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-      ]);
-      const menuTree = menuResult.status === 'fulfilled' ? menuResult.value : [];
-      const availablePlugins = pluginResult.status === 'fulfilled' ? pluginResult.value : [];
-      const normalizedBrandingSettings = normalizeBrandingSettings(
-        brandingResult.status === 'fulfilled'
-          ? brandingResult.value
-          : initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
-      );
-      const watermarkSettings = watermarkResult.status === 'fulfilled' ? watermarkResult.value : initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
-      persistBrandingSettings(normalizedBrandingSettings);
-      persistWatermarkSettings(watermarkSettings);
-      flushSync(() => {
-        setInitialState((prev: AppInitialState | undefined) => ({
-          ...prev,
-          currentUser: sessionResult.currentUser,
-          menuTree,
-          menuVersion: (prev?.menuVersion ?? 0) + 1,
-          availablePlugins,
-          securitySettings: sessionResult.securitySettings,
-          brandingSettings: normalizedBrandingSettings,
-          watermarkSettings,
-          agreementSettings: prev?.agreementSettings || agreementSettings,
-          loginCapabilities: prev?.loginCapabilities || loginCapabilities,
-        }));
-      });
-
-      setLoginCodeChallenges({});
-      setLoginCodeCooldownEndsAt({});
-      history.replace(resolveAuthorizedLoginRedirectTarget(location.search, sessionResult.currentUser, menuTree));
-    },
-    [agreementSettings, initialState?.brandingSettings, initialState?.watermarkSettings, location.search, loginCapabilities, setInitialState],
-  );
-
-  const startForcedPasswordChange = useCallback(
-    async (loginResponse: LoginResponse, currentPassword: string) => {
-      setPendingPasswordChangeLogin(loginResponse);
-      setPendingPasswordChangeCurrentPassword(currentPassword || INITIAL_PASSWORD);
-      forcedPasswordChangeForm.resetFields();
-      await initializeAfterLogin(loginResponse);
-      message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
-    },
-    [forcedPasswordChangeForm],
-  );
-
-  const handleForcedPasswordChange = useCallback(async () => {
-    if (!pendingPasswordChangeLogin && !restoredPasswordChangeRequired && !initialState?.currentUser?.requiresPasswordChange) {
-      return;
-    }
-    const values = await forcedPasswordChangeForm.validateFields();
-    setPasswordChangeSubmitting(true);
-    try {
-      await profileService.changePassword({
-        currentPassword: pendingPasswordChangeCurrentPassword,
-        newPassword: values.newPassword,
-        confirmPassword: values.confirmPassword,
-      });
-      message.success(formatMessage({ id: 'page.login.initialPasswordChange.success', defaultMessage: '密码已修改，请使用新密码登录' }));
-      const loginResponse = pendingPasswordChangeLogin;
-      setPendingPasswordChangeLogin(null);
-      setRestoredPasswordChangeRequired(false);
-      setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
-      forcedPasswordChangeForm.resetFields();
-      if (loginResponse) {
-        await completeSuccessfulLogin({
-          ...loginResponse,
-          requiresPasswordChange: false,
-        });
-        return;
-      }
-
-      const restoredSession = await restoreSession();
-      if (restoredSession?.currentUser) {
-        const currentUser = {
-          ...restoredSession.currentUser,
-          requiresPasswordChange: false,
-        };
-        flushSync(() => {
-          setInitialState((prev: AppInitialState | undefined) =>
-            prev
-              ? {
-                  ...prev,
-                  currentUser,
-                  securitySettings: restoredSession.securitySettings,
-                }
-              : prev,
-          );
-        });
-        history.replace(resolveAuthorizedLoginRedirectTarget(location.search, currentUser, initialState?.menuTree || []));
-      }
-    } catch (error) {
-      showErrorMessage(error, formatMessage({ id: 'page.login.initialPasswordChange.failed', defaultMessage: '密码修改失败，请检查后重试' }));
-    } finally {
-      setPasswordChangeSubmitting(false);
-    }
-  }, [
-    completeSuccessfulLogin,
-    forcedPasswordChangeForm,
-    initialState?.currentUser?.requiresPasswordChange,
-    initialState?.menuTree,
-    location.search,
-    pendingPasswordChangeCurrentPassword,
-    pendingPasswordChangeLogin,
-    restoredPasswordChangeRequired,
-    setInitialState,
-  ]);
-
-  const handleWechatLogin = useCallback(async () => {
-    if (agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown) {
-      const accepted = loginForm.getFieldValue('agreementAccepted');
-      if (!accepted) {
-        message.warning(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
-        return;
-      }
-    }
-
-    setSubmitting(true);
-    try {
-      message.loading({
-        content: formatMessage({ id: 'page.login.wechatStarting', defaultMessage: 'Redirecting to WeChat login...' }),
-        key: 'wechat-login',
-        duration: 1,
-      });
-      const result = await authService.wechatAuthorizeUrl({
-        autoRedirectOnUnauthorized: false,
-        silent: true,
-      });
-      window.location.assign(result.authorizeUrl);
-    } catch (error) {
-      showErrorMessage(error, formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
-    } finally {
-      setSubmitting(false);
-    }
-  }, [agreementSettings.privacyAgreementMarkdown, agreementSettings.userAgreementMarkdown, loginForm]);
-
-  const handlePasskeyLogin = useCallback(async () => {
-    if (!isPasskeySupported()) {
-      message.warning(formatMessage({ id: 'page.login.passkey.unsupported', defaultMessage: '当前浏览器不支持通行密钥' }));
-      return;
-    }
-    if (agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown) {
-      const accepted = loginForm.getFieldValue('agreementAccepted');
-      if (!accepted) {
-        message.warning(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
-        return;
-      }
-    }
-
-    setPasskeySubmitting(true);
-    try {
-      const options = await authService.passkeyAuthenticationOptions({
-        autoRedirectOnUnauthorized: false,
-        silent: true,
-      });
-      const credential = await navigator.credentials.get({
-        publicKey: toPublicKeyRequestOptions(options),
-      });
-      if (!credential) {
-        return;
-      }
-      const loginResponse = await authService.passkeyAuthenticationComplete(
-        toAuthenticationPayload(options.challengeId, credential as PublicKeyCredential),
-        {
-          autoRedirectOnUnauthorized: false,
-          silent: true,
-        },
-      );
-      await completeSuccessfulLogin(loginResponse);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        message.info(formatMessage({ id: 'page.login.passkey.cancelled', defaultMessage: '已取消通行密钥验证' }));
-        return;
-      }
-      showErrorMessage(error, formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
-    } finally {
-      setPasskeySubmitting(false);
-    }
-  }, [agreementSettings.privacyAgreementMarkdown, agreementSettings.userAgreementMarkdown, completeSuccessfulLogin, loginForm]);
-
-  useEffect(() => {
-    if (wechatCallbackHandledRef.current) {
-      return;
-    }
-    const searchParams = new URLSearchParams(location.search || '');
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    if (!code || !state || !loginCapabilities.wechatLoginAvailable) {
-      return;
-    }
-
-    wechatCallbackHandledRef.current = true;
-    setSubmitting(true);
-    beginLoginFlow();
-    void authService
-      .wechatLogin(
-        { code, state },
-        {
-          autoRedirectOnUnauthorized: false,
-          silent: true,
-        },
-      )
-      .then(async (loginResponse) => {
-        if (loginResponse.requiresSecondFactor) {
-          setPendingSecondFactorLogin(loginResponse);
-          message.info(loginResponse.secondFactorOptions?.[0]?.promptMessage || formatMessage({ id: 'page.login.code.secondFactor', defaultMessage: 'Please enter the verification code to complete second-factor verification' }));
-          history.replace(location.pathname);
-          return;
-        }
-        await completeSuccessfulLogin(loginResponse);
-      })
-      .catch((error) => {
-        showErrorMessage(error, formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
-        history.replace(location.pathname);
-      })
-      .finally(() => {
-        endLoginFlow();
-        setSubmitting(false);
-      });
-  }, [completeSuccessfulLogin, location.pathname, location.search, loginCapabilities.wechatLoginAvailable]);
-
-  const handleSubmit = async (values: LoginFormValues): Promise<boolean> => {
-    if (!pendingSecondFactorLogin) {
-      if (activeLoginMode === 'passkey') {
-        await handlePasskeyLogin();
-        return false;
-      }
-
-      if (!availableLoginModes.includes(activeLoginMode)) {
-        message.warning(
-          activeLoginMode === 'sms'
-            ? formatMessage({ id: 'page.login.error.smsDisabled', defaultMessage: 'SMS login is not enabled' })
-            : activeLoginMode === 'email'
-              ? formatMessage({ id: 'page.login.error.emailDisabled', defaultMessage: 'Email login is not enabled' })
-              : formatMessage({ id: 'page.login.error.loginModeUnavailable', defaultMessage: 'Current login mode is unavailable' }),
-        );
-        return false;
-      }
-
-      if (activeLoginMode === 'password' && securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
-        message.warning(formatMessage({ id: 'page.login.error.captchaExpired', defaultMessage: 'The captcha has expired, please refresh and try again' }));
-        return false;
-      }
-
-      if (activeLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' && !values.captchaCode) {
-        message.warning(formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the captcha' }));
-        return false;
-      }
-
-      if (activeLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' && !values.captchaProof) {
-        message.warning(formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }));
-        return false;
-      }
-    }
-
-    setSubmitting(true);
-    beginLoginFlow();
-    try {
-      const loginResponse = pendingSecondFactorLogin
-        ? await authService.secondFactorComplete({
-            factorCode: pendingSecondFactorOption?.factorCode || '',
-            challengeId: pendingSecondFactorOption?.challengeId || '',
-            verificationCode: values.verificationCode || '',
-          })
-        : activeLoginMode === 'password'
-          ? await (async () => {
-              const encryptionKey = loginEncryptionKey || (await loadLoginEncryptionKey());
-              if (!encryptionKey) {
-                return null;
-              }
-
-              return authService.login({
-                account: values.passwordAccount,
-                username: values.passwordAccount,
-                password: await encryptLoginPassword(values.passwordPassword || '', encryptionKey),
-                captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
-                captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
-                captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
-              });
-            })()
-          : await (async () => {
-              const mode = activeLoginMode as CodeLoginMode;
-              const challenge = loginCodeChallenges[mode];
-              if (!challenge?.challengeId) {
-                message.warning(formatMessage({ id: 'page.login.error.pleaseSendCode', defaultMessage: 'Please send the verification code first' }));
-                return null;
-              }
-
-              const verificationCode = mode === 'sms' ? values.smsVerificationCode : values.emailVerificationCode;
-              if (!verificationCode) {
-                message.warning(formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the verification code' }));
-                return null;
-              }
-
-              return authService.loginCodeComplete(
-                {
-                  challengeId: challenge.challengeId,
-                  verificationCode,
-                },
-                {
-                  autoRedirectOnUnauthorized: false,
-                  silent: true,
-                },
-              );
-            })();
-
-      if (!loginResponse) {
-        return false;
-      }
-
-      if (pendingSecondFactorLogin) {
-        resetSecondFactorFlow();
-      }
-
-      if (loginResponse.requiresSecondFactor) {
-        setPendingSecondFactorLogin(loginResponse);
-        message.info(loginResponse.secondFactorOptions?.[0]?.promptMessage || formatMessage({ id: 'page.login.code.secondFactor', defaultMessage: 'Please enter the verification code to complete second-factor verification' }));
-        return false;
-      }
-
-      if (loginResponse.requiresPasswordChange) {
-        await startForcedPasswordChange(loginResponse, activeLoginMode === 'password' ? values.passwordPassword || INITIAL_PASSWORD : INITIAL_PASSWORD);
-        return false;
-      }
-
-      await completeSuccessfulLogin(loginResponse);
-      return true;
-    } catch (error) {
-      if (error instanceof ApiRequestError) {
-        const feedback = resolveLoginErrorFeedback(error);
-        message.open({
-          type: feedback.type,
-          content: feedback.message,
-        });
-        if (securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE') {
-          void refreshCaptcha();
-        }
-        return false;
-      }
-
-      if (error instanceof Error) {
-        message.error(error.message || formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
-        if (securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE') {
-          void refreshCaptcha();
-        }
-        return false;
-      }
-
-      message.error(formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }));
-      if (securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE') {
-        void refreshCaptcha();
-      }
-      return false;
-    } finally {
-      endLoginFlow();
-      setSubmitting(false);
-    }
-  };
-
-  const handleFinishFailed: FormProps<LoginFormValues>['onFinishFailed'] = ({ errorFields }) => {
-    const hasSliderCaptchaError = errorFields.some((field) => field.name.includes('captchaProof'));
-    if (!hasSliderCaptchaError) {
-      return;
-    }
-
-    message.warning(formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }));
-  };
-
-  const agreementPreviewTitle = agreementPreviewKind === 'user'
-    ? formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })
-    : formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' });
-  const agreementPreviewMarkdown =
-    agreementPreviewKind === 'user' ? agreementSettings.userAgreementMarkdown : agreementSettings.privacyAgreementMarkdown;
+  const loginFlow = useLoginFlow();
+  const loginSubTitle =
+    loginFlow.activeLoginMode === 'password'
+      ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
+      : loginFlow.activeLoginMode === 'passkey'
+        ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
+        : loginFlow.activeLoginMode === 'sms'
+          ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
+          : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' });
+  const submitButtonText = loginFlow.viewState.pendingSecondFactorLogin
+    ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
+    : loginFlow.activeLoginMode === 'passkey'
+      ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
+      : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' });
 
   return (
-    <div className="saas-login-page" style={loginPageStyle}>
-      <LoginFormPage<LoginFormValues>
-        form={loginForm}
-        title={brandingSettings.websiteName}
-        subTitle={
-          activeLoginMode === 'password'
-            ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
-            : activeLoginMode === 'passkey'
-              ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
-              : activeLoginMode === 'sms'
-                ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
-                : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' })
-        }
-        actions={null}
-        initialValues={{ remember: true }}
-        message={false}
-        onFinish={handleSubmit}
-        onFinishFailed={handleFinishFailed}
-        submitter={{
-          submitButtonProps: {
-            children: pendingSecondFactorLogin
-              ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
-              : activeLoginMode === 'passkey'
-                ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
-                : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' }),
-            loading: submitting,
-            block: true,
-            style: activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? { display: 'none' } : undefined,
-          },
-          resetButtonProps: false,
-        }}
-        containerStyle={{
-          width: '100%',
-          maxWidth: 536,
-          boxSizing: 'border-box',
-        }}
-        style={{
-          width: '100%',
-          minHeight: '100%',
-          background: 'transparent',
-        }}
-        mainStyle={{ width: '100%', maxWidth: 440, margin: '0 auto', background: 'transparent' }}
-      >
-        <LoginFormFields
-          activeLoginMode={activeLoginMode}
-          availableLoginModes={availableLoginModes}
-          agreementSettings={agreementSettings}
-          pendingSecondFactorLogin={pendingSecondFactorLogin}
-          pendingSecondFactorPrompt={pendingSecondFactorPrompt}
-          securityCaptchaEnabled={securitySettings.captchaEnabled}
-          securityCaptchaType={securitySettings.captchaType}
-          captchaChallenge={captchaChallenge}
-          captchaLoading={captchaLoading}
-          captchaImageLoadFailed={captchaImageLoadFailed}
-          sendingLoginType={sendingLoginType}
-          loginCodeChallenges={loginCodeChallenges}
-          loginCodeCooldownSeconds={loginCodeCooldownSeconds}
-          wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
-          passkeyLoading={passkeySubmitting}
-          onModeChange={setActiveLoginMode}
-          onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
-          onWechatLogin={() => void handleWechatLogin()}
-          onPasskeyLogin={() => void handlePasskeyLogin()}
-          onRefreshCaptcha={() => void refreshCaptcha()}
-          onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
-          onSliderCaptchaChallengeChange={setCaptchaChallenge}
-          onSliderCaptchaVerified={(captchaProof) => loginForm.setFieldValue('captchaProof', captchaProof)}
-          onSliderCaptchaReset={() => loginForm.setFieldValue('captchaProof', undefined)}
-          onOpenAgreementPreview={openAgreementPreview}
-        />
-      </LoginFormPage>
-
-      <AgreementPreviewModal
-        open={agreementPreviewOpen}
-        onClose={() => setAgreementPreviewOpen(false)}
-        title={agreementPreviewTitle}
-        markdown={agreementPreviewMarkdown}
+    <>
+      <LoginPageMainSection
+        loginForm={loginFlow.loginForm}
+        activeLoginMode={loginFlow.activeLoginMode}
+        availableLoginModes={loginFlow.availableLoginModes}
+        agreementSettings={loginFlow.agreementSettings}
+        pendingSecondFactorLogin={loginFlow.viewState.pendingSecondFactorLogin}
+        pendingSecondFactorPrompt={loginFlow.viewState.pendingSecondFactorPrompt}
+        securityCaptchaEnabled={loginFlow.viewState.securitySettings.captchaEnabled}
+        securityCaptchaType={loginFlow.viewState.securitySettings.captchaType}
+        captchaChallenge={loginFlow.viewState.captchaChallenge}
+        captchaLoading={loginFlow.viewState.captchaLoading}
+        captchaImageLoadFailed={loginFlow.viewState.captchaImageLoadFailed}
+        sendingLoginType={loginFlow.viewState.sendingLoginType}
+        loginCodeChallenges={loginFlow.viewState.loginCodeChallenges}
+        loginCodeCooldownSeconds={loginFlow.viewState.loginCodeCooldownSeconds}
+        loginCapabilities={loginFlow.loginCapabilities}
+        submitting={loginFlow.viewState.submitting}
+        passkeySubmitting={loginFlow.viewState.passkeySubmitting}
+        setActiveLoginMode={loginFlow.setActiveLoginMode}
+        openAgreementPreview={loginFlow.actions.openAgreementPreview}
+        handleSendLoginCode={loginFlow.actions.handleSendLoginCode}
+        handleWechatLogin={() => void loginFlow.actions.handleWechatLogin()}
+        handlePasskeyLogin={() => void loginFlow.actions.handlePasskeyLogin()}
+        refreshCaptcha={() => void loginFlow.actions.refreshCaptcha()}
+        setCaptchaImageLoadFailed={loginFlow.actions.setCaptchaImageLoadFailed}
+        setCaptchaChallenge={loginFlow.actions.setCaptchaChallenge}
+        handleSubmit={loginFlow.actions.handleSubmit}
+        handleFinishFailed={loginFlow.actions.handleFinishFailed}
+        setCaptchaProof={loginFlow.actions.setCaptchaProof}
+        resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
+        loginPageStyle={loginFlow.loginPageStyle}
+        brandingWebsiteName={loginFlow.brandingWebsiteName}
+        loginSubTitle={loginSubTitle}
+        submitButtonText={submitButtonText}
       />
       <Modal
-        open={Boolean(pendingPasswordChangeLogin) || restoredPasswordChangeRequired || Boolean(initialState?.currentUser?.requiresPasswordChange)}
+        className="saas-login-page__agreement-modal"
+        open={loginFlow.dialogState.agreementPreviewOpen}
+        onCancel={() => loginFlow.dialogState.setAgreementPreviewOpen(false)}
+        footer={null}
+        width={720}
+        centered
+        title={loginFlow.dialogState.agreementPreviewTitle}
+        destroyOnHidden
+      >
+        {loginFlow.dialogState.agreementPreviewMarkdown ? (
+          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.75 }}>
+            {loginFlow.dialogState.agreementPreviewMarkdown}
+          </div>
+        ) : (
+          <div style={{ color: 'var(--ant-color-text-secondary)' }}>
+            {formatMessage({ id: 'page.login.agreement.empty', defaultMessage: 'The backend has not configured this agreement yet.' })}
+          </div>
+        )}
+      </Modal>
+      <Modal
+        open={loginFlow.viewState.forcedPasswordChangeOpen}
         title={formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}
         closable={false}
         maskClosable={false}
@@ -891,9 +233,9 @@ const Login = () => {
           style={{ marginBottom: 16 }}
         />
         <Form<ForcedPasswordChangeFormValues>
-          form={forcedPasswordChangeForm}
+          form={loginFlow.forcedPasswordChangeForm}
           layout="vertical"
-          onFinish={() => void handleForcedPasswordChange()}
+          onFinish={loginFlow.dialogState.handleForcedPasswordChange}
         >
           <Form.Item
             name="newPassword"
@@ -928,12 +270,12 @@ const Login = () => {
           >
             <Input.Password autoComplete="new-password" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={passwordChangeSubmitting}>
+          <Button type="primary" htmlType="submit" block loading={loginFlow.viewState.passwordChangeSubmitting}>
             {formatMessage({ id: 'page.login.initialPasswordChange.submit', defaultMessage: '确认修改' })}
           </Button>
         </Form>
       </Modal>
-    </div>
+    </>
   );
 };
 

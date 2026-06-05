@@ -1,22 +1,81 @@
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Card, Empty, Form, Image, Input, Space, Switch, Upload } from 'antd';
+import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import type { FormProps } from 'antd';
-import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { FloatingWindowSettings } from '@/types/api';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
-const FLOATING_QR_PREVIEW_CARD_WIDTH = 180;
-const FLOATING_QR_PREVIEW_CONTENT_SIZE = 132;
+type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
 interface FloatingWindowTabProps {
   formProps: FormProps;
   preview: FloatingWindowSettings;
-  uploadingTarget: 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr' | null;
+  uploadingTarget: PersonalizationUploadTarget | null;
   saving: boolean;
   canUpdate: boolean;
-  onUpload: (target: 'floatingQr', file: File) => Promise<void>;
+  onUpload: (target: PersonalizationUploadTarget, file: File) => Promise<void>;
   onClearQrImage: () => void;
   onSave: () => void;
 }
+
+const renderImageUploadPreviewField = ({
+  target,
+  previewSrc,
+  canUpdate,
+  uploadingTarget,
+  cardWidth,
+  cardHeight,
+  imageWidth,
+  imageHeight,
+  buttonLabel,
+  clearLabel,
+  emptyDescription = '未上传',
+  onUpload,
+  onClear,
+}: {
+  target: PersonalizationUploadTarget;
+  previewSrc?: string | null;
+  canUpdate: boolean;
+  uploadingTarget: PersonalizationUploadTarget | null;
+  cardWidth: number;
+  cardHeight: number;
+  imageWidth: number;
+  imageHeight: number;
+  buttonLabel: string;
+  clearLabel: string;
+  emptyDescription?: string;
+  onUpload: (target: PersonalizationUploadTarget, file: File) => Promise<void>;
+  onClear: () => void;
+}) => (
+  <Space align="start" size={16} wrap>
+    <Card size="small" style={{ width: cardWidth }} bodyStyle={{ padding: 12 }}>
+      <div style={{ width: '100%', height: cardHeight, display: 'grid', placeItems: 'center' }}>
+        {previewSrc ? (
+          <Image width={imageWidth} height={imageHeight} preview={false} src={normalizeUploadUrl(previewSrc)} style={{ objectFit: 'contain' }} />
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyDescription} />
+        )}
+      </div>
+    </Card>
+    <Space direction="vertical" size={8}>
+      <Upload
+        accept="image/*"
+        showUploadList={false}
+        beforeUpload={async (file) => {
+          await onUpload(target, file);
+          return Upload.LIST_IGNORE;
+        }}
+        disabled={!canUpdate}
+      >
+        <Button icon={<UploadOutlined />} loading={uploadingTarget === target} disabled={!canUpdate}>
+          {buttonLabel}
+        </Button>
+      </Upload>
+      <Button icon={<DeleteOutlined />} onClick={onClear} disabled={!canUpdate || !previewSrc}>
+        {clearLabel}
+      </Button>
+    </Space>
+  </Space>
+);
 
 export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving, canUpdate, onUpload, onClearQrImage, onSave }: FloatingWindowTabProps) => (
   <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -31,44 +90,22 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
         <Input />
       </Form.Item>
       <Form.Item label="二维码图片" extra="用于悬浮窗按钮展开后的二维码弹窗。">
-        <Space align="start" size={16} wrap>
-          <Card size="small" style={{ width: FLOATING_QR_PREVIEW_CARD_WIDTH }} bodyStyle={{ padding: 12 }}>
-            <div style={{ width: '100%', height: FLOATING_QR_PREVIEW_CONTENT_SIZE, display: 'grid', placeItems: 'center' }}>
-              {preview.apiDocsQrImageUrl ? (
-                <Image
-                  width={FLOATING_QR_PREVIEW_CONTENT_SIZE}
-                  height={FLOATING_QR_PREVIEW_CONTENT_SIZE}
-                  preview={false}
-                  src={normalizeUploadUrl(preview.apiDocsQrImageUrl)}
-                  style={{ objectFit: 'contain' }}
-                />
-              ) : (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未上传" />
-              )}
-            </div>
-          </Card>
-          <Space direction="vertical" size={8}>
-            <Upload
-              accept="image/*"
-              showUploadList={false}
-              beforeUpload={async (file) => {
-                await onUpload('floatingQr', file);
-                return Upload.LIST_IGNORE;
-              }}
-              disabled={!canUpdate}
-            >
-              <Button icon={<UploadOutlined />} loading={uploadingTarget === 'floatingQr'} disabled={!canUpdate}>
-                上传二维码
-              </Button>
-            </Upload>
-            <Button icon={<DeleteOutlined />} onClick={onClearQrImage} disabled={!canUpdate || !preview.apiDocsQrImageUrl}>
-              清除
-            </Button>
-          </Space>
-        </Space>
+        {renderImageUploadPreviewField({
+          target: 'floatingQr',
+          previewSrc: preview.apiDocsQrImageUrl,
+          canUpdate,
+          uploadingTarget,
+          cardWidth: 180,
+          cardHeight: 132,
+          imageWidth: 132,
+          imageHeight: 132,
+          buttonLabel: '上传二维码',
+          clearLabel: '清除',
+          onUpload,
+          onClear: onClearQrImage,
+        })}
       </Form.Item>
     </Form>
-
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
       <Button type="primary" loading={saving} disabled={!canUpdate} onClick={onSave}>
         保存设置

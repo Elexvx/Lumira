@@ -1,16 +1,66 @@
 import * as AntIcons from '@ant-design/icons';
 import { AppstoreOutlined, CloseOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Empty, Input, Popover, Segmented, Tooltip } from 'antd';
-import { createElement, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { createElement, useMemo, useState } from 'react';
 import './MenuIconPicker.css';
 
-type AntdIconComponent = ComponentType<Record<string, unknown>>;
 type IconStyle = 'Outlined' | 'Filled' | 'TwoTone';
+type AntdIconComponent = React.ComponentType<Record<string, unknown>>;
+
+const ICON_STYLE_SUFFIX_PATTERN = /(Outlined|Filled|TwoTone)$/;
 
 export interface MenuIconOption {
   label: string;
   value: string;
 }
+
+const normalizeMenuIconName = (iconName?: string | null) =>
+  (iconName || '')
+    .trim()
+    .replace(/(^\w)|-(\w)/g, (_, firstChar: string, hyphenChar: string) => (firstChar || hyphenChar).toUpperCase());
+
+const ALL_ICON_NAMES = Object.keys(AntIcons)
+  .filter((name) => ICON_STYLE_SUFFIX_PATTERN.test(name))
+  .sort((first, second) => first.localeCompare(second));
+
+const getAllMenuIconNames = () => ALL_ICON_NAMES;
+
+const resolveMenuIcon = (iconName?: string | null, className?: string) => {
+  const normalizedIconName = normalizeMenuIconName(iconName);
+  if (!normalizedIconName) {
+    return undefined;
+  }
+
+  const iconComponents = AntIcons as unknown as Record<string, AntdIconComponent | undefined>;
+  const iconComponent = iconComponents[normalizedIconName] || iconComponents[`${normalizedIconName}Outlined`];
+
+  return iconComponent ? createElement(iconComponent, { className }) : undefined;
+};
+
+const normalizeMenuIconOption = (option: MenuIconOption) => {
+  const value = normalizeMenuIconName(option.value);
+  return value ? { label: normalizeMenuIconName(option.label) || value, value } : null;
+};
+
+const buildPickerOptions = (options: MenuIconOption[]) => {
+  const seen = new Set<string>();
+  return options
+    .map(normalizeMenuIconOption)
+    .filter((option): option is MenuIconOption => Boolean(option))
+    .filter((option) => {
+      if (seen.has(option.value)) {
+        return false;
+      }
+      seen.add(option.value);
+      return true;
+    });
+};
+
+const ICON_STYLE_OPTIONS: Array<{ label: string; value: IconStyle }> = [
+  { label: '线框风格', value: 'Outlined' },
+  { label: '实底风格', value: 'Filled' },
+  { label: '双色风格', value: 'TwoTone' },
+];
 
 interface MenuIconPickerProps {
   value?: string;
@@ -24,35 +74,6 @@ interface MenuIconPreviewProps {
   icon?: string | null;
   showName?: boolean;
 }
-
-const ICON_STYLE_OPTIONS: Array<{ label: string; value: IconStyle }> = [
-  { label: '线框风格', value: 'Outlined' },
-  { label: '实底风格', value: 'Filled' },
-  { label: '双色风格', value: 'TwoTone' },
-];
-
-const ICON_STYLE_SUFFIX_PATTERN = /(Outlined|Filled|TwoTone)$/;
-
-const ALL_ICON_NAMES = Object.keys(AntIcons)
-  .filter((name) => ICON_STYLE_SUFFIX_PATTERN.test(name))
-  .sort((first, second) => first.localeCompare(second));
-
-export const normalizeMenuIconName = (iconName?: string | null) =>
-  (iconName || '')
-    .trim()
-    .replace(/(^\w)|-(\w)/g, (_, firstChar: string, hyphenChar: string) => (firstChar || hyphenChar).toUpperCase());
-
-export const resolveMenuIcon = (iconName?: string | null, className?: string): ReactNode => {
-  const normalizedIconName = normalizeMenuIconName(iconName);
-  if (!normalizedIconName) {
-    return undefined;
-  }
-
-  const iconComponents = AntIcons as unknown as Record<string, AntdIconComponent | undefined>;
-  const iconComponent = iconComponents[normalizedIconName] || iconComponents[`${normalizedIconName}Outlined`];
-
-  return iconComponent ? createElement(iconComponent, { className }) : undefined;
-};
 
 export const MenuIconPreview = ({ icon, showName = true }: MenuIconPreviewProps) => {
   const iconName = normalizeMenuIconName(icon);
@@ -70,40 +91,19 @@ export const MenuIconPreview = ({ icon, showName = true }: MenuIconPreviewProps)
   );
 };
 
-const normalizeOption = (option: MenuIconOption) => {
-  const value = normalizeMenuIconName(option.value);
-  return value ? { label: normalizeMenuIconName(option.label) || value, value } : null;
-};
-
-const buildPickerOptions = (options: MenuIconOption[]) => {
-  const seen = new Set<string>();
-  return options
-    .map(normalizeOption)
-    .filter((option): option is MenuIconOption => Boolean(option))
-    .filter((option) => {
-      if (seen.has(option.value)) {
-        return false;
-      }
-      seen.add(option.value);
-      return true;
-    });
-};
-
 export const MenuIconPicker = ({ value, options = [], loading, disabled, onChange }: MenuIconPickerProps) => {
   const iconOptions = useMemo(() => buildPickerOptions(options), [options]);
   const [open, setOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [activeStyle, setActiveStyle] = useState<IconStyle>('Outlined');
   const selectedIcon = normalizeMenuIconName(value);
-  const selectedIconNode = resolveMenuIcon(selectedIcon) || <AppstoreOutlined className="saas-menu-icon-picker__placeholder" />;
+  const selectedIconNode =
+    resolveMenuIcon(selectedIcon) || createElement(AppstoreOutlined, { className: 'saas-menu-icon-picker__placeholder' });
   const optionValues = useMemo(() => new Set(iconOptions.map((option) => option.value)), [iconOptions]);
   const pickerIconNames = useMemo(
     () => {
       const configuredNames = iconOptions.map((option) => option.value);
-      const mergedCatalogNames = [
-        ...configuredNames,
-        ...ALL_ICON_NAMES.filter((iconName) => !optionValues.has(iconName)),
-      ];
+      const mergedCatalogNames = [...configuredNames, ...getAllMenuIconNames().filter((iconName) => !optionValues.has(iconName))];
       const mergedNames = selectedIcon && !mergedCatalogNames.includes(selectedIcon)
         ? [selectedIcon, ...mergedCatalogNames]
         : mergedCatalogNames;
@@ -116,7 +116,7 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
     [activeStyle, iconOptions, keyword, optionValues, selectedIcon],
   );
 
-  const overlay = (
+  const pickerContent = (
     <div className="saas-menu-icon-picker__overlay">
       <Input
         allowClear
@@ -164,7 +164,7 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
       <div className="saas-menu-icon-picker__trigger">
         <Popover
           arrow
-          content={overlay}
+          content={pickerContent}
           open={open}
           placement="bottomLeft"
           rootClassName="saas-menu-icon-picker-popover"

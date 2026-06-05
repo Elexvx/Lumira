@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { usePermission } from '@/hooks/usePermission';
+import { useCallback, useMemo } from 'react';
+import { useAccess } from '@umijs/max';
 import type { TableActionItem } from '@/features/table/TableActionBar';
 
 export type PermissionRequirement = string | string[];
@@ -27,7 +27,9 @@ const normalizePermissions = (permission?: PermissionRequirement): string[] => {
 };
 
 export const useActionPermission = () => {
-  const { canAccess, canAccessAny } = usePermission();
+  const access = useAccess();
+  const canAccess = useCallback((permission: string) => access.hasPermission(permission), [access]);
+  const canAccessAny = useCallback((permissions: string[]) => permissions.some((permission) => access.hasPermission(permission)), [access]);
 
   return useMemo(
     () => ({

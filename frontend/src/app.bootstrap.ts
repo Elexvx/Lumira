@@ -1,38 +1,100 @@
-import {
-  DEFAULT_BRANDING_SETTINGS,
-  applyFavicon,
-  getStoredBrandingSettings,
-  normalizeBrandingSettings,
-  persistBrandingSettings,
-} from '@/branding/settings';
-import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
-import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings, persistSecuritySettings } from '@/auth/securitySettings';
-import { clearAuthSession, isLoggedIn, restoreSession } from '@/auth/session';
-import { resetBootstrapSnapshot, setBootstrapSnapshot } from '@/bootstrap/bootstrapStore';
-import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
-import { pluginService } from '@/services/plugin';
-import { systemService } from '@/services/system';
-import { API_PREFIX } from '@/constants/http';
-import {
-  DEFAULT_WATERMARK_SETTINGS,
-  normalizeWatermarkSettings,
-  persistWatermarkSettings,
-} from '@/watermark/settings';
-import type { AppInitialState } from '@/app.types';
-import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin } from '@/types/api';
 import { getLocale } from '@umijs/max';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { API_PREFIX } from '@/constants/http';
+import { DEFAULT_BRANDING_SETTINGS, applyFavicon, getStoredBrandingSettings, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
+import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
+import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
+import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
+import { persistSecuritySettings } from '@/auth/securitySettingsStorage';
+import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
+import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
+import { restoreSession } from '@/auth/sessionBootstrap';
+import { request } from '@/services/common/request';
+import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
+import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
+import { persistWatermarkSettings } from '@/watermark/settingsStorage';
+import type { AppInitialState } from '@/app.types';
+import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin, WatermarkSettings } from '@/types/api';
+import { API_OPTS } from '@/utils/errorMessage';
 
+const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
+
+type BootstrapPhase = 'idle' | 'health' | 'branding' | 'security' | 'captcha' | 'ready' | 'error';
+
+interface BootstrapSnapshot {
+  phase: BootstrapPhase;
+  progress: number;
+  title: string;
+  description: string;
+  retryCount: number;
+  retryInMs?: number;
+  brandName?: string;
+  errorMessage?: string;
+  ready: boolean;
+  updatedAt: number;
+}
+
+const buildInitialBootstrapSnapshot = (): BootstrapSnapshot => ({
+  phase: 'idle',
+  progress: 0,
+  title: '正在启动系统',
+  description: '正在检查后端服务',
+  retryCount: 0,
+  ready: false,
+  updatedAt: Date.now(),
+});
+
+let bootstrapSnapshot = buildInitialBootstrapSnapshot();
+
+const setBootstrapSnapshot = (patch: Partial<BootstrapSnapshot>) => {
+  bootstrapSnapshot = {
+    ...bootstrapSnapshot,
+    ...patch,
+    updatedAt: Date.now(),
+  };
+};
+
+const resetBootstrapSnapshot = () => {
+  bootstrapSnapshot = buildInitialBootstrapSnapshot();
+};
+
+class BackendProxyUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BackendProxyUnavailableError';
+  }
+}
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return '后端暂未准备好';
+};
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const getHealthRetryDelay = (attempt: number) => {
+  const baseDelay = 800;
+  const maxDelay = 4000;
+  return Math.min(baseDelay * 2 ** Math.min(attempt - 1, 3), maxDelay);
+};
 
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
   const settings = normalizeBrandingSettings(
     authenticated
-      ? await systemService.brandingSettings({
+      ? await request<BrandingSettings>('/v1/system/branding-settings', {
+          method: 'GET',
           autoRedirectOnUnauthorized: false,
           allowUnauthorizedWithoutRedirect: true,
           silent: true,
         }).catch(() => DEFAULT_BRANDING_SETTINGS)
-      : await systemService.publicBrandingSettings(API_OPTS.SILENT_NO_REDIRECT).catch(() => DEFAULT_BRANDING_SETTINGS),
+      : await request<BrandingSettings>('/v1/public/branding-settings', {
+          method: 'GET',
+          skipAuth: true,
+          silent: true,
+          ...API_OPTS.SILENT_NO_REDIRECT,
+        }).catch(() => DEFAULT_BRANDING_SETTINGS),
   );
   persistBrandingSettings(settings);
   applyFavicon(settings.websiteFaviconUrl);
@@ -42,12 +104,14 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
 const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
   try {
     const [menuTree, availablePlugins] = await Promise.all([
-      pluginService.currentMenus({
+      request<MenuNode[]>('/v1/plugins/current/menus', {
+        method: 'GET',
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
       }),
-      pluginService.currentAvailable({
+      request<TenantPlugin[]>('/v1/plugins/current/available', {
+        method: 'GET',
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
@@ -62,7 +126,12 @@ const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
 
 const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
   const settings = normalizeSecuritySettings(
-    await systemService.publicSecuritySettings(API_OPTS.SILENT_NO_REDIRECT).catch(() => DEFAULT_SECURITY_SETTINGS),
+    await request<SecuritySettings>('/v1/public/security-settings', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...API_OPTS.SILENT_NO_REDIRECT,
+    }).catch(() => DEFAULT_SECURITY_SETTINGS),
   );
   persistSecuritySettings(settings);
   return settings;
@@ -70,11 +139,21 @@ const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
 
 const loadPublicAgreementSettings = async (): Promise<AgreementSettings> =>
   normalizeAgreementSettings(
-    await systemService.publicAgreementSettings(API_OPTS.SILENT_NO_REDIRECT).catch(() => DEFAULT_AGREEMENT_SETTINGS),
+    await request<AgreementSettings>('/v1/public/agreement-settings', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...API_OPTS.SILENT_NO_REDIRECT,
+    }).catch(() => DEFAULT_AGREEMENT_SETTINGS),
   );
 
 const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
-  await systemService.publicLoginCapabilities(API_OPTS.SILENT_NO_REDIRECT).catch(() => ({
+  await request<LoginCapabilities>('/v1/public/login-capabilities', {
+    method: 'GET',
+    skipAuth: true,
+    silent: true,
+    ...API_OPTS.SILENT_NO_REDIRECT,
+  }).catch(() => ({
     passwordLoginAvailable: true,
     smsLoginAvailable: false,
     emailLoginAvailable: false,
@@ -99,11 +178,14 @@ const buildAuthenticatedInitialState = async (
   const [[menuTree, availablePlugins], loadedBrandingSettings, watermarkSettings] = await Promise.all([
     loadPluginBootstrap(),
     loadBrandingSettings(true),
-    systemService.watermarkSettings({
+    request<WatermarkSettings>('/v1/system/watermark-settings', {
+      method: 'GET',
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
       silent: true,
-    }).then(normalizeWatermarkSettings).catch(() => DEFAULT_WATERMARK_SETTINGS),
+    })
+      .then(normalizeWatermarkSettings)
+      .catch(() => DEFAULT_WATERMARK_SETTINGS),
   ]);
 
   await loadRuntimeLocalizationBundle(currentUser.locale || getLocale());
@@ -175,30 +257,6 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     loginCapabilities,
   };
 };
-
-const getErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return '后端暂未准备好';
-};
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-const getHealthRetryDelay = (attempt: number) => {
-  const baseDelay = 800;
-  const maxDelay = 4000;
-  return Math.min(baseDelay * 2 ** Math.min(attempt - 1, 3), maxDelay);
-};
-const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
-
-class BackendProxyUnavailableError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'BackendProxyUnavailableError';
-  }
-}
 
 const checkBackendHealth = async () => {
   const response = await fetch(`${API_PREFIX}/health`);

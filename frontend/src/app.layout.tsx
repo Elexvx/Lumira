@@ -1,49 +1,556 @@
-import { ArrowLeftOutlined } from '@ant-design/icons';
-import { formatMessage, history, useLocation } from '@umijs/max';
 import type { RunTimeLayoutConfig } from '@umijs/max';
-import React from 'react';
-import { Button, Tooltip } from 'antd';
-import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
-import { SessionActivityGuard } from '@/auth/SessionActivityGuard';
-import { isLoggedIn } from '@/auth/session';
-import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
-import { GlobalFloatActions } from '@/layouts/components/GlobalFloatActions';
-import { TopActions } from '@/layouts/components/TopActions';
-import {
-  buildVisibleSettingsNavigationItems,
-  isMainMenuHiddenMonitoringPath,
-  isMainMenuHiddenSettingPath,
-  isSettingsShellPath,
-  resolveNavigationIcon,
-} from '@/navigation/settingsNavigation';
-import NoPermission from '@/pages/exception/NoPermission';
-import { backendRouteMeta, realPageRouteMetaMap } from '@/routes/meta';
-import { buildBreadcrumbItems } from '@/app.breadcrumb';
+import type { ProSettings } from '@ant-design/pro-components';
+import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
+import type { ReactNode } from 'react';
+import { ArrowLeftOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
+import { Empty, Button, FloatButton, Popover, Tooltip, Typography, message } from 'antd';
+import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
-import { useResponsive } from '@/hooks/useResponsive';
-import { resolveProLayoutThemeSettings } from '@/theme/proLayoutTheme';
-import { ThemeRuntimeBridge } from '@/theme/ThemeRuntimeBridge';
-import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
-import type { BrandingSettings, MenuNode } from '@/types/api';
 import buildAccess from '@/access';
+import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
+import { isLoggedIn } from '@/auth/sessionLifecycle';
+import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
+import { buildStorageKey } from '@/cache/storage';
+import { TOKEN_STORAGE_KEY, tokenManager } from '@/auth/token';
+import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
+import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
+import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
+import { performLogout, tryRefreshToken } from '@/auth/sessionLifecycle';
+import { request } from '@/services/common/request';
+import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
+import { TopActions } from '@/layouts/components/TopActions';
+import NoPermission from '@/pages/exception/NoPermission';
+import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
+import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
+import type { BrandingSettings, FloatingWindowSettings, MenuNode, SecuritySettings } from '@/types/api';
 import { resolveBuiltinMessage } from '@/i18n/messages';
-import type { BreadcrumbProps } from 'antd';
-
-type BreadcrumbItem = NonNullable<BreadcrumbProps['items']>[number];
-type LocalRuntimeMenuDataItem = RuntimeMenuDataItem & { redirect?: string };
+import { buildVisibleSettingsNavigationItems } from '@/navigation/settingsNavigationRuntime';
+import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
+import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
+import { backendRouteMeta, realPageRouteMetaMap } from '@/routes/meta';
+import { API_OPTS } from '@/utils/errorMessage';
+import { useResponsive } from '@/hooks/useResponsive';
+import { useCallback, useEffect, useRef } from 'react';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useThemePreference } from '@/theme/ThemePreferenceProvider';
+import type { ThemePreference } from '@/theme/settings';
+import { resolveThemeRuntimeSnapshot } from '@/theme/runtime';
+import './layouts/components/GlobalFloatActions.css';
+import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const LAYOUT_HEADER_HEIGHT = 48;
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
-const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
+const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
+const STORAGE_TOKEN_KEY = buildStorageKey(TOKEN_STORAGE_KEY);
+const MOUSE_MOVE_THROTTLE_MS = 1000;
+const KEEPALIVE_THROTTLE_MS = 60_000;
+const TOKEN_REFRESH_SKEW_MS = 60_000;
+
+const useSessionActivityTimers = ({ securitySettings }: { securitySettings: SecuritySettings }) => {
+  const timerRef = useRef<number | null>(null);
+  const tokenExpireTimerRef = useRef<number | null>(null);
+  const redirectingRef = useRef(false);
+  const scheduleTokenExpirationRef = useRef<() => void>(() => {});
+  const lastActivityRef = useRef<number>(Date.now());
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const clearTokenExpireTimer = useCallback(() => {
+    if (tokenExpireTimerRef.current !== null) {
+      window.clearTimeout(tokenExpireTimerRef.current);
+      tokenExpireTimerRef.current = null;
+    }
+  }, []);
+
+  const forceLogout = useCallback(
+    (reason?: 'token_expired') => {
+      if (redirectingRef.current) {
+        return;
+      }
+      redirectingRef.current = true;
+      clearTimer();
+      clearTokenExpireTimer();
+      if (reason === 'token_expired') {
+        message.info('登录状态已过期，请重新登录');
+      }
+      clearSessionActivity();
+      void performLogout({ reason: 'forced_expired' });
+    },
+    [clearTimer, clearTokenExpireTimer],
+  );
+
+  const scheduleTimeout = useCallback(
+    (lastActivityAt: number) => {
+      clearTimer();
+      if (!tokenManager.hasToken()) {
+        return;
+      }
+
+      const timeoutMs = securitySettings.idleTimeoutSeconds * 1000;
+      const elapsedMs = Date.now() - lastActivityAt;
+      const remainingMs = Math.max(timeoutMs - elapsedMs, 0);
+      timerRef.current = window.setTimeout(() => {
+        if (tokenManager.hasToken()) {
+          forceLogout();
+        }
+      }, remainingMs);
+    },
+    [clearTimer, forceLogout, securitySettings.idleTimeoutSeconds],
+  );
+
+  const refreshAccessToken = useCallback(async () => {
+    if (!tokenManager.hasToken()) {
+      return false;
+    }
+
+    const refreshed = await tryRefreshToken();
+    if (!refreshed) {
+      forceLogout('token_expired');
+      return false;
+    }
+    scheduleTokenExpirationRef.current();
+    scheduleTimeout(lastActivityRef.current);
+    return true;
+  }, [forceLogout, scheduleTimeout]);
+
+  const scheduleTokenExpiration = useCallback(() => {
+    clearTokenExpireTimer();
+    const tokenState = tokenManager.getTokenState();
+    if (!tokenState) {
+      return;
+    }
+
+    const remainingMs = tokenState.expiresAt - Date.now();
+    const refreshDelayMs = Math.max(0, remainingMs - TOKEN_REFRESH_SKEW_MS);
+
+    if (remainingMs <= 0 || refreshDelayMs === 0) {
+      void refreshAccessToken();
+      return;
+    }
+
+    tokenExpireTimerRef.current = window.setTimeout(() => {
+      void refreshAccessToken();
+    }, refreshDelayMs);
+  }, [clearTokenExpireTimer, refreshAccessToken]);
+
+  useEffect(() => {
+    scheduleTokenExpirationRef.current = scheduleTokenExpiration;
+  }, [scheduleTokenExpiration]);
+
+  const setLastActivityAt = useCallback((activityAt: number) => {
+    lastActivityRef.current = activityAt;
+  }, []);
+
+  const getLastActivityAt = useCallback(() => lastActivityRef.current, []);
+  const resetLogoutGuard = useCallback(() => {
+    redirectingRef.current = false;
+  }, []);
+
+  return {
+    clearTimer,
+    clearTokenExpireTimer,
+    forceLogout,
+    scheduleTimeout,
+    scheduleTokenExpiration,
+    setLastActivityAt,
+    getLastActivityAt,
+    resetLogoutGuard,
+  };
+};
+
+const useSessionActivityController = ({ securitySettings }: { securitySettings: SecuritySettings }) => {
+  const timers = useSessionActivityTimers({ securitySettings });
+  const lastBroadcastRef = useRef(0);
+  const lastKeepaliveRef = useRef(0);
+  const keepaliveInFlightRef = useRef(false);
+  const lastActivityRef = useRef<number>(Date.now());
+
+  const pingSession = useCallback(async () => {
+    if (keepaliveInFlightRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastKeepaliveRef.current < KEEPALIVE_THROTTLE_MS) {
+      return;
+    }
+
+    keepaliveInFlightRef.current = true;
+    lastKeepaliveRef.current = now;
+    try {
+      await request('/v1/auth/current-user', {
+        method: 'GET',
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      });
+    } catch {
+      lastKeepaliveRef.current = 0;
+    } finally {
+      keepaliveInFlightRef.current = false;
+    }
+  }, []);
+
+  const recordActivity = useCallback(
+    (source: string) => {
+      const now = Date.now();
+      if (source === 'mousemove' && now - lastBroadcastRef.current < MOUSE_MOVE_THROTTLE_MS) {
+        return;
+      }
+
+      lastBroadcastRef.current = now;
+      lastActivityRef.current = now;
+      persistSessionActivity(now);
+      timers.scheduleTimeout(now);
+      void pingSession();
+    },
+    [pingSession, timers],
+  );
+
+  const applyExternalActivityAt = useCallback(
+    (activityAt: number) => {
+      lastActivityRef.current = activityAt;
+      timers.scheduleTimeout(activityAt);
+    },
+    [timers],
+  );
+
+  const primeStoredActivity = useCallback(() => {
+    const storedActivityAt = getStoredSessionActivityAt() || Date.now();
+    if (!getStoredSessionActivityAt()) {
+      persistSessionActivity(storedActivityAt);
+    }
+    lastActivityRef.current = storedActivityAt;
+    return storedActivityAt;
+  }, []);
+
+  const getLastActivityAt = useCallback(() => lastActivityRef.current, []);
+
+  return {
+    ...timers,
+    recordActivity,
+    applyExternalActivityAt,
+    primeStoredActivity,
+    getLastActivityAt,
+  };
+};
+
 const resolveSiderMenuMode = (pathname: string) => (isSettingsShellPath(pathname) ? 'settings' : 'main');
+const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
+
+const CollapsedButtonWithReturn = ({ defaultDom }: { defaultDom: ReactNode }) => {
+  const location = useLocation();
+  const { isMobile } = useResponsive();
+
+  if (!isMobile || !isSettingsShellPath(location.pathname)) {
+    return <>{defaultDom}</>;
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {defaultDom}
+      <Tooltip title="返回主路由">
+        <Button type="text" icon={<ArrowLeftOutlined />} aria-label="返回主路由" onClick={() => history.push(DEFAULT_HOME_PATH)} />
+      </Tooltip>
+    </div>
+  );
+};
+
+const buildThemeRuntimeRevisionKey = (themePreference: ThemePreference, resolvedColorMode: 'light' | 'dark') =>
+  `${themePreference}:${resolvedColorMode}`;
+
+const shouldAdvanceThemeRevision = (previousThemeKey: string | undefined, nextThemeKey: string) =>
+  Boolean(previousThemeKey && previousThemeKey !== nextThemeKey);
+
+const resolveProLayoutNavTheme = (): NonNullable<ProSettings['navTheme']> =>
+  (resolveThemeRuntimeSnapshot().resolvedColorMode === 'dark' ? 'realDark' : 'light');
+
+const resolveProLayoutThemeSettings = (): Pick<ProSettings, 'navTheme'> => ({
+  navTheme: resolveProLayoutNavTheme(),
+});
+
+const ThemeRuntimeBridge = () => {
+  const { themePreference, resolvedColorMode } = useThemePreference();
+  const { setInitialState } = useInitialStateModel();
+  const previousThemeKeyRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const nextThemeKey = buildThemeRuntimeRevisionKey(themePreference, resolvedColorMode);
+    const shouldAdvanceRevision = shouldAdvanceThemeRevision(previousThemeKeyRef.current, nextThemeKey);
+    previousThemeKeyRef.current = nextThemeKey;
+
+    if (!shouldAdvanceRevision) {
+      return;
+    }
+
+    setInitialState((prev) =>
+      prev
+        ? {
+            ...prev,
+            themeRevision: (prev.themeRevision ?? 0) + 1,
+          }
+        : prev,
+    );
+  }, [resolvedColorMode, setInitialState, themePreference]);
+
+  return null;
+};
+
+const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
+  const { initialState } = useInitialStateModel();
+  const location = useLocation();
+  const securitySettings = normalizeSecuritySettings(initialState?.securitySettings || getStoredSecuritySettings() || DEFAULT_SECURITY_SETTINGS);
+  const controller = useSessionActivityController({ securitySettings });
+
+  useEffect(() => {
+    if (!tokenManager.hasToken()) {
+      controller.clearTimer();
+      controller.clearTokenExpireTimer();
+      return;
+    }
+
+    controller.resetLogoutGuard();
+    controller.scheduleTokenExpiration();
+    controller.scheduleTimeout(controller.primeStoredActivity());
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'click',
+      'keydown',
+      'mousedown',
+      'mousemove',
+      'pointerdown',
+      'scroll',
+      'touchstart',
+    ];
+    const handleUserActivity = (event: Event) => {
+      controller.recordActivity(event.type);
+    };
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleUserActivity, { passive: true });
+    });
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_ACTIVITY_KEY && event.newValue) {
+        const parsed = Number(event.newValue);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          controller.applyExternalActivityAt(parsed);
+        }
+      }
+
+      if (event.key === STORAGE_TOKEN_KEY) {
+        if (tokenManager.hasToken()) {
+          controller.resetLogoutGuard();
+          controller.scheduleTokenExpiration();
+          controller.scheduleTimeout(controller.getLastActivityAt());
+        } else {
+          controller.forceLogout();
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      const elapsedMs = Date.now() - controller.getLastActivityAt();
+      if (elapsedMs >= securitySettings.idleTimeoutSeconds * 1000) {
+        controller.forceLogout();
+        return;
+      }
+      controller.scheduleTimeout(controller.getLastActivityAt());
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handleFocus = () => {
+      const elapsedMs = Date.now() - controller.getLastActivityAt();
+      if (elapsedMs >= securitySettings.idleTimeoutSeconds * 1000) {
+        controller.forceLogout();
+        return;
+      }
+      controller.scheduleTimeout(controller.getLastActivityAt());
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      controller.clearTimer();
+      controller.clearTokenExpireTimer();
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleUserActivity);
+      });
+      window.removeEventListener('storage', handleStorage);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+    // Rebuild activity bindings when auth/session context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller, securitySettings.idleTimeoutSeconds, initialState?.currentUser?.sessionId]);
+
+  useEffect(() => {
+    if (!tokenManager.hasToken()) {
+      controller.clearTimer();
+      controller.clearTokenExpireTimer();
+      return;
+    }
+    controller.recordActivity('route');
+    // Route changes count as activity, so we keep the idle timer in sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, controller]);
+
+  useEffect(() => {
+    if (!tokenManager.hasToken()) {
+      controller.clearTimer();
+      controller.clearTokenExpireTimer();
+      return;
+    }
+
+    controller.scheduleTokenExpiration();
+    controller.scheduleTimeout(controller.getLastActivityAt());
+    // Recompute when the policy changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller, securitySettings.accessTokenExpireSeconds, securitySettings.idleTimeoutSeconds, securitySettings.refreshTokenExpireSeconds]);
+
+  return children;
+};
+
+const GlobalFloatActions = () => {
+  const intl = useIntl();
+  const { pathname } = useLocation();
+  const { isMobile } = useResponsive();
+  const floatingSettingsQuery = useQuery({
+    queryKey: ['floating-window-settings'],
+    queryFn: () =>
+      request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
+        method: 'GET',
+        ...API_OPTS.SILENT_NO_REDIRECT,
+      }),
+    enabled: isLoggedIn(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);
+  const showApiDocsQr = floatingSettings.apiDocsQrEnabled;
+  const isAssistantPage = pathname === '/ai/assistant' || pathname.startsWith('/ai/share/');
+
+  if (!isLoggedIn()) {
+    return null;
+  }
+
+  return (
+    <FloatButton.Group
+      className="saas-global-float-actions"
+      shape="square"
+      style={{
+        right: isAssistantPage ? (isMobile ? 12 : 16) : isMobile ? 16 : 32,
+        bottom: isAssistantPage ? (isMobile ? 24 : 56) : isMobile ? 24 : 40,
+      }}
+    >
+      {showApiDocsQr ? (
+        <Popover
+          overlayClassName="saas-global-float-actions__qr-popover"
+          placement="left"
+          trigger={['hover', 'click']}
+          content={
+            <div className="saas-global-float-actions__qr-card">
+              <Typography.Text className="saas-global-float-actions__qr-title" type="secondary">
+                {floatingSettings.apiDocsQrTitle}
+              </Typography.Text>
+              <div className="saas-global-float-actions__qr-image-wrap">
+                {floatingSettings.apiDocsQrImageUrl ? (
+                  <img className="saas-global-float-actions__qr-image" src={floatingSettings.apiDocsQrImageUrl} alt={floatingSettings.apiDocsQrTitle} />
+                ) : (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在个性化设置上传二维码" />
+                )}
+              </div>
+            </div>
+          }
+        >
+          <FloatButton
+            icon={<QrcodeOutlined />}
+            tooltip={intl.formatMessage({ id: 'global.float.qrCode', defaultMessage: '二维码' })}
+            aria-label={intl.formatMessage({ id: 'global.float.qrCode', defaultMessage: '二维码' })}
+          />
+        </Popover>
+      ) : null}
+      <FloatButton
+        icon={<ReloadOutlined />}
+        tooltip={intl.formatMessage({ id: 'global.float.refresh', defaultMessage: '刷新页面' })}
+        aria-label={intl.formatMessage({ id: 'global.float.refresh', defaultMessage: '刷新页面' })}
+        onClick={() => window.location.reload()}
+      />
+      <FloatButton.BackTop
+        icon={<VerticalAlignTopOutlined />}
+        tooltip={intl.formatMessage({ id: 'global.float.backTop', defaultMessage: '回到顶部' })}
+        aria-label={intl.formatMessage({ id: 'global.float.backTop', defaultMessage: '回到顶部' })}
+        visibilityHeight={0}
+      />
+    </FloatButton.Group>
+  );
+};
+
+const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialState | undefined }) => () => {
+  const { location } = history;
+  const path = location.pathname;
+  const loggedIn = isLoggedIn();
+  const isPublicPath = PUBLIC_PATHS.has(path);
+  const requiresPasswordChange = Boolean(initialState?.currentUser?.requiresPasswordChange);
+
+  if (!loggedIn && !isPublicPath) {
+    const redirect = `${path}${location.search || ''}`;
+    history.replace(`${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`);
+    return;
+  }
+
+  if (loggedIn && requiresPasswordChange && path !== LOGIN_PATH) {
+    const redirect = `${path}${location.search || ''}`;
+    history.replace(`${LOGIN_PATH}?forcePasswordChange=1&redirect=${encodeURIComponent(redirect)}`);
+    return;
+  }
+
+  if (loggedIn && path === LOGIN_PATH) {
+    if (requiresPasswordChange) {
+      return;
+    }
+    if (initialState?.currentUser) {
+      history.replace(resolveAuthorizedLoginRedirectTarget(location.search || '', initialState.currentUser, initialState.menuTree, DEFAULT_HOME_PATH));
+    } else {
+      history.replace(DEFAULT_HOME_PATH);
+    }
+    return;
+  }
+
+  if (loggedIn && !isPublicPath && initialState?.currentUser) {
+    const routeAccessStatus = resolveRouteAccessStatus(path, initialState.currentUser);
+    if (routeAccessStatus === 'denied') {
+      history.replace('/403');
+    }
+  }
+};
+
+const renderLayoutFooter = (brandingSettings: BrandingSettings) => {
+  const copyrightText = brandingSettings.footerCopyright || buildCopyrightText(brandingSettings);
+
+  if (!brandingSettings.footerIcp && !copyrightText) {
+    return null;
+  }
+
+  return (
+    <div className="saas-layout-footer">
+      {brandingSettings.footerIcp ? <div className="saas-layout-footer__line">{brandingSettings.footerIcp}</div> : null}
+      {copyrightText ? <div className="saas-layout-footer__line">{copyrightText}</div> : null}
+    </div>
+  );
+};
 
 const flattenLocalMenuMap = (items: RuntimeMenuDataItem[], map = new Map<string, RuntimeMenuDataItem>()) => {
   items.forEach((item) => {
-    const localItem = item as LocalRuntimeMenuDataItem;
-    if (item.path && !localItem.redirect) {
+    if (item.path && !(item as RuntimeMenuDataItem & { redirect?: string }).redirect) {
       map.set(item.path, item);
     }
     if (item.children?.length) {
@@ -70,27 +577,87 @@ const collectMenuPaths = (items: RuntimeMenuDataItem[], paths = new Set<string>(
 const hasMenuPathOrChild = (paths: Set<string>, targetPath: string) =>
   paths.has(targetPath) || [...paths].some((path) => path.startsWith(`${targetPath}/`));
 
-const translateBreadcrumbItems = (items: RuntimeMenuDataItem[]): BreadcrumbItem[] =>
-  items.map((item) => {
-    const breadcrumbTitle = item.title || item.name || item.path || '';
-    return {
-      key: item.path || item.name || breadcrumbTitle,
-      path: item.path,
-      title: typeof breadcrumbTitle === 'string'
-        ? resolveBuiltinMessage(breadcrumbTitle, formatMessage({ id: breadcrumbTitle, defaultMessage: breadcrumbTitle }))
-        : breadcrumbTitle,
-    };
-  });
+const translateVisibleLocalMenuDataForLayout = (
+  initialState: AppInitialState | undefined,
+  items: RuntimeMenuDataItem[],
+): RuntimeMenuDataItem[] => {
+  const access = buildAccess({ currentUser: initialState?.currentUser }) as Record<string, unknown>;
 
-const buildSettingsMenuData = (initialState?: AppInitialState) => {
-  const access = buildAccess({ currentUser: initialState?.currentUser });
-  return buildVisibleSettingsNavigationItems(
-    initialState?.menuTree,
-    (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
-  );
+  return items
+    .map((item) => {
+      const localItem = item as RuntimeMenuDataItem & { redirect?: string };
+      if (localItem.redirect) {
+        return null;
+      }
+
+      const routeMeta = item.path ? routeMetaMap.get(item.path) : undefined;
+      const hasRealPageRoute = item.path ? realPagePathSet.has(item.path) : false;
+      const children = item.children?.length ? translateVisibleLocalMenuDataForLayout(initialState, item.children) : [];
+      if ((!routeMeta || !hasRealPageRoute) && !children.length) {
+        return null;
+      }
+      if (routeMeta?.hideInMenu && !children.length) {
+        return null;
+      }
+      if (routeMeta?.access && !access[routeMeta.access] && !children.length) {
+        return null;
+      }
+
+      const labelId = typeof item.locale === 'string' ? item.locale : item.name || item.title || item.path;
+      return {
+        ...item,
+        path: routeMeta?.path || item.path,
+        name: typeof labelId === 'string'
+          ? resolveBuiltinMessage(labelId, typeof item.name === 'string' ? item.name : undefined)
+          : item.name,
+        locale: false as const,
+        hideInMenu: routeMeta?.hideInMenu,
+        children: children.length ? children : undefined,
+      };
+    })
+    .filter(Boolean) as RuntimeMenuDataItem[];
 };
 
-const buildMainMenuData = (
+const composeMenuItemForLayout = (
+  backendNode: MenuNode,
+  localByPath: Map<string, RuntimeMenuDataItem>,
+): RuntimeMenuDataItem | null => {
+  if (isMainMenuHiddenSettingPath(backendNode.path) || isMainMenuHiddenMonitoringPath(backendNode.path)) {
+    return null;
+  }
+
+  const localMeta = localByPath.get(backendNode.path);
+  const mergedMeta = routeMetaMap.get(backendNode.path || '');
+  const hasLocalRoute = Boolean(
+    (backendNode.path && realPagePathSet.has(backendNode.path))
+      || isPluginRuntimePath(backendNode.path),
+  );
+  const children = (backendNode.children || [])
+    .map((child) => composeMenuItemForLayout(child, localByPath))
+    .filter(Boolean) as RuntimeMenuDataItem[];
+
+  if (!hasLocalRoute && !children.length) {
+    return null;
+  }
+
+  const { children: _localChildren, routes: _localRoutes, ...localItemMeta } =
+    (localMeta || {}) as RuntimeMenuDataItem & { routes?: RuntimeMenuDataItem[] };
+  const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
+  const menuLabelId = mergedMeta?.name || backendNode.name || backendNode.menuCode;
+  const isRedirectGroup = children.length > 0 && Boolean(backendNode.component?.startsWith('redirect:'));
+
+  return {
+    ...localItemMeta,
+    path: isRedirectGroup ? undefined : backendNode.path || localMeta?.path,
+    name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
+    locale: false as const,
+    icon,
+    hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
+    children: children.length ? children : undefined,
+  };
+};
+
+const buildMainMenuDataForLayout = (
   initialState: AppInitialState | undefined,
   menuData: RuntimeMenuDataItem[],
   fallbackSourceMenuData: RuntimeMenuDataItem[] = menuData,
@@ -124,10 +691,7 @@ const buildMainMenuData = (
     })
     .filter(Boolean) as RuntimeMenuDataItem[];
 
-  return [
-    ...fallbackMenus,
-    ...visibleMenus,
-  ].sort((a, b) => {
+  return [...fallbackMenus, ...visibleMenus].sort((a, b) => {
     const leftIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(a.path || '');
     const rightIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(b.path || '');
     if (leftIndex !== -1 || rightIndex !== -1) {
@@ -137,7 +701,7 @@ const buildMainMenuData = (
   });
 };
 
-const removeRedundantParentPathItems = (
+const removeRedundantParentPathItemsForLayout = (
   items: RuntimeMenuDataItem[],
   ancestorGroupPaths = new Set<string>(),
 ): RuntimeMenuDataItem[] =>
@@ -148,7 +712,9 @@ const removeRedundantParentPathItems = (
         nextAncestorGroupPaths.add(item.path);
       }
 
-      const children = item.children?.length ? removeRedundantParentPathItems(item.children, nextAncestorGroupPaths) : [];
+      const children = item.children?.length
+        ? removeRedundantParentPathItemsForLayout(item.children, nextAncestorGroupPaths)
+        : [];
       return {
         ...item,
         children: children.length ? children : undefined,
@@ -161,127 +727,10 @@ const removeRedundantParentPathItems = (
       return !ancestorGroupPaths.has(item.path) && !HIDDEN_MAIN_MENU_LEAF_PATHS.has(item.path);
     });
 
-const translateVisibleLocalMenuData = (
-  initialState: AppInitialState | undefined,
-  items: RuntimeMenuDataItem[],
-): RuntimeMenuDataItem[] => {
-  const access = buildAccess({ currentUser: initialState?.currentUser }) as Record<string, unknown>;
-
-  return items.map((item) => {
-    const localItem = item as LocalRuntimeMenuDataItem;
-    if (localItem.redirect) {
-      return null;
-    }
-
-    const routeMeta = item.path ? routeMetaMap.get(item.path) : undefined;
-    const hasRealPageRoute = item.path ? realPagePathSet.has(item.path) : false;
-    const children = item.children?.length ? translateVisibleLocalMenuData(initialState, item.children) : [];
-    if ((!routeMeta || !hasRealPageRoute) && !children.length) {
-      return null;
-    }
-    if (routeMeta?.hideInMenu && !children.length) {
-      return null;
-    }
-    if (routeMeta?.access && !access[routeMeta.access] && !children.length) {
-      return null;
-    }
-
-    const labelId = typeof item.locale === 'string' ? item.locale : item.name || item.title || item.path;
-    return {
-      ...item,
-      path: routeMeta?.path || item.path,
-      name: typeof labelId === 'string'
-        ? resolveBuiltinMessage(labelId, typeof item.name === 'string' ? item.name : undefined)
-        : item.name,
-      locale: false as const,
-      hideInMenu: routeMeta?.hideInMenu,
-      children: children.length ? children : undefined,
-    };
-  }).filter(Boolean) as RuntimeMenuDataItem[];
-};
-
-const composeMenuItem = (
-  backendNode: MenuNode,
-  localByPath: Map<string, RuntimeMenuDataItem>,
-): RuntimeMenuDataItem | null => {
-  if (isMainMenuHiddenSettingPath(backendNode.path) || isMainMenuHiddenMonitoringPath(backendNode.path)) {
-    return null;
-  }
-
-  const localMeta = localByPath.get(backendNode.path);
-  const mergedMeta = routeMetaMap.get(backendNode.path || '');
-  const hasLocalRoute = Boolean(
-    (backendNode.path && realPagePathSet.has(backendNode.path))
-      || isPluginRuntimePath(backendNode.path),
-  );
-  const children = (backendNode.children || [])
-    .map((child) => composeMenuItem(child, localByPath))
-    .filter(Boolean) as RuntimeMenuDataItem[];
-
-  if (!hasLocalRoute && !children.length) {
-    return null;
-  }
-
-  const { children: _localChildren, routes: _localRoutes, ...localItemMeta } =
-    (localMeta || {}) as RuntimeMenuDataItem & { routes?: RuntimeMenuDataItem[] };
-  const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
-  const menuLabelId = mergedMeta?.name || backendNode.name || backendNode.menuCode;
-  const isRedirectGroup = children.length > 0 && Boolean(backendNode.component?.startsWith('redirect:'));
-
-  return {
-    ...localItemMeta,
-    path: isRedirectGroup ? undefined : backendNode.path || localMeta?.path,
-    name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
-    locale: false as const,
-    icon,
-    hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
-    children: children.length ? children : undefined,
-  };
-};
-
-const renderFooter = (brandingSettings: BrandingSettings) => {
-  const copyrightText = brandingSettings.footerCopyright || buildCopyrightText(brandingSettings);
-
-  if (!brandingSettings.footerIcp && !copyrightText) {
-    return null;
-  }
-
-  return (
-    <div className="saas-layout-footer">
-      {brandingSettings.footerIcp ? <div className="saas-layout-footer__line">{brandingSettings.footerIcp}</div> : null}
-      {copyrightText ? <div className="saas-layout-footer__line">{copyrightText}</div> : null}
-    </div>
-  );
-};
-
-const CollapsedButtonWithReturn = ({ defaultDom }: { defaultDom: React.ReactNode }) => {
-  const location = useLocation();
-  const { isMobile } = useResponsive();
-
-  if (!isMobile || !isSettingsShellPath(location.pathname)) {
-    return <>{defaultDom}</>;
-  }
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      {defaultDom}
-      <Tooltip title="返回主路由">
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          aria-label="返回主路由"
-          onClick={() => history.push(DEFAULT_HOME_PATH)}
-        />
-      </Tooltip>
-    </div>
-  );
-};
-
 export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const brandName = brandingSettings.websiteName;
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
-  const layoutThemeSettings = resolveProLayoutThemeSettings();
   const currentPathname = history.location.pathname;
   const siderMenuMode = resolveSiderMenuMode(currentPathname);
 
@@ -299,15 +748,30 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         heightLayoutHeader: LAYOUT_HEADER_HEIGHT,
       },
     },
-    ...layoutThemeSettings,
+    ...resolveProLayoutThemeSettings(),
     splitMenus: false,
     breadcrumbRender: (routers = []) => {
       const pathname = history.location.pathname;
-      if (isSettingsShellPath(pathname)) {
+      if (pathname.startsWith('/settings')) {
         return [];
       }
       const menuBreadcrumb = buildBreadcrumbItems(initialState?.menuTree, pathname);
-      return menuBreadcrumb.length ? menuBreadcrumb : translateBreadcrumbItems(routers as RuntimeMenuDataItem[]);
+      return menuBreadcrumb.length
+        ? menuBreadcrumb
+        : (routers as RuntimeMenuDataItem[]).map((item) => {
+            const breadcrumbTitle = item.title || item.name || item.path || '';
+            return {
+              key: item.path || item.name || breadcrumbTitle,
+              path: item.path,
+              title:
+                typeof breadcrumbTitle === 'string'
+                  ? resolveBuiltinMessage(
+                      breadcrumbTitle,
+                      formatMessage({ id: breadcrumbTitle, defaultMessage: breadcrumbTitle }),
+                    )
+                  : breadcrumbTitle,
+            };
+          });
     },
     breadcrumbProps: {
       minLength: 1,
@@ -328,7 +792,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     headerContentRender: () => null,
     rightContentRender: () => <TopActions />,
     actionsRender: () => <TopActions />,
-    footerRender: () => renderFooter(brandingSettings),
+    footerRender: () => renderLayoutFooter(brandingSettings),
     unAccessible: <NoPermission />,
     pageTitleRender: (props, defaultTitle) => (!props?.title ? defaultTitle || brandName : `${props.title} - ${brandName}`),
     menuTextRender: (item, defaultDom) =>
@@ -348,59 +812,32 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     },
     menuDataRender: (menuData) => {
       if (siderMenuMode === 'settings') {
-        return buildSettingsMenuData(initialState);
+        const access = buildAccess({ currentUser: initialState?.currentUser });
+        return buildVisibleSettingsNavigationItems(
+          initialState?.menuTree,
+          (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
+        );
       }
 
       const backendMenus: MenuNode[] = initialState?.menuTree || [];
-      const translatedLocalMenus = translateVisibleLocalMenuData(initialState, menuData as RuntimeMenuDataItem[]);
+      const translatedLocalMenus = translateVisibleLocalMenuDataForLayout(initialState, menuData as RuntimeMenuDataItem[]);
       if (!backendMenus.length) {
-        return buildMainMenuData(initialState, translatedLocalMenus, translatedLocalMenus);
+        return buildMainMenuDataForLayout(initialState, translatedLocalMenus, translatedLocalMenus);
       }
 
-      const localByPath = flattenLocalMenuMap(menuData as RuntimeMenuDataItem[]);
+      const localByPath = new Map<string, RuntimeMenuDataItem>();
+      (menuData as RuntimeMenuDataItem[]).forEach((item) => {
+        if (item.path && !(item as RuntimeMenuDataItem & { redirect?: string }).redirect) {
+          localByPath.set(item.path, item);
+        }
+      });
+
       const composedMenus = backendMenus
-        .map((node) => composeMenuItem(node, localByPath))
+        .map((node) => composeMenuItemForLayout(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
 
-      return removeRedundantParentPathItems(buildMainMenuData(initialState, composedMenus, translatedLocalMenus));
+      return removeRedundantParentPathItemsForLayout(buildMainMenuDataForLayout(initialState, composedMenus, translatedLocalMenus));
     },
-    onPageChange: () => {
-      const { location } = history;
-      const path = location.pathname;
-      const loggedIn = isLoggedIn();
-      const isPublicPath = PUBLIC_PATHS.has(path);
-      const requiresPasswordChange = Boolean(initialState?.currentUser?.requiresPasswordChange);
-
-      if (!loggedIn && !isPublicPath) {
-        const redirect = `${path}${location.search || ''}`;
-        history.replace(`${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`);
-        return;
-      }
-
-      if (loggedIn && requiresPasswordChange && path !== LOGIN_PATH) {
-        const redirect = `${path}${location.search || ''}`;
-        history.replace(`${LOGIN_PATH}?forcePasswordChange=1&redirect=${encodeURIComponent(redirect)}`);
-        return;
-      }
-
-      if (loggedIn && path === LOGIN_PATH) {
-        if (requiresPasswordChange) {
-          return;
-        }
-        if (initialState?.currentUser) {
-          history.replace(resolveAuthorizedLoginRedirectTarget(location.search || '', initialState.currentUser, initialState.menuTree, DEFAULT_HOME_PATH));
-        } else {
-          history.replace(DEFAULT_HOME_PATH);
-        }
-        return;
-      }
-
-      if (loggedIn && !isPublicPath && initialState?.currentUser) {
-        const routeAccessStatus = resolveRouteAccessStatus(path, initialState.currentUser);
-        if (routeAccessStatus === 'denied') {
-          history.replace('/403');
-        }
-      }
-    },
+    onPageChange: createLayoutOnPageChange({ initialState }),
   };
 };

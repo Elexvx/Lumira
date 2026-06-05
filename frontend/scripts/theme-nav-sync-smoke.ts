@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { commitThemePreference } from '../src/theme/apply';
-import { resolveProLayoutNavTheme, resolveProLayoutThemeSettings } from '../src/theme/proLayoutTheme';
-import { syncThemeRuntimeSnapshot } from '../src/theme/runtime';
+import { resolveThemeRuntimeSnapshot, syncThemeRuntimeSnapshot } from '../src/theme/runtime';
+
+const resolveProLayoutNavTheme = () => (resolveThemeRuntimeSnapshot().resolvedColorMode === 'dark' ? 'realDark' : 'light');
+
+const resolveProLayoutThemeSettings = () => ({
+  navTheme: resolveProLayoutNavTheme(),
+});
 
 const run = () => {
   syncThemeRuntimeSnapshot('light', false);

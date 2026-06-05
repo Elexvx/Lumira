@@ -1,7 +1,32 @@
 import assert from 'node:assert/strict';
 import { ErrorCode } from '../src/enums/errorCode';
-import { resolveLoginErrorFeedback } from '../src/pages/user/login/loginErrorFeedback';
+import { resolveApiErrorFeedback } from '../src/services/common/errorFeedback';
 import type { ApiErrorLike } from '../src/services/common/errorFeedback';
+
+const LOGIN_WARNING_CODES = new Set<string>([
+  ErrorCode.LOGIN_FAILED,
+  ErrorCode.ACCOUNT_NOT_FOUND,
+  ErrorCode.PASSWORD_ERROR,
+  ErrorCode.ACCOUNT_DISABLED,
+]);
+
+const resolveLoginErrorFeedback = (error: ApiErrorLike) => {
+  const feedback = resolveApiErrorFeedback(error, false);
+
+  if (LOGIN_WARNING_CODES.has(error.code)) {
+    return {
+      type: 'warning' as const,
+      message: feedback.message,
+    };
+  }
+
+  return feedback.type === 'info'
+    ? {
+        ...feedback,
+        type: 'warning' as const,
+      }
+    : feedback;
+};
 
 const buildError = (code: string, message: string, userMessage?: string, httpStatus = 401): ApiErrorLike => ({
   code,

@@ -1,125 +1,334 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import {
-  CheckOutlined,
-  CompressOutlined,
-  LogoutOutlined,
-  LockOutlined,
-  GlobalOutlined,
-  GithubOutlined,
-  MoonOutlined,
-  QuestionCircleOutlined,
-  ProfileOutlined,
-  SwapOutlined,
-  SettingOutlined,
-  SkinOutlined,
-  SunOutlined,
-  SyncOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import { getLocale, history, setLocale, useAccess, useIntl, useLocation } from '@umijs/max';
-import { Avatar, Button, Dropdown, Form, Space, Tag, type MenuProps, message } from 'antd';
-import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
+import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, Tag, message, type MenuProps } from 'antd';
+import { getLocale, history, setLocale, useIntl } from '@umijs/max';
+import { useAccess, useLocation } from '@umijs/max';
+import { useEffect, useMemo, useState } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
-import { authService } from '@/services/auth';
-import { performLogout } from '@/auth/session';
-import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettings';
-import { profileService } from '@/services/profile';
-import type { AppInitialState } from '@/app';
+import { performLogout } from '@/auth/sessionLifecycle';
+import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
+import { normalizeLocale } from '@/i18n/locale';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
-import { useThemePreference } from '@/theme/ThemePreferenceProvider';
+import { request } from '@/services/common/request';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
-import type { ThemePreference } from '@/theme/settings';
-import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
-import { normalizeLocale } from '@/i18n/locale';
 import {
   buildSettingsDropdownItems,
   isSettingsShellPath,
   resolveActiveSettingsNavigationPath,
-} from '@/navigation/settingsNavigation';
-import { DEFAULT_HOME_PATH } from '@/app.constants';
+} from '@/navigation/settingsNavigationRuntime';
+import { useThemePreference } from '@/theme/ThemePreferenceProvider';
+import type { ThemePreference } from '@/theme/settings';
+import type { CurrentUser, SecuritySettings } from '@/types/api';
+import { showErrorMessage } from '@/utils/errorMessage';
+import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
 import './TopActions.css';
-import { TopActionsPasswordDrawer } from './TopActionsPasswordDrawer';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import {
+  CheckOutlined,
+  CompressOutlined,
+  GithubOutlined,
+  GlobalOutlined,
+  LockOutlined,
+  LogoutOutlined,
+  MoonOutlined,
+  ProfileOutlined,
+  QuestionCircleOutlined,
+  SkinOutlined,
+  SettingOutlined,
+  SunOutlined,
+  SwapOutlined,
+  SyncOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 
+type PasswordFormValues = {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+};
 
-const THEME_OPTIONS: Array<{
-  key: ThemePreference;
-  label: string;
-  icon: ReactNode;
-}> = [
-  {
-    key: 'system',
-    label: '跟随系统',
-    icon: <SyncOutlined />,
-  },
-  {
-    key: 'light',
-    label: '浅色主题',
-    icon: <SunOutlined />,
-  },
-  {
-    key: 'dark',
-    label: '暗黑主题',
-    icon: <MoonOutlined />,
-  },
-  {
-    key: 'compact',
-    label: '紧凑主题',
-    icon: <CompressOutlined />,
-  },
-];
+const resolveExternalLink = (value?: string | null) => {
+  const trimmed = value?.trim() || '';
+  if (!trimmed) {
+    return '';
+  }
+  if (/^(https?:|mailto:|tel:)/i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('#')) {
+    return trimmed;
+  }
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed)) {
+    return '';
+  }
+  return `https://${trimmed}`;
+};
+
+const TopActionsPasswordDrawer = ({
+  open,
+  isMobile,
+  form,
+  securitySettings,
+  onClose,
+  onFinish,
+}: {
+  open: boolean;
+  isMobile: boolean;
+  form: ReturnType<typeof Form.useForm<PasswordFormValues>>[0];
+  securitySettings: SecuritySettings;
+  onClose: () => void;
+  onFinish: (values: PasswordFormValues) => Promise<void> | void;
+}) => {
+  const intl = useIntl();
+  const passwordPolicyHint = (() => {
+    const parts: string[] = [];
+    const minLength = Math.max(1, Number(securitySettings.passwordMinLength || 0));
+    parts.push(intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: 'At least {length} characters' }, { length: minLength }));
+
+    if (securitySettings.passwordRequireUppercase) {
+      parts.push(intl.formatMessage({ id: 'nav.user.password.requireUppercase', defaultMessage: 'Must include uppercase letters' }));
+    }
+
+    if (securitySettings.passwordRequireLowercase) {
+      parts.push(intl.formatMessage({ id: 'nav.user.password.requireLowercase', defaultMessage: 'Must include lowercase letters' }));
+    }
+
+    if (securitySettings.passwordRequireSpecialCharacter) {
+      parts.push(intl.formatMessage({ id: 'nav.user.password.requireSpecial', defaultMessage: 'Must include special characters' }));
+    }
+
+    return parts.join('，');
+  })();
+
+  useEffect(() => {
+    if (!open) {
+      form.resetFields();
+    }
+  }, [form, open]);
+
+  return (
+    <Drawer
+      title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: '修改密码' })}
+      open={open}
+      width={isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
+      destroyOnHidden
+      onClose={onClose}
+      footer={
+        <Space className="saas-user-password__footer">
+          <Button onClick={onClose}>{intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}</Button>
+          <Button type="primary" onClick={() => void form.submit()}>
+            {intl.formatMessage({ id: 'common.save', defaultMessage: '保存' })}
+          </Button>
+        </Space>
+      }
+    >
+      <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ currentPassword: '', newPassword: '', confirmPassword: '' }}>
+        <Form.Item
+          name="currentPassword"
+          label={intl.formatMessage({ id: 'nav.user.password.current', defaultMessage: '当前密码' })}
+          rules={[{ required: true, message: intl.formatMessage({ id: 'nav.user.password.enterCurrent', defaultMessage: '请输入当前密码' }) }]}
+        >
+          <Input.Password autoComplete="current-password" />
+        </Form.Item>
+        <Form.Item
+          name="newPassword"
+          label={intl.formatMessage({ id: 'nav.user.password.new', defaultMessage: '新密码' })}
+          extra={passwordPolicyHint}
+          rules={[
+            { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterNew', defaultMessage: '请输入新密码' }) },
+            {
+              min: Math.max(1, Number(securitySettings.passwordMinLength || 0)),
+              message: intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: '密码长度至少为 {length} 位' }, { length: securitySettings.passwordMinLength || 1 }),
+            },
+          ]}
+        >
+          <Input.Password autoComplete="new-password" />
+        </Form.Item>
+        <Form.Item
+          name="confirmPassword"
+          label={intl.formatMessage({ id: 'nav.user.password.confirm', defaultMessage: '确认新密码' })}
+          dependencies={['newPassword']}
+          rules={[
+            { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterConfirm', defaultMessage: '请再次输入新密码' }) },
+            ({ getFieldValue }) => ({
+              validator: async (_, value) => {
+                if (!value || value === getFieldValue('newPassword')) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(new Error(intl.formatMessage({ id: 'nav.user.password.confirmMismatch', defaultMessage: '两次密码输入不一致' })));
+              },
+            }),
+          ]}
+        >
+          <Input.Password autoComplete="new-password" />
+        </Form.Item>
+      </Form>
+    </Drawer>
+  );
+};
 
 export const TopActions = () => {
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [switchingLocale, setSwitchingLocale] = useState(false);
-  const [switchingRole, setSwitchingRole] = useState(false);
-  const [passwordDrawerOpen, setPasswordDrawerOpen] = useState(false);
-  const [passwordForm] = Form.useForm<{
-    currentPassword?: string;
-    newPassword?: string;
-    confirmPassword?: string;
-  }>();
+  const intl = useIntl();
   const { initialState, setInitialState } = useInitialStateModel();
   const access = useAccess();
   const location = useLocation();
   const { isMobile } = useResponsive();
   const { themePreference, resolvedColorMode, setThemePreference } = useThemePreference();
-  const intl = useIntl();
-  const brandingSettings = useMemo(
-    () => normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
-    [initialState?.brandingSettings],
-  );
   const currentUser = initialState?.currentUser;
+  const brandingSettings = (initialState?.brandingSettings || {}) as {
+    githubLinkEnabled?: boolean;
+    githubLinkUrl?: string;
+    helpLinkEnabled?: boolean;
+    helpLinkUrl?: string;
+  };
+  const githubLink = brandingSettings.githubLinkEnabled ? resolveExternalLink(brandingSettings.githubLinkUrl) : '';
+  const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
   const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '用户菜单';
   const userAvatarUrl = normalizeUploadUrl(currentUser?.avatarUrl || '');
   const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
-  const availableRoles = currentUser?.availableRoles || [];
+  const availableRoles = useMemo(() => currentUser?.availableRoles || [], [currentUser?.availableRoles]);
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
-  const selectedRoleLabel = useMemo(() => {
-    if (simulatedRoleId == null) {
-      return intl.formatMessage({ id: 'nav.user.role.current', defaultMessage: '当前账号权限' });
+  const selectedRoleLabel =
+    simulatedRoleId == null
+      ? intl.formatMessage({ id: 'nav.user.role.current', defaultMessage: '当前账号权限' })
+      : availableRoles.find((item) => item.id === simulatedRoleId)?.roleName ||
+        intl.formatMessage({
+          id: 'nav.user.role.current',
+          defaultMessage: '当前账号权限',
+        });
+  const roleSimulationHint =
+    simulatedRoleId == null
+      ? ''
+      : intl.formatMessage(
+          { id: 'nav.user.role.simulationHint', defaultMessage: '当前正在模拟 {roleName}' },
+          { roleName: selectedRoleLabel },
+        );
+  const themeButtonIcon =
+    themePreference === 'compact' ? (
+      <CompressOutlined />
+    ) : resolvedColorMode === 'dark' ? (
+      <MoonOutlined />
+    ) : themePreference === 'system' ? (
+      <SyncOutlined />
+    ) : themePreference === 'light' ? (
+      <SunOutlined />
+    ) : (
+      <SkinOutlined />
+  );
+  const [switchingLocale, setSwitchingLocale] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [switchingRole, setSwitchingRole] = useState(false);
+  const [passwordDrawerOpen, setPasswordDrawerOpen] = useState(false);
+  const [passwordForm] = Form.useForm<PasswordFormValues>();
+  const securitySettings: SecuritySettings = initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS;
+  const handleOpenProfile = () => {
+    history.push('/user-center/personal-center/profile');
+  };
+  const handleSwitchLocale = async (nextLocale: string) => {
+    const normalizedNextLocale = normalizeLocale(nextLocale);
+    if (normalizedNextLocale === currentLocale) {
+      return;
     }
 
-    return availableRoles.find((item) => item.id === simulatedRoleId)?.roleName || intl.formatMessage({
-      id: 'nav.user.role.current',
-      defaultMessage: '当前账号权限',
-    });
-  }, [availableRoles, intl, simulatedRoleId]);
-  const roleSimulationHint = useMemo(
-    () =>
-      simulatedRoleId == null
-        ? ''
-        : intl.formatMessage(
-            { id: 'nav.user.role.simulationHint', defaultMessage: '当前正在模拟 {roleName}' },
-            { roleName: selectedRoleLabel },
-          ),
-    [intl, selectedRoleLabel, simulatedRoleId],
-  );
+    setSwitchingLocale(true);
+    try {
+      await request('/v1/profile/locale', {
+        method: 'PUT',
+        data: { locale: normalizedNextLocale },
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+      });
+      setLocale(normalizedNextLocale, true);
+    } catch (error) {
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+    } finally {
+      setSwitchingLocale(false);
+    }
+  };
+  const handleSwitchTheme = (nextThemePreference: ThemePreference) => {
+    if (nextThemePreference === themePreference) {
+      return;
+    }
 
+    setThemePreference(nextThemePreference);
+  };
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await performLogout();
+      setInitialState((prev) => ({
+        ...prev,
+        ...buildLoggedOutInitialState(),
+      }));
+    } catch (error) {
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+  const handleSwitchRole = async (nextRoleValue: string) => {
+    const nextRoleId = Number(nextRoleValue);
+    if (!Number.isFinite(nextRoleId) || nextRoleId === simulatedRoleId) {
+      return;
+    }
+
+    setSwitchingRole(true);
+    try {
+      const updatedUser = await request<CurrentUser>('/v1/auth/simulated-role', {
+        method: 'PUT',
+        data: { roleId: nextRoleId },
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      });
+      setInitialState((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentUser: updatedUser,
+            }
+          : prev,
+      );
+      message.success(
+        intl.formatMessage(
+          { id: 'nav.user.role.switchSuccessWithName', defaultMessage: '已切换至 {roleName}' },
+          {
+            roleName:
+              availableRoles.find((role) => role.id === nextRoleId)?.roleName ||
+              intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: '角色已切换' }),
+          },
+        ),
+      );
+      history.replace(DEFAULT_HOME_PATH);
+    } catch (error) {
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+    } finally {
+      setSwitchingRole(false);
+    }
+  };
+  const canVisitSystemSettings = Boolean(access.canVisitSystemSettings);
+  const settingsMenuItems = useMemo(
+    () => buildSettingsDropdownItems(initialState?.menuTree, (accessKey) => Boolean((access as Record<string, unknown>)[accessKey])),
+    [access, initialState?.menuTree],
+  );
+  const activeSettingsPath = useMemo(
+    () =>
+      resolveActiveSettingsNavigationPath(
+        location.pathname,
+        initialState?.menuTree,
+        (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
+      ),
+    [access, initialState?.menuTree, location.pathname],
+  );
+  const settingsMenuSelectedKeys = useMemo(
+    () => (isSettingsShellPath(location.pathname) ? [activeSettingsPath] : []),
+    [activeSettingsPath, location.pathname],
+  );
   const themeMenuItems: MenuProps['items'] = useMemo(
     () =>
-      THEME_OPTIONS.map((item) => ({
+      [
+        { key: 'system', label: '跟随系统', icon: <SyncOutlined /> },
+        { key: 'light', label: '浅色主题', icon: <SunOutlined /> },
+        { key: 'dark', label: '暗黑主题', icon: <MoonOutlined /> },
+        { key: 'compact', label: '紧凑主题', icon: <CompressOutlined /> },
+      ].map((item) => ({
         key: item.key,
         label: (
           <div className="saas-theme-menu__item">
@@ -133,7 +342,6 @@ export const TopActions = () => {
       })),
     [intl, themePreference],
   );
-
   const localeMenuItems: MenuProps['items'] = useMemo(
     () => [
       {
@@ -149,24 +357,10 @@ export const TopActions = () => {
     ],
     [currentLocale, intl],
   );
-
-  const githubLink = brandingSettings.githubLinkEnabled ? resolveExternalLink(brandingSettings.githubLinkUrl) : '';
-  const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
-  const canVisitSystemSettings = Boolean((access as Record<string, unknown>).canVisitSystemSettings);
-  const settingsMenuItems = useMemo(
-    () => buildSettingsDropdownItems(initialState?.menuTree, (accessKey) => Boolean((access as Record<string, unknown>)[accessKey])),
-    [access, initialState?.menuTree],
+  const availableRoleIds = useMemo(
+    () => new Set(availableRoles.map((role) => String(role.id))),
+    [availableRoles],
   );
-  const activeSettingsPath = useMemo(
-    () =>
-      resolveActiveSettingsNavigationPath(
-        location.pathname,
-        initialState?.menuTree,
-        (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
-      ),
-    [access, initialState?.menuTree, location.pathname],
-  );
-
   const roleMenuItems = useMemo<NonNullable<MenuProps['items']>>(() => {
     if (!availableRoles.length) {
       return [];
@@ -183,9 +377,8 @@ export const TopActions = () => {
         })),
       },
     ];
-  }, [availableRoles, intl, simulatedRoleId]);
-
-  const userMenuItems = useMemo<MenuProps['items']>(
+  }, [availableRoles, intl]);
+  const userMenuItems: MenuProps['items'] = useMemo(
     () => [
       {
         key: 'profile',
@@ -213,7 +406,28 @@ export const TopActions = () => {
     ],
     [intl, roleMenuItems],
   );
-
+  const handleOpenPasswordDrawer = () => {
+    setPasswordDrawerOpen(true);
+  };
+  const handlePasswordFinish = async (values: PasswordFormValues) => {
+    try {
+      await request<boolean>('/v1/profile/password', {
+        method: 'PUT',
+        data: {
+          currentPassword: values.currentPassword || '',
+          newPassword: values.newPassword || '',
+          confirmPassword: values.confirmPassword || '',
+        },
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      });
+      message.success(intl.formatMessage({ id: 'nav.user.password.updateSuccess', defaultMessage: '密码已修改' }));
+      setPasswordDrawerOpen(false);
+    } catch (error) {
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+    }
+  };
   const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
     if (key === 'profile') {
       handleOpenProfile();
@@ -231,161 +445,60 @@ export const TopActions = () => {
     }
 
     const nextRoleValue = String(key);
-    const availableRoleIds = new Set(availableRoles.map((role) => String(role.id)));
     if (availableRoleIds.has(nextRoleValue)) {
       void handleSwitchRole(nextRoleValue);
     }
   };
-
-  const themeButtonIcon = useMemo(() => {
-    if (themePreference === 'compact') {
-      return <CompressOutlined />;
-    }
-
-    if (resolvedColorMode === 'dark') {
-      return <MoonOutlined />;
-    }
-
-    const matched = THEME_OPTIONS.find((item) => item.key === themePreference);
-    return matched?.icon || <SkinOutlined />;
-  }, [resolvedColorMode, themePreference]);
-
-  const handleSwitchLocale = async (nextLocale: string) => {
-    const normalizedNextLocale = normalizeLocale(nextLocale);
-    if (normalizedNextLocale === currentLocale) {
-      return;
-    }
-
-    setSwitchingLocale(true);
-    try {
-      await profileService.updateLocale(
-        { locale: normalizedNextLocale },
-        {
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-        },
-      );
-      setLocale(normalizedNextLocale, true);
-    } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
-    } finally {
-      setSwitchingLocale(false);
-    }
+  const model = {
+    githubLink,
+    helpLink,
+    userName,
+    userAvatarUrl,
+    currentLocale,
+    selectedRoleLabel,
+    roleSimulationHint,
+    availableRoles,
+    simulatedRoleId,
+    switchingLocale,
+    loggingOut,
+    switchingRole,
+    passwordDrawerOpen,
+    passwordForm,
+    setPasswordDrawerOpen,
+    handleUserMenuClick,
+    handleSwitchLocale,
+    handleSwitchTheme,
+    handleOpenPasswordDrawer,
+    handlePasswordFinish,
+    themeMenuItems,
+    localeMenuItems,
+    userMenuItems,
+    canVisitSystemSettings,
+    settingsMenuItems,
+    settingsMenuSelectedKeys,
+    themeButtonIcon,
+    isMobile,
+    themePreference,
+    resolvedColorMode,
+    securitySettings,
   };
-
-  const handleOpenProfile = () => {
-    history.push('/user-center/personal-center/profile');
-  };
-
-  const handleOpenPasswordDrawer = () => {
-    setPasswordDrawerOpen(true);
-  };
-
-  const handleSwitchRole = async (nextRoleValue: string) => {
-    const nextRoleId = Number(nextRoleValue);
-    if (!Number.isFinite(nextRoleId)) {
-      return;
-    }
-    if (nextRoleId === simulatedRoleId) {
-      return;
-    }
-
-    setSwitchingRole(true);
-    try {
-      const updatedUser = await authService.simulatedRole(
-        { roleId: nextRoleId },
-        {
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        },
-      );
-      setInitialState((prev: AppInitialState | undefined) =>
-        prev
-          ? {
-              ...prev,
-              currentUser: updatedUser,
-            }
-          : prev,
-      );
-      message.success(
-        intl.formatMessage(
-          { id: 'nav.user.role.switchSuccessWithName', defaultMessage: '已切换至 {roleName}' },
-          {
-            roleName:
-              availableRoles.find((role) => role.id === nextRoleId)?.roleName ||
-              intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: '角色已切换' }),
-          },
-        ),
-      );
-      history.replace(DEFAULT_HOME_PATH);
-    } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
-    } finally {
-      setSwitchingRole(false);
-    }
-  };
-
-  const handleSwitchTheme = (nextThemePreference: ThemePreference) => {
-    if (nextThemePreference === themePreference) {
-      return;
-    }
-
-    setThemePreference(nextThemePreference);
-  };
-
-  const handlePasswordFinish = async (values: { currentPassword?: string; newPassword?: string; confirmPassword?: string }) => {
-    try {
-      await profileService.changePassword(
-        {
-          currentPassword: values.currentPassword || '',
-          newPassword: values.newPassword || '',
-          confirmPassword: values.confirmPassword || '',
-        },
-        {
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        },
-      );
-      message.success(intl.formatMessage({ id: 'nav.user.password.updateSuccess', defaultMessage: '密码已修改' }));
-      setPasswordDrawerOpen(false);
-    } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
-    }
-  };
-
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await performLogout();
-      setInitialState((prev: AppInitialState | undefined) => ({
-        ...prev,
-        ...buildLoggedOutInitialState(),
-      }));
-    } finally {
-      setLoggingOut(false);
-    }
-  };
-
-  const securitySettings = initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS;
 
   return (
     <Space size="small" align="center">
-      <Space size={isMobile ? 4 : 8} wrap={false}>
+      <Space size={model.isMobile ? 4 : 8} wrap={false}>
         <Dropdown
           trigger={['click']}
           placement="bottomRight"
           menu={{
-            items: localeMenuItems,
-            selectedKeys: [currentLocale],
-            onClick: ({ key }) => void handleSwitchLocale(key),
+            items: model.localeMenuItems,
+            selectedKeys: [model.currentLocale],
+            onClick: ({ key }) => void model.handleSwitchLocale(key),
           }}
         >
           <Button
             type="text"
             icon={<GlobalOutlined />}
-            loading={switchingLocale}
+            loading={model.switchingLocale}
             aria-label={intl.formatMessage({
               id: 'app.locale.switch',
               defaultMessage: '语言切换',
@@ -396,54 +509,58 @@ export const TopActions = () => {
           trigger={['click']}
           placement="bottomRight"
           menu={{
-            items: themeMenuItems,
-            selectedKeys: [themePreference],
-            onClick: ({ key }) => handleSwitchTheme(key as ThemePreference),
+            items: model.themeMenuItems,
+            selectedKeys: [model.themePreference],
+            onClick: ({ key }) => model.handleSwitchTheme(key as ThemePreference),
           }}
         >
           <Button
             type="text"
-            icon={themeButtonIcon}
+            icon={model.themeButtonIcon}
             aria-label={intl.formatMessage(
               { id: 'theme.switch', defaultMessage: '主题切换，当前{theme}' },
-              { theme: intl.formatMessage({ id: `theme.${themePreference}`, defaultMessage: THEME_OPTIONS.find((item) => item.key === themePreference)?.label || '主题' }) },
+              { theme: intl.formatMessage({ id: `theme.${model.themePreference}`, defaultMessage: '主题' }) },
             )}
           />
         </Dropdown>
-        {simulatedRoleId != null ? (
-          <Tag
-            color="orange"
-            className="saas-role-simulation-tag"
-            title={roleSimulationHint}
-          >
+        {model.roleSimulationHint ? (
+          <Tag color="orange" className="saas-role-simulation-tag" title={model.roleSimulationHint}>
             {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: '角色模拟' })}
           </Tag>
         ) : null}
-        {brandingSettings.helpLinkEnabled ? (
+        {model.helpLink ? (
           <Button
             type="text"
             icon={<QuestionCircleOutlined />}
-            aria-label={helpLink ? intl.formatMessage({ id: 'help.center', defaultMessage: '帮助中心' }) : intl.formatMessage({ id: 'help.center.unconfigured', defaultMessage: '帮助中心（未配置链接）' })}
-            disabled={!helpLink}
-            onClick={() => openExternalLink(helpLink)}
+            aria-label={intl.formatMessage({ id: 'help.center', defaultMessage: '帮助中心' })}
+            onClick={() => {
+              const nextUrl = resolveExternalLink(model.helpLink);
+              if (nextUrl) {
+                window.open(nextUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
           />
         ) : null}
-        {brandingSettings.githubLinkEnabled ? (
+        {model.githubLink ? (
           <Button
             type="text"
             icon={<GithubOutlined />}
-            aria-label={githubLink ? intl.formatMessage({ id: 'github.link', defaultMessage: 'GitHub 链接' }) : intl.formatMessage({ id: 'github.link.unconfigured', defaultMessage: 'GitHub 链接（未配置）' })}
-            disabled={!githubLink}
-            onClick={() => openExternalLink(githubLink)}
+            aria-label={intl.formatMessage({ id: 'github.link', defaultMessage: 'GitHub 链接' })}
+            onClick={() => {
+              const nextUrl = resolveExternalLink(model.githubLink);
+              if (nextUrl) {
+                window.open(nextUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
           />
         ) : null}
-        {canVisitSystemSettings && settingsMenuItems?.length ? (
+        {model.canVisitSystemSettings && model.settingsMenuItems?.length ? (
           <Dropdown
             trigger={['click']}
             placement="bottomRight"
             menu={{
-              items: settingsMenuItems,
-              selectedKeys: isSettingsShellPath(location.pathname) ? [activeSettingsPath] : [],
+              items: model.settingsMenuItems,
+              selectedKeys: model.settingsMenuSelectedKeys,
               onClick: ({ key }) => history.push(String(key)),
             }}
           >
@@ -459,56 +576,35 @@ export const TopActions = () => {
           trigger={['click']}
           placement="bottomRight"
           menu={{
-            items: userMenuItems,
-            selectedKeys: simulatedRoleId == null ? [] : [String(simulatedRoleId)],
-            onClick: handleUserMenuClick,
+            items: model.userMenuItems,
+            selectedKeys: [],
+            onClick: model.handleUserMenuClick,
           }}
         >
           <Button
             type="text"
             className="saas-user-menu-trigger"
-            disabled={loggingOut || switchingRole}
+            disabled={model.loggingOut || model.switchingRole}
             icon={
               <Avatar
                 size="small"
-                src={userAvatarUrl || undefined}
+                src={model.userAvatarUrl || undefined}
                 icon={<UserOutlined />}
               />
             }
           >
-            {!isMobile ? <span className="saas-user-menu-trigger__name">{userName}</span> : null}
+            {!model.isMobile ? <span className="saas-user-menu-trigger__name">{model.userName}</span> : null}
           </Button>
         </Dropdown>
       </Space>
       <TopActionsPasswordDrawer
-        open={passwordDrawerOpen}
-        isMobile={isMobile}
-        form={passwordForm}
-        securitySettings={securitySettings}
-        onClose={() => setPasswordDrawerOpen(false)}
-        onFinish={handlePasswordFinish}
+        open={model.passwordDrawerOpen}
+        isMobile={model.isMobile}
+        form={model.passwordForm}
+        securitySettings={model.securitySettings}
+        onClose={() => model.setPasswordDrawerOpen(false)}
+        onFinish={model.handlePasswordFinish}
       />
     </Space>
   );
-};
-
-const resolveExternalLink = (value?: string | null) => {
-  const trimmed = value?.trim() || '';
-  if (!trimmed) {
-    return '';
-  }
-  if (/^(https?:|mailto:|tel:)/i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('#')) {
-    return trimmed;
-  }
-  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed)) {
-    return '';
-  }
-  return `https://${trimmed}`;
-};
-
-const openExternalLink = (url?: string) => {
-  if (!url || typeof window === 'undefined') {
-    return;
-  }
-  window.open(url, '_blank', 'noopener,noreferrer');
 };

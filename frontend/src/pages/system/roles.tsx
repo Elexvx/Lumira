@@ -1,29 +1,17 @@
+import { Button, Checkbox, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography } from 'antd';
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography, message } from 'antd';
+import { useMemo } from 'react';
+import { ManagementDrawer, type ManagementDrawerAction } from '@/features/management/ManagementDrawer';
+import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementTable } from '@/features/management/ManagementTable';
+import { useRoleManagementPageData } from '@/pages/system/roles/hooks/useRoleManagementPageData';
+import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
 import type { TreeProps } from 'antd';
-import { useMemo, useState } from 'react';
-import { useCrudPageState } from '@/features/crud/useCrudPageState';
-import { useDetailProDescriptionsProps } from '@/features/detail/config';
-import { useStandardFormProps } from '@/features/form/config';
-import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
-import { buildTableRequest } from '@/features/table/proTable';
-import { ROLE_TYPE_OPTIONS } from '@/constants/role';
-import { buildRoleColumns, roleDetailColumns } from '@/pages/system/roles/columns';
-import { RolePermissionEditor } from '@/pages/system/roles/components/RolePermissionEditor';
-import { useRolePermissionEditor } from '@/pages/system/roles/hooks/useRolePermissionEditor';
-import { buildRolePermissionDisplayGroups } from '@/pages/system/rolesPermissionTree';
-import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree';
-import { iamService } from '@/services/iam';
-import type { RoleDataScope, RoleDetail, RoleRecord } from '@/types/api';
-import { confirmAction } from '@/utils/confirm';
+import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree/normalize';
+import type { PermissionActionRecord, PermissionTreeRecord, RoleDataScope } from '@/types/api';
 import './roles.css';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 
-
-const ROLE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
-const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
-const DATA_SCOPE_OPTIONS = [
+const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM' }> = [
   { label: '全部数据', value: 'ALL' },
   { label: '本租户数据', value: 'TENANT' },
   { label: '本部门数据', value: 'DEPT' },
@@ -35,27 +23,7 @@ const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc
   acc[item.value] = item.label;
   return acc;
 }, {});
-type RoleEditorMode = 'create' | 'edit' | 'permissions';
-
-const DEFAULT_HOME_PATH = '/dashboard/home';
-
-const collectDefaultHomeOptions = (nodes: NormalizedPermissionTreeRecord[] = []) => {
-  const options: { label: string; value: string }[] = [];
-  const seen = new Set<string>();
-  const walk = (items: NormalizedPermissionTreeRecord[]) => {
-    items.forEach((item) => {
-      if (item.nodeType === 'PAGE' && item.selectable && item.routePath && !seen.has(item.routePath)) {
-        seen.add(item.routePath);
-        options.push({ label: `${item.pageName}（${item.routePath}）`, value: item.routePath });
-      }
-      if (item.children?.length) {
-        walk(item.children);
-      }
-    });
-  };
-  walk(nodes);
-  return options;
-};
+const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
 
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
@@ -71,51 +39,233 @@ const formatPermissionGroupLabel = (permissionGroup: string) =>
     } as Record<string, string>
   )[permissionGroup] || permissionGroup;
 
-const RoleManagementPage = () => {
-  const roleCrud = useCrudPageState<RoleRecord>();
-  const [editorForm] = Form.useForm();
-  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
-  const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
-  const [editorDirty, setEditorDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [roleEditorMode, setRoleEditorMode] = useState<RoleEditorMode>('create');
-  const [defaultRoleModalOpen, setDefaultRoleModalOpen] = useState(false);
-  const [defaultRoleOptions, setDefaultRoleOptions] = useState<RoleRecord[]>([]);
-  const [defaultRoleId, setDefaultRoleId] = useState<number | undefined>();
-  const [defaultRoleLoading, setDefaultRoleLoading] = useState(false);
-  const [defaultRoleSaving, setDefaultRoleSaving] = useState(false);
-  const canSaveRole =
-    roleEditorMode === 'permissions'
-      ? actionPermission.can('system:role:permissions')
-      : actionPermission.can(roleCrud.drawer.editingId ? 'system:role:update' : 'system:role:create');
-  const canUpdateRoleSettings = actionPermission.can('system:role:update');
-  const isPermissionOnlyEditor = roleEditorMode === 'permissions';
-  const editorFormProps = useStandardFormProps({
-    form: editorForm,
-    initialValues: { roleType: 'CUSTOM', defaultHomePath: DEFAULT_HOME_PATH, permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES },
-    onValuesChange: () => setEditorDirty(true),
-    className: 'role-editor-form',
-  });
-  const detailProps = useDetailProDescriptionsProps<RoleDetail>({
-    column: responsive.isMobile ? 1 : 2,
-    dataSource: selectedRoleDetail || undefined,
-  });
-  const permissionEditor = useRolePermissionEditor({
-    form: editorForm,
-    editorOpen: roleCrud.drawer.open,
-    onDirty: () => setEditorDirty(true),
-  });
-  const permissionDetailGroups = useMemo(
-    () =>
-      buildRolePermissionDisplayGroups(
-        permissionEditor.pageTreeData,
-        selectedRoleDetail?.permissionKeys || [],
-        permissionEditor.permissionCatalogMap,
-      ),
-    [permissionEditor.pageTreeData, permissionEditor.permissionCatalogMap, selectedRoleDetail?.permissionKeys],
-  );
-  const defaultHomeOptions = useMemo(() => collectDefaultHomeOptions(permissionEditor.pageTreeData), [permissionEditor.pageTreeData]);
+const DefaultRegistrationRoleModal = ({
+  open,
+  loading,
+  saving,
+  canSave,
+  value,
+  options,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  open: boolean;
+  loading: boolean;
+  saving: boolean;
+  canSave: boolean;
+  value?: number;
+  options: Array<{ id: number; roleName: string; roleCode: string }>;
+  onChange: (roleId?: number) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) => (
+  <Modal
+    title="默认注册角色"
+    open={open}
+    confirmLoading={saving}
+    onOk={onSubmit}
+    onCancel={onCancel}
+    okButtonProps={{ disabled: !canSave }}
+    okText="保存"
+    cancelText="取消"
+  >
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      <Typography.Text type="secondary">
+        新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。
+      </Typography.Text>
+      <Select
+        showSearch
+        loading={loading}
+        value={value}
+        onChange={onChange}
+        placeholder="请选择默认注册角色"
+        optionFilterProp="label"
+        style={{ width: '100%' }}
+        options={options.map((role) => ({
+          label: `${role.roleName}（${role.roleCode}）`,
+          value: role.id,
+        }))}
+      />
+    </Space>
+  </Modal>
+);
 
+const RolePermissionEditor = ({
+  permissionTree,
+  permissionTreeLoading,
+  editorLoading,
+  pageTreeData,
+  selectedPageNodeKeys,
+  selectedPageCount,
+  totalPageCount,
+  activePageKey,
+  activePageNode,
+  activePageActionPermissions,
+  activePageSelectedActionKeys,
+  isActivePageSelected,
+  expandedKeys,
+  onExpandChange,
+  onExpandToggle,
+  onSelectAllPages,
+  onPageTreeCheck,
+  onActivePageChange,
+  onActionPermissionsChange,
+}: {
+  permissionTree: PermissionTreeRecord[];
+  permissionTreeLoading: boolean;
+  editorLoading: boolean;
+  pageTreeData: NormalizedPermissionTreeRecord[];
+  selectedPageNodeKeys: string[];
+  selectedPageCount: number;
+  totalPageCount: number;
+  activePageKey: string | null;
+  activePageNode: NormalizedPermissionTreeRecord | null;
+  activePageActionPermissions: PermissionActionRecord[];
+  activePageSelectedActionKeys: string[];
+  isActivePageSelected: boolean;
+  expandedKeys: string[];
+  onExpandChange: (keys: string[]) => void;
+  onExpandToggle: () => void;
+  onSelectAllPages: () => void;
+  onPageTreeCheck: (keys: string[]) => void;
+  onActivePageChange: (pageKey: string | null) => void;
+  onActionPermissionsChange: (keys: string[]) => void;
+}) => {
+  if (editorLoading) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: 420 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Form.Item name="permissionKeys" hidden>
+        <Input />
+      </Form.Item>
+      <div className="role-editor-grid">
+        <section className="role-editor-section">
+          <div className="role-editor-section__header">
+            <div>
+              <div className="role-editor-section__title">页面路由权限</div>
+              <div className="role-editor-section__meta">先勾选可访问的页面，目录节点仅用于分组，再配置该页面下的按钮权限</div>
+            </div>
+            <Space>
+              <Button size="small" onClick={onExpandToggle}>
+                {expandedKeys.length ? '折叠全部' : '展开全部'}
+              </Button>
+              <Button size="small" onClick={onSelectAllPages}>
+                {selectedPageCount === totalPageCount ? '全不选' : '全选'}
+              </Button>
+            </Space>
+          </div>
+          <div className="role-permission-tree">
+            {permissionTreeLoading ? (
+              <div style={{ display: 'grid', placeItems: 'center', minHeight: 320 }}>
+                <Spin />
+              </div>
+            ) : pageTreeData.length ? (
+              <Tree
+                checkable
+                blockNode
+                selectable
+                treeData={pageTreeData}
+                checkedKeys={selectedPageNodeKeys}
+                selectedKeys={activePageKey ? [activePageKey] : []}
+                expandedKeys={expandedKeys}
+                onExpand={(nextExpandedKeys) => onExpandChange(nextExpandedKeys.map(String))}
+                onCheck={(checkedKeys: Parameters<NonNullable<TreeProps['onCheck']>>[0], info) => {
+                  const nextCheckedKeys = Array.isArray(checkedKeys) ? checkedKeys.map(String) : [];
+                  onPageTreeCheck(nextCheckedKeys);
+                  if ((info.node as NormalizedPermissionTreeRecord).selectable && (info.node as NormalizedPermissionTreeRecord).pageKey) {
+                    onActivePageChange((info.node as NormalizedPermissionTreeRecord).pageKey || null);
+                  }
+                }}
+                onSelect={(_, info) => {
+                  if ((info.node as NormalizedPermissionTreeRecord).selectable && (info.node as NormalizedPermissionTreeRecord).pageKey) {
+                    onActivePageChange((info.node as NormalizedPermissionTreeRecord).pageKey || null);
+                  }
+                }}
+              />
+            ) : (
+              <Empty description="暂无可配置页面权限" style={{ padding: '48px 0' }} />
+            )}
+          </div>
+        </section>
+
+        <section className="role-editor-section role-action-panel">
+          <div className="role-editor-section__header">
+            <div>
+              <div className="role-editor-section__title">页面动作权限</div>
+              <div className="role-editor-section__meta">按钮权限仅在页面权限勾选后生效</div>
+            </div>
+          </div>
+
+          {permissionTree.length ? (
+            <>
+              <div className="role-action-panel__page-name">
+                {activePageNode?.pageName || '请从左侧选择页面'}
+                {activePageNode?.routeMatched && activePageNode?.routePath ? (
+                  <Tag style={{ marginInlineStart: 8 }} color="blue">
+                    {activePageNode?.routePath}
+                  </Tag>
+                ) : activePageNode?.nodeType === 'PAGE' ? (
+                  <Tag style={{ marginInlineStart: 8 }} color="red">
+                    路由失配
+                  </Tag>
+                ) : null}
+              </div>
+              {activePageNode ? (
+                activePageActionPermissions.length ? (
+                  <Checkbox.Group
+                    value={activePageSelectedActionKeys}
+                    onChange={(checkedValues) => onActionPermissionsChange(checkedValues.map(String))}
+                    className="role-action-grid"
+                    disabled={!isActivePageSelected}
+                    options={activePageActionPermissions.map((item) => ({
+                      label: item.permissionName,
+                      value: item.permissionKey,
+                    }))}
+                  />
+                ) : (
+                  <div className="role-action-panel__empty">
+                    <Empty description="该页面暂无子权限" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  </div>
+                )
+              ) : (
+                <div className="role-action-panel__empty">
+                  <Empty description="请从左侧页面权限树中选择一个页面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="role-action-panel__empty">
+              <Empty description="请先在上方勾选一个页面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            </div>
+          )}
+        </section>
+      </div>
+    </>
+  );
+};
+
+const RoleManagementPage = () => {
+  const {
+    roleCrud,
+    searchConfig,
+    buildToolbarButtons,
+    responsive,
+    columns,
+    tableRequest,
+    defaultRoleModal,
+    openDefaultRoleModal,
+    permissionEditor,
+    roleActions,
+    permissionDetailGroups,
+    defaultHomeOptions,
+  } = useRoleManagementPageData();
   const permissionDetailTreeData = useMemo<TreeProps['treeData']>(
     () =>
       permissionDetailGroups.map((group) => ({
@@ -149,192 +299,50 @@ const RoleManagementPage = () => {
       })),
     [permissionDetailGroups],
   );
-
-  const handleRoleCodeBlur = () => {
-    const currentRoleCode = editorForm.getFieldValue('roleCode');
-    if (typeof currentRoleCode !== 'string') {
-      return;
-    }
-    const trimmedRoleCode = currentRoleCode.trim();
-    if (trimmedRoleCode !== currentRoleCode) {
-      editorForm.setFieldsValue({ roleCode: trimmedRoleCode });
-    }
+  const editorDrawer = {
+    open: roleCrud.drawer.open,
+    title: roleActions.roleEditorMode === 'permissions' ? '分配角色权限' : roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色',
+    onClose: roleActions.handleEditorClose,
+    footerActions: [
+      { key: 'cancel', label: '取消', onClick: roleActions.handleEditorClose },
+      { key: 'save', label: '保存', type: 'primary' as const, loading: roleActions.saving, disabled: !roleActions.canSaveRole, onClick: () => void roleActions.saveRole() },
+    ] as ManagementDrawerAction[],
+    formProps: roleActions.editorFormProps,
+    isPermissionOnlyEditor: roleActions.isPermissionOnlyEditor,
+    handleRoleCodeBlur: roleActions.handleRoleCodeBlur,
+    defaultHomeOptions,
+    permissionEditor,
   };
-
-  const closeEditorDrawer = () => {
-    roleCrud.drawer.close();
-    setRoleEditorMode('create');
-    permissionEditor.setEditorLoading(false);
-    setEditorDirty(false);
-    permissionEditor.resetEditorPermissionState();
+  const detailDrawer: {
+    open: boolean;
+    title: string;
+    onClose: () => void;
+    loading: boolean;
+    selectedRoleDetail: typeof roleActions.selectedRoleDetail;
+    column: 1 | 2;
+    permissionDetailTreeData: typeof permissionDetailTreeData;
+  } = {
+    open: roleCrud.detail.open,
+    title: roleActions.selectedRoleDetail ? `角色详情 · ${roleActions.selectedRoleDetail.roleName}` : '角色详情',
+    onClose: () => {
+      roleCrud.detail.close();
+      roleActions.setSelectedRoleDetail(null);
+    },
+    loading: roleCrud.detail.loading,
+    selectedRoleDetail: roleActions.selectedRoleDetail,
+    column: responsive.isMobile ? 1 : 2,
+    permissionDetailTreeData,
   };
-
-  const openCreate = () => {
-    roleCrud.drawer.openCreate();
-    setRoleEditorMode('create');
-    permissionEditor.resetEditorPermissionState();
-    setEditorDirty(false);
-    permissionEditor.setEditorLoading(false);
-    editorForm.resetFields();
-    editorForm.setFieldsValue({ roleType: 'CUSTOM', defaultHomePath: DEFAULT_HOME_PATH, permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES });
-  };
-
-  const openDefaultRoleModal = async () => {
-    setDefaultRoleModalOpen(true);
-    setDefaultRoleLoading(true);
-    try {
-      const [defaultRole, rolePage] = await Promise.all([
-        iamService.defaultRegistrationRole(API_OPTS.NO_REDIRECT),
-        iamService.roles({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT),
-      ]);
-      setDefaultRoleId(defaultRole.id);
-      setDefaultRoleOptions(rolePage.records || []);
-    } catch {
-      message.error('默认注册角色加载失败，请稍后重试');
-    } finally {
-      setDefaultRoleLoading(false);
-    }
-  };
-
-  const saveDefaultRole = async () => {
-    if (!defaultRoleId) {
-      message.warning('请选择默认注册角色');
-      return;
-    }
-    setDefaultRoleSaving(true);
-    try {
-      await iamService.updateDefaultRegistrationRole({ roleId: defaultRoleId }, API_OPTS.NO_REDIRECT);
-      message.success('默认注册角色已更新');
-      setDefaultRoleModalOpen(false);
-      roleCrud.reloadTable();
-    } finally {
-      setDefaultRoleSaving(false);
-    }
-  };
-
-  const openEdit = async (record: RoleRecord, mode: RoleEditorMode = 'edit') => {
-    roleCrud.drawer.openEdit(record, record.id);
-    setRoleEditorMode(mode);
-    permissionEditor.resetEditorPermissionState();
-    permissionEditor.setEditorLoading(true);
-    setEditorDirty(false);
-
-    try {
-      const detail = await iamService.roleDetail(record.id, API_OPTS.NO_REDIRECT);
-      const permissionKeys = permissionEditor.sanitizePermissionKeys(detail.permissionKeys || []);
-      editorForm.setFieldsValue({
-        ...detail,
-        defaultHomePath: detail.defaultHomePath || DEFAULT_HOME_PATH,
-        permissionKeys,
-        dataScopes: detail.dataScopes?.length ? detail.dataScopes : DEFAULT_DATA_SCOPES,
-      });
-      permissionEditor.syncActivePageByPermissionKeys(permissionKeys);
-    } catch {
-      message.error('加载角色信息失败，请稍后重试');
-      roleCrud.drawer.close();
-    } finally {
-      permissionEditor.setEditorLoading(false);
-    }
-  };
-
-  const openDetail = async (record: RoleRecord) => {
-    roleCrud.detail.openDetail(record);
-    roleCrud.detail.setLoading(true);
-    try {
-      const detail = await iamService.roleDetail(record.id, API_OPTS.NO_REDIRECT);
-      setSelectedRoleDetail(detail);
-    } finally {
-      roleCrud.detail.setLoading(false);
-    }
-  };
-
-  const saveRole = async () => {
-    setSaving(true);
-    try {
-      const values = await editorForm.validateFields();
-      const permissionKeys = permissionEditor.sanitizePermissionKeys(values.permissionKeys || []);
-      if (roleCrud.drawer.editingId && roleEditorMode === 'permissions') {
-        await iamService.updateRolePermissions(roleCrud.drawer.editingId, permissionKeys, API_OPTS.NO_REDIRECT);
-        message.success('角色权限已更新');
-        closeEditorDrawer();
-        roleCrud.reloadTable();
-        return;
-      }
-      const payload = {
-        ...values,
-        roleCode: typeof values.roleCode === 'string' ? values.roleCode.trim() : values.roleCode,
-        defaultHomePath: typeof values.defaultHomePath === 'string' ? values.defaultHomePath.trim() : DEFAULT_HOME_PATH,
-        permissionKeys,
-        dataScopes: values.dataScopes?.length ? values.dataScopes : DEFAULT_DATA_SCOPES,
-      };
-      if (roleCrud.drawer.editingId) {
-        await iamService.updateRole(roleCrud.drawer.editingId, payload, API_OPTS.NO_REDIRECT);
-        message.success('角色已更新');
-      } else {
-        await iamService.createRole(payload, API_OPTS.NO_REDIRECT);
-        message.success('角色已创建');
-      }
-      closeEditorDrawer();
-      roleCrud.reloadTable();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const deleteRole = (record: RoleRecord) => {
-    confirmAction({
-      title: '删除角色',
-      content: `确认删除角色「${record.roleName}」吗？删除后该角色的权限配置会一并移除。`,
-      okText: '确认删除',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        await iamService.deleteRole(record.id, API_OPTS.NO_REDIRECT);
-        message.success('角色已删除');
-        roleCrud.reloadTable();
-      },
-    });
-  };
-
-  const handleEditorClose = () => {
-    if (!editorDirty) {
-      closeEditorDrawer();
-      return;
-    }
-
-    Modal.confirm({
-      title: '提示',
-      content: '关闭抽屉将丢失未保存的内容，是否确认关闭？',
-      okText: '继续编辑',
-      cancelText: '确认关闭',
-      centered: true,
-      onOk: () => Promise.resolve(),
-      onCancel: closeEditorDrawer,
-    });
-  };
-
-  const columns = useMemo(
-    () =>
-      buildRoleColumns({
-        isDesktop: responsive.isDesktop,
-        isMobile: responsive.isMobile,
-        buildRowActions: actionPermission.buildTableActions,
-        onOpenDetail: (record) => void openDetail(record),
-        onOpenEdit: (record) => void openEdit(record),
-        onOpenPermissions: (record) => void openEdit(record, 'permissions'),
-        onDelete: deleteRole,
-      }),
-    [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
-  );
 
   return (
     <ManagementPage title="角色管理">
-      <ManagementTable<RoleRecord>
+      <ManagementTable
         actionRef={roleCrud.actionRef}
         rowKey="id"
         columns={columns}
         isMobile={responsive.isMobile}
         search={searchConfig}
-        request={buildTableRequest((params) => iamService.roles(params, API_OPTS.NO_REDIRECT))}
+        request={tableRequest}
         toolBarRender={() =>
           buildToolbarButtons([
             {
@@ -342,7 +350,7 @@ const RoleManagementPage = () => {
               permission: 'system:role:create',
               type: 'primary',
               label: '新增角色',
-              onClick: openCreate,
+              onClick: roleCrud.drawer.openCreate,
             },
             {
               key: 'default-registration-role',
@@ -359,141 +367,76 @@ const RoleManagementPage = () => {
         }
       />
 
-      <Modal
-        title="默认注册角色"
-        open={defaultRoleModalOpen}
-        confirmLoading={defaultRoleSaving}
-        onOk={() => void saveDefaultRole()}
-        onCancel={() => setDefaultRoleModalOpen(false)}
-        okButtonProps={{ disabled: !canUpdateRoleSettings }}
-        okText="保存"
-        cancelText="取消"
-      >
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Typography.Text type="secondary">
-            新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。
-          </Typography.Text>
-          <Select
-            showSearch
-            loading={defaultRoleLoading}
-            value={defaultRoleId}
-            onChange={setDefaultRoleId}
-            placeholder="请选择默认注册角色"
-            optionFilterProp="label"
-            style={{ width: '100%' }}
-            options={defaultRoleOptions.map((role) => ({
-              label: `${role.roleName}（${role.roleCode}）`,
-              value: role.id,
-            }))}
-          />
-        </Space>
-      </Modal>
+      <DefaultRegistrationRoleModal
+        open={defaultRoleModal.open}
+        loading={defaultRoleModal.loading}
+        saving={defaultRoleModal.saving}
+        canSave={defaultRoleModal.canSave}
+        value={defaultRoleModal.value}
+        options={defaultRoleModal.options}
+        onChange={defaultRoleModal.onChange}
+        onSubmit={defaultRoleModal.onSubmit}
+        onCancel={defaultRoleModal.onCancel}
+      />
 
-      <ManagementDrawer
-        title={roleEditorMode === 'permissions' ? '分配角色权限' : roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色'}
-        open={roleCrud.drawer.open}
-        onClose={handleEditorClose}
-        footerActions={[
-          { key: 'cancel', label: '取消', onClick: handleEditorClose },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveRole, onClick: () => void saveRole() },
-        ]}
-      >
-        <Form {...editorFormProps}>
-          <Form.Item
-            name="roleCode"
-            label="角色编码"
-            rules={[
-              {
-                validator: (_, value) => {
-                  const roleCode = typeof value === 'string' ? value.trim() : '';
-                  if (!roleCode) {
-                    return Promise.reject(new Error('请输入角色编码'));
-                  }
-                  if (roleCode.length > 64) {
-                    return Promise.reject(new Error('角色编码长度不能超过64个字符'));
-                  }
-                  if (!ROLE_CODE_PATTERN.test(roleCode)) {
-                    return Promise.reject(new Error('角色编码只能由字母、数字和下划线组成，且必须以字母开头'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <Input maxLength={64} disabled={isPermissionOnlyEditor} onBlur={handleRoleCodeBlur} />
-          </Form.Item>
-          <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
-            <Input disabled={isPermissionOnlyEditor} />
-          </Form.Item>
-          <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
-            <Select disabled={isPermissionOnlyEditor} options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
-          </Form.Item>
-          <Form.Item
-            name="defaultHomePath"
-            label="默认访问页面"
-            rules={[{ required: true, message: '请选择默认访问页面' }]}
-          >
-            <Select
-              showSearch
-              disabled={isPermissionOnlyEditor}
-              classNames={{ popup: { root: 'role-default-home-select-popup' } }}
-              listHeight={360}
-              optionFilterProp="label"
-              options={defaultHomeOptions}
-              placeholder="请选择登录后的默认访问页面"
-            />
-          </Form.Item>
-          <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
-          <Form.Item
-            name={['dataScopes', 0, 'scopeType']}
-            label="数据范围"
-            rules={[{ required: true, message: '请选择数据范围' }]}
-          >
-            <Select disabled={isPermissionOnlyEditor} options={DATA_SCOPE_OPTIONS} />
-          </Form.Item>
+      <ManagementDrawer title={editorDrawer.title} open={editorDrawer.open} onClose={editorDrawer.onClose} footerActions={editorDrawer.footerActions}>
+        <Form {...editorDrawer.formProps}>
+          <RoleEditorBasicFields
+            isPermissionOnlyEditor={editorDrawer.isPermissionOnlyEditor}
+            handleRoleCodeBlur={editorDrawer.handleRoleCodeBlur}
+            defaultHomeOptions={editorDrawer.defaultHomeOptions}
+          />
           <RolePermissionEditor
-            permissionTree={permissionEditor.permissionTree}
-            permissionTreeLoading={permissionEditor.permissionTreeLoading}
-            editorLoading={permissionEditor.editorLoading}
-            pageTreeData={permissionEditor.pageTreeData}
-            selectedPageNodeKeys={permissionEditor.selectedPageNodeKeys}
-            selectedPageCount={permissionEditor.selectedPageCount}
-            totalPageCount={permissionEditor.totalPageCount}
-            activePageKey={permissionEditor.activePageKey}
-            activePageNode={permissionEditor.activePageNode}
-            activePageActionPermissions={permissionEditor.activePageActionPermissions}
-            activePageSelectedActionKeys={permissionEditor.activePageSelectedActionKeys}
-            isActivePageSelected={permissionEditor.isActivePageSelected}
-            expandedKeys={permissionEditor.expandedKeys}
-            onExpandChange={permissionEditor.setExpandedKeys}
-            onExpandToggle={permissionEditor.handleExpandToggle}
-            onSelectAllPages={permissionEditor.handleSelectAllPages}
-            onPageTreeCheck={permissionEditor.handlePageTreeCheck}
-            onActivePageChange={permissionEditor.setActivePageKey}
-            onActionPermissionsChange={permissionEditor.handleActionPermissionsChange}
+            permissionTree={editorDrawer.permissionEditor.permissionTree}
+            permissionTreeLoading={editorDrawer.permissionEditor.permissionTreeLoading}
+            editorLoading={editorDrawer.permissionEditor.editorLoading}
+            pageTreeData={editorDrawer.permissionEditor.pageTreeData}
+            selectedPageNodeKeys={editorDrawer.permissionEditor.selectedPageNodeKeys}
+            selectedPageCount={editorDrawer.permissionEditor.selectedPageCount}
+            totalPageCount={editorDrawer.permissionEditor.totalPageCount}
+            activePageKey={editorDrawer.permissionEditor.activePageKey}
+            activePageNode={editorDrawer.permissionEditor.activePageNode}
+            activePageActionPermissions={editorDrawer.permissionEditor.activePageActionPermissions}
+            activePageSelectedActionKeys={editorDrawer.permissionEditor.activePageSelectedActionKeys}
+            isActivePageSelected={editorDrawer.permissionEditor.isActivePageSelected}
+            expandedKeys={editorDrawer.permissionEditor.expandedKeys}
+            onExpandChange={editorDrawer.permissionEditor.setExpandedKeys}
+            onExpandToggle={editorDrawer.permissionEditor.handleExpandToggle}
+            onSelectAllPages={editorDrawer.permissionEditor.handleSelectAllPages}
+            onPageTreeCheck={editorDrawer.permissionEditor.handlePageTreeCheck}
+            onActivePageChange={editorDrawer.permissionEditor.setActivePageKey}
+            onActionPermissionsChange={editorDrawer.permissionEditor.handleActionPermissionsChange}
           />
         </Form>
       </ManagementDrawer>
 
-      <ManagementDrawer
-        title={roleCrud.detail.currentRecord ? `角色详情 · ${roleCrud.detail.currentRecord.roleName}` : '角色详情'}
-        open={roleCrud.detail.open}
-        onClose={() => {
-          roleCrud.detail.close();
-          setSelectedRoleDetail(null);
-        }}
-      >
-        {roleCrud.detail.loading ? (
+      <ManagementDrawer title={detailDrawer.title} open={detailDrawer.open} onClose={detailDrawer.onClose}>
+        {detailDrawer.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
             <Spin />
           </div>
-        ) : selectedRoleDetail ? (
+        ) : detailDrawer.selectedRoleDetail ? (
           <>
-            <ProDescriptions<RoleDetail> {...detailProps} columns={roleDetailColumns} />
+            <ProDescriptions
+              columns={[
+                { title: '角色编码', dataIndex: 'roleCode' },
+                { title: '角色名称', dataIndex: 'roleName' },
+                {
+                  title: '角色类型',
+                  dataIndex: 'roleType',
+                  renderText: (value) => ROLE_TYPE_LABEL_MAP[String(value)] || String(value || '-'),
+                },
+                { title: '默认访问页', dataIndex: 'defaultHomePath' },
+                { title: '权限数', dataIndex: 'permissionCount' },
+                { title: '用户数', dataIndex: 'userCount' },
+              ]}
+              dataSource={detailDrawer.selectedRoleDetail}
+              column={detailDrawer.column}
+            />
             <div style={{ marginTop: 16 }}>
               <Space wrap size={[8, 8]}>
                 <Typography.Text strong>数据范围</Typography.Text>
-                {(selectedRoleDetail.dataScopes?.length ? selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
+                {(detailDrawer.selectedRoleDetail.dataScopes?.length ? detailDrawer.selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
                   <Tag key={`${scope.resourceCode}:${scope.scopeType}`} color="purple">
                     {scope.resourceCode === '*' ? '全局' : scope.resourceCode} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
                   </Tag>
@@ -503,15 +446,9 @@ const RoleManagementPage = () => {
             <div style={{ marginTop: 16 }}>
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 <Typography.Text strong>当前权限</Typography.Text>
-                {permissionDetailTreeData?.length ? (
+                {detailDrawer.permissionDetailTreeData?.length ? (
                   <div className="role-permission-tree role-permission-detail-tree">
-                    <Tree
-                      blockNode
-                      defaultExpandAll
-                      selectable={false}
-                      showIcon={false}
-                      treeData={permissionDetailTreeData}
-                    />
+                    <Tree blockNode defaultExpandAll selectable={false} showIcon={false} treeData={detailDrawer.permissionDetailTreeData} />
                   </div>
                 ) : (
                   <Tag>暂无权限</Tag>
@@ -526,3 +463,59 @@ const RoleManagementPage = () => {
 };
 
 export default RoleManagementPage;
+const RoleEditorBasicFields = ({
+  isPermissionOnlyEditor,
+  handleRoleCodeBlur,
+  defaultHomeOptions,
+}: {
+  isPermissionOnlyEditor: boolean;
+  handleRoleCodeBlur: () => void;
+  defaultHomeOptions: Array<{ label: string; value: string }>;
+}) => (
+  <>
+    <Form.Item
+      name="roleCode"
+      label="角色编码"
+      rules={[
+        {
+          validator: (_, value) => {
+            const roleCode = typeof value === 'string' ? value.trim() : '';
+            if (!roleCode) {
+              return Promise.reject(new Error('请输入角色编码'));
+            }
+            if (roleCode.length > 64) {
+              return Promise.reject(new Error('角色编码长度不能超过64个字符'));
+            }
+            if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(roleCode)) {
+              return Promise.reject(new Error('角色编码只能由字母、数字和下划线组成，且必须以字母开头'));
+            }
+            return Promise.resolve();
+          },
+        },
+      ]}
+    >
+      <Input maxLength={64} disabled={isPermissionOnlyEditor} onBlur={handleRoleCodeBlur} />
+    </Form.Item>
+    <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
+      <Input disabled={isPermissionOnlyEditor} />
+    </Form.Item>
+    <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
+      <Select disabled={isPermissionOnlyEditor} options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
+    </Form.Item>
+    <Form.Item name="defaultHomePath" label="默认访问页面" rules={[{ required: true, message: '请选择默认访问页面' }]}>
+      <Select
+        showSearch
+        disabled={isPermissionOnlyEditor}
+        classNames={{ popup: { root: 'role-default-home-select-popup' } }}
+        listHeight={360}
+        optionFilterProp="label"
+        options={defaultHomeOptions}
+        placeholder="请选择登录后的默认访问页面"
+      />
+    </Form.Item>
+    <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
+    <Form.Item name={['dataScopes', 0, 'scopeType']} label="数据范围" rules={[{ required: true, message: '请选择数据范围' }]}>
+      <Select disabled={isPermissionOnlyEditor} options={DATA_SCOPE_OPTIONS} />
+    </Form.Item>
+  </>
+);

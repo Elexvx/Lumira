@@ -1,23 +1,31 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { message } from 'antd';
-import { performLogout } from '@/auth/session';
-import { buildUnauthorizedRuntimeState, captureAuthRequestSnapshot } from '@/auth/unauthorized';
-import {
-  shouldSuppressUnauthorizedSideEffects,
-  type AuthRequestSnapshot,
-} from '@/auth/unauthorizedDecision';
-import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
-import { validatePluginManifest } from '@/plugins/manifest';
 import { pluginRegistry } from '@/plugins/registry';
 import type { PluginLoadResult, PluginManifest, PluginModule } from '@/plugins/types';
+import { message } from 'antd';
+import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
+import { captureAuthRequestSnapshot } from '@/auth/unauthorized';
+import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
+import { performLogout } from '@/auth/sessionLifecycle';
+import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 
-const MANIFEST_URL = (pluginCode: string) => `/api/v1/plugins/current/${pluginCode}/manifest`;
-const ASSET_URL = (pluginCode: string, relativePath: string) => `/api/v1/plugins/current/${pluginCode}/assets/${relativePath}`;
+const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>
+  pluginRegistry.getModule(pluginCode, version);
 
-window.SaaSSharedDeps = {
-  React,
-  ReactDOM,
+const cleanupPluginAssets = (pluginCode: string) => {
+  document
+    .querySelectorAll<HTMLElement>(`[data-plugin-code="${pluginCode}"]`)
+    .forEach((element) => {
+      element.remove();
+    });
+};
+
+const buildHeaders = (accessToken: string) => {
+  const headers: Record<string, string> = {
+    'X-Request-Id': crypto.randomUUID(),
+  };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return headers;
 };
 
 export interface PluginLoadFeedback {
@@ -29,7 +37,7 @@ export interface PluginLoadFeedback {
 }
 
 export class PluginLoadError extends Error {
-  type: FeedbackType;
+  type: PluginLoadFeedback['type'];
   redirectToLogin?: boolean;
   requestAccessToken?: string;
   authSnapshot?: AuthRequestSnapshot;
@@ -37,7 +45,7 @@ export class PluginLoadError extends Error {
   constructor(
     message: string,
     options: {
-      type: FeedbackType;
+      type: PluginLoadFeedback['type'];
       redirectToLogin?: boolean;
       requestAccessToken?: string;
       authSnapshot?: AuthRequestSnapshot;
@@ -52,95 +60,20 @@ export class PluginLoadError extends Error {
   }
 }
 
-export const loadPlugin = async (pluginCode: string): Promise<PluginLoadResult> => {
-  const manifest = validatePluginManifest(await fetchJson<PluginManifest>(MANIFEST_URL(pluginCode)));
-  const cacheModule = pluginRegistry.getModule(pluginCode, manifest.version);
-  if (cacheModule) {
-    return {
-      manifest,
-      module: cacheModule,
-    };
+const parseJsonResponse = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
   }
-  for (const stylePath of manifest.styles ?? []) {
-    await injectStyle(pluginCode, stylePath);
-  }
-  for (const assetPath of manifest.assets) {
-    await injectScript(pluginCode, assetPath);
-  }
-  const module = window.__SAAS_PLUGIN_BUNDLES__?.[`${pluginCode}@${manifest.version}`];
-  if (!module) {
-    throw new Error('插件入口未成功注册');
-  }
-  const result = {
-    manifest,
-    module,
-  };
-  pluginRegistry.register(result);
-  return result;
-};
 
-const fetchJson = async <T>(url: string): Promise<T> => {
-  const authSnapshot = captureAuthRequestSnapshot();
-  const requestAccessToken = authSnapshot.accessToken;
-  const response = await fetch(url, {
-    headers: buildHeaders(requestAccessToken),
-  });
-  if (!response.ok) {
-    throw await buildLoadError(response, '加载插件资源失败，请稍后重试', authSnapshot);
-  }
-  return (await response.json()) as T;
-};
-
-const injectScript = async (pluginCode: string, relativePath: string) => {
-  const authSnapshot = captureAuthRequestSnapshot();
-  const requestAccessToken = authSnapshot.accessToken;
-  const response = await fetch(ASSET_URL(pluginCode, relativePath), {
-    headers: buildHeaders(requestAccessToken),
-  });
-  if (!response.ok) {
-    throw await buildLoadError(response, `插件脚本加载失败: ${relativePath}`, authSnapshot);
-  }
-  const source = await response.text();
-  await executeSource(`${pluginCode}:${relativePath}`, source);
-};
-
-const injectStyle = async (pluginCode: string, relativePath: string) => {
-  const authSnapshot = captureAuthRequestSnapshot();
-  const requestAccessToken = authSnapshot.accessToken;
-  const response = await fetch(ASSET_URL(pluginCode, relativePath), {
-    headers: buildHeaders(requestAccessToken),
-  });
-  if (!response.ok) {
-    throw await buildLoadError(response, `插件样式加载失败: ${relativePath}`, authSnapshot);
-  }
-  const content = await response.text();
-  const styleElement = document.createElement('style');
-  styleElement.dataset.pluginAsset = `${pluginCode}:${relativePath}`;
-  styleElement.dataset.pluginCode = pluginCode;
-  styleElement.textContent = content;
-  document.head.appendChild(styleElement);
-};
-
-const executeSource = async (key: string, source: string) => {
-  const blob = new Blob([source], { type: 'text/javascript' });
-  const blobUrl = URL.createObjectURL(blob);
   try {
-    await new Promise<void>((resolve, reject) => {
-      const scriptElement = document.createElement('script');
-      scriptElement.async = true;
-      scriptElement.src = blobUrl;
-      scriptElement.dataset.pluginAsset = key;
-      scriptElement.dataset.pluginCode = key.split(':')[0];
-      scriptElement.onload = () => resolve();
-      scriptElement.onerror = () => reject(new Error(`插件脚本执行失败: ${key}`));
-      document.body.appendChild(scriptElement);
-    });
-  } finally {
-    URL.revokeObjectURL(blobUrl);
+    return await response.clone().json();
+  } catch {
+    return null;
   }
 };
 
-const buildLoadError = async (
+export const buildPluginLoadError = async (
   response: Response,
   fallbackMessage: string,
   authSnapshot: AuthRequestSnapshot,
@@ -165,44 +98,6 @@ const buildLoadError = async (
   });
 };
 
-const parseJsonResponse = async (response: Response) => {
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    return null;
-  }
-
-  try {
-    return await response.clone().json();
-  } catch {
-    return null;
-  }
-};
-
-const buildHeaders = (accessToken: string) => {
-  const headers: Record<string, string> = {
-    'X-Request-Id': crypto.randomUUID(),
-  };
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
-  return headers;
-};
-
-export const notifyPluginLoadError = (error: unknown) => {
-  const feedback = resolvePluginLoadError(error);
-  if (feedback.redirectToLogin) {
-    const runtime = buildUnauthorizedRuntimeState();
-    if (feedback.authSnapshot && shouldSuppressUnauthorizedSideEffects(feedback.authSnapshot, runtime)) {
-      return feedback;
-    }
-    message[feedback.type](feedback.message);
-    void performLogout({ reason: 'forced_expired' });
-    return feedback;
-  }
-  message[feedback.type](feedback.message);
-  return feedback;
-};
-
 export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
   if (error instanceof PluginLoadError) {
     return {
@@ -220,20 +115,130 @@ export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
       message: error.message,
     };
   }
-
   return {
     type: 'error',
     message: '插件加载失败，请稍后重试',
   };
 };
 
-export const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>
-  pluginRegistry.getModule(pluginCode, version);
-
-export const cleanupPluginAssets = (pluginCode: string) => {
-  document
-    .querySelectorAll<HTMLElement>(`[data-plugin-code="${pluginCode}"]`)
-    .forEach((element) => {
-      element.remove();
-    });
+export const notifyPluginLoadError = (error: unknown) => {
+  const feedback = resolvePluginLoadError(error);
+  if (feedback.redirectToLogin) {
+    const runtime = buildUnauthorizedRuntimeState();
+    if (feedback.authSnapshot && shouldSuppressUnauthorizedSideEffects(feedback.authSnapshot, runtime)) {
+      return feedback;
+    }
+    message[feedback.type](feedback.message);
+    void performLogout({ reason: 'forced_expired' });
+    return feedback;
+  }
+  message[feedback.type](feedback.message);
+  return feedback;
 };
+
+const executeSource = async (key: string, source: string) => {
+  const blob = new Blob([source], { type: 'text/javascript' });
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const scriptElement = document.createElement('script');
+      scriptElement.async = true;
+      scriptElement.src = blobUrl;
+      scriptElement.dataset.pluginAsset = key;
+      scriptElement.dataset.pluginCode = key.split(':')[0];
+      scriptElement.onload = () => resolve();
+      scriptElement.onerror = () => reject(new Error(`插件脚本执行失败: ${key}`));
+      document.body.appendChild(scriptElement);
+    });
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
+};
+
+const injectStyle = async (pluginCode: string, relativePath: string) => {
+  const authSnapshot = captureAuthRequestSnapshot();
+  const requestAccessToken = authSnapshot.accessToken;
+  const response = await fetch(`/api/v1/plugins/current/${pluginCode}/assets/${relativePath}`, {
+    headers: buildHeaders(requestAccessToken),
+  });
+  if (!response.ok) {
+    throw await buildPluginLoadError(response, `插件样式加载失败: ${relativePath}`, authSnapshot);
+  }
+  const content = await response.text();
+  const styleElement = document.createElement('style');
+  styleElement.dataset.pluginAsset = `${pluginCode}:${relativePath}`;
+  styleElement.dataset.pluginCode = pluginCode;
+  styleElement.textContent = content;
+  document.head.appendChild(styleElement);
+};
+
+const injectScript = async (pluginCode: string, relativePath: string) => {
+  const authSnapshot = captureAuthRequestSnapshot();
+  const requestAccessToken = authSnapshot.accessToken;
+  const response = await fetch(`/api/v1/plugins/current/${pluginCode}/assets/${relativePath}`, {
+    headers: buildHeaders(requestAccessToken),
+  });
+  if (!response.ok) {
+    throw await buildPluginLoadError(response, `插件脚本加载失败: ${relativePath}`, authSnapshot);
+  }
+  const source = await response.text();
+  await executeSource(`${pluginCode}:${relativePath}`, source);
+};
+
+const loadPluginManifest = async (pluginCode: string, fetchJson: <T>(url: string) => Promise<T>) => {
+  return await fetchJson<PluginManifest>(`/api/v1/plugins/current/${pluginCode}/manifest`);
+};
+
+const fetchPluginJson = async <T>(url: string) => {
+  const authSnapshot = captureAuthRequestSnapshot();
+  const requestAccessToken = authSnapshot.accessToken;
+  const response = await fetch(url, {
+    headers: buildHeaders(requestAccessToken),
+  });
+  if (!response.ok) {
+    throw await buildPluginLoadError(response, '加载插件资源失败，请稍后重试', authSnapshot);
+  }
+  return (await response.json()) as T;
+};
+
+const validatePluginManifest = (input: PluginManifest): PluginManifest => {
+  if (!input?.pluginCode || !input?.version || !input?.entry || !Array.isArray(input?.assets)) {
+    throw new Error('插件 manifest 缺少必要字段');
+  }
+  if (!input.assets.includes(input.entry)) {
+    throw new Error('插件 manifest 的 entry 必须包含在 assets 中');
+  }
+  if (input.sharedDeps && !input.sharedDeps.includes('react')) {
+    throw new Error('插件 manifest 必须声明 react 共享依赖');
+  }
+  return input;
+};
+
+export const loadPlugin = async (pluginCode: string): Promise<PluginLoadResult> => {
+  const manifest = validatePluginManifest(await loadPluginManifest(pluginCode, fetchPluginJson));
+  const cacheModule = getRegisteredPluginModule(pluginCode, manifest.version);
+  if (cacheModule) {
+    return {
+      manifest,
+      module: cacheModule,
+    };
+  }
+  for (const stylePath of manifest.styles ?? []) {
+    await injectStyle(pluginCode, stylePath);
+  }
+  for (const assetPath of manifest.assets) {
+    await injectScript(pluginCode, assetPath);
+  }
+  const module = window.__SAAS_PLUGIN_BUNDLES__?.[`${pluginCode}@${manifest.version}`];
+  if (!module) {
+    throw new Error('插件入口未成功注册');
+  }
+  const result = {
+    manifest,
+    module,
+  };
+  pluginRegistry.register(result);
+  return result;
+};
+
+export { cleanupPluginAssets, getRegisteredPluginModule };

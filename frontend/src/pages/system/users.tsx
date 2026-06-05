@@ -1,27 +1,20 @@
-import { ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ManagementDrawer } from '@/features/management/ManagementDrawer';
+import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementTable } from '@/features/management/ManagementTable';
+import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Card, Empty, Form, Input, Spin, Tree, message } from 'antd';
+import { ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Card, DatePicker, Empty, Form, Input, Select, Spin, Tree } from 'antd';
 import type { DataNode } from 'antd/es/tree';
-import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DEFAULT_SECURITY_SETTINGS, normalizeSecuritySettings } from '@/auth/securitySettings';
-import { useCrudPageState } from '@/features/crud/useCrudPageState';
-import { useDetailProDescriptionsProps } from '@/features/detail/config';
-import { useStandardFormProps } from '@/features/form/config';
-import { ManagementDrawer, ManagementPage, ManagementTable } from '@/features/management';
-import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
-import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { buildTableRequest } from '@/features/table/proTable';
-import { buildUserColumns, userDetailColumns } from '@/pages/system/users/columns';
-import { UserEditorForm } from '@/pages/system/users/components/UserEditorForm';
-import { isProtectedAdminAccount } from '@/pages/system/users/constants';
-import { iamService } from '@/services/iam';
-import { userService } from '@/services/user';
-import type { DepartmentRecord, UserDetail, UserRecord } from '@/types/api';
-import { confirmAction } from '@/utils/confirm';
+import { useEffect, useMemo, useState } from 'react';
+import { useUserManagement } from './users/hooks/useUserManagement';
 import './users.css';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
-
+import type { DepartmentRecord, UserDetail } from '@/types/api';
+import { maskEmail, maskIdCardNumber, maskMobile } from '@/utils/sensitive';
+import type { FormProps } from 'antd';
+import type { Rule } from 'antd/es/form';
+import type { SecuritySettings } from '@/types/api';
+import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
 
 const ALL_DEPARTMENTS_KEY = 'all';
 
@@ -38,12 +31,6 @@ const parseDepartmentTreeKey = (key: unknown) => {
   const id = Number(value.slice(5));
   return Number.isFinite(id) ? id : null;
 };
-
-const flattenDepartments = (departments: DepartmentRecord[], depth = 0): { label: string; value: number }[] =>
-  departments.flatMap((department) => [
-    { label: `${'　'.repeat(depth)}${department.deptName}`, value: department.id },
-    ...flattenDepartments(department.children || [], depth + 1),
-  ]);
 
 const flattenDepartmentIds = (department: DepartmentRecord): number[] => [
   department.id,
@@ -76,73 +63,24 @@ const buildDepartmentTreeNodes = (items: DepartmentRecord[], keyword: string): D
     })
     .filter(Boolean) as DataNode[];
 
-const UserManagementPage = () => {
-  const { actionRef, drawer, detail, reloadTable } = useCrudPageState<UserRecord>();
-  const [editorForm] = Form.useForm();
-  const { initialState } = useInitialStateModel();
-  const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
-  const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [roleOptions, setRoleOptions] = useState<{ label: string; value: number }[]>([]);
-  const [roleOptionsLoaded, setRoleOptionsLoaded] = useState(false);
-  const [departmentOptions, setDepartmentOptions] = useState<{ label: string; value: number }[]>([]);
-  const [departmentOptionsLoaded, setDepartmentOptionsLoaded] = useState(false);
-  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
-  const [departmentLoading, setDepartmentLoading] = useState(false);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
-  const [expandedDepartmentKeys, setExpandedDepartmentKeys] = useState<string[]>([ALL_DEPARTMENTS_KEY]);
+const DepartmentTreeFilter = ({
+  departments,
+  loading,
+  selectedDepartmentId,
+  onSelectedDepartmentChange,
+  onRefresh,
+}: {
+  departments: DepartmentRecord[];
+  loading: boolean;
+  selectedDepartmentId: number | null;
+  onSelectedDepartmentChange: (departmentId: number | null) => void;
+  onRefresh: () => void;
+}) => {
   const [departmentKeyword, setDepartmentKeyword] = useState('');
-  const protectedAdminSelected = isProtectedAdminAccount(drawer.currentRecord);
-  const canSaveUser = actionPermission.can(drawer.editingId ? 'system:user:update' : 'system:user:create');
-  const securitySettings = useMemo(
-    () => normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS),
-    [initialState?.securitySettings],
-  );
-  const editorFormProps = useStandardFormProps({
-    form: editorForm,
-    initialValues: { status: 'ENABLED', roleIds: [], deptIds: [] },
-  });
-  const detailProps = useDetailProDescriptionsProps<UserDetail>({
-    column: responsive.isMobile ? 1 : 2,
-    dataSource: selectedUserDetail || undefined,
-  });
-
-  const loadDepartments = useCallback(async () => {
-    setDepartmentLoading(true);
-    try {
-      const result = await iamService.departments(API_OPTS.NO_REDIRECT);
-      setDepartments(result);
-      setDepartmentOptions(flattenDepartments(result));
-      setDepartmentOptionsLoaded(true);
-    } finally {
-      setDepartmentLoading(false);
-    }
-  }, []);
-
-  const ensureRoleOptionsLoaded = async () => {
-    if (roleOptionsLoaded) {
-      return;
-    }
-    const result = await iamService.roles({ pageNo: 1, pageSize: 200 }, API_OPTS.NO_REDIRECT);
-    setRoleOptions(
-      (result.records || []).map((role) => ({
-        label: role.roleName,
-        value: role.id,
-      })),
-    );
-    setRoleOptionsLoaded(true);
-  };
-
-  const ensureDepartmentOptionsLoaded = async () => {
-    if (departmentOptionsLoaded) {
-      return;
-    }
-    await loadDepartments();
-  };
-
-  const allDepartmentIds = useMemo(() => departments.flatMap((department) => flattenDepartmentIds(department)), [departments]);
+  const [expandedDepartmentKeys, setExpandedDepartmentKeys] = useState<string[]>([ALL_DEPARTMENTS_KEY]);
   const normalizedDepartmentKeyword = departmentKeyword.trim().toLowerCase();
-  const departmentTreeData = useMemo<DataNode[]>(
+  const allDepartmentIds = useMemo(() => departments.flatMap((department) => flattenDepartmentIds(department)), [departments]);
+  const departmentTreeData = useMemo(
     () => [
       {
         key: ALL_DEPARTMENTS_KEY,
@@ -159,220 +97,278 @@ const UserManagementPage = () => {
   const selectedDepartmentKey = selectedDepartmentId ? departmentTreeKey(selectedDepartmentId) : ALL_DEPARTMENTS_KEY;
 
   useEffect(() => {
-    void loadDepartments();
-  }, [loadDepartments]);
-
-  useEffect(() => {
     setExpandedDepartmentKeys(
       normalizedDepartmentKeyword ? [ALL_DEPARTMENTS_KEY, ...allDepartmentIds.map(departmentTreeKey)] : [ALL_DEPARTMENTS_KEY],
     );
   }, [allDepartmentIds, normalizedDepartmentKeyword]);
 
-  useEffect(() => {
-    reloadTable();
-  }, [reloadTable, selectedDepartmentId]);
-
-  const openCreate = async () => {
-    drawer.openCreate();
-    editorForm.resetFields();
-    editorForm.setFieldsValue({
-      status: 'ENABLED',
-      roleIds: [],
-      deptIds: selectedDepartmentId ? [selectedDepartmentId] : [],
-      primaryDeptId: selectedDepartmentId || null,
-    });
-    try {
-      await Promise.all([ensureRoleOptionsLoaded(), ensureDepartmentOptionsLoaded()]);
-    } catch {
-      drawer.reset();
-    }
-  };
-
-  const openEdit = async (record: UserRecord) => {
-    drawer.openEdit(record, record.id);
-    try {
-      const [detailResult] = await Promise.all([
-        userService.detail(record.id, API_OPTS.NO_REDIRECT),
-        ensureRoleOptionsLoaded(),
-        ensureDepartmentOptionsLoaded(),
-      ]);
-      editorForm.setFieldsValue({
-        ...detailResult,
-        birthMonth: detailResult.birthMonth ? dayjs(detailResult.birthMonth, 'YYYY-MM') : null,
-        roleIds: detailResult.roleIds || [],
-        deptIds: detailResult.deptIds || [],
-        primaryDeptId: detailResult.primaryDeptId || null,
-      });
-    } catch {
-      drawer.reset();
-    }
-  };
-
-  const openDetail = async (record: UserRecord) => {
-    detail.openDetail(record);
-    detail.setLoading(true);
-    try {
-      const detailResult = await userService.detail(record.id, API_OPTS.NO_REDIRECT);
-      setSelectedUserDetail(detailResult);
-    } catch {
-      detail.setOpen(false);
-      setSelectedUserDetail(null);
-    } finally {
-      detail.setLoading(false);
-    }
-  };
-
-  const saveUser = async () => {
-    setSaving(true);
-    try {
-      const values = await editorForm.validateFields();
-      const isCreating = !drawer.editingId;
-      const payload = {
-        ...values,
-        birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
-        roleIds: values.roleIds || [],
-        deptIds: values.deptIds || [],
-        primaryDeptId: values.primaryDeptId || values.deptIds?.[0] || null,
-      };
-
-      if (drawer.editingId) {
-        await userService.update(drawer.editingId, payload, API_OPTS.NO_REDIRECT);
-        message.success('用户已更新');
-      } else {
-        await userService.create(payload, API_OPTS.NO_REDIRECT);
-        message.success('用户已创建');
+  return (
+    <Card
+      className="saas-user-department-card"
+      title={
+        <span className="saas-user-department-card__title">
+          <ApartmentOutlined />
+          组织部门
+        </span>
       }
-
-      drawer.close();
-      if (isCreating && selectedDepartmentId !== null) {
-        setSelectedDepartmentId(null);
-      } else {
-        reloadTable();
-      }
-      await loadDepartments();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateUserStatus = async (record: UserRecord, status: 'ENABLED' | 'DISABLED') => {
-    await userService.changeStatus(record.id, { status }, API_OPTS.NO_REDIRECT);
-    message.success('状态已更新');
-    reloadTable();
-  };
-
-  const handleStatusToggle = (record: UserRecord) => {
-    if (record.status !== 'ENABLED') {
-      void updateUserStatus(record, 'ENABLED');
-      return;
-    }
-
-    confirmAction({
-      title: '禁用用户',
-      content: `确认禁用用户「${record.username}」吗？禁用后该账号将无法继续登录。`,
-      okText: '确认禁用',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        await updateUserStatus(record, 'DISABLED');
-      },
-    });
-  };
-
-  const handleDelete = (record: UserRecord) => {
-    confirmAction({
-      title: '删除用户',
-      content: `确认删除用户「${record.username}」吗？删除后该用户将从当前租户移除，已有会话会被下线。`,
-      okText: '确认删除',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        await userService.delete(record.id, API_OPTS.NO_REDIRECT);
-        message.success('用户已删除');
-        reloadTable();
-        await loadDepartments();
-      },
-    });
-  };
-
-  const columns = useMemo(
-    () =>
-      buildUserColumns({
-        isDesktop: responsive.isDesktop,
-        isMobile: responsive.isMobile,
-        buildRowActions: actionPermission.buildTableActions,
-        onOpenDetail: (record) => void openDetail(record),
-        onOpenEdit: (record) => void openEdit(record),
-        onToggleStatus: (record) => void handleStatusToggle(record),
-        onDelete: (record) => void handleDelete(record),
-        isProtectedAdminAccount,
-      }),
-    [actionPermission.buildTableActions, responsive.isDesktop, responsive.isMobile],
+      extra={<Button type="text" aria-label="刷新部门" icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />}
+    >
+      <Input.Search
+        allowClear
+        className="saas-user-department-card__search"
+        placeholder="搜索部门"
+        value={departmentKeyword}
+        onChange={(event) => setDepartmentKeyword(event.target.value)}
+      />
+      {loading && departments.length === 0 ? (
+        <div className="saas-user-department-card__loading">
+          <Spin />
+        </div>
+      ) : departmentTreeData[0]?.children?.length || !normalizedDepartmentKeyword ? (
+        <Tree
+          blockNode
+          className="saas-user-department-tree"
+          treeData={departmentTreeData}
+          selectedKeys={[selectedDepartmentKey]}
+          expandedKeys={expandedDepartmentKeys}
+          onExpand={(keys) => setExpandedDepartmentKeys(keys.map(String))}
+          onSelect={(_, info) => {
+            onSelectedDepartmentChange(parseDepartmentTreeKey(info.node.key));
+          }}
+        />
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配部门" />
+      )}
+    </Card>
   );
+};
+
+const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
+  { title: '用户ID', dataIndex: 'id' },
+  { title: '用户编号', dataIndex: 'userNo', renderText: (value) => value || '-' },
+  { title: '用户名', dataIndex: 'username' },
+  { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
+  { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
+  { title: '手机号', dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },
+  {
+    title: '身份证号码',
+    dataIndex: 'idCardNumber',
+    renderText: (value) => maskIdCardNumber(value) || '-',
+  },
+  { title: '邮箱', dataIndex: 'email', renderText: (value) => maskEmail(value) || '-' },
+  { title: '头像地址', dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
+  { title: '出生年月', dataIndex: 'birthMonth', renderText: (value) => value || '-' },
+  { title: '性别', dataIndex: 'gender', renderText: (value) => value || '-' },
+  { title: '所在地区', dataIndex: 'region', renderText: (value) => value || '-' },
+  { title: '可工作时间', dataIndex: 'availableTime', renderText: (value) => value || '-' },
+  { title: '状态', dataIndex: 'status' },
+  { title: '来源', dataIndex: 'source', renderText: (value) => value || '-' },
+  { title: '注册时间', dataIndex: 'registeredAt', renderText: (value) => value || '-' },
+  { title: '最近登录', dataIndex: 'lastLoginAt', renderText: (value) => value || '-' },
+  {
+    title: '角色',
+    dataIndex: 'roleNames',
+    renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
+  },
+  {
+    title: '部门',
+    dataIndex: 'deptNames',
+    renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
+  },
+  { title: '创建时间', dataIndex: 'createdAt', renderText: (value) => value || '-' },
+  { title: '更新时间', dataIndex: 'updatedAt', renderText: (value) => value || '-' },
+];
+
+const GENDER_OPTIONS = [
+  { label: '男', value: 'MALE' },
+  { label: '女', value: 'FEMALE' },
+  { label: '其他', value: 'OTHER' },
+];
+
+const USER_STATUS_OPTIONS = [
+  { label: '启用', value: 'ENABLED' },
+  { label: '禁用', value: 'DISABLED' },
+];
+
+const containsConsecutiveCharacters = (value: string) => {
+  const lower = value.toLowerCase();
+  for (let index = 0; index < lower.length - 2; index += 1) {
+    const first = lower.charCodeAt(index);
+    const second = lower.charCodeAt(index + 1);
+    const third = lower.charCodeAt(index + 2);
+    const sameClass =
+      (isDigit(first) && isDigit(second) && isDigit(third)) ||
+      (isLetter(first) && isLetter(second) && isLetter(third));
+    if (sameClass && ((second - first === 1 && third - second === 1) || (first - second === 1 && second - third === 1))) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const isDigit = (charCode: number) => charCode >= 48 && charCode <= 57;
+
+const isLetter = (charCode: number) => charCode >= 97 && charCode <= 122;
+
+const buildPasswordPolicyRules = (editingId: number | null, securitySettings: SecuritySettings, containsConsecutiveCharacters: (value: string) => boolean): Rule[] => [
+  ...(!editingId ? [{ required: true, message: '请输入密码' }] : []),
+  {
+    validator: async (_: unknown, value?: string) => {
+      if (!value) {
+        return Promise.resolve();
+      }
+      const minLength = Math.max(1, Number(securitySettings.passwordMinLength || 0));
+      if (value.length < minLength) {
+        return Promise.reject(new Error(`密码长度不能少于 ${minLength} 位`));
+      }
+      if (securitySettings.passwordRequireUppercase && !/[A-Z]/.test(value)) {
+        return Promise.reject(new Error('密码必须包含大写字母'));
+      }
+      if (securitySettings.passwordRequireLowercase && !/[a-z]/.test(value)) {
+        return Promise.reject(new Error('密码必须包含小写字母'));
+      }
+      if (securitySettings.passwordRequireSpecialCharacter && !/[^A-Za-z0-9]/.test(value)) {
+        return Promise.reject(new Error('密码必须包含特殊字符'));
+      }
+      if (!securitySettings.passwordAllowConsecutiveCharacters && containsConsecutiveCharacters(value)) {
+        return Promise.reject(new Error('密码不能包含连续字符'));
+      }
+      return Promise.resolve();
+    },
+  },
+];
+
+const buildPasswordPolicyHint = (securitySettings: SecuritySettings) => {
+  const parts = [`至少 ${Math.max(1, Number(securitySettings.passwordMinLength || 0))} 位`];
+  if (securitySettings.passwordRequireUppercase) {
+    parts.push('包含大写字母');
+  }
+  if (securitySettings.passwordRequireLowercase) {
+    parts.push('包含小写字母');
+  }
+  if (securitySettings.passwordRequireSpecialCharacter) {
+    parts.push('包含特殊字符');
+  }
+  if (!securitySettings.passwordAllowConsecutiveCharacters) {
+    parts.push('不能包含连续字符');
+  }
+  return parts.join('，');
+};
+
+const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, protectedAdminSelected, securitySettings }: {
+  formProps: FormProps;
+  editingId: number | null;
+  roleOptions: { label: string; value: number }[];
+  departmentOptions: { label: string; value: number }[];
+  protectedAdminSelected: boolean;
+  securitySettings: SecuritySettings;
+}) => (
+  <Form {...formProps}>
+    <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]} normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="roleIds" label="角色" rules={[{ required: true, message: '请选择角色' }]} extra="可为用户分配一个或多个角色">
+      <Select mode="multiple" allowClear options={roleOptions} placeholder="请选择角色" />
+    </Form.Item>
+    <Form.Item name="deptIds" label="所属部门" extra="部门用于本部门、本部门及下级等数据权限范围">
+      <Select mode="multiple" allowClear options={departmentOptions} placeholder="请选择部门" />
+    </Form.Item>
+    <Form.Item name="primaryDeptId" label="主部门">
+      <Select allowClear options={departmentOptions} placeholder="请选择主部门" />
+    </Form.Item>
+    <Form.Item
+      name="password"
+      label={editingId ? '重置密码（可选）' : '初始密码'}
+      extra={buildPasswordPolicyHint(securitySettings)}
+      rules={buildPasswordPolicyRules(editingId, securitySettings, containsConsecutiveCharacters)}
+    >
+      <Input.Password placeholder="输入密码" />
+    </Form.Item>
+    <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+      <Select disabled={protectedAdminSelected} options={protectedAdminSelected ? USER_STATUS_OPTIONS.slice(0, 1) : USER_STATUS_OPTIONS} />
+    </Form.Item>
+    <Form.Item name="mobile" label="手机号" rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="idCardNumber" label="身份证号码" rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="nickname" label="昵称" normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="realName" label="姓名" normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]} normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="avatarUrl" label="头像地址" normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="birthMonth" label="出生年月">
+      <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
+    </Form.Item>
+    <Form.Item name="gender" label="性别">
+      <Select allowClear options={GENDER_OPTIONS} placeholder="请选择性别" />
+    </Form.Item>
+    <Form.Item name="region" label="所在地区" normalize={trimString}>
+      <Input />
+    </Form.Item>
+    <Form.Item name="availableTime" label="可工作时间" normalize={trimString}>
+      <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
+    </Form.Item>
+  </Form>
+);
+
+const UserManagementPage = () => {
+  const userManagement = useUserManagement();
+
+  const {
+    actionRef,
+    responsive,
+    searchConfig,
+    buildToolbarButtons,
+    columns,
+    tableRequest,
+    drawer,
+    detail,
+    editorFormProps,
+    saving,
+    canSaveUser,
+    protectedAdminSelected,
+    securitySettings,
+    roleOptions,
+    departmentOptions,
+    departments,
+    departmentLoading,
+    selectedDepartmentId,
+    setSelectedDepartmentId,
+    selectedUserDetail,
+    detailProps,
+    openCreate,
+    saveUser,
+    loadDepartments,
+  } = userManagement;
 
   return (
     <ManagementPage title="用户管理" className="saas-user-management-page">
       <div className="saas-user-management-layout">
-        <Card
-          className="saas-user-department-card"
-          title={
-            <span className="saas-user-department-card__title">
-              <ApartmentOutlined />
-              组织部门
-            </span>
-          }
-          extra={
-            <Button
-              aria-label="刷新部门"
-              type="text"
-              icon={<ReloadOutlined />}
-              loading={departmentLoading}
-              onClick={() => void loadDepartments()}
-            />
-          }
-        >
-          <Input.Search
-            allowClear
-            className="saas-user-department-card__search"
-            placeholder="搜索部门"
-            value={departmentKeyword}
-            onChange={(event) => setDepartmentKeyword(event.target.value)}
-          />
-          {departmentLoading && departments.length === 0 ? (
-            <div className="saas-user-department-card__loading">
-              <Spin />
-            </div>
-          ) : departmentTreeData[0]?.children?.length || !normalizedDepartmentKeyword ? (
-            <Tree
-              blockNode
-              className="saas-user-department-tree"
-              treeData={departmentTreeData}
-              selectedKeys={[selectedDepartmentKey]}
-              expandedKeys={expandedDepartmentKeys}
-              onExpand={(keys) => setExpandedDepartmentKeys(keys.map(String))}
-              onSelect={(_, info) => {
-                setSelectedDepartmentId(parseDepartmentTreeKey(info.node.key));
-              }}
-            />
-          ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配部门" />
-          )}
-        </Card>
+        <DepartmentTreeFilter
+          departments={departments}
+          loading={departmentLoading}
+          selectedDepartmentId={selectedDepartmentId}
+          onSelectedDepartmentChange={setSelectedDepartmentId}
+          onRefresh={() => void loadDepartments()}
+        />
 
         <div className="saas-user-management-main">
-          <ManagementTable<UserRecord>
+          <ManagementTable
             actionRef={actionRef}
             rowKey="id"
             columns={columns}
             isMobile={responsive.isMobile}
             search={searchConfig}
-            request={buildTableRequest((params) =>
-              userService.list(
-                {
-                  ...params,
-                  deptId: selectedDepartmentId || undefined,
-                },
-                API_OPTS.NO_REDIRECT,
-              ),
-            )}
+            request={tableRequest}
             toolBarRender={() =>
               buildToolbarButtons([
                 {
@@ -385,7 +381,7 @@ const UserManagementPage = () => {
                 {
                   key: 'refresh',
                   label: '刷新',
-                  onClick: reloadTable,
+                  onClick: () => void actionRef.current?.reload(),
                 },
               ])
             }
@@ -412,14 +408,7 @@ const UserManagementPage = () => {
         />
       </ManagementDrawer>
 
-      <ManagementDrawer
-        title={detail.currentRecord ? `用户详情 · ${detail.currentRecord.username}` : '用户详情'}
-        open={detail.open}
-        onClose={() => {
-          detail.close();
-          setSelectedUserDetail(null);
-        }}
-      >
+      <ManagementDrawer title={detail.currentRecord?.username ? `用户详情 · ${detail.currentRecord.username}` : '用户详情'} open={detail.open} onClose={detail.close}>
         {detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 240 }}>
             <Spin />

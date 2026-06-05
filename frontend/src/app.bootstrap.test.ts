@@ -5,8 +5,6 @@ const mocks = vi.hoisted(() => ({
   restoreSession: vi.fn(),
   brandingSettings: vi.fn(),
   watermarkSettings: vi.fn(),
-  currentMenus: vi.fn(),
-  currentAvailable: vi.fn(),
   persistWatermarkSettings: vi.fn(),
   defaultBrandingSettings: {
     websiteName: '宏翔商道',
@@ -37,9 +35,12 @@ vi.mock('@umijs/max', () => ({
   getLocale: vi.fn(() => 'zh-CN'),
 }));
 
-vi.mock('@/auth/session', () => ({
+vi.mock('@/auth/sessionLifecycle', () => ({
   clearAuthSession: mocks.clearAuthSession,
   isLoggedIn: vi.fn(() => true),
+}));
+
+vi.mock('@/auth/sessionBootstrap', () => ({
   restoreSession: mocks.restoreSession,
 }));
 
@@ -56,32 +57,26 @@ vi.mock('@/agreement/settings', () => ({
   normalizeAgreementSettings: vi.fn((settings) => settings || {}),
 }));
 
-vi.mock('@/auth/securitySettings', () => ({
+vi.mock('@/auth/securitySettingsTypes', () => ({
   DEFAULT_SECURITY_SETTINGS: {},
-  normalizeSecuritySettings: vi.fn((settings) => settings || {}),
-  persistSecuritySettings: vi.fn(),
 }));
 
-vi.mock('@/bootstrap/bootstrapStore', () => ({
-  resetBootstrapSnapshot: vi.fn(),
-  setBootstrapSnapshot: vi.fn(),
+vi.mock('@/auth/securitySettingsNormalize', () => ({
+  normalizeSecuritySettings: vi.fn((settings) => settings || {}),
+}));
+
+vi.mock('@/auth/securitySettingsStorage', () => ({
+  clearSecuritySettings: vi.fn(),
+  getStoredSecuritySettings: vi.fn(() => null),
+  persistSecuritySettings: vi.fn(),
 }));
 
 vi.mock('@/i18n/runtimeLocalization', () => ({
   loadRuntimeLocalizationBundle: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('@/services/plugin', () => ({
-  pluginService: {
-    currentMenus: mocks.currentMenus,
-    currentAvailable: mocks.currentAvailable,
-  },
-}));
-
-vi.mock('@/services/system', () => ({
-  systemService: {
-    brandingSettings: mocks.brandingSettings,
-    watermarkSettings: mocks.watermarkSettings,
+vi.mock('@/services/system/public', () => ({
+  publicSystemService: {
     publicBrandingSettings: vi.fn(),
     publicSecuritySettings: vi.fn(),
     publicAgreementSettings: vi.fn(),
@@ -93,10 +88,21 @@ vi.mock('@/constants/http', () => ({
   API_PREFIX: '/api',
 }));
 
-vi.mock('@/watermark/settings', () => ({
+vi.mock('@/watermark/settingsTypes', () => ({
   DEFAULT_WATERMARK_SETTINGS: mocks.defaultWatermarkSettings,
+}));
+
+vi.mock('@/watermark/settingsNormalize', () => ({
   normalizeWatermarkSettings: vi.fn((settings) => ({ ...mocks.defaultWatermarkSettings, ...(settings || {}) })),
+}));
+
+vi.mock('@/watermark/settingsStorage', () => ({
+  bootstrapWatermarkSettings: vi.fn(),
+  clearWatermarkSettings: vi.fn(),
+  getStoredWatermarkSettings: vi.fn(() => null),
+  getWatermarkSettingsSnapshot: vi.fn(() => mocks.defaultWatermarkSettings),
   persistWatermarkSettings: mocks.persistWatermarkSettings,
+  subscribeWatermarkSettings: vi.fn(() => () => {}),
 }));
 
 describe('getAppInitialState', () => {
@@ -105,8 +111,6 @@ describe('getAppInitialState', () => {
     mocks.restoreSession.mockReset();
     mocks.brandingSettings.mockReset();
     mocks.watermarkSettings.mockReset();
-    mocks.currentMenus.mockReset();
-    mocks.currentAvailable.mockReset();
     mocks.persistWatermarkSettings.mockReset();
 
     mocks.restoreSession.mockResolvedValue({
@@ -120,8 +124,6 @@ describe('getAppInitialState', () => {
       securitySettings: {},
     });
     mocks.brandingSettings.mockResolvedValue(mocks.defaultBrandingSettings);
-    mocks.currentMenus.mockResolvedValue([]);
-    mocks.currentAvailable.mockResolvedValue([]);
   });
 
   it('keeps the session when optional authenticated watermark settings return forbidden', async () => {

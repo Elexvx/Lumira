@@ -1,34 +1,36 @@
+import type { ReactNode, RefObject } from 'react';
+import type { TextAreaRef } from 'antd/es/input/TextArea';
+import { useRef, useState } from 'react';
+import { Button, Divider, Input, Tooltip } from 'antd';
 import {
   BoldOutlined,
   CheckSquareOutlined,
   CodeOutlined,
+  CommentOutlined,
   FontSizeOutlined,
   ItalicOutlined,
   LinkOutlined,
   OrderedListOutlined,
   PictureOutlined,
   ProfileOutlined,
-  CommentOutlined,
   TableOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { Button, Divider, Input, Tooltip } from 'antd';
-import type { TextAreaRef } from 'antd/es/input/TextArea';
-import { XMarkdown } from '@ant-design/x-markdown';
-import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
+import { XMarkdown } from '@ant-design/x-markdown';
 import './AgreementMarkdownEditor.css';
 
-interface AgreementMarkdownEditorProps {
+type AgreementMarkdownEditorMode = 'edit' | 'preview';
+
+export type AgreementMarkdownEditorProps = {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-}
+};
 
 type InsertMode = 'wrap' | 'line' | 'block';
 
-interface ToolbarAction {
+type AgreementMarkdownToolbarAction = {
   key: string;
   title: string;
   icon: ReactNode;
@@ -36,9 +38,9 @@ interface ToolbarAction {
   after?: string;
   sample: string;
   mode?: InsertMode;
-}
+};
 
-const toolbarActions: ToolbarAction[] = [
+const AGREEMENT_MARKDOWN_TOOLBAR_ACTIONS: readonly AgreementMarkdownToolbarAction[] = [
   { key: 'quote', title: '引用', icon: <CommentOutlined />, before: '> ', sample: '引用内容', mode: 'line' },
   { key: 'bold', title: '加粗', icon: <BoldOutlined />, before: '**', after: '**', sample: '加粗文字' },
   { key: 'italic', title: '斜体', icon: <ItalicOutlined />, before: '*', after: '*', sample: '斜体文字' },
@@ -56,88 +58,129 @@ const toolbarActions: ToolbarAction[] = [
     sample: '',
     mode: 'block',
   },
-];
+] as const;
 
-const normalizeValue = (value?: string) => value ?? '';
+const AGREEMENT_MARKDOWN_TOOLBAR_LEFT_ACTIONS = AGREEMENT_MARKDOWN_TOOLBAR_ACTIONS.slice(0, 6);
+const AGREEMENT_MARKDOWN_TOOLBAR_RIGHT_ACTIONS = AGREEMENT_MARKDOWN_TOOLBAR_ACTIONS.slice(6);
+const AGREEMENT_MARKDOWN_TOOLBAR_HEADINGS = {
+  heading: <FontSizeOutlined />,
+  paragraph: <ProfileOutlined />,
+} as const;
+
+const normalizeAgreementMarkdownValue = (value?: string) => value ?? '';
+
+const getAgreementMarkdownTextArea = (textAreaRef: RefObject<TextAreaRef | null>) => textAreaRef.current?.resizableTextArea?.textArea;
+
+const updateAgreementMarkdownValue = (
+  getTextArea: () => HTMLTextAreaElement | null | undefined,
+  onChange: ((value: string) => void) | undefined,
+  nextValue: string,
+  nextSelectionStart?: number,
+  nextSelectionEnd?: number,
+) => {
+  onChange?.(nextValue);
+  window.setTimeout(() => {
+    const textArea = getTextArea();
+    textArea?.focus();
+    if (typeof nextSelectionStart === 'number' && typeof nextSelectionEnd === 'number') {
+      textArea?.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+    }
+  }, 0);
+};
+
+const insertAgreementMarkdown = (
+  markdown: string,
+  getTextArea: () => HTMLTextAreaElement | null | undefined,
+  action: AgreementMarkdownToolbarAction,
+  onChange: ((value: string) => void) | undefined,
+) => {
+  const textArea = getTextArea();
+  const start = textArea?.selectionStart ?? markdown.length;
+  const end = textArea?.selectionEnd ?? markdown.length;
+  const selectedText = markdown.slice(start, end) || action.sample;
+
+  if (action.mode === 'line') {
+    const lineStart = markdown.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+    const nextValue = `${markdown.slice(0, lineStart)}${action.before}${markdown.slice(lineStart)}`;
+    const selectionOffset = action.before.length;
+    updateAgreementMarkdownValue(getTextArea, onChange, nextValue, start + selectionOffset, end + selectionOffset);
+    return;
+  }
+
+  if (action.mode === 'block') {
+    const needsLeadingBreak = start > 0 && markdown[start - 1] !== '\n';
+    const needsTrailingBreak = end < markdown.length && markdown[end] !== '\n';
+    const blockText = `${needsLeadingBreak ? '\n' : ''}${action.before}${needsTrailingBreak ? '\n' : ''}`;
+    const nextValue = `${markdown.slice(0, start)}${blockText}${markdown.slice(end)}`;
+    updateAgreementMarkdownValue(getTextArea, onChange, nextValue, start + blockText.length, start + blockText.length);
+    return;
+  }
+
+  const after = action.after ?? action.before;
+  const nextValue = `${markdown.slice(0, start)}${action.before}${selectedText}${after}${markdown.slice(end)}`;
+  const nextSelectionStart = start + action.before.length;
+  updateAgreementMarkdownValue(getTextArea, onChange, nextValue, nextSelectionStart, nextSelectionStart + selectedText.length);
+};
+
+const insertAgreementHeading = (
+  markdown: string,
+  getTextArea: () => HTMLTextAreaElement | null | undefined,
+  onChange: ((value: string) => void) | undefined,
+) => {
+  const textArea = getTextArea();
+  const start = textArea?.selectionStart ?? markdown.length;
+  const lineStart = markdown.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+  const heading = '#'.repeat(2) + ' ';
+  const nextValue = `${markdown.slice(0, lineStart)}${heading}${markdown.slice(lineStart)}`;
+  updateAgreementMarkdownValue(getTextArea, onChange, nextValue, start + heading.length, start + heading.length);
+};
 
 export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: AgreementMarkdownEditorProps) => {
-  const textAreaRef = useRef<TextAreaRef>(null);
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
-  const markdown = normalizeValue(value);
+  const textAreaRef = useRef<TextAreaRef | null>(null);
+  const [mode, setMode] = useState<AgreementMarkdownEditorMode>('edit');
+  const markdown = normalizeAgreementMarkdownValue(value);
 
-  const getTextArea = () => textAreaRef.current?.resizableTextArea?.textArea;
-
-  const updateValue = (nextValue: string, nextSelectionStart?: number, nextSelectionEnd?: number) => {
-    onChange?.(nextValue);
-    window.setTimeout(() => {
-      const textArea = getTextArea();
-      textArea?.focus();
-      if (typeof nextSelectionStart === 'number' && typeof nextSelectionEnd === 'number') {
-        textArea?.setSelectionRange(nextSelectionStart, nextSelectionEnd);
-      }
-    }, 0);
-  };
-
-  const insertMarkdown = (action: ToolbarAction) => {
-    const textArea = getTextArea();
-    const start = textArea?.selectionStart ?? markdown.length;
-    const end = textArea?.selectionEnd ?? markdown.length;
-    const selectedText = markdown.slice(start, end) || action.sample;
-
-    if (action.mode === 'line') {
-      const lineStart = markdown.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
-      const nextValue = `${markdown.slice(0, lineStart)}${action.before}${markdown.slice(lineStart)}`;
-      const selectionOffset = action.before.length;
-      updateValue(nextValue, start + selectionOffset, end + selectionOffset);
-      return;
-    }
-
-    if (action.mode === 'block') {
-      const needsLeadingBreak = start > 0 && markdown[start - 1] !== '\n';
-      const needsTrailingBreak = end < markdown.length && markdown[end] !== '\n';
-      const blockText = `${needsLeadingBreak ? '\n' : ''}${action.before}${needsTrailingBreak ? '\n' : ''}`;
-      const nextValue = `${markdown.slice(0, start)}${blockText}${markdown.slice(end)}`;
-      updateValue(nextValue, start + blockText.length, start + blockText.length);
-      return;
-    }
-
-    const after = action.after ?? action.before;
-    const nextValue = `${markdown.slice(0, start)}${action.before}${selectedText}${after}${markdown.slice(end)}`;
-    const nextSelectionStart = start + action.before.length;
-    updateValue(nextValue, nextSelectionStart, nextSelectionStart + selectedText.length);
-  };
-
-  const applyHeading = (level: number) => {
-    const textArea = getTextArea();
-    const start = textArea?.selectionStart ?? markdown.length;
-    const lineStart = markdown.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
-    const heading = `${'#'.repeat(level)} `;
-    const nextValue = `${markdown.slice(0, lineStart)}${heading}${markdown.slice(lineStart)}`;
-    updateValue(nextValue, start + heading.length, start + heading.length);
-  };
+  const getTextArea = () => getAgreementMarkdownTextArea(textAreaRef);
 
   return (
     <div className="agreement-markdown-editor">
       <div className="agreement-markdown-editor__toolbar">
         <div className="agreement-markdown-editor__tools">
-          <Tooltip title="标题">
-            <Button size="small" icon={<FontSizeOutlined />} onMouseDown={(event) => event.preventDefault()} onClick={() => applyHeading(2)} />
-          </Tooltip>
-          <Tooltip title="段落">
-            <Button size="small" icon={<ProfileOutlined />} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown({ key: 'paragraph', title: '段落', icon: null, before: '\n\n', sample: '', mode: 'block' })} />
-          </Tooltip>
+          <>
+            <Button
+              size="small"
+              icon={AGREEMENT_MARKDOWN_TOOLBAR_HEADINGS.heading}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => insertAgreementHeading(markdown, getTextArea, onChange)}
+            />
+            <Button
+              size="small"
+              icon={AGREEMENT_MARKDOWN_TOOLBAR_HEADINGS.paragraph}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                insertAgreementMarkdown(
+                  markdown,
+                  getTextArea,
+                  { key: 'paragraph', title: '段落', icon: null, before: '\n\n', sample: '', mode: 'block' },
+                  onChange,
+                )
+              }
+            />
+          </>
           <Divider type="vertical" />
-          {toolbarActions.slice(0, 6).map((action) => (
-            <Tooltip title={action.title} key={action.key}>
-              <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown(action)} />
-            </Tooltip>
-          ))}
-          <Divider type="vertical" />
-          {toolbarActions.slice(6).map((action) => (
-            <Tooltip title={action.title} key={action.key}>
-              <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMarkdown(action)} />
-            </Tooltip>
-          ))}
+          <>
+            {AGREEMENT_MARKDOWN_TOOLBAR_LEFT_ACTIONS.map((action) => (
+              <Tooltip title={action.title} key={action.key}>
+                <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAgreementMarkdown(markdown, getTextArea, action, onChange)} />
+              </Tooltip>
+            ))}
+            <Divider type="vertical" />
+            {AGREEMENT_MARKDOWN_TOOLBAR_RIGHT_ACTIONS.map((action) => (
+              <Tooltip title={action.title} key={action.key}>
+                <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAgreementMarkdown(markdown, getTextArea, action, onChange)} />
+              </Tooltip>
+            ))}
+          </>
         </div>
         <div className="agreement-markdown-editor__mode">
           <Button.Group size="small">
@@ -162,13 +205,13 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
           />
         ) : (
           <div className="agreement-markdown-editor__preview">
-          {markdown.trim() ? (
-            <div className="agreement-markdown-editor__preview-content">
-              <XMarkdown content={markdown} openLinksInNewTab escapeRawHtml />
-            </div>
-          ) : (
-            <div className="agreement-markdown-editor__preview-empty">预览会显示在这里</div>
-          )}
+            {markdown.trim() ? (
+              <div className="agreement-markdown-editor__preview-content">
+                <XMarkdown content={markdown} openLinksInNewTab escapeRawHtml />
+              </div>
+            ) : (
+              <div className="agreement-markdown-editor__preview-empty">预览会显示在这里</div>
+            )}
           </div>
         )}
       </div>

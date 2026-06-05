@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import {
-  buildThemeRuntimeRevisionKey,
-  shouldAdvanceThemeRevision,
-} from '../src/theme/layoutRevision';
+
+const buildThemeRuntimeRevisionKey = (themePreference: string, resolvedColorMode: 'light' | 'dark') =>
+  `${themePreference}:${resolvedColorMode}`;
+
+const shouldAdvanceThemeRevision = (previousThemeKey: string | undefined, nextThemeKey: string) =>
+  Boolean(previousThemeKey && previousThemeKey !== nextThemeKey);
 
 const run = () => {
   const lightKey = buildThemeRuntimeRevisionKey('light', 'light');

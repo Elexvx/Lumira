@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeLoginInputValue, shouldBlockLoginInputKey, shouldBlockLoginInputPaste } from './loginInputGuards';
+import { sanitizeLoginInputValue, shouldBlockLoginInputKey, shouldBlockLoginInputPaste } from './hooks/useLoginFlowRuntime';
 
 describe('loginInputGuards', () => {
   it('removes unsupported account characters while keeping only conservative email-safe symbols', () => {

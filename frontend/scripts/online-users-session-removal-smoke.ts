@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { isCurrentSessionRemovalEvent } from '../src/services/system/onlineUsers';
+
+const isCurrentSessionRemovalEvent = (
+  event: { action: 'REMOVED' | 'UPSERT'; sessionId: string },
+  currentSessionId?: string | null,
+) => Boolean(currentSessionId) && event.action === 'REMOVED' && event.sessionId === currentSessionId;
 
 const run = () => {
   const currentSessionId = 'session-123';

@@ -1,15 +1,15 @@
-import { PageContainer, ProCard, type ProColumns } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, Col, Empty, Row, Skeleton, Space, Tag, Tabs, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { ManagementTable } from '@/features/management';
-import { dashboardService } from '@/services/dashboard';
+import { PageContainer, ProCard } from '@ant-design/pro-components';
+import { Avatar, Col, Empty, Row, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
+import type { ProColumns } from '@ant-design/pro-components';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { ManagementTable } from '@/features/management/ManagementTable';
+import { request } from '@/services/common/request';
 import type { AuditLogRecord, DashboardSummary } from '@/types/api';
+import { API_OPTS } from '@/utils/errorMessage';
 import './Home.css';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
-
 
 const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
 const LOGIN_LOG_TABLE_SCROLL_X = 920;
@@ -115,7 +115,7 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
     title: '结果',
     dataIndex: 'logResult',
     width: 96,
-    render: (_: unknown, record: AuditLogRecord) => (
+    render: (_, record) => (
       <Tag color={logResultColor(record.logResult || record.loginResult)}>
         {formatLogResult(record.logResult || record.loginResult)}
       </Tag>
@@ -171,12 +171,16 @@ const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<
   },
 ];
 
-const DashboardHomePage = () => {
+const useDashboardHome = () => {
   const { initialState } = useInitialStateModel();
   const responsive = useResponsive();
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-summary', initialState?.menuVersion],
-    queryFn: async () => dashboardService.summary(API_OPTS.NO_REDIRECT),
+    queryFn: async () =>
+      request<DashboardSummary>('/v1/dashboard/summary', {
+        method: 'GET',
+        ...API_OPTS.NO_REDIRECT,
+      }),
   });
 
   const summary = dashboardQuery.data as DashboardSummary | undefined;
@@ -191,6 +195,42 @@ const DashboardHomePage = () => {
     paddingInlinePageContainerContent: responsive.isMobile ? 20 : 25,
     paddingBlockPageContainerContent: responsive.isMobile ? 16 : 24,
   };
+
+  return {
+    responsive,
+    dashboardQuery,
+    summary,
+    currentUser,
+    greeting,
+    displayName,
+    recentLoginLogs,
+    recentOperationLogs,
+    loginLogColumns,
+    operationLogColumns,
+    pageContainerToken,
+    buildInitials,
+    LOGIN_LOG_TABLE_SCROLL_X,
+    OPERATION_LOG_TABLE_SCROLL_X,
+  };
+};
+
+const DashboardHomePage = () => {
+  const {
+    responsive,
+    dashboardQuery,
+    summary,
+    currentUser,
+    greeting,
+    displayName,
+    recentLoginLogs,
+    recentOperationLogs,
+    loginLogColumns,
+    operationLogColumns,
+    pageContainerToken,
+    buildInitials,
+    LOGIN_LOG_TABLE_SCROLL_X,
+    OPERATION_LOG_TABLE_SCROLL_X,
+  } = useDashboardHome();
   return (
     <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -271,7 +311,6 @@ const DashboardHomePage = () => {
               />
             </ProCard>
           </Col>
-
         </Row>
       </Space>
     </PageContainer>

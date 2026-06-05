@@ -1,9 +1,10 @@
-import { ProConfigProvider } from '@ant-design/pro-components';
+import { ProConfigProvider, enUSIntl, zhCNIntl, type IntlType } from '@ant-design/pro-components';
 import { App as AntdApp, ConfigProvider } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { resolveAntdLocale } from '@/i18n/antdLocale';
-import { resolveProComponentsIntl } from '@/i18n/proComponentsIntl';
+import { resolveRuntimeLocale } from '@/i18n/locale';
 import { buildAntdThemeConfig, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
 import {
@@ -21,6 +22,34 @@ interface ThemePreferenceContextValue {
 }
 
 const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null);
+
+const TABLE_TOOLBAR_LABELS: Record<string, Record<string, string>> = {
+  'zh-CN': {
+    'tableToolBar.density': '间距',
+    'tableToolBar.columnDisplay': '设置展示字段',
+    'tableToolBar.columnSetting': '设置展示字段',
+  },
+  'en-US': {
+    'tableToolBar.density': 'Spacing',
+    'tableToolBar.columnDisplay': 'Display fields',
+    'tableToolBar.columnSetting': 'Display fields',
+  },
+};
+
+const withTableToolbarLabels = (intl: IntlType, labels: Record<string, string>): IntlType => ({
+  ...intl,
+  getMessage: (id: string, defaultMessage?: string) => labels[id] || intl.getMessage(id, defaultMessage || id),
+});
+
+const resolveAntdLocale = () => (resolveRuntimeLocale().startsWith('en') ? enUS : zhCN);
+
+const resolveProComponentsIntl = () => {
+  const locale = resolveRuntimeLocale();
+  const baseIntl = locale.startsWith('en') ? enUSIntl : zhCNIntl;
+  const labels = locale.startsWith('en') ? TABLE_TOOLBAR_LABELS['en-US'] : TABLE_TOOLBAR_LABELS['zh-CN'];
+
+  return withTableToolbarLabels(baseIntl, labels);
+};
 
 export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) => {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() =>

@@ -1,11 +1,80 @@
+import React from 'react';
+import { AppstoreOutlined, PaperClipOutlined, RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
-import { PaperClipOutlined, ThunderboltOutlined, AppstoreOutlined, RobotOutlined } from '@ant-design/icons';
 import { Suggestion, Sender as XSender } from '@ant-design/x';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FileCard } from '@ant-design/x';
+import type { FileCardProps } from '@ant-design/x';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import type { ReactNode } from 'react';
+import type { SenderProps, SuggestionProps } from '@ant-design/x';
 import type { AiEmployeeRecord } from '@/types/api';
 import type { ChatSession } from '../types';
-import { AI_ATTACHMENT_ACCEPT, AI_ATTACHMENT_EXTENSIONS, isAllowedAiAttachment } from '../utils';
-import { renderAttachmentCardList } from './menuBuilders';
+
+const AI_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
+const AI_ATTACHMENT_ACCEPT = AI_ATTACHMENT_EXTENSIONS.map((extension) => `.${extension}`).join(',');
+
+const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowerCase() || '';
+
+const isAllowedAiAttachment = (file: File) => AI_ATTACHMENT_EXTENSIONS.includes(getFileExtension(file.name));
+
+const getAttachmentFileIcon = (attachment: { fileExtension?: string | null; originalFileName: string }): FileCardProps['icon'] => {
+  const extension = (attachment.fileExtension || getFileExtension(attachment.originalFileName)).toLowerCase();
+  if (['xls', 'xlsx'].includes(extension)) return 'excel';
+  if (['doc', 'docx'].includes(extension)) return 'word';
+  if (['ppt', 'pptx'].includes(extension)) return 'ppt';
+  if (extension === 'pdf') return 'pdf';
+  if (extension === 'md') return 'markdown';
+  if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(extension)) return 'image';
+  return 'default';
+};
+
+const getAttachmentFileType = (attachment: { fileExtension?: string | null; originalFileName: string }): FileCardProps['type'] => {
+  const extension = (attachment.fileExtension || getFileExtension(attachment.originalFileName)).toLowerCase();
+  if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(extension)) return 'image';
+  return 'file';
+};
+
+const renderAttachmentCardList = (
+  attachments: Array<{
+    fileId: number;
+    originalFileName: string;
+    fileExtension?: string | null;
+    fileSizeBytes?: number | null;
+    fileSizeLabel?: string | null;
+    publicUrl?: string | null;
+    previewUrl?: string | null;
+    downloadUrl?: string | null;
+  }>,
+  options?: {
+    removable?: boolean;
+    onRemove?: (fileId: number) => void;
+    className?: string;
+  },
+) =>
+  (
+    <FileCard.List
+      className={options?.className}
+      items={attachments.map((attachment) => ({
+        key: attachment.fileId,
+        name: attachment.originalFileName,
+        byte: attachment.fileSizeBytes ?? undefined,
+        description: attachment.fileSizeLabel || undefined,
+        icon: getAttachmentFileIcon(attachment),
+        type: getAttachmentFileType(attachment),
+        src: attachment.previewUrl || attachment.publicUrl || attachment.downloadUrl || undefined,
+      }))}
+      size="small"
+      removable={options?.removable}
+      overflow="wrap"
+      onRemove={(item) => {
+        const fileId = Number(item.key);
+        if (Number.isFinite(fileId)) {
+          options?.onRemove?.(fileId);
+        }
+      }}
+    />
+  );
 
 export interface ComposerProps {
   employees: AiEmployeeRecord[];
@@ -19,6 +88,145 @@ export interface ComposerProps {
   onUploadFiles: (files: File[]) => void;
   onRemoveAttachment: (fileId: number) => void;
 }
+
+const ComposerPendingAttachments = ({
+  activeSession,
+  sending,
+  readOnly,
+  onRemoveAttachment,
+}: {
+  activeSession: ChatSession | null;
+  sending: boolean;
+  readOnly?: boolean;
+  onRemoveAttachment: (fileId: number) => void;
+}) => {
+  if (!activeSession?.pendingAttachments.length) {
+    return null;
+  }
+
+  return (
+    <div className="saas-ai-assistant-composer__header">
+      <div className="saas-ai-assistant-composer__attachments">
+        {renderAttachmentCardList(activeSession.pendingAttachments, {
+          removable: !sending && !readOnly,
+          onRemove: onRemoveAttachment,
+          className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
+        })}
+      </div>
+    </div>
+  );
+};
+
+const ComposerFooterControls = ({
+  senderKey,
+  inputValue,
+  deepThink,
+  readOnly,
+  activeSessionExists,
+  sending,
+  attachmentUploading,
+  selectedAgentSkill,
+  selectedAgentTitle,
+  agentControlLabel,
+  agentSuggestionItems,
+  conversationAgentItems,
+  onInputChange,
+  onSubmit,
+  onPasteFiles,
+  onOuterSuggestionSelect,
+  onConversationAgentSelect,
+  onUploadClick,
+  onDeepThinkChange,
+}: {
+  senderKey: string;
+  inputValue: string;
+  deepThink: boolean;
+  readOnly?: boolean;
+  activeSessionExists: boolean;
+  sending: boolean;
+  attachmentUploading: boolean;
+  selectedAgentSkill: SenderProps['skill'];
+  selectedAgentTitle: string;
+  agentControlLabel: string;
+  agentSuggestionItems: SuggestionProps<{ keyword?: string }>['items'];
+  conversationAgentItems: Array<{ label: ReactNode; value: string; icon?: ReactNode; extra?: ReactNode }>;
+  onInputChange: (nextValue: string) => void;
+  onSubmit: NonNullable<SenderProps['onSubmit']>;
+  onPasteFiles: (files: File[]) => void;
+  onOuterSuggestionSelect: NonNullable<SuggestionProps<{ keyword?: string }>['onSelect']>;
+  onConversationAgentSelect: (value: string) => void;
+  onUploadClick: () => void;
+  onDeepThinkChange: (nextValue: boolean) => void;
+}) => (
+  <Suggestion items={agentSuggestionItems} onSelect={onOuterSuggestionSelect} rootClassName="saas-ai-assistant-agent-suggestion">
+    {({ onTrigger }) => (
+      <XSender
+        key={senderKey}
+        rootClassName="saas-ai-assistant-sender"
+        loading={sending}
+        readOnly={readOnly}
+        disabled={readOnly || !activeSessionExists}
+        autoSize={{ minRows: 1, maxRows: 5 }}
+        submitType="enter"
+        value={inputValue}
+        skill={selectedAgentSkill}
+        onChange={(nextValue) => {
+          onInputChange(nextValue);
+          const slashMatch = nextValue.match(/(?:^|\s)\/([^\s/]*)$/);
+          onTrigger(slashMatch ? { keyword: slashMatch[1] } : false);
+        }}
+        onSubmit={onSubmit}
+        onPasteFile={(files) => onPasteFiles(Array.from(files))}
+        placeholder={readOnly ? '当前为只读分享页面' : activeSessionExists ? '向我提问吧' : '暂无可用对话'}
+        prefix={false}
+        footer={(_, { components }) => {
+          const { SendButton, LoadingButton } = components;
+          return (
+            <div className="saas-ai-assistant-composer__footer">
+              <div className="saas-ai-assistant-composer__tools">
+                <Button
+                  type="text"
+                  icon={<PaperClipOutlined />}
+                  aria-label="上传附件"
+                  title="上传附件"
+                  loading={attachmentUploading}
+                  disabled={readOnly || sending || attachmentUploading || !activeSessionExists}
+                  onClick={onUploadClick}
+                />
+                <XSender.Switch
+                  icon={<ThunderboltOutlined />}
+                  value={deepThink}
+                  disabled={readOnly || sending || !activeSessionExists}
+                  checkedChildren="思考"
+                  unCheckedChildren="思考"
+                  onChange={(nextValue) => onDeepThinkChange(Boolean(nextValue))}
+                />
+                <Suggestion items={conversationAgentItems} onSelect={onConversationAgentSelect}>
+                  {({ onTrigger: onAgentTrigger, onKeyDown }) => (
+                    <Button
+                      className="saas-ai-assistant-composer__agent-button"
+                      icon={<AppstoreOutlined />}
+                      type={selectedAgentSkill ? 'primary' : 'default'}
+                      disabled={readOnly || sending || !activeSessionExists}
+                      title={selectedAgentTitle}
+                      onClick={() => onAgentTrigger({})}
+                      onKeyDown={onKeyDown}
+                    >
+                      <span className="saas-ai-assistant-composer__agent-label">{agentControlLabel}</span>
+                    </Button>
+                  )}
+                </Suggestion>
+              </div>
+              <div className="saas-ai-assistant-composer__actions">
+                {sending ? <LoadingButton /> : <SendButton disabled={!inputValue.trim()} />}
+              </div>
+            </div>
+          );
+        }}
+      />
+    )}
+  </Suggestion>
+);
 
 export const Composer: React.FC<ComposerProps> = ({
   employees,
@@ -36,12 +244,13 @@ export const Composer: React.FC<ComposerProps> = ({
   const [senderKey, setSenderKey] = useState(0);
   const [deepThink, setDeepThink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  
-  const selectedEmployeeIds = useMemo(() => selectedEmployees.map((e) => e.id), [selectedEmployees]);
+  const selectedEmployeeIds = useMemo(() => selectedEmployees.map((employee) => employee.id), [selectedEmployees]);
   const firstSelectedEmployee = selectedEmployees[0] || null;
+
   const agentButtonLabel = selectedEmployees.length > 1
     ? `${selectedEmployees.length} 个助手`
     : firstSelectedEmployee?.nickname?.trim() || firstSelectedEmployee?.username || '助手';
+
   const agentControlLabel = selectedEmployees.length ? '切换助手' : '助手';
 
   const agentItems = useMemo(
@@ -56,7 +265,7 @@ export const Composer: React.FC<ComposerProps> = ({
         })),
     [employees],
   );
-  
+
   const conversationAgentItems = useMemo(
     () => [
       {
@@ -69,7 +278,7 @@ export const Composer: React.FC<ComposerProps> = ({
     ],
     [agentItems],
   );
-  
+
   const agentSuggestionItems = useMemo(
     () => (info?: { keyword?: string }) => {
       const keyword = info?.keyword?.trim().toLowerCase();
@@ -90,51 +299,71 @@ export const Composer: React.FC<ComposerProps> = ({
       }
     : undefined;
 
+  const selectedAgentTitle = selectedEmployees.length
+    ? `当前助手：${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join('、')}`
+    : '选择助手';
+
+  const handleAgentSuggestionSelect = useCallback(
+    (value: string) => {
+      if (value === 'general') {
+        onAgentsChange([]);
+        setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
+        return;
+      }
+
+      const nextEmployeeId = Number(value);
+      if (Number.isFinite(nextEmployeeId)) {
+        const nextEmployeeIds = selectedEmployeeIds.includes(nextEmployeeId)
+          ? selectedEmployeeIds
+          : [...selectedEmployeeIds, nextEmployeeId];
+        onAgentsChange(nextEmployeeIds);
+        setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
+      }
+    },
+    [onAgentsChange, selectedEmployeeIds],
+  );
+
+  const handleFiles = useCallback(
+    (files: File[]) => {
+      const safeFiles = files.filter(isAllowedAiAttachment);
+      const blockedCount = files.length - safeFiles.length;
+      if (blockedCount > 0) {
+        message.warning('已拦截不支持或存在风险的文件格式');
+      }
+      if (!safeFiles.length) {
+        message.error(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
+        return;
+      }
+      onUploadFiles(safeFiles);
+    },
+    [onUploadFiles],
+  );
+  const handleFileInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (files.length) {
+      handleFiles(files);
+    }
+  }, [handleFiles]);
+
   useEffect(() => {
     setInputValue('');
     setSenderKey((current) => current + 1);
   }, [activeSession?.id, readOnly]);
 
-  const handleFiles = (files: File[]) => {
-    const safeFiles = files.filter(isAllowedAiAttachment);
-    const blockedCount = files.length - safeFiles.length;
-    if (blockedCount > 0) {
-      message.warning('已拦截不支持或存在风险的文件格式');
-    }
-    if (!safeFiles.length) {
-      message.error(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
-      return;
-    }
-    onUploadFiles(safeFiles);
-  };
-
-  const handleSubmit = (messageText: string) => {
-    const normalizedMessage = messageText.trim();
-    if (!normalizedMessage || normalizedMessage === '请') {
-      message.warning('请输入要处理的任务或问题');
-      return;
-    }
-    onSend(normalizedMessage, { enableThinking: deepThink, employeeIds: selectedEmployeeIds });
-    setInputValue('');
-    setSenderKey((current) => current + 1);
-  };
-
-  const handleAgentSuggestionSelect = (value: string) => {
-    if (value === 'general') {
-      onAgentsChange([]);
-      setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
-      return;
-    }
-
-    const nextEmployeeId = Number(value);
-    if (Number.isFinite(nextEmployeeId)) {
-      const nextEmployeeIds = selectedEmployeeIds.includes(nextEmployeeId)
-        ? selectedEmployeeIds
-        : [...selectedEmployeeIds, nextEmployeeId];
-      onAgentsChange(nextEmployeeIds);
-      setInputValue((current) => current.replace(/(?:^|\s)\/[^\s/]*$/, '').trimStart());
-    }
-  };
+  const handleSubmit = useCallback(
+    (messageText: string) => {
+      const normalizedMessage = messageText.trim();
+      if (!normalizedMessage || normalizedMessage === '请') {
+        message.warning('请输入要处理的任务或问题');
+        return;
+      }
+      onSend(normalizedMessage, { enableThinking: deepThink, employeeIds: selectedEmployeeIds });
+      setInputValue('');
+      setSenderKey((current) => current + 1);
+    },
+    [deepThink, onSend, selectedEmployeeIds],
+  );
 
   return (
     <div className="saas-ai-assistant-composer">
@@ -144,93 +373,35 @@ export const Composer: React.FC<ComposerProps> = ({
         accept={AI_ATTACHMENT_ACCEPT}
         multiple
         hidden
-        onChange={(event) => {
-          const files = Array.from(event.target.files || []);
-          event.target.value = '';
-          if (files.length) handleFiles(files);
-        }}
+        onChange={handleFileInputChange}
       />
-      <Suggestion items={agentSuggestionItems} onSelect={handleAgentSuggestionSelect} rootClassName="saas-ai-assistant-agent-suggestion">
-        {({ onTrigger }) => (
-          <XSender
-            key={senderKey}
-            rootClassName="saas-ai-assistant-sender"
-            loading={sending}
-            readOnly={readOnly}
-            disabled={readOnly || !activeSession}
-            autoSize={{ minRows: 1, maxRows: 5 }}
-            submitType="enter"
-            value={inputValue}
-            skill={selectedAgentSkill}
-            onChange={(nextValue) => {
-              setInputValue(nextValue);
-              const slashMatch = nextValue.match(/(?:^|\s)\/([^\s/]*)$/);
-              onTrigger(slashMatch ? { keyword: slashMatch[1] } : false);
-            }}
-            onSubmit={handleSubmit}
-            onPasteFile={(files) => handleFiles(Array.from(files))}
-            placeholder={readOnly ? '当前为只读分享页面' : activeSession ? '向我提问吧' : '暂无可用对话'}
-            header={
-              activeSession?.pendingAttachments.length ? (
-                <div className="saas-ai-assistant-composer__header">
-                  <div className="saas-ai-assistant-composer__attachments">
-                    {renderAttachmentCardList(activeSession.pendingAttachments, {
-                      removable: !sending && !readOnly,
-                      onRemove: onRemoveAttachment,
-                      className: 'saas-ai-assistant-file-card-list saas-ai-assistant-file-card-list--pending',
-                    })}
-                  </div>
-                </div>
-              ) : false
-            }
-            prefix={false}
-            footer={(_, { components }) => {
-              const { SendButton, LoadingButton } = components;
-              return (
-                <div className="saas-ai-assistant-composer__footer">
-                  <div className="saas-ai-assistant-composer__tools">
-                    <Button
-                      type="text"
-                      icon={<PaperClipOutlined />}
-                      aria-label="上传附件"
-                      title={`上传附件，支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')}`}
-                      loading={attachmentUploading}
-                      disabled={readOnly || sending || attachmentUploading || !activeSession}
-                      onClick={() => fileInputRef.current?.click()}
-                    />
-                    <XSender.Switch
-                      icon={<ThunderboltOutlined />}
-                      value={deepThink}
-                      disabled={readOnly || sending || !activeSession}
-                      checkedChildren="思考"
-                      unCheckedChildren="思考"
-                      onChange={(nextValue) => setDeepThink(Boolean(nextValue))}
-                    />
-                    <Suggestion items={conversationAgentItems} onSelect={handleAgentSuggestionSelect}>
-                      {({ onTrigger, onKeyDown }) => (
-                        <Button
-                          className="saas-ai-assistant-composer__agent-button"
-                          icon={<AppstoreOutlined />}
-                          type={selectedEmployees.length ? 'primary' : 'default'}
-                          disabled={readOnly || sending || !activeSession}
-                          title={selectedEmployees.length ? `当前助手：${selectedEmployees.map((e) => e.nickname?.trim() || e.username).join('、')}` : '选择助手'}
-                          onClick={() => onTrigger({})}
-                          onKeyDown={onKeyDown}
-                        >
-                          <span className="saas-ai-assistant-composer__agent-label">{agentControlLabel}</span>
-                        </Button>
-                      )}
-                    </Suggestion>
-                  </div>
-                  <div className="saas-ai-assistant-composer__actions">
-                    {sending ? <LoadingButton /> : <SendButton disabled={!inputValue.trim()} />}
-                  </div>
-                </div>
-              );
-            }}
-          />
-        )}
-      </Suggestion>
+      <ComposerPendingAttachments
+        activeSession={activeSession}
+        sending={sending}
+        readOnly={readOnly}
+        onRemoveAttachment={onRemoveAttachment}
+      />
+      <ComposerFooterControls
+        senderKey={String(senderKey)}
+        inputValue={inputValue}
+        deepThink={deepThink}
+        readOnly={readOnly}
+        activeSessionExists={Boolean(activeSession)}
+        sending={sending}
+        attachmentUploading={attachmentUploading}
+        selectedAgentSkill={selectedAgentSkill}
+        selectedAgentTitle={selectedAgentTitle}
+        agentControlLabel={agentControlLabel}
+        agentSuggestionItems={agentSuggestionItems}
+        conversationAgentItems={conversationAgentItems}
+        onInputChange={setInputValue}
+        onSubmit={handleSubmit}
+        onPasteFiles={(files) => handleFiles(files)}
+        onOuterSuggestionSelect={handleAgentSuggestionSelect}
+        onConversationAgentSelect={handleAgentSuggestionSelect}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onDeepThinkChange={(nextValue) => setDeepThink(Boolean(nextValue))}
+      />
     </div>
   );
 };

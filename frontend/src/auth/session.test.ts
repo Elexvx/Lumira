@@ -1,26 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  refreshToken: vi.fn(),
-  logout: vi.fn(),
+  request: vi.fn(),
   getRefreshToken: vi.fn(),
   setTokens: vi.fn(),
   clearTokenState: vi.fn(),
   historyReplace: vi.fn(),
 }));
 
-vi.mock('@/services/auth', () => ({
-  authService: {
-    refreshToken: mocks.refreshToken,
-    currentUser: vi.fn(),
-    logout: mocks.logout,
-  },
-}));
-
-vi.mock('@/services/system', () => ({
-  systemService: {
-    securitySettings: vi.fn(),
-  },
+vi.mock('@/services/common/request', () => ({
+  request: mocks.request,
 }));
 
 vi.mock('@/auth/token', () => ({
@@ -59,10 +48,17 @@ vi.mock('@/auth/clientRuntimeState', () => ({
   clearClientRuntimeState: vi.fn(),
 }));
 
-vi.mock('@/auth/securitySettings', () => ({
+vi.mock('@/auth/securitySettingsTypes', () => ({
   DEFAULT_SECURITY_SETTINGS: {},
-  getStoredSecuritySettings: vi.fn(() => null),
+}));
+
+vi.mock('@/auth/securitySettingsNormalize', () => ({
   normalizeSecuritySettings: vi.fn((value) => value || {}),
+}));
+
+vi.mock('@/auth/securitySettingsStorage', () => ({
+  clearSecuritySettings: vi.fn(),
+  getStoredSecuritySettings: vi.fn(() => null),
   persistSecuritySettings: vi.fn(),
 }));
 
@@ -77,8 +73,7 @@ vi.mock('@/i18n/locale', () => ({
 
 describe('tryRefreshToken', () => {
   beforeEach(() => {
-    mocks.refreshToken.mockReset();
-    mocks.logout.mockReset();
+    mocks.request.mockReset();
     mocks.getRefreshToken.mockReset();
     mocks.setTokens.mockReset();
     mocks.clearTokenState.mockReset();
@@ -87,7 +82,7 @@ describe('tryRefreshToken', () => {
   });
 
   it('shares one in-flight refresh request across concurrent callers', async () => {
-    const { tryRefreshToken } = await import('@/auth/session');
+    const { tryRefreshToken } = await import('@/auth/sessionLifecycle');
     let resolveRefresh: ((value: {
       accessToken: string;
       refreshToken: string;
@@ -95,16 +90,19 @@ describe('tryRefreshToken', () => {
       expiresIn: number;
     }) => void) | undefined;
 
-    mocks.refreshToken.mockImplementation(
-      () => new Promise((resolve) => {
+    mocks.request.mockImplementation((url: string) => {
+      if (url !== '/v1/auth/refresh-token') {
+        return Promise.reject(new Error(`Unexpected request: ${url}`));
+      }
+      return new Promise((resolve) => {
         resolveRefresh = resolve;
-      }),
-    );
+      });
+    });
 
     const first = tryRefreshToken();
     const second = tryRefreshToken();
 
-    expect(mocks.refreshToken).toHaveBeenCalledTimes(1);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
 
     resolveRefresh?.({
       accessToken: 'access-next',
@@ -121,19 +119,23 @@ describe('tryRefreshToken', () => {
 
 describe('performLogout', () => {
   beforeEach(() => {
-    mocks.refreshToken.mockReset();
-    mocks.logout.mockReset();
+    mocks.request.mockReset();
     mocks.clearTokenState.mockReset();
     mocks.historyReplace.mockReset();
   });
 
   it('clears local session and redirects without waiting for server logout', async () => {
-    const { performLogout } = await import('@/auth/session');
-    mocks.logout.mockImplementation(() => new Promise(() => undefined));
+    const { performLogout } = await import('@/auth/sessionLifecycle');
+    mocks.request.mockImplementation((url: string) => {
+      if (url !== '/v1/auth/logout') {
+        return Promise.reject(new Error(`Unexpected request: ${url}`));
+      }
+      return new Promise(() => undefined);
+    });
 
     await performLogout();
 
-    expect(mocks.logout).toHaveBeenCalledTimes(1);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
     expect(mocks.clearTokenState).toHaveBeenCalledTimes(1);
     expect(mocks.historyReplace).toHaveBeenCalledWith('/user/login');
   });

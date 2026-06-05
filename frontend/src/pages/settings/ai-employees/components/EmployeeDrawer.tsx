@@ -1,0 +1,241 @@
+import { Alert, Avatar, Button, Card, Checkbox, Col, Form, Input, Radio, Row, Select, Space, Tag, Tabs, Typography } from 'antd';
+import type { FormInstance } from 'antd';
+import type { ReactNode } from 'react';
+import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import { ManagementDrawer } from '@/features/management/ManagementDrawer';
+import type { AiEmployeeCapabilityRecord } from '@/types/api';
+
+export type AvatarOption = {
+  key: string;
+  label: string;
+  color: string;
+  icon: ReactNode;
+};
+
+export type EmployeeFormValues = {
+  username?: string;
+  nickname?: string;
+  position?: string;
+  avatarKey?: string;
+  description?: string;
+  greeting?: string;
+  systemPrompt?: string;
+  defaultLlmServiceId?: number;
+};
+
+interface EmployeeDrawerProps {
+  open: boolean;
+  title: string;
+  form: FormInstance<EmployeeFormValues>;
+  employeePromptTemplate: string;
+  avatarOptions: AvatarOption[];
+  llmServiceOptions: Array<{ label: string; value: number }>;
+  knowledgeBaseOptions: Array<{ label: string; value: number }>;
+  employeeKnowledgeBaseIds: number[];
+  employeeCapabilities: AiEmployeeCapabilityRecord[];
+  employeeCapabilityModes: Record<string, AiEmployeeCapabilityRecord['permissionMode']>;
+  editingId?: number | null;
+  saving: boolean;
+  canSave: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  onKnowledgeBaseIdsChange: (values: number[]) => void;
+  onCapabilityModeChange: (capabilityCode: string, checked: boolean, readOnly: boolean) => void;
+}
+
+const DEFAULT_AVATAR_KEY = 'avatar-purple-01';
+
+const groupCapabilities = (capabilities: AiEmployeeCapabilityRecord[]) =>
+  capabilities.reduce<Record<string, AiEmployeeCapabilityRecord[]>>((result, capability) => {
+    const groupName = capability.category || '其他能力';
+    result[groupName] = [...(result[groupName] || []), capability];
+    return result;
+  }, {});
+
+export const EmployeeDrawer = ({
+  open,
+  title,
+  form,
+  employeePromptTemplate,
+  avatarOptions,
+  llmServiceOptions,
+  knowledgeBaseOptions,
+  employeeKnowledgeBaseIds,
+  employeeCapabilities,
+  employeeCapabilityModes,
+  editingId,
+  saving,
+  canSave,
+  onClose,
+  onSave,
+  onKnowledgeBaseIdsChange,
+  onCapabilityModeChange,
+}: EmployeeDrawerProps) => {
+  const groupedCapabilities = groupCapabilities(employeeCapabilities);
+
+  return (
+    <ManagementDrawer
+      title={title}
+      open={open}
+      onClose={onClose}
+      width={STANDARD_DRAWER_WIDTH}
+      footerActions={[
+        { key: 'cancel', label: '取消', onClick: onClose },
+        { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSave, onClick: onSave },
+      ]}
+      >
+      <Form layout="vertical" form={form} initialValues={{ avatarKey: DEFAULT_AVATAR_KEY, systemPrompt: employeePromptTemplate }}>
+        <Tabs
+          defaultActiveKey="basic"
+          items={[
+            {
+              key: 'basic',
+              label: '员工资料',
+              children: (
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label="用户名"
+                        name="username"
+                        rules={[
+                          { required: true, message: '请输入用户名' },
+                          { pattern: /^[a-z][a-zA-Z0-9-]*$/, message: '用户名需为 lowerCamelCase 或短横线格式' },
+                        ]}
+                      >
+                        <Input placeholder="例如：aiAssistant" />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="昵称" name="nickname" rules={[{ required: true, message: '请输入昵称' }]}>
+                        <Input placeholder="例如：小助手" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="职位" name="position">
+                        <Input placeholder="例如：智能客服" />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="默认 LLM 服务" name="defaultLlmServiceId">
+                        <Select allowClear options={llmServiceOptions} placeholder="请选择默认模型服务（可选）" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Form.Item label="头像" name="avatarKey">
+                    <Radio.Group>
+                      <Space wrap>
+                        {avatarOptions.map((option) => (
+                          <Radio key={option.key} value={option.key}>
+                            <Space direction="vertical" align="center" size={0}>
+                              <Avatar style={{ backgroundColor: option.color }} icon={option.icon} />
+                            </Space>
+                          </Radio>
+                        ))}
+                      </Space>
+                    </Radio.Group>
+                  </Form.Item>
+                  <Form.Item label="简介" name="description">
+                    <Input.TextArea rows={3} placeholder="简单说明这个 AI 员工的职责与边界" />
+                  </Form.Item>
+                  <Form.Item label="问候语" name="greeting">
+                    <Input.TextArea rows={2} placeholder="用户打开对话时展示的欢迎语" />
+                  </Form.Item>
+                </Space>
+              ),
+            },
+            {
+              key: 'prompt',
+              label: '人物设定',
+              children: (
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Alert type="info" showIcon message="AI 模型的系统提示词，决定了‘我’是谁，遵循哪些要求来工作和完成任务。" />
+                  <Space wrap>
+                    <Button
+                      onClick={() => {
+                        form.setFieldValue('systemPrompt', '');
+                      }}
+                    >
+                      清空
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        form.setFieldValue('systemPrompt', employeePromptTemplate);
+                      }}
+                    >
+                      恢复默认模板
+                    </Button>
+                  </Space>
+                  <Form.Item name="systemPrompt" label="systemPrompt">
+                    <Input.TextArea rows={12} placeholder="请输入系统提示词" />
+                  </Form.Item>
+                </Space>
+              ),
+            },
+            {
+              key: 'security',
+              label: '能力边界',
+              children: (
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="能力边界按每个 AI 员工独立配置；查看类能力只允许访问或禁用，增删改启停类能力只允许允许或禁用，写入动作仍会二次确认。"
+                  />
+                  <Form.Item label="绑定知识库">
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                      placeholder="选择该 AI 员工回答时可引用的知识库"
+                      options={knowledgeBaseOptions}
+                      value={employeeKnowledgeBaseIds}
+                      onChange={(values) => onKnowledgeBaseIdsChange(values.map(Number))}
+                    />
+                  </Form.Item>
+                  {editingId ? (
+                    Object.entries(groupedCapabilities).map(([groupName, items]) => (
+                      <Card key={groupName} size="small" title={groupName}>
+                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          {items.map((capability) => {
+                            const checked = (employeeCapabilityModes[capability.capabilityCode] || capability.permissionMode) !== 'deny';
+                            return (
+                              <div key={capability.capabilityCode} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                <Space direction="vertical" size={2}>
+                                  <Space wrap>
+                                    <Typography.Text strong>{capability.capabilityName}</Typography.Text>
+                                    <Tag>{capability.capabilityCode}</Tag>
+                                    {capability.riskLevel ? <Tag color={capability.riskLevel === 'HIGH' ? 'red' : capability.riskLevel === 'MEDIUM' ? 'orange' : 'green'}>{capability.riskLevel}</Tag> : null}
+                                    {capability.needConfirm ? <Tag color="volcano">二次确认</Tag> : null}
+                                  </Space>
+                                  <Typography.Text type="secondary">{capability.description || '暂无描述'}</Typography.Text>
+                                </Space>
+                                <Checkbox
+                                  checked={checked}
+                                  onChange={(event) => {
+                                    onCapabilityModeChange(capability.capabilityCode, event.target.checked, Boolean(capability.readOnly));
+                                  }}
+                                >
+                                  {capability.readOnly ? '可查看' : '可操作'}
+                                </Checkbox>
+                              </div>
+                            );
+                          })}
+                        </Space>
+                      </Card>
+                    ))
+                  ) : (
+                    <Alert type="warning" showIcon message="请先创建 AI 员工，保存后再编辑它的能力边界。" />
+                  )}
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </Form>
+    </ManagementDrawer>
+  );
+};

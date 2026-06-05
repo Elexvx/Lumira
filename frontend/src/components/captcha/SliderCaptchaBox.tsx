@@ -1,6 +1,6 @@
-import SliderCaptcha, { type VerifyParam } from 'rc-slider-captcha';
-import { useRef, useState } from 'react';
-import { systemService } from '@/services/system';
+import SliderCaptcha from 'rc-slider-captcha';
+import { useCallback, useRef, useState } from 'react';
+import { request } from '@/services/common/request';
 import type { CaptchaChallenge, CaptchaVerifyResult } from '@/types/api';
 
 const SLIDER_CAPTCHA_WIDTH = 320;
@@ -13,17 +13,11 @@ interface SliderCaptchaBoxProps {
   onReset?: () => void;
 }
 
-export const SliderCaptchaBox = ({
-  mode = 'embed',
-  onChallengeChange,
-  onVerified,
-  onReset,
-}: SliderCaptchaBoxProps) => {
+export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified, onReset }: SliderCaptchaBoxProps) => {
   const captchaRootRef = useRef<HTMLDivElement | null>(null);
   const activeChallengeRef = useRef<CaptchaChallenge | null>(null);
   const [puzzleSize, setPuzzleSize] = useState({ width: 58, height: 58, left: 0, top: 48 });
-
-  const getRenderedWidthScale = () => {
+  const getRenderedWidthScale = useCallback(() => {
     const renderedWidth = captchaRootRef.current
       ?.querySelector('.rc-slider-captcha-jigsaw')
       ?.getBoundingClientRect()
@@ -34,13 +28,16 @@ export const SliderCaptchaBox = ({
     }
 
     return SLIDER_CAPTCHA_WIDTH / renderedWidth;
-  };
+  }, []);
 
-  const requestSliderCaptcha = async () => {
+  const requestSliderCaptcha = useCallback(async () => {
     onReset?.();
-    const challenge = await systemService.captchaChallenge('SLIDER', {
-      autoRedirectOnUnauthorized: false,
+    const challenge = await request<CaptchaChallenge>('/v1/public/captcha/challenge', {
+      method: 'GET',
+      skipAuth: true,
       silent: true,
+      params: { captchaType: 'SLIDER' },
+      autoRedirectOnUnauthorized: false,
     });
     activeChallengeRef.current = challenge;
     setPuzzleSize({
@@ -59,35 +56,38 @@ export const SliderCaptchaBox = ({
       bgUrl: challenge.bgUrl,
       puzzleUrl: challenge.puzzleUrl,
     };
-  };
+  }, [onChallengeChange, onReset]);
 
-  const verifySliderCaptcha = async (data: VerifyParam) => {
-    const activeChallenge = activeChallengeRef.current;
-    if (!activeChallenge?.captchaId) {
-      throw new Error('拖动验证码已失效');
-    }
+  const verifySliderCaptcha = useCallback(
+    async (data: import('rc-slider-captcha').VerifyParam) => {
+      const activeChallenge = activeChallengeRef.current;
+      if (!activeChallenge?.captchaId) {
+        throw new Error('拖动验证码已失效');
+      }
 
-    const coordinateScale = getRenderedWidthScale();
-    const result = await systemService.captchaSliderVerify(
-      {
-        captchaId: activeChallenge.captchaId,
-        x: data.x * coordinateScale,
-        y: data.y,
-        sliderOffsetX: data.sliderOffsetX * coordinateScale,
-        duration: data.duration,
-        trail: data.trail,
-        targetType: data.targetType,
-        errorCount: data.errorCount,
-      },
-      {
-        autoRedirectOnUnauthorized: false,
+      const coordinateScale = getRenderedWidthScale();
+      const result = await request<CaptchaVerifyResult>('/v1/public/captcha/slider/verify', {
+        method: 'POST',
+        data: {
+          captchaId: activeChallenge.captchaId,
+          x: data.x * coordinateScale,
+          y: data.y,
+          sliderOffsetX: data.sliderOffsetX * coordinateScale,
+          duration: data.duration,
+          trail: data.trail,
+          targetType: data.targetType,
+          errorCount: data.errorCount,
+        },
+        skipAuth: true,
         silent: true,
-      },
-    );
+        autoRedirectOnUnauthorized: false,
+      });
 
-    onVerified?.(result);
-    return result;
-  };
+      onVerified?.(result);
+      return result;
+    },
+    [getRenderedWidthScale, onVerified],
+  );
 
   return (
     <div ref={captchaRootRef} className="saas-slider-captcha-box">

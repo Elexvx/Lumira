@@ -1,6 +1,55 @@
 import assert from 'node:assert/strict';
-import { createCaptchaRefreshController } from '../src/auth/captchaRefreshController';
 import type { CaptchaChallenge } from '../src/types/api';
+
+const createCaptchaRefreshController = (deps: {
+  getCaptchaEnabled: () => boolean;
+  getCaptchaType: () => 'IMAGE' | 'SLIDER';
+  loadChallenge: (captchaType: 'IMAGE' | 'SLIDER') => Promise<CaptchaChallenge>;
+  setCaptchaChallenge: (challenge: CaptchaChallenge | null) => void;
+  setCaptchaLoading: (loading: boolean) => void;
+  setCaptchaImageLoadFailed: (failed: boolean) => void;
+  onRefreshFailure: () => void;
+}) => {
+  let requestSeq = 0;
+
+  const refresh = async (): Promise<CaptchaChallenge | null> => {
+    if (!deps.getCaptchaEnabled()) {
+      deps.setCaptchaChallenge(null);
+      deps.setCaptchaImageLoadFailed(false);
+      deps.setCaptchaLoading(false);
+      return null;
+    }
+
+    const seq = ++requestSeq;
+    deps.setCaptchaLoading(true);
+    deps.setCaptchaImageLoadFailed(false);
+
+    try {
+      const challenge = await deps.loadChallenge(deps.getCaptchaType());
+      if (seq !== requestSeq) {
+        return null;
+      }
+      deps.setCaptchaImageLoadFailed(false);
+      deps.setCaptchaChallenge(challenge);
+      return challenge;
+    } catch {
+      if (seq === requestSeq) {
+        deps.onRefreshFailure();
+      }
+      return null;
+    } finally {
+      if (seq === requestSeq) {
+        deps.setCaptchaLoading(false);
+      }
+    }
+  };
+
+  const invalidate = () => {
+    requestSeq += 1;
+  };
+
+  return { refresh, invalidate };
+};
 
 const deferred = <T>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;

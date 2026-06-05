@@ -1,15 +1,38 @@
+import React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams } from '@umijs/max';
 import { Alert, Card, Spin } from 'antd';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { notifyPluginLoadError } from '@/plugins/loader';
-import { PluginErrorBoundary } from '@/plugins/errorBoundary';
 import { mountPlugin, unmountPlugin } from '@/plugins/runtime';
 
 type RuntimeErrorState = {
   type: 'info' | 'warning' | 'error';
   message: string;
 };
+
+interface PluginErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface PluginErrorBoundaryState {
+  error?: Error;
+}
+
+class PluginErrorBoundary extends React.Component<PluginErrorBoundaryProps, PluginErrorBoundaryState> {
+  state: PluginErrorBoundaryState = {};
+
+  static getDerivedStateFromError(error: Error): PluginErrorBoundaryState {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return <Alert type="error" showIcon message="插件渲染失败" description={this.state.error.message} />;
+    }
+    return this.props.children;
+  }
+}
 
 const RuntimeContainer = () => {
   const params = useParams<{ pluginCode: string }>();
