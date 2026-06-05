@@ -11,6 +11,7 @@ import { ManagementPage } from '@/features/management/ManagementPage';
 import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profile/center/hooks/useProfileCenterPageAccess';
 import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const GENDER_OPTIONS = [
   { label: '男', value: 'MALE' },
@@ -32,7 +33,7 @@ const BindSecondFactorSubmitter = ({
   onRetry: () => void;
 }) => ({
   render: (props: { step: number; onPre?: () => void; onSubmit?: () => void }) => (
-    <Space size={8} wrap>
+    <Space size={APP_SPACING.tagWrapGap.desktop} wrap>
       <Button onClick={onCancel} disabled={bindingSubmitting}>
         取消
       </Button>
@@ -69,7 +70,7 @@ const BindSecondFactorTotpPreviewStep = ({
   singleColumnDescriptionsProps: DescriptionsProps;
   onRetry: () => void;
 }) => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+  <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
     <Alert
       showIcon
       type="info"
@@ -83,7 +84,7 @@ const BindSecondFactorTotpPreviewStep = ({
     {bindingLoading ? (
       <Card loading />
     ) : bindingChallenge ? (
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
         <div className="saas-profile-2fa-binding__qr">
           <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={188} bordered />
         </div>
@@ -109,7 +110,7 @@ const BindSecondFactorTotpPreviewStep = ({
     ) : (
       <Empty
         description={
-          <Space direction="vertical" size={8}>
+            <Space direction="vertical" size={APP_SPACING.tagWrapGap.desktop}>
             <span>绑定信息尚未加载，请重试</span>
             <Button type="primary" onClick={onRetry} disabled={!bindingProvider}>
               重新获取绑定信息
@@ -122,7 +123,7 @@ const BindSecondFactorTotpPreviewStep = ({
 );
 
 const BindSecondFactorTotpVerifyStep = () => (
-  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
     <Alert
       showIcon
       type="info"
@@ -174,7 +175,7 @@ const BindSecondFactorTotpSteps = ({
     formProps={{ layout: 'vertical' }}
     onFinish={onVerify}
     stepsFormRender={(formDom, submitterDom) => (
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
         {bindingAlert ? <Alert showIcon type={bindingAlert.type} message={bindingAlert.message} /> : null}
         {formDom}
         {submitterDom}
@@ -250,7 +251,7 @@ const ContactBindModal = ({
       destroyOnHidden
       maskClosable={false}
     >
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
         <Alert showIcon type="info" message={title} description={description} />
         {verificationRequired ? (
           <Alert
@@ -347,7 +348,7 @@ const ProfileBasicEditDrawer = ({
 
       {visibleProfileFields.has('avatarUrl') ? (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Space direction="vertical" align="center" size={12}>
+          <Space direction="vertical" align="center" size={APP_SPACING.sectionGap.desktop}>
             <ImgCrop rotationSlider aspect={1} modalTitle="裁切头像" beforeCrop={onAvatarBeforeCrop}>
               <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
                 <Tooltip title="点击头像修改" placement="top">
@@ -432,8 +433,6 @@ type ProfileCenterOverviewSectionProps = {
   onEditOpenChange: (open: boolean) => void;
   onAvatarBeforeCrop: (file: File) => boolean;
   onAvatarUploadRequest: UploadProps['customRequest'];
-  profileCompletionSummary?: ProfileCompletionSummary | null;
-  onProfileCompletionAction: (item: ProfileCompletionSummary['incompleteItems'][number]) => void;
   recentLoginLogs: ProfileSummary['recentLoginLogs'];
 };
 
@@ -455,29 +454,22 @@ const ProfileCenterOverviewSection = ({
   onEditOpenChange,
   onAvatarBeforeCrop,
   onAvatarUploadRequest,
-  profileCompletionSummary,
-  onProfileCompletionAction,
   recentLoginLogs,
 }: ProfileCenterOverviewSectionProps) => {
-  const { token } = theme.useToken();
-  const incompleteItems = profileCompletionSummary?.incompleteItems || [];
-  const visibleIncompleteItems = incompleteItems.slice(0, 3);
-  const firstActionableItem = incompleteItems.find((item) => item.actionAvailable !== false && Boolean(item.actionType));
-
   return (
     <>
       <div className="saas-profile-page__top-row">
         <Card className="saas-profile-page__summary-card">
           <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
             <section className="saas-profile-page__account-panel" aria-label="账户身份">
-              <Space align="center" size={isMobile ? 14 : 16} className="saas-profile-page__welcome-profile">
+            <Space align="center" size={resolveResponsiveValue(APP_SPACING.mobileProfileSectionGap, isMobile)} className="saas-profile-page__welcome-profile">
                 <Avatar
                   size={isMobile ? 56 : 64}
                   src={avatarValue || currentUser?.avatarUrl || undefined}
                   icon={<UserOutlined />}
                   className="saas-profile-page__account-avatar"
                 />
-                <Space direction="vertical" size={4} className="saas-profile-page__account-copy">
+                <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)} className="saas-profile-page__account-copy">
                   {isMobile ? (
                     <Typography.Title level={4} style={{ margin: 0 }}>
                       {displayName}
@@ -503,7 +495,7 @@ const ProfileCenterOverviewSection = ({
           className="saas-profile-page__personal-card"
           style={{ width: '100%' }}
           extra={
-            <Space size={4}>
+            <Space size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)}>
               <Tooltip title="编辑资料">
                 <Button
                   type="text"
@@ -551,57 +543,6 @@ const ProfileCenterOverviewSection = ({
         />
       </div>
 
-      <Card
-        title="信息完整度"
-        loading={loading}
-        className="saas-profile-page__completion-card saas-profile-page__completion-card--compact"
-        style={{ width: '100%' }}
-        extra={profileCompletionSummary ? <Tag color={profileCompletionSummary.completionRate === 100 ? 'green' : 'blue'}>{profileCompletionSummary.completionRate}%</Tag> : null}
-      >
-        {profileCompletionSummary ? (
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <Space align="baseline" size={8} wrap>
-              <Typography.Title level={3} style={{ margin: 0 }}>
-                {profileCompletionSummary.completionRate}%
-              </Typography.Title>
-              <Typography.Text type="secondary">
-                {incompleteItems.length ? `${incompleteItems.length} 项待完善` : '资料已完善'}
-              </Typography.Text>
-              <Typography.Text type="secondary">
-                {profileCompletionSummary.score}/{profileCompletionSummary.maxScore} 分
-              </Typography.Text>
-            </Space>
-            <Progress
-              percent={profileCompletionSummary.completionRate}
-              showInfo={false}
-              strokeColor={profileCompletionSummary.completionRate === 100 ? token.colorSuccess : token.colorPrimary}
-            />
-            {visibleIncompleteItems.length ? (
-              <Space size={[8, 8]} wrap>
-                {visibleIncompleteItems.map((item) =>
-                  item.actionAvailable === false ? (
-                    <Tag key={item.fieldKey}>待开启 · {item.fieldLabel}</Tag>
-                  ) : (
-                    <Button key={item.fieldKey} type="link" size="small" icon={<ExclamationCircleFilled />} onClick={() => onProfileCompletionAction(item)}>
-                      {item.fieldLabel}
-                    </Button>
-                  ),
-                )}
-                {incompleteItems.length > visibleIncompleteItems.length ? <Typography.Text type="secondary">还有 {incompleteItems.length - visibleIncompleteItems.length} 项</Typography.Text> : null}
-              </Space>
-            ) : null}
-
-            {firstActionableItem ? (
-              <Button type="primary" block onClick={() => onProfileCompletionAction(firstActionableItem)}>
-                一键去完善
-              </Button>
-            ) : null}
-          </Space>
-        ) : (
-          <Empty description="当前暂无可评分字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        )}
-      </Card>
-
       <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={loading}>
         {recentLoginLogs.length ? (
           <Timeline
@@ -622,6 +563,72 @@ const ProfileCenterOverviewSection = ({
         )}
       </Card>
     </>
+  );
+};
+
+type ProfileCenterCompletionCardProps = {
+  loading: boolean;
+  profileCompletionSummary?: ProfileCompletionSummary | null;
+  onProfileCompletionAction: (item: ProfileCompletionSummary['incompleteItems'][number]) => void;
+};
+
+const ProfileCenterCompletionCard = ({ loading, profileCompletionSummary, onProfileCompletionAction }: ProfileCenterCompletionCardProps) => {
+  const { token } = theme.useToken();
+  const incompleteItems = profileCompletionSummary?.incompleteItems || [];
+  const visibleIncompleteItems = incompleteItems.slice(0, 3);
+  const firstActionableItem = incompleteItems.find((item) => item.actionAvailable !== false && Boolean(item.actionType));
+
+  return (
+    <Card
+      title="信息完整度"
+      loading={loading}
+      className="saas-profile-page__completion-card saas-profile-page__completion-card--compact"
+      style={{ width: '100%' }}
+      extra={profileCompletionSummary ? <Tag color={profileCompletionSummary.completionRate === 100 ? 'green' : 'blue'}>{profileCompletionSummary.completionRate}%</Tag> : null}
+    >
+      {profileCompletionSummary ? (
+        <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+          <Space align="baseline" size={APP_SPACING.tagWrapGap.desktop} wrap>
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {profileCompletionSummary.completionRate}%
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              {incompleteItems.length ? `${incompleteItems.length} 项待完善` : '资料已完善'}
+            </Typography.Text>
+            <Typography.Text type="secondary">
+              {profileCompletionSummary.score}/{profileCompletionSummary.maxScore} 分
+            </Typography.Text>
+          </Space>
+          <Progress
+            percent={profileCompletionSummary.completionRate}
+            showInfo={false}
+            strokeColor={profileCompletionSummary.completionRate === 100 ? token.colorSuccess : token.colorPrimary}
+          />
+          {visibleIncompleteItems.length ? (
+            <Space size={APP_SPACING.tagWrapGap.desktop} wrap>
+              {visibleIncompleteItems.map((item) =>
+                item.actionAvailable === false ? (
+                  <Tag key={item.fieldKey}>待开启 · {item.fieldLabel}</Tag>
+                ) : (
+                  <Button key={item.fieldKey} type="link" size="small" icon={<ExclamationCircleFilled />} onClick={() => onProfileCompletionAction(item)}>
+                    {item.fieldLabel}
+                  </Button>
+                ),
+              )}
+              {incompleteItems.length > visibleIncompleteItems.length ? <Typography.Text type="secondary">还有 {incompleteItems.length - visibleIncompleteItems.length} 项</Typography.Text> : null}
+            </Space>
+          ) : null}
+
+          {firstActionableItem ? (
+            <Button type="primary" block onClick={() => onProfileCompletionAction(firstActionableItem)}>
+              一键去完善
+            </Button>
+          ) : null}
+        </Space>
+      ) : (
+        <Empty description="当前暂无可评分字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      )}
+    </Card>
   );
 };
 
@@ -668,12 +675,12 @@ const ProfileCenterBindingSection = ({
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'space-between',
-                gap: isMobile ? 12 : 16,
+                gap: resolveResponsiveValue(APP_SPACING.sectionGap, isMobile),
                 width: '100%',
                 alignItems: isMobile ? 'stretch' : 'flex-start',
               }}
             >
-              <Space direction="vertical" size={4} style={{ minWidth: 0, width: '100%' }}>
+              <Space direction="vertical" size={APP_SPACING.microGap.desktop} style={{ minWidth: 0, width: '100%' }}>
                 <Space wrap>
                   <Typography.Text strong>{item.title}</Typography.Text>
                   <Tag color={item.statusColor || (item.value ? 'green' : 'default')}>{item.statusLabel || (item.value ? '已绑定' : '未绑定')}</Tag>
@@ -720,12 +727,12 @@ const ProfileCenterBindingSection = ({
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'space-between',
-                gap: isMobile ? 12 : 16,
+                gap: resolveResponsiveValue(APP_SPACING.sectionGap, isMobile),
                 width: '100%',
                 alignItems: isMobile ? 'stretch' : 'flex-start',
               }}
             >
-              <Space direction="vertical" size={4} style={{ minWidth: 0, width: '100%' }}>
+                <Space direction="vertical" size={APP_SPACING.microGap.desktop} style={{ minWidth: 0, width: '100%' }}>
                 <Space wrap>
                   <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
                   {provider.systemEnabled === false ? <Tag color="red">系统已关闭</Tag> : null}
@@ -802,7 +809,7 @@ const ProfileCenterBindingSection = ({
   );
 
   const bindingPanel = (
-    <Row gutter={[16, 16]} align="stretch">
+    <Row gutter={resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile)} align="stretch">
       <Col xs={24} lg={12}>
         <Card
           title="登录方式绑定"
@@ -881,46 +888,56 @@ const ProfileCenterPage = () => {
       className="saas-profile-page"
       title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}
     >
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <ProfileCenterOverviewSection
-          isMobile={responsive.isMobile}
-          profileBasicCardRef={profileSectionAccess.profileBasicCardRef}
-          avatarValue={profileSectionAccess.avatarValue}
-          currentUser={currentUser}
-          displayName={profileSectionAccess.displayName}
-          activeRoleName={profileSectionAccess.activeRoleName}
-          loading={profileSectionAccess.loading}
-          hasVisibleProfileFields={profileSectionAccess.hasVisibleProfileFields}
-          profileSaving={profileSectionAccess.profileSaving}
-          profileFormProps={profileSectionAccess.profileFormProps}
-          visibleProfileFields={profileSectionAccess.visibleProfileFields}
-          avatarUploading={profileSectionAccess.avatarUploading}
-          editingOpen={profileSectionAccess.editingOpen}
-          onSave={profileSectionAccess.onSave}
-          onEditOpenChange={profileSectionAccess.onEditOpenChange}
-          onAvatarBeforeCrop={profileSectionAccess.onAvatarBeforeCrop}
-          onAvatarUploadRequest={profileSectionAccess.onAvatarUploadRequest}
-          profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
-          onProfileCompletionAction={handleProfileCompletionAction}
-          recentLoginLogs={profileSectionAccess.recentLoginLogs}
-        />
-
-        <ProfileCenterBindingSection
-          isMobile={responsive.isMobile}
-          loginMethods={interactionAccess.passkeyAccess.loginMethods}
-          passkeys={passkeys}
-          loginMethodsLoading={loginMethodsLoading}
-          providers={providers}
-          providersLoading={providersLoading}
-          bindingLoading={interactionAccess.securityAccess.bindingLoading}
-          bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
-          onBindPasskey={interactionAccess.passkeyAccess.onBindPasskey}
-          onRenamePasskey={interactionAccess.passkeyAccess.onRenamePasskey}
-          onDeletePasskey={interactionAccess.passkeyAccess.onDeletePasskey}
-          onBindProvider={interactionAccess.securityAccess.onBindProvider}
-          onUnbindProvider={interactionAccess.securityAccess.onUnbindProvider}
-        />
-      </Space>
+      <div className="saas-profile-page__three-blocks">
+        <div className="saas-profile-page__main-column">
+          <div className="saas-profile-page__main-stack">
+            <ProfileCenterOverviewSection
+              isMobile={responsive.isMobile}
+              profileBasicCardRef={profileSectionAccess.profileBasicCardRef}
+              avatarValue={profileSectionAccess.avatarValue}
+              currentUser={currentUser}
+              displayName={profileSectionAccess.displayName}
+              activeRoleName={profileSectionAccess.activeRoleName}
+              loading={profileSectionAccess.loading}
+              hasVisibleProfileFields={profileSectionAccess.hasVisibleProfileFields}
+              profileSaving={profileSectionAccess.profileSaving}
+              profileFormProps={profileSectionAccess.profileFormProps}
+              visibleProfileFields={profileSectionAccess.visibleProfileFields}
+              avatarUploading={profileSectionAccess.avatarUploading}
+              editingOpen={profileSectionAccess.editingOpen}
+              onSave={profileSectionAccess.onSave}
+              onEditOpenChange={profileSectionAccess.onEditOpenChange}
+              onAvatarBeforeCrop={profileSectionAccess.onAvatarBeforeCrop}
+              onAvatarUploadRequest={profileSectionAccess.onAvatarUploadRequest}
+              recentLoginLogs={profileSectionAccess.recentLoginLogs}
+            />
+          </div>
+        </div>
+        <div className="saas-profile-page__rail-column">
+          <div className="saas-profile-page__rail-block">
+            <ProfileCenterCompletionCard
+              loading={profileSectionAccess.loading}
+              profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
+              onProfileCompletionAction={handleProfileCompletionAction}
+            />
+            <ProfileCenterBindingSection
+              isMobile={responsive.isMobile}
+              loginMethods={interactionAccess.passkeyAccess.loginMethods}
+              passkeys={passkeys}
+              loginMethodsLoading={loginMethodsLoading}
+              providers={providers}
+              providersLoading={providersLoading}
+              bindingLoading={interactionAccess.securityAccess.bindingLoading}
+              bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
+              onBindPasskey={interactionAccess.passkeyAccess.onBindPasskey}
+              onRenamePasskey={interactionAccess.passkeyAccess.onRenamePasskey}
+              onDeletePasskey={interactionAccess.passkeyAccess.onDeletePasskey}
+              onBindProvider={interactionAccess.securityAccess.onBindProvider}
+              onUnbindProvider={interactionAccess.securityAccess.onUnbindProvider}
+            />
+          </div>
+        </div>
+      </div>
       <Modal
         title={
           interactionAccess.securityAccess.bindingProvider

@@ -1,5 +1,6 @@
 import { history, Outlet, useAccess, useLocation } from '@umijs/max';
 import { useEffect } from 'react';
+import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { PROFILE_PATH } from '@/navigation/settingsNavigationConfig';
 import { resolveFirstSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
@@ -17,14 +18,14 @@ const resolveUserCenterLandingPath = (access: unknown) => {
   if (accessValue(access, 'canVisitSystemRoles')) {
     return '/user-center/roles';
   }
-  return '/403';
+  return DEFAULT_HOME_PATH;
 };
 
 const resolveFileCenterLandingPath = (access: unknown) => {
   if (accessValue(access, 'canVisitSystemAllFiles')) {
     return '/settings/files/all';
   }
-  return '/403';
+  return DEFAULT_HOME_PATH;
 };
 
 const SettingsLayout = () => {
@@ -35,7 +36,7 @@ const SettingsLayout = () => {
 
   useEffect(() => {
     if (pathname === '/settings' || pathname === '/settings/overview') {
-      history.replace(resolveFirstSettingsNavigationPath(initialState?.menuTree, (accessKey) => accessValue(access, accessKey)) || '/403');
+      history.replace(resolveFirstSettingsNavigationPath(initialState?.menuTree, (accessKey) => accessValue(access, accessKey)) || DEFAULT_HOME_PATH);
       return;
     }
 

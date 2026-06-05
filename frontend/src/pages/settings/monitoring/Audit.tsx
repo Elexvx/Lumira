@@ -14,6 +14,7 @@ import type { AuditLogRecord } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { PagedResponse } from '@/features/table/proTableRequest';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 type AuditRecord = AuditLogRecord;
 type AuditTableRequest = NonNullable<ProTableProps<AuditRecord, Record<string, unknown>>['request']>;
@@ -426,7 +427,11 @@ const AuditOverviewPage = () => {
         onClose={handleCloseDetail}
       >
         {selectedRecord ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space
+            direction="vertical"
+            size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)}
+            style={{ width: '100%' }}
+          >
             <ProDescriptions<AuditRecord>
               {...detailProps}
               columns={[

@@ -5,16 +5,34 @@ import type { ReactNode } from 'react';
 import { resolveRuntimeLocale } from '@/i18n/locale';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
 import type { ThemePreference } from '@/theme/settings';
+import { APP_SPACING } from '@/theme/spacing';
 
 type AntdThemeConfig = NonNullable<Parameters<typeof ConfigProvider>[0]>['theme'];
 
 interface BuildAntdThemeConfigOptions {
   themePreference?: ThemePreference;
   resolvedColorMode?: 'light' | 'dark';
+  isMobile?: boolean;
 }
+
+type ResponsiveSpaceSize = NonNullable<NonNullable<Parameters<typeof ConfigProvider>[0]>['space']>;
+
+export const resolveResponsiveSpaceSize = (isMobile: boolean): NonNullable<ResponsiveSpaceSize>['size'] =>
+  isMobile ? 'small' : 'middle';
 
 const baseThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorPrimary: '#1677ff',
+};
+
+const buildGlobalSpacingToken = (isMobile: boolean): NonNullable<AntdThemeConfig>['token'] =>
+  isMobile ? APP_SPACING.antdMobileTokens : APP_SPACING.antdDesktopTokens;
+
+const resolveIsMobile = () => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+
+  return window.matchMedia('(max-width: 767px)').matches;
 };
 
 const resolveCssVarKey = (themePreference: ThemePreference, resolvedColorMode: 'light' | 'dark') => {
@@ -31,6 +49,8 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   const runtimeSnapshot = getThemeRuntimeSnapshot();
   const themePreference = options?.themePreference ?? runtimeSnapshot.themePreference;
   const resolvedColorMode = options?.resolvedColorMode ?? runtimeSnapshot.resolvedColorMode;
+  const isMobile = options?.isMobile ?? resolveIsMobile();
+  const globalSpacingToken = buildGlobalSpacingToken(isMobile);
   const cssVar = {
     key: resolveCssVarKey(themePreference, resolvedColorMode),
   };
@@ -38,7 +58,10 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   if (themePreference === 'compact') {
     return {
       cssVar,
-      token: baseThemeToken,
+      token: {
+        ...baseThemeToken,
+        ...globalSpacingToken,
+      },
       algorithm: [antdTheme.defaultAlgorithm, antdTheme.compactAlgorithm],
     };
   }
@@ -46,7 +69,10 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   if (resolvedColorMode !== 'dark') {
     return {
       cssVar,
-      token: baseThemeToken,
+      token: {
+        ...baseThemeToken,
+        ...globalSpacingToken,
+      },
       algorithm: [antdTheme.defaultAlgorithm],
     };
   }
@@ -55,6 +81,7 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
     cssVar,
     algorithm: [antdTheme.darkAlgorithm],
     token: {
+      ...globalSpacingToken,
       ...baseThemeToken,
       colorBgBase: '#0f1115',
       colorBgLayout: '#0f1115',
@@ -74,9 +101,14 @@ export const syncAntdStaticThemeHolder = () => {
   }
 
   staticThemeHolderConfigured = true;
+  const isMobile = resolveIsMobile();
   ConfigProvider.config({
     holderRender: (children: ReactNode) => (
-      <ConfigProvider locale={resolveAntdLocale()} theme={buildAntdThemeConfig()}>
+      <ConfigProvider
+        locale={resolveAntdLocale()}
+        theme={buildAntdThemeConfig({ isMobile })}
+        space={{ size: resolveResponsiveSpaceSize(isMobile) }}
+      >
         <AntdApp>{children}</AntdApp>
       </ConfigProvider>
     ),

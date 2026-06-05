@@ -5,7 +5,7 @@ import enUS from 'antd/locale/en_US';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveRuntimeLocale } from '@/i18n/locale';
-import { buildAntdThemeConfig, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
+import { buildAntdThemeConfig, resolveResponsiveSpaceSize, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
 import {
   getStoredThemePreference,
@@ -56,6 +56,11 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     normalizeThemePreference(getStoredThemePreference()),
   );
   const [systemDarkMode, setSystemDarkMode] = useState(getSystemDarkMode);
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      ? false
+      : window.matchMedia('(max-width: 767px)').matches,
+  );
 
   useEffect(() => {
     persistThemePreference(themePreference);
@@ -86,6 +91,27 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     return () => mediaQueryList.removeListener(updateSystemMode);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQueryList = window.matchMedia('(max-width: 767px)');
+    const updateMobileMode = () => {
+      setIsMobile(mediaQueryList.matches);
+    };
+
+    updateMobileMode();
+
+    if (typeof mediaQueryList.addEventListener === 'function') {
+      mediaQueryList.addEventListener('change', updateMobileMode);
+      return () => mediaQueryList.removeEventListener('change', updateMobileMode);
+    }
+
+    mediaQueryList.addListener(updateMobileMode);
+    return () => mediaQueryList.removeListener(updateMobileMode);
+  }, []);
+
   // Keep the non-React layout config in sync with the current theme snapshot.
   const themeSnapshot = syncThemePreferenceRuntime(themePreference, systemDarkMode);
   const resolvedColorMode = themeSnapshot.resolvedColorMode;
@@ -95,8 +121,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       buildAntdThemeConfig({
         themePreference,
         resolvedColorMode,
+        isMobile,
       }),
-    [resolvedColorMode, themePreference],
+    [isMobile, resolvedColorMode, themePreference],
   );
   useLayoutEffect(() => {
     commitThemePreference(themePreference, { systemDarkMode, persist: false });
@@ -120,7 +147,12 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
-      <ConfigProvider locale={resolveAntdLocale()} theme={themeConfig} variant="filled">
+      <ConfigProvider
+        locale={resolveAntdLocale()}
+        theme={themeConfig}
+        variant="filled"
+        space={{ size: resolveResponsiveSpaceSize(isMobile) }}
+      >
         <ProConfigProvider intl={resolveProComponentsIntl()}>
           <AntdApp>{children}</AntdApp>
         </ProConfigProvider>

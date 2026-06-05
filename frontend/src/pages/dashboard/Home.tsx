@@ -9,6 +9,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { request } from '@/services/common/request';
 import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './Home.css';
 
 const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
@@ -176,11 +177,14 @@ const useDashboardHome = () => {
   const responsive = useResponsive();
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-summary', initialState?.menuVersion],
+    enabled: Boolean(initialState?.currentUser),
+    retry: false,
+    // Dashboard summary is additive; the page already has safe local fallbacks.
     queryFn: async () =>
       request<DashboardSummary>('/v1/dashboard/summary', {
         method: 'GET',
-        ...API_OPTS.NO_REDIRECT,
-      }),
+        ...API_OPTS.SILENT_NO_REDIRECT,
+      }).catch(() => undefined),
   });
 
   const summary = dashboardQuery.data as DashboardSummary | undefined;
@@ -192,8 +196,8 @@ const useDashboardHome = () => {
   const loginLogColumns = buildLoginLogColumns(responsive.isMobile);
   const operationLogColumns = buildOperationLogColumns('操作记录', responsive.isMobile);
   const pageContainerToken = {
-    paddingInlinePageContainerContent: responsive.isMobile ? 20 : 25,
-    paddingBlockPageContainerContent: responsive.isMobile ? 16 : 24,
+    paddingInlinePageContainerContent: resolveResponsiveValue(APP_SPACING.pageContainerPaddingInline, responsive.isMobile),
+    paddingBlockPageContainerContent: resolveResponsiveValue(APP_SPACING.pageContainerPaddingBlock, responsive.isMobile),
   };
 
   return {
@@ -233,16 +237,16 @@ const DashboardHomePage = () => {
   } = useDashboardHome();
   return (
     <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
         <ProCard variant="borderless" className="saas-dashboard-home__hero">
-          <Row gutter={[24, 24]} align="middle">
+          <Row gutter={resolveResponsiveValue(APP_SPACING.rowGutterHero, responsive.isMobile)} align="middle">
             <Col xs={24}>
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Space align="center" size={16} wrap>
+              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
+                <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
                   <Avatar size={64} src={currentUser?.avatarUrl || undefined}>
                     {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
                   </Avatar>
-                  <Space direction="vertical" size={4}>
+                  <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
                     <Typography.Title level={3} style={{ margin: 0 }}>
                       {greeting}，{displayName}
                     </Typography.Title>
@@ -257,7 +261,7 @@ const DashboardHomePage = () => {
           </Row>
         </ProCard>
 
-        <Row gutter={[16, 16]} align="stretch">
+        <Row gutter={resolveResponsiveValue(APP_SPACING.rowGutterPanel, responsive.isMobile)} align="stretch">
           <Col xs={24}>
             <ProCard variant="outlined" title="近期动态" className="saas-dashboard-home__panel">
               <Tabs

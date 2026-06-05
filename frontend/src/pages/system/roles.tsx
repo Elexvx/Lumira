@@ -6,6 +6,7 @@ import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useRoleManagementPageData } from '@/pages/system/roles/hooks/useRoleManagementPageData';
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { TreeProps } from 'antd';
 import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree/normalize';
 import type { PermissionActionRecord, PermissionTreeRecord, RoleDataScope } from '@/types/api';
@@ -70,7 +71,7 @@ const DefaultRegistrationRoleModal = ({
     okText="保存"
     cancelText="取消"
   >
-    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+    <Space direction="vertical" size={APP_SPACING.modalFooterGap.desktop} style={{ width: '100%' }}>
       <Typography.Text type="secondary">
         新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。
       </Typography.Text>
@@ -286,7 +287,7 @@ const RoleManagementPage = () => {
                   <Tag color="blue">{page.permissions.some((item) => item.isPagePermission) ? '页面' : '权限'}</Tag>
                 </span>
               </div>
-              <Space wrap size={[8, 8]} className="role-permission-detail__tags">
+              <Space wrap size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} className="role-permission-detail__tags">
                 {page.permissions.map((item) => (
                   <Tag key={item.permissionKey} color="green">
                     {item.permissionName}
@@ -297,7 +298,7 @@ const RoleManagementPage = () => {
           ),
         })),
       })),
-    [permissionDetailGroups],
+    [permissionDetailGroups, responsive.isMobile],
   );
   const editorDrawer = {
     open: roleCrud.drawer.open,

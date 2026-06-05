@@ -15,6 +15,7 @@ import type { FileRenameStrategy, FileStorageProvider, FileStorageSpacePayload, 
 import { adaptPageResult } from '@/features/table/proTableRequest';
 import { request, requestFile, type RequestOptions } from '@/services/common/request';
 import { resolveSortParams } from '@/pages/files/fileCenter.utils';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { confirmAction } from '@/utils/confirm';
 import { copyTextToClipboard } from '@/utils/clipboard';
 
@@ -141,7 +142,7 @@ const buildFileObjectColumns = ({
       width: 260,
       ellipsis: true,
       render: (_: unknown, record: FileObjectRecord) => (
-        <Space size={8} wrap={false}>
+        <Space size={APP_SPACING.tagWrapGap.desktop} wrap={false}>
           <FileOutlined />
           <Typography.Link
             title={record.originalFileName}
@@ -441,7 +442,7 @@ const FileUploadDrawer = ({
       ]}
     >
       <Form form={form} layout="vertical">
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
           <Card title="Select files" bodyStyle={{ padding: 0 }} style={{ borderRadius: 8 }}>
             <Upload.Dragger {...uploadDraggerProps} style={{ borderRadius: 8 }}>
               <p className="ant-upload-drag-icon">
@@ -527,7 +528,7 @@ const FilePreviewDrawer = ({
     }
   >
     {record ? (
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space direction="vertical" size={APP_SPACING.sectionGap.desktop} style={{ width: '100%' }}>
         <Descriptions bordered column={isMobile ? 1 : 2} size="small">
           <Descriptions.Item label="File name">{record.originalFileName}</Descriptions.Item>
           <Descriptions.Item label="Type">{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
@@ -551,7 +552,7 @@ const FilePreviewDrawer = ({
           spinning={loading || textLoading || fileLoading}
           tip={fileLoading ? 'Loading file preview' : textLoading ? 'Loading text content' : 'Loading file details'}
         >
-          <div style={{ minHeight: isMobile ? 240 : 520, padding: 16, background: backgroundColor }}>
+          <div style={{ minHeight: isMobile ? 240 : 520, padding: APP_SPACING.sectionGap.desktop, background: backgroundColor }}>
             {previewMode === 'IMAGE' ? (
               filePreviewUrl ? (
                 <Image src={filePreviewUrl} alt={record.originalFileName} preview={false} style={{ width: '100%', maxHeight: isMobile ? 360 : 560, objectFit: 'contain' }} />

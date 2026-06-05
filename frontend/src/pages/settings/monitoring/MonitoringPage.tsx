@@ -25,6 +25,7 @@ import { request } from '@/services/common/request';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
+import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 const REALTIME_REFRESH_INTERVAL_MS = 1000;
@@ -664,13 +665,17 @@ const PlatformUpdateContent = () => {
     formatDateTime,
     shortCommit,
   } = usePlatformUpdateMonitor();
+  const { isMobile } = useResponsive();
+  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const compactSectionGap = resolveResponsiveValue(APP_SPACING.compactSectionGap, isMobile);
 
   return (
     <div className="saas-update-center">
       <Card loading={query.isLoading && !updateStatus}>
-        <Row gutter={[16, 16]} align="middle">
+        <Row gutter={rowGutter} align="middle">
           <Col xs={24} lg={10}>
-            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+            <Space direction="vertical" size={compactSectionGap} style={{ width: '100%' }}>
               <Tag color={currentStatusMeta.color} icon={currentStatusMeta.icon} className="saas-update-status-tag">
                 {currentStatusMeta.label}
               </Tag>
@@ -716,8 +721,8 @@ const PlatformUpdateContent = () => {
       {statusKey === 'CHECK_FAILED' ? (
         <Alert type="error" showIcon message="更新源检查失败" description={updateStatus?.errorMessage || '请检查更新源地址和服务器网络。'} />
       ) : null}
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Row gutter={[16, 16]}>
+      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+        <Row gutter={rowGutter}>
           <Col xs={24} lg={12}>
             <Card title="当前运行版本" className="saas-update-version-card">
               <Descriptions size="small" column={1}>
@@ -777,7 +782,7 @@ const PlatformUpdateContent = () => {
           </Descriptions>
         </Card>
         <Card title="安全边界">
-          <Space direction="vertical" size={8}>
+          <Space direction="vertical" size={APP_SPACING.tagWrapGap.desktop}>
             <Typography.Text>
               <SafetyCertificateOutlined /> 只读检查更新源，不自动拉取代码。
             </Typography.Text>
@@ -799,11 +804,13 @@ const PlatformUpdateContent = () => {
 const RedisMonitorContent = () => {
   const { responsive, query, redis, valueStyle, trendCharts, commandColumns, keyspaceColumns, clientColumns } = useRedisMonitor();
   const overview = redis?.overview;
+  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, responsive.isMobile);
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Card loading={query.isLoading && !redis} title="Redis信息">
-        <Row gutter={[16, 16]}>
+        <Row gutter={rowGutter}>
           <Col xs={24} sm={12} xl={4}>
             <Statistic title="Redis版本" value={overview?.version || '-'} valueStyle={valueStyle} />
           </Col>
@@ -841,7 +848,7 @@ const RedisMonitorContent = () => {
             <Statistic title="总连接数" value={overview?.totalConnectionsReceived ?? '-'} valueStyle={valueStyle} />
           </Col>
         </Row>
-        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Row gutter={rowGutter} style={{ marginTop: sectionGap }}>
           <Col xs={24} sm={12} xl={4}>
             <Statistic title="总命中" value={formatNumber(overview?.hits)} valueStyle={valueStyle} />
           </Col>
@@ -856,7 +863,7 @@ const RedisMonitorContent = () => {
           </Col>
         </Row>
       </Card>
-      <Row gutter={[16, 16]}>
+      <Row gutter={rowGutter}>
         {trendCharts.map((chart) => (
           <Col key={chart.title} xs={24} lg={12}>
             <Card title={chart.title} extra={<Typography.Text type="secondary">{chart.subtitle}</Typography.Text>}>
@@ -919,14 +926,16 @@ const ServiceMonitorContent = () => {
   } = useServiceMonitor();
 
   const service = query.data;
+  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
     <ManagementPage className="saas-service-monitor-page" title="服务监控">
-      <Space direction="vertical" size={16} style={{ width: '100%' }} className="saas-service-monitor-page">
-        <Row gutter={[16, 16]}>
+      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-service-monitor-page">
+        <Row gutter={rowGutter}>
           <Col xs={24} lg={12}>
             <Card title="CPU" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
-              <Row gutter={[16, 16]}>
+              <Row gutter={rowGutter}>
                 <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="用户使用率" value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
                 </Col>
@@ -944,7 +953,7 @@ const ServiceMonitorContent = () => {
           </Col>
           <Col xs={24} lg={12}>
             <Card title="内存" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
-              <Row gutter={[16, 16]}>
+              <Row gutter={rowGutter}>
                 <Col xs={24} sm={12} xxl={6}>
                   <Statistic title="总内存" value={service?.memory?.totalBytes ?? '-'} valueStyle={valueStyle} />
                 </Col>
@@ -963,7 +972,7 @@ const ServiceMonitorContent = () => {
         </Row>
 
         <Card title="WebSocket 运行监控" loading={webSocketQuery.isLoading && !webSocketQuery.data}>
-          <Row gutter={[16, 16]}>
+          <Row gutter={rowGutter}>
             <Col xs={24} sm={8}>
               <Statistic title="当前连接数" value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
             </Col>
@@ -982,7 +991,7 @@ const ServiceMonitorContent = () => {
             search={false}
             onRefresh={() => webSocketQuery.refetch()}
             dataSource={webSocketQuery.data?.tenants || []}
-            style={{ marginTop: 16 }}
+            style={{ marginTop: sectionGap }}
             columns={websocketColumns}
           />
         </Card>
