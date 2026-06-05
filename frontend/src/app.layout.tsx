@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { ArrowLeftOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { Empty, Button, FloatButton, Popover, Tooltip, Typography, message } from 'antd';
 import { useQuery } from '@tanstack/react-query';
+import { createPortal } from 'react-dom';
 import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
 import buildAccess from '@/access';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
@@ -444,7 +445,7 @@ const GlobalFloatActions = () => {
     return null;
   }
 
-  return (
+  const floatButtonGroup = (
     <FloatButton.Group
       className="saas-global-float-actions"
       shape="square"
@@ -494,6 +495,8 @@ const GlobalFloatActions = () => {
       />
     </FloatButton.Group>
   );
+
+  return typeof document === 'undefined' ? floatButtonGroup : createPortal(floatButtonGroup, document.body);
 };
 
 const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialState | undefined }) => () => {

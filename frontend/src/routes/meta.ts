@@ -185,15 +185,23 @@ const userCenterRoutes: BackendRouteRecord[] = [
 ];
 
 const dashboardRouteMeta: BackendRouteMeta[] = [
+  { path: '/dashboard', name: 'nav.dashboard.root', icon: 'DashboardOutlined', access: 'canVisitDashboard', hideInMenu: true },
   { path: '/dashboard/home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
 ];
 
 const dashboardRoutes: BackendRouteRecord[] = [
-  { path: '/dashboard', redirect: '/dashboard/home' },
-  { path: '/dashboard/home/', redirect: '/dashboard/home' },
-  { path: '/dashboard/', redirect: '/dashboard/home' },
   { path: '/', redirect: '/dashboard/home' },
-  { path: '/dashboard/home', component: '@/pages/dashboard/Home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+  {
+    path: '/dashboard',
+    name: 'nav.dashboard.root',
+    icon: 'DashboardOutlined',
+    access: 'canVisitDashboard',
+    hideInMenu: true,
+    routes: [
+      { path: '/dashboard', redirect: '/dashboard/home', hideInMenu: true },
+      { path: '/dashboard/home', component: '@/pages/dashboard/DashboardHomePage', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+    ],
+  },
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [

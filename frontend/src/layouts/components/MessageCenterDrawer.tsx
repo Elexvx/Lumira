@@ -346,7 +346,11 @@ const useMessageCenterContentModel = () => {
       let failedParts = 0;
 
       if (messageResult.status === 'fulfilled') {
-        nextNotices.push(...messageResult.value.records.map(normalizeMessageCenterNotice));
+        const messageRecords = Array.isArray(messageResult.value?.records) ? messageResult.value.records : [];
+        if (!Array.isArray(messageResult.value?.records)) {
+          failedParts += 1;
+        }
+        nextNotices.push(...messageRecords.map(normalizeMessageCenterNotice));
       } else {
         failedParts += 1;
       }

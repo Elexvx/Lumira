@@ -261,7 +261,6 @@ const useLoginFlowInteractions = ({
         }));
       });
       const redirectTarget = resolveAuthorizedLoginRedirectTarget(locationSearch, sessionResult.currentUser, resources.menuTree);
-
       history.replace(redirectTarget);
     },
     [bootstrapFlow.agreementSettings, bootstrapFlow.loginCapabilities, initialState?.brandingSettings, initialState?.watermarkSettings, locationSearch, setInitialState],

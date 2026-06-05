@@ -1,4 +1,5 @@
 export default {
+  'nav.dashboard.root': 'Workbench',
   'nav.dashboard.home': 'Workbench',
   'nav.ai.root': 'AI',
   'nav.ai.assistant': 'AI Assistant',

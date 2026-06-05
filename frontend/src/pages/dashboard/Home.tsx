@@ -237,86 +237,23 @@ const DashboardHomePage = () => {
   } = useDashboardHome();
   return (
     <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
-      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
-        <ProCard variant="borderless" className="saas-dashboard-home__hero">
-          <Row gutter={resolveResponsiveValue(APP_SPACING.rowGutterHero, responsive.isMobile)} align="middle">
-            <Col xs={24}>
-              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
-                <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
-                  <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={currentUser?.avatarUrl || undefined}>
-                    {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
-                  </Avatar>
-                  <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
-                    <Typography.Title level={3} style={{ margin: 0 }}>
-                      {greeting}，{displayName}
-                    </Typography.Title>
-                    <Typography.Text type="secondary">欢迎回来，继续处理今天的系统事项</Typography.Text>
-                  </Space>
-                </Space>
-                {dashboardQuery.isLoading && !summary ? (
-                  <Skeleton active paragraph={{ rows: 2 }} title={false} />
-                ) : null}
-              </Space>
-            </Col>
-          </Row>
-        </ProCard>
-
-        <Row gutter={resolveResponsiveValue(APP_SPACING.rowGutterPanel, responsive.isMobile)} align="stretch">
-          <Col xs={24}>
-            <ProCard variant="outlined" title="近期动态" className="saas-dashboard-home__panel">
-              <Tabs
-                defaultActiveKey="login"
-                items={[
-                  {
-                    key: 'login',
-                    label: `登录记录 (${recentLoginLogs.length})`,
-                    children: (
-                      <ManagementTable<AuditLogRecord>
-                        className="saas-dashboard-home__activity-table"
-                        size="small"
-                        rowKey="id"
-                        pagination={false}
-                        isMobile={responsive.isMobile}
-                        search={false}
-                        scroll={{ x: LOGIN_LOG_TABLE_SCROLL_X }}
-                        onRefresh={() => dashboardQuery.refetch()}
-                        loading={dashboardQuery.isLoading && !summary}
-                        columns={loginLogColumns}
-                        dataSource={recentLoginLogs}
-                        locale={{
-                          emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
-                        }}
-                      />
-                    ),
-                  },
-                  {
-                    key: 'operation',
-                    label: `操作记录 (${recentOperationLogs.length})`,
-                    children: (
-                      <ManagementTable<AuditLogRecord>
-                        className="saas-dashboard-home__activity-table"
-                        size="small"
-                        rowKey="id"
-                        pagination={false}
-                        isMobile={responsive.isMobile}
-                        search={false}
-                        scroll={{ x: OPERATION_LOG_TABLE_SCROLL_X }}
-                        onRefresh={() => dashboardQuery.refetch()}
-                        loading={dashboardQuery.isLoading && !summary}
-                        columns={operationLogColumns}
-                        dataSource={recentOperationLogs}
-                        locale={{
-                          emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
-                        }}
-                      />
-                    ),
-                  },
-                ]}
-              />
-            </ProCard>
-          </Col>
-        </Row>
-      </Space>
+      <ProCard variant="borderless" className="saas-dashboard-home__hero">
+        <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
+          <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
+            <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={currentUser?.avatarUrl || undefined}>
+              {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
+            </Avatar>
+            <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {greeting}，{displayName}
+              </Typography.Title>
+              <Typography.Text type="secondary">欢迎回来，继续处理今天的系统事项</Typography.Text>
+            </Space>
+          </Space>
+          {dashboardQuery.isLoading && !summary ? <Skeleton active paragraph={{ rows: 2 }} title={false} /> : null}
+        </Space>
+      </ProCard>
+      <div className="saas-dashboard-home__debug-placeholder">dashboard-home-mounted</div>
     </PageContainer>
   );
 };

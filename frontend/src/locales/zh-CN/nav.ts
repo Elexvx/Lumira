@@ -1,4 +1,5 @@
 export default {
+  'nav.dashboard.root': '工作台',
   'nav.dashboard.home': '工作台',
   'nav.ai.root': 'AI',
   'nav.ai.assistant': 'AI 助手',
