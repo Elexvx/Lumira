@@ -39,7 +39,7 @@ export const resolveRouteAccessStatus = (target: string, currentUser: CurrentUse
   }
 
   const access = buildAccess({ currentUser }) as Record<string, unknown>;
-  return Boolean(access[routeMeta.access]) ? 'allowed' : 'denied';
+  return access[routeMeta.access] ? 'allowed' : 'denied';
 };
 
 const canVisitPath = (target: string, currentUser: CurrentUser) =>

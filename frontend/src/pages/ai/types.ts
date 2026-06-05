@@ -1,4 +1,3 @@
-import type { MenuProps } from 'antd';
 import type {
   AiKnowledgeReferenceRecord,
   AiToolPlanRecord,

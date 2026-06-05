@@ -158,11 +158,13 @@
   color: #fff;
 }
 
+/* stylelint-disable max-line-length, selector-descendant-combinator-no-non-space */
 .saas-ai-assistant-conversation-item-wrap--active:hover .saas-ai-assistant-conversation-item__more.ant-btn,
 .saas-ai-assistant-conversation-item-wrap--active:focus-within .saas-ai-assistant-conversation-item__more.ant-btn,
 .saas-ai-assistant-conversation-item-wrap--active.saas-ai-assistant-conversation-item-wrap--menu-open .saas-ai-assistant-conversation-item__more.ant-btn {
   background: color-mix(in srgb, #fff 12%, transparent);
 }
+/* stylelint-enable max-line-length, selector-descendant-combinator-no-non-space */
 
 .saas-ai-assistant-conversations__groups {
   display: flex;
