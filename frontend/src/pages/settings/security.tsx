@@ -1,4 +1,5 @@
-import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs, message } from 'antd';
+import { Button, Card, Form, InputNumber, Radio, Space, Switch, Tabs } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useEffect, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';

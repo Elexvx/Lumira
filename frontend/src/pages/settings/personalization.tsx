@@ -1,5 +1,6 @@
 import { history, useLocation } from '@umijs/max';
-import { Button, Card, Form, Space, Tabs, message } from 'antd';
+import { Button, Card, Form, Space, Tabs } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useCallback, useEffect, useState } from 'react';
 import type { AppInitialState } from '@/app.types';
 import { ManagementPage } from '@/features/management/ManagementPage';

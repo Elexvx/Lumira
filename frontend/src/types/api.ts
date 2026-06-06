@@ -1347,16 +1347,6 @@ export interface RoleDetail extends RoleRecord {
   dataScopes?: RoleDataScope[];
 }
 
-export interface TenantRecord {
-  id: number;
-  tenantCode: string;
-  tenantName: string;
-  status: string;
-  remark?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export type DataScopeType = 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM';
 
 export interface RoleDataScope {

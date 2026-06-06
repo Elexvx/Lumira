@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppstoreOutlined, PaperClipOutlined, RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Button, message } from 'antd';
+import { Button } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { Suggestion, Sender as XSender } from '@ant-design/x';
 import { FileCard } from '@ant-design/x';
 import type { FileCardProps } from '@ant-design/x';

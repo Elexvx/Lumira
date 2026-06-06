@@ -36,7 +36,6 @@ public final class SystemRouteCatalog {
             "/files/all",
             "/settings",
             "/settings/overview",
-            "/settings/tenants",
             "/settings/menus",
             "/settings/dicts",
             "/settings/profile-fields",
@@ -74,7 +73,6 @@ public final class SystemRouteCatalog {
             "@/pages/ai/Assistant",
             "@/pages/ai/knowledge",
             "@/layouts/SettingsLayout",
-            "@/pages/settings/tenants",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
             "@/pages/settings/profile-fields",
@@ -164,7 +162,6 @@ public final class SystemRouteCatalog {
         );
 
         settingsRoot.setChildren(new ArrayList<>(List.of(
-                menu(-1016L, -1000L, "settings.tenants", "租户管理", "MENU", "/settings/tenants", "@/pages/settings/tenants", "ApartmentOutlined", 0, "system:tenant:view"),
                 menu(-1001L, -1000L, "settings.menus", "菜单管理", "MENU", "/settings/menus", "@/pages/settings/menus", "AppstoreOutlined", 2, "system:menu:view"),
                 menu(-1002L, -1000L, "settings.dicts", "字典管理", "MENU", "/settings/dicts", "@/pages/settings/dicts", "DatabaseOutlined", 3, "system:dict:view"),
                 menu(-1003L, -1000L, "settings.profile-fields", "字段管理", "MENU", "/settings/profile-fields", "@/pages/settings/profile-fields", "FormOutlined", 4, "system:config:view"),

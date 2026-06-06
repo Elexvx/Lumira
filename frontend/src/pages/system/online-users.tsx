@@ -1,5 +1,6 @@
 import { type ActionType, ProDescriptions, type ProColumns, type ProDescriptionsItemProps } from '@ant-design/pro-components';
-import { Button, Modal, Space, Tag, Typography, message, type SpaceProps } from 'antd';
+import { Button, Space, Tag, Typography, type SpaceProps } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -18,6 +19,7 @@ import { request } from '@/services/common/request';
 import { readEventStream } from '@/services/common/requestInternalsStream';
 import type { OnlineSessionEventRecord, OnlineSessionRecord, PagedResult } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
+import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 interface OnlineSessionStreamOptions {
@@ -355,7 +357,7 @@ const OnlineUsersPage = () => {
   }, []);
   const onKick = useCallback(
     (record: OnlineSessionRecord) => {
-      Modal.confirm({
+      confirmAction({
         title: '踢出在线会话',
         content: '确定要踢出该会话吗？踢出后该会话将立即失效。',
         okText: '确定踢出',
@@ -375,7 +377,7 @@ const OnlineUsersPage = () => {
   );
   const onBan = useCallback(
     (record: OnlineSessionRecord) => {
-      Modal.confirm({
+      confirmAction({
         title: '封禁账户',
         content: '确定要封禁该账号吗？封禁后将清退该账号所有在线会话，并禁止后续登录。',
         okText: '确定封禁',

@@ -1,4 +1,5 @@
-import { Modal, type ModalFuncProps } from 'antd';
+import type { ModalFuncProps } from 'antd';
+import { modal } from '@/theme/antdFeedbackBridge';
 import type { ReactNode } from 'react';
 
 type ConfirmActionOptions = {
@@ -20,7 +21,7 @@ export const confirmAction = ({
   centered = true,
   onOk,
 }: ConfirmActionOptions) =>
-  Modal.confirm({
+  modal.confirm({
     title,
     content,
     okText,

@@ -1,6 +1,6 @@
 import { pluginRegistry } from '@/plugins/registry';
 import type { PluginLoadResult, PluginManifest, PluginModule } from '@/plugins/types';
-import { message } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { resolveApiErrorFeedback, resolveHttpStatusFeedback, type FeedbackType } from '@/services/common/errorFeedback';
 import { captureAuthRequestSnapshot } from '@/auth/unauthorized';
 import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';

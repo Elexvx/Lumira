@@ -1,6 +1,7 @@
 import type { FormInstance } from 'antd';
 import { useCallback, useMemo, useState, type DragEvent, type Key } from 'react';
-import { message, Space, Tag, Typography } from 'antd';
+import { Space, Tag, Typography } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { CheckOutlined, HolderOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import type {

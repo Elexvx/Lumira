@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Avatar, Button, Spin, Space, Tag, Typography, message } from 'antd';
+import { Alert, Avatar, Button, Spin, Space, Tag, Typography } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import type { MenuProps } from 'antd';
 import { useParams } from '@umijs/max';
 import { useResponsive } from '@/hooks/useResponsive';

@@ -1,4 +1,5 @@
-import { Form, Tag, Typography, message } from 'antd';
+import { Form, Tag, Typography } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';

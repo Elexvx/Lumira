@@ -1,5 +1,6 @@
 import { history, formatMessage, useLocation } from '@umijs/max';
-import { Button, Card, Checkbox, Descriptions, Dropdown, Empty, Form, Image, Input, InputNumber, Radio, Select, Space, Spin, Tag, Typography, Upload, message, theme } from 'antd';
+import { Button, Card, Checkbox, Descriptions, Dropdown, Empty, Form, Image, Input, InputNumber, Radio, Select, Space, Spin, Tag, Typography, Upload, theme } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { CopyOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, FileOutlined, InboxOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';

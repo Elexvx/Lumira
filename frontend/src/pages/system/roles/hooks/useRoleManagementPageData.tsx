@@ -1,4 +1,5 @@
-import { Form, Modal, message } from 'antd';
+import { Form } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -859,7 +860,7 @@ export const useRoleManagementPageData = () => {
       return;
     }
 
-    Modal.confirm({
+    confirmAction({
       title: '提示',
       content: '关闭抽屉将丢失未保存的内容，是否确认关闭？',
       okText: '继续编辑',

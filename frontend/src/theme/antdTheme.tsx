@@ -93,20 +93,22 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
   };
 };
 
-let staticThemeHolderConfigured = false;
-
-export const syncAntdStaticThemeHolder = () => {
-  if (staticThemeHolderConfigured || typeof window === 'undefined') {
+export const syncAntdStaticThemeHolder = (options?: BuildAntdThemeConfigOptions) => {
+  if (typeof window === 'undefined') {
     return;
   }
 
-  staticThemeHolderConfigured = true;
-  const isMobile = resolveIsMobile();
+  const isMobile = options?.isMobile ?? resolveIsMobile();
+  const themeConfig = buildAntdThemeConfig({
+    themePreference: options?.themePreference,
+    resolvedColorMode: options?.resolvedColorMode,
+    isMobile,
+  });
   ConfigProvider.config({
     holderRender: (children: ReactNode) => (
       <ConfigProvider
         locale={resolveAntdLocale()}
-        theme={buildAntdThemeConfig({ isMobile })}
+        theme={themeConfig}
         space={{ size: resolveResponsiveSpaceSize(isMobile) }}
       >
         <AntdApp>{children}</AntdApp>

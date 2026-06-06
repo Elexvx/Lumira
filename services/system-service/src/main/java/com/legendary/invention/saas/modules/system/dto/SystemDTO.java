@@ -35,28 +35,6 @@ public final class SystemDTO {
         public void setRoleId(Long roleId) { this.roleId = roleId; }
     }
 
-    public static class TenantUpsertRequest {
-        @NotBlank
-        @Pattern(regexp = "^[a-z][a-z0-9-]{1,62}[a-z0-9]$")
-        private String tenantCode;
-        @NotBlank
-        @Size(max = 128)
-        private String tenantName;
-        @NotBlank
-        private String status;
-        @Size(max = 512)
-        private String remark;
-
-        public String getTenantCode() { return tenantCode; }
-        public void setTenantCode(String tenantCode) { this.tenantCode = tenantCode; }
-        public String getTenantName() { return tenantName; }
-        public void setTenantName(String tenantName) { this.tenantName = tenantName; }
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
-        public String getRemark() { return remark; }
-        public void setRemark(String remark) { this.remark = remark; }
-    }
-
     public static class MenuUpsertRequest {
         private Long parentId;
         @NotBlank

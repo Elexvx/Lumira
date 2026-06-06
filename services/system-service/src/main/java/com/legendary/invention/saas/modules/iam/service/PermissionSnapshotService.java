@@ -48,7 +48,6 @@ public class PermissionSnapshotService {
             "system:profile-field:",
             "system:profile_field:",
             "system:security:",
-            "system:tenant:",
             "system:update:",
             "system:verification:"
     );

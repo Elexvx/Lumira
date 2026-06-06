@@ -1,6 +1,7 @@
 import { formatMessage } from '@umijs/max';
 import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Descriptions, Empty, Input, message, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
+import { Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import type { DescriptionsProps } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -16,6 +17,7 @@ import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { request, type RequestOptions } from '@/services/common/request';
 import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 const PluginCardsGrid = ({
@@ -359,7 +361,7 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
 
   const confirmMutation = useCallback(
     (title: string, content: string, action: () => Promise<unknown>) =>
-      Modal.confirm({
+      confirmAction({
         title,
         content,
         okText: formatMessage({ id: 'page.plugins.confirm', defaultMessage: 'Confirm' }),

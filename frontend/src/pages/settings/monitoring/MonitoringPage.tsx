@@ -20,7 +20,7 @@ import type {
   ServiceMonitorSnapshot,
 } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
-import { message } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { request } from '@/services/common/request';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { useDetailDescriptionsProps } from '@/features/detail/config';

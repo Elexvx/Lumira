@@ -283,9 +283,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         tools.put("system.role.update", writeTool("system.role.update", "编辑角色", "在当前租户编辑角色基础信息。", "system:role:update", this::updateRole));
         tools.put("system.role.permissions", writeTool("system.role.permissions", "配置角色权限", "在当前租户更新角色权限集合。", "system:role:permissions", this::updateRolePermissions));
         tools.put("system.role.delete", writeTool("system.role.delete", "删除角色", "在当前租户删除角色。", "system:role:delete", this::deleteRole));
-        tools.put("system.tenant.create", writeTool("system.tenant.create", "新增租户", "新增平台租户。", "system:tenant:create", this::createTenant));
-        tools.put("system.tenant.update", writeTool("system.tenant.update", "编辑租户", "编辑平台租户。", "system:tenant:update", this::updateTenant));
-        tools.put("system.tenant.delete", writeTool("system.tenant.delete", "删除租户", "删除平台租户，默认租户会被业务服务保护。", "system:tenant:delete", this::deleteTenant));
         tools.put("system.menu.create", writeTool("system.menu.create", "新增菜单", "新增当前租户自定义菜单。", "system:menu:create", this::createMenu));
         tools.put("system.menu.update", writeTool("system.menu.update", "编辑菜单", "编辑当前租户自定义菜单。", "system:menu:update", this::updateMenu));
         tools.put("system.menu.status", writeTool("system.menu.status", "启停菜单", "更新当前租户菜单状态。", "system:menu:status", this::updateMenuStatus));
@@ -637,28 +634,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         Long roleId = requireLong(context.arguments(), "roleId");
         boolean deleted = systemManagementAppService.deleteRole(context.currentUser(), roleId);
         return Map.of("deleted", deleted, "roleId", roleId);
-    }
-
-    private Map<String, Object> createTenant(ToolExecutionContext context) {
-        SystemDTO.TenantUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.TenantUpsertRequest.class);
-        if (!StringUtils.hasText(request.getStatus())) {
-            request.setStatus("ENABLED");
-        }
-        SystemVO.TenantVO tenant = systemManagementAppService.createTenant(context.currentUser(), request);
-        return Map.of("tenant", tenant);
-    }
-
-    private Map<String, Object> updateTenant(ToolExecutionContext context) {
-        Long tenantId = requireLong(context.arguments(), "tenantId");
-        SystemDTO.TenantUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "tenantId"), SystemDTO.TenantUpsertRequest.class);
-        SystemVO.TenantVO tenant = systemManagementAppService.updateTenant(context.currentUser(), tenantId, request);
-        return Map.of("tenant", tenant);
-    }
-
-    private Map<String, Object> deleteTenant(ToolExecutionContext context) {
-        Long tenantId = requireLong(context.arguments(), "tenantId");
-        boolean deleted = systemManagementAppService.deleteTenant(context.currentUser(), tenantId);
-        return Map.of("deleted", deleted, "tenantId", tenantId);
     }
 
     private Map<String, Object> createMenu(ToolExecutionContext context) {

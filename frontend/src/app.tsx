@@ -6,7 +6,6 @@ import { ThemePreferenceProvider } from '@/theme/ThemePreferenceProvider';
 import { getAppInitialState } from '@/app.bootstrap';
 import { createLayoutConfig } from '@/app.layout';
 import { queryClient } from '@/query/queryClient';
-import { syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { getWatermarkSettingsSnapshot, subscribeWatermarkSettings } from '@/watermark/settingsStorage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
@@ -15,8 +14,6 @@ import './global.css';
 export type { AppInitialState } from '@/app.types';
 
 export const getInitialState = getAppInitialState;
-
-syncAntdStaticThemeHolder();
 
 const normalizeWatermarkFontWeight = (value: string): number | 'normal' | 'bold' | 'lighter' | 'bolder' | undefined => {
   const numeric = Number(value);

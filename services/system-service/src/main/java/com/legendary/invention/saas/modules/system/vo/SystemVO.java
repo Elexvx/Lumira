@@ -62,31 +62,6 @@ public final class SystemVO {
     public static class DefaultRegistrationRoleVO extends RoleDetailVO {
     }
 
-    public static class TenantVO {
-        private Long id;
-        private String tenantCode;
-        private String tenantName;
-        private String status;
-        private String remark;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
-
-        public Long getId() { return id; }
-        public void setId(Long id) { this.id = id; }
-        public String getTenantCode() { return tenantCode; }
-        public void setTenantCode(String tenantCode) { this.tenantCode = tenantCode; }
-        public String getTenantName() { return tenantName; }
-        public void setTenantName(String tenantName) { this.tenantName = tenantName; }
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
-        public String getRemark() { return remark; }
-        public void setRemark(String remark) { this.remark = remark; }
-        public LocalDateTime getCreatedAt() { return createdAt; }
-        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-        public LocalDateTime getUpdatedAt() { return updatedAt; }
-        public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    }
-
     public static class PermissionVO extends com.legendary.invention.saas.modules.system.permission.vo.PermissionVO {
     }
 

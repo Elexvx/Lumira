@@ -65,7 +65,6 @@ const aiRoutes: BackendRouteRecord[] = [
 
 export const systemRouteMeta: BackendRouteMeta[] = [
   { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', hideInMenu: true },
-  { path: '/settings/tenants', name: 'nav.system.tenants', icon: 'ApartmentOutlined', access: 'canVisitSystemTenants' },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
   { path: '/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
   { path: '/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
@@ -86,7 +85,6 @@ export const systemRoutes: BackendRouteRecord[] = [
   { path: '/audit/overview', redirect: '/settings/audit' },
   { path: '/system', redirect: '/settings' },
   { path: '/system/overview', redirect: '/settings' },
-  { path: '/system/tenants', redirect: '/settings/tenants' },
   { path: '/system/files', redirect: '/user-center/files' },
   { path: '/system/files/my', redirect: '/user-center/files' },
   { path: '/system/files/all', redirect: '/settings/files/all' },
@@ -114,7 +112,6 @@ export const systemRoutes: BackendRouteRecord[] = [
     icon: 'SettingOutlined',
     routes: [
       { path: '/settings/overview', redirect: '/settings' },
-      { path: '/settings/tenants', component: '@/pages/settings/tenants', name: 'nav.system.tenants', icon: 'ApartmentOutlined', access: 'canVisitSystemTenants' },
       { path: '/settings/menus', component: '@/pages/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
       { path: '/settings/dicts', component: '@/pages/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
       { path: '/settings/profile-fields', component: '@/pages/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },

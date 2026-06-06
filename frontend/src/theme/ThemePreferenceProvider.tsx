@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useStat
 import { resolveRuntimeLocale } from '@/i18n/locale';
 import { buildAntdThemeConfig, resolveResponsiveSpaceSize, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
+import { registerAntdFeedbackApi } from '@/theme/antdFeedbackBridge';
 import {
   getStoredThemePreference,
   normalizeThemePreference,
@@ -51,6 +52,20 @@ const resolveProComponentsIntl = () => {
   return withTableToolbarLabels(baseIntl, labels);
 };
 
+const AntdFeedbackBridge = ({ children }: { children: ReactNode }) => {
+  const { message, modal, notification } = AntdApp.useApp();
+
+  useLayoutEffect(() => {
+    registerAntdFeedbackApi({
+      message,
+      modal: { confirm: modal.confirm },
+      notification,
+    });
+  }, [message, modal, notification]);
+
+  return <>{children}</>;
+};
+
 export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) => {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() =>
     normalizeThemePreference(getStoredThemePreference()),
@@ -65,10 +80,6 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
   useEffect(() => {
     persistThemePreference(themePreference);
   }, [themePreference]);
-
-  useEffect(() => {
-    syncAntdStaticThemeHolder();
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -116,6 +127,14 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
   const themeSnapshot = syncThemePreferenceRuntime(themePreference, systemDarkMode);
   const resolvedColorMode = themeSnapshot.resolvedColorMode;
 
+  useLayoutEffect(() => {
+    syncAntdStaticThemeHolder({
+      themePreference,
+      resolvedColorMode,
+      isMobile,
+    });
+  }, [isMobile, resolvedColorMode, themePreference]);
+
   const themeConfig = useMemo(
     () =>
       buildAntdThemeConfig({
@@ -131,7 +150,12 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   const setThemePreference = (value: ThemePreference) => {
     const nextThemePreference = normalizeThemePreference(value);
-    commitThemePreference(nextThemePreference);
+    const nextSnapshot = commitThemePreference(nextThemePreference, { systemDarkMode });
+    syncAntdStaticThemeHolder({
+      themePreference: nextThemePreference,
+      resolvedColorMode: nextSnapshot.resolvedColorMode,
+      isMobile,
+    });
     setThemePreferenceState(nextThemePreference);
   };
 
@@ -154,7 +178,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
         space={{ size: resolveResponsiveSpaceSize(isMobile) }}
       >
         <ProConfigProvider intl={resolveProComponentsIntl()}>
-          <AntdApp>{children}</AntdApp>
+          <AntdApp>
+            <AntdFeedbackBridge>{children}</AntdFeedbackBridge>
+          </AntdApp>
         </ProConfigProvider>
       </ConfigProvider>
     </ThemePreferenceContext.Provider>

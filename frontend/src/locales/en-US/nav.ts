@@ -39,7 +39,6 @@ export default {
   'nav.system.root': 'System Overview',
   'nav.settings.root': 'Settings',
   'nav.system.plugins': 'Plugins',
-  'nav.system.tenants': 'Tenants',
   'nav.system.menus': 'Menus',
   'nav.system.dicts': 'Dictionaries',
   'nav.system.profileFields': 'Profile Fields',

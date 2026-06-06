@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import type { RequestOptions } from '@/services/common/request';
 
 export const extractErrorMessage = (error: unknown, fallbackMessage = '操作失败，请稍后重试'): string => {

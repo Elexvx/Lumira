@@ -1,6 +1,7 @@
 import { HolderOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { ProDescriptions } from '@ant-design/pro-components';
-import { Button, Form, Input, InputNumber, Select, Space, Spin, Tabs, Tag, Typography, message, theme } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Space, Spin, Tabs, Tag, Typography, theme } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import type { FormProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import { formatMessage } from '@umijs/max';
@@ -77,7 +78,6 @@ type SettingsRouteEditorValues = {
 };
 
 const DEFAULT_SETTING_ROUTE_ORDER = [
-  '/settings/tenants',
   '/settings/menus',
   '/settings/dicts',
   '/settings/profile-fields',

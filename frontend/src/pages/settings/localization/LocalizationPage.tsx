@@ -1,5 +1,6 @@
 import { DeleteOutlined, HistoryOutlined, PlusOutlined, SaveOutlined, SyncOutlined } from '@ant-design/icons';
-import { Button, Form, Input, List, Modal, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, List, Select, Space, Spin, Tag, Typography } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -9,6 +10,7 @@ import { buildTableRequest } from '@/features/table/proTableRequest';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { backendRouteMeta } from '@/routes/meta';
+import { confirmAction } from '@/utils/confirm';
 import { request } from '@/services/common/request';
 import zhCN from '@/locales/zh-CN';
 import enUS from '@/locales/en-US';
@@ -277,7 +279,7 @@ const LocalizationPage = () => {
   );
   const deleteEntry = useCallback(
     (record: import('@/types/api').LocalizationEntry) => {
-      Modal.confirm({
+      confirmAction({
         title: '删除译文',
         content: record.messageKey,
         okText: '删除',

@@ -1,5 +1,5 @@
 import { NotificationOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Badge, Button, Empty, List, Space, Spin, Tag, Tabs, Typography, notification, theme } from 'antd';
+import { Alert, Badge, Button, Empty, List, Space, Spin, Tag, Tabs, Typography, theme } from 'antd';
 import type { NotificationArgsProps } from 'antd';
 import { getLocale, useIntl } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import type { MessageNoticeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
 import type { MessageUnreadCount, PagedResult } from '@/types/api';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { notification } from '@/theme/antdFeedbackBridge';
 
 const MESSAGE_CENTER_REFRESH_EVENT = 'saas-message-center:refresh';
 const MESSAGE_NOTIFICATION_DURATION_SECONDS = 4.5;

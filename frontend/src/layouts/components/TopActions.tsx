@@ -1,4 +1,5 @@
-import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, Tag, message, type MenuProps } from 'antd';
+import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, Tag, type MenuProps } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { getLocale, history, setLocale, useIntl } from '@umijs/max';
 import { useAccess, useLocation } from '@umijs/max';
 import { useEffect, useMemo, useState } from 'react';

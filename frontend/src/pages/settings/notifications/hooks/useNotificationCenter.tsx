@@ -1,4 +1,5 @@
-import { Form, message } from 'antd';
+import { Form } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { request } from '@/services/common/request';

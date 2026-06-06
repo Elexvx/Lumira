@@ -1,5 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Drawer, Empty, Form, Input, Select, Space, Tag, Tabs, Typography, Upload, message, theme } from 'antd';
+import { Button, Drawer, Empty, Form, Input, Select, Space, Tag, Tabs, Typography, Upload, theme } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import type { ProColumns } from '@ant-design/pro-components';
 import type { ActionType } from '@ant-design/pro-components';

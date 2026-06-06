@@ -698,113 +698,6 @@ public class SystemManagementAppService {
         return systemRoleManagementAppService.updateDefaultRegistrationRole(currentUser, roleId);
     }
 
-    public PageResponse<SystemVO.TenantVO> listTenants(CurrentUser currentUser, String tenantCode, String tenantName, String status, long pageNo, long pageSize) {
-        List<String> filters = new ArrayList<>(List.of("deleted = 0"));
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(tenantCode)) {
-            filters.add("tenant_code like ?");
-            params.add(like(tenantCode));
-        }
-        if (StringUtils.hasText(tenantName)) {
-            filters.add("tenant_name like ?");
-            params.add(like(tenantName));
-        }
-        if (StringUtils.hasText(status)) {
-            filters.add("status = ?");
-            params.add(status.trim());
-        }
-        String whereSql = " from sys_tenant where " + String.join(" and ", filters);
-        return pageQuery(
-                """
-                        select id, tenant_code as tenantCode, tenant_name as tenantName, status, remark,
-                               created_at as createdAt, updated_at as updatedAt
-                        """ + whereSql + " order by id asc",
-                "select count(1) " + whereSql,
-                SystemVO.TenantVO.class,
-                pageNo,
-                pageSize,
-                params
-        );
-    }
-
-    public SystemVO.TenantVO getTenant(CurrentUser currentUser, Long tenantId) {
-        SystemVO.TenantVO tenant = queryOne(
-                """
-                        select id, tenant_code as tenantCode, tenant_name as tenantName, status, remark,
-                               created_at as createdAt, updated_at as updatedAt
-                        from sys_tenant
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.TenantVO.class,
-                tenantId
-        );
-        if (tenant == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "租户不存在");
-        }
-        return tenant;
-    }
-
-    @Transactional
-    public SystemVO.TenantVO createTenant(CurrentUser currentUser, SystemDTO.TenantUpsertRequest request) {
-        String tenantCode = normalizeTenantCode(request.getTenantCode());
-        String status = normalizeTenantStatus(request.getStatus());
-        jdbcTemplate.update(
-                """
-                        insert into sys_tenant (tenant_code, tenant_name, status, remark, created_by, updated_by, deleted)
-                        values (?, ?, ?, ?, ?, ?, 0)
-                        """,
-                tenantCode,
-                request.getTenantName().trim(),
-                status,
-                normalizeNullableText(request.getRemark()),
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
-        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        initializeTenantFileStorageSpaces(id, currentUser.getUserId());
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "create", "CREATE", "SUCCESS", "创建租户: " + tenantCode);
-        return getTenant(currentUser, id);
-    }
-
-    @Transactional
-    public SystemVO.TenantVO updateTenant(CurrentUser currentUser, Long tenantId, SystemDTO.TenantUpsertRequest request) {
-        getTenant(currentUser, tenantId);
-        String tenantCode = normalizeTenantCode(request.getTenantCode());
-        String status = normalizeTenantStatus(request.getStatus());
-        jdbcTemplate.update(
-                """
-                        update sys_tenant
-                        set tenant_code = ?, tenant_name = ?, status = ?, remark = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
-                        """,
-                tenantCode,
-                request.getTenantName().trim(),
-                status,
-                normalizeNullableText(request.getRemark()),
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                tenantId
-        );
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "update", "UPDATE", "SUCCESS", "更新租户: " + tenantCode);
-        return getTenant(currentUser, tenantId);
-    }
-
-    @Transactional
-    public boolean deleteTenant(CurrentUser currentUser, Long tenantId) {
-        SystemVO.TenantVO tenant = getTenant(currentUser, tenantId);
-        if (DEFAULT_PUBLIC_TENANT_ID.equals(tenantId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "平台默认租户不允许删除");
-        }
-        jdbcTemplate.update(
-                "update sys_tenant set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                tenantId
-        );
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "tenant", "delete", "DELETE", "SUCCESS", "删除租户: " + tenant.getTenantCode());
-        return true;
-    }
-
     public SystemVO.RoleDetailVO createRole(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
         return systemRoleManagementAppService.createRole(currentUser, request);
     }
@@ -2323,43 +2216,6 @@ public class SystemManagementAppService {
         return currentUser == null || currentUser.getCurrentTenantId() == null ? DEFAULT_PUBLIC_TENANT_ID : currentUser.getCurrentTenantId();
     }
 
-    private void initializeTenantFileStorageSpaces(Long tenantId, Long operatorId) {
-        jdbcTemplate.update(
-                """
-                        insert into file_storage_space (
-                            tenant_id, title, storage_key, provider, root_path, rename_strategy, max_file_size_mb,
-                            allowed_mime_types, default_flag, retain_file_on_record_delete, status, created_by, updated_by, deleted
-                        )
-                        select ?, 'Local storage', 'local', 'LOCAL', 'storage/uploads/', 'APPEND_RANDOM_ID', 20,
-                               '*', 1, 0, 'ENABLED', ?, ?, 0
-                        where not exists (
-                            select 1 from file_storage_space where tenant_id = ? and storage_key = 'local'
-                        )
-                        """,
-                tenantId,
-                operatorId,
-                operatorId,
-                tenantId
-        );
-        jdbcTemplate.update(
-                """
-                        insert into file_storage_space (
-                            tenant_id, title, storage_key, provider, root_path, rename_strategy, max_file_size_mb,
-                            allowed_mime_types, default_flag, retain_file_on_record_delete, status, created_by, updated_by, deleted
-                        )
-                        select ?, 'AI 聊天附件', 'ai_chat', 'LOCAL', 'storage/uploads/ai_chat/', 'APPEND_RANDOM_ID', 20,
-                               '*', 0, 0, 'ENABLED', ?, ?, 0
-                        where not exists (
-                            select 1 from file_storage_space where tenant_id = ? and storage_key = 'ai_chat'
-                        )
-                        """,
-                tenantId,
-                operatorId,
-                operatorId,
-                tenantId
-        );
-    }
-
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }
@@ -2985,21 +2841,6 @@ public class SystemManagementAppService {
         String normalized = contactType.trim().toLowerCase(Locale.ROOT);
         if (!"mobile".equals(normalized) && !"email".equals(normalized)) {
             throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
-        }
-        return normalized;
-    }
-
-    private String normalizeTenantCode(String tenantCode) {
-        if (!StringUtils.hasText(tenantCode)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "租户编码不能为空");
-        }
-        return tenantCode.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String normalizeTenantStatus(String status) {
-        String normalized = StringUtils.hasText(status) ? status.trim().toUpperCase(Locale.ROOT) : "ENABLED";
-        if (!"ENABLED".equals(normalized) && !"DISABLED".equals(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "租户状态只能是 ENABLED 或 DISABLED");
         }
         return normalized;
     }

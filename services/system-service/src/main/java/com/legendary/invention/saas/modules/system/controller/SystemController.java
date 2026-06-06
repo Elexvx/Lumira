@@ -177,45 +177,6 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.updateDefaultRegistrationRole(securityContextFacade.getCurrentUser(), request.getRoleId()), TraceContext.getRequestId());
     }
 
-    @GetMapping("/tenants")
-    public ApiResponse<PageResponse<SystemVO.TenantVO>> tenants(
-            @RequestParam(name = "tenantCode", required = false) String tenantCode,
-            @RequestParam(name = "tenantName", required = false) String tenantName,
-            @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
-            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
-    ) {
-        require("system:tenant:view");
-        return ApiResponse.success(systemManagementAppService.listTenants(securityContextFacade.getCurrentUser(), tenantCode, tenantName, status, pageNo, pageSize), TraceContext.getRequestId());
-    }
-
-    @GetMapping("/tenants/{id}")
-    public ApiResponse<SystemVO.TenantVO> tenant(@PathVariable("id") Long id) {
-        require("system:tenant:view");
-        return ApiResponse.success(systemManagementAppService.getTenant(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
-    }
-
-    @PostMapping("/tenants")
-    @RepeatSubmit
-    public ApiResponse<SystemVO.TenantVO> createTenant(@Valid @RequestBody SystemDTO.TenantUpsertRequest request) {
-        require("system:tenant:create");
-        return ApiResponse.success(systemManagementAppService.createTenant(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
-    }
-
-    @PutMapping("/tenants/{id}")
-    @RepeatSubmit
-    public ApiResponse<SystemVO.TenantVO> updateTenant(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.TenantUpsertRequest request) {
-        require("system:tenant:update");
-        return ApiResponse.success(systemManagementAppService.updateTenant(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
-    }
-
-    @DeleteMapping("/tenants/{id}")
-    @RepeatSubmit
-    public ApiResponse<Boolean> deleteTenant(@PathVariable("id") Long id) {
-        require("system:tenant:delete");
-        return ApiResponse.success(systemManagementAppService.deleteTenant(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
-    }
-
     @PostMapping("/roles")
     @RepeatSubmit
     public ApiResponse<SystemVO.RoleDetailVO> createRole(@Valid @RequestBody SystemDTO.RoleUpsertRequest request) {

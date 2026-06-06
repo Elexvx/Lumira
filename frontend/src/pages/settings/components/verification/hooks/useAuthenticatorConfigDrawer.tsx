@@ -1,6 +1,7 @@
 import { history, useLocation } from '@umijs/max';
 import type { FormInstance } from 'antd';
-import { Button, Card, Form, Input, InputNumber, message, Select, Space, Switch, Typography } from 'antd';
+import { Button, Card, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   PasskeySettings,

@@ -1,6 +1,6 @@
 import type { AppInitialState } from '@/app';
 import { formatMessage, history } from '@umijs/max';
-import { message } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import type { FormInstance } from 'antd';
 import type { FormProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

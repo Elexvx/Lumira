@@ -287,7 +287,6 @@ INSERT INTO `sys_menu` (`id`, `tenant_id`, `parent_id`, `menu_code`, `menu_name`
 (3030,1001,3002,'settings.files','文件管理器','MENU','/settings/files/all','@/pages/settings/files/Center',0,'2026-05-15 00:52:26',0,'2026-05-15 00:52:27',0,'FolderOpenOutlined',9,'system:file:manage','ENABLED'),
 (3031,1001,3002,'localization.root','本地化中心','MENU','/settings/localization','@/pages/settings/localization',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0,'TranslationOutlined',29,'localization:view','ENABLED'),
 (4032,1001,0,'user.center.personal','个人中心','CATALOG','/user-center/personal-center','@/layouts/SettingsLayout',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0,'IdcardOutlined',19,'profile:view','ENABLED'),
-(3032,1001,3002,'settings.tenants','租户管理','MENU','/settings/tenants','@/pages/settings/tenants',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0,'ApartmentOutlined',0,'system:tenant:view','ENABLED'),
 (3033,1001,3020,'system.departments','组织部门','MENU','/user-center/departments','@/pages/system/departments',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0,'ApartmentOutlined',22,'system:department:view','ENABLED'),
 (3034,1001,0,'ai.root','AI','CATALOG','/ai','redirect:/ai/assistant',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0,'RobotOutlined',2,NULL,'ENABLED'),
 (3035,1001,3034,'ai.assistant','AI 助手','MENU','/ai/assistant','@/pages/ai/Assistant',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0,'RobotOutlined',1,'ai:chat:send','ENABLED'),
@@ -396,10 +395,6 @@ INSERT INTO `sys_permission` (`id`, `tenant_id`, `permission_key`, `permission_n
 (196,1001,'system:department:update','编辑组织部门','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (197,1001,'system:department:delete','删除组织部门','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (198,1001,'system:role:delete','删除角色','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(199,1001,'system:tenant:view','查看租户','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(200,1001,'system:tenant:create','新增租户','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(201,1001,'system:tenant:update','编辑租户','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(202,1001,'system:tenant:delete','删除租户','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (203,1001,'system:menu:delete','删除菜单','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (204,1001,'system:dict:delete','删除字典','system','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (205,1001,'ai:knowledge:view','查看知识库','ai','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
@@ -660,10 +655,6 @@ INSERT INTO `sys_role_permission` (`id`, `tenant_id`, `role_id`, `permission_key
 (229,1001,2001,'system:department:update',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (230,1001,2001,'system:department:delete',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (231,1001,2001,'system:role:delete',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(232,1001,2001,'system:tenant:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(233,1001,2001,'system:tenant:create',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(234,1001,2001,'system:tenant:update',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(235,1001,2001,'system:tenant:delete',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (236,1001,2001,'system:menu:delete',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (237,1001,2001,'system:dict:delete',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (238,1001,2001,'ai:knowledge:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
@@ -1490,9 +1481,6 @@ SELECT * FROM (
   UNION ALL SELECT 'system.role.update','编辑角色','system','在当前租户编辑角色基础信息。','HIGH',0,1,1,0
   UNION ALL SELECT 'system.role.permissions','配置角色权限','system','在当前租户更新角色权限集合。','HIGH',0,1,1,0
   UNION ALL SELECT 'system.role.delete','删除角色','system','在当前租户删除角色。','HIGH',0,1,1,0
-  UNION ALL SELECT 'system.tenant.create','新增租户','system','新增平台租户。','HIGH',0,1,1,0
-  UNION ALL SELECT 'system.tenant.update','编辑租户','system','编辑平台租户。','HIGH',0,1,1,0
-  UNION ALL SELECT 'system.tenant.delete','删除租户','system','删除平台租户。','HIGH',0,1,1,0
   UNION ALL SELECT 'system.menu.create','新增菜单','system','新增当前租户自定义菜单。','HIGH',0,1,1,0
   UNION ALL SELECT 'system.menu.update','编辑菜单','system','编辑当前租户自定义菜单。','HIGH',0,1,1,0
   UNION ALL SELECT 'system.menu.status','启停菜单','system','更新当前租户菜单状态。','HIGH',0,1,1,0

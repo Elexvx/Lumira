@@ -1,5 +1,6 @@
 import { history, useLocation } from '@umijs/max';
-import { Avatar, Card, Form, message, Space, Tabs, Tag, Typography, theme } from 'antd';
+import { Avatar, Card, Form, Space, Tabs, Tag, Typography, theme } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ManagementPage } from '@/features/management/ManagementPage';

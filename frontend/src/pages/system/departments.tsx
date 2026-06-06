@@ -1,4 +1,5 @@
-import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, Tooltip, message } from 'antd';
+import { Button, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, Tooltip } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';

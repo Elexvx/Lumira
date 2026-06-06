@@ -32,7 +32,6 @@ const SYSTEM_MANAGEMENT_PERMISSIONS = [
   'audit:operation:view',
   'message:message:view',
   'plugin:management:view',
-  'system:tenant:view',
 ];
 
 const SYSTEM_MONITORING_PERMISSIONS = [
@@ -75,7 +74,6 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemUsers: isLogin && hasPermission(permissions, 'system:user:view'),
     canVisitSystemDepartments: isLogin && hasPermission(permissions, 'system:department:view'),
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
-    canVisitSystemTenants: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:tenant:view'),
     canVisitSystemMenus: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:menu:view'),
     canVisitSystemDicts: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:dict:view'),
     canVisitSystemProfileFields: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:config:view'),

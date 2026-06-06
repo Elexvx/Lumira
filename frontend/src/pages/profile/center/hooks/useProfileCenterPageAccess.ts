@@ -1,6 +1,7 @@
 import { formatMessage } from '@umijs/max';
 import { Form } from 'antd';
-import { message, type UploadProps } from 'antd';
+import { type UploadProps } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { HTMLAttributes } from 'react';

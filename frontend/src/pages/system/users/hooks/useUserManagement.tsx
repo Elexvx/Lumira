@@ -1,4 +1,5 @@
-import { Form, Tag, Typography, message } from 'antd';
+import { Form, Tag, Typography } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';

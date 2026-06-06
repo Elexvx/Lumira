@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { message } from '@/theme/antdFeedbackBridge';
 import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';

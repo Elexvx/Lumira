@@ -228,18 +228,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             putIfNotNull(arguments, "roleId", roleId);
             return new ToolIntent("system.role.delete", arguments);
         }
-        if (containsAny(normalized, "新增租户", "创建租户", "新建租户")) {
-            putIfText(arguments, "tenantCode", captureAfter(message, "租户编码", "tenantCode", "编码"));
-            putIfText(arguments, "tenantName", captureAfter(message, "租户名称", "租户名", "名称", "租户"));
-            putIfText(arguments, "remark", captureAfter(message, "备注"));
-            arguments.put("status", containsAny(normalized, "禁用", "停用") ? "DISABLED" : "ENABLED");
-            return new ToolIntent("system.tenant.create", arguments);
-        }
-        Long tenantId = firstLongAfter(message, "租户ID", "租户id", "tenantId");
-        if (containsAny(normalized, "删除租户")) {
-            putIfNotNull(arguments, "tenantId", tenantId);
-            return new ToolIntent("system.tenant.delete", arguments);
-        }
         if (containsAny(normalized, "新增菜单", "创建菜单", "新建菜单")) {
             putIfText(arguments, "menuCode", captureAfter(message, "菜单编码", "menuCode", "编码"));
             putIfText(arguments, "menuName", captureAfter(message, "菜单名称", "菜单名", "名称", "菜单"));
