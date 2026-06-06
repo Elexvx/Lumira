@@ -64,20 +64,6 @@
   color: rgb(234 88 12);
 }
 
-.saas-dashboard-home__plugin-item {
-  padding-inline: 0 !important;
-}
-
-.saas-dashboard-home__plugin-avatar {
-  background: rgb(15 23 42 / 8%);
-  color: rgb(15 23 42);
-}
-
-.saas-dashboard-home__plugin-manifest {
-  font-size: 12px;
-  word-break: break-all;
-}
-
 .saas-dashboard-home__todo .ant-empty {
   margin-block: var(--saas-spacing-2xs) 0;
 }

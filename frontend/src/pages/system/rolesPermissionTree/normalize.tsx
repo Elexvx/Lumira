@@ -5,18 +5,10 @@ import { resolveBuiltinMessage } from '@/i18n/messages';
 const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType'] => node.nodeType || 'PAGE';
 
 const ROLE_PERMISSION_EXCLUDED_ROUTE_PREFIXES = ['/settings'];
-const ROLE_PERMISSION_EXCLUDED_ROUTE_PATHS = new Set([
-  '/user-center/personal-center',
-  '/user-center/personal-center/profile',
-  '/user-center/files',
-]);
 
 const isRoleAssignableRoutePath = (routePath: string) => {
   const normalizedPath = routePath.trim();
   if (!normalizedPath) {
-    return false;
-  }
-  if (ROLE_PERMISSION_EXCLUDED_ROUTE_PATHS.has(normalizedPath)) {
     return false;
   }
   return !ROLE_PERMISSION_EXCLUDED_ROUTE_PREFIXES.some(

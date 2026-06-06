@@ -10,6 +10,7 @@ type ConfirmActionOptions = {
   okButtonProps?: ModalFuncProps['okButtonProps'];
   centered?: boolean;
   onOk: () => Promise<void> | void;
+  onCancel?: () => Promise<void> | void;
 };
 
 export const confirmAction = ({
@@ -20,6 +21,7 @@ export const confirmAction = ({
   okButtonProps,
   centered = true,
   onOk,
+  onCancel,
 }: ConfirmActionOptions) =>
   modal.confirm({
     title,
@@ -30,5 +32,8 @@ export const confirmAction = ({
     okButtonProps,
     onOk: async () => {
       await onOk();
+    },
+    onCancel: async () => {
+      await onCancel?.();
     },
   });

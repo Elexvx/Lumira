@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Avatar, Col, Empty, List, Row, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
+import { Avatar, Empty, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { request } from '@/services/common/request';
-import type { AuditLogRecord, DashboardSummary, TenantPlugin } from '@/types/api';
+import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './Home.css';
@@ -91,8 +91,6 @@ const logResultColor = (value?: string | null) => {
   }
   return 'default';
 };
-
-const buildPluginLabel = (plugin: TenantPlugin) => plugin.pluginName || plugin.pluginCode;
 
 const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] => [
   {
@@ -237,7 +235,6 @@ const DashboardHomePage = () => {
     LOGIN_LOG_TABLE_SCROLL_X,
     OPERATION_LOG_TABLE_SCROLL_X,
   } = useDashboardHome();
-  const tenantPlugins = summary?.tenantPlugins || [];
 
   return (
     <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
@@ -259,103 +256,57 @@ const DashboardHomePage = () => {
           </Space>
         </ProCard>
 
-        <Row gutter={[16, 16]} align="stretch">
-          <Col xs={24} xl={16}>
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <ProCard title="近期动态" variant="outlined" className="saas-dashboard-home__panel">
-                <Tabs
-                  defaultActiveKey="login"
-                  items={[
-                    {
-                      key: 'login',
-                      label: `登录记录 (${recentLoginLogs.length})`,
-                      children: (
-                        <ManagementTable<AuditLogRecord>
-                          className="saas-dashboard-home__activity-table"
-                          size="small"
-                          rowKey="id"
-                          pagination={false}
-                          isMobile={responsive.isMobile}
-                          search={false}
-                          scroll={{ x: LOGIN_LOG_TABLE_SCROLL_X }}
-                          onRefresh={() => dashboardQuery.refetch()}
-                          loading={dashboardQuery.isLoading && !summary}
-                          columns={loginLogColumns}
-                          dataSource={recentLoginLogs}
-                          locale={{
-                            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
-                          }}
-                        />
-                      ),
-                    },
-                    {
-                      key: 'operation',
-                      label: `操作记录 (${recentOperationLogs.length})`,
-                      children: (
-                        <ManagementTable<AuditLogRecord>
-                          className="saas-dashboard-home__activity-table"
-                          size="small"
-                          rowKey="id"
-                          pagination={false}
-                          isMobile={responsive.isMobile}
-                          search={false}
-                          scroll={{ x: OPERATION_LOG_TABLE_SCROLL_X }}
-                          onRefresh={() => dashboardQuery.refetch()}
-                          loading={dashboardQuery.isLoading && !summary}
-                          columns={operationLogColumns}
-                          dataSource={recentOperationLogs}
-                          locale={{
-                            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
-                          }}
-                        />
-                      ),
-                    },
-                  ]}
-                />
-              </ProCard>
-            </Space>
-          </Col>
-
-          <Col xs={24} xl={8}>
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <ProCard title="租户插件" variant="outlined" className="saas-dashboard-home__panel">
-                {tenantPlugins.length ? (
-                  <List
-                    dataSource={tenantPlugins}
-                    split
-                    renderItem={(plugin) => (
-                      <List.Item className="saas-dashboard-home__plugin-item">
-                        <List.Item.Meta
-                          avatar={
-                            <Avatar shape="square" className="saas-dashboard-home__plugin-avatar">
-                              {buildInitials(buildPluginLabel(plugin), 'P')}
-                            </Avatar>
-                          }
-                          title={
-                            <Space align="center" size={8} wrap>
-                              <Typography.Text strong>{buildPluginLabel(plugin)}</Typography.Text>
-                              <Tag>{plugin.version}</Tag>
-                            </Space>
-                          }
-                          description={
-                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                              <Typography.Text type="secondary">{plugin.pluginCode}</Typography.Text>
-                              <Typography.Text type="secondary" className="saas-dashboard-home__plugin-manifest">
-                                {plugin.manifestPath}
-                              </Typography.Text>
-                            </Space>
-                          }
-                        />
-                      </List.Item>
-                    )}
+        <ProCard title="近期动态" variant="outlined" className="saas-dashboard-home__panel">
+          <Tabs
+            defaultActiveKey="login"
+            items={[
+              {
+                key: 'login',
+                label: `登录记录 (${recentLoginLogs.length})`,
+                children: (
+                  <ManagementTable<AuditLogRecord>
+                    className="saas-dashboard-home__activity-table"
+                    size="small"
+                    rowKey="id"
+                    pagination={false}
+                    isMobile={responsive.isMobile}
+                    search={false}
+                    scroll={{ x: LOGIN_LOG_TABLE_SCROLL_X }}
+                    onRefresh={() => dashboardQuery.refetch()}
+                    loading={dashboardQuery.isLoading && !summary}
+                    columns={loginLogColumns}
+                    dataSource={recentLoginLogs}
+                    locale={{
+                      emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
+                    }}
                   />
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无插件信息" />
-                )}
-              </ProCard>
-            </Space>
-          </Col>
-        </Row>
+                ),
+              },
+              {
+                key: 'operation',
+                label: `操作记录 (${recentOperationLogs.length})`,
+                children: (
+                  <ManagementTable<AuditLogRecord>
+                    className="saas-dashboard-home__activity-table"
+                    size="small"
+                    rowKey="id"
+                    pagination={false}
+                    isMobile={responsive.isMobile}
+                    search={false}
+                    scroll={{ x: OPERATION_LOG_TABLE_SCROLL_X }}
+                    onRefresh={() => dashboardQuery.refetch()}
+                    loading={dashboardQuery.isLoading && !summary}
+                    columns={operationLogColumns}
+                    dataSource={recentOperationLogs}
+                    locale={{
+                      emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
+                    }}
+                  />
+                ),
+              },
+            ]}
+          />
+        </ProCard>
       </Space>
     </PageContainer>
   );

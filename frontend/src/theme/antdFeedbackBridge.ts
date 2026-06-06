@@ -1,7 +1,7 @@
 import { message as staticMessage, Modal as staticModal, notification as staticNotification } from 'antd';
 
-type MessageApi = typeof staticMessage;
-type NotificationApi = typeof staticNotification;
+type MessageApi = Pick<typeof staticMessage, 'destroy' | 'error' | 'info' | 'loading' | 'open' | 'success' | 'warning'>;
+type NotificationApi = Pick<typeof staticNotification, 'destroy' | 'error' | 'info' | 'open' | 'success' | 'warning'>;
 type ModalConfirmApi = Pick<typeof staticModal, 'confirm'>;
 
 type AntdFeedbackRuntimeApi = {
