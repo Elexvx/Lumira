@@ -156,6 +156,7 @@ const NotificationEmailChannelSettingsForm = ({
   smtpFormProps,
   smtpTestFormProps,
   onTestSmtpSettings,
+  sectionGap,
 }: {
   canManageSmtp: boolean;
   loadingSmtpSettings: boolean;
@@ -163,6 +164,7 @@ const NotificationEmailChannelSettingsForm = ({
   smtpFormProps: FormProps<SmtpSettings>;
   smtpTestFormProps: FormProps<SmtpTestPayload>;
   onTestSmtpSettings: () => void;
+  sectionGap: number | [number, number];
 }) => (
   <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Form {...smtpFormProps} disabled={loadingSmtpSettings || !canManageSmtp}>
@@ -653,6 +655,7 @@ const NotificationsPage = () => {
             smtpFormProps={notificationCenter.smtpFormProps}
             smtpTestFormProps={notificationCenter.smtpTestFormProps}
             onTestSmtpSettings={notificationCenter.handleTestSmtpSettings}
+            sectionGap={sectionGap}
           />
         ) : (
           <NotificationWechatOfficialChannelSettingsForm

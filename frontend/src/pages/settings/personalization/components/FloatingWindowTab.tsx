@@ -50,8 +50,8 @@ const renderImageUploadPreviewField = ({
   emptyDescription?: string;
   onUpload: (target: PersonalizationUploadTarget, file: File) => Promise<void>;
   onClear: () => void;
-  sectionGap: number | number[];
-  tagWrapGap: number | number[];
+  sectionGap: number | [number, number];
+  tagWrapGap: number | [number, number];
   cardPadding: number;
 }) => (
   <Space align="start" size={sectionGap} wrap>

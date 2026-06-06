@@ -5,6 +5,7 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
+import { buildTableRequest } from '@/features/table/proTableRequest';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { backendRouteMeta } from '@/routes/meta';
@@ -560,6 +561,7 @@ const LocalizationPage = () => {
     },
     [primaryLocale],
   );
+  const tableRequest = useMemo(() => buildTableRequest(requestEntries), [requestEntries]);
   const toolbarActions = actionPermission.buildToolbarActions([
     {
       value: createElement(Button, { key: 'delete', size: buttonSize, icon: createElement(DeleteOutlined, {}), disabled: !actionPermission.can('localization:delete') }, '删除译文'),
@@ -587,7 +589,7 @@ const LocalizationPage = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           search={searchConfig}
-          request={requestEntries}
+          request={tableRequest}
           toolBarRender={() => toolbarActions}
         />
       </Spin>

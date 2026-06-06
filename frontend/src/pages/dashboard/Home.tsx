@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Avatar, Col, Empty, Row, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
+import { Avatar, Button, Col, Empty, List, Row, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
+import { ArrowRightOutlined, AppstoreOutlined, LockOutlined, MenuOutlined, RocketOutlined } from '@ant-design/icons';
+import { history } from '@umijs/max';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { request } from '@/services/common/request';
-import type { AuditLogRecord, DashboardSummary } from '@/types/api';
+import type { AuditLogRecord, DashboardSummary, TenantPlugin } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './Home.css';
@@ -91,6 +93,16 @@ const logResultColor = (value?: string | null) => {
   }
   return 'default';
 };
+
+const buildMetricValue = (value?: number | null) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '0';
+  }
+
+  return String(value);
+};
+
+const buildPluginLabel = (plugin: TenantPlugin) => plugin.pluginName || plugin.pluginCode;
 
 const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] => [
   {
@@ -235,25 +247,208 @@ const DashboardHomePage = () => {
     LOGIN_LOG_TABLE_SCROLL_X,
     OPERATION_LOG_TABLE_SCROLL_X,
   } = useDashboardHome();
+  const shortcuts = summary?.shortcuts || [];
+  const tenantPlugins = summary?.tenantPlugins || [];
+  const metrics = [
+    {
+      label: '菜单数量',
+      value: buildMetricValue(summary?.menuCount),
+      description: '当前租户可见菜单',
+      icon: <MenuOutlined />,
+      colorClass: 'saas-dashboard-home__metric--menus',
+    },
+    {
+      label: '权限数量',
+      value: buildMetricValue(summary?.permissionCount),
+      description: '当前用户已分配权限',
+      icon: <LockOutlined />,
+      colorClass: 'saas-dashboard-home__metric--permissions',
+    },
+    {
+      label: '插件数量',
+      value: buildMetricValue(tenantPlugins.length),
+      description: '已接入的租户插件',
+      icon: <AppstoreOutlined />,
+      colorClass: 'saas-dashboard-home__metric--plugins',
+    },
+    {
+      label: '快捷入口',
+      value: buildMetricValue(shortcuts.length),
+      description: '常用后台导航',
+      icon: <RocketOutlined />,
+      colorClass: 'saas-dashboard-home__metric--shortcuts',
+    },
+  ];
+
   return (
     <PageContainer title="工作台" ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
-      <ProCard variant="borderless" className="saas-dashboard-home__hero">
-        <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
-          <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
-            <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={currentUser?.avatarUrl || undefined}>
-              {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
-            </Avatar>
-            <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
-              <Typography.Title level={3} style={{ margin: 0 }}>
-                {greeting}，{displayName}
-              </Typography.Title>
-              <Typography.Text type="secondary">欢迎回来，继续处理今天的系统事项</Typography.Text>
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
+        <ProCard variant="borderless" className="saas-dashboard-home__hero">
+          <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
+            <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
+              <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={currentUser?.avatarUrl || undefined}>
+                {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
+              </Avatar>
+              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
+                <Typography.Title level={3} style={{ margin: 0 }}>
+                  {greeting}，{displayName}
+                </Typography.Title>
+                <Typography.Text type="secondary">欢迎回来，继续处理今天的系统事项</Typography.Text>
+              </Space>
             </Space>
+            {dashboardQuery.isLoading && !summary ? <Skeleton active paragraph={{ rows: 2 }} title={false} /> : null}
           </Space>
-          {dashboardQuery.isLoading && !summary ? <Skeleton active paragraph={{ rows: 2 }} title={false} /> : null}
-        </Space>
-      </ProCard>
-      <div className="saas-dashboard-home__debug-placeholder">dashboard-home-mounted</div>
+        </ProCard>
+
+        <Row gutter={[16, 16]} align="stretch">
+          <Col xs={24} xl={16}>
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <ProCard title="快捷入口" variant="outlined" className="saas-dashboard-home__panel">
+                {shortcuts.length ? (
+                  <Row gutter={[12, 12]}>
+                    {shortcuts.map((shortcut) => (
+                      <Col key={shortcut.path} xs={24} sm={12} xl={8}>
+                        <div className="saas-dashboard-home__shortcut-card">
+                          <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)} style={{ width: '100%' }}>
+                            <Space align="center" size={8} wrap>
+                              <Typography.Text strong>{shortcut.title}</Typography.Text>
+                              {shortcut.permission ? <Tag>{shortcut.permission}</Tag> : null}
+                            </Space>
+                            <Typography.Paragraph className="saas-dashboard-home__shortcut-description" type="secondary" ellipsis={{ rows: 2 }}>
+                              {shortcut.description}
+                            </Typography.Paragraph>
+                            <Typography.Text className="saas-dashboard-home__shortcut-path" type="secondary">
+                              {shortcut.path}
+                            </Typography.Text>
+                            <Button type="primary" ghost icon={<ArrowRightOutlined />} onClick={() => history.push(shortcut.path)}>
+                              前往
+                            </Button>
+                          </Space>
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                ) : (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无快捷入口" />
+                )}
+              </ProCard>
+
+              <ProCard title="近期动态" variant="outlined" className="saas-dashboard-home__panel">
+                <Tabs
+                  defaultActiveKey="login"
+                  items={[
+                    {
+                      key: 'login',
+                      label: `登录记录 (${recentLoginLogs.length})`,
+                      children: (
+                        <ManagementTable<AuditLogRecord>
+                          className="saas-dashboard-home__activity-table"
+                          size="small"
+                          rowKey="id"
+                          pagination={false}
+                          isMobile={responsive.isMobile}
+                          search={false}
+                          scroll={{ x: LOGIN_LOG_TABLE_SCROLL_X }}
+                          onRefresh={() => dashboardQuery.refetch()}
+                          loading={dashboardQuery.isLoading && !summary}
+                          columns={loginLogColumns}
+                          dataSource={recentLoginLogs}
+                          locale={{
+                            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无登录记录" />,
+                          }}
+                        />
+                      ),
+                    },
+                    {
+                      key: 'operation',
+                      label: `操作记录 (${recentOperationLogs.length})`,
+                      children: (
+                        <ManagementTable<AuditLogRecord>
+                          className="saas-dashboard-home__activity-table"
+                          size="small"
+                          rowKey="id"
+                          pagination={false}
+                          isMobile={responsive.isMobile}
+                          search={false}
+                          scroll={{ x: OPERATION_LOG_TABLE_SCROLL_X }}
+                          onRefresh={() => dashboardQuery.refetch()}
+                          loading={dashboardQuery.isLoading && !summary}
+                          columns={operationLogColumns}
+                          dataSource={recentOperationLogs}
+                          locale={{
+                            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无操作记录" />,
+                          }}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              </ProCard>
+            </Space>
+          </Col>
+
+          <Col xs={24} xl={8}>
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <ProCard title="工作概览" variant="outlined" className="saas-dashboard-home__panel">
+                <Row gutter={[12, 12]}>
+                  {metrics.map((metric) => (
+                    <Col key={metric.label} xs={12} sm={12} xl={24}>
+                      <div className={`saas-dashboard-home__metric ${metric.colorClass}`}>
+                        <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)} style={{ width: '100%' }}>
+                          <Space align="center" size={8}>
+                            <span className="saas-dashboard-home__metric-icon">{metric.icon}</span>
+                            <Typography.Text type="secondary">{metric.label}</Typography.Text>
+                          </Space>
+                          <Typography.Title level={2} style={{ margin: 0 }}>
+                            {metric.value}
+                          </Typography.Title>
+                          <Typography.Text type="secondary">{metric.description}</Typography.Text>
+                        </Space>
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              </ProCard>
+
+              <ProCard title="租户插件" variant="outlined" className="saas-dashboard-home__panel">
+                {tenantPlugins.length ? (
+                  <List
+                    dataSource={tenantPlugins}
+                    split
+                    renderItem={(plugin) => (
+                      <List.Item className="saas-dashboard-home__plugin-item">
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar shape="square" className="saas-dashboard-home__plugin-avatar">
+                              {buildInitials(buildPluginLabel(plugin), 'P')}
+                            </Avatar>
+                          }
+                          title={
+                            <Space align="center" size={8} wrap>
+                              <Typography.Text strong>{buildPluginLabel(plugin)}</Typography.Text>
+                              <Tag>{plugin.version}</Tag>
+                            </Space>
+                          }
+                          description={
+                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                              <Typography.Text type="secondary">{plugin.pluginCode}</Typography.Text>
+                              <Typography.Text type="secondary" className="saas-dashboard-home__plugin-manifest">
+                                {plugin.manifestPath}
+                              </Typography.Text>
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                ) : (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无插件信息" />
+                )}
+              </ProCard>
+            </Space>
+          </Col>
+        </Row>
+      </Space>
     </PageContainer>
   );
 };

@@ -109,14 +109,14 @@ const useKnowledgePageAccess = () => {
     setKnowledgeBaseSaving(true);
     try {
       if (editingKnowledgeBase) {
-        await request(`/v1/ai/knowledge-bases/${editingKnowledgeBase.id}`, {
+        await request(`/ai/knowledge-bases/${editingKnowledgeBase.id}`, {
           method: 'PUT',
           data: values,
           ...requestOptions,
         });
         message.success('知识库已更新');
       } else {
-        await request('/v1/ai/knowledge-bases', {
+        await request('/ai/knowledge-bases', {
           method: 'POST',
           data: values,
           ...requestOptions,
@@ -137,7 +137,7 @@ const useKnowledgePageAccess = () => {
         okText: '确认删除',
         okButtonProps: { danger: true },
         onOk: async () => {
-          await request(`/v1/ai/knowledge-bases/${record.id}`, {
+          await request(`/ai/knowledge-bases/${record.id}`, {
             method: 'DELETE',
             ...requestOptions,
           });
@@ -163,7 +163,7 @@ const useKnowledgePageAccess = () => {
     try {
       const formData = new FormData();
       formData.append('file', options.file);
-      await request(`/v1/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/upload`, {
+      await request(`/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/upload`, {
         method: 'POST',
         headers: {},
         data: formData,
@@ -182,7 +182,7 @@ const useKnowledgePageAccess = () => {
     if (!selectedKnowledgeBase) {
       return;
     }
-    await request(`/v1/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/${record.id}/reindex`, {
+    await request(`/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/${record.id}/reindex`, {
       method: 'POST',
       ...requestOptions,
     });
@@ -198,7 +198,7 @@ const useKnowledgePageAccess = () => {
       okText: '确认删除',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await request(`/v1/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/${record.id}`, {
+        await request(`/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/${record.id}`, {
           method: 'DELETE',
           ...requestOptions,
         });
@@ -213,7 +213,7 @@ const useKnowledgePageAccess = () => {
     }
     setSearching(true);
     try {
-      const records = await request<AiKnowledgeReferenceRecord[]>('/v1/ai/knowledge-bases/search', {
+      const records = await request<AiKnowledgeReferenceRecord[]>('/ai/knowledge-bases/search', {
         method: 'POST',
         data: { query, knowledgeBaseIds: [selectedKnowledgeBase.id], limit: 6 },
         ...requestOptions,
@@ -250,7 +250,7 @@ const useKnowledgePageAccess = () => {
     async (params: { current?: number; pageSize?: number; scope?: string | number | null; [key: string]: unknown }) => {
       const { current, pageSize, scope, ...rest } = params;
       const requestScope = typeof scope === 'string' ? scope : activeScope;
-      const result = await request<PagedResult<AiKnowledgeBaseRecord>>('/v1/ai/knowledge-bases', {
+      const result = await request<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
         method: 'GET',
         params: { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, scope: requestScope, ...rest },
         ...requestOptions,
@@ -265,7 +265,7 @@ const useKnowledgePageAccess = () => {
         return { data: [], success: true, total: 0 };
       }
       const result = await request<PagedResult<AiKnowledgeDocumentRecord>>(
-        `/v1/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents`,
+        `/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents`,
         {
           method: 'GET',
           params: { pageNo: Number(params.current) || 1, pageSize: Number(params.pageSize) || 10 },

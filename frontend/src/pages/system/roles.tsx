@@ -219,11 +219,11 @@ const RolePermissionEditor = ({
               <div className="role-action-panel__page-name">
                 {activePageNode?.pageName || '请从左侧选择页面'}
                 {activePageNode?.routeMatched && activePageNode?.routePath ? (
-                  <Tag style={{ marginInlineStart: tagWrapGap }} color="blue">
+                  <Tag style={{ marginInlineStart: tagWrapGap[0] }} color="blue">
                     {activePageNode?.routePath}
                   </Tag>
                 ) : activePageNode?.nodeType === 'PAGE' ? (
-                  <Tag style={{ marginInlineStart: tagWrapGap }} color="red">
+                  <Tag style={{ marginInlineStart: tagWrapGap[0] }} color="red">
                     路由失配
                   </Tag>
                 ) : null}

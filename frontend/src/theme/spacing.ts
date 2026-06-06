@@ -39,16 +39,16 @@ export const APP_SPACING = {
     mobile: 12,
   },
   rowGutterHero: {
-    desktop: [24, 24],
-    mobile: [16, 16],
+    desktop: [24, 24] as [number, number],
+    mobile: [16, 16] as [number, number],
   },
   rowGutterPanel: {
-    desktop: [16, 16],
-    mobile: [16, 16],
+    desktop: [16, 16] as [number, number],
+    mobile: [16, 16] as [number, number],
   },
   tagWrapGap: {
-    desktop: [8, 8],
-    mobile: [8, 8],
+    desktop: [8, 8] as [number, number],
+    mobile: [8, 8] as [number, number],
   },
   mobileProfileSectionGap: {
     desktop: 16,

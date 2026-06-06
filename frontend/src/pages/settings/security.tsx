@@ -41,10 +41,10 @@ const SecuritySettingsPage = () => {
   const [form] = Form.useForm<SecuritySettings>();
   const { setInitialState } = useInitialStateModel();
   const actionPermission = useActionPermission();
-  const { responsive } = useResponsive();
+  const { isMobile } = useResponsive();
   const canUpdate = actionPermission.can('system:config:update');
-  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
-  const cardPaddingTop = resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)[0];
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const cardPaddingTop = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)[0];
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const captchaType = Form.useWatch('captchaType', form) || DEFAULT_SECURITY_SETTINGS.captchaType;

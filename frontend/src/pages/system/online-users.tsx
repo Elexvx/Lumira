@@ -1,5 +1,5 @@
 import { type ActionType, ProDescriptions, type ProColumns, type ProDescriptionsItemProps } from '@ant-design/pro-components';
-import { Button, Modal, Space, Tag, Typography, message } from 'antd';
+import { Button, Modal, Space, Tag, Typography, message, type SpaceProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -155,6 +155,7 @@ const buildOnlineUserColumns = ({
   currentUserId,
   currentSessionId,
   userCellGap,
+  isMobile,
   buildActions,
   onShowDetail,
   onKick,
@@ -162,7 +163,8 @@ const buildOnlineUserColumns = ({
 }: {
   currentUserId?: OnlineSessionRecord['userId'];
   currentSessionId?: OnlineSessionRecord['sessionId'];
-  userCellGap: string | number;
+  userCellGap: SpaceProps['size'];
+  isMobile: boolean;
   buildActions: (items: any[]) => any[];
   onShowDetail: (record: OnlineSessionRecord) => void;
   onKick: (record: OnlineSessionRecord) => void;
@@ -441,7 +443,8 @@ const OnlineUsersPage = () => {
       buildOnlineUserColumns({
         currentUserId: currentUser?.userId,
         currentSessionId: currentUser?.sessionId,
-        userCellGap: resolveResponsiveValue(APP_SPACING.microOffset, responsive.isMobile),
+        userCellGap: resolveResponsiveValue(APP_SPACING.microOffset, responsive.isMobile) as SpaceProps['size'],
+        isMobile: responsive.isMobile,
         buildActions,
         onShowDetail,
         onKick,

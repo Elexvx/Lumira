@@ -119,6 +119,7 @@ const buildFileObjectColumns = ({
   onCopyLink,
   onDelete,
 }: BuildFileObjectColumnsParams): ProColumns<FileObjectRecord>[] => {
+  const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile) as [number, number];
   const searchColumns = [
     {
       title: formatMessage({ id: 'system.files.search.keywordLabel', defaultMessage: 'Keyword' }),
@@ -142,7 +143,7 @@ const buildFileObjectColumns = ({
       width: 'var(--saas-spacing-260)',
       ellipsis: true,
       render: (_: unknown, record: FileObjectRecord) => (
-        <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap={false}>
+        <Space size={tagWrapGap} wrap={false}>
           <FileOutlined />
           <Typography.Link
             title={record.originalFileName}
@@ -243,7 +244,7 @@ const buildFileObjectColumns = ({
   return [...searchColumns, ...dataColumns, actionColumn];
 };
 
-const FileStorageDrawer = ({
+function FileStorageDrawer({
   open,
   mode,
   form,
@@ -269,103 +270,104 @@ const FileStorageDrawer = ({
   renameStrategyOptions: Array<{ label: string; value: FileRenameStrategy }>;
   onClose: () => void;
   onSave: () => void;
-}) => {
-  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
-
+}) {
   return (
-  <ManagementDrawer
-    title={mode === 'edit' ? `编辑 - ${editingStorageSpace?.title || '存储空间'}` : '新增存储空间'}
-    open={open}
-    onClose={onClose}
-    footerActions={[
-      { key: 'cancel', label: '取消', onClick: onClose },
-      { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canManageStorage, onClick: onSave },
-    ]}
-  >
-    <Form form={form} layout="vertical" initialValues={{ provider: 'LOCAL', renameStrategy: 'APPEND_RANDOM_ID' }}>
-      <>
-        <Form.Item name="provider" label="存储类型" rules={[{ required: true, message: '请选择存储类型' }]}>
-          <Select options={providerOptions} disabled={mode === 'edit'} />
-        </Form.Item>
-        <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
-          <Input placeholder="Local storage" />
-        </Form.Item>
-        <Form.Item
-          name="storageKey"
-          label="存储空间标识"
-          rules={[
-            { required: true, message: '请输入存储空间标识' },
-            { pattern: /^[a-z][a-z0-9_]*$/, message: '必须以英文字母开头，仅支持英文、数字和下划线' },
-          ]}
-          extra="随机生成，可修改。支持英文、数字和下划线，必须以英文字母开头。"
-        >
-          <Input placeholder="local" disabled={mode === 'edit'} />
-        </Form.Item>
-        {provider === 'LOCAL' ? (
-          <Form.Item name="rootPath" label="路径">
-            <Input addonAfter="/" placeholder="storage/uploads" />
+    <ManagementDrawer
+      title={mode === 'edit' ? `编辑 - ${editingStorageSpace?.title || '存储空间'}` : '新增存储空间'}
+      open={open}
+      onClose={onClose}
+      footerActions={[
+        { key: 'cancel', label: '取消', onClick: onClose },
+        { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canManageStorage, onClick: onSave },
+      ]}
+    >
+      <Form form={form} layout="vertical" initialValues={{ provider: 'LOCAL', renameStrategy: 'APPEND_RANDOM_ID' }}>
+        <>
+          <Form.Item name="provider" label="存储类型" rules={[{ required: true, message: '请选择存储类型' }]}>
+            <Select options={providerOptions} disabled={mode === 'edit'} />
           </Form.Item>
-        ) : null}
-        {showRemoteStorageFields ? (
-          <>
-            <Form.Item name="bucketName" label="Bucket" rules={[{ required: true, message: '请输入 Bucket' }]}>
-              <Input placeholder="对象存储 Bucket 名称" />
-            </Form.Item>
-            <Form.Item name="endpoint" label="Endpoint" rules={[{ required: true, message: '请输入 Endpoint' }]}>
-              <Input placeholder="https://oss-cn-hangzhou.aliyuncs.com" />
-            </Form.Item>
-            <Form.Item name="region" label="Region">
-              <Input placeholder="cn-hangzhou / ap-guangzhou / us-east-1" />
-            </Form.Item>
-            <Form.Item name="accessKeyId" label="Access Key ID">
-              <Input placeholder="对象存储访问密钥 ID" />
-            </Form.Item>
-            <Form.Item name="accessKeySecret" label="Access Key Secret" extra={editingStorageSpace?.secretConfigured ? '留空则保持现有密钥。' : undefined}>
-              <Input.Password placeholder="留空则不修改已保存密钥" />
-            </Form.Item>
-          </>
-        ) : null}
-        <Form.Item name="renameStrategy" label="重命名" rules={[{ required: true, message: '请选择重命名策略' }]}>
-          <Radio.Group options={renameStrategyOptions} />
-        </Form.Item>
-        <Form.Item name="maxFileSizeMb" label="文件大小限制" rules={[{ required: true, message: '请输入文件大小限制' }]}>
-          <InputNumber min={1} addonAfter="MB" style={{ width: 'var(--saas-spacing-220)' }} />
-        </Form.Item>
-        <Form.Item name="allowedMimeTypes" label="允许的文件类型（MIME 格式）">
-          <Input placeholder="*" />
-        </Form.Item>
-        <Form.Item name="defaultStorage" valuePropName="checked">
-          <Checkbox disabled={Boolean(editingStorageSpace?.defaultStorage)}>默认存储空间</Checkbox>
-        </Form.Item>
-        <Form.Item name="retainFileOnRecordDelete" valuePropName="checked">
-          <Checkbox>删除文件记录时保留文件</Checkbox>
-        </Form.Item>
-        <Form.Item name="status" label="状态">
-          <Select
-            options={[
-              { label: '启用', value: 'ENABLED' },
-              { label: '停用', value: 'DISABLED' },
+          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+            <Input placeholder="Local storage" />
+          </Form.Item>
+          <Form.Item
+            name="storageKey"
+            label="存储空间标识"
+            rules={[
+              { required: true, message: '请输入存储空间标识' },
+              { pattern: /^[a-z][a-z0-9_]*$/, message: '必须以英文字母开头，仅支持英文、数字和下划线' },
             ]}
-          />
-        </Form.Item>
-      </>
-    </Form>
-  </ManagementDrawer>
-);
+            extra="随机生成，可修改。支持英文、数字和下划线，必须以英文字母开头。"
+          >
+            <Input placeholder="local" disabled={mode === 'edit'} />
+          </Form.Item>
+          {provider === 'LOCAL' ? (
+            <Form.Item name="rootPath" label="路径">
+              <Input addonAfter="/" placeholder="storage/uploads" />
+            </Form.Item>
+          ) : null}
+          {showRemoteStorageFields ? (
+            <>
+              <Form.Item name="bucketName" label="Bucket" rules={[{ required: true, message: '请输入 Bucket' }]}>
+                <Input placeholder="对象存储 Bucket 名称" />
+              </Form.Item>
+              <Form.Item name="endpoint" label="Endpoint" rules={[{ required: true, message: '请输入 Endpoint' }]}>
+                <Input placeholder="https://oss-cn-hangzhou.aliyuncs.com" />
+              </Form.Item>
+              <Form.Item name="region" label="Region">
+                <Input placeholder="cn-hangzhou / ap-guangzhou / us-east-1" />
+              </Form.Item>
+              <Form.Item name="accessKeyId" label="Access Key ID">
+                <Input placeholder="对象存储访问密钥 ID" />
+              </Form.Item>
+              <Form.Item name="accessKeySecret" label="Access Key Secret" extra={editingStorageSpace?.secretConfigured ? '留空则保持现有密钥。' : undefined}>
+                <Input.Password placeholder="留空则不修改已保存密钥" />
+              </Form.Item>
+            </>
+          ) : null}
+          <Form.Item name="renameStrategy" label="重命名" rules={[{ required: true, message: '请选择重命名策略' }]}>
+            <Radio.Group options={renameStrategyOptions} />
+          </Form.Item>
+          <Form.Item name="maxFileSizeMb" label="文件大小限制" rules={[{ required: true, message: '请输入文件大小限制' }]}>
+            <InputNumber min={1} addonAfter="MB" style={{ width: 'var(--saas-spacing-220)' }} />
+          </Form.Item>
+          <Form.Item name="allowedMimeTypes" label="允许的文件类型（MIME 格式）">
+            <Input placeholder="*" />
+          </Form.Item>
+          <Form.Item name="defaultStorage" valuePropName="checked">
+            <Checkbox disabled={Boolean(editingStorageSpace?.defaultStorage)}>默认存储空间</Checkbox>
+          </Form.Item>
+          <Form.Item name="retainFileOnRecordDelete" valuePropName="checked">
+            <Checkbox>删除文件记录时保留文件</Checkbox>
+          </Form.Item>
+          <Form.Item name="status" label="状态">
+            <Select
+              options={[
+                { label: '启用', value: 'ENABLED' },
+                { label: '停用', value: 'DISABLED' },
+              ]}
+            />
+          </Form.Item>
+        </>
+      </Form>
+    </ManagementDrawer>
+  );
+}
 
-const FileUploadDrawer = ({
+function FileUploadDrawer({
   open,
   uploading,
   canUpload,
+  sectionGap,
   onClose,
   onSubmit,
 }: {
   open: boolean;
   uploading: boolean;
   canUpload: boolean;
+  sectionGap: number;
   onClose: () => void;
   onSubmit: (payload: { files: File[]; values: { category?: string; tags?: string; remark?: string } }) => Promise<void>;
-}) => {
+}) {
   const [form] = Form.useForm<{
     category?: string | string[];
     tags?: string;
@@ -445,7 +447,7 @@ const FileUploadDrawer = ({
       ]}
     >
       <Form form={form} layout="vertical">
-      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+        <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
           <Card title="Select files" bodyStyle={{ padding: 0 }} style={{ borderRadius: 'var(--saas-card-radius)' }}>
             <Upload.Dragger {...uploadDraggerProps} style={{ borderRadius: 'var(--saas-card-radius)' }}>
               <p className="ant-upload-drag-icon">
@@ -475,9 +477,9 @@ const FileUploadDrawer = ({
       </Form>
     </ManagementDrawer>
   );
-};
+}
 
-const FilePreviewDrawer = ({
+function FilePreviewDrawer({
   open,
   record,
   previewMode,
@@ -489,6 +491,7 @@ const FilePreviewDrawer = ({
   textLoading,
   fileLoading,
   isMobile,
+  sectionGap,
   backgroundColor,
   containerBackgroundColor,
   onClose,
@@ -506,83 +509,85 @@ const FilePreviewDrawer = ({
   textLoading: boolean;
   fileLoading: boolean;
   isMobile: boolean;
+  sectionGap: number;
   backgroundColor: string;
   containerBackgroundColor: string;
   onClose: () => void;
   onCopyLink: (record: FileObjectRecord) => void;
   onDownload: (record: FileObjectRecord) => void;
-}) => (
-  <ManagementDrawer
-    title={record ? record.originalFileName : 'File preview'}
-    open={open}
-    onClose={onClose}
-    footer={
-      <div className="saas-drawer-footer">
-        <Space wrap>
-          <Button icon={<CopyOutlined />} onClick={() => record && void onCopyLink(record)} disabled={!record}>
-            Copy link
-          </Button>
-          <Button icon={<DownloadOutlined />} onClick={() => record && void onDownload(record)} disabled={!record}>
-            Download
-          </Button>
-          <Button onClick={onClose}>Close</Button>
-        </Space>
-      </div>
-    }
-  >
-    {record ? (
-      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-        <Descriptions bordered column={isMobile ? 1 : 2} size="small">
-          <Descriptions.Item label="File name">{record.originalFileName}</Descriptions.Item>
-          <Descriptions.Item label="Type">{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
-          <Descriptions.Item label="Size">{record.fileSizeLabel || formatFileSize(record.fileSizeBytes)}</Descriptions.Item>
-          <Descriptions.Item label="Preview">{<Tag color={previewMeta.color}>{previewMeta.text}</Tag>}</Descriptions.Item>
-          <Descriptions.Item label="Category">{record.category || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Uploader">{record.uploadedByName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Tags" span={2}>
-            {renderTags(record.tags)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Remark" span={2}>
-            {record.remark || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Upload time">{formatDateTime(record.createdAt)}</Descriptions.Item>
-          <Descriptions.Item label="Download link">
-            <Typography.Text copyable={{ text: previewAbsoluteUrl }}>{previewAbsoluteUrl || '-'}</Typography.Text>
-          </Descriptions.Item>
-        </Descriptions>
+}) {
+  return (
+    <ManagementDrawer
+      title={record ? record.originalFileName : 'File preview'}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="saas-drawer-footer">
+          <Space wrap>
+            <Button icon={<CopyOutlined />} onClick={() => record && void onCopyLink(record)} disabled={!record}>
+              Copy link
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={() => record && void onDownload(record)} disabled={!record}>
+              Download
+            </Button>
+            <Button onClick={onClose}>Close</Button>
+          </Space>
+        </div>
+      }
+    >
+      {record ? (
+        <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+          <Descriptions bordered column={isMobile ? 1 : 2} size="small">
+            <Descriptions.Item label="File name">{record.originalFileName}</Descriptions.Item>
+            <Descriptions.Item label="Type">{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
+            <Descriptions.Item label="Size">{record.fileSizeLabel || formatFileSize(record.fileSizeBytes)}</Descriptions.Item>
+            <Descriptions.Item label="Preview">{<Tag color={previewMeta.color}>{previewMeta.text}</Tag>}</Descriptions.Item>
+            <Descriptions.Item label="Category">{record.category || '-'}</Descriptions.Item>
+            <Descriptions.Item label="Uploader">{record.uploadedByName || '-'}</Descriptions.Item>
+            <Descriptions.Item label="Tags" span={2}>
+              {renderTags(record.tags)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Remark" span={2}>
+              {record.remark || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Upload time">{formatDateTime(record.createdAt)}</Descriptions.Item>
+            <Descriptions.Item label="Download link">
+              <Typography.Text copyable={{ text: previewAbsoluteUrl }}>{previewAbsoluteUrl || '-'}</Typography.Text>
+            </Descriptions.Item>
+          </Descriptions>
 
-        <Spin
-          spinning={loading || textLoading || fileLoading}
-          tip={fileLoading ? 'Loading file preview' : textLoading ? 'Loading text content' : 'Loading file details'}
-        >
-          <div
-            style={{
-              minHeight: isMobile ? 'var(--saas-spacing-240)' : 'var(--saas-spacing-520)',
-              padding: sectionGap,
-              background: backgroundColor,
-            }}
+          <Spin
+            spinning={loading || textLoading || fileLoading}
+            tip={fileLoading ? 'Loading file preview' : textLoading ? 'Loading text content' : 'Loading file details'}
           >
-            {previewMode === 'IMAGE' ? (
-              filePreviewUrl ? (
-                <Image
-                  src={filePreviewUrl}
-                  alt={record.originalFileName}
-                  preview={false}
-                  style={{ width: '100%', maxHeight: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)', objectFit: 'contain' }}
-                />
-              ) : null
-            ) : null}
-            {previewMode === 'PDF' ? (
-              filePreviewUrl ? (
-                <iframe
-                  title={record.originalFileName}
-                  src={`${filePreviewUrl}#view=FitH`}
-                  style={{ width: '100%', height: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)', border: 0, background: containerBackgroundColor }}
-                />
-              ) : null
-            ) : null}
-            {previewMode === 'TEXT' ? (
-              <Typography.Paragraph
+            <div
+              style={{
+                minHeight: isMobile ? 'var(--saas-spacing-240)' : 'var(--saas-spacing-520)',
+                padding: sectionGap,
+                background: backgroundColor,
+              }}
+            >
+              {previewMode === 'IMAGE' ? (
+                filePreviewUrl ? (
+                  <Image
+                    src={filePreviewUrl}
+                    alt={record.originalFileName}
+                    preview={false}
+                    style={{ width: '100%', maxHeight: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)', objectFit: 'contain' }}
+                  />
+                ) : null
+              ) : null}
+              {previewMode === 'PDF' ? (
+                filePreviewUrl ? (
+                  <iframe
+                    title={record.originalFileName}
+                    src={`${filePreviewUrl}#view=FitH`}
+                    style={{ width: '100%', height: isMobile ? 'var(--saas-spacing-360)' : 'var(--saas-spacing-560)', border: 0, background: containerBackgroundColor }}
+                  />
+                ) : null
+              ) : null}
+              {previewMode === 'TEXT' ? (
+                <Typography.Paragraph
                   style={{
                     marginBottom: 0,
                     whiteSpace: 'pre-wrap',
@@ -591,29 +596,29 @@ const FilePreviewDrawer = ({
                     overflow: 'auto',
                   }}
                 >
-                {previewText || 'No text content yet'}
-              </Typography.Paragraph>
-            ) : null}
-            {previewMode === 'UNSUPPORTED' ? (
-              <Empty
-                description={
-                  <Typography.Text>
-                    This format is not supported for online preview yet
-                  </Typography.Text>
-                }
-              />
-            ) : null}
-          </div>
-        </Spin>
-      </Space>
-    ) : (
-      <Empty description="No file details yet" />
-    )}
-  </ManagementDrawer>
-);}
-;
+                  {previewText || 'No text content yet'}
+                </Typography.Paragraph>
+              ) : null}
+              {previewMode === 'UNSUPPORTED' ? (
+                <Empty
+                  description={
+                    <Typography.Text>
+                      This format is not supported for online preview yet
+                    </Typography.Text>
+                  }
+                />
+              ) : null}
+            </div>
+          </Spin>
+        </Space>
+      ) : (
+        <Empty description="No file details yet" />
+      )}
+    </ManagementDrawer>
+  );
+}
 
-const SystemFilesPage = () => {
+function SystemFilesPage() {
   const { token } = theme.useToken();
   const location = useLocation();
   const responsive = useResponsive();
@@ -1220,6 +1225,7 @@ const SystemFilesPage = () => {
     storageToolbar,
     actionToolbar,
   };
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
 
   const drawerProps = {
     storageDrawerProps: {
@@ -1233,6 +1239,8 @@ const SystemFilesPage = () => {
       showRemoteStorageFields,
       providerOptions: storageProviderOptions,
       renameStrategyOptions: storageRenameStrategyOptions,
+      isMobile: responsive.isMobile,
+      sectionGap,
       onClose: closeStorageDrawer,
       onSave: () => void handleSaveStorageSpace(),
     },
@@ -1240,11 +1248,14 @@ const SystemFilesPage = () => {
       open: uploadDrawerOpen,
       uploading,
       canUpload: canUploadInCurrentScope,
+      isMobile: responsive.isMobile,
+      sectionGap,
       onClose: closeUploadDrawer,
       onSubmit: handleUploadSubmit,
     },
     previewDrawerProps: {
       ...previewDrawerProps,
+      sectionGap,
       backgroundColor: previewBackgroundColor,
       containerBackgroundColor: previewContainerBackgroundColor,
     },
@@ -1278,6 +1289,6 @@ const SystemFilesPage = () => {
       <FilePreviewDrawer {...drawerProps.previewDrawerProps} isMobile={browserSectionProps.isMobile} />
     </ManagementPage>
   );
-};
+}
 
 export default SystemFilesPage;

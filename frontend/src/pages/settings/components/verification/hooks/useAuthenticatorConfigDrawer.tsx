@@ -141,37 +141,47 @@ type DrawerContentRouteParams = {
   handleSmsProviderChange: (nextProvider: string) => void;
 };
 
-const renderBasicDrawerContent = () => (
-  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-    <Typography.Paragraph style={{ marginBottom: 0 }}>
-      密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。
-    </Typography.Paragraph>
-    <Button type="primary" onClick={() => history.push('/settings/security')}>
-      前往安全设置
-    </Button>
-  </Space>
-);
+const BasicDrawerContent = () => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
-const renderTotpDrawerContent = ({
+  return (
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+      <Typography.Paragraph style={{ marginBottom: 0 }}>
+        密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。
+      </Typography.Paragraph>
+      <Button type="primary" onClick={() => history.push('/settings/security')}>
+        前往安全设置
+      </Button>
+    </Space>
+  );
+};
+
+const TotpDrawerContent = ({
   canManageSettings,
   verificationFormProps,
 }: {
   canManageSettings: boolean;
   verificationFormProps: ReturnType<typeof useStandardFormProps>;
-}) => (
-  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-    <Form {...verificationFormProps}>
-      <Form.Item
-        name="enabled"
-        label="启用 2FA"
-        valuePropName="checked"
-        extra="关闭后，系统中的高危操作二次确认将不再要求 2FA。"
-      >
-        <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
-      </Form.Item>
-    </Form>
-  </Space>
-);
+}) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+
+  return (
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+      <Form {...verificationFormProps}>
+        <Form.Item
+          name="enabled"
+          label="启用 2FA"
+          valuePropName="checked"
+          extra="关闭后，系统中的高危操作二次确认将不再要求 2FA。"
+        >
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+      </Form>
+    </Space>
+  );
+};
 
 const SmsDrawerContent = ({
   canManageSettings,
@@ -186,6 +196,8 @@ const SmsDrawerContent = ({
 }) => {
   const provider = (Form.useWatch('provider', smsFormProps.form) || 'aliyun') as SmsProviderCode;
   const providerSchema = SMS_PROVIDER_SCHEMAS[provider] ?? SMS_PROVIDER_SCHEMAS.aliyun;
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -240,64 +252,69 @@ const EmailDrawerContent = ({
   smtpFormProps: ReturnType<typeof useStandardFormProps>;
   smtpTestFormProps: ReturnType<typeof useStandardFormProps>;
   smtpSettingsData?: SmtpSettings & { passwordConfigured?: boolean };
-}) => (
-  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-    <Card title="邮箱与 SMTP" loading={verificationLoading}>
-      <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
-        <Form {...smtpFormProps}>
-          <Typography.Title level={5} style={{ marginTop: 0 }}>
-            SMTP 基础配置
-          </Typography.Title>
-          <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
-            <Input disabled={!canManageSettings} placeholder="smtp.example.com" />
-          </Form.Item>
-          <Form.Item name="port" label="SMTP 端口" rules={[{ required: true, message: '请输入 SMTP 端口' }]}>
-            <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={1} max={65535} />
-          </Form.Item>
-          <Form.Item name="username" label="SMTP 用户名" rules={[{ required: true, message: '请输入 SMTP 用户名' }]}>
-            <Input disabled={!canManageSettings} placeholder="username@example.com" />
-          </Form.Item>
+}) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+
+  return (
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+      <Card title="邮箱与 SMTP" loading={verificationLoading}>
+        <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
+          <Form {...smtpFormProps}>
+            <Typography.Title level={5} style={{ marginTop: 0 }}>
+              SMTP 基础配置
+            </Typography.Title>
+            <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
+              <Input disabled={!canManageSettings} placeholder="smtp.example.com" />
+            </Form.Item>
+            <Form.Item name="port" label="SMTP 端口" rules={[{ required: true, message: '请输入 SMTP 端口' }]}>
+              <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={1} max={65535} />
+            </Form.Item>
+            <Form.Item name="username" label="SMTP 用户名" rules={[{ required: true, message: '请输入 SMTP 用户名' }]}>
+              <Input disabled={!canManageSettings} placeholder="username@example.com" />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="SMTP 密码"
+              extra={smtpSettingsData?.passwordConfigured ? '当前密码已脱敏显示，留空则保留现有密码' : '留空则保留现有密码'}
+            >
+              <Input.Password disabled={!canManageSettings} placeholder="留空则保持现有密码" />
+            </Form.Item>
+            <Form.Item name="from" label="发件人地址" rules={[{ required: true, message: '请输入发件人地址' }]}>
+              <Input disabled={!canManageSettings} placeholder="noreply@example.com" />
+            </Form.Item>
+            <Form.Item name="authEnabled" label="启用认证" valuePropName="checked">
+              <Switch disabled={!canManageSettings} />
+            </Form.Item>
+            <Form.Item name="startTlsEnabled" label="启用 STARTTLS" valuePropName="checked">
+              <Switch disabled={!canManageSettings} />
+            </Form.Item>
+            <Form.Item name="sslEnabled" label="启用 SSL" valuePropName="checked">
+              <Switch disabled={!canManageSettings} />
+            </Form.Item>
+          </Form>
+        </div>
+      </Card>
+      <Card title="SMTP 测试发送" loading={verificationLoading}>
+        <Form {...smtpTestFormProps}>
           <Form.Item
-            name="password"
-            label="SMTP 密码"
-            extra={smtpSettingsData?.passwordConfigured ? '当前密码已脱敏显示，留空则保留现有密码' : '留空则保留现有密码'}
+            name="toEmail"
+            label="收件人邮箱"
+            rules={[{ required: true, message: '请输入收件人邮箱' }, { type: 'email', message: '请输入有效邮箱地址' }]}
           >
-            <Input.Password disabled={!canManageSettings} placeholder="留空则保持现有密码" />
+            <Input disabled={!canManageSettings} placeholder="recipient@example.com" />
           </Form.Item>
-          <Form.Item name="from" label="发件人地址" rules={[{ required: true, message: '请输入发件人地址' }]}>
-            <Input disabled={!canManageSettings} placeholder="noreply@example.com" />
+          <Form.Item name="subject" label="邮件主题">
+            <Input disabled={!canManageSettings} />
           </Form.Item>
-          <Form.Item name="authEnabled" label="启用认证" valuePropName="checked">
-            <Switch disabled={!canManageSettings} />
-          </Form.Item>
-          <Form.Item name="startTlsEnabled" label="启用 STARTTLS" valuePropName="checked">
-            <Switch disabled={!canManageSettings} />
-          </Form.Item>
-          <Form.Item name="sslEnabled" label="启用 SSL" valuePropName="checked">
-            <Switch disabled={!canManageSettings} />
+          <Form.Item name="content" label="邮件内容">
+            <Input.TextArea disabled={!canManageSettings} rows={6} />
           </Form.Item>
         </Form>
-      </div>
-    </Card>
-    <Card title="SMTP 测试发送" loading={verificationLoading}>
-      <Form {...smtpTestFormProps}>
-        <Form.Item
-          name="toEmail"
-          label="收件人邮箱"
-          rules={[{ required: true, message: '请输入收件人邮箱' }, { type: 'email', message: '请输入有效邮箱地址' }]}
-        >
-          <Input disabled={!canManageSettings} placeholder="recipient@example.com" />
-        </Form.Item>
-        <Form.Item name="subject" label="邮件主题">
-          <Input disabled={!canManageSettings} />
-        </Form.Item>
-        <Form.Item name="content" label="邮件内容">
-          <Input.TextArea disabled={!canManageSettings} rows={6} />
-        </Form.Item>
-      </Form>
-    </Card>
-  </Space>
-);
+      </Card>
+    </Space>
+  );
+};
 
 const renderEmailDrawerContent = ({
   canManageSettings,
@@ -331,6 +348,8 @@ const WechatDrawerContent = ({
   wechatSettingsData?: WechatLoginSettings;
 }) => {
   const wechatEnabled = Boolean(Form.useWatch('enabled', wechatFormProps.form));
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -377,40 +396,45 @@ const PasskeyDrawerContent = ({
 }: {
   canManageSettings: boolean;
   passkeyFormProps: ReturnType<typeof useStandardFormProps>;
-}) => (
-  <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-    <Form {...passkeyFormProps}>
-      <Form.Item
-        name="passwordlessEnabled"
-        label="允许无账号登录"
-        valuePropName="checked"
-        extra="开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。"
-      >
-        <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
-      </Form.Item>
-      <Form.Item name="selfBindingEnabled" label="允许用户自助绑定" valuePropName="checked">
-        <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
-      </Form.Item>
-      <Form.Item name="rpId" label="RP ID" rules={[{ required: true, message: '请输入 RP ID' }]}>
-        <Input disabled={!canManageSettings} placeholder="elexvx.com" />
-      </Form.Item>
-      <Form.Item name="rpName" label="RP 名称" rules={[{ required: true, message: '请输入 RP 名称' }]}>
-        <Input disabled={!canManageSettings} placeholder="宏翔商道后台管理系统" />
-      </Form.Item>
-      <Form.Item
-        name="allowedOriginsText"
-        label="允许的 Origin"
-        rules={[{ required: true, message: '请输入允许的 Origin' }]}
-        extra="每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。"
-      >
-        <Input.TextArea disabled={!canManageSettings} rows={4} placeholder="https://test.elexvx.com" />
-      </Form.Item>
-      <Form.Item name="challengeTtlSeconds" label="Challenge 有效期">
-        <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter="秒" />
-      </Form.Item>
-    </Form>
-  </Space>
-);
+}) => {
+  const { isMobile } = useResponsive();
+  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+
+  return (
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+      <Form {...passkeyFormProps}>
+        <Form.Item
+          name="passwordlessEnabled"
+          label="允许无账号登录"
+          valuePropName="checked"
+          extra="开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。"
+        >
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item name="selfBindingEnabled" label="允许用户自助绑定" valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        </Form.Item>
+        <Form.Item name="rpId" label="RP ID" rules={[{ required: true, message: '请输入 RP ID' }]}>
+          <Input disabled={!canManageSettings} placeholder="elexvx.com" />
+        </Form.Item>
+        <Form.Item name="rpName" label="RP 名称" rules={[{ required: true, message: '请输入 RP 名称' }]}>
+          <Input disabled={!canManageSettings} placeholder="宏翔商道后台管理系统" />
+        </Form.Item>
+        <Form.Item
+          name="allowedOriginsText"
+          label="允许的 Origin"
+          rules={[{ required: true, message: '请输入允许的 Origin' }]}
+          extra="每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。"
+        >
+          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder="https://test.elexvx.com" />
+        </Form.Item>
+        <Form.Item name="challengeTtlSeconds" label="Challenge 有效期">
+          <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter="秒" />
+        </Form.Item>
+      </Form>
+    </Space>
+  );
+};
 
 const resolveDrawerContentRoute = (params: DrawerContentRouteParams) => {
   switch (params.configDrawerMode ?? 'basic') {
@@ -442,13 +466,10 @@ const resolveDrawerContentRoute = (params: DrawerContentRouteParams) => {
     case 'passkey':
       return <PasskeyDrawerContent canManageSettings={params.canManageSettings} passkeyFormProps={params.passkeyFormProps} />;
     case 'totp':
-      return renderTotpDrawerContent({
-        canManageSettings: params.canManageSettings,
-        verificationFormProps: params.verificationFormProps,
-      });
+      return <TotpDrawerContent canManageSettings={params.canManageSettings} verificationFormProps={params.verificationFormProps} />;
     case 'basic':
     default:
-      return renderBasicDrawerContent();
+      return <BasicDrawerContent />;
   }
 };
 

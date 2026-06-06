@@ -1,4 +1,4 @@
-import { Button, Card, Empty, Form, Image, Space, Switch, Typography, Upload } from 'antd';
+import { Button, Card, Empty, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import ImgCrop from 'antd-img-crop';
 import type { FormProps } from 'antd';
@@ -135,7 +135,7 @@ const renderBrandingUploadField = ({
   beforeCrop?: (file: File) => boolean | Promise<boolean>;
   onUpload: BrandingTabProps['onUpload'];
   onClear: () => void;
-  tagWrapGap: number | number[];
+  tagWrapGap: number | [number, number];
   cardPadding: number;
 }) => {
   const uploadButton = (
@@ -217,12 +217,12 @@ export const BrandingTab = ({
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
         <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
-          <input />
+          <Input />
         </Form.Item>
 
         {BRANDING_ASSET_ITEM_CONFIGS.map((config) => (
           <Form.Item key={config.field} name={config.field} hidden>
-            <input />
+            <Input />
           </Form.Item>
         ))}
 
@@ -265,7 +265,7 @@ export const BrandingTab = ({
             <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
               {({ getFieldValue }) => (
                 <Form.Item name="githubLinkUrl" noStyle>
-                  <input disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
+                  <Input disabled={!getFieldValue('githubLinkEnabled')} placeholder="https://github.com/your-org/your-repo" />
                 </Form.Item>
               )}
             </Form.Item>
@@ -279,17 +279,17 @@ export const BrandingTab = ({
             <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
               {({ getFieldValue }) => (
                 <Form.Item name="helpLinkUrl" noStyle>
-                  <input disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
+                  <Input disabled={!getFieldValue('helpLinkEnabled')} placeholder="https://docs.example.com/help" />
                 </Form.Item>
               )}
             </Form.Item>
           </Space>
         </Form.Item>
         <Form.Item name="footerIcp" label="Footer ICP">
-          <input />
+          <Input />
         </Form.Item>
         <Form.Item name="footerCopyright" label="Footer 版权声明">
-          <textarea rows={3} />
+          <Input.TextArea rows={3} />
         </Form.Item>
       </Form>
 

@@ -935,7 +935,7 @@ const ServiceMonitorContent = () => {
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <ManagementPage className="saas-service-monitor-page" title="服务监控">
+    <ManagementPage className="saas-service-monitor-page" title="服务监控" ghost>
       <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-service-monitor-page">
         <Row gutter={rowGutter}>
           <Col xs={24} lg={12}>
@@ -960,16 +960,16 @@ const ServiceMonitorContent = () => {
             <Card title="内存" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
               <Row gutter={rowGutter}>
                 <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="总内存" value={service?.memory?.totalBytes ?? '-'} valueStyle={valueStyle} />
+                  <Statistic title="总内存" value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
                 </Col>
                 <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="已用内存" value={service?.memory?.usedBytes ?? '-'} valueStyle={valueStyle} />
+                  <Statistic title="已用内存" value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
                 </Col>
                 <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="剩余内存" value={service?.memory?.freeBytes ?? '-'} valueStyle={valueStyle} />
+                  <Statistic title="剩余内存" value={formatBytes(service?.memory?.freeBytes)} valueStyle={valueStyle} />
                 </Col>
                 <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="使用率" value={service?.memory?.usagePercent ?? '-'} valueStyle={valueStyle} />
+                  <Statistic title="使用率" value={formatPercent(service?.memory?.usagePercent)} valueStyle={valueStyle} />
                 </Col>
               </Row>
             </Card>

@@ -397,6 +397,7 @@ export const useUserManagement = () => {
         message.success('用户已创建');
       }
 
+      drawer.close();
       if (isCreating && selectedDepartmentId !== null) {
         setSelectedDepartmentId(null);
       } else {

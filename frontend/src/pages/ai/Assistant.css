@@ -17,6 +17,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  width: 100%;
   min-height: 0;
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--saas-card-radius);
@@ -32,6 +33,7 @@
 .saas-ai-assistant-desktop-shell {
   display: grid;
   grid-template-columns: var(--saas-spacing-280) minmax(0, 1fr);
+  width: 100%;
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -39,6 +41,7 @@
 
 .saas-ai-assistant-mobile-shell {
   display: none;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -71,6 +74,7 @@
 .saas-ai-assistant-layout__sidebar {
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   border-right: 1px solid var(--ant-color-border-secondary);
   background: color-mix(in srgb, var(--ant-color-bg-layout) 72%, transparent);
@@ -188,6 +192,7 @@
 .saas-ai-assistant-layout__chat {
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   background:
@@ -197,6 +202,7 @@
 
 .saas-ai-assistant-shell__chat-body {
   flex: 1;
+  width: 100%;
   min-height: 0;
   overflow: auto;
   padding: var(--saas-ai-chat-gutter);
@@ -235,8 +241,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--saas-spacing-md);
-  width: min(var(--saas-ai-chat-column-width), 100%);
-  margin: 0 auto;
+  width: 100%;
   padding: var(--saas-spacing-2xs) 0 var(--saas-spacing-xs);
 }
 
@@ -322,8 +327,7 @@
 .saas-ai-assistant-composer {
   display: flex;
   flex-direction: column;
-  width: min(var(--saas-ai-chat-column-width), 100%);
-  margin: 0 auto;
+  width: 100%;
   box-sizing: border-box;
 }
 
@@ -543,7 +547,7 @@
 }
 
 .saas-ai-assistant-thinking {
-  width: min(100%, var(--saas-spacing-760));
+  width: 100%;
   color: var(--ant-color-text-secondary);
 }
 
@@ -698,7 +702,7 @@
     min-height: 0;
   }
 
-    .saas-ai-assistant-mobile-shell .saas-ai-assistant-conversations {
+  .saas-ai-assistant-mobile-shell .saas-ai-assistant-conversations {
     max-height: var(--saas-spacing-220);
   }
 

@@ -29,12 +29,14 @@ const buildDepartmentColumns = ({
   openCreateChild,
   openEdit,
   deleteDepartment,
+  isMobile,
 }: {
   actionPermission: { can: (permission: string) => boolean };
   openDetail: (record: DepartmentRecord) => void;
   openCreateChild: (record: DepartmentRecord) => void;
   openEdit: (record: DepartmentRecord) => void | Promise<void>;
   deleteDepartment: (record: DepartmentRecord) => Promise<void>;
+  isMobile: boolean;
 }): ProColumns<DepartmentRecord>[] => [
   {
     title: '部门名称',
@@ -73,7 +75,7 @@ const buildDepartmentColumns = ({
       const deleteDisabledReason = hasChildren ? '该部门存在下级部门，不能删除' : userCount > 0 ? `该部门下仍有 ${userCount} 名用户，不能删除` : null;
 
       return (
-        <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} wrap>
+        <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
           <Button type="link" size="small" onClick={() => void openDetail(record)}>
             详情
           </Button>
@@ -254,8 +256,9 @@ const useDepartmentManagement = () => {
         openCreateChild,
         openEdit,
         deleteDepartment,
+        isMobile: responsive.isMobile,
       }),
-    [actionPermission, deleteDepartment, openCreateChild, openEdit, openDetail],
+    [actionPermission, deleteDepartment, openCreateChild, openEdit, openDetail, responsive.isMobile],
   );
   const toolbarActions = useMemo(
     () =>
