@@ -1,6 +1,6 @@
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { ProSettings } from '@ant-design/pro-components';
-import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
+import { formatMessage, history, useIntl } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { ArrowLeftOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { Empty, Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
@@ -426,7 +426,6 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
 
 const GlobalFloatActions = () => {
   const intl = useIntl();
-  const { pathname } = useLocation();
   const { isMobile } = useResponsive();
   const floatingSettingsQuery = useQuery({
     queryKey: ['floating-window-settings'],
@@ -440,9 +439,8 @@ const GlobalFloatActions = () => {
   });
   const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);
   const showApiDocsQr = floatingSettings.apiDocsQrEnabled;
-  const isAssistantPage = pathname === '/ai/assistant' || pathname.startsWith('/ai/share/');
-  const floatButtonRight = isAssistantPage ? (isMobile ? 12 : 16) : isMobile ? 16 : 32;
-  const floatButtonBottom = isAssistantPage ? (isMobile ? 24 : 56) : isMobile ? 24 : 40;
+  const floatButtonRight = isMobile ? 16 : 32;
+  const floatButtonBottom = isMobile ? 24 : 40;
 
   if (!isLoggedIn()) {
     return null;
