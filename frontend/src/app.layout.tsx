@@ -1,6 +1,6 @@
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { ProSettings } from '@ant-design/pro-components';
-import { formatMessage, history, useIntl } from '@umijs/max';
+import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { ArrowLeftOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { Empty, Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
