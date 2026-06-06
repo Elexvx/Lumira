@@ -1,5 +1,5 @@
 import { Button, Card, Empty, Form, Image, Input, InputNumber, Segmented, Space, Switch, Typography, Watermark, Upload, theme } from 'antd';
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@ant-design/icons';
 import type { FormProps } from 'antd';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { BrandingSettings, WatermarkSettings } from '@/types/api';
@@ -29,14 +29,10 @@ const renderImageUploadPreviewField = ({
   cardHeight,
   imageWidth,
   imageHeight,
-  buttonLabel,
   clearLabel,
-  emptyDescription = '未上传',
   onUpload,
   onClear,
-  sectionGap,
   tagWrapGap,
-  cardPadding,
 }: {
   target: PersonalizationUploadTarget;
   previewSrc?: string | null;
@@ -46,51 +42,66 @@ const renderImageUploadPreviewField = ({
   cardHeight: number;
   imageWidth: number;
   imageHeight: number;
-  buttonLabel: string;
   clearLabel: string;
-  emptyDescription?: string;
   onUpload: (target: PersonalizationUploadTarget, file: File) => Promise<void>;
   onClear: () => void;
-  sectionGap: number | [number, number];
   tagWrapGap: number | [number, number];
-  cardPadding: number;
-}) => (
-  <Space align="start" size={sectionGap} wrap>
-    <Card size="small" style={{ width: cardWidth }} bodyStyle={{ padding: cardPadding }}>
-      <div style={{ width: '100%', height: cardHeight, display: 'grid', placeItems: 'center' }}>
-        {previewSrc ? (
-          <Image
-            width={imageWidth}
-            height={imageHeight}
-            preview={false}
-            src={normalizeUploadUrl(previewSrc)}
-            style={{ objectFit: target === 'floatingQr' ? 'contain' : 'contain' }}
-          />
-        ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyDescription} />
-        )}
-      </div>
-    </Card>
+}) => {
+  const isUploading = uploadingTarget === target;
+
+  return (
     <Space direction="vertical" size={tagWrapGap}>
-      <Upload
+      <Upload.Dragger
         accept="image/*"
         showUploadList={false}
         beforeUpload={async (file) => {
           await onUpload(target, file);
           return Upload.LIST_IGNORE;
         }}
-        disabled={!canUpdate}
+        disabled={!canUpdate || isUploading}
+        style={{
+          width: cardWidth,
+          minHeight: cardHeight,
+          padding: 0,
+          borderRadius: 'var(--saas-card-radius)',
+          border: '1px dashed var(--ant-color-border)',
+          background: 'var(--ant-color-fill-quaternary)',
+          cursor: canUpdate && !isUploading ? 'pointer' : 'not-allowed',
+          overflow: 'hidden',
+          opacity: isUploading ? 0.72 : 1,
+        }}
       >
-        <Button icon={<UploadOutlined />} loading={uploadingTarget === target} disabled={!canUpdate}>
-          {buttonLabel}
-        </Button>
-      </Upload>
+        <div
+          style={{
+            width: '100%',
+            minHeight: cardHeight,
+            display: 'grid',
+            placeItems: 'center',
+            gap: 12,
+            padding: 16,
+            color: 'var(--ant-color-text-secondary)',
+          }}
+        >
+          {previewSrc ? (
+            <Image
+              width={imageWidth}
+              height={imageHeight}
+              preview={false}
+              src={normalizeUploadUrl(previewSrc)}
+              style={{ objectFit: 'contain' }}
+            />
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击或拖拽上传" />
+          )}
+          <Typography.Text type="secondary">{isUploading ? '上传中...' : previewSrc ? '点击或拖拽更换图片' : '点击或拖拽上传图片'}</Typography.Text>
+        </div>
+      </Upload.Dragger>
       <Button icon={<DeleteOutlined />} onClick={onClear} disabled={!canUpdate || !previewSrc}>
         {clearLabel}
       </Button>
     </Space>
-  </Space>
-);
+  );
+};
 
 export const WatermarkTab = ({
   formProps,
@@ -107,10 +118,6 @@ export const WatermarkTab = ({
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
-  const cardPadding = resolveResponsiveValue(
-    { desktop: APP_SPACING.antdDesktopTokens.padding, mobile: APP_SPACING.antdMobileTokens.padding },
-    isMobile,
-  );
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -141,7 +148,7 @@ export const WatermarkTab = ({
           <Input />
         </Form.Item>
         {watermarkPreview.mode === 'IMAGE' ? (
-          <Form.Item label="水印图片（本地上传）">
+          <Form.Item label="水印图片">
             {renderImageUploadPreviewField({
               target: 'watermark',
               previewSrc: watermarkPreview.imageUrl,
@@ -151,13 +158,10 @@ export const WatermarkTab = ({
               cardHeight: 100,
               imageWidth: 180,
               imageHeight: 100,
-              buttonLabel: '上传水印图片',
               clearLabel: '清除',
               onUpload,
               onClear: onClearWatermarkImage,
-              sectionGap,
               tagWrapGap,
-              cardPadding,
             })}
           </Form.Item>
         ) : null}

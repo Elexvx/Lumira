@@ -441,6 +441,8 @@ const GlobalFloatActions = () => {
   const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);
   const showApiDocsQr = floatingSettings.apiDocsQrEnabled;
   const isAssistantPage = pathname === '/ai/assistant' || pathname.startsWith('/ai/share/');
+  const floatButtonRight = isAssistantPage ? (isMobile ? 12 : 16) : isMobile ? 16 : 32;
+  const floatButtonBottom = isAssistantPage ? (isMobile ? 24 : 56) : isMobile ? 24 : 40;
 
   if (!isLoggedIn()) {
     return null;
@@ -451,8 +453,9 @@ const GlobalFloatActions = () => {
       className="saas-global-float-actions"
       shape="square"
       style={{
-        right: isAssistantPage ? (isMobile ? 'var(--saas-spacing-12)' : 'var(--saas-spacing-16)') : isMobile ? 'var(--saas-spacing-16)' : 'var(--saas-spacing-32)',
-        bottom: isAssistantPage ? (isMobile ? 'var(--saas-spacing-24)' : 'var(--saas-spacing-56)') : isMobile ? 'var(--saas-spacing-24)' : 'var(--saas-spacing-40)',
+        direction: 'ltr',
+        right: floatButtonRight,
+        bottom: floatButtonBottom,
       }}
     >
       {showApiDocsQr ? (
@@ -583,6 +586,41 @@ const collectMenuPaths = (items: RuntimeMenuDataItem[], paths = new Set<string>(
   });
 
   return paths;
+};
+
+const collectMenuNodePaths = (items: MenuNode[] | undefined, paths = new Set<string>()) => {
+  items?.forEach((item) => {
+    const normalizedPath = item.path ? resolveCanonicalRoutePath(item.path) : undefined;
+    if (normalizedPath) {
+      paths.add(normalizedPath);
+    }
+
+    if (item.children?.length) {
+      collectMenuNodePaths(item.children, paths);
+    }
+  });
+
+  return paths;
+};
+
+const resolveSelectedMenuPath = (pathname: string, menuTree: MenuNode[] | undefined) => {
+  const normalizedPathname = resolveCanonicalRoutePath(pathname);
+  const visiblePaths = Array.from(collectMenuNodePaths(menuTree));
+
+  if (!visiblePaths.length) {
+    return normalizedPathname;
+  }
+
+  const exactMatch = visiblePaths.find((path) => path === normalizedPathname);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const prefixMatch = visiblePaths
+    .filter((path) => normalizedPathname.startsWith(`${path}/`))
+    .sort((left, right) => right.length - left.length)[0];
+
+  return prefixMatch || normalizedPathname;
 };
 
 const hasMenuPathOrChild = (paths: Set<string>, targetPath: string) =>
@@ -746,6 +784,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const currentPathname = history.location.pathname;
   const siderMenuMode = resolveSiderMenuMode(currentPathname);
+  const selectedMenuPath = resolveSelectedMenuPath(currentPathname, initialState?.menuTree);
   const isMobile = resolveIsMobileViewport();
   const LAYOUT_HEADER_HEIGHT = resolveResponsiveValue(APP_SPACING.layout.headerHeight, isMobile);
   const LAYOUT_SIDER_WIDTH = resolveResponsiveValue(APP_SPACING.layout.siderWidth, isMobile);
@@ -811,6 +850,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     footerRender: () => renderLayoutFooter(brandingSettings),
     unAccessible: <NoPermission />,
     pageTitleRender: (props, defaultTitle) => (!props?.title ? defaultTitle || brandName : `${props.title} - ${brandName}`),
+    selectedKeys: [selectedMenuPath],
     menuTextRender: (item, defaultDom) =>
       typeof defaultDom === 'string'
         ? resolveBuiltinMessage(

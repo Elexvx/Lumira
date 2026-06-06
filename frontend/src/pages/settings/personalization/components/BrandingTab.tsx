@@ -1,5 +1,5 @@
 import { Button, Card, Empty, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@ant-design/icons';
 import ImgCrop from 'antd-img-crop';
 import type { FormProps } from 'antd';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -23,8 +23,6 @@ type BrandingAssetItemConfig = {
   cropModalTitle?: string;
   cropAspect?: number;
   accept: string;
-  buttonLabel: string;
-  emptyDescription?: string | false;
   note?: string;
   useCrop?: boolean;
   beforeCrop?: (file: File) => boolean | Promise<boolean>;
@@ -33,7 +31,7 @@ type BrandingAssetItemConfig = {
 const BRANDING_ASSET_ITEM_CONFIGS = [
   {
     field: 'websiteFaviconUrl',
-    label: '网站 Icon（本地上传）',
+    label: '网站 Icon',
     clearLabel: '网站 Icon',
     target: 'favicon',
     previewKey: 'websiteFaviconUrl',
@@ -44,8 +42,6 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
     cropModalTitle: '裁切网站 Icon',
     cropAspect: 1,
     accept: 'image/*,.ico',
-    buttonLabel: '上传 Icon',
-    emptyDescription: false,
     useCrop: true,
     beforeCrop: (file: File) => {
       const lowerName = file.name.toLowerCase();
@@ -57,7 +53,7 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
   },
   {
     field: 'websiteLogoUrl',
-    label: 'Logo（本地上传）',
+    label: 'Logo',
     clearLabel: 'Logo',
     target: 'logo',
     previewKey: 'websiteLogoUrl',
@@ -67,17 +63,15 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
     cropModalTitle: '裁切 Logo',
     cropAspect: 25 / 9,
     accept: 'image/*',
-    buttonLabel: '上传 Logo',
   },
   {
     field: 'loginBackgroundUrl',
-    label: '登录页背景图（本地上传）',
+    label: '登录页背景图',
     clearLabel: '登录页背景图',
     target: 'loginBackground',
     previewKey: 'loginBackgroundUrl',
     cardWidth: 280,
     accept: 'image/*',
-    buttonLabel: '上传背景图',
     note: '建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。',
   },
 ] as const satisfies readonly BrandingAssetItemConfig[];
@@ -105,16 +99,13 @@ const renderBrandingUploadField = ({
   cropModalTitle,
   cropAspect,
   accept,
-  buttonLabel,
   clearLabel,
-  emptyDescription,
   note,
   useCrop,
   beforeCrop,
   onUpload,
   onClear,
   tagWrapGap,
-  cardPadding,
 }: {
   target: BrandingAssetTarget;
   previewSrc?: string | null;
@@ -127,70 +118,77 @@ const renderBrandingUploadField = ({
   cropModalTitle?: string;
   cropAspect?: number;
   accept: string;
-  buttonLabel: string;
   clearLabel: string;
-  emptyDescription?: string | false;
   note?: string;
   useCrop?: boolean;
   beforeCrop?: (file: File) => boolean | Promise<boolean>;
   onUpload: BrandingTabProps['onUpload'];
   onClear: () => void;
   tagWrapGap: number | [number, number];
-  cardPadding: number;
 }) => {
-  const uploadButton = (
-    <Upload
+  const previewHeight = cardHeight ?? Math.max(Math.round(cardWidth * 0.5625), typeof imageHeight === 'number' ? imageHeight + 48 : 0, 140);
+  const isUploading = uploadingTarget === target;
+  const uploadArea = (
+    <Upload.Dragger
       accept={accept}
       showUploadList={false}
       beforeUpload={async (file) => {
         await onUpload(target, file);
         return Upload.LIST_IGNORE;
       }}
-      disabled={!canUpdate}
+      disabled={!canUpdate || isUploading}
+      style={{
+        width: cardWidth,
+        minHeight: previewHeight,
+        padding: 0,
+        borderRadius: 'var(--saas-card-radius)',
+        border: '1px dashed var(--ant-color-border)',
+        background: 'var(--ant-color-fill-quaternary)',
+        cursor: canUpdate && !isUploading ? 'pointer' : 'not-allowed',
+        overflow: 'hidden',
+        opacity: isUploading ? 0.72 : 1,
+      }}
     >
-      <Button icon={<UploadOutlined />} loading={uploadingTarget === target} disabled={!canUpdate}>
-        {buttonLabel}
-      </Button>
-    </Upload>
+      <div
+        style={{
+          width: '100%',
+          minHeight: previewHeight,
+          display: 'grid',
+          placeItems: 'center',
+          gap: 12,
+          padding: cardHeight ? 0 : 16,
+          color: 'var(--ant-color-text-secondary)',
+        }}
+      >
+        {previewSrc ? (
+          <Image
+            width={imageWidth ?? '100%'}
+            height={imageHeight}
+            preview={false}
+            src={normalizeUploadUrl(previewSrc)}
+            style={{ objectFit: target === 'loginBackground' ? 'cover' : 'contain' }}
+          />
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击或拖拽上传" />
+        )}
+        <Typography.Text type="secondary">{isUploading ? '上传中...' : previewSrc ? '点击或拖拽更换图片' : '点击或拖拽上传图片'}</Typography.Text>
+      </div>
+    </Upload.Dragger>
   );
 
   return (
     <Space direction="vertical" size={tagWrapGap}>
       {useCrop ? (
         <ImgCrop modalTitle={cropModalTitle} rotationSlider aspect={cropAspect} beforeCrop={beforeCrop}>
-          {uploadButton}
+          {uploadArea}
         </ImgCrop>
       ) : (
-        uploadButton
+        uploadArea
       )}
       <Button icon={<DeleteOutlined />} onClick={onClear} disabled={!canUpdate || !previewSrc}>
         {clearLabel}
       </Button>
       {note ? <span style={{ color: 'var(--ant-color-text-secondary)' }}>{note}</span> : null}
-      <Card size="small" style={{ width: cardWidth, height: cardHeight }} bodyStyle={{ padding: cardPadding, height: '100%' }}>
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            placeItems: 'center',
-            background: 'var(--ant-color-fill-quaternary)',
-            color: 'var(--ant-color-text-secondary)',
-          }}
-        >
-          {previewSrc ? (
-            <Image
-              width={imageWidth ?? '100%'}
-              height={imageHeight ?? '100%'}
-              preview={false}
-              src={normalizeUploadUrl(previewSrc)}
-              style={{ objectFit: target === 'loginBackground' ? 'cover' : 'contain' }}
-            />
-          ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyDescription ?? '未上传'} />
-          )}
-        </div>
-      </Card>
     </Space>
   );
 };
@@ -208,10 +206,6 @@ export const BrandingTab = ({
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
-  const cardPadding = resolveResponsiveValue(
-    { desktop: APP_SPACING.antdDesktopTokens.padding, mobile: APP_SPACING.antdMobileTokens.padding },
-    isMobile,
-  );
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -243,16 +237,13 @@ export const BrandingTab = ({
                 cropModalTitle: assetConfig.cropModalTitle,
                 cropAspect: assetConfig.cropAspect,
                 accept: assetConfig.accept,
-                buttonLabel: assetConfig.buttonLabel,
                 clearLabel: '清除',
-                emptyDescription: assetConfig.emptyDescription,
                 note: assetConfig.note,
                 useCrop: assetConfig.useCrop,
                 beforeCrop: assetConfig.beforeCrop,
                 onUpload,
                 onClear: () => onClearField(assetConfig.field, assetConfig.clearLabel),
                 tagWrapGap,
-                cardPadding,
               })}
             </Form.Item>
           );

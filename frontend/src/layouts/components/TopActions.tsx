@@ -320,7 +320,7 @@ export const TopActions = () => {
     [access, initialState?.menuTree, location.pathname],
   );
   const settingsMenuSelectedKeys = useMemo(
-    () => (isSettingsShellPath(location.pathname) ? [activeSettingsPath] : []),
+    () => (isSettingsShellPath(location.pathname) && activeSettingsPath ? [activeSettingsPath] : []),
     [activeSettingsPath, location.pathname],
   );
   const themeMenuItems: MenuProps['items'] = useMemo(

@@ -75,9 +75,14 @@ export const buildSettingsDropdownItems = (menuTree: MenuNode[] | undefined, can
 export const resolveActiveSettingsNavigationPath = (pathname: string, menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean) => {
   const normalizedPathname = normalizeMenuPath(pathname) || pathname;
   const visibleItems = flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey));
-  const matchedItem = visibleItems.find(
-    (item) => item.path === normalizedPathname || normalizedPathname.startsWith(`${item.path}/`),
-  );
+  const exactMatch = visibleItems.find((item) => item.path === normalizedPathname);
+  if (exactMatch?.path) {
+    return exactMatch.path;
+  }
+
+  const matchedItem = visibleItems
+    .filter((item) => item.path && normalizedPathname.startsWith(`${item.path}/`))
+    .sort((left, right) => (right.path?.length || 0) - (left.path?.length || 0))[0];
 
   return matchedItem?.path || normalizedPathname;
 };
