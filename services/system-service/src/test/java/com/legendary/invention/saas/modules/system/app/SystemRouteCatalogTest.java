@@ -28,10 +28,22 @@ class SystemRouteCatalogTest {
                 .contains(
                         "/dashboard/home",
                         "/ai",
+                        "/ai/assistant",
+                        "/ai/knowledge",
                         "/settings",
+                        "/user-center/users",
+                        "/user-center/roles",
                         "/user-center/personal-center"
                 )
                 .doesNotContain("/site", "/site/settings", "/site/carousels");
+        assertThat(flattenedMenus)
+                .filteredOn(menu -> "dashboard.home".equals(menu.getMenuCode()))
+                .singleElement()
+                .satisfies(menu -> assertThat(menu.getComponent()).isEqualTo("@/pages/dashboard/DashboardHomePage"));
+        assertThat(flattenedMenus)
+                .filteredOn(menu -> "ai.knowledge".equals(menu.getMenuCode()))
+                .singleElement()
+                .satisfies(menu -> assertThat(menu.getComponent()).isEqualTo("@/pages/ai/knowledge/KnowledgePage"));
         assertThat(flattenedMenus)
                 .filteredOn(menu -> "user.center.personal".equals(menu.getMenuCode()))
                 .singleElement()
@@ -55,7 +67,9 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/user-center/permissions")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/Home")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/DashboardHomePage")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/ai/knowledge/KnowledgePage")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/Home")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/iam/Overview")).isTrue();

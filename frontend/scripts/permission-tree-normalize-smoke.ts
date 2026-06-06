@@ -124,6 +124,31 @@ const sampleTree: PermissionTreeRecord[] = [
           },
         ],
       },
+      {
+        nodeType: 'CATALOG',
+        pageKey: 'ai',
+        pageName: 'AI',
+        routePath: '/ai',
+        selectable: false,
+        children: [
+          {
+            nodeType: 'PAGE',
+            pageKey: 'ai-assistant',
+            pageName: 'AI 助手',
+            routePath: '/ai/assistant/',
+            permissionKey: 'ai:chat:send',
+            selectable: true,
+          },
+          {
+            nodeType: 'PAGE',
+            pageKey: 'ai-knowledge',
+            pageName: '知识库',
+            routePath: '/ai/knowledge?from=menu',
+            permissionKey: 'ai:knowledge:view',
+            selectable: true,
+          },
+        ],
+      },
     ],
   },
 ];
@@ -133,11 +158,12 @@ const root = normalized[0];
 
 assert.equal(normalized.length, 1, 'catalog root should be preserved');
 assert.equal(root?.nodeType, 'CATALOG', 'root should remain a catalog node');
-assert.equal(root?.children?.length, 2, 'alias nodes should flatten into valid children and invalid routes should be removed');
+assert.equal(root?.children?.length, 3, 'alias nodes should flatten into valid children and invalid routes should be removed');
 
 const childNames = root?.children?.map((item) => item.pageName) || [];
 assert.ok(childNames.includes('用户管理'), 'valid assignable page should remain');
 assert.ok(childNames.includes('在线用户'), 'alias child should be promoted');
+assert.ok(childNames.includes('AI'), 'AI catalog should remain');
 
 const matchedPage = root?.children?.find((item) => item.pageName === '用户管理');
 assert.equal(matchedPage?.nodeType, 'PAGE');
@@ -148,14 +174,18 @@ const mismatchedPage = root?.children?.find((item) => item.pageName === '缺失�
 assert.equal(mismatchedPage, undefined, 'mismatched route should be removed from selectable permission tree');
 
 const selectablePages = collectSelectablePages(normalized);
-assert.equal(selectablePages.length, 2, 'only valid PAGE nodes should be selectable');
+assert.equal(selectablePages.length, 4, 'only valid PAGE nodes should be selectable');
 const treeData = buildPermissionTreeData(normalized);
 assert.equal(treeData[0]?.disableCheckbox, false, 'catalog nodes with children should not be forced disabled');
-assert.deepEqual(collectExpandableKeys(normalized), ['system'], 'catalog root should still be expandable');
+assert.deepEqual(collectExpandableKeys(normalized), ['system', 'ai'], 'catalog roots with valid children should still be expandable');
 assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:user:view')?.length, 1, 'duplicate route path should be deduplicated');
 assert.equal(collectActionPermissionPageMap(normalized).size, 0, 'no action permissions are present in the smoke tree');
 assert.ok(realPageRoutePaths.has('/user-center/users'), 'user management route should be registered');
+assert.ok(realPageRoutePaths.has('/ai/assistant'), 'AI assistant route should be registered');
+assert.ok(realPageRoutePaths.has('/ai/knowledge'), 'AI knowledge route should be registered');
 assert.ok(realPageRoutePaths.has('/settings/security'), 'system security route should be registered');
+assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('ai:chat:send')?.length, 1, 'AI assistant should be assignable once');
+assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('ai:knowledge:view')?.length, 1, 'AI knowledge should be assignable once');
 assert.equal(realPageRouteMetaMap.get('/settings/security')?.name, 'nav.system.security', 'system security route should be named correctly');
 assert.ok(!realPageRoutePaths.has('/system/management'), 'legacy management route should not be registered');
 

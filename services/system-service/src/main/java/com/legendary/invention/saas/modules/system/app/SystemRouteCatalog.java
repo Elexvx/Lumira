@@ -68,10 +68,10 @@ public final class SystemRouteCatalog {
     );
 
     private static final Set<String> BUILT_IN_COMPONENT_PATHS = Set.of(
-            "@/pages/dashboard/Home",
+            "@/pages/dashboard/DashboardHomePage",
             "redirect:/ai/assistant",
             "@/pages/ai/Assistant",
-            "@/pages/ai/knowledge",
+            "@/pages/ai/knowledge/KnowledgePage",
             "@/layouts/SettingsLayout",
             "@/pages/settings/menus",
             "@/pages/settings/dicts",
@@ -145,7 +145,7 @@ public final class SystemRouteCatalog {
         );
         aiRoot.setChildren(new ArrayList<>(List.of(
                 menu(-989L, -990L, "ai.assistant", "AI 助手", "MENU", "/ai/assistant", "@/pages/ai/Assistant", "RobotOutlined", 1, "ai:chat:send"),
-                menu(-988L, -990L, "ai.knowledge", "知识库", "MENU", "/ai/knowledge", "@/pages/ai/knowledge", "FileSearchOutlined", 2, "ai:knowledge:view")
+                menu(-988L, -990L, "ai.knowledge", "知识库", "MENU", "/ai/knowledge", "@/pages/ai/knowledge/KnowledgePage", "FileSearchOutlined", 2, "ai:knowledge:view")
         )));
 
         SystemVO.MenuVO settingsRoot = menu(
@@ -178,7 +178,7 @@ public final class SystemRouteCatalog {
                 menu(-1014L, -1000L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 12, "audit:view")
         )));
 
-        roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/Home", "DashboardOutlined", 0, "dashboard:view"));
+        roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/DashboardHomePage", "DashboardOutlined", 0, "dashboard:view"));
         roots.add(aiRoot);
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
         userCenterRoot.setChildren(new ArrayList<>(List.of(

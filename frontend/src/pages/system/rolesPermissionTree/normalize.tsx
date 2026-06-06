@@ -1,5 +1,5 @@
 import type { PermissionTreeRecord } from '@/types/api';
-import { backendRouteMetaMap, realPageRouteMetaMap, realPageRoutePaths } from '@/routes/meta';
+import { backendRouteMetaMap, realPageRouteMetaMap, realPageRoutePaths, resolveCanonicalRoutePath } from '@/routes/meta';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 
 const getNodeType = (node: PermissionTreeRecord): PermissionTreeRecord['nodeType'] => node.nodeType || 'PAGE';
@@ -68,7 +68,7 @@ export const normalizePermissionTree = (
       return;
     }
 
-    const routePath = node.routePath?.trim() || '';
+    const routePath = node.routePath ? resolveCanonicalRoutePath(node.routePath) : '';
     const routeMeta = routePath ? realPageRouteMetaMap.get(routePath) : undefined;
     const routeMatched = Boolean(routeMeta) || nodeType === 'CATALOG';
     const routeMismatch = nodeType === 'PAGE' && (!routePath || !allowedRoutePaths.has(routePath));
