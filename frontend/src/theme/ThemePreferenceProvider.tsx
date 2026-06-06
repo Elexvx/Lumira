@@ -3,7 +3,7 @@ import { App as AntdApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveRuntimeLocale } from '@/i18n/locale';
 import { buildAntdThemeConfig, resolveResponsiveSpaceSize, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
@@ -148,7 +148,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     commitThemePreference(themePreference, { systemDarkMode, persist: false });
   }, [systemDarkMode, themePreference]);
 
-  const setThemePreference = (value: ThemePreference) => {
+  const setThemePreference = useCallback((value: ThemePreference) => {
     const nextThemePreference = normalizeThemePreference(value);
     const nextSnapshot = commitThemePreference(nextThemePreference, { systemDarkMode });
     syncAntdStaticThemeHolder({
@@ -157,7 +157,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       isMobile,
     });
     setThemePreferenceState(nextThemePreference);
-  };
+  }, [systemDarkMode, isMobile]);
 
   const contextValue = useMemo<ThemePreferenceContextValue>(
     () => ({
@@ -166,7 +166,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       isCompact: themePreference === 'compact',
       setThemePreference,
     }),
-    [resolvedColorMode, themePreference],
+    [resolvedColorMode, setThemePreference, themePreference],
   );
 
   return (

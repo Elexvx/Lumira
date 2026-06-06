@@ -408,7 +408,7 @@ export const useUserManagement = () => {
     } finally {
       setSaving(false);
     }
-  }, [drawer.editingId, editorForm, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
+  }, [drawer, editorForm, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
 
   const handleStatusToggle = useCallback(
     async (record: UserRecord) => {

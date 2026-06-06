@@ -613,8 +613,6 @@ export const useAuthenticatorConfigDrawer = ({
   onWechatSettingsRefetch,
   onPasskeySettingsRefetch,
 }: UseAuthenticatorConfigDrawerParams) => {
-  const { isMobile } = useResponsive();
-  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
     if (value === 'tencent' || value === 'mock' || value === 'custom') {
       return value;

@@ -279,10 +279,10 @@ html[data-theme='dark'] .saas-login-page__actions {
 
 .saas-login-page__slider-modal .saas-slider-captcha-box,
 .saas-login-page__slider-modal .rc-slider-captcha,
-  .saas-login-page__slider-modal .rc-slider-captcha-panel,
-  .saas-login-page__slider-modal .rc-slider-captcha-panel-inner,
-  .saas-login-page__slider-modal .rc-slider-captcha-jigsaw,
-  .saas-login-page__slider-modal .rc-slider-captcha-control {
+.saas-login-page__slider-modal .rc-slider-captcha-panel,
+.saas-login-page__slider-modal .rc-slider-captcha-panel-inner,
+.saas-login-page__slider-modal .rc-slider-captcha-jigsaw,
+.saas-login-page__slider-modal .rc-slider-captcha-control {
   width: var(--saas-spacing-320) !important;
   max-width: var(--saas-spacing-320) !important;
   box-sizing: border-box;
@@ -416,8 +416,8 @@ html[data-theme='dark'] .saas-login-page__actions {
   }
 
   .saas-login-page__send-code-button {
-  flex-basis: var(--saas-spacing-110);
-  width: var(--saas-spacing-110);
-  padding-inline: var(--saas-spacing-xs);
-}
+    flex-basis: var(--saas-spacing-110);
+    width: var(--saas-spacing-110);
+    padding-inline: var(--saas-spacing-xs);
+  }
 }
