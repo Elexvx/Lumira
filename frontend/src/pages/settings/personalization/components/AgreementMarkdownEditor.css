@@ -124,14 +124,14 @@
 
 .agreement-markdown-editor__preview-content code {
   padding: var(--saas-spacing-xxs) var(--saas-spacing-5);
-  border-radius: var(--saas-spacing-2xs);
+  border-radius: var(--saas-border-radius-sm);
   background: var(--ant-color-fill-tertiary);
 }
 
 .agreement-markdown-editor__preview-content pre {
   overflow: auto;
   padding: var(--saas-spacing-sm);
-  border-radius: var(--saas-spacing-6);
+  border-radius: var(--saas-border-radius-base);
   background: var(--ant-color-fill-quaternary);
 }
 

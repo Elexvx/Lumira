@@ -7,7 +7,7 @@
 }
 
 .saas-global-float-actions__qr-popover .ant-popover-inner {
-  border-radius: var(--saas-spacing-10);
+  border-radius: var(--saas-card-radius);
   padding: var(--saas-spacing-10) var(--saas-spacing-sm) var(--saas-spacing-sm);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
 }

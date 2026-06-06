@@ -384,7 +384,7 @@ const ApiDocsContent = () => {
         </Space>
       }
     >
-      <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-spacing-md)' }}>
+      <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-card-radius)' }}>
         <div style={{ minHeight: 'calc(100vh - var(--saas-spacing-220))', background: token.colorBgContainer }}>
           {isLoading ? (
             <div style={{ display: 'grid', minHeight: 'calc(100vh - var(--saas-spacing-220))', placeItems: 'center' }}>

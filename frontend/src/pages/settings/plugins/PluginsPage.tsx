@@ -962,7 +962,7 @@ const PluginUninstallModal = ({
                 width: '100%',
                 marginInlineStart: 0,
                 padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
-                borderRadius: 'var(--saas-spacing-10)',
+                borderRadius: 'var(--saas-card-radius)',
                 border: `1px solid ${removePluginData ? token.colorBorderSecondary : token.colorPrimary}`,
                 background: removePluginData ? token.colorBgContainer : token.colorPrimaryBg,
               }}
@@ -977,7 +977,7 @@ const PluginUninstallModal = ({
                 width: '100%',
                 marginInlineStart: 0,
                 padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
-                borderRadius: 'var(--saas-spacing-10)',
+                borderRadius: 'var(--saas-card-radius)',
                 border: `1px solid ${removePluginData ? token.colorError : token.colorBorderSecondary}`,
                 background: removePluginData ? token.colorErrorBg : token.colorBgContainer,
               }}

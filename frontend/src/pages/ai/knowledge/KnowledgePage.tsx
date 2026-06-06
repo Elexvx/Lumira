@@ -463,7 +463,11 @@ const KnowledgeDocumentDrawer = ({
               {searchResults.map((item) => (
                 <div
                   key={item.chunkId}
-                  style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 'var(--saas-spacing-6)', padding: sectionGap }}
+                  style={{
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: 'var(--saas-border-radius-base)',
+                    padding: sectionGap,
+                  }}
                 >
                   <Space wrap>
                     <Tag color="blue">{item.knowledgeBaseName}</Tag>

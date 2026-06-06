@@ -6,7 +6,10 @@
   --saas-form-item-gap: var(--saas-spacing-xs);
   --saas-form-label-gap: var(--saas-spacing-xs);
   --saas-form-control-max-width: 720px;
-  --saas-card-radius: var(--saas-spacing-sm);
+  --saas-card-radius: var(--ant-border-radius-lg);
+  --saas-border-radius-base: var(--ant-border-radius);
+  --saas-border-radius-sm: var(--ant-border-radius-sm);
+  --saas-border-radius-lg: var(--ant-border-radius-lg);
   --saas-card-padding: clamp(18px, 2.2vw, 24px);
   --saas-control-height: 56px;
   --saas-control-height-compact: 48px;
@@ -609,6 +612,10 @@ body,
 }
 
 .saas-profile-page {
+  .ant-card {
+    border-radius: var(--saas-card-radius);
+  }
+
   .ant-tabs-content-holder,
   .ant-tabs-tabpane {
     width: 100%;
@@ -883,7 +890,7 @@ body,
   width: var(--saas-spacing-20);
   height: var(--saas-spacing-20);
   object-fit: contain;
-  border-radius: var(--saas-spacing-2xs);
+  border-radius: var(--saas-border-radius-sm);
   background: var(--ant-color-bg-container);
   padding: var(--saas-spacing-2xs);
 }
@@ -971,7 +978,7 @@ body,
       height: var(--saas-spacing-40);
       margin-inline-end: var(--saas-spacing-2xs);
       border: none;
-      border-radius: var(--saas-spacing-sm);
+      border-radius: var(--saas-border-radius-base);
       box-shadow: none;
       background: transparent;
       line-height: 1;

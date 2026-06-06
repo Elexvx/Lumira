@@ -87,7 +87,7 @@ const BindSecondFactorTotpPreviewStep = ({
       }
     />
     {bindingLoading ? (
-      <Card loading />
+      <Card className="saas-profile-page__card" loading />
     ) : bindingChallenge ? (
       <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
         <div className="saas-profile-2fa-binding__qr">
@@ -985,7 +985,7 @@ const ProfileCenterPage = () => {
             ]}
             style={{ padding: 0 }}
           >
-            <Card size="small" title="恢复码">
+            <Card className="saas-profile-page__card" size="small" title="恢复码">
               <Space wrap>
                 {(interactionAccess.securityAccess.bindingChallenge.recoveryCodes || []).length ? (
                   interactionAccess.securityAccess.bindingChallenge.recoveryCodes!.map((code) => (

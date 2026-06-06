@@ -63,7 +63,7 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: var(--saas-spacing-6);
+  border-radius: var(--saas-border-radius-sm);
   color: var(--ant-color-text);
   background: transparent;
   cursor: pointer;

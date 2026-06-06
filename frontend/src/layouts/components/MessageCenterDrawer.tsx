@@ -587,7 +587,7 @@ const MessageCenterContentBody = ({
                       width: '100%',
                       padding: sectionGap,
                       border: `1px solid ${token.colorBorderSecondary}`,
-                      borderRadius: 'var(--saas-spacing-sm)',
+                      borderRadius: 'var(--saas-card-radius)',
                       background: 'transparent',
                     }}
                   >
