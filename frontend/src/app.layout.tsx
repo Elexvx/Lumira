@@ -532,8 +532,6 @@ const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialSt
     }
     if (initialState?.currentUser) {
       history.replace(resolveAuthorizedLoginRedirectTarget(location.search || '', initialState.currentUser, initialState.menuTree, DEFAULT_HOME_PATH));
-    } else {
-      history.replace(DEFAULT_HOME_PATH);
     }
     return;
   }

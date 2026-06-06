@@ -829,27 +829,23 @@ const ProfileCenterBindingSection = ({
   );
 
   const bindingPanel = (
-    <Row gutter={resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile)} align="stretch">
-      <Col xs={24} lg={12}>
-        <Card
-          title="登录方式绑定"
-          loading={loginMethodsLoading}
-          extra={
-            <Button icon={<KeyOutlined />} onClick={onBindPasskey}>
-              新增通行密钥
-            </Button>
-          }
-        >
-          {renderLoginMethodList(loginMethods)}
-          {renderPasskeyList(passkeys)}
-        </Card>
-      </Col>
-      <Col xs={24} lg={12}>
-        <Card title="二次验证方式" loading={providersLoading}>
-          {renderProviderList(providers, bindingLoading, bindingSubmitting, onBindProvider, onUnbindProvider, '当前暂无可绑定二次验证方式')}
-        </Card>
-      </Col>
-    </Row>
+    <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+      <Card
+        title="登录方式绑定"
+        loading={loginMethodsLoading}
+        extra={
+          <Button icon={<KeyOutlined />} onClick={onBindPasskey}>
+            新增通行密钥
+          </Button>
+        }
+      >
+        {renderLoginMethodList(loginMethods)}
+        {renderPasskeyList(passkeys)}
+      </Card>
+      <Card title="二次验证方式" loading={providersLoading}>
+        {renderProviderList(providers, bindingLoading, bindingSubmitting, onBindProvider, onUnbindProvider, '当前暂无可绑定二次验证方式')}
+      </Card>
+    </Space>
   );
 
   if (isMobile) {

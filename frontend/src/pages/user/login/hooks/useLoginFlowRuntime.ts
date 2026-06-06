@@ -1120,8 +1120,6 @@ export const useLoginFlowRuntime = ({
 
     if (initialState?.currentUser) {
       history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, initialState.currentUser, initialState.menuTree || []));
-    } else {
-      history.replace(redirectTarget);
     }
   }, [
     flowState,
@@ -1131,7 +1129,6 @@ export const useLoginFlowRuntime = ({
     initialState?.currentUser,
     initialState?.menuTree,
     locationSearch,
-    redirectTarget,
   ]);
   useEffect(() => {
     if (!isLoggedIn() || !initialState?.currentUser?.requiresPasswordChange) {
