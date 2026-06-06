@@ -442,9 +442,7 @@ public class AiManagementAppService {
             return result;
         } catch (RuntimeException exception) {
             long latencyMs = elapsedMillis(startedAt);
-            String errorMessage = exception instanceof BizException bizException && StringUtils.hasText(bizException.getUserMessage())
-                    ? bizException.getUserMessage()
-                    : (StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "LLM 服务测试失败");
+            String errorMessage = resolveFailureMessage(exception);
             operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(false);
@@ -454,6 +452,21 @@ public class AiManagementAppService {
             result.setLatencyMs(latencyMs);
             return result;
         }
+    }
+
+    private String resolveFailureMessage(RuntimeException exception) {
+        if (exception == null) {
+            return "LLM 服务测试失败";
+        }
+        if (exception instanceof BizException bizException) {
+            String message = bizException.getMessage();
+            if (StringUtils.hasText(message)) {
+                return message;
+            }
+            String userMessage = bizException.getUserMessage();
+            return StringUtils.hasText(userMessage) ? userMessage : "LLM 服务测试失败";
+        }
+        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "LLM 服务测试失败";
     }
 
     public AiVO.EmployeeVO getAssistantEmployee(CurrentUser currentUser) {

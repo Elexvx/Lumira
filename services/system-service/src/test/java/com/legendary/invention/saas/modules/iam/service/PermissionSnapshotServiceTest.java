@@ -35,7 +35,7 @@ class PermissionSnapshotServiceTest {
         assertTrue(snapshot.getPermissions().contains("system:config:view"));
         assertTrue(snapshot.getPermissions().contains("plugin:management:view"));
         assertTrue(snapshot.getPermissions().contains("ai:view"));
-        assertTrue(snapshot.getVersion().contains("admin-permissions-v2"));
+        assertTrue(snapshot.getVersion().contains("data-scope-cache-v4"));
     }
 
     @Test

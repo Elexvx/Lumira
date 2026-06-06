@@ -532,8 +532,15 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     }
 
     private String defaultErrorMessage(RuntimeException exception) {
-        if (exception instanceof BizException bizException && StringUtils.hasText(bizException.getUserMessage())) {
-            return bizException.getUserMessage();
+        if (exception instanceof BizException bizException) {
+            String message = bizException.getMessage();
+            if (StringUtils.hasText(message)) {
+                return message;
+            }
+            String userMessage = bizException.getUserMessage();
+            if (StringUtils.hasText(userMessage)) {
+                return userMessage;
+            }
         }
         return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "AI 聊天请求处理失败";
     }

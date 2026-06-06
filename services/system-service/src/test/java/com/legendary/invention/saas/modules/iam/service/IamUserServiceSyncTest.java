@@ -91,8 +91,9 @@ class IamUserServiceSyncTest {
         SqlCall call = jdbcTemplate.updates.stream()
                 .filter(update -> update.sql.contains("iam_user_identity"))
                 .filter(update -> update.sql.contains("insert into iam_user_identity") || update.sql.contains("update iam_user_identity"))
-                .filter(update -> (update.args.length > 0 && identifier.equals(update.args[0]))
-                        || (update.args.length > 2 && identifier.equals(update.args[2])))
+                .filter(update -> update.sql.contains("insert into iam_user_identity")
+                        ? update.args.length > 2 && identifier.equals(update.args[2])
+                        : update.args.length > 1 && identifier.equals(update.args[1]))
                 .findFirst()
                 .orElseThrow();
         if (call.sql.contains("insert into iam_user_identity")) {

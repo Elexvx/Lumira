@@ -1154,6 +1154,9 @@ public class SystemUserManagementAppService {
                 currentTenantId(currentUser),
                 currentUser.getUserId()
         );
+        if (snapshot == null) {
+            snapshot = PermissionSnapshotService.PermissionSnapshot.empty();
+        }
         Set<String> permissions = !snapshot.getPermissions().isEmpty()
                 ? snapshot.getPermissions()
                 : currentUser.getPermissions();
