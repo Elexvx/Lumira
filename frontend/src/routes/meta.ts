@@ -64,7 +64,7 @@ const aiRoutes: BackendRouteRecord[] = [
 ];
 
 export const systemRouteMeta: BackendRouteMeta[] = [
-  { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', access: 'canVisitSystemSettings', hideInMenu: true },
+  { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', hideInMenu: true },
   { path: '/settings/tenants', name: 'nav.system.tenants', icon: 'ApartmentOutlined', access: 'canVisitSystemTenants' },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
   { path: '/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
@@ -112,7 +112,6 @@ export const systemRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.settings.root',
     icon: 'SettingOutlined',
-    access: 'canVisitSystemSettings',
     routes: [
       { path: '/settings/overview', redirect: '/settings' },
       { path: '/settings/tenants', component: '@/pages/settings/tenants', name: 'nav.system.tenants', icon: 'ApartmentOutlined', access: 'canVisitSystemTenants' },
@@ -139,12 +138,12 @@ export const systemRoutes: BackendRouteRecord[] = [
 ];
 
 const userCenterRouteMeta: BackendRouteMeta[] = [
-  { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined', access: 'canVisitUserCenter' },
+  { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined' },
   { path: '/user-center/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
   { path: '/user-center/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
   { path: '/user-center/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
   { path: '/user-center/roles', name: 'nav.user.roles', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
-  { path: '/user-center/personal-center', name: 'nav.user.personalCenter', icon: 'IdcardOutlined', access: 'canVisitPersonalCenter' },
+  { path: '/user-center/personal-center', name: 'nav.user.personalCenter', icon: 'IdcardOutlined' },
   { path: '/user-center/personal-center/profile', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
   { path: '/user-center/files', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },
 ];
@@ -161,7 +160,6 @@ const userCenterRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.user.center',
     icon: 'TeamOutlined',
-    access: 'canVisitUserCenter',
     routes: [
       { path: '/user-center/users', component: '@/pages/system/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
       { path: '/user-center/departments', component: '@/pages/system/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
@@ -174,7 +172,6 @@ const userCenterRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.user.personalCenter',
     icon: 'IdcardOutlined',
-    access: 'canVisitPersonalCenter',
     routes: [
       { path: '/user-center/personal-center', redirect: '/user-center/personal-center/profile', hideInMenu: true },
       { path: '/user-center/personal-center/profile', component: '@/pages/profile/Center', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },

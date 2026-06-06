@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { backendRouteMeta, realPageRouteMetaMap, realPageRoutePaths } from '../src/routes/meta';
+import { resolveRouteAccessStatus } from '../src/auth/loginRedirect';
+import type { CurrentUser } from '../src/types/api';
 
 const DEFAULT_SETTING_ROUTE_ORDER = [
   '/settings/tenants',
@@ -32,5 +34,25 @@ for (const [path, name] of expectedRoutes) {
 }
 
 assert.equal(DEFAULT_SETTING_ROUTE_ORDER[0], '/settings/tenants', 'tenant management should lead the settings maintenance order');
+
+const userWithoutManagementPermissions: CurrentUser = {
+  userId: 12,
+  username: 'route-shell-only',
+  sessionId: 'session-route-shell-only',
+  permissions: [],
+};
+
+assert.equal(resolveRouteAccessStatus('/settings', userWithoutManagementPermissions), 'allowed', 'settings shell should resolve its landing route before page permissions run');
+assert.equal(resolveRouteAccessStatus('/user-center', userWithoutManagementPermissions), 'allowed', 'user center shell should resolve its landing route before page permissions run');
+assert.equal(
+  resolveRouteAccessStatus('/settings/menus', userWithoutManagementPermissions),
+  'denied',
+  'protected settings pages should still reject users without matching permission',
+);
+assert.equal(
+  resolveRouteAccessStatus('/user-center/users', userWithoutManagementPermissions),
+  'denied',
+  'protected user center pages should still reject users without matching permission',
+);
 
 console.log('gap-closure-routes-smoke: ok');

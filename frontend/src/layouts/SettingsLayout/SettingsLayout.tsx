@@ -1,5 +1,4 @@
-import { history, Outlet, useAccess, useLocation } from '@umijs/max';
-import { useEffect } from 'react';
+import { Navigate, Outlet, useAccess, useLocation } from '@umijs/max';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { PROFILE_PATH } from '@/navigation/settingsNavigationConfig';
@@ -34,33 +33,29 @@ const SettingsLayout = () => {
   const { initialState } = useInitialStateModel();
   const pathname = location.pathname;
 
-  useEffect(() => {
-    if (pathname === '/settings' || pathname === '/settings/overview') {
-      history.replace(resolveFirstSettingsNavigationPath(initialState?.menuTree, (accessKey) => accessValue(access, accessKey)) || DEFAULT_HOME_PATH);
-      return;
-    }
-
-    if (pathname === '/user-center') {
-      history.replace(resolveUserCenterLandingPath(access));
-      return;
-    }
-
-    if (pathname === '/user-center/personal-center') {
-      history.replace(PROFILE_PATH);
-      return;
-    }
-
-    if (pathname === '/files') {
-      history.replace(resolveFileCenterLandingPath(access));
-    }
-  }, [access, initialState?.menuTree, pathname]);
-
   if (pathname === PROFILE_PATH) {
     return <Outlet />;
   }
 
-  if (pathname === '/settings' || pathname === '/settings/overview' || pathname === '/user-center' || pathname === '/user-center/personal-center' || pathname === '/files') {
-    return null;
+  if (pathname === '/settings' || pathname === '/settings/overview') {
+    return (
+      <Navigate
+        to={resolveFirstSettingsNavigationPath(initialState?.menuTree, (accessKey) => accessValue(access, accessKey)) || DEFAULT_HOME_PATH}
+        replace
+      />
+    );
+  }
+
+  if (pathname === '/user-center') {
+    return <Navigate to={resolveUserCenterLandingPath(access)} replace />;
+  }
+
+  if (pathname === '/user-center/personal-center') {
+    return <Navigate to={PROFILE_PATH} replace />;
+  }
+
+  if (pathname === '/files') {
+    return <Navigate to={resolveFileCenterLandingPath(access)} replace />;
   }
 
   return <Outlet />;
