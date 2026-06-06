@@ -472,7 +472,7 @@ const ProfileCenterOverviewSection = ({
   return (
     <>
       <div className="saas-profile-page__top-row">
-        <Card className="saas-profile-page__summary-card">
+        <Card className="saas-profile-page__card saas-profile-page__summary-card">
           <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
             <section className="saas-profile-page__account-panel" aria-label="账户身份">
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.mobileProfileSectionGap, isMobile)} className="saas-profile-page__welcome-profile">
@@ -505,7 +505,7 @@ const ProfileCenterOverviewSection = ({
         <Card
           title="个人信息"
           loading={loading}
-          className="saas-profile-page__personal-card"
+          className="saas-profile-page__card saas-profile-page__personal-card"
           style={{ width: '100%' }}
           extra={
             <Space size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)}>
@@ -557,7 +557,11 @@ const ProfileCenterOverviewSection = ({
         />
       </div>
 
-      <Card title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })} loading={loading}>
+      <Card
+        title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })}
+        loading={loading}
+        className="saas-profile-page__card"
+      >
         {recentLoginLogs.length ? (
           <Timeline
             items={recentLoginLogs.map((item) => ({
@@ -602,7 +606,7 @@ const ProfileCenterCompletionCard = ({
     <Card
       title="信息完整度"
       loading={loading}
-      className="saas-profile-page__completion-card saas-profile-page__completion-card--compact"
+      className="saas-profile-page__card saas-profile-page__completion-card saas-profile-page__completion-card--compact"
       style={{ width: '100%' }}
       extra={profileCompletionSummary ? <Tag color={profileCompletionSummary.completionRate === 100 ? 'green' : 'blue'}>{profileCompletionSummary.completionRate}%</Tag> : null}
     >
@@ -833,6 +837,7 @@ const ProfileCenterBindingSection = ({
       <Card
         title="登录方式绑定"
         loading={loginMethodsLoading}
+        className="saas-profile-page__card"
         extra={
           <Button icon={<KeyOutlined />} onClick={onBindPasskey}>
             新增通行密钥
@@ -842,7 +847,7 @@ const ProfileCenterBindingSection = ({
         {renderLoginMethodList(loginMethods)}
         {renderPasskeyList(passkeys)}
       </Card>
-      <Card title="二次验证方式" loading={providersLoading}>
+      <Card title="二次验证方式" loading={providersLoading} className="saas-profile-page__card">
         {renderProviderList(providers, bindingLoading, bindingSubmitting, onBindProvider, onUnbindProvider, '当前暂无可绑定二次验证方式')}
       </Card>
     </Space>
