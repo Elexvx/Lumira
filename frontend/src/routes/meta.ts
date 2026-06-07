@@ -48,14 +48,14 @@ const aiRouteMeta: BackendRouteMeta[] = [
 ];
 
 const aiRoutes: BackendRouteRecord[] = [
-  { path: '/ai/share/:token', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant', hideInMenu: true },
+  { path: '/ai/share/:token', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', hideInMenu: true },
   {
     path: '/ai',
+    component: '@/layouts/AiLayout/AiLayout',
     name: 'nav.ai.root',
     icon: 'RobotOutlined',
     access: 'canVisitAi',
     routes: [
-      { path: '/ai', redirect: '/ai/assistant' },
       { path: '/ai/assistant', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant' },
       { path: '/ai/knowledge', component: '@/pages/ai/knowledge/KnowledgePage', name: 'nav.ai.knowledge', icon: 'FileSearchOutlined', access: 'canVisitAiKnowledge' },
     ],

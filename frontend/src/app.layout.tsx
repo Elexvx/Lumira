@@ -7,7 +7,7 @@ import { Empty, Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { useQuery } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
-import { DEFAULT_HOME_PATH, LOGIN_PATH, PUBLIC_PATHS } from '@/app.constants';
+import { DEFAULT_HOME_PATH, LOGIN_PATH, isPublicPath } from '@/app.constants';
 import buildAccess from '@/access';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { isLoggedIn } from '@/auth/sessionLifecycle';
@@ -512,10 +512,10 @@ const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialSt
   }
 
   const loggedIn = isLoggedIn();
-  const isPublicPath = PUBLIC_PATHS.has(path);
+  const isPublicRoute = isPublicPath(path);
   const requiresPasswordChange = Boolean(initialState?.currentUser?.requiresPasswordChange);
 
-  if (!loggedIn && !isPublicPath) {
+  if (!loggedIn && !isPublicRoute) {
     const redirect = `${path}${location.search || ''}`;
     history.replace(`${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`);
     return;
@@ -537,7 +537,7 @@ const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialSt
     return;
   }
 
-  if (loggedIn && !isPublicPath && initialState?.currentUser) {
+  if (loggedIn && !isPublicRoute && initialState?.currentUser) {
     const routeAccessStatus = resolveRouteAccessStatus(path, initialState.currentUser);
     if (routeAccessStatus === 'denied') {
       history.replace('/403');

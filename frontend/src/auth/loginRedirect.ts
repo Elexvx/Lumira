@@ -37,7 +37,7 @@ const normalizeTargetWithOriginalQuery = (target: string) => {
 const routePathMatches = (routePath: string, pathname: string) => {
   const pattern = routePath
     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/\\:([^/]+)/g, '[^/]+');
+    .replace(/:([^/]+)/g, '[^/]+');
 
   return new RegExp(`^${pattern}$`).test(pathname);
 };
