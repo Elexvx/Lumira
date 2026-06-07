@@ -1,5 +1,5 @@
-import { Button, Card, Empty, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { Button, Card, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
+import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import ImgCrop from 'antd-img-crop';
 import type { FormProps } from 'antd';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -35,8 +35,8 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
     clearLabel: '网站 Icon',
     target: 'favicon',
     previewKey: 'websiteFaviconUrl',
-    cardWidth: 104,
-    cardHeight: 104,
+    cardWidth: 128,
+    cardHeight: 128,
     imageWidth: 72,
     imageHeight: 72,
     cropModalTitle: '裁切网站 Icon',
@@ -57,8 +57,9 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
     clearLabel: 'Logo',
     target: 'logo',
     previewKey: 'websiteLogoUrl',
-    cardWidth: 200,
-    imageWidth: 180,
+    cardWidth: 240,
+    cardHeight: 128,
+    imageWidth: 200,
     imageHeight: 72,
     cropModalTitle: '裁切 Logo',
     cropAspect: 25 / 9,
@@ -70,7 +71,8 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
     clearLabel: '登录页背景图',
     target: 'loginBackground',
     previewKey: 'loginBackgroundUrl',
-    cardWidth: 280,
+    cardWidth: 320,
+    cardHeight: 180,
     accept: 'image/*',
     note: '建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。',
   },
@@ -129,7 +131,7 @@ const renderBrandingUploadField = ({
   const previewHeight = cardHeight ?? Math.max(Math.round(cardWidth * 0.5625), typeof imageHeight === 'number' ? imageHeight + 48 : 0, 140);
   const isUploading = uploadingTarget === target;
   const uploadArea = (
-    <Upload.Dragger
+    <Upload
       accept={accept}
       showUploadList={false}
       beforeUpload={async (file) => {
@@ -137,27 +139,35 @@ const renderBrandingUploadField = ({
         return Upload.LIST_IGNORE;
       }}
       disabled={!canUpdate || isUploading}
-      style={{
-        width: cardWidth,
-        minHeight: previewHeight,
-        padding: 0,
-        borderRadius: 'var(--saas-card-radius)',
-        border: '1px dashed var(--ant-color-border)',
-        background: 'var(--ant-color-fill-quaternary)',
-        cursor: canUpdate && !isUploading ? 'pointer' : 'not-allowed',
-        overflow: 'hidden',
-        opacity: isUploading ? 0.72 : 1,
-      }}
     >
       <div
+        role="button"
+        aria-disabled={!canUpdate || isUploading}
+        tabIndex={canUpdate && !isUploading ? 0 : -1}
+        onKeyDown={(event) => {
+          if (!canUpdate || isUploading) {
+            return;
+          }
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.currentTarget.click();
+          }
+        }}
         style={{
-          width: '100%',
+          width: cardWidth,
           minHeight: previewHeight,
+          padding: 16,
+          borderRadius: 'var(--saas-card-radius)',
+          border: '1px dashed var(--ant-color-border)',
+          background: 'var(--ant-color-fill-quaternary)',
+          cursor: canUpdate && !isUploading ? 'pointer' : 'not-allowed',
+          overflow: 'hidden',
+          opacity: isUploading ? 0.72 : 1,
           display: 'grid',
           placeItems: 'center',
           gap: 12,
-          padding: cardHeight ? 0 : 16,
           color: 'var(--ant-color-text-secondary)',
+          textAlign: 'center',
         }}
       >
         {previewSrc ? (
@@ -169,11 +179,13 @@ const renderBrandingUploadField = ({
             style={{ objectFit: target === 'loginBackground' ? 'cover' : 'contain' }}
           />
         ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击或拖拽上传" />
+          <Space direction="vertical" size={8} align="center">
+            <InboxOutlined style={{ fontSize: 24, color: 'var(--ant-color-text-quaternary)' }} />
+            <Typography.Text type="secondary">{isUploading ? '上传中...' : '点击选择图片'}</Typography.Text>
+          </Space>
         )}
-        <Typography.Text type="secondary">{isUploading ? '上传中...' : previewSrc ? '点击或拖拽更换图片' : '点击或拖拽上传图片'}</Typography.Text>
       </div>
-    </Upload.Dragger>
+    </Upload>
   );
 
   return (
