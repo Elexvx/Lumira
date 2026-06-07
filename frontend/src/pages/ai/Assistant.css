@@ -714,3 +714,27 @@
     flex-wrap: wrap;
   }
 }
+
+@media (min-width: 769px) {
+  .saas-ai-assistant-page {
+    height: calc(100dvh - var(--saas-spacing-72));
+  }
+
+  .saas-ai-assistant-page .ant-pro-page-container-children-container {
+    width: min(100%, var(--saas-page-content-width));
+    margin-inline: auto;
+    height: calc(100dvh - var(--saas-spacing-192));
+  }
+
+  .saas-ai-assistant-shell__composer {
+    padding: 0 var(--saas-ai-chat-gutter) var(--saas-spacing-md);
+  }
+
+  .saas-ai-assistant-sender .ant-sender-content {
+    padding: var(--saas-spacing-xs) var(--saas-spacing-sm) var(--saas-spacing-xxs);
+  }
+
+  .saas-ai-assistant-sender .ant-sender-footer {
+    padding: var(--saas-spacing-2xs) var(--saas-spacing-sm) var(--saas-spacing-xs);
+  }
+}
