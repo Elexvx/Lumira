@@ -23,7 +23,7 @@
   border-radius: var(--saas-card-radius);
   overflow: hidden;
   background: var(--ant-color-bg-container);
-  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.06);
+  box-shadow: none;
 }
 
 .saas-ai-assistant-layout--share {
@@ -717,13 +717,13 @@
 
 @media (min-width: 769px) {
   .saas-ai-assistant-page {
-    height: calc(100dvh - var(--saas-spacing-72));
+    height: calc(100dvh - var(--saas-spacing-112));
   }
 
   .saas-ai-assistant-page .ant-pro-page-container-children-container {
     width: min(100%, var(--saas-page-content-width));
     margin-inline: auto;
-    height: calc(100dvh - var(--saas-spacing-192));
+    height: calc(100dvh - var(--saas-spacing-280));
   }
 
   .saas-ai-assistant-shell__composer {
