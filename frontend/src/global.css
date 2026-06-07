@@ -1,7 +1,7 @@
 :root {
   --saas-page-content-width: 1280px;
   --saas-page-content-width-compact: 1120px;
-  --saas-page-gutter: var(--saas-spacing-lg);
+  --saas-page-gutter: clamp(16px, 2.4vw, 28px);
   --saas-page-section-gap: clamp(16px, 2vw, 24px);
   --saas-form-item-gap: var(--saas-spacing-xs);
   --saas-form-label-gap: var(--saas-spacing-xs);
@@ -979,10 +979,6 @@ body,
 }
 
 @media (max-width: 767px) {
-  :root {
-    --saas-page-gutter: var(--saas-spacing-md);
-  }
-
   .ant-pro-layout {
     .ant-pro-global-header-collapsed-button {
       display: inline-flex;

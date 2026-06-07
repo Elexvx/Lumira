@@ -10,8 +10,8 @@ export const APP_SPACING = {
     },
   },
   pageContainerPaddingInline: {
-    desktop: 24,
-    mobile: 16,
+    desktop: 25,
+    mobile: 20,
   },
   detailLayoutLabelWidth: {
     desktop: 140,
