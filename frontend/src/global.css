@@ -1,7 +1,8 @@
 :root {
   --saas-page-content-width: 1280px;
   --saas-page-content-width-compact: 1120px;
-  --saas-page-gutter: clamp(16px, 2.4vw, 28px);
+  --saas-page-gutter: var(--saas-spacing-lg);
+  --saas-page-container-padding-block: var(--saas-spacing-lg);
   --saas-page-section-gap: clamp(16px, 2vw, 24px);
   --saas-form-item-gap: var(--saas-spacing-xs);
   --saas-form-label-gap: var(--saas-spacing-xs);
@@ -972,6 +973,12 @@ body,
     min-height: 0;
   }
 
+  .ant-pro-page-container .ant-pro-page-container-children-container {
+    box-sizing: border-box;
+    padding-inline: var(--saas-page-gutter) !important;
+    padding-block: var(--saas-page-container-padding-block) !important;
+  }
+
   .ant-pro-global-header-collapsed-button {
     position: relative;
     z-index: 1;
@@ -979,6 +986,11 @@ body,
 }
 
 @media (max-width: 767px) {
+  :root {
+    --saas-page-gutter: var(--saas-spacing-md);
+    --saas-page-container-padding-block: var(--saas-spacing-md);
+  }
+
   .ant-pro-layout {
     .ant-pro-global-header-collapsed-button {
       display: inline-flex;
