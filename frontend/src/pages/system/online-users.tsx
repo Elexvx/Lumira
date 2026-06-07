@@ -4,6 +4,7 @@ import { message } from '@/theme/antdFeedbackBridge';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { buildTableRequest } from '@/features/table/proTableRequest';
@@ -458,26 +459,28 @@ const OnlineUsersPage = () => {
 
   return (
     <ManagementPage title="在线用户" className="saas-online-users-page" ghost>
-      <ManagementTable<OnlineSessionRecord>
-        actionRef={actionRef}
-        rowKey="sessionId"
-        search={false}
-        columns={columns}
-        isMobile={responsive.isMobile}
-        scroll={{ x: 1980 }}
-        request={buildTableRequest((params) =>
-          request<PagedResult<OnlineSessionRecord>>('/v1/system/online-users', {
-            method: 'GET',
-            params,
-            ...API_OPTS.NO_REDIRECT,
-          }),
-        )}
-        toolBarRender={() => [
-          <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
-            刷新
-          </Button>,
-        ]}
-      />
+      <ManagementPageBody>
+        <ManagementTable<OnlineSessionRecord>
+          actionRef={actionRef}
+          rowKey="sessionId"
+          search={false}
+          columns={columns}
+          isMobile={responsive.isMobile}
+          scroll={{ x: 1980 }}
+          request={buildTableRequest((params) =>
+            request<PagedResult<OnlineSessionRecord>>('/v1/system/online-users', {
+              method: 'GET',
+              params,
+              ...API_OPTS.NO_REDIRECT,
+            }),
+          )}
+          toolBarRender={() => [
+            <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </ManagementPageBody>
 
       <ManagementDrawer
         title={selectedRecord ? `在线会话详情 · ${selectedRecord.realName || selectedRecord.nickname || selectedRecord.username}` : '在线会话详情'}

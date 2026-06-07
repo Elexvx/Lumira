@@ -1,5 +1,6 @@
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { ProDescriptions } from '@ant-design/pro-components';
@@ -352,42 +353,44 @@ const UserManagementPage = () => {
 
   return (
     <ManagementPage title="用户管理" className="saas-user-management-page">
-      <div className="saas-user-management-layout">
-        <DepartmentTreeFilter
-          departments={departments}
-          loading={departmentLoading}
-          selectedDepartmentId={selectedDepartmentId}
-          onSelectedDepartmentChange={setSelectedDepartmentId}
-          onRefresh={() => void loadDepartments()}
-        />
-
-        <div className="saas-user-management-main">
-          <ManagementTable
-            actionRef={actionRef}
-            rowKey="id"
-            columns={columns}
-            isMobile={responsive.isMobile}
-            search={searchConfig}
-            request={tableRequest}
-            toolBarRender={() =>
-              buildToolbarButtons([
-                {
-                  key: 'create',
-                  permission: 'system:user:create',
-                  type: 'primary',
-                  label: '新增用户',
-                  onClick: () => void openCreate(),
-                },
-                {
-                  key: 'refresh',
-                  label: '刷新',
-                  onClick: () => void actionRef.current?.reload(),
-                },
-              ])
-            }
+      <ManagementPageBody>
+        <div className="saas-user-management-layout">
+          <DepartmentTreeFilter
+            departments={departments}
+            loading={departmentLoading}
+            selectedDepartmentId={selectedDepartmentId}
+            onSelectedDepartmentChange={setSelectedDepartmentId}
+            onRefresh={() => void loadDepartments()}
           />
+
+          <div className="saas-user-management-main">
+            <ManagementTable
+              actionRef={actionRef}
+              rowKey="id"
+              columns={columns}
+              isMobile={responsive.isMobile}
+              search={searchConfig}
+              request={tableRequest}
+              toolBarRender={() =>
+                buildToolbarButtons([
+                  {
+                    key: 'create',
+                    permission: 'system:user:create',
+                    type: 'primary',
+                    label: '新增用户',
+                    onClick: () => void openCreate(),
+                  },
+                  {
+                    key: 'refresh',
+                    label: '刷新',
+                    onClick: () => void actionRef.current?.reload(),
+                  },
+                ])
+              }
+            />
+          </div>
         </div>
-      </div>
+      </ManagementPageBody>
 
       <ManagementDrawer
         title={drawer.editingId ? '编辑用户' : '新增用户'}

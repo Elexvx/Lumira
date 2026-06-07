@@ -1,6 +1,7 @@
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { DeleteOutlined, DownOutlined, PlusOutlined } from '@ant-design/icons';
@@ -203,33 +204,35 @@ const SystemVerificationPage = () => {
 
   return (
     <ManagementPage title="验证管理">
-      <ManagementTable
-        {...verificationTableProps}
-        toolBarRender={() => [
-          <Popconfirm
-            key="verification-delete"
-            title="删除认证器"
-            description="可删除的认证器会被停用，基础密码认证器会保留。"
-            okText="确认"
-            cancelText="取消"
-            onConfirm={() => void tablePack.toolbarProps.onDeleteSelectedAuthenticators()}
-          >
-            <Button disabled={!tablePack.tableProps.canManageSettings} icon={<DeleteOutlined />}>
-              删除
-            </Button>
-          </Popconfirm>,
-          <Dropdown
-            key="verification-add"
-            trigger={['click']}
-            menu={{ items: tablePack.toolbarProps.addAuthenticatorItems }}
-            placement="bottomRight"
-          >
-            <Button type="primary" disabled={!tablePack.tableProps.canManageSettings || !tablePack.toolbarProps.addAuthenticatorItems?.length} icon={<PlusOutlined />}>
-              添加 <DownOutlined />
-            </Button>
-          </Dropdown>,
-        ]}
-      />
+      <ManagementPageBody>
+        <ManagementTable
+          {...verificationTableProps}
+          toolBarRender={() => [
+            <Popconfirm
+              key="verification-delete"
+              title="删除认证器"
+              description="可删除的认证器会被停用，基础密码认证器会保留。"
+              okText="确认"
+              cancelText="取消"
+              onConfirm={() => void tablePack.toolbarProps.onDeleteSelectedAuthenticators()}
+            >
+              <Button disabled={!tablePack.tableProps.canManageSettings} icon={<DeleteOutlined />}>
+                删除
+              </Button>
+            </Popconfirm>,
+            <Dropdown
+              key="verification-add"
+              trigger={['click']}
+              menu={{ items: tablePack.toolbarProps.addAuthenticatorItems }}
+              placement="bottomRight"
+            >
+              <Button type="primary" disabled={!tablePack.tableProps.canManageSettings || !tablePack.toolbarProps.addAuthenticatorItems?.length} icon={<PlusOutlined />}>
+                添加 <DownOutlined />
+              </Button>
+            </Dropdown>,
+          ]}
+        />
+      </ManagementPageBody>
       <ManagementDrawer {...drawerProps} />
     </ManagementPage>
   );

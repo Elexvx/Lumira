@@ -4,6 +4,7 @@ import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { buildTableRequest } from '@/features/table/proTableRequest';
@@ -584,17 +585,19 @@ const LocalizationPage = () => {
 
   return (
     <ManagementPage title="本地化">
-      <Spin spinning={loadingMeta}>
-        <ManagementTable<import('@/types/api').LocalizationEntry>
-          actionRef={tableActionRef}
-          rowKey="id"
-          columns={columns}
-          isMobile={responsive.isMobile}
-          search={searchConfig}
-          request={tableRequest}
-          toolBarRender={() => toolbarActions}
-        />
-      </Spin>
+      <ManagementPageBody>
+        <Spin spinning={loadingMeta}>
+          <ManagementTable<import('@/types/api').LocalizationEntry>
+            actionRef={tableActionRef}
+            rowKey="id"
+            columns={columns}
+            isMobile={responsive.isMobile}
+            search={searchConfig}
+            request={tableRequest}
+            toolBarRender={() => toolbarActions}
+          />
+        </Spin>
+      </ManagementPageBody>
 
       <ManagementDrawer
         title={editingEntry ? '编辑词条' : '新增词条'}

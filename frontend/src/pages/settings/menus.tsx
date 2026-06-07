@@ -13,6 +13,7 @@ import { usePagePermissionActions } from '@/features/permissions/usePagePermissi
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { confirmAction } from '@/utils/confirm';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -1443,36 +1444,38 @@ const MenuManagementPage = () => {
 
   return (
     <ManagementPage title="菜单管理">
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          {
-            key: 'main',
-            label: '主路由菜单',
-            children: (
-              <ManagementTable
-                actionRef={actionRef}
-                rowKey="id"
-                columns={columns}
-                isMobile={responsive.isMobile}
-                search={searchConfig}
-                pagination={false}
-                scroll={{ x: 'max-content' }}
-                tableLayout="fixed"
-                onRow={getRowProps}
-                request={menuTableRequest}
-                toolBarRender={() => toolbarActions}
-              />
-            ),
-          },
-          {
-            key: 'settings',
-            label: '设置页路由',
-            children: <SettingsRoutesTab />,
-          },
-        ]}
-      />
+      <ManagementPageBody>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'main',
+              label: '主路由菜单',
+              children: (
+                <ManagementTable
+                  actionRef={actionRef}
+                  rowKey="id"
+                  columns={columns}
+                  isMobile={responsive.isMobile}
+                  search={searchConfig}
+                  pagination={false}
+                  scroll={{ x: 'max-content' }}
+                  tableLayout="fixed"
+                  onRow={getRowProps}
+                  request={menuTableRequest}
+                  toolBarRender={() => toolbarActions}
+                />
+              ),
+            },
+            {
+              key: 'settings',
+              label: '设置页路由',
+              children: <SettingsRoutesTab />,
+            },
+          ]}
+        />
+      </ManagementPageBody>
 
       <ManagementDrawer title={menuEditorProps.title} open={menuEditorProps.open} onClose={menuEditorProps.onClose} footerActions={menuEditorProps.footerActions}>
         <MenuEditorForm formProps={menuEditorProps.formProps} parentOptions={menuEditorProps.parentOptions} />

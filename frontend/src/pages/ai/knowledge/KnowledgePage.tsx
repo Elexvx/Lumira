@@ -6,6 +6,7 @@ import type { ProColumns } from '@ant-design/pro-components';
 import type { ActionType } from '@ant-design/pro-components';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { adaptPageResult } from '@/features/table/proTableRequest';
@@ -608,26 +609,28 @@ const AiKnowledgePage = () => {
 
   return (
     <ManagementPage title="知识库" content={null}>
-      <Tabs
-        activeKey={activeScope}
-        items={SCOPE_TABS}
-        onChange={handleScopeChange}
-      />
-      <ManagementTable<AiKnowledgeBaseRecord>
-        rowKey="id"
-        actionRef={actionRef}
-        columns={knowledgeBaseColumns}
-        isMobile={responsive.isMobile}
-        params={{ scope: activeScope }}
-        request={requestKnowledgeBase}
-        toolbar={{
-          actions: [
-            <Button key="create" type="primary" icon={<PlusOutlined />} disabled={!canCreateKnowledge} onClick={openCreateDrawer}>
-              新建知识库
-            </Button>,
-          ],
-        }}
-      />
+      <ManagementPageBody>
+        <Tabs
+          activeKey={activeScope}
+          items={SCOPE_TABS}
+          onChange={handleScopeChange}
+        />
+        <ManagementTable<AiKnowledgeBaseRecord>
+          rowKey="id"
+          actionRef={actionRef}
+          columns={knowledgeBaseColumns}
+          isMobile={responsive.isMobile}
+          params={{ scope: activeScope }}
+          request={requestKnowledgeBase}
+          toolbar={{
+            actions: [
+              <Button key="create" type="primary" icon={<PlusOutlined />} disabled={!canCreateKnowledge} onClick={openCreateDrawer}>
+                新建知识库
+              </Button>,
+            ],
+          }}
+        />
+      </ManagementPageBody>
 
       <KnowledgeBaseDrawer
         open={drawerOpen}

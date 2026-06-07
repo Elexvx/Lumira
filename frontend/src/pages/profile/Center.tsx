@@ -8,6 +8,7 @@ import type { ReactNode, RefObject } from 'react';
 import { EditOutlined, ExclamationCircleFilled, KeyOutlined, UserOutlined } from '@ant-design/icons';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profile/center/hooks/useProfileCenterPageAccess';
 import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
@@ -909,57 +910,59 @@ const ProfileCenterPage = () => {
       className="saas-profile-page"
       title={formatMessage({ id: 'page.profile.title', defaultMessage: 'Profile center' })}
     >
-      <div className="saas-profile-page__three-blocks">
-        <div className="saas-profile-page__main-column">
-          <div className="saas-profile-page__main-stack">
-            <ProfileCenterOverviewSection
-              isMobile={responsive.isMobile}
-              profileBasicCardRef={profileSectionAccess.profileBasicCardRef}
-              avatarValue={profileSectionAccess.avatarValue}
-              currentUser={currentUser}
-              displayName={profileSectionAccess.displayName}
-              activeRoleName={profileSectionAccess.activeRoleName}
-              loading={profileSectionAccess.loading}
-              hasVisibleProfileFields={profileSectionAccess.hasVisibleProfileFields}
-              profileSaving={profileSectionAccess.profileSaving}
-              profileFormProps={profileSectionAccess.profileFormProps}
-              visibleProfileFields={profileSectionAccess.visibleProfileFields}
-              avatarUploading={profileSectionAccess.avatarUploading}
-              editingOpen={profileSectionAccess.editingOpen}
-              onSave={profileSectionAccess.onSave}
-              onEditOpenChange={profileSectionAccess.onEditOpenChange}
-              onAvatarBeforeCrop={profileSectionAccess.onAvatarBeforeCrop}
-              onAvatarUploadRequest={profileSectionAccess.onAvatarUploadRequest}
-              recentLoginLogs={profileSectionAccess.recentLoginLogs}
-            />
+      <ManagementPageBody>
+        <div className="saas-profile-page__three-blocks">
+          <div className="saas-profile-page__main-column">
+            <div className="saas-profile-page__main-stack">
+              <ProfileCenterOverviewSection
+                isMobile={responsive.isMobile}
+                profileBasicCardRef={profileSectionAccess.profileBasicCardRef}
+                avatarValue={profileSectionAccess.avatarValue}
+                currentUser={currentUser}
+                displayName={profileSectionAccess.displayName}
+                activeRoleName={profileSectionAccess.activeRoleName}
+                loading={profileSectionAccess.loading}
+                hasVisibleProfileFields={profileSectionAccess.hasVisibleProfileFields}
+                profileSaving={profileSectionAccess.profileSaving}
+                profileFormProps={profileSectionAccess.profileFormProps}
+                visibleProfileFields={profileSectionAccess.visibleProfileFields}
+                avatarUploading={profileSectionAccess.avatarUploading}
+                editingOpen={profileSectionAccess.editingOpen}
+                onSave={profileSectionAccess.onSave}
+                onEditOpenChange={profileSectionAccess.onEditOpenChange}
+                onAvatarBeforeCrop={profileSectionAccess.onAvatarBeforeCrop}
+                onAvatarUploadRequest={profileSectionAccess.onAvatarUploadRequest}
+                recentLoginLogs={profileSectionAccess.recentLoginLogs}
+              />
+            </div>
+          </div>
+          <div className="saas-profile-page__rail-column">
+            <div className="saas-profile-page__rail-block">
+              <ProfileCenterCompletionCard
+                loading={profileSectionAccess.loading}
+                isMobile={responsive.isMobile}
+                profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
+                onProfileCompletionAction={handleProfileCompletionAction}
+              />
+              <ProfileCenterBindingSection
+                isMobile={responsive.isMobile}
+                loginMethods={interactionAccess.passkeyAccess.loginMethods}
+                passkeys={passkeys}
+                loginMethodsLoading={loginMethodsLoading}
+                providers={providers}
+                providersLoading={providersLoading}
+                bindingLoading={interactionAccess.securityAccess.bindingLoading}
+                bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
+                onBindPasskey={interactionAccess.passkeyAccess.onBindPasskey}
+                onRenamePasskey={interactionAccess.passkeyAccess.onRenamePasskey}
+                onDeletePasskey={interactionAccess.passkeyAccess.onDeletePasskey}
+                onBindProvider={interactionAccess.securityAccess.onBindProvider}
+                onUnbindProvider={interactionAccess.securityAccess.onUnbindProvider}
+              />
+            </div>
           </div>
         </div>
-        <div className="saas-profile-page__rail-column">
-          <div className="saas-profile-page__rail-block">
-            <ProfileCenterCompletionCard
-              loading={profileSectionAccess.loading}
-              isMobile={responsive.isMobile}
-              profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
-              onProfileCompletionAction={handleProfileCompletionAction}
-            />
-            <ProfileCenterBindingSection
-              isMobile={responsive.isMobile}
-              loginMethods={interactionAccess.passkeyAccess.loginMethods}
-              passkeys={passkeys}
-              loginMethodsLoading={loginMethodsLoading}
-              providers={providers}
-              providersLoading={providersLoading}
-              bindingLoading={interactionAccess.securityAccess.bindingLoading}
-              bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
-              onBindPasskey={interactionAccess.passkeyAccess.onBindPasskey}
-              onRenamePasskey={interactionAccess.passkeyAccess.onRenamePasskey}
-              onDeletePasskey={interactionAccess.passkeyAccess.onDeletePasskey}
-              onBindProvider={interactionAccess.securityAccess.onBindProvider}
-              onUnbindProvider={interactionAccess.securityAccess.onUnbindProvider}
-            />
-          </div>
-        </div>
-      </div>
+      </ManagementPageBody>
       <Modal
         title={
           interactionAccess.securityAccess.bindingProvider

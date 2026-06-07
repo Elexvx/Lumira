@@ -4,6 +4,7 @@ import { ProDescriptions, type ProColumns } from '@ant-design/pro-components';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
@@ -332,18 +333,20 @@ const DepartmentManagementPage = () => {
 
   return (
     <ManagementPage title="组织部门">
-      <ManagementTable<DepartmentRecord>
-        rowKey="id"
-        columns={columns}
-        dataSource={departments}
-        loading={loading}
-        pagination={false}
-        isMobile={responsive.isMobile}
-        search={false}
-        scroll={{ x: 990 }}
-        onRefresh={() => void loadDepartments()}
-        toolBarRender={() => toolbarActions}
-      />
+      <ManagementPageBody>
+        <ManagementTable<DepartmentRecord>
+          rowKey="id"
+          columns={columns}
+          dataSource={departments}
+          loading={loading}
+          pagination={false}
+          isMobile={responsive.isMobile}
+          search={false}
+          scroll={{ x: 990 }}
+          onRefresh={() => void loadDepartments()}
+          toolBarRender={() => toolbarActions}
+        />
+      </ManagementPageBody>
 
       <ManagementDrawer
         title={drawer.editingId ? '编辑部门' : '新增部门'}

@@ -1,6 +1,7 @@
 import { Form, Tag, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
@@ -477,30 +478,32 @@ const DictManagementPage = () => {
 
   return (
     <ManagementPage title="字典管理">
-      <ManagementTable<DictTypeRecord>
-        actionRef={typeCrud.actionRef}
-        rowKey="id"
-        columns={typeColumns}
-        isMobile={responsive.isMobile}
-        search={searchConfig}
-        request={typeTableRequest as ManagementTableProps<DictTypeRecord>['request']}
-        toolBarRender={() =>
-          buildToolbarButtons([
-            {
-              key: 'create',
-              permission: 'system:dict:create',
-              type: 'primary',
-              label: '新增字典类型',
-              onClick: openCreateType,
-            },
-            {
-              key: 'refresh',
-              label: '刷新',
-              onClick: typeCrud.reloadTable,
-            },
-          ])
-        }
-      />
+      <ManagementPageBody>
+        <ManagementTable<DictTypeRecord>
+          actionRef={typeCrud.actionRef}
+          rowKey="id"
+          columns={typeColumns}
+          isMobile={responsive.isMobile}
+          search={searchConfig}
+          request={typeTableRequest as ManagementTableProps<DictTypeRecord>['request']}
+          toolBarRender={() =>
+            buildToolbarButtons([
+              {
+                key: 'create',
+                permission: 'system:dict:create',
+                type: 'primary',
+                label: '新增字典类型',
+                onClick: openCreateType,
+              },
+              {
+                key: 'refresh',
+                label: '刷新',
+                onClick: typeCrud.reloadTable,
+              },
+            ])
+          }
+        />
+      </ManagementPageBody>
 
       <DictManagementDrawers
         typeDrawerOpen={typeCrud.drawer.open}

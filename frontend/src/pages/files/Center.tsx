@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import type { FormInstance, UploadFile, UploadProps } from 'antd';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
@@ -1264,27 +1265,29 @@ function SystemFilesPage() {
 
   return (
     <ManagementPage title={browserSectionProps.title} ghost>
-      {browserSectionProps.isTenantScope && !browserSectionProps.activeBucket ? (
-        <ManagementTable
-          actionRef={browserSectionProps.storageActionRef}
-          rowKey="id"
-          columns={browserSectionProps.storageColumns}
-          isMobile={browserSectionProps.isMobile}
-          search={false}
-          request={browserSectionProps.storageSpaceRequest}
-          toolBarRender={() => browserSectionProps.storageToolbar}
-        />
-      ) : (
-        <ManagementTable
-          actionRef={browserSectionProps.actionRef}
-          rowKey="id"
-          columns={fileColumns}
-          isMobile={browserSectionProps.isMobile}
-          search={{ labelWidth: 'auto', span: browserSectionProps.isMobile ? 24 : 8 }}
-          request={browserSectionProps.fileListRequest}
-          toolBarRender={() => browserSectionProps.actionToolbar}
-        />
-      )}
+      <ManagementPageBody>
+        {browserSectionProps.isTenantScope && !browserSectionProps.activeBucket ? (
+          <ManagementTable
+            actionRef={browserSectionProps.storageActionRef}
+            rowKey="id"
+            columns={browserSectionProps.storageColumns}
+            isMobile={browserSectionProps.isMobile}
+            search={false}
+            request={browserSectionProps.storageSpaceRequest}
+            toolBarRender={() => browserSectionProps.storageToolbar}
+          />
+        ) : (
+          <ManagementTable
+            actionRef={browserSectionProps.actionRef}
+            rowKey="id"
+            columns={fileColumns}
+            isMobile={browserSectionProps.isMobile}
+            search={{ labelWidth: 'auto', span: browserSectionProps.isMobile ? 24 : 8 }}
+            request={browserSectionProps.fileListRequest}
+            toolBarRender={() => browserSectionProps.actionToolbar}
+          />
+        )}
+      </ManagementPageBody>
       <FileStorageDrawer {...drawerProps.storageDrawerProps} />
       <FileUploadDrawer {...drawerProps.uploadDrawerProps} />
       <FilePreviewDrawer {...drawerProps.previewDrawerProps} isMobile={browserSectionProps.isMobile} />

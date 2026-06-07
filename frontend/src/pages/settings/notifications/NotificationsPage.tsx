@@ -1,6 +1,7 @@
 import { type ActionType } from '@ant-design/pro-components';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ProColumns } from '@ant-design/pro-components';
 import { DatePicker, Form, Input, InputNumber, Select, Switch, Typography, theme, Button, Dropdown, Popconfirm, Descriptions, Space, Tag } from 'antd';
@@ -593,39 +594,41 @@ const NotificationsPage = () => {
 
   return (
     <ManagementPage title="通知中心">
-      <ManagementTable
-        rowKey="key"
-        columns={channelColumns}
-        dataSource={notificationCenter.channelRecords}
-        isMobile={responsive.isMobile}
-        pagination={{ pageSize: 50, showSizeChanger: true }}
-        search={false}
-        tableAlertRender={false}
-        rowSelection={{
-          selectedRowKeys: notificationCenter.selectedChannelKeys,
-          onChange: (selectedRowKeys) =>
-            notificationCenter.setSelectedChannelKeys(selectedRowKeys as unknown as MessageChannel[]),
-        }}
-        toolBarRender={() => [
-          <Popconfirm
-            key="delete"
-            title="删除通知渠道"
-            description="选中的通知渠道会被停用，站内信会保留。"
-            okText="确认"
-            cancelText="取消"
-            onConfirm={() => void notificationCenter.handleDeleteSelectedChannels()}
-          >
-            <Button disabled={!canManageSmtp} icon={<DeleteOutlined />}>
-              删除
-            </Button>
-          </Popconfirm>,
-          <Dropdown key="add" trigger={['click']} menu={{ items: notificationCenter.addChannelItems }} placement="bottomRight">
-            <Button type="primary" disabled={!notificationCenter.addChannelItems?.length} icon={<PlusOutlined />}>
-              添加 <DownOutlined />
-            </Button>
-          </Dropdown>,
-        ]}
-      />
+      <ManagementPageBody>
+        <ManagementTable
+          rowKey="key"
+          columns={channelColumns}
+          dataSource={notificationCenter.channelRecords}
+          isMobile={responsive.isMobile}
+          pagination={{ pageSize: 50, showSizeChanger: true }}
+          search={false}
+          tableAlertRender={false}
+          rowSelection={{
+            selectedRowKeys: notificationCenter.selectedChannelKeys,
+            onChange: (selectedRowKeys) =>
+              notificationCenter.setSelectedChannelKeys(selectedRowKeys as unknown as MessageChannel[]),
+          }}
+          toolBarRender={() => [
+            <Popconfirm
+              key="delete"
+              title="删除通知渠道"
+              description="选中的通知渠道会被停用，站内信会保留。"
+              okText="确认"
+              cancelText="取消"
+              onConfirm={() => void notificationCenter.handleDeleteSelectedChannels()}
+            >
+              <Button disabled={!canManageSmtp} icon={<DeleteOutlined />}>
+                删除
+              </Button>
+            </Popconfirm>,
+            <Dropdown key="add" trigger={['click']} menu={{ items: notificationCenter.addChannelItems }} placement="bottomRight">
+              <Button type="primary" disabled={!notificationCenter.addChannelItems?.length} icon={<PlusOutlined />}>
+                添加 <DownOutlined />
+              </Button>
+            </Dropdown>,
+          ]}
+        />
+      </ManagementPageBody>
 
       <ManagementDrawer
         title={notificationCenter.channelRecord ? `配置${notificationCenter.channelRecord.title}` : '配置通知渠道'}

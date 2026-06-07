@@ -6,6 +6,7 @@ import { ApiOutlined, CheckCircleOutlined, CloudSyncOutlined, ExclamationCircleO
 import { tokenManager } from '@/auth/token';
 import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type {
   MessageWebSocketRuntime,
@@ -368,7 +369,9 @@ const ApiDocsContent = () => {
   if (!isLoggedIn) {
     return (
       <ManagementPage title="接口文档">
-        <Result status="403" title="请先登录" subTitle="接口文档只对已登录用户开放。" />
+        <ManagementPageBody>
+          <Result status="403" title="请先登录" subTitle="接口文档只对已登录用户开放。" />
+        </ManagementPageBody>
       </ManagementPage>
     );
   }
@@ -384,31 +387,33 @@ const ApiDocsContent = () => {
         </Space>
       }
     >
-      <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-card-radius)' }}>
-        <div style={{ minHeight: 'calc(100vh - var(--saas-spacing-220))', background: token.colorBgContainer }}>
-          {isLoading ? (
-            <div style={{ display: 'grid', minHeight: 'calc(100vh - var(--saas-spacing-220))', placeItems: 'center' }}>
-              <Spin tip="正在加载接口文档..." />
-            </div>
-          ) : loadError ? (
-            <div style={{ padding: token.paddingLG }}>
-              <Alert message="接口文档加载失败" description={loadError} type="error" showIcon />
-            </div>
-          ) : (
-            <iframe
-              title="接口文档"
-              srcDoc={buildSwaggerHtml(apiSpec, schemeContainerVerticalPadding)}
-              sandbox="allow-scripts allow-forms allow-popups"
-              style={{
-                width: '100%',
-                minHeight: 'calc(100vh - var(--saas-spacing-220))',
-                border: 0,
-                display: 'block',
-              }}
-            />
-          )}
-        </div>
-      </Card>
+      <ManagementPageBody>
+        <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-card-radius)' }}>
+          <div style={{ minHeight: 'calc(100vh - var(--saas-spacing-220))', background: token.colorBgContainer }}>
+            {isLoading ? (
+              <div style={{ display: 'grid', minHeight: 'calc(100vh - var(--saas-spacing-220))', placeItems: 'center' }}>
+                <Spin tip="正在加载接口文档..." />
+              </div>
+            ) : loadError ? (
+              <div style={{ padding: token.paddingLG }}>
+                <Alert message="接口文档加载失败" description={loadError} type="error" showIcon />
+              </div>
+            ) : (
+              <iframe
+                title="接口文档"
+                srcDoc={buildSwaggerHtml(apiSpec, schemeContainerVerticalPadding)}
+                sandbox="allow-scripts allow-forms allow-popups"
+                style={{
+                  width: '100%',
+                  minHeight: 'calc(100vh - var(--saas-spacing-220))',
+                  border: 0,
+                  display: 'block',
+                }}
+              />
+            )}
+          </div>
+        </Card>
+      </ManagementPageBody>
     </ManagementPage>
   );
 };
@@ -1154,13 +1159,15 @@ const MonitoringPage = () => {
 
   return (
     <ManagementPage title="系统监控">
-      <Tabs
-        activeKey={resolvedActiveTab}
-        items={tabs}
-        onChange={(key) => {
-          history.replace(`/settings/monitoring?tab=${key}`);
-        }}
-      />
+      <ManagementPageBody>
+        <Tabs
+          activeKey={resolvedActiveTab}
+          items={tabs}
+          onChange={(key) => {
+            history.replace(`/settings/monitoring?tab=${key}`);
+          }}
+        />
+      </ManagementPageBody>
     </ManagementPage>
   );
 };

@@ -3,6 +3,7 @@ import { ProDescriptions } from '@ant-design/pro-components';
 import { useMemo } from 'react';
 import { ManagementDrawer, type ManagementDrawerAction } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useRoleManagementPageData } from '@/pages/system/roles/hooks/useRoleManagementPageData';
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
@@ -347,36 +348,38 @@ const RoleManagementPage = () => {
 
   return (
     <ManagementPage title="角色管理">
-      <ManagementTable
-        actionRef={roleCrud.actionRef}
-        rowKey="id"
-        columns={columns}
-        isMobile={responsive.isMobile}
-        search={searchConfig}
-        request={tableRequest}
-        toolBarRender={() =>
-          buildToolbarButtons([
-            {
-              key: 'create',
-              permission: 'system:role:create',
-              type: 'primary',
-              label: '新增角色',
-              onClick: roleCrud.drawer.openCreate,
-            },
-            {
-              key: 'default-registration-role',
-              permission: 'system:role:update',
-              label: '默认注册角色',
-              onClick: () => void openDefaultRoleModal(),
-            },
-            {
-              key: 'refresh',
-              label: '刷新',
-              onClick: roleCrud.reloadTable,
-            },
-          ])
-        }
-      />
+      <ManagementPageBody>
+        <ManagementTable
+          actionRef={roleCrud.actionRef}
+          rowKey="id"
+          columns={columns}
+          isMobile={responsive.isMobile}
+          search={searchConfig}
+          request={tableRequest}
+          toolBarRender={() =>
+            buildToolbarButtons([
+              {
+                key: 'create',
+                permission: 'system:role:create',
+                type: 'primary',
+                label: '新增角色',
+                onClick: roleCrud.drawer.openCreate,
+              },
+              {
+                key: 'default-registration-role',
+                permission: 'system:role:update',
+                label: '默认注册角色',
+                onClick: () => void openDefaultRoleModal(),
+              },
+              {
+                key: 'refresh',
+                label: '刷新',
+                onClick: roleCrud.reloadTable,
+              },
+            ])
+          }
+        />
+      </ManagementPageBody>
 
       <DefaultRegistrationRoleModal
         open={defaultRoleModal.open}

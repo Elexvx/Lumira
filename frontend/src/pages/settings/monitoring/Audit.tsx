@@ -1,6 +1,7 @@
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { history } from '@umijs/max';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -405,21 +406,23 @@ const AuditOverviewPage = () => {
       tabActiveKey={activeLogType}
       onTabChange={handleTabChange}
     >
-      <ManagementTable<AuditRecord>
-        key={activeLogType}
-        actionRef={actionRef}
-        rowKey="id"
-        columns={columns}
-        isMobile={responsive.isMobile}
-        search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
-        pagination={{ showSizeChanger: true, pageSize: 10 }}
-        request={tableRequest}
-        toolBarRender={() => [
-          <Button key="refresh" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
-            刷新
-          </Button>,
-        ]}
-      />
+      <ManagementPageBody>
+        <ManagementTable<AuditRecord>
+          key={activeLogType}
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          isMobile={responsive.isMobile}
+          search={{ labelWidth: 'auto', span: responsive.isMobile ? 24 : 8 }}
+          pagination={{ showSizeChanger: true, pageSize: 10 }}
+          request={tableRequest}
+          toolBarRender={() => [
+            <Button key="refresh" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
+              刷新
+            </Button>,
+          ]}
+        />
+      </ManagementPageBody>
 
       <ManagementDrawer
         title={selectedRecord ? `日志详情 · ${selectedRecord.username || selectedRecord.moduleName || selectedRecord.id}` : '日志详情'}
