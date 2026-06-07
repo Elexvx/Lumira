@@ -492,10 +492,46 @@ body,
   margin: 0 auto;
   padding: 0;
   box-sizing: border-box;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: var(--saas-page-section-gap);
   min-height: 0;
+}
+
+.saas-monitoring-api-docs {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.saas-monitoring-api-docs__card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.saas-monitoring-api-docs__surface {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ant-color-bg-container);
+}
+
+.saas-monitoring-api-docs__loading {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  place-items: center;
+}
+
+.saas-monitoring-api-docs__iframe {
+  display: block;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
 }
 
 .saas-dashboard-workplace .ant-card,

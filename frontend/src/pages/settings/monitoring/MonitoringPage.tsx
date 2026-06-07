@@ -387,11 +387,11 @@ const ApiDocsContent = () => {
         </Space>
       }
     >
-      <ManagementPageBody>
-        <Card bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-card-radius)' }}>
-          <div style={{ minHeight: 'calc(100vh - var(--saas-spacing-220))', background: token.colorBgContainer }}>
+      <ManagementPageBody className="saas-monitoring-api-docs">
+        <Card className="saas-monitoring-api-docs__card" bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 'var(--saas-card-radius)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="saas-monitoring-api-docs__surface">
             {isLoading ? (
-              <div style={{ display: 'grid', minHeight: 'calc(100vh - var(--saas-spacing-220))', placeItems: 'center' }}>
+              <div className="saas-monitoring-api-docs__loading">
                 <Spin tip="正在加载接口文档..." />
               </div>
             ) : loadError ? (
@@ -403,12 +403,7 @@ const ApiDocsContent = () => {
                 title="接口文档"
                 srcDoc={buildSwaggerHtml(apiSpec, schemeContainerVerticalPadding)}
                 sandbox="allow-scripts allow-forms allow-popups"
-                style={{
-                  width: '100%',
-                  minHeight: 'calc(100vh - var(--saas-spacing-220))',
-                  border: 0,
-                  display: 'block',
-                }}
+                className="saas-monitoring-api-docs__iframe"
               />
             )}
           </div>

@@ -447,7 +447,7 @@ const PersonalizationSettingsPage = () => {
   }, [loadSettings]);
 
   return (
-    <ManagementPage className="saas-crud-page" ghost title="个性化设置" style={{ height: '100%', minHeight: 0 }} content={null}>
+    <ManagementPage className="saas-crud-page" ghost title="个性化设置" content={null}>
       <ManagementPageBody>
         <Card loading={loading} bodyStyle={{ paddingTop: cardPaddingTop }}>
           <Tabs

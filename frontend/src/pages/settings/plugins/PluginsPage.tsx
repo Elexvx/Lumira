@@ -1096,7 +1096,6 @@ const PluginsPage = () => {
       content={null}
       ghost
       title={formatMessage({ id: 'page.plugins.title', defaultMessage: 'Plugin management' })}
-      style={{ height: '100%', minHeight: 0 }}
     >
       <ManagementPageBody>
         <Card

@@ -78,7 +78,7 @@ const ProfileFieldManagementPage = () => {
   };
 
   return (
-    <ManagementPage ghost title="字段管理" style={{ height: '100%', minHeight: 0 }} content={null}>
+    <ManagementPage ghost title="字段管理" content={null}>
       <ManagementPageBody>
         <Card
           title="个人中心字段评分配置"
