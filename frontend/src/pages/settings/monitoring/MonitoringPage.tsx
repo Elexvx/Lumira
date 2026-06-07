@@ -676,7 +676,7 @@ const PlatformUpdateContent = () => {
   const compactSectionGap = resolveResponsiveValue(APP_SPACING.compactSectionGap, isMobile);
 
   return (
-    <div className="saas-update-center">
+    <div className="saas-update-center saas-monitoring-tab-pane">
       <Card loading={query.isLoading && !updateStatus}>
         <Row gutter={rowGutter} align="middle">
           <Col xs={24} lg={10}>
@@ -726,7 +726,7 @@ const PlatformUpdateContent = () => {
       {statusKey === 'CHECK_FAILED' ? (
         <Alert type="error" showIcon message="更新源检查失败" description={updateStatus?.errorMessage || '请检查更新源地址和服务器网络。'} />
       ) : null}
-      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-monitoring-tab-pane">
         <Row gutter={rowGutter}>
           <Col xs={24} lg={12}>
             <Card title="当前运行版本" className="saas-update-version-card">
@@ -813,7 +813,7 @@ const RedisMonitorContent = () => {
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
 
   return (
-    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-monitoring-tab-pane">
       <Card loading={query.isLoading && !redis} title="Redis信息">
         <Row gutter={rowGutter}>
           <Col xs={24} sm={12} xl={4}>
@@ -935,172 +935,173 @@ const ServiceMonitorContent = () => {
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
 
   return (
-    <ManagementPage className="saas-service-monitor-page" title="服务监控" ghost>
-      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-service-monitor-page">
+    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-service-monitor-page saas-monitoring-tab-pane">
+      <Typography.Title level={3} style={{ margin: 0 }}>
+        服务监控
+      </Typography.Title>
+      <Row gutter={rowGutter}>
+        <Col xs={24} lg={12}>
+          <Card title="CPU" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
+            <Row gutter={rowGutter}>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="用户使用率" value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
+              </Col>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="系统使用率" value={service?.cpu?.systemUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
+              </Col>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="当前空闲率" value={service?.cpu?.idlePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
+              </Col>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="平均负载" value={service?.cpu?.loadAverage ?? '-'} valueStyle={valueStyle} />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="内存" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
+            <Row gutter={rowGutter}>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="总内存" value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
+              </Col>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="已用内存" value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
+              </Col>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="剩余内存" value={formatBytes(service?.memory?.freeBytes)} valueStyle={valueStyle} />
+              </Col>
+              <Col xs={24} sm={12} xxl={6}>
+                <Statistic title="使用率" value={formatPercent(service?.memory?.usagePercent)} valueStyle={valueStyle} />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card title="WebSocket 运行监控" loading={webSocketQuery.isLoading && !webSocketQuery.data}>
         <Row gutter={rowGutter}>
-          <Col xs={24} lg={12}>
-            <Card title="CPU" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
-              <Row gutter={rowGutter}>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="用户使用率" value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
-                </Col>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="系统使用率" value={service?.cpu?.systemUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
-                </Col>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="当前空闲率" value={service?.cpu?.idlePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
-                </Col>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="平均负载" value={service?.cpu?.loadAverage ?? '-'} valueStyle={valueStyle} />
-                </Col>
-              </Row>
-            </Card>
+          <Col xs={24} sm={8}>
+            <Statistic title="当前连接数" value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
           </Col>
-          <Col xs={24} lg={12}>
-            <Card title="内存" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
-              <Row gutter={rowGutter}>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="总内存" value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
-                </Col>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="已用内存" value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
-                </Col>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="剩余内存" value={formatBytes(service?.memory?.freeBytes)} valueStyle={valueStyle} />
-                </Col>
-                <Col xs={24} sm={12} xxl={6}>
-                  <Statistic title="使用率" value={formatPercent(service?.memory?.usagePercent)} valueStyle={valueStyle} />
-                </Col>
-              </Row>
-            </Card>
+          <Col xs={24} sm={8}>
+            <Statistic title="在线租户数" value={webSocketQuery.data?.tenantCount ?? 0} valueStyle={valueStyle} />
+          </Col>
+          <Col xs={24} sm={8}>
+            <Statistic title="在线用户数" value={webSocketQuery.data?.userCount ?? 0} valueStyle={valueStyle} />
           </Col>
         </Row>
+        <ManagementTable<MessageWebSocketTenantRuntime>
+          rowKey="tenantId"
+          size="small"
+          pagination={false}
+          isMobile={isMobile}
+          search={false}
+          onRefresh={() => webSocketQuery.refetch()}
+          dataSource={webSocketQuery.data?.tenants || []}
+          style={{ marginTop: sectionGap }}
+          columns={websocketColumns}
+        />
+      </Card>
 
-        <Card title="WebSocket 运行监控" loading={webSocketQuery.isLoading && !webSocketQuery.data}>
-          <Row gutter={rowGutter}>
-            <Col xs={24} sm={8}>
-              <Statistic title="当前连接数" value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
-            </Col>
-            <Col xs={24} sm={8}>
-              <Statistic title="在线租户数" value={webSocketQuery.data?.tenantCount ?? 0} valueStyle={valueStyle} />
-            </Col>
-            <Col xs={24} sm={8}>
-              <Statistic title="在线用户数" value={webSocketQuery.data?.userCount ?? 0} valueStyle={valueStyle} />
-            </Col>
-          </Row>
-          <ManagementTable<MessageWebSocketTenantRuntime>
-            rowKey="tenantId"
-            size="small"
-            pagination={false}
-            isMobile={isMobile}
-            search={false}
-            onRefresh={() => webSocketQuery.refetch()}
-            dataSource={webSocketQuery.data?.tenants || []}
-            style={{ marginTop: sectionGap }}
-            columns={websocketColumns}
-          />
-        </Card>
+      <Card title="基础服务健康" loading={query.isLoading && !service}>
+        <ManagementTable<ServiceInstanceStatus>
+          rowKey="serviceName"
+          size="small"
+          pagination={false}
+          isMobile={isMobile}
+          search={false}
+          onRefresh={() => query.refetch()}
+          dataSource={service?.services || []}
+          columns={serviceColumns}
+        />
+      </Card>
 
-        <Card title="基础服务健康" loading={query.isLoading && !service}>
-          <ManagementTable<ServiceInstanceStatus>
-            rowKey="serviceName"
-            size="small"
-            pagination={false}
-            isMobile={isMobile}
-            search={false}
-            onRefresh={() => query.refetch()}
-            dataSource={service?.services || []}
-            columns={serviceColumns}
-          />
-        </Card>
+      <Card title="接口文档入口" loading={query.isLoading && !service}>
+        <ManagementTable<ServiceApiDocStatus>
+          rowKey="serviceName"
+          size="small"
+          pagination={false}
+          isMobile={isMobile}
+          search={false}
+          onRefresh={() => query.refetch()}
+          dataSource={service?.apiDocs || []}
+          columns={apiDocColumns}
+        />
+      </Card>
 
-        <Card title="接口文档入口" loading={query.isLoading && !service}>
-          <ManagementTable<ServiceApiDocStatus>
-            rowKey="serviceName"
-            size="small"
-            pagination={false}
-            isMobile={isMobile}
-            search={false}
-            onRefresh={() => query.refetch()}
-            dataSource={service?.apiDocs || []}
-            columns={apiDocColumns}
-          />
-        </Card>
+      <Card title="服务器信息" loading={query.isLoading && !service}>
+        <Descriptions {...detailDescriptionsProps}>
+          <Descriptions.Item label="服务器名称">
+            <BreakableValue value={service?.server?.serverName} />
+          </Descriptions.Item>
+          <Descriptions.Item label="服务器IP">
+            <NumericValue value={service?.server?.serverIp || '-'} />
+          </Descriptions.Item>
+          <Descriptions.Item label="操作系统">
+            <BreakableValue value={service?.server?.osName} />
+          </Descriptions.Item>
+          <Descriptions.Item label="系统架构">
+            <BreakableValue value={service?.server?.osArch} />
+          </Descriptions.Item>
+          <Descriptions.Item label="系统版本">
+            <NumericValue value={service?.server?.osVersion || '-'} />
+          </Descriptions.Item>
+          <Descriptions.Item label="项目路径">
+            <BreakableValue value={service?.server?.projectPath} />
+          </Descriptions.Item>
+          <Descriptions.Item label="安装路径">
+            <BreakableValue value={service?.server?.installPath} />
+          </Descriptions.Item>
+          <Descriptions.Item label="用户目录">
+            <BreakableValue value={service?.server?.userHome} />
+          </Descriptions.Item>
+          <Descriptions.Item label="临时目录" span={fullRowSpan}>
+            <BreakableValue value={service?.server?.tempDir} />
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
 
-        <Card title="服务器信息" loading={query.isLoading && !service}>
-          <Descriptions {...detailDescriptionsProps}>
-            <Descriptions.Item label="服务器名称">
-              <BreakableValue value={service?.server?.serverName} />
-            </Descriptions.Item>
-            <Descriptions.Item label="服务器IP">
-              <NumericValue value={service?.server?.serverIp || '-'} />
-            </Descriptions.Item>
-            <Descriptions.Item label="操作系统">
-              <BreakableValue value={service?.server?.osName} />
-            </Descriptions.Item>
-            <Descriptions.Item label="系统架构">
-              <BreakableValue value={service?.server?.osArch} />
-            </Descriptions.Item>
-            <Descriptions.Item label="系统版本">
-              <NumericValue value={service?.server?.osVersion || '-'} />
-            </Descriptions.Item>
-            <Descriptions.Item label="项目路径">
-              <BreakableValue value={service?.server?.projectPath} />
-            </Descriptions.Item>
-            <Descriptions.Item label="安装路径">
-              <BreakableValue value={service?.server?.installPath} />
-            </Descriptions.Item>
-            <Descriptions.Item label="用户目录">
-              <BreakableValue value={service?.server?.userHome} />
-            </Descriptions.Item>
-            <Descriptions.Item label="临时目录" span={fullRowSpan}>
-              <BreakableValue value={service?.server?.tempDir} />
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-
-        <Card title="Java虚拟机信息" loading={query.isLoading && !service}>
-          <Descriptions {...detailDescriptionsProps}>
-            <Descriptions.Item label="Java名称">
-              <BreakableValue value={service?.jvm?.vmName} />
-            </Descriptions.Item>
-            <Descriptions.Item label="Java版本">
-              <NumericValue value={service?.jvm?.javaVersion || '-'} />
-            </Descriptions.Item>
-            <Descriptions.Item label="虚拟机版本">
-              <NumericValue value={service?.jvm?.vmVersion || '-'} />
-            </Descriptions.Item>
-            <Descriptions.Item label="虚拟机厂商">
-              <BreakableValue value={service?.jvm?.vmVendor} />
-            </Descriptions.Item>
-            <Descriptions.Item label="启动时间">
-              <NumericValue value={service?.jvm?.startTime || '-'} />
-            </Descriptions.Item>
-            <Descriptions.Item label="运行时长">
-              <NumericValue value={String(service?.jvm?.uptimeSeconds ?? '-')} />
-            </Descriptions.Item>
-            <Descriptions.Item label="进程ID">
-              <NumericValue value={String(service?.jvm?.pid ?? '-')} />
-            </Descriptions.Item>
-            <Descriptions.Item label="线程数">
-              <NumericValue value={String(service?.jvm?.threadCount ?? '-')} />
-            </Descriptions.Item>
-            <Descriptions.Item label="守护线程">
-              <NumericValue value={String(service?.jvm?.daemonThreadCount ?? '-')} />
-            </Descriptions.Item>
-            <Descriptions.Item label="峰值线程数">
-              <NumericValue value={String(service?.jvm?.peakThreadCount ?? '-')} />
-            </Descriptions.Item>
-            <Descriptions.Item label="Java Home" span={fullRowSpan}>
-              <BreakableValue value={service?.jvm?.javaHome} />
-            </Descriptions.Item>
-            <Descriptions.Item label="启动参数" span={fullRowSpan}>
-              <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-      </Space>
-    </ManagementPage>
+      <Card title="Java虚拟机信息" loading={query.isLoading && !service}>
+        <Descriptions {...detailDescriptionsProps}>
+          <Descriptions.Item label="Java名称">
+            <BreakableValue value={service?.jvm?.vmName} />
+          </Descriptions.Item>
+          <Descriptions.Item label="Java版本">
+            <NumericValue value={service?.jvm?.javaVersion || '-'} />
+          </Descriptions.Item>
+          <Descriptions.Item label="虚拟机版本">
+            <NumericValue value={service?.jvm?.vmVersion || '-'} />
+          </Descriptions.Item>
+          <Descriptions.Item label="虚拟机厂商">
+            <BreakableValue value={service?.jvm?.vmVendor} />
+          </Descriptions.Item>
+          <Descriptions.Item label="启动时间">
+            <NumericValue value={service?.jvm?.startTime || '-'} />
+          </Descriptions.Item>
+          <Descriptions.Item label="运行时长">
+            <NumericValue value={String(service?.jvm?.uptimeSeconds ?? '-')} />
+          </Descriptions.Item>
+          <Descriptions.Item label="进程ID">
+            <NumericValue value={String(service?.jvm?.pid ?? '-')} />
+          </Descriptions.Item>
+          <Descriptions.Item label="线程数">
+            <NumericValue value={String(service?.jvm?.threadCount ?? '-')} />
+          </Descriptions.Item>
+          <Descriptions.Item label="守护线程">
+            <NumericValue value={String(service?.jvm?.daemonThreadCount ?? '-')} />
+          </Descriptions.Item>
+          <Descriptions.Item label="峰值线程数">
+            <NumericValue value={String(service?.jvm?.peakThreadCount ?? '-')} />
+          </Descriptions.Item>
+          <Descriptions.Item label="Java Home" span={fullRowSpan}>
+            <BreakableValue value={service?.jvm?.javaHome} />
+          </Descriptions.Item>
+          <Descriptions.Item label="启动参数" span={fullRowSpan}>
+            <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+    </Space>
   );
 };
 

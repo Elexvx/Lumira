@@ -680,6 +680,10 @@ const useMenuTreeManagement = ({
     });
   }, [setExpandedRowKeys, setInitialState, setMenuTree]);
 
+  useEffect(() => {
+    void loadMenus();
+  }, [loadMenus]);
+
   const updateMenuStatus = useCallback(
     async (record: MenuRecord, status: 'ENABLED' | 'DISABLED') => {
       await request<boolean>(`/v1/system/menus/${record.id}/status`, {
@@ -689,9 +693,8 @@ const useMenuTreeManagement = ({
       });
       message.success('状态已更新');
       await loadMenus();
-      reloadTable();
     },
-    [loadMenus, reloadTable],
+    [loadMenus],
   );
 
   const deleteMenu = useCallback(
@@ -708,11 +711,10 @@ const useMenuTreeManagement = ({
           });
           message.success('菜单已删除');
           await loadMenus();
-          reloadTable();
         },
       });
     },
-    [loadMenus, reloadTable],
+    [loadMenus],
   );
 
   const handleStatusToggle = useCallback(
@@ -740,9 +742,10 @@ const useMenuTreeManagement = ({
       const keyword = String(params.menuName || params.keyword || '');
       const menuCode = String(params.menuCode || '');
       const permissionKey = String(params.permissionKey || '');
-      const filtered = filterMenus(mainRouteMenuTree, keyword, menuCode, permissionKey);
       const hasSearch = Boolean(keyword.trim() || menuCode.trim() || permissionKey.trim());
-      const visibleMenus = hasSearch ? flattenMenus(filtered as MenuRecord[]) : flattenVisibleMenus(filtered, expandedRowKeys);
+      const visibleMenus = hasSearch
+        ? flattenMenus(filterMenus(mainRouteMenuTree, keyword, menuCode, permissionKey))
+        : flattenVisibleMenus(mainRouteMenuTree, expandedRowKeys);
       return {
         data: visibleMenus,
         success: true,
@@ -784,7 +787,6 @@ const useMenuTreeManagement = ({
           ...API_OPTS.NO_REDIRECT,
         });
         message.success('菜单顺序已更新');
-        reloadTable();
       } catch (error) {
         setMenuTree(previousTree);
         setInitialState((prev) =>
@@ -801,7 +803,7 @@ const useMenuTreeManagement = ({
         setReordering(false);
       }
     },
-    [menuTree, reloadTable, setInitialState, setMenuTree],
+    [menuTree, setInitialState, setMenuTree],
   );
 
   const handleRowDragStart = useCallback(
@@ -886,11 +888,10 @@ const useMenuTreeManagement = ({
           label: '刷新',
           onClick: async () => {
             await loadMenus();
-            reloadTable();
           },
         },
       ]),
-    [buildToolbarButtons, loadMenus, onOpenCreate, reloadTable],
+    [buildToolbarButtons, loadMenus, onOpenCreate],
   );
   const columns = useMemo(
     () =>
@@ -1414,11 +1415,10 @@ const MenuManagementPage = () => {
       }
       drawer.close();
       await catalogPack.loadMenus();
-      reloadTable();
     } finally {
       setSaving(false);
     }
-  }, [catalogPack, drawer, editorForm, reloadTable]);
+  }, [catalogPack, drawer, editorForm]);
   const menuEditorProps = {
     open: drawer.open,
     title: drawer.editingId ? '编辑菜单' : '新增菜单',
