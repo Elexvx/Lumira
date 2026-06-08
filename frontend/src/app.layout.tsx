@@ -454,7 +454,7 @@ const GlobalFloatActions = () => {
   const floatButtonGroup = (
     <FloatButton.Group
       className="saas-global-float-actions"
-      shape="square"
+      shape="circle"
       style={{
         direction: 'ltr',
         right: floatButtonRight,

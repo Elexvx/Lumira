@@ -1,32 +1,9 @@
 .saas-global-float-actions {
   z-index: 1090;
-  border-radius: var(--saas-card-radius);
-  overflow: hidden;
-}
-
-.saas-global-float-actions .ant-float-btn {
-  border-radius: var(--saas-card-radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-.saas-global-float-actions .ant-float-btn-body {
-  border-radius: inherit;
-}
-
-.saas-global-float-actions .ant-float-btn:first-child,
-.saas-global-float-actions .ant-float-btn:first-child .ant-float-btn-body {
-  border-start-start-radius: var(--saas-card-radius);
-  border-start-end-radius: var(--saas-card-radius);
-}
-
-.saas-global-float-actions .ant-float-btn:last-child,
-.saas-global-float-actions .ant-float-btn:last-child .ant-float-btn-body {
-  border-end-start-radius: var(--saas-card-radius);
-  border-end-end-radius: var(--saas-card-radius);
 }
 
 .saas-global-float-actions__qr-popover .ant-popover-inner {
-  border-radius: var(--saas-card-radius);
+  border-radius: var(--ant-border-radius-lg);
   padding: var(--saas-spacing-10) var(--saas-spacing-sm) var(--saas-spacing-sm);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
 }
@@ -58,10 +35,6 @@
   height: var(--saas-qrcode-size);
   object-fit: contain;
   display: block;
-}
-
-html[data-theme='dark'] .saas-global-float-actions .ant-float-btn {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
 }
 
 @media (max-width: 767px) {
