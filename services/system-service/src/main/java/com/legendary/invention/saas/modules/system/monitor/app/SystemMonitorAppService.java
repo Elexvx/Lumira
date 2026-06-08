@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -71,6 +72,7 @@ public class SystemMonitorAppService {
         long totalPhysicalMemoryBytes = osBean == null ? -1L : Math.max(osBean.getTotalPhysicalMemorySize(), 0L);
         long freePhysicalMemoryBytes = osBean == null ? -1L : Math.max(osBean.getFreePhysicalMemorySize(), 0L);
         long usedPhysicalMemoryBytes = Math.max(totalPhysicalMemoryBytes - freePhysicalMemoryBytes, 0L);
+        HostMemory hostMemory = readHostMemory();
         Double processCpuLoad = osBean == null ? null : normalizePercent(osBean.getProcessCpuLoad());
         Double systemCpuLoad = osBean == null ? null : normalizePercent(osBean.getSystemCpuLoad());
         Double idlePercent = systemCpuLoad == null ? null : clampPercent(100D - systemCpuLoad);
@@ -93,6 +95,10 @@ public class SystemMonitorAppService {
         memory.setHeapUsedBytes(Math.max(heapMemoryUsage.getUsed(), 0L));
         memory.setHeapCommittedBytes(Math.max(heapMemoryUsage.getCommitted(), 0L));
         memory.setNonHeapUsedBytes(Math.max(nonHeapMemoryUsage.getUsed(), 0L));
+        memory.setHostTotalBytes(hostMemory.totalBytes());
+        memory.setHostUsedBytes(hostMemory.usedBytes());
+        memory.setHostFreeBytes(hostMemory.freeBytes());
+        memory.setHostUsagePercent(hostMemory.usagePercent());
 
         SystemMonitorVO.ServerVO server = new SystemMonitorVO.ServerVO();
         server.setServerName(resolveHostName());
@@ -127,6 +133,29 @@ public class SystemMonitorAppService {
         serviceMonitorVO.setServices(probeServices());
         serviceMonitorVO.setApiDocs(serviceMonitorVO.getServices().stream().map(this::toApiDoc).toList());
         return serviceMonitorVO;
+    }
+
+    private HostMemory readHostMemory() {
+        Path memInfoPath = Path.of("/proc/meminfo");
+        if (!Files.isReadable(memInfoPath)) {
+            return HostMemory.empty();
+        }
+        try {
+            Map<String, Long> values = Files.readAllLines(memInfoPath).stream()
+                    .map(line -> line.split("\\s+"))
+                    .filter(parts -> parts.length >= 2)
+                    .collect(Collectors.toMap(parts -> parts[0].replace(":", ""), parts -> parseLong(parts[1], 0L) * 1024L, (left, right) -> left));
+            Long totalBytes = values.get("MemTotal");
+            Long availableBytes = values.getOrDefault("MemAvailable", values.get("MemFree"));
+            if (totalBytes == null || availableBytes == null || totalBytes <= 0) {
+                return HostMemory.empty();
+            }
+            long safeAvailableBytes = Math.max(availableBytes, 0L);
+            long usedBytes = Math.max(totalBytes - safeAvailableBytes, 0L);
+            return new HostMemory(totalBytes, usedBytes, safeAvailableBytes, round((usedBytes * 100D) / totalBytes, 2));
+        } catch (Exception ignored) {
+            return HostMemory.empty();
+        }
     }
 
     private List<SystemMonitorVO.ServiceInstanceVO> probeServices() {
@@ -446,5 +475,11 @@ public class SystemMonitorAppService {
     }
 
     record ServiceEndpoint(String serviceName, String defaultBaseUrl) {
+    }
+
+    private record HostMemory(Long totalBytes, Long usedBytes, Long freeBytes, Double usagePercent) {
+        private static HostMemory empty() {
+            return new HostMemory(null, null, null, null);
+        }
     }
 }

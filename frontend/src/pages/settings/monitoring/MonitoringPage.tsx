@@ -965,24 +965,41 @@ const ServiceMonitorContent = () => {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title={t('内存', 'Memory')} loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
+          <Card title={t('宿主机内存', 'Host memory')} loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
             <Row gutter={rowGutter}>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('总内存', 'Total memory')} value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
+                <Statistic title={t('总内存', 'Total memory')} value={formatBytes(service?.memory?.hostTotalBytes ?? service?.memory?.totalBytes)} valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('已用内存', 'Used memory')} value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
+                <Statistic title={t('已用内存', 'Used memory')} value={formatBytes(service?.memory?.hostUsedBytes ?? service?.memory?.usedBytes)} valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('剩余内存', 'Free memory')} value={formatBytes(service?.memory?.freeBytes)} valueStyle={valueStyle} />
+                <Statistic title={t('可用内存', 'Available memory')} value={formatBytes(service?.memory?.hostFreeBytes ?? service?.memory?.freeBytes)} valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('使用率', 'Usage')} value={formatPercent(service?.memory?.usagePercent)} valueStyle={valueStyle} />
+                <Statistic title={t('使用率', 'Usage')} value={formatPercent(service?.memory?.hostUsagePercent ?? service?.memory?.usagePercent)} valueStyle={valueStyle} />
               </Col>
             </Row>
           </Card>
         </Col>
       </Row>
+
+      <Card title={t('容器 / JVM 内存', 'Container / JVM memory')} loading={query.isLoading && !service}>
+        <Row gutter={rowGutter}>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title={t('容器内存限制', 'Container memory limit')} value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title={t('容器已用内存', 'Container used memory')} value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title={t('JVM 堆上限', 'JVM heap max')} value={formatBytes(service?.memory?.heapMaxBytes)} valueStyle={valueStyle} />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title={t('JVM 已用堆', 'JVM heap used')} value={formatBytes(service?.memory?.heapUsedBytes)} valueStyle={valueStyle} />
+          </Col>
+        </Row>
+      </Card>
 
       <Card title={t('WebSocket 运行监控', 'WebSocket monitoring')} loading={webSocketQuery.isLoading && !webSocketQuery.data}>
         <Row gutter={rowGutter}>

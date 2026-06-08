@@ -1188,6 +1188,10 @@ export interface ServiceMonitorMemory {
   heapUsedBytes: number;
   heapCommittedBytes: number;
   nonHeapUsedBytes: number;
+  hostTotalBytes?: number | null;
+  hostUsedBytes?: number | null;
+  hostFreeBytes?: number | null;
+  hostUsagePercent?: number | null;
 }
 
 export interface ServiceMonitorServer {

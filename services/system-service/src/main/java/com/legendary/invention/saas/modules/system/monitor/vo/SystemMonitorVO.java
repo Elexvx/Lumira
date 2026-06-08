@@ -163,6 +163,10 @@ public final class SystemMonitorVO {
         private Long heapUsedBytes;
         private Long heapCommittedBytes;
         private Long nonHeapUsedBytes;
+        private Long hostTotalBytes;
+        private Long hostUsedBytes;
+        private Long hostFreeBytes;
+        private Double hostUsagePercent;
 
         public Long getTotalBytes() {
             return totalBytes;
@@ -226,6 +230,38 @@ public final class SystemMonitorVO {
 
         public void setNonHeapUsedBytes(Long nonHeapUsedBytes) {
             this.nonHeapUsedBytes = nonHeapUsedBytes;
+        }
+
+        public Long getHostTotalBytes() {
+            return hostTotalBytes;
+        }
+
+        public void setHostTotalBytes(Long hostTotalBytes) {
+            this.hostTotalBytes = hostTotalBytes;
+        }
+
+        public Long getHostUsedBytes() {
+            return hostUsedBytes;
+        }
+
+        public void setHostUsedBytes(Long hostUsedBytes) {
+            this.hostUsedBytes = hostUsedBytes;
+        }
+
+        public Long getHostFreeBytes() {
+            return hostFreeBytes;
+        }
+
+        public void setHostFreeBytes(Long hostFreeBytes) {
+            this.hostFreeBytes = hostFreeBytes;
+        }
+
+        public Double getHostUsagePercent() {
+            return hostUsagePercent;
+        }
+
+        public void setHostUsagePercent(Double hostUsagePercent) {
+            this.hostUsagePercent = hostUsagePercent;
         }
     }
 
