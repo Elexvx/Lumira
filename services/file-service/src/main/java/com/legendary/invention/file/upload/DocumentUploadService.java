@@ -66,11 +66,15 @@ public class DocumentUploadService {
     }
 
     public StoredDocument upload(MultipartFile file, Path storageRoot, String publicPath) {
+        return upload(file, storageRoot, publicPath, uploadProperties.getMaxDocumentSizeBytes());
+    }
+
+    public StoredDocument upload(MultipartFile file, Path storageRoot, String publicPath, long maxSizeBytes) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择文档文件");
         }
-        if (file.getSize() > uploadProperties.getMaxDocumentSizeBytes()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文件不能超过 " + readableSize(uploadProperties.getMaxDocumentSizeBytes()));
+        if (file.getSize() > maxSizeBytes) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文件不能超过 " + readableSize(maxSizeBytes));
         }
 
         byte[] bytes = readBytes(file);

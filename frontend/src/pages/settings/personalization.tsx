@@ -25,7 +25,7 @@ import { BrandingTab } from './personalization/components/BrandingTab';
 import { FloatingWindowTab } from './personalization/components/FloatingWindowTab';
 import { WatermarkTab } from './personalization/components/WatermarkTab';
 import { DEFAULT_AGREEMENT_SETTINGS } from '@/agreement/settings';
-import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, FileStorageSpaceRecord, FloatingWindowSettings, PagedResult, WatermarkSettings } from '@/types/api';
 import { useStandardFormProps } from '@/features/form/config';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
@@ -40,7 +40,7 @@ const normalizeTabKey = (value?: string | null): PersonalizationTabKey =>
 
 type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
-const MAX_IMAGE_UPLOAD_SIZE = 5 * 1024 * 1024;
+const DEFAULT_IMAGE_UPLOAD_SIZE_MB = 20;
 const FLOATING_WINDOW_SETTINGS_QUERY_KEY = ['floating-window-settings'] as const;
 
 const isAllowedImageFile = (target: UploadTarget, file: File) => {
@@ -180,10 +180,35 @@ const PersonalizationSettingsPage = () => {
   }));
   const [floatingPreview, setFloatingPreview] = useState<FloatingWindowSettings>(DEFAULT_FLOATING_WINDOW_SETTINGS);
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null);
+  const [imageUploadSizeMb, setImageUploadSizeMb] = useState(DEFAULT_IMAGE_UPLOAD_SIZE_MB);
 
   useEffect(() => {
     applyFavicon(previewState.websiteFaviconUrl);
   }, [previewState.websiteFaviconUrl]);
+
+  useEffect(() => {
+    let ignore = false;
+    request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
+      params: { pageNo: 1, pageSize: 100 },
+      ...API_OPTS.NO_REDIRECT,
+    })
+      .then((result) => {
+        if (ignore) {
+          return;
+        }
+        const defaultStorage = result.records.find((record) => record.defaultStorage) || result.records[0];
+        setImageUploadSizeMb(defaultStorage?.maxFileSizeMb || DEFAULT_IMAGE_UPLOAD_SIZE_MB);
+      })
+      .catch(() => {
+        if (!ignore) {
+          setImageUploadSizeMb(DEFAULT_IMAGE_UPLOAD_SIZE_MB);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleUpload = useCallback(
     async (target: UploadTarget, file: File) => {
@@ -194,8 +219,14 @@ const PersonalizationSettingsPage = () => {
         message.error(getPersonalizationImageUploadErrorMessage(target));
         return;
       }
-      if (file.size > MAX_IMAGE_UPLOAD_SIZE) {
-        message.error(t('图片过大，请上传不超过 5MB 的文件', 'The image is too large. Please upload a file under 5MB.'));
+      const imageUploadSizeBytes = imageUploadSizeMb * 1024 * 1024;
+      if (file.size > imageUploadSizeBytes) {
+        message.error(
+          t(
+            `图片过大，请上传不超过 ${imageUploadSizeMb}MB 的文件`,
+            `The image is too large. Please upload a file under ${imageUploadSizeMb}MB.`,
+          ),
+        );
         return;
       }
 
@@ -227,7 +258,7 @@ const PersonalizationSettingsPage = () => {
         setUploadingTarget(null);
       }
     },
-    [brandingForm, canUpdate, floatingForm, setFloatingPreview, setPreviewState, setWatermarkPreview, watermarkForm],
+    [brandingForm, canUpdate, floatingForm, imageUploadSizeMb, setFloatingPreview, setPreviewState, setWatermarkPreview, watermarkForm],
   );
 
   const handleClearBrandingField = useCallback(

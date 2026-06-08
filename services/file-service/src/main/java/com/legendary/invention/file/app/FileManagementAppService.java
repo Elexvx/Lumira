@@ -211,7 +211,7 @@ public class FileManagementAppService {
     ) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
-        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath());
+        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath(), storageContext.maxFileSizeBytes());
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
@@ -243,7 +243,7 @@ public class FileManagementAppService {
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
-        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath());
+        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath(), storageContext.maxFileSizeBytes());
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
@@ -680,7 +680,12 @@ public class FileManagementAppService {
         }
         Path storageRoot = resolveStorageRoot(storageSpace);
         String publicPath = resolvePublicPath(storageRoot);
-        return new StorageSpaceUploadContext(storageSpace, normalizedBucket != null ? normalizedBucket : storageSpace.storageKey(), storageRoot, publicPath);
+        return new StorageSpaceUploadContext(storageSpace, normalizedBucket != null ? normalizedBucket : storageSpace.storageKey(), storageRoot, publicPath, maxFileSizeBytes(storageSpace.maxFileSizeMb()));
+    }
+
+    private long maxFileSizeBytes(Integer maxFileSizeMb) {
+        int safeMaxFileSizeMb = maxFileSizeMb == null || maxFileSizeMb <= 0 ? 20 : maxFileSizeMb;
+        return safeMaxFileSizeMb * 1024L * 1024L;
     }
 
     private Path resolveStorageRoot(StorageSpaceDTO storageSpace) {
@@ -980,7 +985,8 @@ public class FileManagementAppService {
             StorageSpaceDTO storageSpace,
             String storageBucket,
             Path storageRoot,
-            String publicPath
+            String publicPath,
+            long maxFileSizeBytes
     ) {
     }
 

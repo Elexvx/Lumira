@@ -68,11 +68,15 @@ public class ImageUploadService {
     }
 
     public StoredImage upload(MultipartFile file, Path storageRoot, String publicPath) {
+        return upload(file, storageRoot, publicPath, uploadProperties.getMaxImageSizeBytes());
+    }
+
+    public StoredImage upload(MultipartFile file, Path storageRoot, String publicPath, long maxSizeBytes) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择图片文件");
         }
-        if (file.getSize() > uploadProperties.getMaxImageSizeBytes()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片不能超过 " + readableSize(uploadProperties.getMaxImageSizeBytes()));
+        if (file.getSize() > maxSizeBytes) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "图片不能超过 " + readableSize(maxSizeBytes));
         }
 
         byte[] bytes = readBytes(file);
