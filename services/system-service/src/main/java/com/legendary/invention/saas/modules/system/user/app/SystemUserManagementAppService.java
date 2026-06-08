@@ -47,7 +47,7 @@ public class SystemUserManagementAppService {
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final long MAX_PAGE_SIZE = 100L;
-    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
@@ -542,7 +542,7 @@ public class SystemUserManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名不能为空");
         }
         if (!USERNAME_PATTERN.matcher(normalized).matches()) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名只能包含英文字母、数字、下划线、点和连字符");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名只能包含英文字母、数字、下划线和连字符");
         }
         return normalized;
     }

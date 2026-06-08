@@ -196,7 +196,7 @@ const USER_STATUS_OPTIONS = [
   { label: t('禁用', 'Disabled'), value: 'DISABLED' },
 ];
 
-const USERNAME_PATTERN = /^[A-Za-z0-9._-]+$/;
+const USERNAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 const containsConsecutiveCharacters = (value: string) => {
   const lower = value.toLowerCase();
@@ -279,7 +279,7 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
         { required: true, message: t('请输入用户名', 'Please enter the username') },
         {
           pattern: USERNAME_PATTERN,
-          message: t('用户名只能包含英文字母、数字、下划线、点和连字符', 'Username can only contain letters, numbers, underscores, dots, and hyphens'),
+          message: t('用户名只能包含英文字母、数字、下划线和连字符', 'Username can only contain letters, numbers, underscores, and hyphens'),
         },
       ]}
       normalize={trimString}
