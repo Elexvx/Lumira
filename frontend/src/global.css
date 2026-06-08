@@ -163,6 +163,25 @@ body,
   min-width: var(--saas-spacing-88);
 }
 
+.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item {
+  flex-direction: column;
+}
+
+.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item-label {
+  flex: none;
+  max-width: 100%;
+  text-align: left;
+}
+
+.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item-label > label {
+  height: auto;
+}
+
+.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item-control {
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
 /*
  * The default ProLayout background decoration conflicts with the custom page background.
  * Keep this override scoped to ProLayout instead of globally patching all `.ant-*` containers.

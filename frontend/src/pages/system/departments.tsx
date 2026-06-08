@@ -7,6 +7,7 @@ import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
+import { useStandardFormProps } from '@/features/form/config';
 import { useCrudDrawerState } from '@/features/crud/useCrudDrawerState';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
@@ -210,10 +211,10 @@ const useDepartmentManagement = () => {
   }, [closeSelectedDepartment, detail]);
 
   const canSaveDepartment = actionPermission.can(drawer.editingId ? 'system:department:update' : 'system:department:create');
-  const formProps = {
+  const formProps = useStandardFormProps({
     form,
     initialValues: { sortNo: 0, status: 'ENABLED' },
-  } as const;
+  });
   const saveDepartment = useCallback(async () => {
     setSaving(true);
     try {

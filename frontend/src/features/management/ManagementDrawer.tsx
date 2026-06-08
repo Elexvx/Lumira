@@ -25,9 +25,11 @@ export const ManagementDrawer = ({
   extra,
   footer,
   children,
+  className,
   ...props
 }: ManagementDrawerProps) => {
   const responsive = useResponsive();
+  const drawerClassName = ['saas-management-drawer', className].filter(Boolean).join(' ');
   const renderedActions = footerActions?.length ? (
     <div className="saas-drawer-footer">
       <Space wrap>
@@ -49,7 +51,7 @@ export const ManagementDrawer = ({
   ) : undefined;
 
   return (
-    <Drawer {...props} width={width} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions}>
+    <Drawer {...props} className={drawerClassName} width={width} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions}>
       {children}
     </Drawer>
   );
