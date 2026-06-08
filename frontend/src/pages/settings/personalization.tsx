@@ -11,6 +11,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { applyFavicon, DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { normalizeAgreementSettings } from '@/agreement/settings';
 import { normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
+import { queryClient } from '@/query/queryClient';
 import { request } from '@/services/common/request';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
@@ -40,6 +41,7 @@ const normalizeTabKey = (value?: string | null): PersonalizationTabKey =>
 type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
 const MAX_IMAGE_UPLOAD_SIZE = 5 * 1024 * 1024;
+const FLOATING_WINDOW_SETTINGS_QUERY_KEY = ['floating-window-settings'] as const;
 
 const isAllowedImageFile = (target: UploadTarget, file: File) => {
   const lowerName = file.name.toLowerCase();
@@ -332,6 +334,8 @@ const PersonalizationSettingsPage = () => {
       );
       floatingForm.setFieldsValue(updatedFloating);
       setFloatingPreview(updatedFloating);
+      queryClient.setQueryData(FLOATING_WINDOW_SETTINGS_QUERY_KEY, updatedFloating);
+      void queryClient.invalidateQueries({ queryKey: FLOATING_WINDOW_SETTINGS_QUERY_KEY });
       message.success(t('悬浮窗设置已保存并即时生效', 'Floating window settings saved and applied immediately'));
     } catch (error) {
       showErrorMessage(error, t('悬浮窗设置保存失败，请稍后重试', 'Failed to save floating window settings. Please try again later.'));
@@ -419,6 +423,7 @@ const PersonalizationSettingsPage = () => {
       setPreviewState(normalizedBranding);
       setWatermarkPreview(normalizedWatermark);
       setFloatingPreview(normalizedFloating);
+      queryClient.setQueryData(FLOATING_WINDOW_SETTINGS_QUERY_KEY, normalizedFloating);
       persistWatermarkSettings(normalizedWatermark);
       setInitialState((prev: AppInitialState | undefined) =>
         prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: normalizedWatermark } : prev,
