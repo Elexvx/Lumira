@@ -128,12 +128,13 @@ const renderFieldControl = (field: PaymentFieldConfig, canManageSettings: boolea
 };
 
 export type UsePaymentConfigDrawerParams = {
-  canManageSettings: boolean;
+  canUpdateSettings: boolean;
+  canTestSettings: boolean;
   paymentSettingsData?: PaymentProviderSettings[];
   onRefetch: () => Promise<unknown> | void;
 };
 
-export const usePaymentConfigDrawer = ({ canManageSettings, paymentSettingsData, onRefetch }: UsePaymentConfigDrawerParams) => {
+export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, paymentSettingsData, onRefetch }: UsePaymentConfigDrawerParams) => {
   const [form] = Form.useForm<PaymentProviderSettings>();
   const [editingProviderCode, setEditingProviderCode] = useState<PaymentProviderCode | null>(null);
   const [saving, setSaving] = useState(false);
@@ -225,7 +226,7 @@ export const usePaymentConfigDrawer = ({ canManageSettings, paymentSettingsData,
         <Typography.Paragraph style={{ marginBottom: 0 }}>
           {t('{provider} 配置已按平台字段分组保存，敏感项会以密文方式持久化。', '{provider} configuration is grouped by platform fields and sensitive items are stored encrypted.').replace('{provider}', currentProviderSettings?.providerName || PAYMENT_PROVIDER_TITLES[editingProviderCode])}
         </Typography.Paragraph>
-        <Form form={form} layout="vertical" disabled={!canManageSettings}>
+        <Form form={form} layout="vertical" disabled={!canUpdateSettings}>
           <Form.Item name="providerCode" hidden>
             <Input />
           </Form.Item>
@@ -233,16 +234,16 @@ export const usePaymentConfigDrawer = ({ canManageSettings, paymentSettingsData,
             <Input />
           </Form.Item>
           <Form.Item name="enabled" label={t('启用', 'Enabled')} valuePropName="checked" extra={t('停用后，新的支付和退款请求将被拦截。', 'When disabled, new payment and refund requests will be blocked.')}>
-            <Switch checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} disabled={!canManageSettings} />
+            <Switch checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} disabled={!canUpdateSettings} />
           </Form.Item>
           <Form.Item name="environment" label={t('环境', 'Environment')} rules={[{ required: true, message: t('请选择环境', 'Please select an environment') }]}>
-            <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canManageSettings} />
+            <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canUpdateSettings} />
           </Form.Item>
           <Form.Item name="currency" label={t('结算币种', 'Currency')} extra={t('留空时使用平台默认币种。', 'Leave blank to use the platform default currency.')}>
-            <Input disabled={!canManageSettings} maxLength={16} placeholder={t('例如：CNY', 'e.g. CNY')} />
+            <Input disabled={!canUpdateSettings} maxLength={16} placeholder={t('例如：CNY', 'e.g. CNY')} />
           </Form.Item>
           <Form.Item name="sandboxEnabled" label={t('沙箱模式', 'Sandbox mode')} valuePropName="checked" extra={t('开启后优先按沙箱环境理解配置。', 'When enabled, the configuration is interpreted as sandbox first.')}>
-            <Switch checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} disabled={!canManageSettings} />
+            <Switch checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} disabled={!canUpdateSettings} />
           </Form.Item>
           {providerFields.map((field) => {
             const extraMessage =
@@ -260,17 +261,17 @@ export const usePaymentConfigDrawer = ({ canManageSettings, paymentSettingsData,
                 rules={field.required ? [{ required: true, message: t(`请输入${field.label}`, `Please enter ${field.label}`) }] : undefined}
                 extra={extraMessage}
               >
-                {renderFieldControl(field, canManageSettings)}
+                {renderFieldControl(field, canUpdateSettings)}
               </Form.Item>
             );
           })}
           <Form.Item name="extraConfig" label={t('扩展参数', 'Extra config')} extra={t('可填写 JSON 字符串或平台约定的补充参数。', 'You can enter a JSON string or platform-specific extra parameters.')}>
-            <Input.TextArea disabled={!canManageSettings} autoSize={{ minRows: 4, maxRows: 10 }} placeholder={t('例如：{"merchantMode":"DIRECT"}', 'e.g. {"merchantMode":"DIRECT"}')} />
+            <Input.TextArea disabled={!canUpdateSettings} autoSize={{ minRows: 4, maxRows: 10 }} placeholder={t('例如：{"merchantMode":"DIRECT"}', 'e.g. {"merchantMode":"DIRECT"}')} />
           </Form.Item>
         </Form>
       </Space>
     );
-  }, [canManageSettings, currentProviderSettings, editingProviderCode, form]);
+  }, [canUpdateSettings, currentProviderSettings, editingProviderCode, form]);
 
   const footerActions = useMemo<ManagementDrawerAction[]>(
     () => [
@@ -283,7 +284,7 @@ export const usePaymentConfigDrawer = ({ canManageSettings, paymentSettingsData,
         key: 'test',
         label: t('测试连通性', 'Test connectivity'),
         loading: testing,
-        disabled: !editingProviderCode || !canManageSettings,
+        disabled: !editingProviderCode || !currentProviderSettings?.configured || !canTestSettings,
         onClick: () => void handleTestProvider(),
       },
       {
@@ -291,11 +292,11 @@ export const usePaymentConfigDrawer = ({ canManageSettings, paymentSettingsData,
         label: t('保存', 'Save'),
         type: 'primary',
         loading: saving,
-        disabled: !editingProviderCode || !canManageSettings,
+        disabled: !editingProviderCode || !canUpdateSettings,
         onClick: () => void handleSaveProviderSettings(),
       },
     ],
-    [canManageSettings, closeConfigDrawer, editingProviderCode, handleSaveProviderSettings, handleTestProvider, saving, testing],
+    [canTestSettings, canUpdateSettings, closeConfigDrawer, currentProviderSettings?.configured, editingProviderCode, handleSaveProviderSettings, handleTestProvider, saving, testing],
   );
 
   return {

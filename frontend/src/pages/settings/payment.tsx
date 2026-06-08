@@ -7,6 +7,8 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { usePaymentManagement } from './components/payment/hooks/usePaymentManagement';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { Button, Dropdown } from 'antd';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -28,9 +30,11 @@ const resolveDrawerTitle = (providerCode?: string | null) => {
 const SystemPaymentPage = () => {
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
-  const canManageSettings = actionPermission.can('payment:config:update') || actionPermission.can('payment:config:test');
+  const canUpdateSettings = actionPermission.can('payment:config:update');
+  const canTestSettings = actionPermission.can('payment:config:test');
   const { tablePack, drawerPack } = usePaymentManagement({
-    canManageSettings,
+    canUpdateSettings,
+    canTestSettings,
     isMobile: responsive.isMobile,
   });
 
@@ -46,6 +50,18 @@ const SystemPaymentPage = () => {
           pagination={false}
           search={false}
           onRefresh={tablePack.onRefresh}
+          toolBarRender={() => [
+            <Dropdown
+              key="payment-add"
+              trigger={['click']}
+              menu={{ items: tablePack.toolbarProps.addPaymentProviderItems }}
+              placement="bottomRight"
+            >
+              <Button type="primary" disabled={!tablePack.toolbarProps.canUpdateSettings || !tablePack.toolbarProps.addPaymentProviderItems?.length} icon={<PlusOutlined />}>
+                {t('添加', 'Add')} <DownOutlined />
+              </Button>
+            </Dropdown>,
+          ]}
         />
       </ManagementPageBody>
       <ManagementDrawer

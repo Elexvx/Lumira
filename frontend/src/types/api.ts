@@ -133,6 +133,7 @@ export interface PaymentProviderSettings {
   providerName: string;
   enabled: boolean;
   configured: boolean;
+  persisted?: boolean;
   environment: string;
   configuredFields: string[];
   lastTestedAt?: string | null;

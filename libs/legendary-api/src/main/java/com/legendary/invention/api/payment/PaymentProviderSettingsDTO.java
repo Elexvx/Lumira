@@ -10,6 +10,7 @@ public class PaymentProviderSettingsDTO {
     private String providerName;
     private boolean enabled;
     private boolean configured;
+    private boolean persisted;
     private String environment;
     private List<String> configuredFields = new ArrayList<>();
     private LocalDateTime lastTestedAt;
@@ -68,6 +69,14 @@ public class PaymentProviderSettingsDTO {
 
     public void setConfigured(boolean configured) {
         this.configured = configured;
+    }
+
+    public boolean isPersisted() {
+        return persisted;
+    }
+
+    public void setPersisted(boolean persisted) {
+        this.persisted = persisted;
     }
 
     public String getEnvironment() {

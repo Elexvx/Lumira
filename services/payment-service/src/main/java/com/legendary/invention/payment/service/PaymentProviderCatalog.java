@@ -73,6 +73,7 @@ public final class PaymentProviderCatalog {
         dto.setProviderName(definition.providerName());
         dto.setEnabled(false);
         dto.setConfigured(false);
+        dto.setPersisted(false);
         dto.setEnvironment(definition.defaultEnvironment());
         dto.setCurrency(definition.defaultCurrency());
         dto.setConfiguredFields(List.of());

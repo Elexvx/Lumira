@@ -153,6 +153,7 @@ public class PaymentManagementAppService {
         response.setProviderName(definition.providerName());
         response.setEnabled(row.getEnabled() != null && row.getEnabled() == 1);
         response.setConfigured(row.getConfigured() != null && row.getConfigured() == 1);
+        response.setPersisted(true);
         response.setEnvironment(resolveText(row.getEnvironment(), definition.defaultEnvironment()));
         response.setConfiguredFields(resolveConfiguredFields(definition, stored));
         response.setLastTestedAt(row.getLastTestedAt());

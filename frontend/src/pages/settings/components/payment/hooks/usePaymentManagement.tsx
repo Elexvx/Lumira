@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import { Button, Popconfirm, Space, Tag, Typography } from 'antd';
+import type { MenuProps } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -15,6 +16,15 @@ const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type PaymentRow = PaymentProviderSettings & {
   key: string;
+};
+
+const PAYMENT_PROVIDER_ORDER: PaymentProviderCode[] = ['alipay', 'wechat_pay', 'stripe', 'paypal'];
+
+const PAYMENT_PROVIDER_TITLES: Record<PaymentProviderCode, string> = {
+  alipay: t('支付宝', 'Alipay'),
+  wechat_pay: t('微信支付', 'WeChat Pay'),
+  stripe: 'Stripe',
+  paypal: 'PayPal',
 };
 const resolveStatusColor = (enabled: boolean, configured: boolean) => {
   if (!configured) {
@@ -39,11 +49,12 @@ const buildProviderStatusText = (enabled: boolean, configured: boolean) => {
 };
 
 export type UsePaymentManagementParams = {
-  canManageSettings: boolean;
+  canUpdateSettings: boolean;
+  canTestSettings: boolean;
   isMobile: boolean;
 };
 
-export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePaymentManagementParams) => {
+export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMobile }: UsePaymentManagementParams) => {
   const paymentSettingsQuery = useQuery({
     queryKey: ['payment-provider-settings'],
     queryFn: async () =>
@@ -54,18 +65,32 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
   });
 
   const { openConfigDrawer, handleTestProvider, drawerProps } = usePaymentConfigDrawer({
-    canManageSettings,
+    canUpdateSettings,
+    canTestSettings,
     paymentSettingsData: paymentSettingsQuery.data,
     onRefetch: paymentSettingsQuery.refetch,
   });
 
   const paymentRows = useMemo<PaymentRow[]>(
-    () => (paymentSettingsQuery.data || []).map((item) => ({
-      ...item,
-      key: item.providerCode,
-    })),
+    () => (paymentSettingsQuery.data || [])
+      .filter((item) => item.persisted)
+      .map((item) => ({
+        ...item,
+        key: item.providerCode,
+      })),
     [paymentSettingsQuery.data],
   );
+
+  const addPaymentProviderItems = useMemo<MenuProps['items']>(() => {
+    const persistedProviderCodes = new Set((paymentSettingsQuery.data || []).filter((item) => item.persisted).map((item) => item.providerCode));
+    return PAYMENT_PROVIDER_ORDER
+      .filter((providerCode) => !persistedProviderCodes.has(providerCode))
+      .map((providerCode) => ({
+        key: providerCode,
+        label: PAYMENT_PROVIDER_TITLES[providerCode],
+        onClick: () => openConfigDrawer(providerCode),
+      }));
+  }, [openConfigDrawer, paymentSettingsQuery.data]);
 
   const paymentColumns = useMemo<ProColumns<PaymentRow>[]>(
     () => [
@@ -126,7 +151,7 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
             <Button
               size="small"
               onClick={() => openConfigDrawer(record.providerCode as PaymentProviderCode)}
-              disabled={!canManageSettings}
+              disabled={!canUpdateSettings}
             >
               {t('配置', 'Configure')}
             </Button>
@@ -137,13 +162,13 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
               cancelText={t('取消', 'Cancel')}
               onConfirm={() => void handleTestProvider(record.providerCode as PaymentProviderCode)}
             >
-              <Button size="small" disabled={!record.configured || !canManageSettings}>{t('测试', 'Test')}</Button>
+              <Button size="small" disabled={!record.configured || !canTestSettings}>{t('测试', 'Test')}</Button>
             </Popconfirm>
           </Space>
         ),
       },
     ],
-    [canManageSettings, handleTestProvider, openConfigDrawer],
+    [canTestSettings, canUpdateSettings, handleTestProvider, openConfigDrawer],
   );
 
   return {
@@ -153,6 +178,10 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
       paymentLoading: paymentSettingsQuery.isLoading,
       onRefresh: paymentSettingsQuery.refetch,
       isMobile,
+      toolbarProps: {
+        addPaymentProviderItems,
+        canUpdateSettings,
+      },
     },
     drawerPack: {
       drawerProps,
