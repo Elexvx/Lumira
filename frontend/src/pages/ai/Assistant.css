@@ -33,6 +33,7 @@
 .saas-ai-assistant-desktop-shell {
   display: grid;
   grid-template-columns: var(--saas-spacing-280) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   min-height: 0;
