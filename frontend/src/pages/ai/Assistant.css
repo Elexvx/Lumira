@@ -1,11 +1,13 @@
 .saas-ai-assistant-page {
   --saas-ai-chat-column-width: var(--saas-spacing-940);
   --saas-ai-chat-gutter: var(--saas-spacing-lg);
+  --saas-ai-assistant-available-height: calc(100dvh - var(--saas-spacing-220));
 
   min-height: 0;
   overflow: hidden;
 }
 
+.saas-ai-assistant-page .ant-pro-grid-content,
 .saas-ai-assistant-page .ant-pro-page-container-children-container {
   min-height: 0;
   overflow: hidden;
@@ -13,12 +15,18 @@
   flex-direction: column;
 }
 
+.saas-ai-assistant-page .ant-pro-page-container-children-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: var(--saas-ai-assistant-available-height);
+}
+
 .saas-ai-assistant-layout {
   display: flex;
   flex-direction: column;
   flex: 1;
   width: 100%;
-  min-height: 0;
+  min-height: var(--saas-ai-assistant-available-height);
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--saas-card-radius);
   overflow: hidden;
@@ -37,6 +45,7 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex: 1;
 }
 
@@ -45,6 +54,7 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex: 1;
 }
 
@@ -64,6 +74,7 @@
 .saas-ai-assistant-mobile-tabs .ant-tabs-content-holder {
   flex: 1;
   min-height: 0;
+  height: 100%;
 }
 
 .saas-ai-assistant-mobile-tabs .ant-tabs-content-wrap {
@@ -200,6 +211,7 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   background:
     radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--ant-color-primary) 8%, transparent), transparent 36%),
     var(--ant-color-bg-container);
