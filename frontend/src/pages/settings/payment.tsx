@@ -5,19 +5,24 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { usePaymentManagement } from './components/payment/hooks/usePaymentManagement';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const PAYMENT_PROVIDER_TITLES: Record<string, string> = {
-  alipay: '支付宝',
-  wechat_pay: '微信支付',
+  alipay: t('支付宝', 'Alipay'),
+  wechat_pay: t('微信支付', 'WeChat Pay'),
   stripe: 'Stripe',
   paypal: 'PayPal',
 };
 
 const resolveDrawerTitle = (providerCode?: string | null) => {
   if (!providerCode) {
-    return '支付设置';
+    return t('支付设置', 'Payment settings');
   }
-  return `${PAYMENT_PROVIDER_TITLES[providerCode] || providerCode} 配置`;
+  return t('{provider} 配置', '{provider} configuration').replace('{provider}', PAYMENT_PROVIDER_TITLES[providerCode] || providerCode);
 };
 
 const SystemPaymentPage = () => {
@@ -30,7 +35,7 @@ const SystemPaymentPage = () => {
   });
 
   return (
-    <ManagementPage title="支付设置">
+    <ManagementPage title={t('支付设置', 'Payment settings')}>
       <ManagementPageBody>
         <ManagementTable
           columns={tablePack.paymentColumns}
