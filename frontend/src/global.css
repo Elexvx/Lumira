@@ -655,9 +655,8 @@ body,
 }
 
 .saas-profile-page {
-  background: var(--ant-color-bg-container);
-  border-radius: var(--saas-card-radius);
-  overflow: hidden;
+  background: transparent;
+  overflow-x: hidden;
 
   .ant-card {
     border-radius: var(--saas-card-radius);
