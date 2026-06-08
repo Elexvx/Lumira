@@ -19,6 +19,11 @@ import { confirmAction } from '@/utils/confirm';
 import type { DepartmentRecord, PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { maskEmail, maskMobile } from '@/utils/sensitive';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const PROTECTED_ADMIN_ID = 1001;
 const PROTECTED_ADMIN_USERNAME = 'admin';
@@ -36,7 +41,7 @@ type UserOption = { label: string; value: number };
 
 const userListIdentityColumns: ProColumns<UserRecord>[] = [
   {
-    title: '用户ID',
+    title: t('用户ID', 'User ID'),
     dataIndex: 'id',
     search: {
       transform: (value) => ({ userId: value ? Number(value) : undefined }),
@@ -44,14 +49,14 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     width: 'var(--saas-spacing-96)',
   },
   {
-    title: '用户编号',
+    title: t('用户编号', 'User number'),
     dataIndex: 'userNo',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
   },
   {
-    title: '用户名',
+    title: t('用户名', 'Username'),
     dataIndex: 'username',
     search: true,
   },
@@ -59,7 +64,7 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
 
 const userListContactColumns: ProColumns<UserRecord>[] = [
   {
-    title: '手机号',
+    title: t('手机号', 'Mobile number'),
     dataIndex: 'mobile',
     search: false,
     ellipsis: true,
@@ -75,7 +80,7 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
     },
   },
   {
-    title: '邮箱',
+    title: t('邮箱', 'Email'),
     dataIndex: 'email',
     search: false,
     ellipsis: true,
@@ -89,32 +94,32 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
 
 const userListStatusColumns: ProColumns<UserRecord>[] = [
   {
-    title: '状态',
+    title: t('状态', 'Status'),
     dataIndex: 'status',
     valueEnum: {
-      ENABLED: { text: '启用', status: 'Success' },
-      DISABLED: { text: '禁用', status: 'Default' },
+      ENABLED: { text: t('启用', 'Enabled'), status: 'Success' },
+      DISABLED: { text: t('禁用', 'Disabled'), status: 'Default' },
     },
     search: false,
-    render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
+    render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status === 'ENABLED' ? t('启用', 'Enabled') : t('禁用', 'Disabled')}</Tag>,
   },
   {
-    title: '来源',
+    title: t('来源', 'Source'),
     dataIndex: 'source',
     valueEnum: {
-      LEGACY_SYS_USER: { text: '旧系统迁移' },
-      PASSWORD: { text: '账号密码' },
-      SMS: { text: '短信注册' },
-      EMAIL: { text: '邮箱注册' },
-      WECHAT: { text: '微信' },
-      ADMIN_CREATE: { text: '后台创建' },
-      SYSTEM: { text: '系统' },
+      LEGACY_SYS_USER: { text: t('旧系统迁移', 'Legacy migration') },
+      PASSWORD: { text: t('账号密码', 'Username/password') },
+      SMS: { text: t('短信注册', 'SMS sign-up') },
+      EMAIL: { text: t('邮箱注册', 'Email sign-up') },
+      WECHAT: { text: t('微信', 'WeChat') },
+      ADMIN_CREATE: { text: t('后台创建', 'Admin created') },
+      SYSTEM: { text: t('系统', 'System') },
     },
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
   },
   {
-    title: '注册时间',
+    title: t('注册时间', 'Registered at'),
     dataIndex: 'registeredAt',
     valueType: 'dateRange',
     search: false,
@@ -122,7 +127,7 @@ const userListStatusColumns: ProColumns<UserRecord>[] = [
     renderText: (value) => value || '-',
   },
   {
-    title: '最近登录',
+    title: t('最近登录', 'Last login'),
     dataIndex: 'lastLoginAt',
     valueType: 'dateRange',
     search: false,
@@ -154,19 +159,19 @@ const buildUserColumns = ({
   ...userListContactColumns,
   ...userListStatusColumns,
   {
-    title: '昵称',
+    title: t('昵称', 'Nickname'),
     dataIndex: 'nickname',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
   },
   {
-    title: '姓名',
+    title: t('姓名', 'Full name'),
     dataIndex: 'realName',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
   },
   {
-    title: '角色',
+    title: t('角色', 'Roles'),
     dataIndex: 'roleNames',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
@@ -177,7 +182,7 @@ const buildUserColumns = ({
     },
   },
   {
-    title: '部门',
+    title: t('部门', 'Departments'),
     dataIndex: 'deptNames',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
@@ -188,7 +193,7 @@ const buildUserColumns = ({
     },
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: 'right',
     width: 'var(--saas-spacing-220)',
@@ -198,19 +203,19 @@ const buildUserColumns = ({
         items={buildRowActions([
           {
             key: 'view',
-            label: '详情',
+            label: t('详情', 'Details'),
             permission: 'system:user:view',
             onClick: () => onOpenDetail(record),
           },
           {
             key: 'edit',
-            label: '编辑',
+            label: t('编辑', 'Edit'),
             permission: 'system:user:update',
             onClick: () => onOpenEdit(record),
           },
           {
             key: 'toggle',
-            label: record.status === 'ENABLED' ? '禁用' : '启用',
+            label: record.status === 'ENABLED' ? t('禁用', 'Disable') : t('启用', 'Enable'),
             permission: 'system:user:status',
             hidden: isProtectedAdminAccount(record),
             danger: record.status === 'ENABLED',
@@ -218,7 +223,7 @@ const buildUserColumns = ({
           },
           {
             key: 'delete',
-            label: '删除',
+            label: t('删除', 'Delete'),
             permission: 'system:user:delete',
             hidden: isProtectedAdminAccount(record),
             danger: true,
@@ -388,14 +393,14 @@ export const useUserManagement = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('用户已更新');
+        message.success(t('用户已更新', 'User updated'));
       } else {
         await request<UserDetail>('/v1/system/users', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('用户已创建');
+        message.success(t('用户已创建', 'User created'));
       }
 
       drawer.close();
@@ -418,15 +423,15 @@ export const useUserManagement = () => {
           data: { status: 'ENABLED' },
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('状态已更新');
+        message.success(t('状态已更新', 'Status updated'));
         reloadTable();
         return;
       }
 
       confirmAction({
-        title: '禁用用户',
-        content: `确认禁用用户「${record.username}」吗？禁用后该账号将无法继续登录。`,
-        okText: '确认禁用',
+        title: t('禁用用户', 'Disable user'),
+        content: t(`确认禁用用户「${record.username}」吗？禁用后该账号将无法继续登录。`, `Disable user "${record.username}"? This account will no longer be able to sign in.`),
+        okText: t('确认禁用', 'Disable'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/users/${record.id}/status`, {
@@ -434,7 +439,7 @@ export const useUserManagement = () => {
             data: { status: 'DISABLED' },
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success('状态已更新');
+          message.success(t('状态已更新', 'Status updated'));
           reloadTable();
         },
       });
@@ -445,9 +450,9 @@ export const useUserManagement = () => {
   const handleDelete = useCallback(
     (record: UserRecord) => {
       confirmAction({
-        title: '删除用户',
-        content: `确认删除用户「${record.username}」吗？删除后该账号将无法恢复。`,
-        okText: '确认删除',
+        title: t('删除用户', 'Delete user'),
+        content: t(`确认删除用户「${record.username}」吗？删除后该账号将无法恢复。`, `Delete user "${record.username}"? This action cannot be undone.`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/users/${record.id}`, {

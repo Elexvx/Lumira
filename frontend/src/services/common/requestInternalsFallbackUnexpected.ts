@@ -1,4 +1,5 @@
 import { ErrorCode } from '@/enums/errorCode';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import { getResponseRequestId } from './requestInternalsResponse';
 import { ApiRequestError } from './requestInternalsTypes';
 import { buildFallbackError } from './requestInternalsFallbackStatusErrors';
@@ -23,16 +24,18 @@ export const buildUnexpectedError = (error: unknown, hasAuthToken = true) => {
     || normalizedMessage.includes('timeout')
     || normalizedMessage.includes('timed out')
   ) {
-    return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '请求超时，请稍后重试', {
-      userMessage: '请求超时，请稍后重试',
+    const message = resolveBuiltinMessage('common.requestTimeout', '请求超时，请稍后重试');
+    return new ApiRequestError(ErrorCode.SYSTEM_ERROR, message, {
+      userMessage: message,
       requestId,
       httpStatus,
     });
   }
 
   if (!httpStatus || normalizedMessage.includes('network')) {
-    return new ApiRequestError(ErrorCode.SYSTEM_ERROR, '网络异常，请检查连接后重试', {
-      userMessage: '网络异常，请检查连接后重试',
+    const message = resolveBuiltinMessage('common.networkError', '网络异常，请检查连接后重试');
+    return new ApiRequestError(ErrorCode.SYSTEM_ERROR, message, {
+      userMessage: message,
       requestId,
       httpStatus,
     });

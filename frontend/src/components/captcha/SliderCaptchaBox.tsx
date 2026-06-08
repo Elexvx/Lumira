@@ -1,5 +1,6 @@
 import SliderCaptcha from 'rc-slider-captcha';
 import { useCallback, useRef, useState } from 'react';
+import { useIntl } from '@umijs/max';
 import { request } from '@/services/common/request';
 import type { CaptchaChallenge, CaptchaVerifyResult } from '@/types/api';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
@@ -13,6 +14,7 @@ interface SliderCaptchaBoxProps {
 }
 
 export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified, onReset }: SliderCaptchaBoxProps) => {
+  const intl = useIntl();
   const captchaRootRef = useRef<HTMLDivElement | null>(null);
   const activeChallengeRef = useRef<CaptchaChallenge | null>(null);
   const { isMobile } = useResponsive();
@@ -54,7 +56,7 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
     onChallengeChange?.(challenge);
 
     if (!challenge.bgUrl || !challenge.puzzleUrl) {
-      throw new Error('拖动验证码资源不完整');
+      throw new Error(intl.formatMessage({ id: 'common.captchaResourceIncomplete', defaultMessage: '拖动验证码资源不完整' }));
     }
 
     return {
@@ -67,7 +69,7 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
     async (data: import('rc-slider-captcha').VerifyParam) => {
       const activeChallenge = activeChallengeRef.current;
       if (!activeChallenge?.captchaId) {
-        throw new Error('拖动验证码已失效');
+        throw new Error(intl.formatMessage({ id: 'common.captchaExpired', defaultMessage: '拖动验证码已失效' }));
       }
 
       const coordinateScale = getRenderedWidthScale();
@@ -91,7 +93,7 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
       onVerified?.(result);
       return result;
     },
-    [getRenderedWidthScale, onVerified],
+    [getRenderedWidthScale, intl, onVerified],
   );
 
   return (
@@ -137,12 +139,12 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
           },
         }}
         tipText={{
-          default: '向右拖动滑块完成验证',
-          loading: '验证码加载中...',
-          verifying: '正在校验...',
-          success: '验证通过',
-          error: '验证失败，请重试',
-          loadFailed: '加载失败，点击重试',
+          default: intl.formatMessage({ id: 'common.captchaDefault', defaultMessage: '向右拖动滑块完成验证' }),
+          loading: intl.formatMessage({ id: 'common.captchaLoading', defaultMessage: '验证码加载中...' }),
+          verifying: intl.formatMessage({ id: 'common.captchaVerifying', defaultMessage: '正在校验...' }),
+          success: intl.formatMessage({ id: 'common.captchaSuccess', defaultMessage: '验证通过' }),
+          error: intl.formatMessage({ id: 'common.captchaError', defaultMessage: '验证失败，请重试' }),
+          loadFailed: intl.formatMessage({ id: 'common.captchaLoadFailed', defaultMessage: '加载失败，点击重试' }),
         }}
       />
     </div>

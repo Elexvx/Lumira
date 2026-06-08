@@ -6,6 +6,11 @@ import { useResponsive } from '@/hooks/useResponsive';
 import type { BrandingSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type BrandingAssetField = 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl';
 type BrandingAssetTarget = 'favicon' | 'logo' | 'loginBackground';
@@ -31,15 +36,15 @@ type BrandingAssetItemConfig = {
 const BRANDING_ASSET_ITEM_CONFIGS = [
   {
     field: 'websiteFaviconUrl',
-    label: '网站 Icon',
-    clearLabel: '网站 Icon',
+    label: t('网站 Icon', 'Website icon'),
+    clearLabel: t('网站 Icon', 'Website icon'),
     target: 'favicon',
     previewKey: 'websiteFaviconUrl',
     cardWidth: 128,
     cardHeight: 128,
     imageWidth: 72,
     imageHeight: 72,
-    cropModalTitle: '裁切网站 Icon',
+    cropModalTitle: t('裁切网站 Icon', 'Crop website icon'),
     cropAspect: 1,
     accept: 'image/*,.ico',
     useCrop: true,
@@ -53,28 +58,28 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
   },
   {
     field: 'websiteLogoUrl',
-    label: 'Logo',
-    clearLabel: 'Logo',
+    label: t('Logo', 'Logo'),
+    clearLabel: t('Logo', 'Logo'),
     target: 'logo',
     previewKey: 'websiteLogoUrl',
     cardWidth: 240,
     cardHeight: 128,
     imageWidth: 200,
     imageHeight: 72,
-    cropModalTitle: '裁切 Logo',
+    cropModalTitle: t('裁切 Logo', 'Crop logo'),
     cropAspect: 25 / 9,
     accept: 'image/*',
   },
   {
     field: 'loginBackgroundUrl',
-    label: '登录页背景图',
-    clearLabel: '登录页背景图',
+    label: t('登录页背景图', 'Login background'),
+    clearLabel: t('登录页背景图', 'Login background'),
     target: 'loginBackground',
     previewKey: 'loginBackgroundUrl',
     cardWidth: 320,
     cardHeight: 180,
     accept: 'image/*',
-    note: '建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。',
+    note: t('建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。', 'Use a 16:9 image or wider. The login page will fill and crop it automatically.'),
   },
 ] as const satisfies readonly BrandingAssetItemConfig[];
 
@@ -181,7 +186,7 @@ const renderBrandingUploadField = ({
         ) : (
           <Space direction="vertical" size={8} align="center">
             <InboxOutlined style={{ fontSize: 24, color: 'var(--ant-color-text-quaternary)' }} />
-            <Typography.Text type="secondary">{isUploading ? '上传中...' : '点击选择图片'}</Typography.Text>
+            <Typography.Text type="secondary">{isUploading ? t('上传中...', 'Uploading...') : t('点击选择图片', 'Click to choose an image')}</Typography.Text>
           </Space>
         )}
       </div>
@@ -222,7 +227,7 @@ export const BrandingTab = ({
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="websiteName" label="网站名称" rules={[{ required: true }]}>
+        <Form.Item name="websiteName" label={t('网站名称', 'Website name')} rules={[{ required: true }]}>
           <Input />
         </Form.Item>
 
@@ -249,7 +254,7 @@ export const BrandingTab = ({
                 cropModalTitle: assetConfig.cropModalTitle,
                 cropAspect: assetConfig.cropAspect,
                 accept: assetConfig.accept,
-                clearLabel: '清除',
+                clearLabel: t('清除', 'Clear'),
                 note: assetConfig.note,
                 useCrop: assetConfig.useCrop,
                 beforeCrop: assetConfig.beforeCrop,
@@ -260,10 +265,10 @@ export const BrandingTab = ({
             </Form.Item>
           );
         })}
-        <Form.Item label="GitHub 链接">
+        <Form.Item label={t('GitHub 链接', 'GitHub link')}>
           <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
             <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
-              <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+              <Switch checkedChildren={t('显示', 'Show')} unCheckedChildren={t('隐藏', 'Hide')} />
             </Form.Item>
             <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
               {({ getFieldValue }) => (
@@ -274,10 +279,10 @@ export const BrandingTab = ({
             </Form.Item>
           </Space>
         </Form.Item>
-        <Form.Item label="帮助链接">
+        <Form.Item label={t('帮助链接', 'Help link')}>
           <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
             <Form.Item name="helpLinkEnabled" valuePropName="checked" noStyle>
-              <Switch checkedChildren="显示" unCheckedChildren="隐藏" />
+              <Switch checkedChildren={t('显示', 'Show')} unCheckedChildren={t('隐藏', 'Hide')} />
             </Form.Item>
             <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
               {({ getFieldValue }) => (
@@ -288,26 +293,26 @@ export const BrandingTab = ({
             </Form.Item>
           </Space>
         </Form.Item>
-        <Form.Item name="footerIcp" label="Footer ICP">
+        <Form.Item name="footerIcp" label={t('Footer ICP', 'Footer ICP')}>
           <Input />
         </Form.Item>
-        <Form.Item name="footerCopyright" label="Footer 版权声明">
+        <Form.Item name="footerCopyright" label={t('Footer 版权声明', 'Footer copyright')}>
           <Input.TextArea rows={3} />
         </Form.Item>
       </Form>
 
-      <Card title="预览">
+      <Card title={t('预览', 'Preview')}>
         <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
           <Typography.Title level={4} style={{ marginBottom: 0 }}>
             {previewState.websiteName}
           </Typography.Title>
-          <Typography.Text type="secondary">{previewState.footerCopyright || '版权信息会显示在页面底部'}</Typography.Text>
+          <Typography.Text type="secondary">{previewState.footerCopyright || t('版权信息会显示在页面底部', 'Copyright information will be shown at the bottom of the page')}</Typography.Text>
         </Space>
       </Card>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
-          保存设置
+          {t('保存设置', 'Save settings')}
         </Button>
       </div>
     </Space>

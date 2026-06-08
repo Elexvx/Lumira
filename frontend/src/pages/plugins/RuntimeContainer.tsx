@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useParams } from '@umijs/max';
+import { useIntl, useLocation, useParams } from '@umijs/max';
 import { Alert, Card, Spin } from 'antd';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { notifyPluginLoadError } from '@/plugins/loader';
@@ -13,6 +13,7 @@ type RuntimeErrorState = {
 
 interface PluginErrorBoundaryProps {
   children: React.ReactNode;
+  intl: ReturnType<typeof useIntl>;
 }
 
 interface PluginErrorBoundaryState {
@@ -28,7 +29,7 @@ class PluginErrorBoundary extends React.Component<PluginErrorBoundaryProps, Plug
 
   render() {
     if (this.state.error) {
-      return <Alert type="error" showIcon message="插件渲染失败" description={this.state.error.message} />;
+      return <Alert type="error" showIcon message={this.props.intl.formatMessage({ id: 'common.pluginRenderFailed', defaultMessage: '插件渲染失败' })} description={this.state.error.message} />;
     }
     return this.props.children;
   }
@@ -36,6 +37,7 @@ class PluginErrorBoundary extends React.Component<PluginErrorBoundaryProps, Plug
 
 const RuntimeContainer = () => {
   const params = useParams<{ pluginCode: string }>();
+  const intl = useIntl();
   const location = useLocation();
   const { initialState } = useInitialStateModel();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,7 @@ const RuntimeContainer = () => {
       setLoading(false);
       setError({
         type: 'warning',
-        message: '当前未启用该插件',
+        message: intl.formatMessage({ id: 'common.pluginNotEnabled', defaultMessage: '当前未启用该插件' }),
       });
       return;
     }
@@ -102,18 +104,18 @@ const RuntimeContainer = () => {
         mountedRef.current = null;
       }
     };
-  }, [initialState?.currentUser, location.pathname, plugin]);
+  }, [initialState?.currentUser, intl, location.pathname, plugin]);
 
   if (error) {
     return (
       <Card>
-        <Alert type={error.type} showIcon message="插件不可用" description={error.message} />
+        <Alert type={error.type} showIcon message={intl.formatMessage({ id: 'common.pluginUnavailable', defaultMessage: '插件不可用' })} description={error.message} />
       </Card>
     );
   }
 
   return (
-    <PluginErrorBoundary>
+      <PluginErrorBoundary intl={intl}>
       <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }} bodyStyle={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
         {loading ? (

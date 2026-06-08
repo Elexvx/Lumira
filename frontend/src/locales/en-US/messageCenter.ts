@@ -3,6 +3,7 @@ export default {
   'message.center.ariaLabel': 'Message center, {count} unread messages',
   'message.center.newNotificationTitle': 'New message received',
   'message.center.newNotificationDescription': 'You have a new inbox message. Open Message Center to view it.',
+  'message.center.connected': 'Message channel connected',
   'message.center.site': 'Inbox',
   'message.center.all': 'All',
   'message.center.unread': 'Unread',

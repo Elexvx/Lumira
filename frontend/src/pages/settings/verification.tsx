@@ -8,8 +8,11 @@ import { DeleteOutlined, DownOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Form, Popconfirm, theme } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthenticatorManagement } from './components/verification/hooks/useAuthenticatorManagement';
+import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
 import type {
   PasskeySettings,
   SmsVerificationSettings,
@@ -106,22 +109,25 @@ const useSystemVerificationPageAccess = () => {
   };
 };
 
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+
 const resolveDrawerTitle = (mode: 'basic' | 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | null) => {
   switch (mode) {
     case 'sms':
-      return '短信配置';
+      return t('短信配置', 'SMS settings');
     case 'email':
-      return '邮箱配置';
+      return t('邮箱配置', 'Email settings');
     case 'wechat':
-      return '微信配置';
+      return t('微信配置', 'WeChat settings');
     case 'passkey':
-      return '通行密钥';
+      return t('通行密钥', 'Passkey');
     case 'totp':
-      return '验证设置';
+      return t('验证设置', 'Verification settings');
     case 'basic':
-      return '基础配置';
+      return t('基础配置', 'Basic settings');
     default:
-      return '验证管理';
+      return t('验证管理', 'Verification management');
   }
 };
 
@@ -184,7 +190,7 @@ const SystemVerificationPage = () => {
     search: false as const,
     loading: tablePack.tableProps.verificationLoading,
     dataSource: tablePack.tableProps.authenticatorRows,
-    pagination: { pageSize: 50, showSizeChanger: true },
+    pagination: { pageSize: DEFAULT_TABLE_PAGE_SIZE, showSizeChanger: true },
     onRow: (record: (typeof tablePack.tableProps.authenticatorRows)[number]) => ({
       draggable: tablePack.tableProps.canManageSettings && !tablePack.tableProps.reorderingAuthenticators,
       onDragStart: tablePack.tableProps.onAuthenticatorDragStart(record),
@@ -203,21 +209,21 @@ const SystemVerificationPage = () => {
   };
 
   return (
-    <ManagementPage title="验证管理">
+    <ManagementPage title={t('验证管理', 'Verification management')}>
       <ManagementPageBody>
         <ManagementTable
           {...verificationTableProps}
           toolBarRender={() => [
             <Popconfirm
               key="verification-delete"
-              title="删除认证器"
-              description="可删除的认证器会被停用，基础密码认证器会保留。"
-              okText="确认"
-              cancelText="取消"
+              title={t('删除认证器', 'Delete authenticator')}
+              description={t('可删除的认证器会被停用，基础密码认证器会保留。', 'Deletable authenticators will be disabled. The basic password authenticator will be kept.')}
+              okText={t('确认', 'Confirm')}
+              cancelText={t('取消', 'Cancel')}
               onConfirm={() => void tablePack.toolbarProps.onDeleteSelectedAuthenticators()}
             >
               <Button disabled={!tablePack.tableProps.canManageSettings} icon={<DeleteOutlined />}>
-                删除
+                {t('删除', 'Delete')}
               </Button>
             </Popconfirm>,
             <Dropdown
@@ -227,7 +233,7 @@ const SystemVerificationPage = () => {
               placement="bottomRight"
             >
               <Button type="primary" disabled={!tablePack.tableProps.canManageSettings || !tablePack.toolbarProps.addAuthenticatorItems?.length} icon={<PlusOutlined />}>
-                添加 <DownOutlined />
+                {t('添加', 'Add')} <DownOutlined />
               </Button>
             </Dropdown>,
           ]}

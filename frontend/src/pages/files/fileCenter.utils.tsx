@@ -30,6 +30,18 @@ export const FILE_CATEGORY_OPTIONS = [
   { label: formatMessage({ id: 'system.files.category.other', defaultMessage: 'Other' }), value: '其他' },
 ];
 
+export const FILE_STORAGE_PROVIDER_OPTIONS = [
+  { label: formatMessage({ id: 'system.files.storage.provider.local', defaultMessage: '本地存储' }), value: 'LOCAL' },
+  { label: formatMessage({ id: 'system.files.storage.provider.aliyunOss', defaultMessage: '阿里云 OSS' }), value: 'ALIYUN_OSS' },
+  { label: formatMessage({ id: 'system.files.storage.provider.tencentCos', defaultMessage: '腾讯云 COS' }), value: 'TENCENT_COS' },
+] as const;
+
+export const FILE_STORAGE_RENAME_STRATEGY_OPTIONS = [
+  { label: formatMessage({ id: 'system.files.storage.rename.appendRandomId', defaultMessage: '追加随机 ID' }), value: 'APPEND_RANDOM_ID' },
+  { label: formatMessage({ id: 'system.files.storage.rename.randomString', defaultMessage: '随机字符串' }), value: 'RANDOM_STRING' },
+  { label: formatMessage({ id: 'system.files.storage.rename.keepOriginal', defaultMessage: '保持原名（同名文件将被覆盖）' }), value: 'KEEP_ORIGINAL' },
+] as const;
+
 export const ALLOWED_UPLOAD_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
 export const FILE_ACCEPT = ALLOWED_UPLOAD_EXTENSIONS.map((extension) => `.${extension}`).join(',');
 export const MAX_UPLOAD_FILE_COUNT = 5;

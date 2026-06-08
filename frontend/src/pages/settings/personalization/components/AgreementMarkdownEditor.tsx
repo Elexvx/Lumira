@@ -19,6 +19,11 @@ import {
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
 import './AgreementMarkdownEditor.css';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type AgreementMarkdownEditorMode = 'edit' | 'preview';
 
@@ -41,20 +46,20 @@ type AgreementMarkdownToolbarAction = {
 };
 
 const AGREEMENT_MARKDOWN_TOOLBAR_ACTIONS: readonly AgreementMarkdownToolbarAction[] = [
-  { key: 'quote', title: '引用', icon: <CommentOutlined />, before: '> ', sample: '引用内容', mode: 'line' },
-  { key: 'bold', title: '加粗', icon: <BoldOutlined />, before: '**', after: '**', sample: '加粗文字' },
-  { key: 'italic', title: '斜体', icon: <ItalicOutlined />, before: '*', after: '*', sample: '斜体文字' },
-  { key: 'unordered-list', title: '无序列表', icon: <UnorderedListOutlined />, before: '- ', sample: '列表项', mode: 'line' },
-  { key: 'ordered-list', title: '有序列表', icon: <OrderedListOutlined />, before: '1. ', sample: '列表项', mode: 'line' },
-  { key: 'task-list', title: '任务列表', icon: <CheckSquareOutlined />, before: '- [ ] ', sample: '待办项', mode: 'line' },
-  { key: 'link', title: '链接', icon: <LinkOutlined />, before: '[', after: '](https://example.com)', sample: '链接文字' },
-  { key: 'image', title: '图片', icon: <PictureOutlined />, before: '![', after: '](https://example.com/image.png)', sample: '图片描述' },
-  { key: 'code', title: '代码', icon: <CodeOutlined />, before: '`', after: '`', sample: 'code' },
+  { key: 'quote', title: t('引用', 'Quote'), icon: <CommentOutlined />, before: '> ', sample: t('引用内容', 'Quoted text'), mode: 'line' },
+  { key: 'bold', title: t('加粗', 'Bold'), icon: <BoldOutlined />, before: '**', after: '**', sample: t('加粗文字', 'Bold text') },
+  { key: 'italic', title: t('斜体', 'Italic'), icon: <ItalicOutlined />, before: '*', after: '*', sample: t('斜体文字', 'Italic text') },
+  { key: 'unordered-list', title: t('无序列表', 'Unordered list'), icon: <UnorderedListOutlined />, before: '- ', sample: t('列表项', 'List item'), mode: 'line' },
+  { key: 'ordered-list', title: t('有序列表', 'Ordered list'), icon: <OrderedListOutlined />, before: '1. ', sample: t('列表项', 'List item'), mode: 'line' },
+  { key: 'task-list', title: t('任务列表', 'Task list'), icon: <CheckSquareOutlined />, before: '- [ ] ', sample: t('待办项', 'Todo item'), mode: 'line' },
+  { key: 'link', title: t('链接', 'Link'), icon: <LinkOutlined />, before: '[', after: '](https://example.com)', sample: t('链接文字', 'Link text') },
+  { key: 'image', title: t('图片', 'Image'), icon: <PictureOutlined />, before: '![', after: '](https://example.com/image.png)', sample: t('图片描述', 'Image description') },
+  { key: 'code', title: t('代码', 'Code'), icon: <CodeOutlined />, before: '`', after: '`', sample: 'code' },
   {
     key: 'table',
-    title: '表格',
+    title: t('表格', 'Table'),
     icon: <TableOutlined />,
-    before: '| 标题 | 内容 |\n| --- | --- |\n| 示例 | 文本 |',
+    before: t('| 标题 | 内容 |\n| --- | --- |\n| 示例 | 文本 |', '| Header | Content |\n| --- | --- |\n| Example | Text |'),
     sample: '',
     mode: 'block',
   },
@@ -161,7 +166,7 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
                 insertAgreementMarkdown(
                   markdown,
                   getTextArea,
-                  { key: 'paragraph', title: '段落', icon: null, before: '\n\n', sample: '', mode: 'block' },
+                  { key: 'paragraph', title: t('段落', 'Paragraph'), icon: null, before: '\n\n', sample: '', mode: 'block' },
                   onChange,
                 )
               }
@@ -184,11 +189,11 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
         </div>
         <div className="agreement-markdown-editor__mode">
           <Button.Group size="small">
-            <Button type={mode === 'edit' ? 'primary' : 'default'} onClick={() => setMode('edit')}>
-              编辑
+              <Button type={mode === 'edit' ? 'primary' : 'default'} onClick={() => setMode('edit')}>
+              {t('编辑', 'Edit')}
             </Button>
             <Button type={mode === 'preview' ? 'primary' : 'default'} onClick={() => setMode('preview')}>
-              预览
+              {t('预览', 'Preview')}
             </Button>
           </Button.Group>
         </div>
@@ -210,7 +215,7 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
                 <XMarkdown content={markdown} openLinksInNewTab escapeRawHtml />
               </div>
             ) : (
-              <div className="agreement-markdown-editor__preview-empty">预览会显示在这里</div>
+              <div className="agreement-markdown-editor__preview-empty">{t('预览会显示在这里', 'Preview will appear here')}</div>
             )}
           </div>
         )}

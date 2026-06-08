@@ -8,6 +8,11 @@ import type { ProfileFieldSetting } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { useResponsive } from '@/hooks/useResponsive';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const ProfileFieldManagementPage = () => {
   const actionPermission = useActionPermission();
@@ -34,7 +39,7 @@ const ProfileFieldManagementPage = () => {
       });
       setItems(result);
     } catch (error) {
-      showErrorMessage(error, '加载字段配置失败');
+      showErrorMessage(error, t('加载字段配置失败', 'Failed to load field settings'));
     } finally {
       setLoading(false);
     }
@@ -71,20 +76,20 @@ const ProfileFieldManagementPage = () => {
       });
       setItems(result);
     } catch (error) {
-      showErrorMessage(error, '保存字段配置失败');
+      showErrorMessage(error, t('保存字段配置失败', 'Failed to save field settings'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <ManagementPage ghost title="字段管理" content={null}>
+    <ManagementPage ghost title={t('字段管理', 'Field management')} content={null}>
       <ManagementPageBody>
         <Card
-          title="个人中心字段评分配置"
+          title={t('个人中心字段评分配置', 'Profile field scoring settings')}
           extra={
             <Button onClick={() => void loadItems()} disabled={loading || saving}>
-              刷新
+              {t('刷新', 'Refresh')}
             </Button>
           }
         >
@@ -92,8 +97,11 @@ const ProfileFieldManagementPage = () => {
             <Alert
               type={enabledWeight === 100 ? 'success' : 'info'}
               showIcon
-              message={`当前启用字段权重总和：${enabledWeight}`}
-              description="个人中心会按当前启用字段的权重比例折算为 100 分，字段开关和评分权重会一起保存。"
+              message={t(`当前启用字段权重总和：${enabledWeight}`, `Enabled field weight total: ${enabledWeight}`)}
+              description={t(
+                '个人中心会按当前启用字段的权重比例折算为 100 分，字段开关和评分权重会一起保存。',
+                'The profile center is scored out of 100 based on the active field weights. Field visibility and scoring weights are saved together.',
+              )}
             />
             {loading ? (
               <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
@@ -119,10 +127,10 @@ const ProfileFieldManagementPage = () => {
                             <Typography.Text strong>{item.fieldLabel}</Typography.Text>
                             {item.groupLabel ? <Tag color="blue">{item.groupLabel}</Tag> : null}
                           </Space>
-                          <Typography.Text type="secondary">{item.fieldDescription || '控制该字段在个人中心中的展示与填写'}</Typography.Text>
+                          <Typography.Text type="secondary">{item.fieldDescription || t('控制该字段在个人中心中的展示与填写', 'Controls whether this field is shown and editable in the profile center')}</Typography.Text>
                         </Space>
                         <Space wrap align="center">
-                          <Typography.Text type="secondary">权重</Typography.Text>
+                          <Typography.Text type="secondary">{t('权重', 'Weight')}</Typography.Text>
                           <InputNumber
                             min={1}
                             precision={0}
@@ -135,8 +143,8 @@ const ProfileFieldManagementPage = () => {
                           <Switch
                             checked={Boolean(item.visible)}
                             disabled={!canUpdate}
-                            checkedChildren="开启"
-                            unCheckedChildren="关闭"
+                            checkedChildren={t('开启', 'On')}
+                            unCheckedChildren={t('关闭', 'Off')}
                             onChange={(checked) => handleToggle(item.fieldKey, checked)}
                           />
                         </Space>
@@ -146,13 +154,13 @@ const ProfileFieldManagementPage = () => {
                 )}
               />
             ) : (
-              <Empty description="暂无可配置字段" />
+              <Empty description={t('暂无可配置字段', 'No configurable fields')} />
             )}
 
             {items.length ? (
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button type="primary" loading={saving} onClick={() => void handleSave()} disabled={loading || !canUpdate}>
-                  保存设置
+                  {t('保存设置', 'Save settings')}
                 </Button>
               </div>
             ) : null}

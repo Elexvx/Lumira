@@ -5,6 +5,11 @@ import type { AiLlmServiceRecord, AiLlmServiceTestResult } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { LLM_SERVICE_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 export type LlmFormValues = {
   provider?: string;
@@ -71,49 +76,49 @@ export const LlmServiceDrawer = ({
           label: (
             <Space size={microGap}>
               <SyncOutlined />
-              测试连接
+              {t('测试连接', 'Test connection')}
             </Space>
           ),
           loading: llmTesting,
           disabled: llmSaving || !canRunTest,
           onClick: onTest,
         },
-        { key: 'cancel', label: '取消', onClick: onClose },
-        { key: 'save', label: '保存', type: 'primary', loading: llmSaving, disabled: !canSaveLlmService, onClick: onSave },
+        { key: 'cancel', label: t('取消', 'Cancel'), onClick: onClose },
+        { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: llmSaving, disabled: !canSaveLlmService, onClick: onSave },
       ]}
     >
       <Form layout="vertical" form={form} onValuesChange={onValuesChange}>
       <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
           <Row gutter={rowGutter}>
             <Col xs={24} md={12}>
-              <Form.Item label="LLM 类型" name="provider" rules={[{ required: true, message: '请选择 LLM 类型' }]}>
-                <Select options={providerOptions} placeholder="请选择供应商类型" onChange={onProviderChange} />
+              <Form.Item label={t('LLM 类型', 'LLM type')} name="provider" rules={[{ required: true, message: t('请选择 LLM 类型', 'Please select an LLM type') }]}>
+                <Select options={providerOptions} placeholder={t('请选择供应商类型', 'Please select a provider type')} onChange={onProviderChange} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="唯一标识" name="code" rules={[{ required: true, message: '请输入唯一标识' }]}>
-                <Input placeholder="例如：default-chat" />
+              <Form.Item label={t('唯一标识', 'Code')} name="code" rules={[{ required: true, message: t('请输入唯一标识', 'Please enter the code') }]}>
+                <Input placeholder={t('例如：default-chat', 'e.g. default-chat')} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={rowGutter}>
             <Col xs={24} md={12}>
-              <Form.Item label="标题" name="title" rules={[{ required: true, message: '请输入标题' }]}>
-                <Input placeholder="例如：默认对话模型" />
+              <Form.Item label={t('标题', 'Title')} name="title" rules={[{ required: true, message: t('请输入标题', 'Please enter the title') }]}>
+                <Input placeholder={t('例如：默认对话模型', 'e.g. Default chat model')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="默认模型" name="defaultModel">
-                <Input placeholder="例如：qwen-plus / qwen-plus-latest / deepseek-v4-flash" />
+              <Form.Item label={t('默认模型', 'Default model')} name="defaultModel">
+                <Input placeholder={t('例如：qwen-plus / qwen-plus-latest / deepseek-v4-flash', 'e.g. qwen-plus / qwen-plus-latest / deepseek-v4-flash')} />
               </Form.Item>
             </Col>
           </Row>
           <Form.Item label="Base URL" name="baseUrl">
-            <Input placeholder="阿里云百炼：https://dashscope.aliyuncs.com/compatible-mode/v1" />
+            <Input placeholder={t('阿里云百炼：https://dashscope.aliyuncs.com/compatible-mode/v1', 'Alibaba Cloud Bailian: https://dashscope.aliyuncs.com/compatible-mode/v1')} />
           </Form.Item>
           <Form.Item label="API Key" name="apiKey">
             <Input.Password
-              placeholder={selectedService?.apiKeyConfigured ? '留空则使用已保存 API Key' : '请输入 API Key'}
+              placeholder={selectedService?.apiKeyConfigured ? t('留空则使用已保存 API Key', 'Leave blank to use the saved API Key') : t('请输入 API Key', 'Please enter the API Key')}
               autoComplete="off"
             />
           </Form.Item>
@@ -121,21 +126,21 @@ export const LlmServiceDrawer = ({
             <Alert
               showIcon
               type={llmTestResult.success ? 'success' : 'error'}
-              message={llmTestResult.success ? '测试通过' : '测试失败'}
+              message={llmTestResult.success ? t('测试通过', 'Test passed') : t('测试失败', 'Test failed')}
               description={
                 <Space direction="vertical" size={microGap}>
                   <Typography.Text>
-                    {llmTestResult.message || (llmTestResult.success ? '当前 LLM 服务可正常响应' : '请检查 Base URL、模型和 API Key')}
+                    {llmTestResult.message || (llmTestResult.success ? t('当前 LLM 服务可正常响应', 'The LLM service is responding normally') : t('请检查 Base URL、模型和 API Key', 'Please check the Base URL, model, and API Key'))}
                   </Typography.Text>
                   {llmTestResult.success ? (
                     <Typography.Text type="secondary">
                       {[
-                        llmTestResult.model ? `模型：${llmTestResult.model}` : null,
-                        llmTestResult.latencyMs != null ? `耗时：${llmTestResult.latencyMs} ms` : null,
-                        llmTestResult.replyText ? `响应：${llmTestResult.replyText}` : null,
+                        llmTestResult.model ? `${t('模型', 'Model')}: ${llmTestResult.model}` : null,
+                        llmTestResult.latencyMs != null ? `${t('耗时', 'Latency')}: ${llmTestResult.latencyMs} ms` : null,
+                        llmTestResult.replyText ? `${t('响应', 'Response')}: ${llmTestResult.replyText}` : null,
                       ]
                         .filter(Boolean)
-                        .join(' ｜ ')}
+                        .join(' | ')}
                     </Typography.Text>
                   ) : null}
                 </Space>
@@ -144,7 +149,7 @@ export const LlmServiceDrawer = ({
           ) : null}
           <Row gutter={rowGutter}>
             <Col xs={24} md={8}>
-              <Form.Item label="超时时间（毫秒）" name="timeoutMs">
+              <Form.Item label={t('超时时间（毫秒）', 'Timeout (ms)')} name="timeoutMs">
                 <InputNumber min={1000} step={1000} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -159,8 +164,8 @@ export const LlmServiceDrawer = ({
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item label="启用状态" name="enabled" valuePropName="checked">
-            <Switch checkedChildren="启用" unCheckedChildren="禁用" />
+          <Form.Item label={t('启用状态', 'Enabled status')} name="enabled" valuePropName="checked">
+            <Switch checkedChildren={t('启用', 'Enabled')} unCheckedChildren={t('禁用', 'Disabled')} />
           </Form.Item>
         </Space>
       </Form>

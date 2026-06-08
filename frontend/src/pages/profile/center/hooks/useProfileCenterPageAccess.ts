@@ -469,7 +469,7 @@ export const useProfileCenterPageAccess = () => {
   const profileCompletionSummary = summary?.profileCompletion;
   const roleNames = currentUser?.availableRoles?.map((role) => role.roleName).filter(Boolean) || [];
   const activeRoleName =
-    currentUser?.availableRoles?.find((role) => role.id === currentUser.simulatedRoleId)?.roleName || roleNames[0] || '暂无角色';
+    currentUser?.availableRoles?.find((role) => role.id === currentUser.simulatedRoleId)?.roleName || roleNames[0] || 'No role available';
   const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '-';
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;

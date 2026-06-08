@@ -16,6 +16,11 @@ import type { FormProps } from 'antd';
 import type { Rule } from 'antd/es/form';
 import type { SecuritySettings } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const ALL_DEPARTMENTS_KEY = 'all';
 
@@ -87,7 +92,7 @@ const DepartmentTreeFilter = ({
         key: ALL_DEPARTMENTS_KEY,
         title: (
           <span className="saas-user-department-tree__node">
-            <span className="saas-user-department-tree__name">全部部门</span>
+          <span className="saas-user-department-tree__name">{t('全部部门', 'All departments')}</span>
           </span>
         ),
         children: buildDepartmentTreeNodes(departments, normalizedDepartmentKeyword),
@@ -109,15 +114,15 @@ const DepartmentTreeFilter = ({
       title={
         <span className="saas-user-department-card__title">
           <ApartmentOutlined />
-          组织部门
-        </span>
+          {t('组织部门', 'Org departments')}
+      </span>
       }
-      extra={<Button type="text" aria-label="刷新部门" icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />}
+      extra={<Button type="text" aria-label={t('刷新部门', 'Refresh departments')} icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />}
     >
       <Input.Search
         allowClear
         className="saas-user-department-card__search"
-        placeholder="搜索部门"
+        placeholder={t('搜索部门', 'Search departments')}
         value={departmentKeyword}
         onChange={(event) => setDepartmentKeyword(event.target.value)}
       />
@@ -138,57 +143,57 @@ const DepartmentTreeFilter = ({
           }}
         />
       ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配部门" />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无匹配部门', 'No matching departments')} />
       )}
     </Card>
   );
 };
 
 const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
-  { title: '用户ID', dataIndex: 'id' },
-  { title: '用户编号', dataIndex: 'userNo', renderText: (value) => value || '-' },
-  { title: '用户名', dataIndex: 'username' },
-  { title: '昵称', dataIndex: 'nickname', renderText: (value) => value || '-' },
-  { title: '姓名', dataIndex: 'realName', renderText: (value) => value || '-' },
-  { title: '手机号', dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },
+  { title: t('用户ID', 'User ID'), dataIndex: 'id' },
+  { title: t('用户编号', 'User number'), dataIndex: 'userNo', renderText: (value) => value || '-' },
+  { title: t('用户名', 'Username'), dataIndex: 'username' },
+  { title: t('昵称', 'Nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
+  { title: t('姓名', 'Full name'), dataIndex: 'realName', renderText: (value) => value || '-' },
+  { title: t('手机号', 'Mobile number'), dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },
   {
-    title: '身份证号码',
+    title: t('身份证号码', 'ID card number'),
     dataIndex: 'idCardNumber',
     renderText: (value) => maskIdCardNumber(value) || '-',
   },
-  { title: '邮箱', dataIndex: 'email', renderText: (value) => maskEmail(value) || '-' },
-  { title: '头像地址', dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
-  { title: '出生年月', dataIndex: 'birthMonth', renderText: (value) => value || '-' },
-  { title: '性别', dataIndex: 'gender', renderText: (value) => value || '-' },
-  { title: '所在地区', dataIndex: 'region', renderText: (value) => value || '-' },
-  { title: '可工作时间', dataIndex: 'availableTime', renderText: (value) => value || '-' },
-  { title: '状态', dataIndex: 'status' },
-  { title: '来源', dataIndex: 'source', renderText: (value) => value || '-' },
-  { title: '注册时间', dataIndex: 'registeredAt', renderText: (value) => value || '-' },
-  { title: '最近登录', dataIndex: 'lastLoginAt', renderText: (value) => value || '-' },
+  { title: t('邮箱', 'Email'), dataIndex: 'email', renderText: (value) => maskEmail(value) || '-' },
+  { title: t('头像地址', 'Avatar URL'), dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
+  { title: t('出生年月', 'Birth month'), dataIndex: 'birthMonth', renderText: (value) => value || '-' },
+  { title: t('性别', 'Gender'), dataIndex: 'gender', renderText: (value) => value || '-' },
+  { title: t('所在地区', 'Region'), dataIndex: 'region', renderText: (value) => value || '-' },
+  { title: t('可工作时间', 'Available time'), dataIndex: 'availableTime', renderText: (value) => value || '-' },
+  { title: t('状态', 'Status'), dataIndex: 'status' },
+  { title: t('来源', 'Source'), dataIndex: 'source', renderText: (value) => value || '-' },
+  { title: t('注册时间', 'Registered at'), dataIndex: 'registeredAt', renderText: (value) => value || '-' },
+  { title: t('最近登录', 'Last login'), dataIndex: 'lastLoginAt', renderText: (value) => value || '-' },
   {
-    title: '角色',
+    title: t('角色', 'Roles'),
     dataIndex: 'roleNames',
     renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
   },
   {
-    title: '部门',
+    title: t('部门', 'Departments'),
     dataIndex: 'deptNames',
     renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
   },
-  { title: '创建时间', dataIndex: 'createdAt', renderText: (value) => value || '-' },
-  { title: '更新时间', dataIndex: 'updatedAt', renderText: (value) => value || '-' },
+  { title: t('创建时间', 'Created at'), dataIndex: 'createdAt', renderText: (value) => value || '-' },
+  { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', renderText: (value) => value || '-' },
 ];
 
 const GENDER_OPTIONS = [
-  { label: '男', value: 'MALE' },
-  { label: '女', value: 'FEMALE' },
-  { label: '其他', value: 'OTHER' },
+  { label: t('男', 'Male'), value: 'MALE' },
+  { label: t('女', 'Female'), value: 'FEMALE' },
+  { label: t('其他', 'Other'), value: 'OTHER' },
 ];
 
 const USER_STATUS_OPTIONS = [
-  { label: '启用', value: 'ENABLED' },
-  { label: '禁用', value: 'DISABLED' },
+  { label: t('启用', 'Enabled'), value: 'ENABLED' },
+  { label: t('禁用', 'Disabled'), value: 'DISABLED' },
 ];
 
 const containsConsecutiveCharacters = (value: string) => {
@@ -212,7 +217,7 @@ const isDigit = (charCode: number) => charCode >= 48 && charCode <= 57;
 const isLetter = (charCode: number) => charCode >= 97 && charCode <= 122;
 
 const buildPasswordPolicyRules = (editingId: number | null, securitySettings: SecuritySettings, containsConsecutiveCharacters: (value: string) => boolean): Rule[] => [
-  ...(!editingId ? [{ required: true, message: '请输入密码' }] : []),
+  ...(!editingId ? [{ required: true, message: t('请输入密码', 'Please enter the password') }] : []),
   {
     validator: async (_: unknown, value?: string) => {
       if (!value) {
@@ -220,19 +225,19 @@ const buildPasswordPolicyRules = (editingId: number | null, securitySettings: Se
       }
       const minLength = Math.max(1, Number(securitySettings.passwordMinLength || 0));
       if (value.length < minLength) {
-        return Promise.reject(new Error(`密码长度不能少于 ${minLength} 位`));
+        return Promise.reject(new Error(t('密码长度不能少于 {count} 位', 'Password must be at least {count} characters').replace('{count}', String(minLength))));
       }
       if (securitySettings.passwordRequireUppercase && !/[A-Z]/.test(value)) {
-        return Promise.reject(new Error('密码必须包含大写字母'));
+        return Promise.reject(new Error(t('密码必须包含大写字母', 'Password must contain an uppercase letter')));
       }
       if (securitySettings.passwordRequireLowercase && !/[a-z]/.test(value)) {
-        return Promise.reject(new Error('密码必须包含小写字母'));
+        return Promise.reject(new Error(t('密码必须包含小写字母', 'Password must contain a lowercase letter')));
       }
       if (securitySettings.passwordRequireSpecialCharacter && !/[^A-Za-z0-9]/.test(value)) {
-        return Promise.reject(new Error('密码必须包含特殊字符'));
+        return Promise.reject(new Error(t('密码必须包含特殊字符', 'Password must contain a special character')));
       }
       if (!securitySettings.passwordAllowConsecutiveCharacters && containsConsecutiveCharacters(value)) {
-        return Promise.reject(new Error('密码不能包含连续字符'));
+        return Promise.reject(new Error(t('密码不能包含连续字符', 'Password cannot contain consecutive characters')));
       }
       return Promise.resolve();
     },
@@ -240,18 +245,18 @@ const buildPasswordPolicyRules = (editingId: number | null, securitySettings: Se
 ];
 
 const buildPasswordPolicyHint = (securitySettings: SecuritySettings) => {
-  const parts = [`至少 ${Math.max(1, Number(securitySettings.passwordMinLength || 0))} 位`];
+  const parts = [t('至少 {count} 位', 'At least {count} characters').replace('{count}', String(Math.max(1, Number(securitySettings.passwordMinLength || 0))))];
   if (securitySettings.passwordRequireUppercase) {
-    parts.push('包含大写字母');
+    parts.push(t('包含大写字母', 'Contains uppercase letters'));
   }
   if (securitySettings.passwordRequireLowercase) {
-    parts.push('包含小写字母');
+    parts.push(t('包含小写字母', 'Contains lowercase letters'));
   }
   if (securitySettings.passwordRequireSpecialCharacter) {
-    parts.push('包含特殊字符');
+    parts.push(t('包含特殊字符', 'Contains special characters'));
   }
   if (!securitySettings.passwordAllowConsecutiveCharacters) {
-    parts.push('不能包含连续字符');
+    parts.push(t('不能包含连续字符', 'No consecutive characters'));
   }
   return parts.join('，');
 };
@@ -265,58 +270,58 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
   securitySettings: SecuritySettings;
 }) => (
   <Form {...formProps}>
-    <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]} normalize={trimString}>
+    <Form.Item name="username" label={t('用户名', 'Username')} rules={[{ required: true, message: t('请输入用户名', 'Please enter the username') }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="roleIds" label="角色" rules={[{ required: true, message: '请选择角色' }]} extra="可为用户分配一个或多个角色">
-      <Select mode="multiple" allowClear options={roleOptions} placeholder="请选择角色" />
+    <Form.Item name="roleIds" label={t('角色', 'Roles')} rules={[{ required: true, message: t('请选择角色', 'Please select roles') }]} extra={t('可为用户分配一个或多个角色', 'You can assign one or more roles to the user')}>
+      <Select mode="multiple" allowClear options={roleOptions} placeholder={t('请选择角色', 'Select roles')} />
     </Form.Item>
-    <Form.Item name="deptIds" label="所属部门" extra="部门用于本部门、本部门及下级等数据权限范围">
-      <Select mode="multiple" allowClear options={departmentOptions} placeholder="请选择部门" />
+    <Form.Item name="deptIds" label={t('所属部门', 'Departments')} extra={t('部门用于本部门、本部门及下级等数据权限范围', 'Departments are used for data scope like current department and descendants')}>
+      <Select mode="multiple" allowClear options={departmentOptions} placeholder={t('请选择部门', 'Select departments')} />
     </Form.Item>
-    <Form.Item name="primaryDeptId" label="主部门">
-      <Select allowClear options={departmentOptions} placeholder="请选择主部门" />
+    <Form.Item name="primaryDeptId" label={t('主部门', 'Primary department')}>
+      <Select allowClear options={departmentOptions} placeholder={t('请选择主部门', 'Select a primary department')} />
     </Form.Item>
     <Form.Item
       name="password"
-      label={editingId ? '重置密码（可选）' : '初始密码'}
+      label={editingId ? t('重置密码（可选）', 'Reset password (optional)') : t('初始密码', 'Initial password')}
       extra={buildPasswordPolicyHint(securitySettings)}
       rules={buildPasswordPolicyRules(editingId, securitySettings, containsConsecutiveCharacters)}
     >
-      <Input.Password placeholder="输入密码" />
+      <Input.Password placeholder={t('输入密码', 'Enter password')} />
     </Form.Item>
-    <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+    <Form.Item name="status" label={t('状态', 'Status')} rules={[{ required: true, message: t('请选择状态', 'Please select a status') }]}>
       <Select disabled={protectedAdminSelected} options={protectedAdminSelected ? USER_STATUS_OPTIONS.slice(0, 1) : USER_STATUS_OPTIONS} />
     </Form.Item>
-    <Form.Item name="mobile" label="手机号" rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
+    <Form.Item name="mobile" label={t('手机号', 'Mobile number')} rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="idCardNumber" label="身份证号码" rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
+    <Form.Item name="idCardNumber" label={t('身份证号码', 'ID card number')} rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="nickname" label="昵称" normalize={trimString}>
+    <Form.Item name="nickname" label={t('昵称', 'Nickname')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="realName" label="姓名" normalize={trimString}>
+    <Form.Item name="realName" label={t('姓名', 'Full name')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱地址' }]} normalize={trimString}>
+    <Form.Item name="email" label={t('邮箱', 'Email')} rules={[{ type: 'email', message: t('请输入有效邮箱地址', 'Please enter a valid email address') }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="avatarUrl" label="头像地址" normalize={trimString}>
+    <Form.Item name="avatarUrl" label={t('头像地址', 'Avatar URL')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="birthMonth" label="出生年月">
-      <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
+    <Form.Item name="birthMonth" label={t('出生年月', 'Birth month')}>
+      <DatePicker picker="month" placeholder={t('请选择出生年月', 'Select birth month')} format={isEnglishLocale() ? 'YYYY-MM' : 'YYYY年MM月'} style={{ width: '100%' }} />
     </Form.Item>
-    <Form.Item name="gender" label="性别">
-      <Select allowClear options={GENDER_OPTIONS} placeholder="请选择性别" />
+    <Form.Item name="gender" label={t('性别', 'Gender')}>
+      <Select allowClear options={GENDER_OPTIONS} placeholder={t('请选择性别', 'Select gender')} />
     </Form.Item>
-    <Form.Item name="region" label="所在地区" normalize={trimString}>
+    <Form.Item name="region" label={t('所在地区', 'Region')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="availableTime" label="可工作时间" normalize={trimString}>
-      <Input.TextArea rows={2} placeholder="请输入可工作时间，如：周一至周五 09:00-18:00" />
+    <Form.Item name="availableTime" label={t('可工作时间', 'Available time')} normalize={trimString}>
+      <Input.TextArea rows={2} placeholder={t('请输入可工作时间，如：周一至周五 09:00-18:00', 'Enter available time, e.g. Mon-Fri 09:00-18:00')} />
     </Form.Item>
   </Form>
 );
@@ -352,7 +357,7 @@ const UserManagementPage = () => {
   } = userManagement;
 
   return (
-    <ManagementPage title="用户管理" className="saas-user-management-page">
+    <ManagementPage title={t('用户管理', 'User management')} className="saas-user-management-page">
       <ManagementPageBody>
         <div className="saas-user-management-layout">
           <DepartmentTreeFilter
@@ -377,12 +382,12 @@ const UserManagementPage = () => {
                     key: 'create',
                     permission: 'system:user:create',
                     type: 'primary',
-                    label: '新增用户',
+                    label: t('新增用户', 'Add user'),
                     onClick: () => void openCreate(),
                   },
                   {
                     key: 'refresh',
-                    label: '刷新',
+                    label: t('刷新', 'Refresh'),
                     onClick: () => void actionRef.current?.reload(),
                   },
                 ])
@@ -393,12 +398,12 @@ const UserManagementPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={drawer.editingId ? '编辑用户' : '新增用户'}
+        title={drawer.editingId ? t('编辑用户', 'Edit user') : t('新增用户', 'Add user')}
         open={drawer.open}
         onClose={drawer.close}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveUser, onClick: () => void saveUser() },
+          { key: 'cancel', label: t('取消', 'Cancel'), onClick: drawer.close },
+          { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSaveUser, onClick: () => void saveUser() },
         ]}
       >
         <UserEditorForm
@@ -411,7 +416,7 @@ const UserManagementPage = () => {
         />
       </ManagementDrawer>
 
-      <ManagementDrawer title={detail.currentRecord?.username ? `用户详情 · ${detail.currentRecord.username}` : '用户详情'} open={detail.open} onClose={detail.close}>
+      <ManagementDrawer title={detail.currentRecord?.username ? `${t('用户详情', 'User details')} · ${detail.currentRecord.username}` : t('用户详情', 'User details')} open={detail.open} onClose={detail.close}>
         {detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
             <Spin />

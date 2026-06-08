@@ -21,6 +21,11 @@ import type { PermissionTreeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
 import type { PagedResult } from '@/types/api';
 import { APP_SPACING } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
 const DEFAULT_HOME_PATH = '/dashboard/home';
@@ -68,7 +73,7 @@ const buildPermissionTreeData = (nodes: NormalizedPermissionTreeRecord[]): Permi
       createElement(
         'span',
         { className: 'role-page-row__meta' },
-        node.nodeType === 'CATALOG' ? createElement('span', { className: 'role-page-row__kind' }, '目录') : null,
+        node.nodeType === 'CATALOG' ? createElement('span', { className: 'role-page-row__kind' }, t('目录', 'Catalog')) : null,
         node.nodeType === 'PAGE' && node.routePath
           ? createElement(
               'span',
@@ -79,10 +84,10 @@ const buildPermissionTreeData = (nodes: NormalizedPermissionTreeRecord[]): Permi
             )
           : null,
         node.nodeType === 'PAGE' && !node.routeMatched
-          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--mismatch' }, '路由失配')
+          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--mismatch' }, t('路由失配', 'Route mismatch'))
           : null,
         node.nodeType === 'CATALOG'
-          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--catalog' }, '仅作目录分组')
+          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--catalog' }, t('仅作目录分组', 'Catalog grouping only'))
           : null,
       ),
     ),
@@ -218,23 +223,23 @@ const roleTypeValueEnum = ROLE_TYPE_OPTIONS.reduce<Record<string, { text: string
 
 const roleDataColumns: ProColumns<RoleRecord>[] = [
   {
-    title: '角色编码',
+    title: t('角色编码', 'Role code'),
     dataIndex: 'roleCode',
     search: true,
   },
   {
-    title: '角色名称',
+    title: t('角色名称', 'Role name'),
     dataIndex: 'roleName',
     search: true,
     render: (_, record) => (
       <Space size={APP_SPACING.tagWrapGap.desktop[0]} wrap>
         <span>{record.roleName}</span>
-        {record.defaultRegistrationRole ? <Tag color="blue">默认注册</Tag> : null}
+        {record.defaultRegistrationRole ? <Tag color="blue">{t('默认注册', 'Default registration')}</Tag> : null}
       </Space>
     ),
   },
   {
-    title: '角色类型',
+    title: t('角色类型', 'Role type'),
     dataIndex: 'roleType',
     valueEnum: roleTypeValueEnum,
     search: {
@@ -242,21 +247,21 @@ const roleDataColumns: ProColumns<RoleRecord>[] = [
     },
   },
   {
-    title: '默认访问页',
+    title: t('默认访问页', 'Default landing page'),
     dataIndex: 'defaultHomePath',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     render: (_, record) => record.defaultHomePath || '/dashboard/home',
   },
   {
-    title: '权限数',
+    title: t('权限数', 'Permission count'),
     dataIndex: 'permissionCount',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => record.permissionCount ?? 0,
   },
   {
-    title: '用户数',
+    title: t('用户数', 'User count'),
     dataIndex: 'userCount',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -281,7 +286,7 @@ const buildRoleActionColumn = ({
   onOpenPermissions: (record: RoleRecord) => void;
   onDelete: (record: RoleRecord) => void;
 }): ProColumns<RoleRecord> => ({
-  title: '操作',
+  title: t('操作', 'Actions'),
   valueType: 'option',
   fixed: isDesktop ? 'right' : undefined,
   width: 'var(--saas-spacing-180)',
@@ -291,25 +296,25 @@ const buildRoleActionColumn = ({
       items={buildRowActions([
         {
           key: 'detail',
-          label: '详情',
+          label: t('详情', 'Details'),
           permission: 'system:role:view',
           onClick: () => onOpenDetail(record),
         },
         {
           key: 'edit',
-          label: '编辑',
+          label: t('编辑', 'Edit'),
           permission: 'system:role:update',
           onClick: () => onOpenEdit(record),
         },
         {
           key: 'permission',
-          label: '权限分配',
+          label: t('权限分配', 'Permissions'),
           permission: 'system:role:permissions',
           onClick: () => onOpenPermissions(record),
         },
         {
           key: 'delete',
-          label: '删除',
+          label: t('删除', 'Delete'),
           permission: 'system:role:delete',
           danger: true,
           disabled: Boolean(record.defaultRegistrationRole) || Number(record.userCount || 0) > 0,
@@ -504,7 +509,7 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
       })
       .catch(() => {
         if (active) {
-          message.error('加载权限树失败，请稍后重试');
+          message.error(t('加载权限树失败，请稍后重试', 'Failed to load the permission tree. Please try again later.'));
         }
       })
       .finally(() => {
@@ -532,7 +537,7 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
       })
       .catch(() => {
         if (active) {
-          message.error('加载权限信息失败，请稍后重试');
+          message.error(t('加载权限信息失败，请稍后重试', 'Failed to load the permission information. Please try again later.'));
         }
       });
 
@@ -772,14 +777,14 @@ export const useRoleManagementPageData = () => {
       setDefaultRoleId(defaultRole.id);
       setDefaultRoleOptions(rolePage.records || []);
     } catch {
-      message.error('默认注册角色加载失败，请稍后重试');
+      message.error(t('默认注册角色加载失败，请稍后重试', 'Failed to load the default registration role. Please try again later.'));
     } finally {
       setDefaultRoleLoading(false);
     }
   }, []);
   const saveDefaultRole = useCallback(async () => {
     if (!defaultRoleId) {
-      message.warning('请选择默认注册角色');
+      message.warning(t('请选择默认注册角色', 'Please choose a default registration role'));
       return;
     }
     setDefaultRoleSaving(true);
@@ -789,7 +794,7 @@ export const useRoleManagementPageData = () => {
         data: { roleId: defaultRoleId },
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success('默认注册角色已更新');
+      message.success(t('默认注册角色已更新', 'Default registration role updated'));
       setDefaultRoleModalOpen(false);
       roleCrud.reloadTable();
     } finally {
@@ -846,7 +851,7 @@ export const useRoleManagementPageData = () => {
         });
         permissionEditor.syncActivePageByPermissionKeys(permissionKeys);
       } catch {
-        message.error('加载角色信息失败，请稍后重试');
+      message.error(t('加载角色信息失败，请稍后重试', 'Failed to load the role information. Please try again later.'));
         roleCrud.drawer.close();
       } finally {
         permissionEditor.setEditorLoading(false);
@@ -861,10 +866,10 @@ export const useRoleManagementPageData = () => {
     }
 
     confirmAction({
-      title: '提示',
-      content: '关闭抽屉将丢失未保存的内容，是否确认关闭？',
-      okText: '继续编辑',
-      cancelText: '确认关闭',
+      title: t('提示', 'Notice'),
+      content: t('关闭抽屉将丢失未保存的内容，是否确认关闭？', 'Closing the drawer will discard unsaved changes. Do you want to continue?'),
+      okText: t('继续编辑', 'Keep editing'),
+      cancelText: t('确认关闭', 'Close anyway'),
       centered: true,
       onOk: () => Promise.resolve(),
       onCancel: closeEditorDrawer,
@@ -907,7 +912,7 @@ export const useRoleManagementPageData = () => {
           data: { permissionKeys },
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('角色权限已更新');
+        message.success(t('角色权限已更新', 'Role permissions updated'));
         closeEditorDrawer();
         roleCrud.reloadTable();
         return;
@@ -922,14 +927,14 @@ export const useRoleManagementPageData = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('角色已更新');
+        message.success(t('角色已更新', 'Role updated'));
       } else {
         await request<RoleDetail>('/v1/system/roles', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('角色已创建');
+        message.success(t('角色已创建', 'Role created'));
       }
       closeEditorDrawer();
       roleCrud.reloadTable();
@@ -940,16 +945,19 @@ export const useRoleManagementPageData = () => {
   const deleteRole = useCallback(
     (record: RoleRecord) => {
       confirmAction({
-        title: '删除角色',
-        content: `确认删除角色「${record.roleName}」吗？删除后该角色的权限配置会一并移除。`,
-        okText: '确认删除',
+        title: t('删除角色', 'Delete role'),
+        content: t(
+          `确认删除角色「${record.roleName}」吗？删除后该角色的权限配置会一并移除。`,
+          `Delete role "${record.roleName}"? This will also remove its permission settings.`,
+        ),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/roles/${record.id}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success('角色已删除');
+          message.success(t('角色已删除', 'Role deleted'));
           roleCrud.reloadTable();
         },
       });

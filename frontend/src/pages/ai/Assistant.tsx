@@ -1,12 +1,16 @@
 import { Alert, Button, Input, Modal, Result, Spin, Tabs } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { history } from '@umijs/max';
+import { getLocale, history } from '@umijs/max';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useAssistantPageAccess } from './hooks/useAssistantPageAccess';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { normalizeLocale } from '@/i18n/locale';
 
 import './Assistant.css';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const AiAssistantPage = () => {
   const {
@@ -33,18 +37,18 @@ const AiAssistantPage = () => {
       ghost
       className="saas-ai-assistant-page"
       token={{ paddingInlinePageContainerContent: pagePaddingInline, paddingBlockPageContainerContent: pagePaddingBlock }}
-      extra={isShareMode ? <Button icon={<RobotOutlined />} onClick={() => history.push('/ai/assistant')}>返回 AI 助手</Button> : null}
+      extra={isShareMode ? <Button icon={<RobotOutlined />} onClick={() => history.push('/ai/assistant')}>{t('返回 AI 助手', 'Back to AI Assistant')}</Button> : null}
     >
       {isShareMode ? (
-        <Alert type="info" showIcon className="saas-ai-assistant-share-alert" message="只读分享" description="当前会话以分享链接方式打开，仅支持查看、复制和导出。" />
+        <Alert type="info" showIcon className="saas-ai-assistant-share-alert" message={t('只读分享', 'Read-only share')} description={t('当前会话以分享链接方式打开，仅支持查看、复制和导出。', 'This conversation is opened via a share link and supports view, copy, and export only.')} />
       ) : null}
 
       {isShareMode && shareQuery.isError ? (
         <Result
           status="404"
-          title="分享链接不可用"
-          subTitle="这条分享链接不存在、已过期，或者已被撤销。"
-          extra={<Button type="primary" onClick={() => history.push('/ai/assistant')}>返回 AI 助手</Button>}
+          title={t('分享链接不可用', 'Share link unavailable')}
+          subTitle={t('这条分享链接不存在、已过期，或者已被撤销。', 'This share link does not exist, has expired, or has been revoked.')}
+          extra={<Button type="primary" onClick={() => history.push('/ai/assistant')}>{t('返回 AI 助手', 'Back to AI Assistant')}</Button>}
         />
       ) : isShareMode && shareQuery.isLoading ? (
         <div className="saas-ai-assistant-loading"><Spin size="large" /></div>
@@ -59,7 +63,7 @@ const AiAssistantPage = () => {
                   className="saas-ai-assistant-mobile-tabs"
                   activeKey={mobilePanel}
                   onChange={(key) => setMobilePanel(key as 'chat' | 'sessions')}
-                  items={[{ key: 'chat', label: '聊天', children: chatPanel }, { key: 'sessions', label: '会话', children: sessionsPanel }]}
+                  items={[{ key: 'chat', label: t('聊天', 'Chat'), children: chatPanel }, { key: 'sessions', label: t('会话', 'Sessions'), children: sessionsPanel }]}
                 />
               </div>
               <div className="saas-ai-assistant-desktop-shell">
@@ -71,8 +75,8 @@ const AiAssistantPage = () => {
         </div>
       )}
 
-      <Modal open={renameModalOpen} title="重命名会话" onOk={applyRename} onCancel={closeRenameModal} centered okText="保存" cancelText="取消">
-        <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="请输入会话名称" />
+      <Modal open={renameModalOpen} title={t('重命名会话', 'Rename conversation')} onOk={applyRename} onCancel={closeRenameModal} centered okText={t('保存', 'Save')} cancelText={t('取消', 'Cancel')}>
+        <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder={t('请输入会话名称', 'Enter a conversation name')} />
       </Modal>
     </PageContainer>
   );

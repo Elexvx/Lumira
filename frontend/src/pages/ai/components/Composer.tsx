@@ -11,6 +11,11 @@ import type { ReactNode } from 'react';
 import type { SenderProps, SuggestionProps } from '@ant-design/x';
 import type { AiEmployeeRecord } from '@/types/api';
 import type { ChatSession } from '../types';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const AI_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
 const AI_ATTACHMENT_ACCEPT = AI_ATTACHMENT_EXTENSIONS.map((extension) => `.${extension}`).join(',');
@@ -178,7 +183,7 @@ const ComposerFooterControls = ({
         }}
         onSubmit={onSubmit}
         onPasteFile={(files) => onPasteFiles(Array.from(files))}
-        placeholder={readOnly ? '当前为只读分享页面' : activeSessionExists ? '向我提问吧' : '暂无可用对话'}
+        placeholder={readOnly ? t('当前为只读分享页面', 'This is a read-only shared page') : activeSessionExists ? t('向我提问吧', 'Ask me anything') : t('暂无可用对话', 'No available conversation')}
         prefix={false}
         footer={(_, { components }) => {
           const { SendButton, LoadingButton } = components;
@@ -188,8 +193,8 @@ const ComposerFooterControls = ({
                 <Button
                   type="text"
                   icon={<PaperClipOutlined />}
-                  aria-label="上传附件"
-                  title="上传附件"
+                  aria-label={t('上传附件', 'Upload attachment')}
+                  title={t('上传附件', 'Upload attachment')}
                   loading={attachmentUploading}
                   disabled={readOnly || sending || attachmentUploading || !activeSessionExists}
                   onClick={onUploadClick}
@@ -198,8 +203,8 @@ const ComposerFooterControls = ({
                   icon={<ThunderboltOutlined />}
                   value={deepThink}
                   disabled={readOnly || sending || !activeSessionExists}
-                  checkedChildren="思考"
-                  unCheckedChildren="思考"
+                  checkedChildren={t('思考', 'Think')}
+                  unCheckedChildren={t('思考', 'Think')}
                   onChange={(nextValue) => onDeepThinkChange(Boolean(nextValue))}
                 />
                 <Suggestion items={conversationAgentItems} onSelect={onConversationAgentSelect}>
@@ -249,10 +254,10 @@ export const Composer: React.FC<ComposerProps> = ({
   const firstSelectedEmployee = selectedEmployees[0] || null;
 
   const agentButtonLabel = selectedEmployees.length > 1
-    ? `${selectedEmployees.length} 个助手`
-    : firstSelectedEmployee?.nickname?.trim() || firstSelectedEmployee?.username || '助手';
+    ? t(`${selectedEmployees.length} 个助手`, `${selectedEmployees.length} assistants`)
+    : firstSelectedEmployee?.nickname?.trim() || firstSelectedEmployee?.username || t('助手', 'Assistant');
 
-  const agentControlLabel = selectedEmployees.length ? '切换助手' : '助手';
+  const agentControlLabel = selectedEmployees.length ? t('切换助手', 'Switch assistant') : t('助手', 'Assistant');
 
   const agentItems = useMemo(
     () =>
@@ -270,10 +275,10 @@ export const Composer: React.FC<ComposerProps> = ({
   const conversationAgentItems = useMemo(
     () => [
       {
-        label: '普通对话',
+        label: t('普通对话', 'General chat'),
         value: 'general',
         icon: <RobotOutlined />,
-        extra: '不使用数字员工',
+        extra: t('不使用数字员工', 'Do not use an AI employee'),
       },
       ...agentItems,
     ],
@@ -291,7 +296,7 @@ export const Composer: React.FC<ComposerProps> = ({
 
   const selectedAgentSkill = selectedEmployees.length
     ? {
-        title: selectedEmployees.length > 1 ? `${selectedEmployees.length} 个助手协同` : agentButtonLabel,
+        title: selectedEmployees.length > 1 ? t(`${selectedEmployees.length} 个助手协同`, `${selectedEmployees.length} assistants collaborating`) : agentButtonLabel,
         value: selectedEmployeeIds.join(','),
         closable: {
           disabled: readOnly || sending,
@@ -301,8 +306,11 @@ export const Composer: React.FC<ComposerProps> = ({
     : undefined;
 
   const selectedAgentTitle = selectedEmployees.length
-    ? `当前助手：${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join('、')}`
-    : '选择助手';
+    ? t(
+        `当前助手：${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join('、')}`,
+        `Selected assistants: ${selectedEmployees.map((employee) => employee.nickname?.trim() || employee.username).join(', ')}`,
+      )
+    : t('选择助手', 'Choose assistant');
 
   const handleAgentSuggestionSelect = useCallback(
     (value: string) => {
@@ -329,10 +337,10 @@ export const Composer: React.FC<ComposerProps> = ({
       const safeFiles = files.filter(isAllowedAiAttachment);
       const blockedCount = files.length - safeFiles.length;
       if (blockedCount > 0) {
-        message.warning('已拦截不支持或存在风险的文件格式');
+        message.warning(t('已拦截不支持或存在风险的文件格式', 'Blocked unsupported or risky file types'));
       }
       if (!safeFiles.length) {
-        message.error(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
+        message.error(t(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`, `Only ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join(', ')} files are supported`));
         return;
       }
       onUploadFiles(safeFiles);
@@ -355,8 +363,8 @@ export const Composer: React.FC<ComposerProps> = ({
   const handleSubmit = useCallback(
     (messageText: string) => {
       const normalizedMessage = messageText.trim();
-      if (!normalizedMessage || normalizedMessage === '请') {
-        message.warning('请输入要处理的任务或问题');
+      if (!normalizedMessage || normalizedMessage === t('请', 'Please')) {
+        message.warning(t('请输入要处理的任务或问题', 'Please enter a task or question'));
         return;
       }
       onSend(normalizedMessage, { enableThinking: deepThink, employeeIds: selectedEmployeeIds });

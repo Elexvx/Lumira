@@ -1,9 +1,13 @@
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { FloatingWindowSettings } from '@/types/api';
+import { resolveRuntimeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => resolveRuntimeLocale().startsWith('en');
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 export const DEFAULT_FLOATING_WINDOW_SETTINGS: FloatingWindowSettings = {
   apiDocsQrEnabled: true,
-  apiDocsQrTitle: '微信扫码联系我们',
+  apiDocsQrTitle: t('微信扫码联系我们', 'Scan the QR code on WeChat to contact us'),
   apiDocsQrImageUrl: '',
 };
 

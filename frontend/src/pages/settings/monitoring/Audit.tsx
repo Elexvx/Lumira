@@ -4,6 +4,7 @@ import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { history } from '@umijs/max';
+import { getLocale } from '@umijs/max';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ProDescriptions, type ActionType, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
 import { Button, DatePicker, Input, InputNumber, Select, Space, Tag, Typography } from 'antd';
@@ -16,6 +17,10 @@ import { API_OPTS } from '@/utils/errorMessage';
 import { useResponsive } from '@/hooks/useResponsive';
 import type { PagedResponse } from '@/features/table/proTableRequest';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type AuditRecord = AuditLogRecord;
 type AuditTableRequest = NonNullable<ProTableProps<AuditRecord, Record<string, unknown>>['request']>;
@@ -23,7 +28,7 @@ type AuditTableRequest = NonNullable<ProTableProps<AuditRecord, Record<string, u
 type AuditLogType = 'login' | 'operation' | 'ai' | 'verification';
 
 const timeRangeColumn: any = {
-  title: '时间范围',
+  title: t('时间范围', 'Time range'),
   dataIndex: 'range',
   hideInTable: true,
   renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
@@ -48,13 +53,13 @@ const renderStatusTag = (label?: string | null) => {
 
   const normalized = label.toUpperCase();
   const map: Record<string, { color: string; text: string }> = {
-    SUCCESS: { color: 'green', text: '成功' },
-    FAIL: { color: 'red', text: '失败' },
-    FAILED: { color: 'red', text: '失败' },
-    ERROR: { color: 'red', text: '异常' },
-    RUNNING: { color: 'blue', text: '运行中' },
-    ENABLED: { color: 'green', text: '已启用' },
-    DISABLED: { color: 'default', text: '已禁用' },
+    SUCCESS: { color: 'green', text: t('成功', 'Success') },
+    FAIL: { color: 'red', text: t('失败', 'Failed') },
+    FAILED: { color: 'red', text: t('失败', 'Failed') },
+    ERROR: { color: 'red', text: t('异常', 'Error') },
+    RUNNING: { color: 'blue', text: t('运行中', 'Running') },
+    ENABLED: { color: 'green', text: t('已启用', 'Enabled') },
+    DISABLED: { color: 'default', text: t('已禁用', 'Disabled') },
   };
   const current = map[normalized];
   return <Tag color={current?.color || 'blue'}>{current?.text || label}</Tag>;
@@ -65,7 +70,7 @@ const buildDetailActionColumn = (
   isDesktop: boolean,
   isMobile: boolean,
 ): any => ({
-  title: '操作',
+      title: t('操作', 'Actions'),
   valueType: 'option',
   fixed: isDesktop ? 'right' : undefined,
   width: 'var(--saas-spacing-100)',
@@ -75,7 +80,7 @@ const buildDetailActionColumn = (
       items={[
         {
           key: 'detail',
-          label: '详情',
+          label: t('详情', 'Details'),
           onClick: () => onOpenDetail(record),
         },
       ]}
@@ -100,30 +105,30 @@ const buildLoginAuditColumns = (
   isDesktop: boolean,
   isMobile: boolean,
 ): ProColumns<AuditRecord>[] => [
-  { title: '用户名', dataIndex: 'username', importance: 1 },
+  { title: t('用户名', 'Username'), dataIndex: 'username', importance: 1 },
   timeRangeColumn,
   {
-    title: '结果',
+    title: t('结果', 'Result'),
     dataIndex: 'logResult',
     importance: 1,
     responsive: ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'],
     valueEnum: {
-      SUCCESS: { text: '成功' },
-      FAIL: { text: '失败' },
-      FAILED: { text: '失败' },
-      ERROR: { text: '异常' },
+      SUCCESS: { text: t('成功', 'Success') },
+      FAIL: { text: t('失败', 'Failed') },
+      FAILED: { text: t('失败', 'Failed') },
+      ERROR: { text: t('异常', 'Error') },
     },
     render: (_: unknown, record: AuditRecord) => renderStatusTag(record.logResult),
   },
   {
-    title: '原因',
+    title: t('原因', 'Reason'),
     dataIndex: 'failReason',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_: unknown, record: AuditRecord) => buildDetailText(record.failReason),
   },
-  { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
+  { title: t('时间', 'Time'), dataIndex: 'createdAt', search: false, importance: 1 },
   buildDetailActionColumn(onOpenDetail, isDesktop, isMobile),
 ];
 
@@ -132,20 +137,20 @@ const buildOperationAuditColumns = (
   isDesktop: boolean,
   isMobile: boolean,
 ): ProColumns<AuditRecord>[] => [
-  { title: '用户名', dataIndex: 'username', importance: 1 },
+  { title: t('用户名', 'Username'), dataIndex: 'username', importance: 1 },
   timeRangeColumn,
-  { title: '模块', dataIndex: 'moduleName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
-  { title: '操作', dataIndex: 'actionName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
-  { title: '类型', dataIndex: 'operationType', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('模块', 'Module'), dataIndex: 'moduleName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('操作', 'Action'), dataIndex: 'actionName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('类型', 'Type'), dataIndex: 'operationType', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
   {
-    title: '详情',
+    title: t('详情', 'Details'),
     dataIndex: 'detailMessage',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_: unknown, record: AuditRecord) => buildDetailText(record.detailMessage || record.failReason),
   },
-  { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
+  { title: t('时间', 'Time'), dataIndex: 'createdAt', search: false, importance: 1 },
   buildDetailActionColumn(onOpenDetail, isDesktop, isMobile),
 ];
 
@@ -155,53 +160,53 @@ const buildAiAuditColumns = (
   isMobile: boolean,
 ): ProColumns<AuditRecord>[] => [
   {
-    title: '数字员工 ID',
+    title: t('数字员工 ID', 'Digital employee ID'),
     dataIndex: 'employeeId',
     importance: 1,
     renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
   },
   {
-    title: '技能编码',
+    title: t('技能编码', 'Skill code'),
     dataIndex: 'skillCode',
     importance: 2,
-    renderFormItem: () => <Input placeholder="例如：chat" />,
+    renderFormItem: () => <Input placeholder={t('例如：chat', 'e.g. chat')} />,
     ellipsis: true,
   },
   {
-    title: '结果',
+    title: t('结果', 'Result'),
     dataIndex: 'resultStatus',
     importance: 1,
     valueEnum: {
-      SUCCESS: { text: '成功' },
-      FAIL: { text: '失败' },
-      FAILED: { text: '失败' },
-      ERROR: { text: '异常' },
+      SUCCESS: { text: t('成功', 'Success') },
+      FAIL: { text: t('失败', 'Failed') },
+      FAILED: { text: t('失败', 'Failed') },
+      ERROR: { text: t('异常', 'Error') },
     },
     renderFormItem: () => (
       <Select
         allowClear
         options={[
-          { label: '成功', value: 'SUCCESS' },
-          { label: '失败', value: 'FAIL' },
-          { label: '异常', value: 'ERROR' },
+          { label: t('成功', 'Success'), value: 'SUCCESS' },
+          { label: t('失败', 'Failed'), value: 'FAIL' },
+          { label: t('异常', 'Error'), value: 'ERROR' },
         ]}
       />
     ),
     render: (_: unknown, record: AuditRecord) => renderStatusTag(record.logResult),
   },
   timeRangeColumn,
-  { title: '会话 ID', dataIndex: 'conversationId', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
-  { title: '工具', dataIndex: 'toolName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
-  { title: '权限模式', dataIndex: 'permissionMode', search: false, responsive: ['lg', 'xl', 'xxl'] },
+  { title: t('会话 ID', 'Conversation ID'), dataIndex: 'conversationId', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('工具', 'Tool'), dataIndex: 'toolName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('权限模式', 'Permission mode'), dataIndex: 'permissionMode', search: false, responsive: ['lg', 'xl', 'xxl'] },
   {
-    title: '详情',
+    title: t('详情', 'Details'),
     dataIndex: 'detailMessage',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_: unknown, record: AuditRecord) => buildDetailText(record.detailMessage),
   },
-  { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
+  { title: t('时间', 'Time'), dataIndex: 'createdAt', search: false, importance: 1 },
   buildDetailActionColumn(onOpenDetail, isDesktop, isMobile),
 ];
 
@@ -211,78 +216,78 @@ const buildVerificationAuditColumns = (
   isMobile: boolean,
 ): ProColumns<AuditRecord>[] => [
   {
-    title: '渠道',
+    title: t('渠道', 'Channel'),
     dataIndex: 'channel',
     importance: 1,
     renderFormItem: () => (
       <Select
         allowClear
         options={[
-          { label: '短信验证码', value: 'SMS' },
-          { label: '邮箱验证码', value: 'EMAIL' },
+          { label: t('短信验证码', 'SMS code'), value: 'SMS' },
+          { label: t('邮箱验证码', 'Email code'), value: 'EMAIL' },
         ]}
       />
     ),
     render: (_: unknown, record: AuditRecord) => {
       const channel = record.operationType;
       if (channel === 'SMS') {
-        return <Tag color="blue">短信验证码</Tag>;
+        return <Tag color="blue">{t('短信验证码', 'SMS code')}</Tag>;
       }
       if (channel === 'EMAIL') {
-        return <Tag color="purple">邮箱验证码</Tag>;
+        return <Tag color="purple">{t('邮箱验证码', 'Email code')}</Tag>;
       }
       return channel || '-';
     },
   },
   {
-    title: '场景',
+    title: t('场景', 'Scenario'),
     dataIndex: 'scene',
     importance: 1,
     renderFormItem: () => (
       <Select
         allowClear
         options={[
-          { label: '验证码登录', value: 'LOGIN_CODE' },
-          { label: '二次验证', value: 'SECOND_FACTOR' },
-          { label: '绑定验证', value: 'CONTACT_BIND' },
+          { label: t('验证码登录', 'Code login'), value: 'LOGIN_CODE' },
+          { label: t('二次验证', 'Second factor'), value: 'SECOND_FACTOR' },
+          { label: t('绑定验证', 'Binding verification'), value: 'CONTACT_BIND' },
         ]}
       />
     ),
     render: (_: unknown, record: AuditRecord) => {
       const map: Record<string, string> = {
-        LOGIN_CODE: '验证码登录',
-        SECOND_FACTOR: '二次验证',
-        CONTACT_BIND: '绑定验证',
+        LOGIN_CODE: t('验证码登录', 'Code login'),
+        SECOND_FACTOR: t('二次验证', 'Second factor'),
+        CONTACT_BIND: t('绑定验证', 'Binding verification'),
       };
       return map[record.actionName || ''] || record.actionName || '-';
     },
   },
   {
-    title: '结果',
+    title: t('结果', 'Result'),
     dataIndex: 'resultStatus',
     importance: 1,
     renderFormItem: () => (
       <Select
         allowClear
         options={[
-          { label: '成功', value: 'SUCCESS' },
-          { label: '失败', value: 'FAIL' },
+          { label: t('成功', 'Success'), value: 'SUCCESS' },
+          { label: t('失败', 'Failed'), value: 'FAIL' },
         ]}
       />
     ),
     render: (_: unknown, record: AuditRecord) => renderStatusTag(record.logResult),
   },
   timeRangeColumn,
-  { title: '用户', dataIndex: 'username', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('用户', 'User'), dataIndex: 'username', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
   {
-    title: '详情',
+    title: t('详情', 'Details'),
     dataIndex: 'detailMessage',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_: unknown, record: AuditRecord) => buildDetailText(record.detailMessage),
   },
-  { title: '时间', dataIndex: 'createdAt', search: false, importance: 1 },
+  { title: t('时间', 'Time'), dataIndex: 'createdAt', search: false, importance: 1 },
   buildDetailActionColumn(onOpenDetail, isDesktop, isMobile),
 ];
 
@@ -315,10 +320,10 @@ const AuditOverviewPage = () => {
   const tabList = useMemo(
     () =>
       [
-        canViewLoginLogs ? { tab: '登录日志', key: 'login' } : null,
-        canViewOperationLogs ? { tab: '操作日志', key: 'operation' } : null,
-        canViewOperationLogs ? { tab: '验证码日志', key: 'verification' } : null,
-        canViewOperationLogs ? { tab: 'AI 调用记录', key: 'ai' } : null,
+        canViewLoginLogs ? { tab: t('登录日志', 'Login logs'), key: 'login' } : null,
+        canViewOperationLogs ? { tab: t('操作日志', 'Operation logs'), key: 'operation' } : null,
+        canViewOperationLogs ? { tab: t('验证码日志', 'Verification logs'), key: 'verification' } : null,
+        canViewOperationLogs ? { tab: t('AI 调用记录', 'AI call logs'), key: 'ai' } : null,
       ].filter((item): item is { tab: string; key: AuditLogType } => Boolean(item)),
     [canViewLoginLogs, canViewOperationLogs],
   );
@@ -401,7 +406,7 @@ const AuditOverviewPage = () => {
 
   return (
     <ManagementPage
-      title="审计中心"
+      title={t('审计中心', 'Audit center')}
       tabList={tabList}
       tabActiveKey={activeLogType}
       onTabChange={handleTabChange}
@@ -418,14 +423,14 @@ const AuditOverviewPage = () => {
           request={tableRequest}
           toolBarRender={() => [
             <Button key="refresh" type="primary" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
-              刷新
+              {t('刷新', 'Refresh')}
             </Button>,
           ]}
         />
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={selectedRecord ? `日志详情 · ${selectedRecord.username || selectedRecord.moduleName || selectedRecord.id}` : '日志详情'}
+        title={selectedRecord ? `${t('日志详情', 'Log details')} · ${selectedRecord.username || selectedRecord.moduleName || selectedRecord.id}` : t('日志详情', 'Log details')}
         open={drawerOpen}
         onClose={handleCloseDetail}
       >
@@ -438,34 +443,34 @@ const AuditOverviewPage = () => {
             <ProDescriptions<AuditRecord>
               {...detailProps}
               columns={[
-                { title: '用户名', dataIndex: 'username', renderText: (value) => value || '-' },
-                { title: '会话 ID', dataIndex: 'conversationId', renderText: (value) => value ?? '-' },
-                { title: '数字员工 ID', dataIndex: 'employeeId', renderText: (value) => value ?? '-' },
-                { title: '类型', dataIndex: 'logType', renderText: (value) => value || selectedRecord.operationType || '-' },
-                { title: '结果', dataIndex: 'logResult', renderText: (value) => value || '-' },
-                { title: '技能编码', dataIndex: 'skillCode', renderText: (value) => value || '-' },
-                { title: '工具', dataIndex: 'toolName', renderText: (value) => value || '-' },
-                { title: '权限模式', dataIndex: 'permissionMode', renderText: (value) => value || '-' },
+                { title: t('用户名', 'Username'), dataIndex: 'username', renderText: (value) => value || '-' },
+                { title: t('会话 ID', 'Conversation ID'), dataIndex: 'conversationId', renderText: (value) => value ?? '-' },
+                { title: t('数字员工 ID', 'Digital employee ID'), dataIndex: 'employeeId', renderText: (value) => value ?? '-' },
+                { title: t('类型', 'Type'), dataIndex: 'logType', renderText: (value) => value || selectedRecord.operationType || '-' },
+                { title: t('结果', 'Result'), dataIndex: 'logResult', renderText: (value) => value || '-' },
+                { title: t('技能编码', 'Skill code'), dataIndex: 'skillCode', renderText: (value) => value || '-' },
+                { title: t('工具', 'Tool'), dataIndex: 'toolName', renderText: (value) => value || '-' },
+                { title: t('权限模式', 'Permission mode'), dataIndex: 'permissionMode', renderText: (value) => value || '-' },
                 { title: 'RequestId', dataIndex: 'requestId', renderText: (value) => value || '-' },
                 { title: 'TraceId', dataIndex: 'traceId', renderText: (value) => value || '-' },
-                { title: '时间', dataIndex: 'createdAt' },
+                { title: t('时间', 'Time'), dataIndex: 'createdAt' },
               ]}
             />
             <ProDescriptions<AuditRecord>
               {...detailExtraProps}
               columns={[
                 {
-                  title: '扩展信息',
+                  title: t('扩展信息', 'Additional info'),
                   dataIndex: 'detailMessage',
-                  renderText: (_, entity) => entity.failReason || entity.detailMessage || entity.requestPayloadJson || '无更多详情',
+                  renderText: (_, entity) => entity.failReason || entity.detailMessage || entity.requestPayloadJson || t('无更多详情', 'No more details'),
                 },
                 {
-                  title: '请求内容',
+                  title: t('请求内容', 'Request payload'),
                   dataIndex: 'requestPayloadJson',
                   renderText: (value) => value || '-',
                 },
                 {
-                  title: '响应内容',
+                  title: t('响应内容', 'Response payload'),
                   dataIndex: 'responsePayloadJson',
                   renderText: (value) => value || '-',
                 },

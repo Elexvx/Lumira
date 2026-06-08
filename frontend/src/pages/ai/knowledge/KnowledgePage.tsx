@@ -22,40 +22,45 @@ import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import type { AiKnowledgeBaseRecord, AiKnowledgeDocumentRecord, AiKnowledgeReferenceRecord, PagedResult } from '@/types/api';
 import type { FormInstance } from 'antd';
 import type { UploadProps } from 'antd';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const SCOPE_TABS = [
-  { key: 'ALL', label: '全部可用' },
-  { key: 'OWNED', label: '我的知识库' },
-  { key: 'SHARED', label: '共享给我' },
-  { key: 'TENANT', label: '企业知识库' },
+  { key: 'ALL', label: t('全部可用', 'All available') },
+  { key: 'OWNED', label: t('我的知识库', 'My knowledge bases') },
+  { key: 'SHARED', label: t('共享给我', 'Shared with me') },
+  { key: 'TENANT', label: t('企业知识库', 'Tenant knowledge bases') },
 ];
 
 const formatNumber = (value?: number | null) => (typeof value === 'number' ? value.toLocaleString() : '0');
 
 const visibilityTag = (scope?: string | null) => {
   if (scope === 'TENANT') {
-    return <Tag color="purple">企业</Tag>;
+    return <Tag color="purple">{t('企业', 'Tenant')}</Tag>;
   }
   if (scope === 'TEAM') {
-    return <Tag color="blue">团队</Tag>;
+    return <Tag color="blue">{t('团队', 'Team')}</Tag>;
   }
-  return <Tag color="green">个人</Tag>;
+  return <Tag color="green">{t('个人', 'Personal')}</Tag>;
 };
 
 const statusTag = (status?: string | null) => {
   if (status === 'READY') {
-    return <Tag color="green">已索引</Tag>;
+    return <Tag color="green">{t('已索引', 'Indexed')}</Tag>;
   }
   if (status === 'INDEXING') {
-    return <Tag color="processing">索引中</Tag>;
+    return <Tag color="processing">{t('索引中', 'Indexing')}</Tag>;
   }
   if (status === 'FAILED') {
-    return <Tag color="red">失败</Tag>;
+    return <Tag color="red">{t('失败', 'Failed')}</Tag>;
   }
   if (status === 'DISABLED') {
-    return <Tag>停用</Tag>;
+    return <Tag>{t('停用', 'Disabled')}</Tag>;
   }
-  return <Tag color="green">启用</Tag>;
+  return <Tag color="green">{t('启用', 'Enabled')}</Tag>;
 };
 
 type UploadRequestOption = Parameters<NonNullable<UploadProps['customRequest']>>[0];
@@ -79,8 +84,8 @@ const useKnowledgePageAccess = () => {
   const canDeleteKnowledge = actionPermission.can('ai:knowledge:delete');
   const visibilityOptions = useMemo(
     () => [
-      { label: '个人知识库', value: 'PERSONAL' },
-      ...(canShareKnowledge ? [{ label: '企业知识库', value: 'TENANT' }] : []),
+      { label: t('个人知识库', 'Personal knowledge base'), value: 'PERSONAL' },
+      ...(canShareKnowledge ? [{ label: t('企业知识库', 'Tenant knowledge base'), value: 'TENANT' }] : []),
     ],
     [canShareKnowledge],
   );
@@ -116,14 +121,14 @@ const useKnowledgePageAccess = () => {
           data: values,
           ...requestOptions,
         });
-        message.success('知识库已更新');
+        message.success(t('知识库已更新', 'Knowledge base updated'));
       } else {
         await request('/ai/knowledge-bases', {
           method: 'POST',
           data: values,
           ...requestOptions,
         });
-        message.success('知识库已创建');
+        message.success(t('知识库已创建', 'Knowledge base created'));
       }
       closeDrawer();
       actionRef.current?.reload?.();
@@ -134,16 +139,16 @@ const useKnowledgePageAccess = () => {
   const deleteKnowledgeBase = useCallback(
     (record: AiKnowledgeBaseRecord, selected: AiKnowledgeBaseRecord | null, setSelected: (next: AiKnowledgeBaseRecord | null) => void) => {
       confirmAction({
-        title: '删除知识库',
-        content: `确认删除知识库「${record.name}」吗？文档索引也会一并移除。`,
-        okText: '确认删除',
+        title: t('删除知识库', 'Delete knowledge base'),
+        content: t(`确认删除知识库「${record.name}」吗？文档索引也会一并移除。`, `Delete knowledge base "${record.name}"? Document indexes will also be removed.`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request(`/ai/knowledge-bases/${record.id}`, {
             method: 'DELETE',
             ...requestOptions,
           });
-          message.success('知识库已删除');
+          message.success(t('知识库已删除', 'Knowledge base deleted'));
           if (selected?.id === record.id) {
             setSelected(null);
           }
@@ -158,7 +163,7 @@ const useKnowledgePageAccess = () => {
   const [searchResults, setSearchResults] = useState<AiKnowledgeReferenceRecord[]>([]);
   const uploadDocument = useCallback(async (options: UploadRequestOption) => {
     if (!selectedKnowledgeBase || !(options.file instanceof File)) {
-      options.onError?.(new Error('请选择文件'));
+      options.onError?.(new Error(t('请选择文件', 'Please select a file')));
       return;
     }
     setUploading(true);
@@ -195,9 +200,9 @@ const useKnowledgePageAccess = () => {
       return;
     }
     confirmAction({
-      title: '删除文档',
-      content: `确认删除文档「${record.title}」吗？`,
-      okText: '确认删除',
+      title: t('删除文档', 'Delete document'),
+      content: t(`确认删除文档「${record.title}」吗？`, `Delete document "${record.title}"?`),
+      okText: t('确认删除', 'Delete'),
       okButtonProps: { danger: true },
       onOk: async () => {
         await request(`/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents/${record.id}`, {
@@ -365,21 +370,21 @@ const KnowledgeBaseDrawer = ({
     onClose={onClose}
     destroyOnClose
     footerActions={[
-      { key: 'cancel', label: '取消', onClick: onClose },
-      { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSave, onClick: onSave },
+      { key: 'cancel', label: t('取消', 'Cancel'), onClick: onClose },
+      { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSave, onClick: onSave },
     ]}
   >
     <Form form={form} layout="vertical">
-      <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入知识库名称' }]}>
+      <Form.Item name="name" label={t('名称', 'Name')} rules={[{ required: true, message: t('请输入知识库名称', 'Please enter the knowledge base name') }]}>
         <Input maxLength={128} />
       </Form.Item>
-      <Form.Item name="status" label="状态" rules={[{ required: true }]}>
-        <Select options={[{ value: 'ENABLED', label: '启用' }, { value: 'DISABLED', label: '停用' }]} />
+      <Form.Item name="status" label={t('状态', 'Status')} rules={[{ required: true }]}>
+        <Select options={[{ value: 'ENABLED', label: t('启用', 'Enabled') }, { value: 'DISABLED', label: t('停用', 'Disabled') }]} />
       </Form.Item>
-      <Form.Item name="visibilityScope" label="可见范围" initialValue="PERSONAL">
+      <Form.Item name="visibilityScope" label={t('可见范围', 'Visibility scope')} initialValue="PERSONAL">
         <Select options={visibilityOptions} />
       </Form.Item>
-      <Form.Item name="description" label="说明">
+      <Form.Item name="description" label={t('说明', 'Description')}>
         <Input.TextArea rows={4} maxLength={1024} />
       </Form.Item>
     </Form>
@@ -423,7 +428,7 @@ const KnowledgeDocumentDrawer = ({
   return (
     <Drawer
       width={isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
-      title={selectedKnowledgeBase ? `知识库文档 / ${selectedKnowledgeBase.name}` : '知识库文档'}
+      title={selectedKnowledgeBase ? `${t('知识库文档', 'Knowledge base documents')} / ${selectedKnowledgeBase.name}` : t('知识库文档', 'Knowledge base documents')}
       open={Boolean(selectedKnowledgeBase)}
       onClose={onClose}
       destroyOnHidden
@@ -437,8 +442,8 @@ const KnowledgeDocumentDrawer = ({
             customRequest={onUploadDocument}
             disabled={uploading || !canUploadDocument}
           >
-            <p className="ant-upload-text">上传知识库文件</p>
-            <p className="ant-upload-hint">上传后会自动解析文本、切片并构建检索索引。</p>
+            <p className="ant-upload-text">{t('上传知识库文件', 'Upload knowledge base files')}</p>
+            <p className="ant-upload-hint">{t('上传后会自动解析文本、切片并构建检索索引。', 'Uploaded files will be parsed, chunked, and indexed automatically.')}</p>
           </Upload.Dragger>
 
           <ManagementTable<AiKnowledgeDocumentRecord>
@@ -451,11 +456,11 @@ const KnowledgeDocumentDrawer = ({
           />
 
           <Form form={searchForm} layout="inline" onFinish={onSearchSubmit} style={{ gap: tagWrapGap[0] }}>
-              <Form.Item name="query" rules={[{ required: true, message: '请输入检索内容' }]} style={{ flex: 1, minWidth: 'var(--saas-spacing-260)' }}>
-                <Input.Search placeholder="测试这个知识库能否检索到答案依据" />
+              <Form.Item name="query" rules={[{ required: true, message: t('请输入检索内容', 'Please enter a search query') }]} style={{ flex: 1, minWidth: 'var(--saas-spacing-260)' }}>
+                <Input.Search placeholder={t('测试这个知识库能否检索到答案依据', 'Test whether this knowledge base can retrieve supporting evidence')} />
               </Form.Item>
             <Button htmlType="submit" loading={searching} disabled={!canQueryKnowledge}>
-              检索测试
+              {t('检索测试', 'Search test')}
             </Button>
           </Form>
 
@@ -473,7 +478,7 @@ const KnowledgeDocumentDrawer = ({
                   <Space wrap>
                     <Tag color="blue">{item.knowledgeBaseName}</Tag>
                     <Typography.Text strong>{item.documentTitle || item.originalFileName}</Typography.Text>
-                    <Typography.Text type="secondary">片段 {Number(item.chunkIndex || 0) + 1}</Typography.Text>
+                    <Typography.Text type="secondary">{t('片段', 'Chunk')} {Number(item.chunkIndex || 0) + 1}</Typography.Text>
                   </Space>
                   <Typography.Paragraph style={{ marginTop: tagWrapGap[0] }} ellipsis={{ rows: 4, expandable: true }}>
                     {item.content}
@@ -482,7 +487,7 @@ const KnowledgeDocumentDrawer = ({
               ))}
             </Space>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无检索结果" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无检索结果', 'No search results')} />
           )}
         </Space>
       ) : null}
@@ -508,7 +513,7 @@ const buildKnowledgeBaseColumns = ({
   onDeleteKnowledgeBase: (record: AiKnowledgeBaseRecord) => void;
 }): ProColumns<AiKnowledgeBaseRecord>[] => [
   {
-    title: '知识库名称',
+    title: t('知识库名称', 'Knowledge base name'),
     dataIndex: 'name',
     width: 'var(--saas-spacing-220)',
     render: (_, record) => (
@@ -517,13 +522,13 @@ const buildKnowledgeBaseColumns = ({
       </Button>
     ),
   },
-  { title: '状态', dataIndex: 'status', width: 'var(--saas-spacing-100)', valueEnum: { ENABLED: { text: '启用' }, DISABLED: { text: '停用' } }, render: (_, record) => statusTag(record.status) },
-  { title: '范围', dataIndex: 'visibilityScope', width: 'var(--saas-spacing-100)', search: false, render: (_, record) => visibilityTag(record.visibilityScope) },
-  { title: '文档数', dataIndex: 'documentCount', width: 'var(--saas-spacing-100)', search: false, renderText: formatNumber },
-  { title: '切片数', dataIndex: 'chunkCount', width: 'var(--saas-spacing-100)', search: false, renderText: formatNumber },
-  { title: '说明', dataIndex: 'description', ellipsis: true, search: false },
+  { title: t('状态', 'Status'), dataIndex: 'status', width: 'var(--saas-spacing-100)', valueEnum: { ENABLED: { text: t('启用', 'Enabled') }, DISABLED: { text: t('停用', 'Disabled') } }, render: (_, record) => statusTag(record.status) },
+  { title: t('范围', 'Scope'), dataIndex: 'visibilityScope', width: 'var(--saas-spacing-100)', search: false, render: (_, record) => visibilityTag(record.visibilityScope) },
+  { title: t('文档数', 'Document count'), dataIndex: 'documentCount', width: 'var(--saas-spacing-100)', search: false, renderText: formatNumber },
+  { title: t('切片数', 'Chunk count'), dataIndex: 'chunkCount', width: 'var(--saas-spacing-100)', search: false, renderText: formatNumber },
+  { title: t('说明', 'Description'), dataIndex: 'description', ellipsis: true, search: false },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
     width: 'var(--saas-spacing-220)',
@@ -531,9 +536,9 @@ const buildKnowledgeBaseColumns = ({
       <TableActionBar
         isMobile={isMobile}
         items={[
-          { key: 'documents', label: '文档', icon: <FileSearchOutlined />, onClick: () => onSelectKnowledgeBase(record) },
-          { key: 'edit', label: '编辑', icon: <EditOutlined />, disabled: !canEditKnowledge, onClick: () => onOpenEditDrawer(record) },
-          { key: 'delete', label: '删除', danger: true, icon: <DeleteOutlined />, disabled: !canDeleteKnowledge, onClick: () => onDeleteKnowledgeBase(record) },
+          { key: 'documents', label: t('文档', 'Documents'), icon: <FileSearchOutlined />, onClick: () => onSelectKnowledgeBase(record) },
+          { key: 'edit', label: t('编辑', 'Edit'), icon: <EditOutlined />, disabled: !canEditKnowledge, onClick: () => onOpenEditDrawer(record) },
+          { key: 'delete', label: t('删除', 'Delete'), danger: true, icon: <DeleteOutlined />, disabled: !canDeleteKnowledge, onClick: () => onDeleteKnowledgeBase(record) },
         ]}
       />
     ),
@@ -553,13 +558,13 @@ const buildKnowledgeDocumentColumns = ({
   onReindexDocument: (record: AiKnowledgeDocumentRecord) => Promise<void> | void;
   onDeleteDocument: (record: AiKnowledgeDocumentRecord) => void;
 }): ProColumns<AiKnowledgeDocumentRecord>[] => [
-  { title: '文档', dataIndex: 'title', width: 'var(--saas-spacing-220)', ellipsis: true },
-  { title: '格式', dataIndex: 'fileExtension', width: 'var(--saas-spacing-90)', renderText: (value) => String(value || '-').toUpperCase() },
-  { title: '状态', dataIndex: 'status', width: 'var(--saas-spacing-100)', render: (_, record) => statusTag(record.status) },
-  { title: '字数', dataIndex: 'extractedCharCount', width: 'var(--saas-spacing-100)', renderText: formatNumber },
-  { title: '切片', dataIndex: 'chunkCount', width: 'var(--saas-spacing-80)', renderText: formatNumber },
+  { title: t('文档', 'Document'), dataIndex: 'title', width: 'var(--saas-spacing-220)', ellipsis: true },
+  { title: t('格式', 'Format'), dataIndex: 'fileExtension', width: 'var(--saas-spacing-90)', renderText: (value) => String(value || '-').toUpperCase() },
+  { title: t('状态', 'Status'), dataIndex: 'status', width: 'var(--saas-spacing-100)', render: (_, record) => statusTag(record.status) },
+  { title: t('字数', 'Characters'), dataIndex: 'extractedCharCount', width: 'var(--saas-spacing-100)', renderText: formatNumber },
+  { title: t('切片', 'Chunks'), dataIndex: 'chunkCount', width: 'var(--saas-spacing-80)', renderText: formatNumber },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: 'right',
     width: 'var(--saas-spacing-180)',
@@ -567,8 +572,8 @@ const buildKnowledgeDocumentColumns = ({
       <TableActionBar
         isMobile={isMobile}
         items={[
-          { key: 'reindex', label: '重建', icon: <ReloadOutlined />, disabled: !canReindexDocument, onClick: () => onReindexDocument(record) },
-          { key: 'delete', label: '删除', danger: true, icon: <DeleteOutlined />, disabled: !canDeleteDocument, onClick: () => onDeleteDocument(record) },
+          { key: 'reindex', label: t('重建', 'Reindex'), icon: <ReloadOutlined />, disabled: !canReindexDocument, onClick: () => onReindexDocument(record) },
+          { key: 'delete', label: t('删除', 'Delete'), danger: true, icon: <DeleteOutlined />, disabled: !canDeleteDocument, onClick: () => onDeleteDocument(record) },
         ]}
       />
     ),
@@ -608,7 +613,7 @@ const AiKnowledgePage = () => {
   const { requestKnowledgeBase, requestKnowledgeDocuments } = requestAccess;
 
   return (
-    <ManagementPage title="知识库" content={null}>
+    <ManagementPage title={t('知识库', 'Knowledge base')} content={null}>
       <ManagementPageBody>
         <Tabs
           activeKey={activeScope}
@@ -625,7 +630,7 @@ const AiKnowledgePage = () => {
           toolbar={{
             actions: [
               <Button key="create" type="primary" icon={<PlusOutlined />} disabled={!canCreateKnowledge} onClick={openCreateDrawer}>
-                新建知识库
+                {t('新建知识库', 'Create knowledge base')}
               </Button>,
             ],
           }}
@@ -634,7 +639,7 @@ const AiKnowledgePage = () => {
 
       <KnowledgeBaseDrawer
         open={drawerOpen}
-        title={editingRecord ? '编辑知识库' : '新建知识库'}
+        title={editingRecord ? t('编辑知识库', 'Edit knowledge base') : t('新建知识库', 'Create knowledge base')}
         form={form}
         saving={saving}
         canSave={canSaveKnowledgeBase}

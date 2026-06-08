@@ -10,7 +10,7 @@ import { useMemo, useRef } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { TableActionBar } from '@/features/table/TableActionBar';
-import { buildTableRequest } from '@/features/table/proTableRequest';
+import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { request } from '@/services/common/request';
 import { useNotificationCenter } from './hooks/useNotificationCenter';
 import type { MessageDeliveryLogRecord, MessageNoticeRecord } from '@/types/api';
@@ -18,6 +18,11 @@ import type { SmtpSettings, SmtpTestPayload, WechatOfficialAccountSettings } fro
 import type { MessageChannel } from '@/types/api';
 import type { FormProps } from 'antd';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type NotificationPublishTargetScope = 'TENANT' | 'USER' | 'ROLE';
 
@@ -35,26 +40,26 @@ interface NotificationChannelRecord {
 }
 
 const TARGET_SCOPE_LABELS: Record<string, string> = {
-  TENANT: '全员',
-  USER: '指定用户',
-  ROLE: '角色分组',
+  TENANT: t('全员', 'All users'),
+  USER: t('指定用户', 'Specific users'),
+  ROLE: t('角色分组', 'Role groups'),
 };
 
 const CHANNEL_LABELS: Record<string, { color: string; text: string }> = {
-  INBOX: { color: 'blue', text: '站内信' },
-  EMAIL: { color: 'purple', text: '邮箱' },
-  WECHAT_OFFICIAL: { color: 'green', text: '微信' },
+  INBOX: { color: 'blue', text: t('站内信', 'Inbox') },
+  EMAIL: { color: 'purple', text: t('邮箱', 'Email') },
+  WECHAT_OFFICIAL: { color: 'green', text: t('微信', 'WeChat') },
 };
 
 const PUBLISH_STATUS_LABELS: Record<string, { color: string; text: string }> = {
-  PUBLISHED: { color: 'green', text: '已发布' },
-  RETRACTED: { color: 'default', text: '已撤回' },
+  PUBLISHED: { color: 'green', text: t('已发布', 'Published') },
+  RETRACTED: { color: 'default', text: t('已撤回', 'Retracted') },
 };
 
 const SEND_STATUS_LABELS: Record<string, { color: string; text: string }> = {
-  SUCCESS: { color: 'green', text: '成功' },
-  FAILED: { color: 'red', text: '失败' },
-  SKIPPED: { color: 'orange', text: '跳过' },
+  SUCCESS: { color: 'green', text: t('成功', 'Success') },
+  FAILED: { color: 'red', text: t('失败', 'Failed') },
+  SKIPPED: { color: 'orange', text: t('跳过', 'Skipped') },
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -65,7 +70,7 @@ const formatDateTime = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString('zh-CN', { hour12: false });
+  return date.toLocaleString(isEnglishLocale() ? 'en-US' : 'zh-CN', { hour12: false });
 };
 
 const renderTag = (label?: string | null, color = 'default') => {
@@ -142,11 +147,11 @@ const deliveryLogs = (params: MessageArchiveQuery = {}) =>
   });
 
 const NotificationInboxInfo = ({ descriptionsProps }: { descriptionsProps: Parameters<typeof Descriptions>[0] }) => (
-  <Descriptions {...descriptionsProps} bordered>
-    <Descriptions.Item label="通知标识">inbox_notice</Descriptions.Item>
-    <Descriptions.Item label="状态">已启用</Descriptions.Item>
-    <Descriptions.Item label="能力">消息中心、实时推送、已读状态、撤回</Descriptions.Item>
-    <Descriptions.Item label="说明">站内信是系统默认通知渠道，无需额外配置。</Descriptions.Item>
+    <Descriptions {...descriptionsProps} bordered>
+    <Descriptions.Item label={t('通知标识', 'Notification key')}>inbox_notice</Descriptions.Item>
+    <Descriptions.Item label={t('状态', 'Status')}>{t('已启用', 'Enabled')}</Descriptions.Item>
+    <Descriptions.Item label={t('能力', 'Capabilities')}>{t('消息中心、实时推送、已读状态、撤回', 'Message center, realtime push, read state, retract')}</Descriptions.Item>
+    <Descriptions.Item label={t('说明', 'Description')}>{t('站内信是系统默认通知渠道，无需额外配置。', 'Inbox is the default notification channel and does not require extra configuration.')}</Descriptions.Item>
   </Descriptions>
 );
 
@@ -169,46 +174,46 @@ const NotificationEmailChannelSettingsForm = ({
 }) => (
   <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
     <Form {...smtpFormProps} disabled={loadingSmtpSettings || !canManageSmtp}>
-      <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
-        <Input placeholder="例如：smtp.example.com" />
+      <Form.Item name="host" label={t('SMTP 主机', 'SMTP host')} rules={[{ required: true, message: t('请输入 SMTP 主机', 'Please enter the SMTP host') }]}>
+        <Input placeholder={t('例如：smtp.example.com', 'e.g. smtp.example.com')} />
       </Form.Item>
-      <Form.Item name="port" label="SMTP 端口" rules={[{ required: true, message: '请输入 SMTP 端口' }]}>
+      <Form.Item name="port" label={t('SMTP 端口', 'SMTP port')} rules={[{ required: true, message: t('请输入 SMTP 端口', 'Please enter the SMTP port') }]}>
         <InputNumber min={1} max={65535} style={{ width: '100%' }} />
       </Form.Item>
-      <Form.Item name="username" label="SMTP 用户名">
-        <Input placeholder="SMTP 登录用户名" autoComplete="off" />
+      <Form.Item name="username" label={t('SMTP 用户名', 'SMTP username')}>
+        <Input placeholder={t('SMTP 登录用户名', 'SMTP login username')} autoComplete="off" />
       </Form.Item>
-      <Form.Item name="password" label="SMTP 密码">
-        <Input.Password placeholder="留空则保持现有密码" autoComplete="new-password" />
+      <Form.Item name="password" label={t('SMTP 密码', 'SMTP password')}>
+        <Input.Password placeholder={t('留空则保持现有密码', 'Leave blank to keep the current password')} autoComplete="new-password" />
       </Form.Item>
-      <Form.Item name="from" label="发件人地址" rules={[{ required: true, type: 'email', message: '请输入有效发件人邮箱' }]}>
-        <Input placeholder="例如：notice@example.com" />
+      <Form.Item name="from" label={t('发件人地址', 'From address')} rules={[{ required: true, type: 'email', message: t('请输入有效发件人邮箱', 'Please enter a valid sender email') }]}>
+        <Input placeholder={t('例如：notice@example.com', 'e.g. notice@example.com')} />
       </Form.Item>
-      <Form.Item name="authEnabled" label="SMTP 认证" valuePropName="checked">
+      <Form.Item name="authEnabled" label={t('SMTP 认证', 'SMTP auth')} valuePropName="checked">
         <Switch />
       </Form.Item>
-      <Form.Item name="startTlsEnabled" label="STARTTLS" valuePropName="checked">
+      <Form.Item name="startTlsEnabled" label={t('STARTTLS', 'STARTTLS')} valuePropName="checked">
         <Switch />
       </Form.Item>
-      <Form.Item name="sslEnabled" label="SSL" valuePropName="checked">
+      <Form.Item name="sslEnabled" label={t('SSL', 'SSL')} valuePropName="checked">
         <Switch />
       </Form.Item>
     </Form>
     <Form {...smtpTestFormProps}>
       <Typography.Title level={5} style={{ marginTop: 0 }}>
-        测试发送
+        {t('测试发送', 'Test send')}
       </Typography.Title>
-      <Form.Item name="toEmail" label="测试收件邮箱" rules={[{ required: true, type: 'email', message: '请输入有效邮箱地址' }]}>
-        <Input placeholder="请输入测试收件邮箱" />
+      <Form.Item name="toEmail" label={t('测试收件邮箱', 'Test recipient email')} rules={[{ required: true, type: 'email', message: t('请输入有效邮箱地址', 'Please enter a valid email address') }]}>
+        <Input placeholder={t('请输入测试收件邮箱', 'Enter the test recipient email')} />
       </Form.Item>
-      <Form.Item name="subject" label="测试主题">
+      <Form.Item name="subject" label={t('测试主题', 'Test subject')}>
         <Input />
       </Form.Item>
-      <Form.Item name="content" label="测试内容">
+      <Form.Item name="content" label={t('测试内容', 'Test content')}>
         <Input.TextArea rows={4} />
       </Form.Item>
       <Button loading={testingSmtpSettings} disabled={!canManageSmtp} onClick={onTestSmtpSettings}>
-        发送测试邮件
+        {t('发送测试邮件', 'Send test email')}
       </Button>
     </Form>
   </Space>
@@ -226,22 +231,22 @@ const NotificationWechatOfficialChannelSettingsForm = ({
   formProps: FormProps<WechatOfficialAccountSettings>;
 }) => (
   <Form {...formProps} disabled={loadingWechatOfficialSettings || !canManageSmtp}>
-    <Form.Item name="appId" label="AppID" rules={[{ required: true, message: '请输入微信公众号 AppID' }]}>
-      <Input placeholder="微信公众号或服务号 AppID" />
+    <Form.Item name="appId" label={t('AppID', 'AppID')} rules={[{ required: true, message: t('请输入微信公众号 AppID', 'Please enter the official account AppID') }]}>
+      <Input placeholder={t('微信公众号或服务号 AppID', 'Official account or service account AppID')} />
     </Form.Item>
     <Form.Item
       name="appSecret"
-      label="AppSecret"
-      rules={!wechatOfficialAppSecretConfigured ? [{ required: true, message: '请输入微信公众号 AppSecret' }] : undefined}
-      extra={wechatOfficialAppSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '用于获取公众号 access_token'}
+      label={t('AppSecret', 'AppSecret')}
+      rules={!wechatOfficialAppSecretConfigured ? [{ required: true, message: t('请输入微信公众号 AppSecret', 'Please enter the official account AppSecret') }] : undefined}
+      extra={wechatOfficialAppSecretConfigured ? t('当前密钥已脱敏显示，留空则保持现有密钥', 'The current secret is masked. Leave blank to keep the existing one.') : t('用于获取公众号 access_token', 'Used to obtain the official account access_token')}
     >
-      <Input.Password placeholder="留空则保持现有密钥" autoComplete="new-password" />
+      <Input.Password placeholder={t('留空则保持现有密钥', 'Leave blank to keep the existing secret')} autoComplete="new-password" />
     </Form.Item>
-    <Form.Item name="templateId" label="模板消息 ID" rules={[{ required: true, message: '请输入模板消息 ID' }]}>
-      <Input placeholder="公众号后台配置的模板消息 ID" />
+    <Form.Item name="templateId" label={t('模板消息 ID', 'Template message ID')} rules={[{ required: true, message: t('请输入模板消息 ID', 'Please enter the template message ID') }]}>
+      <Input placeholder={t('公众号后台配置的模板消息 ID', 'Template message ID configured in the official account admin console')} />
     </Form.Item>
-    <Form.Item name="detailUrl" label="通知详情链接" extra="模板消息点击后打开的页面，可留空">
-      <Input placeholder="例如：https://test.elexvx.com/messages" />
+    <Form.Item name="detailUrl" label={t('通知详情链接', 'Notification detail URL')} extra={t('模板消息点击后打开的页面，可留空', 'Page opened after clicking the template message, optional')}>
+      <Input placeholder={t('例如：https://test.elexvx.com/messages', 'e.g. https://test.example.com/messages')} />
     </Form.Item>
   </Form>
 );
@@ -257,13 +262,13 @@ const buildArchiveColumns = ({
 }): ProColumns<MessageNoticeRecord>[] => {
   const columns = [
     {
-      title: '关键字',
+      title: t('关键字', 'Keyword'),
       dataIndex: 'keyword',
       hideInTable: true,
       renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
     },
     {
-      title: '标题',
+      title: t('标题', 'Title'),
       dataIndex: 'title',
       ellipsis: true,
       copyable: true,
@@ -271,15 +276,15 @@ const buildArchiveColumns = ({
       render: (_: unknown, record: MessageNoticeRecord) => <Typography.Text strong>{record.title}</Typography.Text>,
     },
     {
-      title: '目标范围',
+      title: t('目标范围', 'Target scope'),
       dataIndex: 'targetScope',
       width: 'var(--saas-spacing-120)',
-      valueEnum: { TENANT: { text: '全员' }, USER: { text: '指定用户' }, ROLE: { text: '角色分组' } },
-      renderFormItem: () => <Select allowClear options={[{ label: '全员', value: 'TENANT' }, { label: '指定用户', value: 'USER' }, { label: '角色分组', value: 'ROLE' }]} placeholder="全部" />,
+      valueEnum: { TENANT: { text: t('全员', 'All users') }, USER: { text: t('指定用户', 'Specific users') }, ROLE: { text: t('角色分组', 'Role groups') } },
+      renderFormItem: () => <Select allowClear options={[{ label: t('全员', 'All users'), value: 'TENANT' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} placeholder={t('全部', 'All')} />,
       render: (_: unknown, record: MessageNoticeRecord) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
     },
     {
-      title: '目标用户',
+      title: t('目标用户', 'Target user'),
       dataIndex: 'targetUserName',
       width: 'var(--saas-spacing-160)',
       search: false,
@@ -287,7 +292,7 @@ const buildArchiveColumns = ({
       render: (_: unknown, record: MessageNoticeRecord) => (record.targetScope === 'USER' ? record.targetUserName || (record.targetUserId ? String(record.targetUserId) : '-') : '-'),
     },
     {
-      title: '目标角色',
+      title: t('目标角色', 'Target role'),
       dataIndex: 'targetRoleName',
       width: 'var(--saas-spacing-160)',
       search: false,
@@ -295,15 +300,15 @@ const buildArchiveColumns = ({
       render: (_: unknown, record: MessageNoticeRecord) => (record.targetScope === 'ROLE' ? record.targetRoleName || (record.targetRoleId ? String(record.targetRoleId) : '-') : '-'),
     },
     {
-      title: '状态',
+      title: t('状态', 'Status'),
       dataIndex: 'publishStatus',
       width: 'var(--saas-spacing-110)',
-      valueEnum: { PUBLISHED: { text: '已发布' }, RETRACTED: { text: '已撤回' } },
-      renderFormItem: () => <Select allowClear options={[{ label: '已发布', value: 'PUBLISHED' }, { label: '已撤回', value: 'RETRACTED' }]} placeholder="全部" />,
+      valueEnum: { PUBLISHED: { text: t('已发布', 'Published') }, RETRACTED: { text: t('已撤回', 'Retracted') } },
+      renderFormItem: () => <Select allowClear options={[{ label: t('已发布', 'Published'), value: 'PUBLISHED' }, { label: t('已撤回', 'Retracted'), value: 'RETRACTED' }]} placeholder={t('全部', 'All')} />,
       render: (_: unknown, record: MessageNoticeRecord) => renderEnumTag(record.publishStatus, PUBLISH_STATUS_LABELS),
     },
     {
-      title: '发布时间',
+      title: t('发布时间', 'Published at'),
       dataIndex: 'publishedAt',
       width: 'var(--saas-spacing-180)',
       search: false,
@@ -311,22 +316,22 @@ const buildArchiveColumns = ({
       render: (_: unknown, record: MessageNoticeRecord) => formatDateTime(record.publishedAt || record.createdAt),
     },
     {
-      title: '发布时间范围',
+      title: t('发布时间范围', 'Published at range'),
       dataIndex: 'publishedAtRange',
       hideInTable: true,
       renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
       search: buildRangeSearch(),
     },
     {
-      title: '操作',
+      title: t('操作', 'Actions'),
       valueType: 'option',
       width: 'var(--saas-spacing-160)',
       render: (_: unknown, record: MessageNoticeRecord) => (
         <TableActionBar
           isMobile={false}
           items={[
-            { key: 'detail', label: '详情', onClick: () => handleOpenDetail(record) },
-            { key: 'retract', label: '撤回', danger: true, hidden: record.publishStatus === 'RETRACTED' || !canRetractMessage, onClick: () => void handleRetract(record) },
+            { key: 'detail', label: t('详情', 'Details'), onClick: () => handleOpenDetail(record) },
+            { key: 'retract', label: t('撤回', 'Retract'), danger: true, hidden: record.publishStatus === 'RETRACTED' || !canRetractMessage, onClick: () => void handleRetract(record) },
           ]}
         />
       ),
@@ -339,13 +344,13 @@ const buildArchiveColumns = ({
 const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
   const columns = [
     {
-      title: '关键字',
+      title: t('关键字', 'Keyword'),
       dataIndex: 'keyword',
       hideInTable: true,
       renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
     },
     {
-      title: '标题',
+      title: t('标题', 'Title'),
       dataIndex: 'title',
       ellipsis: true,
       copyable: true,
@@ -353,30 +358,30 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       render: (_: unknown, record: MessageDeliveryLogRecord) => <Typography.Text strong>{record.title}</Typography.Text>,
     },
     {
-      title: '渠道',
+      title: t('渠道', 'Channel'),
       dataIndex: 'channel',
       width: 'var(--saas-spacing-110)',
-      valueEnum: { INBOX: { text: '站内信' }, EMAIL: { text: '邮箱' }, WECHAT_OFFICIAL: { text: '微信' } },
-      renderFormItem: () => <Select allowClear options={[{ label: '站内信', value: 'INBOX' }, { label: '邮箱', value: 'EMAIL' }, { label: '微信', value: 'WECHAT_OFFICIAL' }]} placeholder="全部" />,
+      valueEnum: { INBOX: { text: t('站内信', 'Inbox') }, EMAIL: { text: t('邮箱', 'Email') }, WECHAT_OFFICIAL: { text: t('微信', 'WeChat') } },
+      renderFormItem: () => <Select allowClear options={[{ label: t('站内信', 'Inbox'), value: 'INBOX' }, { label: t('邮箱', 'Email'), value: 'EMAIL' }, { label: t('微信', 'WeChat'), value: 'WECHAT_OFFICIAL' }]} placeholder={t('全部', 'All')} />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderEnumTag(record.channel, CHANNEL_LABELS),
     },
     {
-      title: '状态',
+      title: t('状态', 'Status'),
       dataIndex: 'sendStatus',
       width: 'var(--saas-spacing-110)',
-      valueEnum: { SUCCESS: { text: '成功' }, FAILED: { text: '失败' }, SKIPPED: { text: '跳过' } },
-      renderFormItem: () => <Select allowClear options={[{ label: '成功', value: 'SUCCESS' }, { label: '失败', value: 'FAILED' }, { label: '跳过', value: 'SKIPPED' }]} placeholder="全部" />,
+      valueEnum: { SUCCESS: { text: t('成功', 'Success') }, FAILED: { text: t('失败', 'Failed') }, SKIPPED: { text: t('跳过', 'Skipped') } },
+      renderFormItem: () => <Select allowClear options={[{ label: t('成功', 'Success'), value: 'SUCCESS' }, { label: t('失败', 'Failed'), value: 'FAILED' }, { label: t('跳过', 'Skipped'), value: 'SKIPPED' }]} placeholder={t('全部', 'All')} />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderEnumTag(record.sendStatus, SEND_STATUS_LABELS),
     },
     {
-      title: '目标范围',
+      title: t('目标范围', 'Target scope'),
       dataIndex: 'targetScope',
       width: 'var(--saas-spacing-120)',
-      renderFormItem: () => <Select allowClear options={[{ label: '全员', value: 'TENANT' }, { label: '指定用户', value: 'USER' }, { label: '角色分组', value: 'ROLE' }]} placeholder="全部" />,
+      renderFormItem: () => <Select allowClear options={[{ label: t('全员', 'All users'), value: 'TENANT' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} placeholder={t('全部', 'All')} />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
     },
     {
-      title: '收件人',
+      title: t('收件人', 'Recipient'),
       dataIndex: 'targetUserName',
       width: 'var(--saas-spacing-160)',
       search: false,
@@ -384,7 +389,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       render: (_: unknown, record: MessageDeliveryLogRecord) => record.targetUserName || (record.targetUserId ? String(record.targetUserId) : '-'),
     },
     {
-      title: '接收标识',
+      title: t('接收标识', 'Recipient identifier'),
       dataIndex: 'targetEmail',
       width: 'var(--saas-spacing-220)',
       ellipsis: true,
@@ -393,7 +398,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       render: (_: unknown, record: MessageDeliveryLogRecord) => record.targetEmail || '-',
     },
     {
-      title: '错误信息',
+      title: t('错误信息', 'Error message'),
       dataIndex: 'errorMessage',
       ellipsis: true,
       search: false,
@@ -401,7 +406,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       render: (_: unknown, record: MessageDeliveryLogRecord) => record.errorMessage || '-',
     },
     {
-      title: '发送时间',
+      title: t('发送时间', 'Sent at'),
       dataIndex: 'createdAt',
       width: 'var(--saas-spacing-180)',
       search: false,
@@ -409,7 +414,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       render: (_: unknown, record: MessageDeliveryLogRecord) => formatDateTime(record.sentAt || record.createdAt),
     },
     {
-      title: '发送时间范围',
+      title: t('发送时间范围', 'Sent at range'),
       dataIndex: 'publishedAtRange',
       hideInTable: true,
       renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
@@ -441,19 +446,19 @@ const buildChannelColumns = ({
   handleDisableChannel: (record: NotificationChannelRecord) => void;
   handleOpenChannelDrawer: (record: NotificationChannelRecord) => void;
 }): ProColumns<NotificationChannelRecord>[] => [
-  { title: '序号', dataIndex: 'order', width: 'var(--saas-spacing-80)', search: false },
-  { title: '通知标识', dataIndex: 'identifier', width: 'var(--saas-spacing-180)', copyable: true, search: false },
+  { title: t('序号', 'No.'), dataIndex: 'order', width: 'var(--saas-spacing-80)', search: false },
+  { title: t('通知标识', 'Notification key'), dataIndex: 'identifier', width: 'var(--saas-spacing-180)', copyable: true, search: false },
   {
-    title: '通知类型',
+    title: t('通知类型', 'Notification type'),
     dataIndex: 'type',
     width: 'var(--saas-spacing-140)',
     search: false,
     render: (_: unknown, record: NotificationChannelRecord) => renderTag(record.type, CHANNEL_LABELS[record.key]?.color || 'blue'),
   },
-  { title: '标题', dataIndex: 'title', width: 'var(--saas-spacing-160)', search: false, render: (_: unknown, record: NotificationChannelRecord) => <Typography.Text strong>{record.title}</Typography.Text> },
-  { title: '描述', dataIndex: 'description', width: 'var(--saas-spacing-220)', search: false, ellipsis: true },
+  { title: t('标题', 'Title'), dataIndex: 'title', width: 'var(--saas-spacing-160)', search: false, render: (_: unknown, record: NotificationChannelRecord) => <Typography.Text strong>{record.title}</Typography.Text> },
+  { title: t('描述', 'Description'), dataIndex: 'description', width: 'var(--saas-spacing-220)', search: false, ellipsis: true },
   {
-    title: '启用',
+    title: t('启用', 'Enabled'),
     dataIndex: 'enabled',
     width: 'var(--saas-spacing-120)',
     align: 'center',
@@ -461,7 +466,7 @@ const buildChannelColumns = ({
     render: (_: unknown, record: NotificationChannelRecord) => (record.enabled ? <CheckOutlined style={{ color: tokenColorSuccess }} /> : null),
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     width: 'var(--saas-spacing-240)',
     fixed: isDesktop ? 'right' : undefined,
@@ -472,7 +477,7 @@ const buildChannelColumns = ({
         items={[
           {
             key: 'toggle',
-            label: '禁用',
+            label: t('禁用', 'Disable'),
             danger: true,
             disabled: !canManageSmtp || record.key === 'INBOX',
             loading: togglingChannelKey === record.key,
@@ -480,23 +485,23 @@ const buildChannelColumns = ({
           },
           {
             key: 'config',
-            label: '配置',
+            label: t('配置', 'Configure'),
             onClick: () => handleOpenChannelDrawer(record),
           },
           {
             key: 'logs',
-            label: '日志',
+            label: t('日志', 'Logs'),
             onClick: () => setLogOpen(true),
           },
           {
             key: 'archive',
-            label: '归档',
+            label: t('归档', 'Archive'),
             hidden: record.key !== 'INBOX',
             onClick: () => setArchiveOpen(true),
           },
           {
             key: 'delete',
-            label: '删除',
+            label: t('删除', 'Delete'),
             danger: true,
             disabled: !canManageSmtp || record.key === 'INBOX',
             onClick: () => void handleDisableChannel(record),
@@ -593,14 +598,14 @@ const NotificationsPage = () => {
   };
 
   return (
-    <ManagementPage title="通知中心">
+    <ManagementPage title={t('通知中心', 'Notification center')}>
       <ManagementPageBody>
         <ManagementTable
           rowKey="key"
           columns={channelColumns}
           dataSource={notificationCenter.channelRecords}
           isMobile={responsive.isMobile}
-          pagination={{ pageSize: 50, showSizeChanger: true }}
+          pagination={{ pageSize: DEFAULT_TABLE_PAGE_SIZE, showSizeChanger: true }}
           search={false}
           tableAlertRender={false}
           rowSelection={{
@@ -611,19 +616,19 @@ const NotificationsPage = () => {
           toolBarRender={() => [
             <Popconfirm
               key="delete"
-              title="删除通知渠道"
-              description="选中的通知渠道会被停用，站内信会保留。"
-              okText="确认"
-              cancelText="取消"
+              title={t('删除通知渠道', 'Delete notification channels')}
+              description={t('选中的通知渠道会被停用，站内信会保留。', 'The selected channels will be disabled. Inbox will be kept.')}
+              okText={t('确认', 'Confirm')}
+              cancelText={t('取消', 'Cancel')}
               onConfirm={() => void notificationCenter.handleDeleteSelectedChannels()}
             >
               <Button disabled={!canManageSmtp} icon={<DeleteOutlined />}>
-                删除
+                {t('删除', 'Delete')}
               </Button>
             </Popconfirm>,
             <Dropdown key="add" trigger={['click']} menu={{ items: notificationCenter.addChannelItems }} placement="bottomRight">
               <Button type="primary" disabled={!notificationCenter.addChannelItems?.length} icon={<PlusOutlined />}>
-                添加 <DownOutlined />
+                {t('添加', 'Add')} <DownOutlined />
               </Button>
             </Dropdown>,
           ]}
@@ -631,19 +636,19 @@ const NotificationsPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={notificationCenter.channelRecord ? `配置${notificationCenter.channelRecord.title}` : '配置通知渠道'}
+        title={notificationCenter.channelRecord ? t(`配置${notificationCenter.channelRecord.title}`, `Configure ${notificationCenter.channelRecord.title}`) : t('配置通知渠道', 'Configure notification channel')}
         open={notificationCenter.channelDrawerOpen}
         onClose={notificationCenter.closeChannelDrawer}
         footerActions={
           notificationCenter.channelRecord?.key === 'EMAIL'
             ? [
-                { key: 'cancel', label: '取消', onClick: notificationCenter.closeChannelDrawer },
-                { key: 'save', label: '保存', type: 'primary' as const, loading: notificationCenter.savingSmtpSettings, disabled: !canManageSmtp, onClick: notificationCenter.handleSaveSmtpSettings },
+                { key: 'cancel', label: t('取消', 'Cancel'), onClick: notificationCenter.closeChannelDrawer },
+                { key: 'save', label: t('保存', 'Save'), type: 'primary' as const, loading: notificationCenter.savingSmtpSettings, disabled: !canManageSmtp, onClick: notificationCenter.handleSaveSmtpSettings },
               ]
             : notificationCenter.channelRecord?.key === 'WECHAT_OFFICIAL'
               ? [
-                  { key: 'cancel', label: '取消', onClick: notificationCenter.closeChannelDrawer },
-                  { key: 'save', label: '保存', type: 'primary' as const, loading: notificationCenter.savingWechatOfficialSettings, disabled: !canManageSmtp, onClick: notificationCenter.handleSaveWechatOfficialSettings },
+                  { key: 'cancel', label: t('取消', 'Cancel'), onClick: notificationCenter.closeChannelDrawer },
+                  { key: 'save', label: t('保存', 'Save'), type: 'primary' as const, loading: notificationCenter.savingWechatOfficialSettings, disabled: !canManageSmtp, onClick: notificationCenter.handleSaveWechatOfficialSettings },
                 ]
               : undefined
         }
@@ -670,7 +675,7 @@ const NotificationsPage = () => {
         )}
       </ManagementDrawer>
 
-      <ManagementDrawer title="通知发送日志" open={notificationCenter.logOpen} onClose={() => notificationCenter.setLogOpen(false)} destroyOnHidden>
+      <ManagementDrawer title={t('通知发送日志', 'Notification delivery logs')} open={notificationCenter.logOpen} onClose={() => notificationCenter.setLogOpen(false)} destroyOnHidden>
         <ManagementTable<MessageDeliveryLogRecord>
           actionRef={logActionRef}
           rowKey="id"
@@ -683,7 +688,7 @@ const NotificationsPage = () => {
         />
       </ManagementDrawer>
 
-      <ManagementDrawer title="通知归档" open={notificationCenter.archiveOpen} onClose={() => notificationCenter.setArchiveOpen(false)} destroyOnHidden>
+      <ManagementDrawer title={t('通知归档', 'Notification archive')} open={notificationCenter.archiveOpen} onClose={() => notificationCenter.setArchiveOpen(false)} destroyOnHidden>
         <ManagementTable<MessageNoticeRecord>
           actionRef={archiveActionRef}
           rowKey="id"
@@ -699,13 +704,13 @@ const NotificationsPage = () => {
       </ManagementDrawer>
 
       <ManagementDrawer
-        title={notificationCenter.detailRecord ? `通知详情 · ${notificationCenter.detailRecord.title}` : '通知详情'}
+        title={notificationCenter.detailRecord ? t(`通知详情 · ${notificationCenter.detailRecord.title}`, `Notification details · ${notificationCenter.detailRecord.title}`) : t('通知详情', 'Notification details')}
         open={notificationCenter.detailOpen}
         onClose={notificationCenter.handleCloseDetail}
         extra={
           notificationCenter.detailRecord && notificationCenter.detailRecord.publishStatus === 'PUBLISHED' ? (
             <Button danger disabled={!canRetractMessage} onClick={() => void notificationCenter.handleRetract(notificationCenter.detailRecord!)}>
-              撤回
+              {t('撤回', 'Retract')}
             </Button>
           ) : null
         }
@@ -713,29 +718,29 @@ const NotificationsPage = () => {
         {notificationCenter.detailRecord ? (
           <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
             <Descriptions {...detailDescriptionsProps} bordered>
-              <Descriptions.Item label="标题">{notificationCenter.detailRecord.title}</Descriptions.Item>
-              <Descriptions.Item label="目标范围">{TARGET_SCOPE_LABELS[notificationCenter.detailRecord.targetScope] || notificationCenter.detailRecord.targetScope}</Descriptions.Item>
-              <Descriptions.Item label="目标用户">
+              <Descriptions.Item label={t('标题', 'Title')}>{notificationCenter.detailRecord.title}</Descriptions.Item>
+              <Descriptions.Item label={t('目标范围', 'Target scope')}>{TARGET_SCOPE_LABELS[notificationCenter.detailRecord.targetScope] || notificationCenter.detailRecord.targetScope}</Descriptions.Item>
+              <Descriptions.Item label={t('目标用户', 'Target user')}>
                 {notificationCenter.detailRecord.targetScope === 'USER'
                   ? notificationCenter.detailRecord.targetUserName || (notificationCenter.detailRecord.targetUserId ? String(notificationCenter.detailRecord.targetUserId) : '-')
                   : '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="目标角色">
+              <Descriptions.Item label={t('目标角色', 'Target role')}>
                 {notificationCenter.detailRecord.targetScope === 'ROLE'
                   ? notificationCenter.detailRecord.targetRoleName || (notificationCenter.detailRecord.targetRoleId ? String(notificationCenter.detailRecord.targetRoleId) : '-')
                   : '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="状态">{PUBLISH_STATUS_LABELS[notificationCenter.detailRecord.publishStatus]?.text || notificationCenter.detailRecord.publishStatus}</Descriptions.Item>
-              <Descriptions.Item label="发布时间">{formatDateTime(notificationCenter.detailRecord.publishedAt || notificationCenter.detailRecord.createdAt)}</Descriptions.Item>
-              <Descriptions.Item label="当前阅读状态">{notificationCenter.detailRecord.readFlag ? '已读' : '未读'}</Descriptions.Item>
-              <Descriptions.Item label="创建人 ID">{notificationCenter.detailRecord.createdBy ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="更新人 ID">{notificationCenter.detailRecord.updatedBy ?? '-'}</Descriptions.Item>
-              <Descriptions.Item label="已读时间">{formatDateTime(notificationCenter.detailRecord.readAt)}</Descriptions.Item>
-              <Descriptions.Item label="更新时间">{formatDateTime(notificationCenter.detailRecord.updatedAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('状态', 'Status')}>{PUBLISH_STATUS_LABELS[notificationCenter.detailRecord.publishStatus]?.text || notificationCenter.detailRecord.publishStatus}</Descriptions.Item>
+              <Descriptions.Item label={t('发布时间', 'Published at')}>{formatDateTime(notificationCenter.detailRecord.publishedAt || notificationCenter.detailRecord.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('当前阅读状态', 'Read status')}>{notificationCenter.detailRecord.readFlag ? t('已读', 'Read') : t('未读', 'Unread')}</Descriptions.Item>
+              <Descriptions.Item label={t('创建人 ID', 'Creator ID')}>{notificationCenter.detailRecord.createdBy ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('更新人 ID', 'Updater ID')}>{notificationCenter.detailRecord.updatedBy ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('已读时间', 'Read at')}>{formatDateTime(notificationCenter.detailRecord.readAt)}</Descriptions.Item>
+              <Descriptions.Item label={t('更新时间', 'Updated at')}>{formatDateTime(notificationCenter.detailRecord.updatedAt)}</Descriptions.Item>
             </Descriptions>
             <div>
               <Typography.Title level={5} style={{ marginTop: 0 }}>
-                内容
+                {t('内容', 'Content')}
               </Typography.Title>
               <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>{notificationCenter.detailRecord.content}</Typography.Paragraph>
             </div>
@@ -744,14 +749,14 @@ const NotificationsPage = () => {
       </ManagementDrawer>
 
       <ManagementDrawer
-        title="手动发布通知"
+        title={t('手动发布通知', 'Manually publish notification')}
         open={notificationCenter.publishOpen}
         onClose={notificationCenter.closePublishDrawer}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: notificationCenter.closePublishDrawer },
+          { key: 'cancel', label: t('取消', 'Cancel'), onClick: notificationCenter.closePublishDrawer },
           {
             key: 'publish',
-            label: '发送',
+            label: t('发送', 'Send'),
             type: 'primary',
             loading: notificationCenter.publishing,
             disabled: !canManualPublish,
@@ -767,42 +772,42 @@ const NotificationsPage = () => {
             }
           }}
         >
-          <Form.Item name="channels" label="通知渠道" rules={[{ required: true, message: '请选择通知渠道' }]}>
+          <Form.Item name="channels" label={t('通知渠道', 'Notification channels')} rules={[{ required: true, message: t('请选择通知渠道', 'Please select at least one channel') }]}>
             <Select
               mode="multiple"
               options={[
-                { label: '站内信', value: 'INBOX' },
-                { label: '邮箱', value: 'EMAIL' },
-                { label: '微信', value: 'WECHAT_OFFICIAL' },
+                { label: t('站内信', 'Inbox'), value: 'INBOX' },
+                { label: t('邮箱', 'Email'), value: 'EMAIL' },
+                { label: t('微信', 'WeChat'), value: 'WECHAT_OFFICIAL' },
               ]}
             />
           </Form.Item>
           <Form.Item
             name="title"
-            label="通知标题"
-            rules={[{ required: true, message: '请输入通知标题' }, { max: 128, message: '标题长度不能超过 128 个字符' }]}
+            label={t('通知标题', 'Notification title')}
+            rules={[{ required: true, message: t('请输入通知标题', 'Please enter a notification title') }, { max: 128, message: t('标题长度不能超过 128 个字符', 'The title cannot exceed 128 characters') }]}
           >
-            <Input placeholder="例如：系统维护提醒" />
+            <Input placeholder={t('例如：系统维护提醒', 'e.g. System maintenance notice')} />
           </Form.Item>
           <Form.Item
             name="content"
-            label="通知内容"
-            rules={[{ required: true, message: '请输入通知内容' }, { max: 2000, message: '内容长度不能超过 2000 个字符' }]}
+            label={t('通知内容', 'Notification content')}
+            rules={[{ required: true, message: t('请输入通知内容', 'Please enter notification content') }, { max: 2000, message: t('内容长度不能超过 2000 个字符', 'The content cannot exceed 2000 characters') }]}
           >
-            <Input.TextArea rows={8} placeholder="请输入要发送给用户的通知内容" />
+            <Input.TextArea rows={8} placeholder={t('请输入要发送给用户的通知内容', 'Enter the content to send to users')} />
           </Form.Item>
-          <Form.Item name="targetScope" label="目标范围" rules={[{ required: true, message: '请选择目标范围' }]}>
-            <Select options={[{ label: '全员', value: 'TENANT' }, { label: '指定用户', value: 'USER' }, { label: '角色分组', value: 'ROLE' }]} />
+          <Form.Item name="targetScope" label={t('目标范围', 'Target scope')} rules={[{ required: true, message: t('请选择目标范围', 'Please select a target scope') }]}>
+            <Select options={[{ label: t('全员', 'All users'), value: 'TENANT' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} />
           </Form.Item>
           {publishTargetScope === 'USER' ? (
             <Form.Item
               name="targetUserId"
-              label="目标用户名"
+              label={t('目标用户名', 'Target username')}
               rules={[
                 {
                   validator: async (_, value) => {
                     if (publishTargetScope === 'USER' && !value) {
-                      throw new Error('请选择目标用户名');
+                      throw new Error(t('请选择目标用户名', 'Please select a target username'));
                     }
                   },
                 },
@@ -813,26 +818,26 @@ const NotificationsPage = () => {
                 showSearch
                 filterOption={false}
                 loading={notificationCenter.userLoading}
-                placeholder="输入用户名搜索"
+                placeholder={t('输入用户名搜索', 'Search by username')}
                 searchValue={notificationCenter.userSearch}
                 onSearch={(value) => notificationCenter.setUserSearch(value.trim())}
                 options={notificationCenter.userOptions.map((item) => {
                   const displayName = item.realName || item.nickname;
                   return { label: displayName ? `${item.username} · ${displayName}` : item.username, value: item.id };
                 })}
-                notFoundContent={notificationCenter.userLoading ? '加载中...' : '暂无匹配用户'}
+                notFoundContent={notificationCenter.userLoading ? t('加载中...', 'Loading...') : t('暂无匹配用户', 'No matching users')}
               />
             </Form.Item>
           ) : null}
           {publishTargetScope === 'ROLE' ? (
             <Form.Item
               name="targetRoleId"
-              label="角色分组"
+              label={t('角色分组', 'Role groups')}
               rules={[
                 {
                   validator: async (_, value) => {
                     if (publishTargetScope === 'ROLE' && !value) {
-                      throw new Error('请选择角色分组');
+                      throw new Error(t('请选择角色分组', 'Please select a role group'));
                     }
                   },
                 },
@@ -842,10 +847,10 @@ const NotificationsPage = () => {
                 allowClear
                 showSearch
                 loading={notificationCenter.roleLoading}
-                placeholder="请选择角色分组"
+                placeholder={t('请选择角色分组', 'Select a role group')}
                 filterOption={(input, option) => String(option?.label || '').toLowerCase().includes(input.toLowerCase())}
                 options={notificationCenter.roleOptions.map((item) => ({ label: item.roleName, value: item.id }))}
-                notFoundContent={notificationCenter.roleLoading ? '加载中...' : '暂无角色'}
+                notFoundContent={notificationCenter.roleLoading ? t('加载中...', 'Loading...') : t('暂无角色', 'No roles')}
               />
             </Form.Item>
           ) : null}

@@ -5,6 +5,11 @@ import { useResponsive } from '@/hooks/useResponsive';
 import type { BrandingSettings, WatermarkSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -91,9 +96,11 @@ const renderImageUploadPreviewField = ({
               style={{ objectFit: 'contain' }}
             />
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="点击或拖拽上传" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('点击或拖拽上传', 'Click or drag to upload')} />
           )}
-          <Typography.Text type="secondary">{isUploading ? '上传中...' : previewSrc ? '点击或拖拽更换图片' : '点击或拖拽上传图片'}</Typography.Text>
+          <Typography.Text type="secondary">
+            {isUploading ? t('上传中...', 'Uploading...') : previewSrc ? t('点击或拖拽更换图片', 'Click or drag to replace the image') : t('点击或拖拽上传图片', 'Click or drag to upload an image')}
+          </Typography.Text>
         </div>
       </Upload.Dragger>
       <Button icon={<DeleteOutlined />} onClick={onClear} disabled={!canUpdate || !previewSrc}>
@@ -122,16 +129,16 @@ export const WatermarkTab = ({
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="enabled" label="启用水印" valuePropName="checked">
+        <Form.Item name="enabled" label={t('启用水印', 'Enable watermark')} valuePropName="checked">
           <Switch />
         </Form.Item>
-        <Form.Item name="mode" label="模式">
-          <Segmented options={[{ label: '文字', value: 'TEXT' }, { label: '图片', value: 'IMAGE' }]} />
+        <Form.Item name="mode" label={t('模式', 'Mode')}>
+          <Segmented options={[{ label: t('文字', 'Text'), value: 'TEXT' }, { label: t('图片', 'Image'), value: 'IMAGE' }]} />
         </Form.Item>
         {watermarkPreview.mode !== 'IMAGE' ? (
           <Form.Item
             name="textLines"
-            label="多行文字（每行一个）"
+            label={t('多行文字（每行一个）', 'Multiple lines of text (one per line)')}
             getValueProps={(value?: string[]) => ({ value: (value || []).join('\n') })}
             getValueFromEvent={(event: { target: { value: string } }) =>
               event.target.value
@@ -140,7 +147,7 @@ export const WatermarkTab = ({
                 .filter(Boolean)
             }
           >
-            <Input.TextArea rows={4} placeholder="每行输入一条水印文字" />
+            <Input.TextArea rows={4} placeholder={t('每行输入一条水印文字', 'Enter one watermark line per row')} />
           </Form.Item>
         ) : null}
 
@@ -148,7 +155,7 @@ export const WatermarkTab = ({
           <Input />
         </Form.Item>
         {watermarkPreview.mode === 'IMAGE' ? (
-          <Form.Item label="水印图片">
+          <Form.Item label={t('水印图片', 'Watermark image')}>
             {renderImageUploadPreviewField({
               target: 'watermark',
               previewSrc: watermarkPreview.imageUrl,
@@ -158,7 +165,7 @@ export const WatermarkTab = ({
               cardHeight: 100,
               imageWidth: 180,
               imageHeight: 100,
-              clearLabel: '清除',
+              clearLabel: t('清除', 'Clear'),
               onUpload,
               onClear: onClearWatermarkImage,
               tagWrapGap,
@@ -166,27 +173,27 @@ export const WatermarkTab = ({
           </Form.Item>
         ) : null}
 
-        <Form.Item name="fontColor" label="字体颜色">
+        <Form.Item name="fontColor" label={t('字体颜色', 'Font color')}>
           <Input />
         </Form.Item>
-        <Form.Item name="fontSize" label="字号">
+        <Form.Item name="fontSize" label={t('字号', 'Font size')}>
           <InputNumber min={10} max={48} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="gapX" label="横向间距">
+        <Form.Item name="gapX" label={t('横向间距', 'Horizontal spacing')}>
           <InputNumber min={40} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="gapY" label="纵向间距">
+        <Form.Item name="gapY" label={t('纵向间距', 'Vertical spacing')}>
           <InputNumber min={40} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="rotate" label="旋转">
+        <Form.Item name="rotate" label={t('旋转', 'Rotation')}>
           <InputNumber style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="opacity" label="透明度">
+        <Form.Item name="opacity" label={t('透明度', 'Opacity')}>
           <InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} />
         </Form.Item>
       </Form>
 
-      <Card title="预览">
+      <Card title={t('预览', 'Preview')}>
         <Watermark
           content={watermarkPreview.mode === 'TEXT' ? watermarkPreview.textLines : undefined}
           image={watermarkPreview.mode === 'IMAGE' ? normalizeUploadUrl(watermarkPreview.imageUrl) : undefined}
@@ -206,7 +213,7 @@ export const WatermarkTab = ({
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="primary" loading={watermarkSaving} disabled={!canUpdate} onClick={onSave}>
-          保存设置
+          {t('保存设置', 'Save settings')}
         </Button>
       </div>
     </Space>

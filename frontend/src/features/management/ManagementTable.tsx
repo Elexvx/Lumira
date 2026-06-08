@@ -1,5 +1,6 @@
 import { ProTable, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
 import { Button, type TablePaginationConfig, type TableProps } from 'antd';
+import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 
 type ManagementTableOptions = Exclude<ProTableProps<object, Record<string, unknown>>['options'], false | undefined>;
 
@@ -92,7 +93,7 @@ const buildMobilePagination = (pagination: MobilePagination | boolean, isMobile:
   }
 
   if (pagination === true) {
-    return { simple: true, showSizeChanger: false };
+    return { simple: true, showSizeChanger: false, pageSize: DEFAULT_TABLE_PAGE_SIZE };
   }
 
   if (typeof pagination !== 'object') {
@@ -101,6 +102,7 @@ const buildMobilePagination = (pagination: MobilePagination | boolean, isMobile:
 
   return {
     ...pagination,
+    pageSize: pagination.pageSize ?? DEFAULT_TABLE_PAGE_SIZE,
     simple: true,
     showSizeChanger: false,
   } as MobilePagination;
@@ -144,7 +146,7 @@ const buildManagementToolbar = <
 
   return () => [
     <Button key="refresh" onClick={() => void onRefresh()}>
-      刷新
+      Refresh
     </Button>,
   ];
 };
@@ -152,7 +154,7 @@ const buildManagementToolbar = <
 export const ManagementTable = <RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   isMobile,
-  pagination = { showSizeChanger: true },
+  pagination = { showSizeChanger: true, pageSize: DEFAULT_TABLE_PAGE_SIZE },
   options,
   onRefresh,
   scroll,

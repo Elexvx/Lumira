@@ -26,6 +26,11 @@ import { WatermarkTab } from './personalization/components/WatermarkTab';
 import { DEFAULT_AGREEMENT_SETTINGS } from '@/agreement/settings';
 import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { useStandardFormProps } from '@/features/form/config';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type PersonalizationTabKey = 'branding' | 'watermark' | 'floating' | 'agreement';
 
@@ -49,7 +54,7 @@ const isAllowedImageFile = (target: UploadTarget, file: File) => {
 };
 
 const getPersonalizationImageUploadErrorMessage = (target: UploadTarget) =>
-  target === 'favicon' ? '请上传图片或 .ico 文件' : '请上传图片文件';
+  target === 'favicon' ? t('请上传图片或 .ico 文件', 'Please upload an image or .ico file') : t('请上传图片文件', 'Please upload an image file');
 
 const applyPersonalizationImageUpload = ({
   target,
@@ -188,7 +193,7 @@ const PersonalizationSettingsPage = () => {
         return;
       }
       if (file.size > MAX_IMAGE_UPLOAD_SIZE) {
-        message.error('图片过大，请上传不超过 5MB 的文件');
+        message.error(t('图片过大，请上传不超过 5MB 的文件', 'The image is too large. Please upload a file under 5MB.'));
         return;
       }
 
@@ -213,9 +218,9 @@ const PersonalizationSettingsPage = () => {
           setWatermarkPreview,
           setFloatingPreview,
         });
-        message.success('图片已上传');
+        message.success(t('图片已上传', 'Image uploaded'));
       } catch (error) {
-        showErrorMessage(error, '图片上传失败，请稍后重试');
+        showErrorMessage(error, t('图片上传失败，请稍后重试', 'Image upload failed. Please try again later.'));
       } finally {
         setUploadingTarget(null);
       }
@@ -226,9 +231,9 @@ const PersonalizationSettingsPage = () => {
   const handleClearBrandingField = useCallback(
     (field: 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl', label: string) => {
       confirmAction({
-        title: `清除${label}`,
-        content: `确认清除${label}吗？清除后该内容会立即从当前设置中移除。`,
-        okText: '确认清除',
+        title: t('清除{label}', 'Clear {label}').replace('{label}', label),
+        content: t(`确认清除${label}吗？清除后该内容会立即从当前设置中移除。`, `Clear ${label}? This will remove it from the current settings immediately.`),
+        okText: t('确认清除', 'Clear'),
         okButtonProps: { danger: true },
         onOk: () => {
           brandingForm.setFieldValue(field, '');
@@ -240,9 +245,9 @@ const PersonalizationSettingsPage = () => {
   );
   const handleClearWatermarkImage = useCallback(() => {
     confirmAction({
-      title: '清除水印图片',
-      content: '确认清除水印图片吗？清除后图片模式将不再使用当前图片。',
-      okText: '确认清除',
+      title: t('清除水印图片', 'Clear watermark image'),
+      content: t('确认清除水印图片吗？清除后图片模式将不再使用当前图片。', 'Clear the watermark image? Image mode will no longer use the current image.'),
+      okText: t('确认清除', 'Clear'),
       okButtonProps: { danger: true },
       onOk: () => {
         watermarkForm.setFieldValue('imageUrl', '');
@@ -252,9 +257,9 @@ const PersonalizationSettingsPage = () => {
   }, [watermarkForm]);
   const handleClearFloatingQrImage = useCallback(() => {
     confirmAction({
-      title: '清除二维码图片',
-      content: '确认清除二维码图片吗？清除后接口文档悬浮按钮将展示未配置提示。',
-      okText: '确认清除',
+      title: t('清除二维码图片', 'Clear QR image'),
+      content: t('确认清除二维码图片吗？清除后接口文档悬浮按钮将展示未配置提示。', 'Clear the QR image? The API docs floating button will then show the unconfigured hint.'),
+      okText: t('确认清除', 'Clear'),
       okButtonProps: { danger: true },
       onOk: () => {
         floatingForm.setFieldValue('apiDocsQrImageUrl', '');
@@ -276,9 +281,9 @@ const PersonalizationSettingsPage = () => {
       setInitialState((prev: AppInitialState | undefined) => (prev ? { ...prev, brandingSettings: updatedBranding } : prev));
       setPreviewState(updatedBranding);
       persistBrandingSettings(updatedBranding);
-      message.success('品牌设置已保存并即时生效');
+      message.success(t('品牌设置已保存并即时生效', 'Branding settings saved and applied immediately'));
     } catch (error) {
-      showErrorMessage(error, '品牌设置保存失败，请稍后重试');
+      showErrorMessage(error, t('品牌设置保存失败，请稍后重试', 'Failed to save branding settings. Please try again later.'));
     } finally {
       setBrandingSaving(false);
     }
@@ -290,7 +295,7 @@ const PersonalizationSettingsPage = () => {
       const watermarkValues = await watermarkForm.validateFields();
       const resolvedMode = watermarkValues.mode === 'IMAGE' && !watermarkValues.imageUrl ? 'TEXT' : watermarkValues.mode;
       if (resolvedMode !== watermarkValues.mode) {
-        message.warning('未上传水印图片时，将自动回退为文字水印');
+        message.warning(t('未上传水印图片时，将自动回退为文字水印', 'When no watermark image is uploaded, the system will fall back to a text watermark.'));
       }
       const updatedWatermark = await request<WatermarkSettings>('/v1/system/watermark-settings', {
         method: 'PUT',
@@ -306,9 +311,9 @@ const PersonalizationSettingsPage = () => {
       setInitialState((prev: AppInitialState | undefined) => (prev ? { ...prev, watermarkSettings: updatedWatermark } : prev));
       setWatermarkPreview(updatedWatermark);
       persistWatermarkSettings(updatedWatermark);
-      message.success('水印设置已保存并即时生效');
+      message.success(t('水印设置已保存并即时生效', 'Watermark settings saved and applied immediately'));
     } catch (error) {
-      showErrorMessage(error, '水印设置保存失败，请稍后重试');
+      showErrorMessage(error, t('水印设置保存失败，请稍后重试', 'Failed to save watermark settings. Please try again later.'));
     } finally {
       setWatermarkSaving(false);
     }
@@ -327,9 +332,9 @@ const PersonalizationSettingsPage = () => {
       );
       floatingForm.setFieldsValue(updatedFloating);
       setFloatingPreview(updatedFloating);
-      message.success('悬浮窗设置已保存并即时生效');
+      message.success(t('悬浮窗设置已保存并即时生效', 'Floating window settings saved and applied immediately'));
     } catch (error) {
-      showErrorMessage(error, '悬浮窗设置保存失败，请稍后重试');
+      showErrorMessage(error, t('悬浮窗设置保存失败，请稍后重试', 'Failed to save floating window settings. Please try again later.'));
     } finally {
       setFloatingSaving(false);
     }
@@ -345,9 +350,9 @@ const PersonalizationSettingsPage = () => {
         autoRedirectOnUnauthorized: false,
       });
       agreementForm.setFieldsValue(updatedAgreement);
-      message.success('协议设置已保存并即时生效');
+      message.success(t('协议设置已保存并即时生效', 'Agreement settings saved and applied immediately'));
     } catch (error) {
-      showErrorMessage(error, '协议设置保存失败，请稍后重试');
+      showErrorMessage(error, t('协议设置保存失败，请稍后重试', 'Failed to save agreement settings. Please try again later.'));
     } finally {
       setAgreementSaving(false);
     }
@@ -355,14 +360,14 @@ const PersonalizationSettingsPage = () => {
   const handleClearAgreementField = useCallback(
     (field: keyof AgreementSettings) => {
       const fieldLabelMap: Record<keyof AgreementSettings, string> = {
-        userAgreementMarkdown: '用户协议',
-        privacyAgreementMarkdown: '隐私协议',
+        userAgreementMarkdown: t('用户协议', 'User agreement'),
+        privacyAgreementMarkdown: t('隐私协议', 'Privacy agreement'),
       };
 
       confirmAction({
-        title: `清空${fieldLabelMap[field]}`,
-        content: `确认清空${fieldLabelMap[field]}吗？清空后该内容会立即从当前设置中移除。`,
-        okText: '确认清空',
+        title: t('清空{label}', 'Clear {label}').replace('{label}', fieldLabelMap[field]),
+        content: t(`确认清空${fieldLabelMap[field]}吗？清空后该内容会立即从当前设置中移除。`, `Clear ${fieldLabelMap[field]}? This will remove it from the current settings immediately.`),
+        okText: t('确认清空', 'Clear'),
         okButtonProps: { danger: true },
         onOk: () => {
           agreementForm.setFieldValue(field, '');
@@ -420,7 +425,7 @@ const PersonalizationSettingsPage = () => {
       );
     } catch (error) {
       if (isActive()) {
-        showErrorMessage(error, '基础设置加载失败');
+        showErrorMessage(error, t('基础设置加载失败', 'Failed to load base settings'));
       }
     } finally {
       if (isActive()) {
@@ -447,7 +452,7 @@ const PersonalizationSettingsPage = () => {
   }, [loadSettings]);
 
   return (
-    <ManagementPage className="saas-crud-page" ghost title="个性化设置" content={null}>
+    <ManagementPage className="saas-crud-page" ghost title={t('个性化设置', 'Personalization settings')} content={null}>
       <ManagementPageBody>
         <Card loading={loading} bodyStyle={{ paddingTop: cardPaddingTop }}>
           <Tabs
@@ -460,7 +465,7 @@ const PersonalizationSettingsPage = () => {
             items={[
               {
                 key: 'branding',
-                label: '品牌设置',
+                label: t('品牌设置', 'Branding'),
                 children: (
                   <BrandingTab
                     formProps={brandingFormProps}
@@ -476,7 +481,7 @@ const PersonalizationSettingsPage = () => {
               },
               {
                 key: 'watermark',
-                label: '全局水印',
+                label: t('全局水印', 'Watermark'),
                 children: (
                   <WatermarkTab
                     formProps={watermarkFormProps}
@@ -493,7 +498,7 @@ const PersonalizationSettingsPage = () => {
               },
               {
                 key: 'floating',
-                label: '悬浮窗设置',
+                label: t('悬浮窗设置', 'Floating window'),
                 children: (
                   <FloatingWindowTab
                     formProps={floatingFormProps}
@@ -509,27 +514,27 @@ const PersonalizationSettingsPage = () => {
               },
               {
                 key: 'agreement',
-                label: '协议设置',
+                label: t('协议设置', 'Agreements'),
                 children: (
                   <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                     <Form {...agreementFormProps} disabled={!canUpdate}>
-                      <Form.Item name="userAgreementMarkdown" label="用户协议" getValueFromEvent={(value) => value ?? ''}>
-                        <AgreementMarkdownEditor placeholder="请输入用户协议 Markdown 内容" />
+                      <Form.Item name="userAgreementMarkdown" label={t('用户协议', 'User agreement')} getValueFromEvent={(value) => value ?? ''}>
+                        <AgreementMarkdownEditor placeholder={t('请输入用户协议 Markdown 内容', 'Enter the user agreement Markdown content')} />
                       </Form.Item>
-                      <Form.Item name="privacyAgreementMarkdown" label="隐私协议" getValueFromEvent={(value) => value ?? ''}>
-                        <AgreementMarkdownEditor placeholder="请输入隐私协议 Markdown 内容" />
+                      <Form.Item name="privacyAgreementMarkdown" label={t('隐私协议', 'Privacy agreement')} getValueFromEvent={(value) => value ?? ''}>
+                        <AgreementMarkdownEditor placeholder={t('请输入隐私协议 Markdown 内容', 'Enter the privacy agreement Markdown content')} />
                       </Form.Item>
                     </Form>
 
                     <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
                       <Button danger disabled={!canUpdate} onClick={() => handleClearAgreementField('userAgreementMarkdown')}>
-                        清空用户协议
+                        {t('清空用户协议', 'Clear user agreement')}
                       </Button>
                       <Button danger disabled={!canUpdate} onClick={() => handleClearAgreementField('privacyAgreementMarkdown')}>
-                        清空隐私协议
+                        {t('清空隐私协议', 'Clear privacy agreement')}
                       </Button>
                       <Button type="primary" loading={agreementSaving} disabled={!canUpdate} onClick={() => void handleSaveAgreement()}>
-                        保存设置
+                        {t('保存设置', 'Save settings')}
                       </Button>
                     </Space>
                   </Space>

@@ -1,4 +1,5 @@
 import { history, useLocation } from '@umijs/max';
+import { getLocale } from '@umijs/max';
 import type { FormInstance } from 'antd';
 import { Button, Card, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -18,6 +19,10 @@ import { useStandardFormProps } from '@/features/form/config';
 import type { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type ConfigDrawerMode = 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | 'basic';
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
@@ -53,8 +58,8 @@ const smtpFormInitialValues: SmtpSettings = {
 };
 
 const smtpTestInitialValues: SmtpTestPayload = {
-  subject: 'SMTP 测试邮件',
-  content: '这是一封来自系统的 SMTP 测试邮件。',
+  subject: t('SMTP 测试邮件', 'SMTP test email'),
+  content: t('这是一封来自系统的 SMTP 测试邮件。', 'This is an SMTP test email from the system.'),
   toEmail: '',
 };
 
@@ -63,47 +68,47 @@ const SMTP_PASSWORD_MASK = '********';
 const WECHAT_APP_SECRET_MASK = '********';
 
 const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
-  { label: '阿里云短信', value: 'aliyun' },
-  { label: '腾讯云短信', value: 'tencent' },
-  { label: '本地模拟', value: 'mock' },
-  { label: '自定义网关', value: 'custom' },
+  { label: t('阿里云短信', 'Alibaba Cloud SMS'), value: 'aliyun' },
+  { label: t('腾讯云短信', 'Tencent Cloud SMS'), value: 'tencent' },
+  { label: t('本地模拟', 'Local mock'), value: 'mock' },
+  { label: t('自定义网关', 'Custom gateway'), value: 'custom' },
 ];
 
 const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
   aliyun: {
     fields: [
-      { name: 'signName', label: '短信签名', placeholder: '例如：宏翔商道', required: true },
-      { name: 'templateCode', label: '模板编码', placeholder: '例如：SMS_123456789', required: true },
-      { name: 'accessKeyId', label: 'Access Key ID', placeholder: '短信服务访问密钥 ID', required: true },
-      { name: 'accessKeySecret', label: 'Access Key Secret', placeholder: '留空则保持现有密钥', password: true },
-      { name: 'endpoint', label: '服务地址', placeholder: '例如：https://dysmsapi.aliyuncs.com' },
-      { name: 'region', label: '地域', placeholder: '例如：cn-hangzhou' },
+      { name: 'signName', label: t('短信签名', 'SMS sign name'), placeholder: t('例如：宏翔商道', 'e.g. Hongxiang Shangdao'), required: true },
+      { name: 'templateCode', label: t('模板编码', 'Template code'), placeholder: t('例如：SMS_123456789', 'e.g. SMS_123456789'), required: true },
+      { name: 'accessKeyId', label: 'Access Key ID', placeholder: t('短信服务访问密钥 ID', 'SMS service access key ID'), required: true },
+      { name: 'accessKeySecret', label: 'Access Key Secret', placeholder: t('留空则保持现有密钥', 'Leave blank to keep the existing secret'), password: true },
+      { name: 'endpoint', label: t('服务地址', 'Endpoint'), placeholder: t('例如：https://dysmsapi.aliyuncs.com', 'e.g. https://dysmsapi.aliyuncs.com') },
+      { name: 'region', label: t('地域', 'Region'), placeholder: t('例如：cn-hangzhou', 'e.g. cn-hangzhou') },
     ],
   },
   tencent: {
     fields: [
-      { name: 'signName', label: '短信签名', placeholder: '例如：宏翔商道', required: true },
-      { name: 'templateCode', label: '模板 ID', placeholder: '例如：1234567', required: true },
-      { name: 'accessKeyId', label: 'SecretId', placeholder: '腾讯云 SecretId', required: true },
-      { name: 'accessKeySecret', label: 'SecretKey', placeholder: '留空则保持现有密钥', password: true, required: true },
-      { name: 'endpoint', label: 'API 地址', placeholder: '例如：https://sms.tencentcloudapi.com' },
-      { name: 'region', label: '地域', placeholder: '例如：ap-guangzhou' },
+      { name: 'signName', label: t('短信签名', 'SMS sign name'), placeholder: t('例如：宏翔商道', 'e.g. Hongxiang Shangdao'), required: true },
+      { name: 'templateCode', label: t('模板 ID', 'Template ID'), placeholder: t('例如：1234567', 'e.g. 1234567'), required: true },
+      { name: 'accessKeyId', label: 'SecretId', placeholder: t('腾讯云 SecretId', 'Tencent Cloud SecretId'), required: true },
+      { name: 'accessKeySecret', label: 'SecretKey', placeholder: t('留空则保持现有密钥', 'Leave blank to keep the existing secret'), password: true, required: true },
+      { name: 'endpoint', label: t('API 地址', 'API endpoint'), placeholder: t('例如：https://sms.tencentcloudapi.com', 'e.g. https://sms.tencentcloudapi.com') },
+      { name: 'region', label: t('地域', 'Region'), placeholder: t('例如：ap-guangzhou', 'e.g. ap-guangzhou') },
     ],
   },
   mock: {
     fields: [
-      { name: 'signName', label: '模拟签名', placeholder: '例如：测试短信' },
-      { name: 'templateCode', label: '模拟模板编码', placeholder: '例如：MOCK_SMS_001' },
+      { name: 'signName', label: t('模拟签名', 'Mock sign name'), placeholder: t('例如：测试短信', 'e.g. test SMS') },
+      { name: 'templateCode', label: t('模拟模板编码', 'Mock template code'), placeholder: t('例如：MOCK_SMS_001', 'e.g. MOCK_SMS_001') },
     ],
   },
   custom: {
     fields: [
-      { name: 'endpoint', label: '网关地址', placeholder: '例如：https://sms.example.com/api', required: true },
-      { name: 'accessKeyId', label: '网关账号', placeholder: '例如：gateway-user', required: true },
-      { name: 'accessKeySecret', label: '网关密钥', placeholder: '留空则保持现有密钥', password: true, required: true },
-      { name: 'signName', label: '签名', placeholder: '例如：宏翔商道', required: true },
-      { name: 'templateCode', label: '模板编码', placeholder: '例如：SMS_123456789', required: true },
-      { name: 'region', label: '地域', placeholder: '按网关要求填写' },
+      { name: 'endpoint', label: t('网关地址', 'Gateway URL'), placeholder: t('例如：https://sms.example.com/api', 'e.g. https://sms.example.com/api'), required: true },
+      { name: 'accessKeyId', label: t('网关账号', 'Gateway account'), placeholder: t('例如：gateway-user', 'e.g. gateway-user'), required: true },
+      { name: 'accessKeySecret', label: t('网关密钥', 'Gateway secret'), placeholder: t('留空则保持现有密钥', 'Leave blank to keep the existing secret'), password: true, required: true },
+      { name: 'signName', label: t('签名', 'Sign name'), placeholder: t('例如：宏翔商道', 'e.g. Hongxiang Shangdao'), required: true },
+      { name: 'templateCode', label: t('模板编码', 'Template code'), placeholder: t('例如：SMS_123456789', 'e.g. SMS_123456789'), required: true },
+      { name: 'region', label: t('地域', 'Region'), placeholder: t('按网关要求填写', 'Fill in as required by the gateway') },
     ],
   },
 } as const;
@@ -149,10 +154,10 @@ const BasicDrawerContent = () => {
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Typography.Paragraph style={{ marginBottom: 0 }}>
-        密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。
+        {t('密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。', 'Password complexity, verification codes, and login defense thresholds are managed centrally in Security Settings.')}
       </Typography.Paragraph>
       <Button type="primary" onClick={() => history.push('/settings/security')}>
-        前往安全设置
+        {t('前往安全设置', 'Go to Security Settings')}
       </Button>
     </Space>
   );
@@ -173,11 +178,11 @@ const TotpDrawerContent = ({
       <Form {...verificationFormProps}>
         <Form.Item
           name="enabled"
-          label="启用 2FA"
+          label={t('启用 2FA', 'Enable 2FA')}
           valuePropName="checked"
-          extra="关闭后，系统中的高危操作二次确认将不再要求 2FA。"
+          extra={t('关闭后，系统中的高危操作二次确认将不再要求 2FA。', 'When disabled, high-risk operation confirmations will no longer require 2FA.')}
         >
-          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
         </Form.Item>
       </Form>
     </Space>
@@ -205,13 +210,13 @@ const SmsDrawerContent = ({
       <Form {...smsFormProps}>
         <Form.Item
           name="provider"
-          label="服务商"
-          rules={[{ required: true, message: '请选择短信服务商' }]}
+          label={t('服务商', 'Provider')}
+          rules={[{ required: true, message: t('请选择短信服务商', 'Please select an SMS provider') }]}
         >
           <Select
             disabled={!canManageSettings}
             options={SMS_PROVIDER_OPTIONS}
-            placeholder="请选择短信服务商"
+            placeholder={t('请选择短信服务商', 'Please select an SMS provider')}
             onChange={handleSmsProviderChange}
           />
         </Form.Item>
@@ -220,12 +225,12 @@ const SmsDrawerContent = ({
             key={String(field.name)}
             name={field.name}
             label={field.label}
-            rules={field.required ? [{ required: true, message: `请输入${field.label}` }] : undefined}
+            rules={field.required ? [{ required: true, message: t('请输入{label}', 'Please enter {label}').replace('{label}', field.label) }] : undefined}
             extra={
               field.password && field.name === 'accessKeySecret'
                 ? smsSettingsData?.accessKeySecretConfigured
-                  ? '当前密钥已脱敏显示，留空则保持现有密钥'
-                  : '留空则保持现有密钥'
+                  ? t('当前密钥已脱敏显示，留空则保持现有密钥', 'The current secret is masked. Leave blank to keep the existing one.')
+                  : t('留空则保持现有密钥', 'Leave blank to keep the existing secret')
                 : undefined
             }
           >
@@ -259,56 +264,56 @@ const EmailDrawerContent = ({
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-      <Card title="邮箱与 SMTP" loading={verificationLoading}>
+      <Card title={t('邮箱与 SMTP', 'Email and SMTP')} loading={verificationLoading}>
         <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
           <Form {...smtpFormProps}>
             <Typography.Title level={5} style={{ marginTop: 0 }}>
-              SMTP 基础配置
+              {t('SMTP 基础配置', 'SMTP settings')}
             </Typography.Title>
-            <Form.Item name="host" label="SMTP 主机" rules={[{ required: true, message: '请输入 SMTP 主机' }]}>
+            <Form.Item name="host" label={t('SMTP 主机', 'SMTP host')} rules={[{ required: true, message: t('请输入 SMTP 主机', 'Please enter the SMTP host') }]}>
               <Input disabled={!canManageSettings} placeholder="smtp.example.com" />
             </Form.Item>
-            <Form.Item name="port" label="SMTP 端口" rules={[{ required: true, message: '请输入 SMTP 端口' }]}>
+            <Form.Item name="port" label={t('SMTP 端口', 'SMTP port')} rules={[{ required: true, message: t('请输入 SMTP 端口', 'Please enter the SMTP port') }]}>
               <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={1} max={65535} />
             </Form.Item>
-            <Form.Item name="username" label="SMTP 用户名" rules={[{ required: true, message: '请输入 SMTP 用户名' }]}>
+            <Form.Item name="username" label={t('SMTP 用户名', 'SMTP username')} rules={[{ required: true, message: t('请输入 SMTP 用户名', 'Please enter the SMTP username') }]}>
               <Input disabled={!canManageSettings} placeholder="username@example.com" />
             </Form.Item>
             <Form.Item
               name="password"
-              label="SMTP 密码"
-              extra={smtpSettingsData?.passwordConfigured ? '当前密码已脱敏显示，留空则保留现有密码' : '留空则保留现有密码'}
+              label={t('SMTP 密码', 'SMTP password')}
+              extra={smtpSettingsData?.passwordConfigured ? t('当前密码已脱敏显示，留空则保留现有密码', 'The current password is masked. Leave blank to keep the existing one.') : t('留空则保留现有密码', 'Leave blank to keep the existing password')}
             >
-              <Input.Password disabled={!canManageSettings} placeholder="留空则保持现有密码" />
+              <Input.Password disabled={!canManageSettings} placeholder={t('留空则保持现有密码', 'Leave blank to keep the existing password')} />
             </Form.Item>
-            <Form.Item name="from" label="发件人地址" rules={[{ required: true, message: '请输入发件人地址' }]}>
+            <Form.Item name="from" label={t('发件人地址', 'From address')} rules={[{ required: true, message: t('请输入发件人地址', 'Please enter the from address') }]}>
               <Input disabled={!canManageSettings} placeholder="noreply@example.com" />
             </Form.Item>
-            <Form.Item name="authEnabled" label="启用认证" valuePropName="checked">
+            <Form.Item name="authEnabled" label={t('启用认证', 'Enable authentication')} valuePropName="checked">
               <Switch disabled={!canManageSettings} />
             </Form.Item>
-            <Form.Item name="startTlsEnabled" label="启用 STARTTLS" valuePropName="checked">
+            <Form.Item name="startTlsEnabled" label={t('启用 STARTTLS', 'Enable STARTTLS')} valuePropName="checked">
               <Switch disabled={!canManageSettings} />
             </Form.Item>
-            <Form.Item name="sslEnabled" label="启用 SSL" valuePropName="checked">
+            <Form.Item name="sslEnabled" label={t('启用 SSL', 'Enable SSL')} valuePropName="checked">
               <Switch disabled={!canManageSettings} />
             </Form.Item>
           </Form>
         </div>
       </Card>
-      <Card title="SMTP 测试发送" loading={verificationLoading}>
+      <Card title={t('SMTP 测试发送', 'SMTP test send')} loading={verificationLoading}>
         <Form {...smtpTestFormProps}>
           <Form.Item
             name="toEmail"
-            label="收件人邮箱"
-            rules={[{ required: true, message: '请输入收件人邮箱' }, { type: 'email', message: '请输入有效邮箱地址' }]}
+            label={t('收件人邮箱', 'Recipient email')}
+            rules={[{ required: true, message: t('请输入收件人邮箱', 'Please enter the recipient email') }, { type: 'email', message: t('请输入有效邮箱地址', 'Please enter a valid email address') }]}
           >
             <Input disabled={!canManageSettings} placeholder="recipient@example.com" />
           </Form.Item>
-          <Form.Item name="subject" label="邮件主题">
+          <Form.Item name="subject" label={t('邮件主题', 'Email subject')}>
             <Input disabled={!canManageSettings} />
           </Form.Item>
-          <Form.Item name="content" label="邮件内容">
+          <Form.Item name="content" label={t('邮件内容', 'Email content')}>
             <Input.TextArea disabled={!canManageSettings} rows={6} />
           </Form.Item>
         </Form>
@@ -355,36 +360,36 @@ const WechatDrawerContent = ({
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...wechatFormProps}>
-        <Form.Item name="enabled" label="启用微信登录" valuePropName="checked">
-          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        <Form.Item name="enabled" label={t('启用微信登录', 'Enable WeChat login')} valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
         </Form.Item>
         <Form.Item
           name="appId"
-          label="AppID"
-          rules={wechatEnabled ? [{ required: true, message: '请输入 AppID' }] : undefined}
+          label={t('AppID', 'AppID')}
+          rules={wechatEnabled ? [{ required: true, message: t('请输入 AppID', 'Please enter the AppID') }] : undefined}
         >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder="微信开放平台网站应用 AppID" />
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('微信开放平台网站应用 AppID', 'WeChat Open Platform website application AppID')} />
         </Form.Item>
         <Form.Item
           name="appSecret"
-          label="AppSecret"
-          extra={wechatSettingsData?.appSecretConfigured ? '当前密钥已脱敏显示，留空则保持现有密钥' : '留空则保持现有密钥'}
+          label={t('AppSecret', 'AppSecret')}
+          extra={wechatSettingsData?.appSecretConfigured ? t('当前密钥已脱敏显示，留空则保持现有密钥', 'The current secret is masked. Leave blank to keep the existing one.') : t('留空则保持现有密钥', 'Leave blank to keep the existing secret')}
         >
-          <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder="留空则保持现有密钥" />
+          <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder={t('留空则保持现有密钥', 'Leave blank to keep the existing secret')} />
         </Form.Item>
         <Form.Item
           name="redirectUri"
-          label="回调地址"
-          rules={wechatEnabled ? [{ required: true, message: '请输入回调地址' }] : undefined}
+          label={t('回调地址', 'Callback URL')}
+          rules={wechatEnabled ? [{ required: true, message: t('请输入回调地址', 'Please enter the callback URL') }] : undefined}
         >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder="https://你的域名/api/v1/auth/wechat/callback" />
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('https://你的域名/api/v1/auth/wechat/callback', 'https://your-domain.com/api/v1/auth/wechat/callback')} />
         </Form.Item>
         <Form.Item
           name="stateExpireMinutes"
-          label="状态有效期"
-          rules={wechatEnabled ? [{ required: true, message: '请输入状态有效期' }] : undefined}
+          label={t('状态有效期', 'State TTL')}
+          rules={wechatEnabled ? [{ required: true, message: t('请输入状态有效期', 'Please enter the state TTL') }] : undefined}
         >
-          <InputNumber disabled={!canManageSettings || !wechatEnabled} style={{ width: '100%' }} min={1} max={60} addonAfter="分钟" />
+          <InputNumber disabled={!canManageSettings || !wechatEnabled} style={{ width: '100%' }} min={1} max={60} addonAfter={t('分钟', 'min')} />
         </Form.Item>
       </Form>
     </Space>
@@ -406,31 +411,31 @@ const PasskeyDrawerContent = ({
       <Form {...passkeyFormProps}>
         <Form.Item
           name="passwordlessEnabled"
-          label="允许无账号登录"
+          label={t('允许无账号登录', 'Allow sign-in without an account')}
           valuePropName="checked"
-          extra="开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。"
+          extra={t('开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。', 'When enabled, the login page can directly open your password manager or system keychain to select a passkey.')}
         >
-          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
         </Form.Item>
-        <Form.Item name="selfBindingEnabled" label="允许用户自助绑定" valuePropName="checked">
-          <Switch disabled={!canManageSettings} checkedChildren="开启" unCheckedChildren="关闭" />
+        <Form.Item name="selfBindingEnabled" label={t('允许用户自助绑定', 'Allow self-service binding')} valuePropName="checked">
+          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
         </Form.Item>
-        <Form.Item name="rpId" label="RP ID" rules={[{ required: true, message: '请输入 RP ID' }]}>
+        <Form.Item name="rpId" label={t('RP ID', 'RP ID')} rules={[{ required: true, message: t('请输入 RP ID', 'Please enter the RP ID') }]}>
           <Input disabled={!canManageSettings} placeholder="elexvx.com" />
         </Form.Item>
-        <Form.Item name="rpName" label="RP 名称" rules={[{ required: true, message: '请输入 RP 名称' }]}>
-          <Input disabled={!canManageSettings} placeholder="宏翔商道后台管理系统" />
+        <Form.Item name="rpName" label={t('RP 名称', 'RP name')} rules={[{ required: true, message: t('请输入 RP 名称', 'Please enter the RP name') }]}>
+          <Input disabled={!canManageSettings} placeholder={t('宏翔商道后台管理系统', 'SaaS admin system')} />
         </Form.Item>
         <Form.Item
           name="allowedOriginsText"
-          label="允许的 Origin"
-          rules={[{ required: true, message: '请输入允许的 Origin' }]}
-          extra="每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。"
+          label={t('允许的 Origin', 'Allowed origins')}
+          rules={[{ required: true, message: t('请输入允许的 Origin', 'Please enter the allowed origins') }]}
+          extra={t('每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。', 'One HTTPS origin per line. Vercel Preview domains are not allowed by default.')}
         >
           <Input.TextArea disabled={!canManageSettings} rows={4} placeholder="https://test.elexvx.com" />
         </Form.Item>
-        <Form.Item name="challengeTtlSeconds" label="Challenge 有效期">
-          <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter="秒" />
+        <Form.Item name="challengeTtlSeconds" label={t('Challenge 有效期', 'Challenge TTL')}>
+          <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter={t('秒', 's')} />
         </Form.Item>
       </Form>
     </Space>
@@ -476,7 +481,7 @@ const resolveDrawerContentRoute = (params: DrawerContentRouteParams) => {
 
 const cancelAction = (closeConfigDrawer: () => void): ManagementDrawerAction => ({
   key: 'cancel',
-  label: '取消',
+  label: t('取消', 'Cancel'),
   onClick: () => closeConfigDrawer(),
 });
 
@@ -511,14 +516,14 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.savingSmsSettings,
-        label: '保存配置',
+        label: t('保存配置', 'Save settings'),
         onSave: params.handleSaveSmsSettings,
       });
     case 'email':
       return [
         {
           key: 'test',
-          label: '发送测试邮件',
+          label: t('发送测试邮件', 'Send test email'),
           loading: params.testingSmtpSettings,
           disabled: !params.canManageSettings,
           onClick: () => void params.handleTestSmtpSettings(),
@@ -526,7 +531,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         cancelAction(params.closeConfigDrawer),
         {
           key: 'save',
-          label: '保存设置',
+          label: t('保存设置', 'Save settings'),
           type: 'primary',
           loading: params.savingEmailSettings,
           disabled: !params.canManageSettings,
@@ -538,7 +543,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.savingWechatSettings,
-        label: '保存配置',
+        label: t('保存配置', 'Save settings'),
         onSave: params.handleSaveWechatSettings,
       });
     case 'passkey':
@@ -546,7 +551,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.savingPasskeySettings,
-        label: '保存配置',
+        label: t('保存配置', 'Save settings'),
         onSave: params.handleSavePasskeySettings,
       });
     case 'totp':
@@ -554,7 +559,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.verificationLoading,
-        label: '保存 2FA 设置',
+        label: t('保存 2FA 设置', 'Save 2FA settings'),
         onSave: () => params.handleSaveVerificationSettings({ closeDrawer: true }),
       });
     case 'basic':
@@ -563,7 +568,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.verificationLoading,
-        label: '保存设置',
+        label: t('保存设置', 'Save settings'),
         onSave: () => {
           params.verificationForm.setFieldValue('passwordLoginEnabled', true);
           return params.handleSaveVerificationSettings({ closeDrawer: true });
@@ -691,7 +696,7 @@ export const useAuthenticatorConfigDrawer = ({
       passwordlessEnabled: true,
       selfBindingEnabled: true,
       rpId: 'elexvx.com',
-      rpName: '宏翔商道后台管理系统',
+      rpName: t('宏翔商道后台管理系统', 'Hongxiang Shangdao admin system'),
       allowedOrigins: ['https://test.elexvx.com'],
       allowedOriginsText: 'https://test.elexvx.com',
       challengeTtlSeconds: 120,

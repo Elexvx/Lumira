@@ -1,5 +1,6 @@
 import type { ModalFuncProps } from 'antd';
 import { modal } from '@/theme/antdFeedbackBridge';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { ReactNode } from 'react';
 
 type ConfirmActionOptions = {
@@ -16,8 +17,8 @@ type ConfirmActionOptions = {
 export const confirmAction = ({
   title,
   content,
-  okText = '确认',
-  cancelText = '取消',
+  okText = resolveBuiltinMessage('common.confirm', '确认'),
+  cancelText = resolveBuiltinMessage('common.cancel', '取消'),
   okButtonProps,
   centered = true,
   onOk,

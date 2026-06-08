@@ -12,14 +12,19 @@ import type { TreeProps } from 'antd';
 import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree/normalize';
 import type { PermissionActionRecord, PermissionTreeRecord, RoleDataScope } from '@/types/api';
 import './roles.css';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM' }> = [
-  { label: '全部数据', value: 'ALL' },
-  { label: '本租户数据', value: 'TENANT' },
-  { label: '本部门数据', value: 'DEPT' },
-  { label: '本部门及下级', value: 'DEPT_AND_CHILD' },
-  { label: '仅本人数据', value: 'SELF' },
-  { label: '自定义范围', value: 'CUSTOM' },
+  { label: t('全部数据', 'All data'), value: 'ALL' },
+  { label: t('本租户数据', 'Current tenant data'), value: 'TENANT' },
+  { label: t('本部门数据', 'Current department data'), value: 'DEPT' },
+  { label: t('本部门及下级', 'Current department and descendants'), value: 'DEPT_AND_CHILD' },
+  { label: t('仅本人数据', 'My data only'), value: 'SELF' },
+  { label: t('自定义范围', 'Custom scope'), value: 'CUSTOM' },
 ];
 const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc, item) => {
   acc[item.value] = item.label;
@@ -30,14 +35,14 @@ const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'S
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
     {
-      audit: '审计',
-      dashboard: '首页',
+      audit: t('审计', 'Audit'),
+      dashboard: t('首页', 'Dashboard'),
       iam: 'IAM',
-      message: '消息',
-      plugin: '插件',
-      profile: '个人中心',
-      system: '系统',
-      tenant: '平台',
+      message: t('消息', 'Messages'),
+      plugin: t('插件', 'Plugins'),
+      profile: t('个人中心', 'Profile'),
+      system: t('系统', 'System'),
+      tenant: t('平台', 'Platform'),
     } as Record<string, string>
   )[permissionGroup] || permissionGroup;
 
@@ -68,34 +73,32 @@ const DefaultRegistrationRoleModal = ({
 
   return (
     <Modal
-    title="默认注册角色"
-    open={open}
-    confirmLoading={saving}
-    onOk={onSubmit}
-    onCancel={onCancel}
-    okButtonProps={{ disabled: !canSave }}
-    okText="保存"
-    cancelText="取消"
-  >
-    <Space direction="vertical" size={modalFooterGap} style={{ width: '100%' }}>
-      <Typography.Text type="secondary">
-        新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。
-      </Typography.Text>
-      <Select
-        showSearch
-        loading={loading}
-        value={value}
-        onChange={onChange}
-        placeholder="请选择默认注册角色"
-        optionFilterProp="label"
-        style={{ width: '100%' }}
-        options={options.map((role) => ({
-          label: `${role.roleName}（${role.roleCode}）`,
-          value: role.id,
-        }))}
-      />
-    </Space>
-  </Modal>
+      title={t('默认注册角色', 'Default registration role')}
+      open={open}
+      confirmLoading={saving}
+      onOk={onSubmit}
+      onCancel={onCancel}
+      okButtonProps={{ disabled: !canSave }}
+      okText={t('保存', 'Save')}
+      cancelText={t('取消', 'Cancel')}
+    >
+      <Space direction="vertical" size={modalFooterGap} style={{ width: '100%' }}>
+        <Typography.Text type="secondary">{t('新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。', 'New users created through registration or verification code will be bound to this role by default; you can adjust roles later in user management.')}</Typography.Text>
+        <Select
+          showSearch
+          loading={loading}
+          value={value}
+          onChange={onChange}
+          placeholder={t('请选择默认注册角色', 'Select default registration role')}
+          optionFilterProp="label"
+          style={{ width: '100%' }}
+          options={options.map((role) => ({
+            label: `${role.roleName}（${role.roleCode}）`,
+            value: role.id,
+          }))}
+        />
+      </Space>
+    </Modal>
   );
 };
 
@@ -161,15 +164,15 @@ const RolePermissionEditor = ({
         <section className="role-editor-section">
           <div className="role-editor-section__header">
             <div>
-              <div className="role-editor-section__title">页面路由权限</div>
-              <div className="role-editor-section__meta">先勾选可访问的页面，目录节点仅用于分组，再配置该页面下的按钮权限</div>
+              <div className="role-editor-section__title">{t('页面路由权限', 'Page route permissions')}</div>
+              <div className="role-editor-section__meta">{t('先勾选可访问的页面，目录节点仅用于分组，再配置该页面下的按钮权限', 'First select accessible pages. Directory nodes are for grouping only, then configure button permissions.')}</div>
             </div>
             <Space>
               <Button size="small" onClick={onExpandToggle}>
-                {expandedKeys.length ? '折叠全部' : '展开全部'}
+                {expandedKeys.length ? t('折叠全部', 'Collapse all') : t('展开全部', 'Expand all')}
               </Button>
               <Button size="small" onClick={onSelectAllPages}>
-                {selectedPageCount === totalPageCount ? '全不选' : '全选'}
+                {selectedPageCount === totalPageCount ? t('全不选', 'Deselect all') : t('全选', 'Select all')}
               </Button>
             </Space>
           </div>
@@ -202,7 +205,7 @@ const RolePermissionEditor = ({
                 }}
               />
             ) : (
-              <Empty description="暂无可配置页面权限" style={{ padding: 'var(--saas-spacing-48) 0' }} />
+              <Empty description={t('暂无可配置页面权限', 'No page permissions available')} style={{ padding: 'var(--saas-spacing-48) 0' }} />
             )}
           </div>
         </section>
@@ -210,22 +213,22 @@ const RolePermissionEditor = ({
         <section className="role-editor-section role-action-panel">
           <div className="role-editor-section__header">
             <div>
-              <div className="role-editor-section__title">页面动作权限</div>
-              <div className="role-editor-section__meta">按钮权限仅在页面权限勾选后生效</div>
+              <div className="role-editor-section__title">{t('页面动作权限', 'Page action permissions')}</div>
+              <div className="role-editor-section__meta">{t('按钮权限仅在页面权限勾选后生效', 'Button permissions take effect only after page permissions are selected')}</div>
             </div>
           </div>
 
           {permissionTree.length ? (
             <>
               <div className="role-action-panel__page-name">
-                {activePageNode?.pageName || '请从左侧选择页面'}
+                {activePageNode?.pageName || t('请从左侧选择页面', 'Select a page from the left')}
                 {activePageNode?.routeMatched && activePageNode?.routePath ? (
                   <Tag style={{ marginInlineStart: tagWrapGap[0] }} color="blue">
                     {activePageNode?.routePath}
                   </Tag>
                 ) : activePageNode?.nodeType === 'PAGE' ? (
                   <Tag style={{ marginInlineStart: tagWrapGap[0] }} color="red">
-                    路由失配
+                    {t('路由失配', 'Route mismatch')}
                   </Tag>
                 ) : null}
               </div>
@@ -243,18 +246,18 @@ const RolePermissionEditor = ({
                   />
                 ) : (
                   <div className="role-action-panel__empty">
-                    <Empty description="该页面暂无子权限" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    <Empty description={t('该页面暂无子权限', 'No child permissions on this page')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                   </div>
                 )
               ) : (
                 <div className="role-action-panel__empty">
-                  <Empty description="请从左侧页面权限树中选择一个页面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  <Empty description={t('请从左侧页面权限树中选择一个页面', 'Select a page from the left permission tree')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                 </div>
               )}
             </>
           ) : (
             <div className="role-action-panel__empty">
-              <Empty description="请先在上方勾选一个页面" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty description={t('请先在上方勾选一个页面', 'Please select a page above first')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
             </div>
           )}
         </section>
@@ -284,7 +287,7 @@ const RoleManagementPage = () => {
         key: `group:${group.permissionGroup}`,
         title: (
           <div className="role-page-row role-permission-detail__group-row">
-            <span className="role-page-row__name">分类：{formatPermissionGroupLabel(group.permissionGroup)}</span>
+            <span className="role-page-row__name">{t('分类', 'Group')}: {formatPermissionGroupLabel(group.permissionGroup)}</span>
           </div>
         ),
         children: group.pages.map((page) => ({
@@ -295,7 +298,7 @@ const RoleManagementPage = () => {
                 <span className="role-page-row__name">{page.pageName}</span>
                 <span className="role-page-row__meta">
                   {page.routePath ? <span className="role-page-row__route">{page.routePath}</span> : null}
-                  <Tag color="blue">{page.permissions.some((item) => item.isPagePermission) ? '页面' : '权限'}</Tag>
+                  <Tag color="blue">{page.permissions.some((item) => item.isPagePermission) ? t('页面', 'Page') : t('权限', 'Permission')}</Tag>
                 </span>
               </div>
               <Space wrap size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} className="role-permission-detail__tags">
@@ -313,11 +316,11 @@ const RoleManagementPage = () => {
   );
   const editorDrawer = {
     open: roleCrud.drawer.open,
-    title: roleActions.roleEditorMode === 'permissions' ? '分配角色权限' : roleCrud.drawer.editingId ? '编辑角色 / 分配权限' : '新增角色',
+    title: roleActions.roleEditorMode === 'permissions' ? t('分配角色权限', 'Assign role permissions') : roleCrud.drawer.editingId ? t('编辑角色 / 分配权限', 'Edit role / Assign permissions') : t('新增角色', 'Add role'),
     onClose: roleActions.handleEditorClose,
     footerActions: [
-      { key: 'cancel', label: '取消', onClick: roleActions.handleEditorClose },
-      { key: 'save', label: '保存', type: 'primary' as const, loading: roleActions.saving, disabled: !roleActions.canSaveRole, onClick: () => void roleActions.saveRole() },
+      { key: 'cancel', label: t('取消', 'Cancel'), onClick: roleActions.handleEditorClose },
+      { key: 'save', label: t('保存', 'Save'), type: 'primary' as const, loading: roleActions.saving, disabled: !roleActions.canSaveRole, onClick: () => void roleActions.saveRole() },
     ] as ManagementDrawerAction[],
     formProps: roleActions.editorFormProps,
     isPermissionOnlyEditor: roleActions.isPermissionOnlyEditor,
@@ -335,7 +338,7 @@ const RoleManagementPage = () => {
     permissionDetailTreeData: typeof permissionDetailTreeData;
   } = {
     open: roleCrud.detail.open,
-    title: roleActions.selectedRoleDetail ? `角色详情 · ${roleActions.selectedRoleDetail.roleName}` : '角色详情',
+    title: roleActions.selectedRoleDetail ? `${t('角色详情', 'Role details')} · ${roleActions.selectedRoleDetail.roleName}` : t('角色详情', 'Role details'),
     onClose: () => {
       roleCrud.detail.close();
       roleActions.setSelectedRoleDetail(null);
@@ -347,7 +350,7 @@ const RoleManagementPage = () => {
   };
 
   return (
-    <ManagementPage title="角色管理">
+    <ManagementPage title={t('角色管理', 'Role management')}>
       <ManagementPageBody>
         <ManagementTable
           actionRef={roleCrud.actionRef}
@@ -362,18 +365,18 @@ const RoleManagementPage = () => {
                 key: 'create',
                 permission: 'system:role:create',
                 type: 'primary',
-                label: '新增角色',
+                label: t('新增角色', 'Add role'),
                 onClick: roleCrud.drawer.openCreate,
               },
               {
                 key: 'default-registration-role',
                 permission: 'system:role:update',
-                label: '默认注册角色',
+                label: t('默认注册角色', 'Default registration role'),
                 onClick: () => void openDefaultRoleModal(),
               },
               {
                 key: 'refresh',
-                label: '刷新',
+                label: t('刷新', 'Refresh'),
                 onClick: roleCrud.reloadTable,
               },
             ])
@@ -435,39 +438,39 @@ const RoleManagementPage = () => {
           <>
             <ProDescriptions
               columns={[
-                { title: '角色编码', dataIndex: 'roleCode' },
-                { title: '角色名称', dataIndex: 'roleName' },
+                { title: t('角色编码', 'Role code'), dataIndex: 'roleCode' },
+                { title: t('角色名称', 'Role name'), dataIndex: 'roleName' },
                 {
-                  title: '角色类型',
+                  title: t('角色类型', 'Role type'),
                   dataIndex: 'roleType',
                   renderText: (value) => ROLE_TYPE_LABEL_MAP[String(value)] || String(value || '-'),
                 },
-                { title: '默认访问页', dataIndex: 'defaultHomePath' },
-                { title: '权限数', dataIndex: 'permissionCount' },
-                { title: '用户数', dataIndex: 'userCount' },
+                { title: t('默认访问页', 'Default home page'), dataIndex: 'defaultHomePath' },
+                { title: t('权限数', 'Permission count'), dataIndex: 'permissionCount' },
+                { title: t('用户数', 'User count'), dataIndex: 'userCount' },
               ]}
               dataSource={detailDrawer.selectedRoleDetail}
               column={detailDrawer.column}
             />
             <div style={{ marginTop: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile) }}>
               <Space wrap size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)}>
-                <Typography.Text strong>数据范围</Typography.Text>
+                <Typography.Text strong>{t('数据范围', 'Data scope')}</Typography.Text>
                 {(detailDrawer.selectedRoleDetail.dataScopes?.length ? detailDrawer.selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
                   <Tag key={`${scope.resourceCode}:${scope.scopeType}`} color="purple">
-                    {scope.resourceCode === '*' ? '全局' : scope.resourceCode} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
+                    {scope.resourceCode === '*' ? t('全局', 'Global') : scope.resourceCode} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
                   </Tag>
                 ))}
               </Space>
             </div>
             <div style={{ marginTop: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile) }}>
               <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} style={{ width: '100%' }}>
-                <Typography.Text strong>当前权限</Typography.Text>
+                <Typography.Text strong>{t('当前权限', 'Current permissions')}</Typography.Text>
                 {detailDrawer.permissionDetailTreeData?.length ? (
                   <div className="role-permission-tree role-permission-detail-tree">
                     <Tree blockNode defaultExpandAll selectable={false} showIcon={false} treeData={detailDrawer.permissionDetailTreeData} />
                   </div>
                 ) : (
-                  <Tag>暂无权限</Tag>
+                  <Tag>{t('暂无权限', 'No permissions')}</Tag>
                 )}
               </Space>
             </div>
@@ -491,19 +494,19 @@ const RoleEditorBasicFields = ({
   <>
     <Form.Item
       name="roleCode"
-      label="角色编码"
+      label={t('角色编码', 'Role code')}
       rules={[
         {
           validator: (_, value) => {
             const roleCode = typeof value === 'string' ? value.trim() : '';
             if (!roleCode) {
-              return Promise.reject(new Error('请输入角色编码'));
+              return Promise.reject(new Error(t('请输入角色编码', 'Please enter the role code')));
             }
             if (roleCode.length > 64) {
-              return Promise.reject(new Error('角色编码长度不能超过64个字符'));
+              return Promise.reject(new Error(t('角色编码长度不能超过64个字符', 'Role code cannot exceed 64 characters')));
             }
             if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(roleCode)) {
-              return Promise.reject(new Error('角色编码只能由字母、数字和下划线组成，且必须以字母开头'));
+              return Promise.reject(new Error(t('角色编码只能由字母、数字和下划线组成，且必须以字母开头', 'Role code can contain only letters, numbers and underscores, and must start with a letter')));
             }
             return Promise.resolve();
           },
@@ -512,13 +515,13 @@ const RoleEditorBasicFields = ({
     >
       <Input maxLength={64} disabled={isPermissionOnlyEditor} onBlur={handleRoleCodeBlur} />
     </Form.Item>
-    <Form.Item name="roleName" label="角色名称" rules={[{ required: true, message: '请输入角色名称' }]}>
+    <Form.Item name="roleName" label={t('角色名称', 'Role name')} rules={[{ required: true, message: t('请输入角色名称', 'Please enter the role name') }]}>
       <Input disabled={isPermissionOnlyEditor} />
     </Form.Item>
-    <Form.Item name="roleType" label="角色类型" rules={[{ required: true, message: '请选择角色类型' }]}>
+    <Form.Item name="roleType" label={t('角色类型', 'Role type')} rules={[{ required: true, message: t('请选择角色类型', 'Please select a role type') }]}>
       <Select disabled={isPermissionOnlyEditor} options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
     </Form.Item>
-    <Form.Item name="defaultHomePath" label="默认访问页面" rules={[{ required: true, message: '请选择默认访问页面' }]}>
+    <Form.Item name="defaultHomePath" label={t('默认访问页面', 'Default home page')} rules={[{ required: true, message: t('请选择默认访问页面', 'Please select a default home page') }]}>
       <Select
         showSearch
         disabled={isPermissionOnlyEditor}
@@ -526,11 +529,11 @@ const RoleEditorBasicFields = ({
         listHeight={360}
         optionFilterProp="label"
         options={defaultHomeOptions}
-        placeholder="请选择登录后的默认访问页面"
+        placeholder={t('请选择登录后的默认访问页面', 'Select the default page after login')}
       />
     </Form.Item>
     <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
-    <Form.Item name={['dataScopes', 0, 'scopeType']} label="数据范围" rules={[{ required: true, message: '请选择数据范围' }]}>
+    <Form.Item name={['dataScopes', 0, 'scopeType']} label={t('数据范围', 'Data scope')} rules={[{ required: true, message: t('请选择数据范围', 'Please select a data scope') }]}>
       <Select disabled={isPermissionOnlyEditor} options={DATA_SCOPE_OPTIONS} />
     </Form.Item>
   </>

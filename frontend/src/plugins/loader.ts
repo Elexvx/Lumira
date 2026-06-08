@@ -6,6 +6,7 @@ import { captureAuthRequestSnapshot } from '@/auth/unauthorized';
 import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { performLogout } from '@/auth/sessionLifecycle';
 import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 
 const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>
   pluginRegistry.getModule(pluginCode, version);
@@ -117,7 +118,7 @@ export const resolvePluginLoadError = (error: unknown): PluginLoadFeedback => {
   }
   return {
     type: 'error',
-    message: '插件加载失败，请稍后重试',
+    message: resolveBuiltinMessage('common.pluginLoadFailed', '插件加载失败，请稍后重试'),
   };
 };
 
@@ -147,7 +148,8 @@ const executeSource = async (key: string, source: string) => {
       scriptElement.dataset.pluginAsset = key;
       scriptElement.dataset.pluginCode = key.split(':')[0];
       scriptElement.onload = () => resolve();
-      scriptElement.onerror = () => reject(new Error(`插件脚本执行失败: ${key}`));
+      scriptElement.onerror = () =>
+        reject(new Error(`${resolveBuiltinMessage('common.pluginScriptExecutionFailed', '插件脚本执行失败')}: ${key}`));
       document.body.appendChild(scriptElement);
     });
   } finally {
@@ -162,7 +164,11 @@ const injectStyle = async (pluginCode: string, relativePath: string) => {
     headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildPluginLoadError(response, `插件样式加载失败: ${relativePath}`, authSnapshot);
+    throw await buildPluginLoadError(
+      response,
+      `${resolveBuiltinMessage('common.pluginStyleLoadFailed', '插件样式加载失败')}: ${relativePath}`,
+      authSnapshot,
+    );
   }
   const content = await response.text();
   const styleElement = document.createElement('style');
@@ -179,7 +185,11 @@ const injectScript = async (pluginCode: string, relativePath: string) => {
     headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildPluginLoadError(response, `插件脚本加载失败: ${relativePath}`, authSnapshot);
+    throw await buildPluginLoadError(
+      response,
+      `${resolveBuiltinMessage('common.pluginScriptLoadFailed', '插件脚本加载失败')}: ${relativePath}`,
+      authSnapshot,
+    );
   }
   const source = await response.text();
   await executeSource(`${pluginCode}:${relativePath}`, source);
@@ -196,20 +206,20 @@ const fetchPluginJson = async <T>(url: string) => {
     headers: buildHeaders(requestAccessToken),
   });
   if (!response.ok) {
-    throw await buildPluginLoadError(response, '加载插件资源失败，请稍后重试', authSnapshot);
+    throw await buildPluginLoadError(response, resolveBuiltinMessage('common.pluginResourceLoadFailed', '加载插件资源失败，请稍后重试'), authSnapshot);
   }
   return (await response.json()) as T;
 };
 
 const validatePluginManifest = (input: PluginManifest): PluginManifest => {
   if (!input?.pluginCode || !input?.version || !input?.entry || !Array.isArray(input?.assets)) {
-    throw new Error('插件 manifest 缺少必要字段');
+    throw new Error(resolveBuiltinMessage('common.pluginManifestMissingFields', '插件 manifest 缺少必要字段'));
   }
   if (!input.assets.includes(input.entry)) {
-    throw new Error('插件 manifest 的 entry 必须包含在 assets 中');
+    throw new Error(resolveBuiltinMessage('common.pluginManifestEntryMissing', '插件 manifest 的 entry 必须包含在 assets 中'));
   }
   if (input.sharedDeps && !input.sharedDeps.includes('react')) {
-    throw new Error('插件 manifest 必须声明 react 共享依赖');
+    throw new Error(resolveBuiltinMessage('common.pluginManifestReactDepRequired', '插件 manifest 必须声明 react 共享依赖'));
   }
   return input;
 };
@@ -231,7 +241,7 @@ export const loadPlugin = async (pluginCode: string): Promise<PluginLoadResult> 
   }
   const module = window.__SAAS_PLUGIN_BUNDLES__?.[`${pluginCode}@${manifest.version}`];
   if (!module) {
-    throw new Error('插件入口未成功注册');
+    throw new Error(resolveBuiltinMessage('common.pluginEntryNotRegistered', '插件入口未成功注册'));
   }
   const result = {
     manifest,

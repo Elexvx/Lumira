@@ -13,10 +13,15 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
 import type { DepartmentRecord } from '@/types/api';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const STATUS_OPTIONS = [
-  { label: '启用', value: 'ENABLED' },
-  { label: '停用', value: 'DISABLED' },
+  { label: t('启用', 'Enabled'), value: 'ENABLED' },
+  { label: t('停用', 'Disabled'), value: 'DISABLED' },
 ];
 
 const flattenDepartments = (departments: DepartmentRecord[], depth = 0): { label: string; value: number }[] =>
@@ -41,67 +46,67 @@ const buildDepartmentColumns = ({
   isMobile: boolean;
 }): ProColumns<DepartmentRecord>[] => [
   {
-    title: '部门名称',
+    title: t('部门名称', 'Department name'),
     dataIndex: 'deptName',
     width: 'var(--saas-spacing-260)',
   },
   {
-    title: '部门编码',
+    title: t('部门编码', 'Department code'),
     dataIndex: 'deptCode',
     width: 'var(--saas-spacing-180)',
   },
   {
-    title: '状态',
+    title: t('状态', 'Status'),
     dataIndex: 'status',
     width: 'var(--saas-spacing-100)',
-    render: (status) => <Tag color={status === 'ENABLED' ? 'green' : 'default'}>{status === 'ENABLED' ? '启用' : '停用'}</Tag>,
+    render: (status) => <Tag color={status === 'ENABLED' ? 'green' : 'default'}>{status === 'ENABLED' ? t('启用', 'Enabled') : t('停用', 'Disabled')}</Tag>,
   },
   {
-    title: '用户数',
+    title: t('用户数', 'User count'),
     dataIndex: 'userCount',
     width: 'var(--saas-spacing-100)',
   },
   {
-    title: '排序',
+    title: t('排序', 'Sort order'),
     dataIndex: 'sortNo',
     width: 'var(--saas-spacing-90)',
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     width: 'var(--saas-spacing-260)',
     fixed: 'right',
     render: (_, record) => {
       const userCount = record.userCount ?? 0;
       const hasChildren = !!record.children?.length;
       const cannotDelete = userCount > 0 || hasChildren;
-      const deleteDisabledReason = hasChildren ? '该部门存在下级部门，不能删除' : userCount > 0 ? `该部门下仍有 ${userCount} 名用户，不能删除` : null;
+      const deleteDisabledReason = hasChildren ? t('该部门存在下级部门，不能删除', 'This department has child departments and cannot be deleted') : userCount > 0 ? t('该部门下仍有 {count} 名用户，不能删除', 'This department still has {count} users and cannot be deleted').replace('{count}', String(userCount)) : null;
 
       return (
         <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
           <Button type="link" size="small" onClick={() => void openDetail(record)}>
-            详情
+            {t('详情', 'Details')}
           </Button>
           {actionPermission.can('system:department:create') ? (
             <Button type="link" size="small" onClick={() => openCreateChild(record)}>
-              新增下级
+              {t('新增下级', 'Add child')}
             </Button>
           ) : null}
           {actionPermission.can('system:department:update') ? (
             <Button type="link" size="small" onClick={() => void openEdit(record)}>
-              编辑
+              {t('编辑', 'Edit')}
             </Button>
           ) : null}
           {actionPermission.can('system:department:delete') ? (
             cannotDelete ? (
               <Tooltip title={deleteDisabledReason}>
                 <Button type="link" size="small" danger disabled>
-                  删除
+                  {t('删除', 'Delete')}
                 </Button>
               </Tooltip>
             ) : (
-              <Popconfirm title="删除部门" description={`确认删除「${record.deptName}」吗？`} onConfirm={() => void deleteDepartment(record)}>
+              <Popconfirm title={t('删除部门', 'Delete department')} description={t(`确认删除「${record.deptName}」吗？`, `Delete "${record.deptName}"?`)} onConfirm={() => void deleteDepartment(record)}>
                 <Button type="link" size="small" danger>
-                  删除
+                  {t('删除', 'Delete')}
                 </Button>
               </Popconfirm>
             )
@@ -224,14 +229,14 @@ const useDepartmentManagement = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('部门已更新');
+        message.success(t('部门已更新', 'Department updated'));
       } else {
         await request<DepartmentRecord>('/v1/system/departments', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('部门已创建');
+        message.success(t('部门已创建', 'Department created'));
       }
       drawer.close();
       await loadDepartments();
@@ -245,7 +250,7 @@ const useDepartmentManagement = () => {
         method: 'DELETE',
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success('部门已删除');
+      message.success(t('部门已删除', 'Department deleted'));
       await loadDepartments();
     },
     [loadDepartments],
@@ -269,12 +274,12 @@ const useDepartmentManagement = () => {
           key: 'create',
           permission: 'system:department:create',
           type: 'primary',
-          label: '新增部门',
+          label: t('新增部门', 'Add department'),
           onClick: openCreate,
         },
         {
           key: 'refresh',
-          label: '刷新',
+          label: t('刷新', 'Refresh'),
           onClick: async () => {
             await loadDepartments();
           },
@@ -332,7 +337,7 @@ const DepartmentManagementPage = () => {
   } = useDepartmentManagement();
 
   return (
-    <ManagementPage title="组织部门">
+    <ManagementPage title={t('组织部门', 'Organization departments')}>
       <ManagementPageBody>
         <ManagementTable<DepartmentRecord>
           rowKey="id"
@@ -349,45 +354,45 @@ const DepartmentManagementPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={drawer.editingId ? '编辑部门' : '新增部门'}
+        title={drawer.editingId ? t('编辑部门', 'Edit department') : t('新增部门', 'Add department')}
         open={drawer.open}
         onClose={drawer.close}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSaveDepartment, onClick: () => void saveDepartment() },
+          { key: 'cancel', label: t('取消', 'Cancel'), onClick: drawer.close },
+          { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSaveDepartment, onClick: () => void saveDepartment() },
         ]}
       >
         <Form {...formProps}>
-          <Form.Item name="parentId" label="上级部门">
-            <Select allowClear options={departmentOptions.filter((item) => item.value !== drawer.editingId)} placeholder="请选择上级部门" />
+          <Form.Item name="parentId" label={t('上级部门', 'Parent department')}>
+            <Select allowClear options={departmentOptions.filter((item) => item.value !== drawer.editingId)} placeholder={t('请选择上级部门', 'Select a parent department')} />
           </Form.Item>
-          <Form.Item name="deptCode" label="部门编码" rules={[{ required: true, message: '请输入部门编码' }]}>
-            <Input placeholder="例如 product" />
+          <Form.Item name="deptCode" label={t('部门编码', 'Department code')} rules={[{ required: true, message: t('请输入部门编码', 'Please enter the department code') }]}>
+            <Input placeholder={t('例如 product', 'e.g. product')} />
           </Form.Item>
-          <Form.Item name="deptName" label="部门名称" rules={[{ required: true, message: '请输入部门名称' }]}>
-            <Input placeholder="例如 产品部" />
+          <Form.Item name="deptName" label={t('部门名称', 'Department name')} rules={[{ required: true, message: t('请输入部门名称', 'Please enter the department name') }]}>
+            <Input placeholder={t('例如 产品部', 'e.g. Product Department')} />
           </Form.Item>
-          <Form.Item name="sortNo" label="排序">
+          <Form.Item name="sortNo" label={t('排序', 'Sort order')}>
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+          <Form.Item name="status" label={t('状态', 'Status')} rules={[{ required: true, message: t('请选择状态', 'Please select a status') }]}>
             <Select options={STATUS_OPTIONS} />
           </Form.Item>
         </Form>
       </ManagementDrawer>
 
-      <ManagementDrawer title={selectedDepartment ? `部门详情 · ${selectedDepartment.deptName}` : '部门详情'} open={detail.open} onClose={closeDetail}>
+      <ManagementDrawer title={selectedDepartment ? `${t('部门详情', 'Department details')} · ${selectedDepartment.deptName}` : t('部门详情', 'Department details')} open={detail.open} onClose={closeDetail}>
         {selectedDepartment ? (
           <ProDescriptions<DepartmentRecord>
             {...detailProps}
             columns={[
-              { title: '部门名称', dataIndex: 'deptName' },
-              { title: '部门编码', dataIndex: 'deptCode' },
-              { title: '状态', dataIndex: 'status' },
-              { title: '用户数', dataIndex: 'userCount' },
-              { title: '排序', dataIndex: 'sortNo' },
-              { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime' },
-              { title: '更新时间', dataIndex: 'updatedAt', valueType: 'dateTime' },
+              { title: t('部门名称', 'Department name'), dataIndex: 'deptName' },
+              { title: t('部门编码', 'Department code'), dataIndex: 'deptCode' },
+              { title: t('状态', 'Status'), dataIndex: 'status' },
+              { title: t('用户数', 'User count'), dataIndex: 'userCount' },
+              { title: t('排序', 'Sort order'), dataIndex: 'sortNo' },
+              { title: t('创建时间', 'Created at'), dataIndex: 'createdAt', valueType: 'dateTime' },
+              { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', valueType: 'dateTime' },
             ]}
           />
         ) : null}

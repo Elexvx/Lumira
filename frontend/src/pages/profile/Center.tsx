@@ -1,4 +1,5 @@
 import { formatMessage } from '@umijs/max';
+import { getLocale } from '@umijs/max';
 import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Input, List, Modal, Popconfirm, Progress, QRCode, Result, Row, Select, Space, Tag, Timeline, Tooltip, Typography, Upload, theme } from 'antd';
 import type { DescriptionsProps, FormProps, UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
@@ -14,11 +15,15 @@ import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profil
 import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const GENDER_OPTIONS = [
-  { label: '男', value: 'MALE' },
-  { label: '女', value: 'FEMALE' },
-  { label: '其他', value: 'OTHER' },
+  { label: t('男', 'Male'), value: 'MALE' },
+  { label: t('女', 'Female'), value: 'FEMALE' },
+  { label: t('其他', 'Other'), value: 'OTHER' },
 ];
 
 const BindSecondFactorSubmitter = ({
@@ -38,16 +43,16 @@ const BindSecondFactorSubmitter = ({
 }) => ({
   render: (props: { step: number; onPre?: () => void; onSubmit?: () => void }) => (
     <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
-      <Button onClick={onCancel} disabled={bindingSubmitting}>
-        取消
-      </Button>
+        <Button onClick={onCancel} disabled={bindingSubmitting}>
+          {t('取消', 'Cancel')}
+        </Button>
       {props.step > 0 ? (
         <Button onClick={props.onPre} disabled={bindingLoading || bindingSubmitting}>
-          上一步
+          {t('上一步', 'Previous step')}
         </Button>
       ) : null}
       <Button onClick={onRetry} disabled={bindingLoading || bindingSubmitting || !hasChallenge}>
-        重新发送验证码
+        {t('重新发送验证码', 'Resend code')}
       </Button>
       <Button
         type="primary"
@@ -55,7 +60,7 @@ const BindSecondFactorSubmitter = ({
         disabled={bindingLoading || bindingSubmitting || !hasChallenge}
         onClick={props.onSubmit}
       >
-        {props.step === 0 ? '下一步' : '确认绑定'}
+        {props.step === 0 ? t('下一步', 'Next') : t('确认绑定', 'Confirm binding')}
       </Button>
     </Space>
   ),
@@ -80,11 +85,11 @@ const BindSecondFactorTotpPreviewStep = ({
     <Alert
       showIcon
       type="info"
-      message="扫码绑定"
+      message={t('扫码绑定', 'Scan to bind')}
       description={
         bindingProvider?.bound
-          ? '当前已绑定，重新绑定会生成新的密钥并覆盖旧绑定，请确认后继续。'
-          : '请使用支持 TOTP 的认证器扫描二维码。也可以手动输入密钥完成绑定。'
+          ? t('当前已绑定，重新绑定会生成新的密钥并覆盖旧绑定，请确认后继续。', 'This is already bound. Rebinding will generate a new secret and overwrite the existing binding. Please confirm to continue.')
+          : t('请使用支持 TOTP 的认证器扫描二维码。也可以手动输入密钥完成绑定。', 'Use a TOTP authenticator to scan the QR code. You can also enter the secret manually to complete binding.')
       }
     />
     {bindingLoading ? (
@@ -95,31 +100,31 @@ const BindSecondFactorTotpPreviewStep = ({
           <QRCode value={bindingChallenge.setupUri || bindingChallenge.setupSecret || ''} size={resolveResponsiveValue(APP_SPACING.qrCodeSize, isMobile)} bordered />
         </div>
         <Descriptions {...singleColumnDescriptionsProps}>
-          <Descriptions.Item label="验证方式">{bindingChallenge.factorName || '2FA'}</Descriptions.Item>
-          <Descriptions.Item label="标识">{bindingChallenge.factorCode || '-'}</Descriptions.Item>
-          <Descriptions.Item label="绑定标识">{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
-          <Descriptions.Item label="手动密钥">
+          <Descriptions.Item label={t('验证方式', 'Verification method')}>{bindingChallenge.factorName || '2FA'}</Descriptions.Item>
+          <Descriptions.Item label={t('标识', 'Identifier')}>{bindingChallenge.factorCode || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('绑定标识', 'Binding identifier')}>{bindingChallenge.maskedContact || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('手动密钥', 'Manual key')}>
             <Typography.Text copyable={{ text: bindingChallenge.setupSecret || '' }}>
               {bindingChallenge.setupSecret || '-'}
             </Typography.Text>
           </Descriptions.Item>
-          <Descriptions.Item label="绑定地址">
+          <Descriptions.Item label={t('绑定地址', 'Binding address')}>
             <Typography.Paragraph style={{ marginBottom: 0 }} copyable={{ text: bindingChallenge.setupUri || '' }}>
               {bindingChallenge.setupUri || '-'}
             </Typography.Paragraph>
           </Descriptions.Item>
         </Descriptions>
         <Typography.Text type="secondary">
-          下一步将要求你输入认证器中的首个 6 位验证码，确认成功后才算绑定完成。
+          {t('下一步将要求你输入认证器中的首个 6 位验证码，确认成功后才算绑定完成。', 'Next you will enter the first 6-digit code from your authenticator. Binding is complete only after confirmation.')}
         </Typography.Text>
       </Space>
     ) : (
       <Empty
         description={
             <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)}>
-            <span>绑定信息尚未加载，请重试</span>
+            <span>{t('绑定信息尚未加载，请重试', 'Binding information has not loaded. Please try again.')}</span>
             <Button type="primary" onClick={onRetry} disabled={!bindingProvider}>
-              重新获取绑定信息
+              {t('重新获取绑定信息', 'Reload binding information')}
             </Button>
           </Space>
         }
@@ -133,17 +138,17 @@ const BindSecondFactorTotpVerifyStep = ({ isMobile }: { isMobile: boolean }) => 
     <Alert
       showIcon
       type="info"
-      message="验证首个验证码"
-      description="请在认证器中查看当前 6 位验证码并输入，系统会用它确认二维码已经成功绑定。"
+      message={t('验证首个验证码', 'Verify the first code')}
+      description={t('请在认证器中查看当前 6 位验证码并输入，系统会用它确认二维码已经成功绑定。', 'Check the current 6-digit code in your authenticator and enter it. The system will use it to confirm the QR code has been bound.')}
     />
     <Form.Item
       name="verificationCode"
       rules={[
-        { required: true, message: '请输入首个验证码' },
-        { pattern: /^\d{6}$/, message: '验证码必须为 6 位数字' },
+        { required: true, message: t('请输入首个验证码', 'Please enter the first code') },
+        { pattern: /^\d{6}$/, message: t('验证码必须为 6 位数字', 'The verification code must be 6 digits') },
       ]}
     >
-      <Input size="large" maxLength={6} inputMode="numeric" autoComplete="one-time-code" placeholder="请输入 6 位验证码" />
+      <Input size="large" maxLength={6} inputMode="numeric" autoComplete="one-time-code" placeholder={t('请输入 6 位验证码', 'Enter the 6-digit code')} />
     </Form.Item>
   </Space>
 );
@@ -191,7 +196,7 @@ const BindSecondFactorTotpSteps = ({
       </Space>
     )}
   >
-    <StepsForm.StepForm name="bind-preview" title="扫描二维码">
+    <StepsForm.StepForm name="bind-preview" title={t('扫描二维码', 'Scan QR code')}>
       <BindSecondFactorTotpPreviewStep
         bindingProvider={bindingProvider}
         bindingChallenge={bindingChallenge}
@@ -201,7 +206,7 @@ const BindSecondFactorTotpSteps = ({
         onRetry={onRetry}
       />
     </StepsForm.StepForm>
-    <StepsForm.StepForm name="bind-verify" title="验证首个验证码">
+    <StepsForm.StepForm name="bind-verify" title={t('验证首个验证码', 'Verify first code')}>
       <BindSecondFactorTotpVerifyStep isMobile={isMobile} />
     </StepsForm.StepForm>
   </StepsForm>
@@ -259,7 +264,7 @@ const ContactBindModal = ({
       onOk={onConfirm}
       confirmLoading={submitting}
       okText={okText}
-      cancelText="取消"
+      cancelText={t('取消', 'Cancel')}
       destroyOnHidden
       maskClosable={false}
     >
@@ -269,14 +274,14 @@ const ContactBindModal = ({
           <Alert
             showIcon
             type="info"
-            message="需要验证码确认"
+            message={t('需要验证码确认', 'Verification code required')}
             description={
               verificationChallenge
                 ? verificationChallenge.promptMessage ||
                   (verificationChallenge.maskedContact
-                    ? `验证码已发送至 ${verificationChallenge.maskedContact}，请输入收到的验证码继续。`
-                    : '验证码已发送，请输入收到的验证码继续。')
-                : '点击发送验证码后，需要输入收到的验证码才能完成绑定。'
+                    ? t('验证码已发送至 {contact}，请输入收到的验证码继续。', 'The verification code has been sent to {contact}, please enter the code to continue.').replace('{contact}', verificationChallenge.maskedContact)
+                    : t('验证码已发送，请输入收到的验证码继续。', 'The verification code has been sent. Please enter the code to continue.'))
+                : t('点击发送验证码后，需要输入收到的验证码才能完成绑定。', 'After sending the verification code, you need to enter it to complete the binding.')
             }
           />
         ) : null}
@@ -286,9 +291,9 @@ const ContactBindModal = ({
             name="value"
             label={label}
             rules={[
-              { required: true, message: `请输入${label}` },
-              ...(label === '邮箱' ? [{ type: 'email' as const, message: '请输入有效邮箱地址' }] : []),
-              ...(label === '手机号' ? [{ pattern: /^1[3-9]\d{9}$/, message: '请输入有效手机号' }] : []),
+              { required: true, message: t(`请输入${label}`, `Please enter ${label}`) },
+              ...(label === '邮箱' ? [{ type: 'email' as const, message: t('请输入有效邮箱地址', 'Please enter a valid email address') }] : []),
+              ...(label === '手机号' ? [{ pattern: /^1[3-9]\d{9}$/, message: t('请输入有效手机号', 'Please enter a valid mobile number') }] : []),
             ]}
           >
             <Input placeholder={placeholder} autoComplete={autoComplete} inputMode={inputMode} />
@@ -296,13 +301,13 @@ const ContactBindModal = ({
           {verificationRequired && verificationChallenge ? (
             <Form.Item
               name="verificationCode"
-              label="验证码"
+              label={t('验证码', 'Verification code')}
               rules={[
-                { required: true, message: '请输入验证码' },
-                { pattern: /^\d{6}$/, message: '验证码必须为 6 位数字' },
+                { required: true, message: t('请输入验证码', 'Please enter the code') },
+                { pattern: /^\d{6}$/, message: t('验证码必须为 6 位数字', 'The verification code must be 6 digits') },
               ]}
             >
-              <Input placeholder="请输入收到的 6 位验证码" autoComplete="one-time-code" inputMode="numeric" maxLength={6} />
+              <Input placeholder={t('请输入收到的 6 位验证码', 'Enter the 6-digit code you received')} autoComplete="one-time-code" inputMode="numeric" maxLength={6} />
             </Form.Item>
           ) : null}
         </Form>
@@ -339,7 +344,7 @@ const ProfileBasicEditDrawer = ({
   onAvatarUploadRequest: UploadProps['customRequest'];
 }) => (
   <Drawer
-    title="编辑个人资料"
+    title={t('编辑个人资料', 'Edit profile')}
     open={editingOpen}
     width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
     destroyOnClose={false}
@@ -347,9 +352,9 @@ const ProfileBasicEditDrawer = ({
     footer={
       <div className="saas-drawer-footer">
         <Space>
-          <Button onClick={() => onEditOpenChange(false)}>取消</Button>
+          <Button onClick={() => onEditOpenChange(false)}>{t('取消', 'Cancel')}</Button>
           <Button type="primary" loading={profileSaving} onClick={onSave}>
-            保存资料
+            {t('保存资料', 'Save profile')}
           </Button>
         </Space>
       </div>
@@ -363,9 +368,9 @@ const ProfileBasicEditDrawer = ({
       {visibleProfileFields.has('avatarUrl') ? (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Space direction="vertical" align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)}>
-            <ImgCrop rotationSlider aspect={1} modalTitle="裁切头像" beforeCrop={onAvatarBeforeCrop}>
+            <ImgCrop rotationSlider aspect={1} modalTitle={t('裁切头像', 'Crop avatar')} beforeCrop={onAvatarBeforeCrop}>
               <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
-                <Tooltip title="点击头像修改" placement="top">
+                <Tooltip title={t('点击头像修改', 'Click avatar to edit')} placement="top">
                   <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.large, isMobile)} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
                 </Tooltip>
               </Upload>
@@ -377,53 +382,53 @@ const ProfileBasicEditDrawer = ({
       {visibleProfileFields.size ? (
         <Row gutter={[resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile)[0], 0]}>
           <Col xs={24}>
-            <Form.Item label="用户名">
+            <Form.Item label={t('用户名', 'Username')}>
               <Input value={currentUser?.username || '-'} disabled />
             </Form.Item>
           </Col>
           <Col xs={24}>
-            <Form.Item name="nickname" label="昵称">
-              <Input placeholder="请输入昵称" />
+            <Form.Item name="nickname" label={t('昵称', 'Nickname')}>
+              <Input placeholder={t('请输入昵称', 'Enter a nickname')} />
             </Form.Item>
           </Col>
           {visibleProfileFields.has('realName') ? (
             <Col xs={24}>
-              <Form.Item name="realName" label="姓名">
-                <Input placeholder="请输入姓名" />
+              <Form.Item name="realName" label={t('姓名', 'Full name')}>
+                <Input placeholder={t('请输入姓名', 'Enter your full name')} />
               </Form.Item>
             </Col>
           ) : null}
           {visibleProfileFields.has('birthMonth') ? (
             <Col xs={24}>
-              <Form.Item name="birthMonth" label="出生年月">
-                <DatePicker picker="month" placeholder="请选择出生年月" format="YYYY年MM月" style={{ width: '100%' }} />
+              <Form.Item name="birthMonth" label={t('出生年月', 'Birth month')}>
+                <DatePicker picker="month" placeholder={t('请选择出生年月', 'Select your birth month')} format="YYYY年MM月" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           ) : null}
           {visibleProfileFields.has('gender') ? (
             <Col xs={24}>
-              <Form.Item name="gender" label="性别">
-                <Select allowClear placeholder="请选择性别" options={GENDER_OPTIONS} />
+              <Form.Item name="gender" label={t('性别', 'Gender')}>
+                <Select allowClear placeholder={t('请选择性别', 'Select gender')} options={GENDER_OPTIONS} />
               </Form.Item>
             </Col>
           ) : null}
           {visibleProfileFields.has('region') ? (
             <Col xs={24}>
-              <Form.Item name="region" label="所在地区">
-                <Input placeholder="请输入所在地区" />
+              <Form.Item name="region" label={t('所在地区', 'Region')}>
+                <Input placeholder={t('请输入所在地区', 'Enter your region')} />
               </Form.Item>
             </Col>
           ) : null}
           {visibleProfileFields.has('idCardNumber') ? (
             <Col xs={24}>
-              <Form.Item name="idCardNumber" label="身份证号码" rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
-                <Input placeholder="请输入身份证号码" />
+              <Form.Item name="idCardNumber" label={t('身份证号码', 'ID card number')} rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
+                <Input placeholder={t('请输入身份证号码', 'Enter your ID card number')} />
               </Form.Item>
             </Col>
           ) : null}
         </Row>
       ) : (
-        <Empty description="当前未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty description={t('当前未开启任何可编辑资料字段', 'No editable profile fields are enabled')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}
     </Form>
   </Drawer>
@@ -475,7 +480,7 @@ const ProfileCenterOverviewSection = ({
       <div className="saas-profile-page__top-row">
         <Card className="saas-profile-page__card saas-profile-page__summary-card">
           <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
-            <section className="saas-profile-page__account-panel" aria-label="账户身份">
+            <section className="saas-profile-page__account-panel" aria-label={t('账户身份', 'Account identity')}>
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.mobileProfileSectionGap, isMobile)} className="saas-profile-page__welcome-profile">
                 <Avatar
                   size={isMobile ? 56 : 64}
@@ -504,17 +509,17 @@ const ProfileCenterOverviewSection = ({
 
       <div ref={profileBasicCardRef}>
         <Card
-          title="个人信息"
+          title={t('个人信息', 'Personal information')}
           loading={loading}
           className="saas-profile-page__card saas-profile-page__personal-card"
           style={{ width: '100%' }}
           extra={
             <Space size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)}>
-              <Tooltip title="编辑资料">
+              <Tooltip title={t('编辑资料', 'Edit profile')}>
                 <Button
                   type="text"
                   shape="circle"
-                  aria-label="编辑资料"
+                  aria-label={t('编辑资料', 'Edit profile')}
                   icon={<EditOutlined />}
                   disabled={!hasVisibleProfileFields}
                   onClick={() => onEditOpenChange(true)}
@@ -529,17 +534,17 @@ const ProfileCenterOverviewSection = ({
               colon={false}
               column={{ xs: 1, sm: 2, lg: 4 }}
               items={[
-                { key: 'username', label: '用户名', children: currentUser?.username || '-' },
-                ...(visibleProfileFields.has('nickname') ? [{ key: 'nickname', label: '昵称', children: currentUser?.nickname || '-' }] : []),
-                ...(visibleProfileFields.has('realName') ? [{ key: 'realName', label: '姓名', children: currentUser?.realName || '-' }] : []),
-                ...(visibleProfileFields.has('birthMonth') ? [{ key: 'birthMonth', label: '出生年月', children: currentUser?.birthMonth || '-' }] : []),
-                ...(visibleProfileFields.has('gender') ? [{ key: 'gender', label: '性别', children: GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-' }] : []),
-                ...(visibleProfileFields.has('region') ? [{ key: 'region', label: '所在地区', children: currentUser?.region || '-' }] : []),
-                ...(visibleProfileFields.has('idCardNumber') ? [{ key: 'idCardNumber', label: '身份证号码', children: currentUser?.idCardNumber || '-' }] : []),
+                { key: 'username', label: t('用户名', 'Username'), children: currentUser?.username || '-' },
+                ...(visibleProfileFields.has('nickname') ? [{ key: 'nickname', label: t('昵称', 'Nickname'), children: currentUser?.nickname || '-' }] : []),
+                ...(visibleProfileFields.has('realName') ? [{ key: 'realName', label: t('姓名', 'Full name'), children: currentUser?.realName || '-' }] : []),
+                ...(visibleProfileFields.has('birthMonth') ? [{ key: 'birthMonth', label: t('出生年月', 'Birth month'), children: currentUser?.birthMonth || '-' }] : []),
+                ...(visibleProfileFields.has('gender') ? [{ key: 'gender', label: t('性别', 'Gender'), children: GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-' }] : []),
+                ...(visibleProfileFields.has('region') ? [{ key: 'region', label: t('所在地区', 'Region'), children: currentUser?.region || '-' }] : []),
+                ...(visibleProfileFields.has('idCardNumber') ? [{ key: 'idCardNumber', label: t('身份证号码', 'ID card number'), children: currentUser?.idCardNumber || '-' }] : []),
               ]}
             />
           ) : (
-            <Empty description="当前未开启任何可编辑资料字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty description={t('当前未开启任何可编辑资料字段', 'No editable profile fields are enabled')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
           )}
         </Card>
         <ProfileBasicEditDrawer
@@ -605,7 +610,7 @@ const ProfileCenterCompletionCard = ({
 
   return (
     <Card
-      title="信息完整度"
+      title={t('信息完整度', 'Profile completeness')}
       loading={loading}
       className="saas-profile-page__card saas-profile-page__completion-card saas-profile-page__completion-card--compact"
       style={{ width: '100%' }}
@@ -618,10 +623,10 @@ const ProfileCenterCompletionCard = ({
               {profileCompletionSummary.completionRate}%
             </Typography.Title>
             <Typography.Text type="secondary">
-              {incompleteItems.length ? `${incompleteItems.length} 项待完善` : '资料已完善'}
+              {incompleteItems.length ? t('{count} 项待完善', '{count} items to complete').replace('{count}', String(incompleteItems.length)) : t('资料已完善', 'Profile complete')}
             </Typography.Text>
             <Typography.Text type="secondary">
-              {profileCompletionSummary.score}/{profileCompletionSummary.maxScore} 分
+              {profileCompletionSummary.score}/{profileCompletionSummary.maxScore} {t('分', 'points')}
             </Typography.Text>
           </Space>
           <Progress
@@ -633,25 +638,25 @@ const ProfileCenterCompletionCard = ({
             <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
               {visibleIncompleteItems.map((item) =>
                 item.actionAvailable === false ? (
-                  <Tag key={item.fieldKey}>待开启 · {item.fieldLabel}</Tag>
+                  <Tag key={item.fieldKey}>{t('待开启', 'Pending')} · {item.fieldLabel}</Tag>
                 ) : (
                   <Button key={item.fieldKey} type="link" size="small" icon={<ExclamationCircleFilled />} onClick={() => onProfileCompletionAction(item)}>
                     {item.fieldLabel}
                   </Button>
                 ),
               )}
-              {incompleteItems.length > visibleIncompleteItems.length ? <Typography.Text type="secondary">还有 {incompleteItems.length - visibleIncompleteItems.length} 项</Typography.Text> : null}
+              {incompleteItems.length > visibleIncompleteItems.length ? <Typography.Text type="secondary">{t('还有 {count} 项', '{count} more items').replace('{count}', String(incompleteItems.length - visibleIncompleteItems.length))}</Typography.Text> : null}
             </Space>
           ) : null}
 
           {firstActionableItem ? (
             <Button type="primary" block onClick={() => onProfileCompletionAction(firstActionableItem)}>
-              一键去完善
+              {t('一键去完善', 'Complete now')}
             </Button>
           ) : null}
         </Space>
       ) : (
-        <Empty description="当前暂无可评分字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty description={t('当前暂无可评分字段', 'No fields are available for scoring yet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}
     </Card>
   );
@@ -708,10 +713,10 @@ const ProfileCenterBindingSection = ({
               <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)} style={{ minWidth: 0, width: '100%' }}>
                 <Space wrap>
                   <Typography.Text strong>{item.title}</Typography.Text>
-                  <Tag color={item.statusColor || (item.value ? 'green' : 'default')}>{item.statusLabel || (item.value ? '已绑定' : '未绑定')}</Tag>
+          <Tag color={item.statusColor || (item.value ? 'green' : 'default')}>{item.statusLabel || (item.value ? t('已绑定', 'Bound') : t('未绑定', 'Unbound'))}</Tag>
                   {item.methodLabel ? <Tag color={item.methodColor}>{item.methodLabel}</Tag> : null}
                 </Space>
-                <Typography.Text type="secondary">{item.value || '暂无绑定信息'}</Typography.Text>
+                <Typography.Text type="secondary">{item.value || t('暂无绑定信息', 'No binding information')}</Typography.Text>
               </Space>
               <Space
                 wrap
@@ -730,7 +735,7 @@ const ProfileCenterBindingSection = ({
         )}
       />
     ) : (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前暂无可绑定登录方式" />
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('当前暂无可绑定登录方式', 'No bindable sign-in methods are available yet')} />
     );
 
   const renderProviderList = (
@@ -760,11 +765,11 @@ const ProfileCenterBindingSection = ({
                 <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)} style={{ minWidth: 0, width: '100%' }}>
                 <Space wrap>
                   <Typography.Text strong>{provider.factorName || provider.factorCode}</Typography.Text>
-                  {provider.systemEnabled === false ? <Tag color="red">系统已关闭</Tag> : null}
-                  <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>{provider.bound ? '已绑定' : '未绑定'}</Tag>
+                  {provider.systemEnabled === false ? <Tag color="red">{t('系统已关闭', 'System disabled')}</Tag> : null}
+                  <Tag color={provider.bound ? 'green' : provider.enabled ? 'gold' : 'default'}>{provider.bound ? t('已绑定', 'Bound') : t('未绑定', 'Unbound')}</Tag>
                   <Tag>{provider.factorCode}</Tag>
                 </Space>
-                <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || '暂无绑定标识'}</Typography.Text>
+                <Typography.Text type="secondary">{provider.maskedContact || provider.statusMessage || t('暂无绑定标识', 'No binding identifier')}</Typography.Text>
               </Space>
               <Space
                 wrap
@@ -780,11 +785,11 @@ const ProfileCenterBindingSection = ({
                   onClick={() => onBind(provider)}
                   disabled={currentBindingLoading || currentBindingSubmitting || provider.systemEnabled === false}
                 >
-                  {provider.systemEnabled === false ? '系统未启用' : provider.bound ? '重新绑定' : '绑定'}
+                  {provider.systemEnabled === false ? t('系统未启用', 'System disabled') : provider.bound ? t('重新绑定', 'Rebind') : t('绑定', 'Bind')}
                 </Button>
                 {provider.bound ? (
                   <Button danger block={isMobile} onClick={() => onUnbind(provider)} disabled={provider.systemEnabled === false}>
-                    解绑
+                    {t('解绑', 'Unbind')}
                   </Button>
                 ) : null}
               </Space>
@@ -799,7 +804,7 @@ const ProfileCenterBindingSection = ({
   const renderPasskeyList = (items: PasskeyCredentialRecord[]) => (
     <>
       <Divider plain style={{ margin: 0 }}>
-        通行密钥
+        {t('通行密钥', 'Passkey')}
       </Divider>
       {items.length ? (
         <List
@@ -810,25 +815,25 @@ const ProfileCenterBindingSection = ({
               style={{ paddingInline: 0 }}
               actions={[
                 <Button key="rename" type="link" onClick={() => onRenamePasskey(item.id, item.label)}>
-                  重命名
+                  {t('重命名', 'Rename')}
                 </Button>,
-                <Popconfirm key="delete" title="确认删除该通行密钥？" onConfirm={() => onDeletePasskey(item.id)}>
+                <Popconfirm key="delete" title={t('确认删除该通行密钥？', 'Delete this passkey?')} onConfirm={() => onDeletePasskey(item.id)}>
                   <Button type="link" danger>
-                    删除
+                    {t('删除', 'Delete')}
                   </Button>
                 </Popconfirm>,
               ]}
             >
               <List.Item.Meta
                 avatar={<KeyOutlined />}
-                title={item.label || '通行密钥'}
-                description={`创建时间: ${item.createdAt || '-'} · 最后使用: ${item.lastUsedAt || '-'}`}
+                title={item.label || t('通行密钥', 'Passkey')}
+                description={`${t('创建时间', 'Created at')}: ${item.createdAt || '-'} · ${t('最后使用', 'Last used')}: ${item.lastUsedAt || '-'}`}
               />
             </List.Item>
           )}
         />
       ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有绑定通行密钥" />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('还没有绑定通行密钥', 'No passkeys are bound yet')} />
       )}
     </>
   );
@@ -836,19 +841,19 @@ const ProfileCenterBindingSection = ({
   const bindingPanel = (
     <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
       <Card
-        title="登录方式绑定"
+        title={t('登录方式绑定', 'Sign-in method binding')}
         loading={loginMethodsLoading}
         className="saas-profile-page__card"
         extra={
           <Button icon={<KeyOutlined />} onClick={onBindPasskey}>
-            新增通行密钥
+            {t('新增通行密钥', 'Add passkey')}
           </Button>
         }
       >
         {renderLoginMethodList(loginMethods)}
         {renderPasskeyList(passkeys)}
       </Card>
-      <Card title="二次验证方式" loading={providersLoading} className="saas-profile-page__card">
+      <Card title={t('二次验证方式', 'Second-factor methods')} loading={providersLoading} className="saas-profile-page__card">
         {renderProviderList(providers, bindingLoading, bindingSubmitting, onBindProvider, onUnbindProvider, '当前暂无可绑定二次验证方式')}
       </Card>
     </Space>
@@ -856,7 +861,7 @@ const ProfileCenterBindingSection = ({
 
   if (isMobile) {
     return (
-      <section className="saas-profile-page__side-section" aria-label="账户状态">
+      <section className="saas-profile-page__side-section" aria-label={t('账户状态', 'Account status')}>
         {bindingPanel}
       </section>
     );
@@ -966,8 +971,8 @@ const ProfileCenterPage = () => {
       <Modal
         title={
           interactionAccess.securityAccess.bindingProvider
-            ? `${interactionAccess.securityAccess.bindingProvider.factorName || interactionAccess.securityAccess.bindingProvider.factorCode} · 2FA 绑定`
-            : '二次验证绑定'
+            ? `${interactionAccess.securityAccess.bindingProvider.factorName || interactionAccess.securityAccess.bindingProvider.factorCode} · 2FA ${t('绑定', 'binding')}`
+            : t('二次验证绑定', '2FA binding')
         }
         open={interactionAccess.securityAccess.bindModalOpen}
         onCancel={interactionAccess.securityAccess.closeBindModal}
@@ -979,16 +984,16 @@ const ProfileCenterPage = () => {
         {interactionAccess.securityAccess.bindingCompleted && interactionAccess.securityAccess.bindingChallenge ? (
           <Result
             status="success"
-            title="绑定已完成"
-            subTitle="请妥善保存以下恢复码，用于设备丢失或验证码不可用时找回账号。"
+            title={t('绑定已完成', 'Binding complete')}
+            subTitle={t('请妥善保存以下恢复码，用于设备丢失或验证码不可用时找回账号。', 'Save the recovery codes below in a safe place so you can recover your account if the device is lost or codes are unavailable.')}
             extra={[
               <Button key="close" type="primary" onClick={interactionAccess.securityAccess.closeBindModal}>
-                完成
+                {t('完成', 'Done')}
               </Button>,
             ]}
             style={{ padding: 0 }}
           >
-            <Card className="saas-profile-page__card" size="small" title="恢复码">
+            <Card className="saas-profile-page__card" size="small" title={t('恢复码', 'Recovery codes')}>
               <Space wrap>
                 {(interactionAccess.securityAccess.bindingChallenge.recoveryCodes || []).length ? (
                   interactionAccess.securityAccess.bindingChallenge.recoveryCodes!.map((code) => (
@@ -997,7 +1002,7 @@ const ProfileCenterPage = () => {
                     </Tag>
                   ))
                 ) : (
-                  <Typography.Text type="secondary">暂无恢复码</Typography.Text>
+                  <Typography.Text type="secondary">{t('暂无恢复码', 'No recovery codes')}</Typography.Text>
                 )}
               </Space>
               <Divider />
@@ -1006,7 +1011,7 @@ const ProfileCenterPage = () => {
                 type="secondary"
                 copyable={{ text: (interactionAccess.securityAccess.bindingChallenge.recoveryCodes || []).join('\n') }}
               >
-                点击复制全部恢复码
+                {t('点击复制全部恢复码', 'Click to copy all recovery codes')}
               </Typography.Paragraph>
             </Card>
           </Result>

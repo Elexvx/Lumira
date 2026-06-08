@@ -9,6 +9,8 @@ export interface PagedResponse<RecordType> {
   total: number;
 }
 
+export const DEFAULT_TABLE_PAGE_SIZE = 10;
+
 export interface ProTableResponse<RecordType> {
   data: RecordType[];
   success: boolean;
@@ -29,7 +31,7 @@ export const buildTableRequest = <RecordType, Params extends PageRequestPayload 
     const result = await request(
       {
         pageNo: Number(current) || 1,
-        pageSize: Number(pageSize) || 20,
+        pageSize: Number(pageSize) || DEFAULT_TABLE_PAGE_SIZE,
         ...(rest as Omit<Params, 'pageNo' | 'pageSize'>),
       } as Params,
       sorter,

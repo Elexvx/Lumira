@@ -28,6 +28,11 @@ import { EmployeeDrawer, type EmployeeFormValues } from './components/EmployeeDr
 import { LlmServiceDrawer } from './components/LlmServiceDrawer';
 import type { LlmFormValues } from './components/LlmServiceDrawer';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const EMPLOYEE_TAB_KEY = 'employees';
 const LLM_TAB_KEY = 'llm-services';
@@ -51,12 +56,12 @@ type AvatarOption = {
 };
 
 const AVATAR_OPTIONS: readonly AvatarOption[] = [
-  { key: 'avatar-purple-01', label: '主色', color: 'colorPrimary', icon: null },
-  { key: 'avatar-blue-01', label: '信息', color: 'colorInfo', icon: null },
-  { key: 'avatar-green-01', label: '成功', color: 'colorSuccess', icon: null },
-  { key: 'avatar-orange-01', label: '警告', color: 'colorWarning', icon: null },
-  { key: 'avatar-red-01', label: '错误', color: 'colorError', icon: null },
-  { key: 'avatar-gray-01', label: '中性', color: 'colorTextTertiary', icon: null },
+  { key: 'avatar-purple-01', label: t('主色', 'Primary'), color: 'colorPrimary', icon: null },
+  { key: 'avatar-blue-01', label: t('信息', 'Info'), color: 'colorInfo', icon: null },
+  { key: 'avatar-green-01', label: t('成功', 'Success'), color: 'colorSuccess', icon: null },
+  { key: 'avatar-orange-01', label: t('警告', 'Warning'), color: 'colorWarning', icon: null },
+  { key: 'avatar-red-01', label: t('错误', 'Error'), color: 'colorError', icon: null },
+  { key: 'avatar-gray-01', label: t('中性', 'Neutral'), color: 'colorTextTertiary', icon: null },
 ];
 
 const AVATAR_ICON_MAP = {
@@ -212,7 +217,7 @@ const useAiEmployeesEmployeeDrawerState = ({
             ...API_OPTS.NO_REDIRECT,
           }),
         ]);
-        message.success('数字员工已更新');
+        message.success(t('数字员工已更新', 'AI employee updated'));
       } else {
         const created = await request<AiEmployeeRecord>('/ai/employees', {
           method: 'POST',
@@ -226,7 +231,7 @@ const useAiEmployeesEmployeeDrawerState = ({
             ...API_OPTS.NO_REDIRECT,
           });
         }
-        message.success('数字员工已创建');
+        message.success(t('数字员工已创建', 'AI employee created'));
       }
 
       employeeState.drawer.reset();
@@ -272,7 +277,7 @@ const buildLlmServiceOptions = (services: Array<{ id: number; title: string; cod
 
 const buildKnowledgeBaseOptions = (knowledgeBases: AiKnowledgeBaseRecord[]): SimpleOption[] =>
   knowledgeBases.map((knowledgeBase) => ({
-    label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'TENANT' ? '（企业）' : '（个人）'}`,
+    label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'TENANT' ? t('（企业）', ' (Tenant)') : t('（个人）', ' (Personal)')}`,
     value: knowledgeBase.id,
   }));
 
@@ -294,7 +299,7 @@ const buildEmployeeColumns = ({
   resolveAvatar: (avatarKey?: string | null) => { label: string; color: string; icon: ReactNode };
 }): ProColumns<AiEmployeeRecord>[] => [
   {
-    title: '头像',
+    title: t('头像', 'Avatar'),
     dataIndex: 'avatarKey',
     width: 'var(--saas-spacing-96)',
     render: (_, record) => {
@@ -307,17 +312,17 @@ const buildEmployeeColumns = ({
       );
     },
   },
-  { title: '用户名', dataIndex: 'username', width: 'var(--saas-spacing-180)' },
-  { title: '昵称', dataIndex: 'nickname', width: 'var(--saas-spacing-180)' },
-  { title: '职位', dataIndex: 'position', width: 'var(--saas-spacing-160)', ellipsis: true, render: (_, record) => record.position || '-' },
+  { title: t('用户名', 'Username'), dataIndex: 'username', width: 'var(--saas-spacing-180)' },
+  { title: t('昵称', 'Nickname'), dataIndex: 'nickname', width: 'var(--saas-spacing-180)' },
+  { title: t('职位', 'Position'), dataIndex: 'position', width: 'var(--saas-spacing-160)', ellipsis: true, render: (_, record) => record.position || '-' },
   {
-    title: '启用状态',
+    title: t('启用状态', 'Enabled status'),
     dataIndex: 'enabled',
     width: 'var(--saas-spacing-120)',
-    render: (_, record) => <Tag color={record.enabled ? 'green' : 'default'}>{record.enabled ? '已启用' : '已禁用'}</Tag>,
+    render: (_, record) => <Tag color={record.enabled ? 'green' : 'default'}>{record.enabled ? t('已启用', 'Enabled') : t('已禁用', 'Disabled')}</Tag>,
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
     width: 'var(--saas-spacing-180)',
@@ -325,14 +330,14 @@ const buildEmployeeColumns = ({
       <TableActionBar
         isMobile={isMobile}
         items={buildTableActions([
-          { key: 'edit', label: '编辑', onClick: () => void onEdit(record), permission: 'ai:employee:update' },
+          { key: 'edit', label: t('编辑', 'Edit'), onClick: () => void onEdit(record), permission: 'ai:employee:update' },
           {
             key: 'toggle',
-            label: record.enabled ? '禁用' : '启用',
+            label: record.enabled ? t('禁用', 'Disable') : t('启用', 'Enable'),
             onClick: () => void onToggle(record),
             permission: 'ai:employee:status',
           },
-          { key: 'delete', label: '删除', onClick: () => onDelete(record), permission: 'ai:employee:delete', danger: true },
+          { key: 'delete', label: t('删除', 'Delete'), onClick: () => onDelete(record), permission: 'ai:employee:delete', danger: true },
         ])}
       />
     ),
@@ -340,8 +345,8 @@ const buildEmployeeColumns = ({
 ];
 
 const PROVIDER_OPTIONS = [
-  { label: '阿里云百炼', value: 'aliyun-bailian' },
-  { label: 'DashScope（兼容旧配置）', value: 'dashscope' },
+  { label: t('阿里云百炼', 'Alibaba Cloud Bailian'), value: 'aliyun-bailian' },
+  { label: t('DashScope（兼容旧配置）', 'DashScope (legacy compatible)'), value: 'dashscope' },
   { label: 'DeepSeek', value: 'deepseek' },
   { label: 'OpenAI Compatible', value: 'openai-compatible' },
   { label: 'Ollama', value: 'ollama' },
@@ -409,18 +414,18 @@ const buildLlmColumns = ({
   onToggle: (record: AiLlmServiceRecord) => void;
   onDelete: (record: AiLlmServiceRecord) => void;
 }): ProColumns<AiLlmServiceRecord>[] => [
-  { title: '唯一标识', dataIndex: 'code', width: 'var(--saas-spacing-180)' },
-  { title: '标题', dataIndex: 'title', width: 'var(--saas-spacing-220)', ellipsis: true },
-  { title: 'LLM 类型', dataIndex: 'provider', width: 'var(--saas-spacing-180)' },
-  { title: '默认模型', dataIndex: 'defaultModel', width: 'var(--saas-spacing-180)', render: (_, record) => record.defaultModel || '-' },
+  { title: t('唯一标识', 'Code'), dataIndex: 'code', width: 'var(--saas-spacing-180)' },
+  { title: t('标题', 'Title'), dataIndex: 'title', width: 'var(--saas-spacing-220)', ellipsis: true },
+  { title: t('LLM 类型', 'LLM provider'), dataIndex: 'provider', width: 'var(--saas-spacing-180)' },
+  { title: t('默认模型', 'Default model'), dataIndex: 'defaultModel', width: 'var(--saas-spacing-180)', render: (_, record) => record.defaultModel || '-' },
   {
-    title: '启用状态',
+    title: t('启用状态', 'Enabled status'),
     dataIndex: 'enabled',
     width: 'var(--saas-spacing-120)',
-    render: (_, record) => <Tag color={record.enabled ? 'green' : 'default'}>{record.enabled ? '已启用' : '已禁用'}</Tag>,
+    render: (_, record) => <Tag color={record.enabled ? 'green' : 'default'}>{record.enabled ? t('已启用', 'Enabled') : t('已禁用', 'Disabled')}</Tag>,
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
     width: 'var(--saas-spacing-180)',
@@ -428,14 +433,14 @@ const buildLlmColumns = ({
       <TableActionBar
         isMobile={isMobile}
         items={buildTableActions([
-          { key: 'edit', label: '编辑', onClick: () => void onEdit(record), permission: 'ai:llm:update' },
+          { key: 'edit', label: t('编辑', 'Edit'), onClick: () => void onEdit(record), permission: 'ai:llm:update' },
           {
             key: 'toggle',
-            label: record.enabled ? '禁用' : '启用',
+            label: record.enabled ? t('禁用', 'Disable') : t('启用', 'Enable'),
             onClick: () => void onToggle(record),
             permission: 'ai:llm:status',
           },
-          { key: 'delete', label: '删除', onClick: () => onDelete(record), permission: 'ai:llm:delete', danger: true },
+          { key: 'delete', label: t('删除', 'Delete'), onClick: () => onDelete(record), permission: 'ai:llm:delete', danger: true },
         ])}
       />
     ),
@@ -491,7 +496,7 @@ const AiEmployeesPage = () => {
       });
       setLlmServiceOptions(buildLlmServiceOptions(services.records || []));
     } catch (error) {
-      showErrorMessage(error, '刷新 LLM 服务选项失败');
+      showErrorMessage(error, t('刷新 LLM 服务选项失败', 'Failed to refresh LLM service options'));
     }
   }, []);
 
@@ -581,14 +586,14 @@ const AiEmployeesPage = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('LLM 服务已更新');
+        message.success(t('LLM 服务已更新', 'LLM service updated'));
       } else {
         await request<AiLlmServiceRecord>('/ai/llm-services', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('LLM 服务已创建');
+        message.success(t('LLM 服务已创建', 'LLM service created'));
       }
 
       closeLlmDrawer();
@@ -616,12 +621,12 @@ const AiEmployeesPage = () => {
       });
       setLlmTestResult(result);
       if (result.success) {
-        message.success('LLM 服务测试通过');
+        message.success(t('LLM 服务测试通过', 'LLM service test passed'));
       } else {
-        message.warning(result.message || 'LLM 服务测试失败');
+        message.warning(result.message || t('LLM 服务测试失败', 'LLM service test failed'));
       }
     } catch (error) {
-      const errorMessage = error instanceof Error && error.message ? error.message : 'LLM 服务测试失败';
+      const errorMessage = error instanceof Error && error.message ? error.message : t('LLM 服务测试失败', 'LLM service test failed');
       setLlmTestResult({ success: false, message: errorMessage });
       message.error(errorMessage);
     } finally {
@@ -636,9 +641,9 @@ const AiEmployeesPage = () => {
       const nextEnabled = !record.enabled;
       if (!nextEnabled) {
         confirmAction({
-          title: '禁用 LLM 服务',
-          content: `确认禁用 LLM 服务「${record.title}」吗？`,
-          okText: '确认禁用',
+          title: t('禁用 LLM 服务', 'Disable LLM service'),
+          content: t(`确认禁用 LLM 服务「${record.title}」吗？`, `Disable LLM service "${record.title}"?`),
+          okText: t('确认禁用', 'Disable'),
           okButtonProps: { danger: true },
           onOk: async () => {
             await request<boolean>(`/ai/llm-services/${record.id}/enabled`, {
@@ -666,16 +671,16 @@ const AiEmployeesPage = () => {
   const deleteLlmService = useCallback(
     (record: AiLlmServiceRecord) => {
       confirmAction({
-        title: '删除 LLM 服务',
-        content: `确认删除 LLM 服务「${record.title}」吗？`,
-        okText: '确认删除',
+        title: t('删除 LLM 服务', 'Delete LLM service'),
+        content: t(`确认删除 LLM 服务「${record.title}」吗？`, `Delete LLM service "${record.title}"?`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/ai/llm-services/${record.id}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success('LLM 服务已删除');
+          message.success(t('LLM 服务已删除', 'LLM service deleted'));
           reloadLlmTable();
           await reloadLlmServiceOptions();
         },
@@ -698,14 +703,14 @@ const AiEmployeesPage = () => {
   const llmToolbarButtons = buildToolbarButtons([
     {
       key: 'create-llm',
-      label: '新增 LLM 服务',
+      label: t('新增 LLM 服务', 'Create LLM service'),
       type: 'primary',
       onClick: openLlmCreate,
       permission: 'ai:llm:create',
     },
     {
       key: 'refresh-llm',
-      label: '刷新',
+      label: t('刷新', 'Refresh'),
       onClick: () => void reloadLlmTable(),
     },
   ]);
@@ -723,7 +728,7 @@ const AiEmployeesPage = () => {
   };
   const llmDrawerProps = {
     open: llmDrawer.open,
-    title: llmDrawer.editingId ? '编辑 LLM 服务' : '新建 LLM 服务',
+    title: llmDrawer.editingId ? t('编辑 LLM 服务', 'Edit LLM service') : t('新建 LLM 服务', 'Create LLM service'),
     form: llmForm,
     selectedService: selectedLlmService,
     llmTestResult,
@@ -771,7 +776,7 @@ const AiEmployeesPage = () => {
         setKnowledgeBaseOptions(buildKnowledgeBaseOptions(knowledgeBases.records || []));
       } catch (error) {
         if (active) {
-          showErrorMessage(error, '加载数字员工基础数据失败');
+          showErrorMessage(error, t('加载数字员工基础数据失败', 'Failed to load AI employee base data'));
         }
       } finally {
         if (active) {
@@ -804,9 +809,9 @@ const AiEmployeesPage = () => {
       const nextEnabled = !record.enabled;
       if (!nextEnabled) {
         confirmAction({
-          title: '禁用数字员工',
-          content: `确认禁用数字员工「${record.nickname || record.username}」吗？`,
-          okText: '确认禁用',
+          title: t('禁用数字员工', 'Disable AI employee'),
+          content: t(`确认禁用数字员工「${record.nickname || record.username}」吗？`, `Disable AI employee "${record.nickname || record.username}"?`),
+          okText: t('确认禁用', 'Disable'),
           okButtonProps: { danger: true },
           onOk: async () => {
             await request<boolean>(`/ai/employees/${record.id}/enabled`, {
@@ -814,7 +819,7 @@ const AiEmployeesPage = () => {
               data: { enabled: false },
               ...API_OPTS.NO_REDIRECT,
             });
-            message.success('状态已更新');
+            message.success(t('状态已更新', 'Status updated'));
             employeeState.reloadTable();
           },
         });
@@ -827,7 +832,7 @@ const AiEmployeesPage = () => {
           data: { enabled: true },
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('状态已更新');
+        message.success(t('状态已更新', 'Status updated'));
         employeeState.reloadTable();
       })();
     },
@@ -837,16 +842,16 @@ const AiEmployeesPage = () => {
   const deleteEmployee = useCallback(
     (record: AiEmployeeRecord) => {
       confirmAction({
-        title: '删除数字员工',
-        content: `确认删除数字员工「${record.nickname || record.username}」吗？`,
-        okText: '确认删除',
+        title: t('删除数字员工', 'Delete AI employee'),
+        content: t(`确认删除数字员工「${record.nickname || record.username}」吗？`, `Delete AI employee "${record.nickname || record.username}"?`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/ai/employees/${record.id}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success('数字员工已删除');
+          message.success(t('数字员工已删除', 'AI employee deleted'));
           employeeState.reloadTable();
         },
       });
@@ -871,14 +876,14 @@ const AiEmployeesPage = () => {
   const employeeToolbarButtons = buildToolbarButtons([
     {
       key: 'create-employee',
-      label: '新建 AI 员工',
+      label: t('新建 AI 员工', 'Create AI employee'),
       type: 'primary',
       onClick: openEmployeeCreate,
       permission: 'ai:employee:create',
     },
     {
       key: 'refresh-employee',
-      label: '刷新',
+      label: t('刷新', 'Refresh'),
       onClick: employeeState.reloadTable,
     },
   ]);
@@ -900,7 +905,7 @@ const AiEmployeesPage = () => {
   };
   const employeeDrawerProps = {
     open: employeeState.drawer.open,
-    title: employeeState.drawer.editingId ? '编辑 AI 员工' : '新建 AI 员工',
+    title: employeeState.drawer.editingId ? t('编辑 AI 员工', 'Edit AI employee') : t('新建 AI 员工', 'Create AI employee'),
     form: employeeForm,
     employeePromptTemplate,
     avatarOptions,
@@ -919,7 +924,7 @@ const AiEmployeesPage = () => {
   };
 
   return (
-    <ManagementPage className="saas-crud-page" ghost title="数字员工" content={null}>
+    <ManagementPage className="saas-crud-page" ghost title={t('数字员工', 'AI employees')} content={null}>
       <ManagementPageBody>
         <Card className="saas-ai-employees-card" bodyStyle={{ paddingTop: cardPaddingTop }}>
           <Tabs
@@ -930,7 +935,7 @@ const AiEmployeesPage = () => {
             items={[
               {
                 key: EMPLOYEE_TAB_KEY,
-                label: 'AI 员工',
+                label: t('AI 员工', 'AI employees'),
                 children: (
                   <ManagementTable<AiEmployeeRecord>
                     {...employeeTabProps}
@@ -943,7 +948,7 @@ const AiEmployeesPage = () => {
               },
               {
                 key: LLM_TAB_KEY,
-                label: 'LLM 服务',
+                label: t('LLM 服务', 'LLM services'),
                 children: (
                   <ManagementTable<AiLlmServiceRecord>
                     {...llmTabProps}

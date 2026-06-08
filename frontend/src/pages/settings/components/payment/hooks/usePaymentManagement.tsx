@@ -7,6 +7,11 @@ import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
 import { usePaymentConfigDrawer, type PaymentProviderCode } from './usePaymentConfigDrawer';
 import type { PaymentProviderSettings } from '@/types/api';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type PaymentRow = PaymentProviderSettings & {
   key: string;
@@ -20,7 +25,7 @@ const resolveStatusColor = (enabled: boolean, configured: boolean) => {
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
-    return '未测试';
+    return t('未测试', 'Not tested');
   }
   const parsed = dayjs(value);
   return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : value;
@@ -28,9 +33,9 @@ const formatDateTime = (value?: string | null) => {
 
 const buildProviderStatusText = (enabled: boolean, configured: boolean) => {
   if (!configured) {
-    return '待配置';
+    return t('待配置', 'Not configured');
   }
-  return enabled ? '已启用' : '已停用';
+  return enabled ? t('已启用', 'Enabled') : t('已停用', 'Disabled');
 };
 
 export type UsePaymentManagementParams = {
@@ -65,7 +70,7 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
   const paymentColumns = useMemo<ProColumns<PaymentRow>[]>(
     () => [
       {
-        title: '支付平台',
+        title: t('支付平台', 'Payment platform'),
         dataIndex: 'providerName',
         width: 180,
         render: (_, record) => (
@@ -76,40 +81,43 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
         ),
       },
       {
-        title: '环境',
+        title: t('环境', 'Environment'),
         dataIndex: 'environment',
         width: 120,
         render: (_, record) => <Tag>{record.environment}</Tag>,
       },
       {
-        title: '状态',
+        title: t('状态', 'Status'),
         width: 120,
         render: (_, record) => <Tag color={resolveStatusColor(record.enabled, record.configured)}>{buildProviderStatusText(record.enabled, record.configured)}</Tag>,
       },
       {
-        title: '配置完整度',
+        title: t('配置完整度', 'Configuration completeness'),
         width: 160,
         render: (_, record) => (
           <Space size={8}>
-            <Tag color={record.configured ? 'success' : 'warning'}>{record.configured ? '已完成' : '待完成'}</Tag>
-            <Typography.Text type="secondary">{record.configuredFields?.length || 0} 项</Typography.Text>
-          </Space>
-        ),
-      },
-      {
-        title: '最近测试',
-        width: 240,
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Typography.Text>{formatDateTime(record.lastTestedAt)}</Typography.Text>
-            <Typography.Text type={record.lastTestSuccess === false ? 'danger' : 'secondary'}>
-              {record.lastTestMessage || '暂无测试记录'}
+            <Tag color={record.configured ? 'success' : 'warning'}>{record.configured ? t('已完成', 'Complete') : t('待完成', 'Incomplete')}</Tag>
+            <Typography.Text type="secondary">
+              {record.configuredFields?.length || 0}
+              {t('项', 'items')}
             </Typography.Text>
           </Space>
         ),
       },
       {
-        title: '操作',
+        title: t('最近测试', 'Latest test'),
+        width: 240,
+        render: (_, record) => (
+          <Space direction="vertical" size={2}>
+            <Typography.Text>{formatDateTime(record.lastTestedAt)}</Typography.Text>
+            <Typography.Text type={record.lastTestSuccess === false ? 'danger' : 'secondary'}>
+              {record.lastTestMessage || t('暂无测试记录', 'No test history')}
+            </Typography.Text>
+          </Space>
+        ),
+      },
+      {
+        title: t('操作', 'Actions'),
         valueType: 'option',
         fixed: 'right',
         width: 180,
@@ -120,16 +128,16 @@ export const usePaymentManagement = ({ canManageSettings, isMobile }: UsePayment
               onClick={() => openConfigDrawer(record.providerCode as PaymentProviderCode)}
               disabled={!canManageSettings}
             >
-              配置
+              {t('配置', 'Configure')}
             </Button>
             <Popconfirm
-              title="测试支付连通性"
-              description="将按照当前已保存的支付配置发起连通性测试。"
-              okText="确认"
-              cancelText="取消"
+              title={t('测试支付连通性', 'Test payment connectivity')}
+              description={t('将按照当前已保存的支付配置发起连通性测试。', 'The test will run using the currently saved payment settings.')}
+              okText={t('确认', 'Confirm')}
+              cancelText={t('取消', 'Cancel')}
               onConfirm={() => void handleTestProvider(record.providerCode as PaymentProviderCode)}
             >
-              <Button size="small" disabled={!record.configured || !canManageSettings}>测试</Button>
+              <Button size="small" disabled={!record.configured || !canManageSettings}>{t('测试', 'Test')}</Button>
             </Popconfirm>
           </Space>
         ),

@@ -1,4 +1,5 @@
 import { ErrorCode } from '@/enums/errorCode';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 
 export type FeedbackType = 'info' | 'warning' | 'error';
 
@@ -41,12 +42,12 @@ const WARNING_ERROR_CODES = new Set<string>([
 const ERROR_ERROR_CODES = new Set<string>([ErrorCode.SYSTEM_ERROR, ErrorCode.PLUGIN_RUNTIME_ERROR]);
 
 export const resolveApiErrorFeedback = (error: ApiErrorLike, hasAuthToken = true): ErrorFeedback => {
-  const message = error.userMessage || error.message || '操作失败，请稍后重试';
+  const message = error.userMessage || error.message || resolveBuiltinMessage('common.failure', '操作失败，请稍后重试');
 
   if (error.code === ErrorCode.SESSION_EXPIRED || error.code === ErrorCode.UNAUTHORIZED || error.httpStatus === 401) {
     return {
       type: 'info',
-      message: message || (hasAuthToken ? '登录状态已失效，请重新登录' : '请先登录后再继续操作'),
+      message: message || resolveBuiltinMessage(hasAuthToken ? 'common.sessionExpired' : 'common.pleaseLogin', hasAuthToken ? '登录状态已失效，请重新登录' : '请先登录后再继续操作'),
       redirectToLogin: true,
     };
   }
@@ -86,7 +87,7 @@ export const resolveHttpStatusFeedback = (
   if (httpStatus === 401) {
     return {
       type: 'info',
-      message: hasAuthToken ? '登录状态已失效，请重新登录' : '请先登录后再继续操作',
+      message: resolveBuiltinMessage(hasAuthToken ? 'common.sessionExpired' : 'common.pleaseLogin', hasAuthToken ? '登录状态已失效，请重新登录' : '请先登录后再继续操作'),
       redirectToLogin: true,
     };
   }
@@ -94,40 +95,40 @@ export const resolveHttpStatusFeedback = (
   if (httpStatus === 403) {
     return {
       type: 'warning',
-      message: '当前账号没有访问权限',
+      message: resolveBuiltinMessage('common.noPermission', '当前账号没有访问权限'),
     };
   }
 
   if (httpStatus === 404) {
     return {
       type: 'warning',
-      message: fallbackMessage || '请求的资源不存在',
+      message: fallbackMessage || resolveBuiltinMessage('common.resourceNotFound', '请求的资源不存在'),
     };
   }
 
   if (httpStatus === 400 || httpStatus === 409 || httpStatus === 422 || httpStatus === 429) {
     return {
       type: 'warning',
-      message: fallbackMessage || '操作失败，请检查后重试',
+      message: fallbackMessage || resolveBuiltinMessage('common.badRequest', '请求内容有误，请检查后重试'),
     };
   }
 
   if (httpStatus === 502 || httpStatus === 503 || httpStatus === 504) {
     return {
       type: 'error',
-      message: fallbackMessage || '服务暂时不可用，请稍后再试',
+      message: fallbackMessage || resolveBuiltinMessage('common.serviceUnavailable', '服务暂时不可用，请稍后再试'),
     };
   }
 
   if (httpStatus && httpStatus >= 500) {
     return {
       type: 'error',
-      message: fallbackMessage || '系统异常，请稍后重试',
+      message: fallbackMessage || resolveBuiltinMessage('common.systemError', '系统异常，请稍后重试'),
     };
   }
 
   return {
     type: 'warning',
-    message: fallbackMessage || '操作失败，请稍后重试',
+    message: fallbackMessage || resolveBuiltinMessage('common.failure', '操作失败，请稍后重试'),
   };
 };

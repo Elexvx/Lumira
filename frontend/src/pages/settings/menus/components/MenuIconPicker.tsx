@@ -2,7 +2,12 @@ import * as AntIcons from '@ant-design/icons';
 import { AppstoreOutlined, CloseOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Empty, Input, Popover, Segmented, Tooltip } from 'antd';
 import { createElement, useMemo, useState } from 'react';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
 import './MenuIconPicker.css';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type IconStyle = 'Outlined' | 'Filled' | 'TwoTone';
 type AntdIconComponent = React.ComponentType<Record<string, unknown>>;
@@ -57,9 +62,9 @@ const buildPickerOptions = (options: MenuIconOption[]) => {
 };
 
 const ICON_STYLE_OPTIONS: Array<{ label: string; value: IconStyle }> = [
-  { label: '线框风格', value: 'Outlined' },
-  { label: '实底风格', value: 'Filled' },
-  { label: '双色风格', value: 'TwoTone' },
+  { label: t('线框风格', 'Outlined'), value: 'Outlined' },
+  { label: t('实底风格', 'Filled'), value: 'Filled' },
+  { label: t('双色风格', 'TwoTone'), value: 'TwoTone' },
 ];
 
 interface MenuIconPickerProps {
@@ -123,7 +128,7 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
         className="saas-menu-icon-picker__search"
         size="small"
         suffix={<SearchOutlined />}
-        placeholder="搜索"
+        placeholder={t('搜索', 'Search')}
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
       />
@@ -154,7 +159,7 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
           ))}
         </div>
       ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到图标" />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('未找到图标', 'No icons found')} />
       )}
     </div>
   );
@@ -180,14 +185,14 @@ export const MenuIconPicker = ({ value, options = [], loading, disabled, onChang
             disabled={disabled}
             icon={selectedIconNode}
             loading={loading}
-            title={selectedIcon || '选择菜单项图标'}
+            title={selectedIcon || t('选择菜单项图标', 'Choose a menu icon')}
           />
         </Popover>
         <Button
           className="saas-menu-icon-picker__clear"
           disabled={disabled || !selectedIcon}
           icon={<CloseOutlined />}
-          title="清空图标"
+          title={t('清空图标', 'Clear icon')}
           onClick={() => onChange?.(undefined)}
         />
       </div>

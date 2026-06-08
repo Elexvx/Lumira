@@ -19,6 +19,11 @@ import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, Tenan
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const PluginCardsGrid = ({
   isMobile,
@@ -57,7 +62,7 @@ const PluginCardsGrid = ({
   if (!loading && !definitions.length) {
     return (
       <div style={{ minHeight: 'var(--saas-spacing-240)', display: 'grid', placeItems: 'center' }}>
-        <Empty description="暂无插件定义" />
+        <Empty description={t('暂无插件定义', 'No plugin definitions')} />
       </div>
     );
   }
@@ -81,7 +86,7 @@ const PluginCardsGrid = ({
                 <Space wrap>
                   <BuildOutlined />
                   <span>{plugin.pluginName}</span>
-                  <Tag color={enabled ? 'green' : 'default'}>{enabled ? '已启用' : '未启用'}</Tag>
+                  <Tag color={enabled ? 'green' : 'default'}>{enabled ? t('已启用', 'Enabled') : t('未启用', 'Disabled')}</Tag>
                 </Space>
               }
               extra={
@@ -93,15 +98,15 @@ const PluginCardsGrid = ({
               }
             >
               <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-                <Typography.Paragraph style={{ marginBottom: 0 }}>{plugin.description || '暂无插件描述'}</Typography.Paragraph>
+                <Typography.Paragraph style={{ marginBottom: 0 }}>{plugin.description || t('暂无插件描述', 'No plugin description')}</Typography.Paragraph>
                 <Space wrap>
-                  <Button onClick={() => onOpenDetails(plugin)}>详情</Button>
-                  <Button onClick={() => onOpenVersions(plugin)}>版本</Button>
+                  <Button onClick={() => onOpenDetails(plugin)}>{t('详情', 'Details')}</Button>
+                  <Button onClick={() => onOpenVersions(plugin)}>{t('版本', 'Versions')}</Button>
                   <Button disabled={!canViewLogs} onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>
-                    日志
+                    {t('日志', 'Logs')}
                   </Button>
                   <Button danger disabled={!canDisable} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
-                    卸载
+                    {t('卸载', 'Uninstall')}
                   </Button>
                 </Space>
               </Space>
@@ -242,26 +247,26 @@ const buildVersionColumns = ({
   onDisable: (pluginCode: string) => void;
   onRollback: (pluginCode: string, version: string) => void;
 }): ProColumns<PluginVersion>[] => [
-  { title: '版本', dataIndex: 'version' },
-  { title: '安装状态', dataIndex: 'installStatus' },
-  { title: '加载状态', dataIndex: 'loadStatus' },
-  { title: '健康状态', dataIndex: 'healthStatus' },
+  { title: t('版本', 'Version'), dataIndex: 'version' },
+  { title: t('安装状态', 'Install status'), dataIndex: 'installStatus' },
+  { title: t('加载状态', 'Load status'), dataIndex: 'loadStatus' },
+  { title: t('健康状态', 'Health status'), dataIndex: 'healthStatus' },
   {
-    title: '激活',
+    title: t('激活', 'Active'),
     dataIndex: 'isActive',
-    render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? '是' : '否'}</Tag>,
+    render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? t('是', 'Yes') : t('否', 'No')}</Tag>,
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     fixed: isDesktop ? 'right' : undefined,
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
         items={[
-          { key: 'install', label: '安装', disabled: !canInstall, onClick: () => onInstall(record.pluginCode, record.version) },
-          { key: 'activate', label: '激活', disabled: !canUpgrade, onClick: () => onActivate(record.pluginCode, record.version) },
-          { key: 'disable', label: '停用', disabled: !canDisable, onClick: () => onDisable(record.pluginCode), danger: true },
-          { key: 'rollback', label: '回滚', disabled: !canRollback, onClick: () => onRollback(record.pluginCode, record.version) },
+          { key: 'install', label: t('安装', 'Install'), disabled: !canInstall, onClick: () => onInstall(record.pluginCode, record.version) },
+          { key: 'activate', label: t('激活', 'Activate'), disabled: !canUpgrade, onClick: () => onActivate(record.pluginCode, record.version) },
+          { key: 'disable', label: t('停用', 'Disable'), disabled: !canDisable, onClick: () => onDisable(record.pluginCode), danger: true },
+          { key: 'rollback', label: t('回滚', 'Rollback'), disabled: !canRollback, onClick: () => onRollback(record.pluginCode, record.version) },
         ]}
       />
     ),
@@ -853,12 +858,12 @@ const PluginLogDrawer = ({
   setLogDrawerOpen: (open: boolean) => void;
 }) => {
   const logColumns: ProColumns<PluginRuntimeLog>[] = [
-    { title: '时间', dataIndex: 'createdAt', width: 'var(--saas-spacing-180)' },
-    { title: '操作类型', dataIndex: 'operationType', width: 'var(--saas-spacing-120)' },
-    { title: '生命周期', dataIndex: 'lifecycleStatus', width: 'var(--saas-spacing-120)' },
-    { title: '结果', dataIndex: 'resultStatus', width: 'var(--saas-spacing-120)' },
+    { title: t('时间', 'Time'), dataIndex: 'createdAt', width: 'var(--saas-spacing-180)' },
+    { title: t('操作类型', 'Operation type'), dataIndex: 'operationType', width: 'var(--saas-spacing-120)' },
+    { title: t('生命周期', 'Lifecycle'), dataIndex: 'lifecycleStatus', width: 'var(--saas-spacing-120)' },
+    { title: t('结果', 'Result'), dataIndex: 'resultStatus', width: 'var(--saas-spacing-120)' },
     {
-      title: '详情',
+      title: t('详情', 'Details'),
       dataIndex: 'detailMessage',
       responsive: ['lg', 'xl', 'xxl'],
       ellipsis: true,

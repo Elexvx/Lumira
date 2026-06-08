@@ -82,7 +82,7 @@ const useSessionActivityTimers = ({ securitySettings }: { securitySettings: Secu
       clearTimer();
       clearTokenExpireTimer();
       if (reason === 'token_expired') {
-        message.info('登录状态已过期，请重新登录');
+        message.info(resolveBuiltinMessage('common.sessionExpired', '登录状态已过期，请重新登录'));
       }
       clearSessionActivity();
       void performLogout({ reason: 'forced_expired' });
@@ -260,8 +260,13 @@ const CollapsedButtonWithReturn = ({ defaultDom }: { defaultDom: ReactNode }) =>
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: resolveResponsiveValue(APP_SPACING.microGap, isMobile) }}>
       {defaultDom}
-      <Tooltip title="返回主路由">
-        <Button type="text" icon={<ArrowLeftOutlined />} aria-label="返回主路由" onClick={() => history.push(DEFAULT_HOME_PATH)} />
+      <Tooltip title={resolveBuiltinMessage('app.layout.backToMainRoute', '返回主路由')}>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          aria-label={resolveBuiltinMessage('app.layout.backToMainRoute', '返回主路由')}
+          onClick={() => history.push(DEFAULT_HOME_PATH)}
+        />
       </Tooltip>
     </div>
   );
@@ -470,7 +475,7 @@ const GlobalFloatActions = () => {
                 {floatingSettings.apiDocsQrImageUrl ? (
                   <img className="saas-global-float-actions__qr-image" src={floatingSettings.apiDocsQrImageUrl} alt={floatingSettings.apiDocsQrTitle} />
                 ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请在个性化设置上传二维码" />
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={resolveBuiltinMessage('app.layout.uploadQrHint', '请在个性化设置上传二维码')} />
                 )}
               </div>
             </div>

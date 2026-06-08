@@ -21,10 +21,15 @@ import type { PagedResponse } from '@/features/table/proTableRequest';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useCallback, useMemo, useState } from 'react';
 import { confirmAction } from '@/utils/confirm';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const dictStatusLabelMap: Record<string, string> = {
-  ENABLED: '启用',
-  DISABLED: '停用',
+  ENABLED: t('启用', 'Enabled'),
+  DISABLED: t('停用', 'Disabled'),
 };
 
 const renderStatusLabel = (status?: string | null) => dictStatusLabelMap[status || ''] || status || '-';
@@ -42,17 +47,17 @@ const buildDictItemColumns = ({
   onOpenEdit: (record: DictItemRecord) => void;
   onDelete: (record: DictItemRecord) => void;
 }): ProColumns<DictItemRecord>[] => [
-  { title: '标签', dataIndex: 'itemLabel' },
-  { title: '值', dataIndex: 'itemValue' },
-  { title: '排序', dataIndex: 'sortNo', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
+  { title: t('标签', 'Label'), dataIndex: 'itemLabel' },
+  { title: t('值', 'Value'), dataIndex: 'itemValue' },
+  { title: t('排序', 'Sort order'), dataIndex: 'sortNo', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
   {
-    title: '状态',
+    title: t('状态', 'Status'),
     dataIndex: 'status',
     search: false,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
   },
   {
-    title: '备注',
+    title: t('备注', 'Remark'),
     dataIndex: 'remark',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
@@ -67,7 +72,7 @@ const buildDictItemColumns = ({
       ),
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
     render: (_, record) => (
@@ -76,13 +81,13 @@ const buildDictItemColumns = ({
         items={buildRowActions([
           {
             key: 'edit',
-            label: '编辑',
+            label: t('编辑', 'Edit'),
             permission: 'system:dict:update',
             onClick: () => onOpenEdit(record),
           },
           {
             key: 'delete',
-            label: '删除',
+            label: t('删除', 'Delete'),
             permission: 'system:dict:delete',
             danger: true,
             onClick: () => onDelete(record),
@@ -108,26 +113,26 @@ const buildDictTypeColumns = ({
   onOpenEdit: (record: DictTypeRecord) => void;
   onDelete: (record: DictTypeRecord) => void;
 }): ProColumns<DictTypeRecord>[] => [
-  { title: '字典编码', dataIndex: 'dictCode', search: true },
-  { title: '字典名称', dataIndex: 'dictName', search: true },
+  { title: t('字典编码', 'Dictionary code'), dataIndex: 'dictCode', search: true },
+  { title: t('字典名称', 'Dictionary name'), dataIndex: 'dictName', search: true },
   {
-    title: '状态',
+    title: t('状态', 'Status'),
     dataIndex: 'status',
     valueEnum: {
-      ENABLED: { text: '启用', status: 'Success' },
-      DISABLED: { text: '停用', status: 'Default' },
+      ENABLED: { text: t('启用', 'Enabled'), status: 'Success' },
+      DISABLED: { text: t('停用', 'Disabled'), status: 'Default' },
     },
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{renderStatusLabel(record.status)}</Tag>,
   },
   {
-    title: '系统内置',
+    title: t('系统内置', 'System built-in'),
     dataIndex: 'isSystem',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
-    render: (_, record) => <Tag color={Number(record.isSystem) !== 0 ? 'green' : 'default'}>{Number(record.isSystem) !== 0 ? '是' : '否'}</Tag>,
+    render: (_, record) => <Tag color={Number(record.isSystem) !== 0 ? 'green' : 'default'}>{Number(record.isSystem) !== 0 ? t('是', 'Yes') : t('否', 'No')}</Tag>,
   },
   {
-    title: '备注',
+    title: t('备注', 'Remark'),
     dataIndex: 'remark',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
@@ -142,7 +147,7 @@ const buildDictTypeColumns = ({
       ),
   },
   {
-    title: '操作',
+    title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: isDesktop ? 'right' : undefined,
     width: 'var(--saas-spacing-180)',
@@ -152,19 +157,19 @@ const buildDictTypeColumns = ({
         items={buildRowActions([
           {
             key: 'view',
-            label: '详情',
+            label: t('详情', 'Details'),
             permission: 'system:dict:view',
             onClick: () => onOpenDetail(record),
           },
           {
             key: 'edit',
-            label: '编辑',
+            label: t('编辑', 'Edit'),
             permission: 'system:dict:update',
             onClick: () => onOpenEdit(record),
           },
           {
             key: 'delete',
-            label: '删除',
+            label: t('删除', 'Delete'),
             permission: 'system:dict:delete',
             danger: true,
             disabled: Number(record.isSystem) !== 0,
@@ -243,14 +248,14 @@ const useDictManagement = () => {
           data: values,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('字典项已更新');
+        message.success(t('字典项已更新', 'Dictionary item updated'));
       } else {
         await request<DictItemRecord>(`/v1/system/dict-types/${dictTypeId}/items`, {
           method: 'POST',
           data: values,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('字典项已创建');
+        message.success(t('字典项已创建', 'Dictionary item created'));
       }
       itemDrawer.close();
       await refreshDictItems(dictTypeId);
@@ -267,9 +272,9 @@ const useDictManagement = () => {
         return;
       }
       confirmAction({
-        title: '删除字典项',
-        content: `确认删除字典项「${record.itemLabel}」吗？`,
-        okText: '确认删除',
+        title: t('删除字典项', 'Delete dictionary item'),
+        content: t(`确认删除字典项「${record.itemLabel}」吗？`, `Delete dictionary item "${record.itemLabel}"?`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/dict-types/${dictTypeId}/items/${record.id}`, {
@@ -377,9 +382,9 @@ const useDictManagement = () => {
   const deleteType = useCallback(
     (record: DictTypeRecord) => {
       confirmAction({
-        title: '删除字典类型',
-        content: `确认删除字典类型「${record.dictName}」吗？所属字典项会一并停用。`,
-        okText: '确认删除',
+        title: t('删除字典类型', 'Delete dictionary type'),
+        content: t(`确认删除字典类型「${record.dictName}」吗？所属字典项会一并停用。`, `Delete dictionary type "${record.dictName}"? Associated items will also be disabled.`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/dict-types/${record.id}`, {
@@ -477,7 +482,7 @@ const DictManagementPage = () => {
   );
 
   return (
-    <ManagementPage title="字典管理">
+    <ManagementPage title={t('字典管理', 'Dictionary management')}>
       <ManagementPageBody>
         <ManagementTable<DictTypeRecord>
           actionRef={typeCrud.actionRef}
@@ -492,12 +497,12 @@ const DictManagementPage = () => {
                 key: 'create',
                 permission: 'system:dict:create',
                 type: 'primary',
-                label: '新增字典类型',
+                label: t('新增字典类型', 'Add dictionary type'),
                 onClick: openCreateType,
               },
               {
                 key: 'refresh',
-                label: '刷新',
+                label: t('刷新', 'Refresh'),
                 onClick: typeCrud.reloadTable,
               },
             ])
@@ -507,14 +512,14 @@ const DictManagementPage = () => {
 
       <DictManagementDrawers
         typeDrawerOpen={typeCrud.drawer.open}
-        typeDrawerTitle={typeCrud.drawer.editingId ? '编辑字典类型' : '新增字典类型'}
+        typeDrawerTitle={typeCrud.drawer.editingId ? t('编辑字典类型', 'Edit dictionary type') : t('新增字典类型', 'Add dictionary type')}
         typeDrawerSaving={saving}
         canSaveType={canSaveType}
         typeFormProps={typeFormProps}
         onCloseTypeDrawer={typeCrud.drawer.close}
         onSaveType={() => void saveType()}
         typeDetailDrawerOpen={typeCrud.detail.open}
-        typeDetailDrawerTitle={typeCrud.detail.currentRecord ? `字典详情 · ${typeCrud.detail.currentRecord.dictName}` : '字典详情'}
+        typeDetailDrawerTitle={typeCrud.detail.currentRecord ? `${t('字典详情', 'Dictionary details')} · ${typeCrud.detail.currentRecord.dictName}` : t('字典详情', 'Dictionary details')}
         typeDetailLoading={typeCrud.detail.loading}
         typeDetail={typeDetail}
         detailProps={detailProps}
@@ -526,7 +531,7 @@ const DictManagementPage = () => {
         onCreateItem={openCreateItem}
         onCloseDetailDrawer={closeDetail}
         itemDrawerOpen={itemDrawer.open}
-        itemDrawerTitle={itemDrawer.editingId ? '编辑字典项' : '新增字典项'}
+        itemDrawerTitle={itemDrawer.editingId ? t('编辑字典项', 'Edit dictionary item') : t('新增字典项', 'Add dictionary item')}
         itemDrawerSaving={saving}
         canSaveItem={canSaveItem}
         itemFormProps={itemFormProps}

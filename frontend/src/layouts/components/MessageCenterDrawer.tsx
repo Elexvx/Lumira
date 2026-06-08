@@ -9,6 +9,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { API_ORIGIN } from '@/constants/http';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { normalizeLocale } from '@/i18n/locale';
+import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { MessageNoticeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
 import type { MessageUnreadCount, PagedResult } from '@/types/api';
@@ -68,8 +69,8 @@ const buildRelativeTimeLabel = (value?: string) => {
 
   if (absoluteSeconds < 60) {
     return diffSeconds <= 0
-      ? (normalizeLocale(getLocale()) === 'en-US' ? 'Just now' : '刚刚')
-      : (normalizeLocale(getLocale()) === 'en-US' ? 'Soon' : '即将');
+      ? resolveBuiltinMessage('message.center.time.now', '刚刚')
+      : resolveBuiltinMessage('message.center.time.soon', '即将');
   }
 
   const formatter = new Intl.RelativeTimeFormat(normalizeLocale(getLocale()), { numeric: 'auto' });
@@ -222,7 +223,11 @@ const connect = async (key: string) => {
   realtimeState.socket = nextSocket;
 
   nextSocket.onopen = () => {
-    notify({ eventType: 'CONNECTED', message: '消息通道已连接', timestamp: new Date().toISOString() });
+    notify({
+      eventType: 'CONNECTED',
+      message: resolveBuiltinMessage('message.center.connected', '消息通道已连接'),
+      timestamp: new Date().toISOString(),
+    });
   };
 
   nextSocket.onmessage = (event) => {

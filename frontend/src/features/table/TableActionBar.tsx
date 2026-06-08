@@ -2,7 +2,12 @@ import { MoreOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import { useMemo } from 'react';
+import { getLocale } from '@umijs/max';
 import { APP_SPACING } from '@/theme/spacing';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 export interface TableActionItem {
   key: string;
@@ -58,7 +63,7 @@ export const TableActionBar = ({ items, isMobile = false, inlineCount }: TableAc
       {menuItems.length ? (
         <Dropdown trigger={['click']} menu={{ items: menuItems }} placement="bottomRight">
           <Button type="link" size="small" icon={<MoreOutlined />}>
-            更多
+            {t('更多', 'More')}
           </Button>
         </Dropdown>
       ) : null}

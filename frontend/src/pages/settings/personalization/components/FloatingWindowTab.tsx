@@ -5,6 +5,11 @@ import { useResponsive } from '@/hooks/useResponsive';
 import type { FloatingWindowSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -30,7 +35,7 @@ const renderImageUploadPreviewField = ({
   imageHeight,
   buttonLabel,
   clearLabel,
-  emptyDescription = '未上传',
+  emptyDescription = t('未上传', 'Not uploaded'),
   onUpload,
   onClear,
   sectionGap,
@@ -97,16 +102,16 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="apiDocsQrEnabled" label="二维码" valuePropName="checked">
+        <Form.Item name="apiDocsQrEnabled" label={t('二维码', 'QR code')} valuePropName="checked">
           <Switch />
         </Form.Item>
-        <Form.Item name="apiDocsQrTitle" label="弹窗标题" rules={[{ required: true, message: '请输入弹窗标题' }]}>
-          <Input maxLength={30} placeholder="微信扫码联系我们" />
+        <Form.Item name="apiDocsQrTitle" label={t('弹窗标题', 'Popup title')} rules={[{ required: true, message: t('请输入弹窗标题', 'Please enter a popup title') }]}>
+          <Input maxLength={30} placeholder={t('微信扫码联系我们', 'Scan the QR code on WeChat to contact us')} />
         </Form.Item>
         <Form.Item name="apiDocsQrImageUrl" hidden>
           <Input />
         </Form.Item>
-        <Form.Item label="二维码图片" extra="用于悬浮窗按钮展开后的二维码弹窗。">
+        <Form.Item label={t('二维码图片', 'QR code image')} extra={t('用于悬浮窗按钮展开后的二维码弹窗。', 'Used in the QR code popup opened from the floating window button.')}>
           {renderImageUploadPreviewField({
             target: 'floatingQr',
             previewSrc: preview.apiDocsQrImageUrl,
@@ -116,8 +121,8 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
             cardHeight: 132,
             imageWidth: 132,
             imageHeight: 132,
-            buttonLabel: '上传二维码',
-            clearLabel: '清除',
+            buttonLabel: t('上传二维码', 'Upload QR code'),
+            clearLabel: t('清除', 'Clear'),
             onUpload,
             onClear: onClearQrImage,
             sectionGap,
@@ -128,7 +133,7 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
       </Form>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="primary" loading={saving} disabled={!canUpdate} onClick={onSave}>
-          保存设置
+          {t('保存设置', 'Save settings')}
         </Button>
       </div>
     </Space>

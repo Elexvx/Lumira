@@ -6,8 +6,11 @@ import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
 import { persistSecuritySettings } from '@/auth/securitySettingsStorage';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
+import { normalizeLocale } from '@/i18n/locale';
 import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
 import { restoreSession } from '@/auth/sessionBootstrap';
+import enUSMessages from '@/locales/en-US';
+import zhCNMessages from '@/locales/zh-CN';
 import { request } from '@/services/common/request';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
@@ -17,6 +20,25 @@ import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilitie
 import { API_OPTS } from '@/utils/errorMessage';
 
 const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
+const resolveBootstrapLocale = () => {
+  if (typeof document !== 'undefined') {
+    const domLocale = normalizeLocale(document.documentElement.lang);
+    if (domLocale) {
+      return domLocale;
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    return normalizeLocale(window.localStorage?.getItem('umi_locale'));
+  }
+
+  return 'zh-CN';
+};
+
+const t = (id: string, fallback: string) => {
+  const messages = (resolveBootstrapLocale() === 'en-US' ? enUSMessages : zhCNMessages) as Record<string, string>;
+  return messages[id] || fallback;
+};
 
 type BootstrapPhase = 'idle' | 'health' | 'branding' | 'security' | 'captcha' | 'ready' | 'error';
 
@@ -36,8 +58,8 @@ interface BootstrapSnapshot {
 const buildInitialBootstrapSnapshot = (): BootstrapSnapshot => ({
   phase: 'idle',
   progress: 0,
-  title: '正在启动系统',
-  description: '正在检查后端服务',
+  title: t('app.bootstrap.starting', '正在启动系统'),
+  description: t('app.bootstrap.checkingBackend', '正在检查后端服务'),
   retryCount: 0,
   ready: false,
   updatedAt: Date.now(),
@@ -69,7 +91,7 @@ const getErrorMessage = (error: unknown) => {
     return error.message;
   }
 
-  return '后端暂未准备好';
+  return t('app.bootstrap.backendNotReady', '后端暂未准备好');
 };
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -170,8 +192,8 @@ const buildAuthenticatedInitialState = async (
   setBootstrapSnapshot({
     phase: 'branding',
     progress: 48,
-    title: '同步系统资源',
-    description: '正在准备登录后的菜单、插件和外观设置',
+    title: t('app.bootstrap.syncResources', '同步系统资源'),
+    description: t('app.bootstrap.preparePostLoginResources', '正在准备登录后的菜单、插件和外观设置'),
     brandName: storedBrandingSettings.websiteName,
   });
 
@@ -193,8 +215,8 @@ const buildAuthenticatedInitialState = async (
   setBootstrapSnapshot({
     phase: 'ready',
     progress: 100,
-    title: '系统已就绪',
-    description: '正在进入工作台',
+    title: t('app.bootstrap.ready', '系统已就绪'),
+    description: t('app.bootstrap.enterWorkbench', '正在进入工作台'),
     ready: true,
     retryInMs: undefined,
     errorMessage: undefined,
@@ -218,8 +240,8 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
   setBootstrapSnapshot({
     phase: 'security',
     progress: 58,
-    title: '加载安全配置',
-    description: '正在同步登录策略',
+    title: t('app.bootstrap.loadSecuritySettings', '加载安全配置'),
+    description: t('app.bootstrap.syncLoginPolicy', '正在同步登录策略'),
     brandName: storedBrandingSettings.websiteName,
     retryInMs: undefined,
     errorMessage: undefined,
@@ -237,8 +259,8 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
   setBootstrapSnapshot({
     phase: 'ready',
     progress: 100,
-    title: '系统已就绪',
-    description: '正在展示登录页',
+    title: t('app.bootstrap.ready', '系统已就绪'),
+    description: t('app.bootstrap.showLoginPage', '正在展示登录页'),
     ready: true,
     retryInMs: undefined,
     errorMessage: undefined,
@@ -262,19 +284,19 @@ const checkBackendHealth = async () => {
   const response = await fetch(`${API_PREFIX}/health`);
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('text/html')) {
-    throw new BackendProxyUnavailableError('后端健康检查返回了前端页面，请检查 API 代理配置');
+    throw new BackendProxyUnavailableError(t('app.bootstrap.healthHtmlResponse', '后端健康检查返回了前端页面，请检查 API 代理配置'));
   }
   if (!response.ok) {
-    throw new Error(`后端健康检查失败：HTTP ${response.status}`);
+    throw new Error(t('app.bootstrap.healthHttpFailed', '后端健康检查失败：HTTP {status}').replace('{status}', String(response.status)));
   }
   if (!contentType.includes('application/json')) {
-    throw new BackendProxyUnavailableError('后端健康检查未返回 JSON，请检查 API 代理配置');
+    throw new BackendProxyUnavailableError(t('app.bootstrap.healthJsonResponse', '后端健康检查未返回 JSON，请检查 API 代理配置'));
   }
   const payload = await response.json();
   const health = payload?.data;
 
   if (health?.status && health.status.toUpperCase() !== 'UP') {
-    throw new Error(`后端健康状态异常：${health.status}`);
+    throw new Error(t('app.bootstrap.healthStatusAbnormal', '后端健康状态异常：{status}').replace('{status}', String(health.status)));
   }
 };
 
@@ -286,8 +308,11 @@ const waitForBackendReady = async (options: { maxAttempts?: number } = {}) => {
     setBootstrapSnapshot({
       phase: 'health',
       progress: Math.min(12 + attempt * 4, 26),
-      title: '正在连接后端',
-      description: attempt === 1 ? '正在检查服务是否可用' : `后端暂未就绪，正在进行第 ${attempt} 次重试`,
+      title: t('app.bootstrap.connectingBackend', '正在连接后端'),
+      description:
+        attempt === 1
+          ? t('app.bootstrap.checkingServiceReady', '正在检查服务是否可用')
+          : t('app.bootstrap.backendRetrying', '后端暂未就绪，正在进行第 {attempt} 次重试').replace('{attempt}', String(attempt)),
       retryCount: attempt - 1,
       retryInMs: undefined,
       errorMessage: undefined,
@@ -308,8 +333,8 @@ const waitForBackendReady = async (options: { maxAttempts?: number } = {}) => {
       setBootstrapSnapshot({
         phase: 'health',
         progress: Math.min(14 + attempt * 3, 28),
-        title: '后端启动中',
-        description: `后端暂未启动，${Math.ceil(retryInMs / 1000)} 秒后自动重试`,
+        title: t('app.bootstrap.backendStarting', '后端启动中'),
+        description: t('app.bootstrap.backendRetryInSeconds', '后端暂未启动，{seconds} 秒后自动重试').replace('{seconds}', String(Math.ceil(retryInMs / 1000))),
         retryCount: attempt,
         retryInMs,
         errorMessage: getErrorMessage(error),
@@ -328,8 +353,8 @@ export async function getAppInitialState(): Promise<AppInitialState> {
     setBootstrapSnapshot({
       phase: 'ready',
       progress: 100,
-      title: '系统已就绪',
-      description: '正在展示登录页',
+      title: t('app.bootstrap.ready', '系统已就绪'),
+      description: t('app.bootstrap.showLoginPage', '正在展示登录页'),
       ready: true,
       retryInMs: undefined,
       errorMessage: undefined,
@@ -346,10 +371,10 @@ export async function getAppInitialState(): Promise<AppInitialState> {
       setBootstrapSnapshot({
         phase: 'branding',
         progress: 30,
-        title: '加载品牌信息',
+        title: t('app.bootstrap.loadBranding', '加载品牌信息'),
         description: restored?.currentUser
-          ? '正在同步登录后可见的品牌与外观设置'
-          : '正在同步登录页品牌与外观设置',
+          ? t('app.bootstrap.syncPostLoginBranding', '正在同步登录后可见的品牌与外观设置')
+          : t('app.bootstrap.syncLoginPageBranding', '正在同步登录页品牌与外观设置'),
         brandName: storedBrandingSettings.websiteName,
         retryInMs: undefined,
         errorMessage: undefined,

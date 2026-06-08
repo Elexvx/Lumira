@@ -137,7 +137,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
 
 const importLoginPublicKey = async (key: LoginEncryptionKey) => {
   if (!window.crypto?.subtle) {
-    throw new Error('当前浏览器不支持登录加密，请升级浏览器后重试');
+    throw new Error('This browser does not support login encryption. Please upgrade your browser and try again.');
   }
 
   const cacheKey = key.keyId || key.publicKey;

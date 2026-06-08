@@ -6,6 +6,11 @@ import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import type { AiEmployeeCapabilityRecord } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 export type AvatarOption = {
   key: string;
@@ -49,7 +54,7 @@ const DEFAULT_AVATAR_KEY = 'avatar-purple-01';
 
 const groupCapabilities = (capabilities: AiEmployeeCapabilityRecord[]) =>
   capabilities.reduce<Record<string, AiEmployeeCapabilityRecord[]>>((result, capability) => {
-    const groupName = capability.category || '其他能力';
+    const groupName = capability.category || t('其他能力', 'Other capabilities');
     result[groupName] = [...(result[groupName] || []), capability];
     return result;
   }, {});
@@ -87,8 +92,8 @@ export const EmployeeDrawer = ({
       onClose={onClose}
       width={STANDARD_DRAWER_WIDTH}
       footerActions={[
-        { key: 'cancel', label: '取消', onClick: onClose },
-        { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canSave, onClick: onSave },
+        { key: 'cancel', label: t('取消', 'Cancel'), onClick: onClose },
+        { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSave, onClick: onSave },
       ]}
       >
       <Form layout="vertical" form={form} initialValues={{ avatarKey: DEFAULT_AVATAR_KEY, systemPrompt: employeePromptTemplate }}>
@@ -97,41 +102,41 @@ export const EmployeeDrawer = ({
           items={[
             {
               key: 'basic',
-              label: '员工资料',
+              label: t('员工资料', 'Profile'),
               children: (
                 <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                   <Row gutter={rowGutter}>
                     <Col xs={24} md={12}>
                       <Form.Item
-                        label="用户名"
+                        label={t('用户名', 'Username')}
                         name="username"
                         rules={[
-                          { required: true, message: '请输入用户名' },
-                          { pattern: /^[a-z][a-zA-Z0-9-]*$/, message: '用户名需为 lowerCamelCase 或短横线格式' },
+                          { required: true, message: t('请输入用户名', 'Please enter a username') },
+                          { pattern: /^[a-z][a-zA-Z0-9-]*$/, message: t('用户名需为 lowerCamelCase 或短横线格式', 'The username must be in lowerCamelCase or hyphen format') },
                         ]}
                       >
-                        <Input placeholder="例如：aiAssistant" />
+                        <Input placeholder={t('例如：aiAssistant', 'e.g. aiAssistant')} />
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={12}>
-                      <Form.Item label="昵称" name="nickname" rules={[{ required: true, message: '请输入昵称' }]}>
-                        <Input placeholder="例如：小助手" />
+                      <Form.Item label={t('昵称', 'Nickname')} name="nickname" rules={[{ required: true, message: t('请输入昵称', 'Please enter a nickname') }]}>
+                        <Input placeholder={t('例如：小助手', 'e.g. Assistant')} />
                       </Form.Item>
                     </Col>
                   </Row>
                   <Row gutter={rowGutter}>
                     <Col xs={24} md={12}>
-                      <Form.Item label="职位" name="position">
-                        <Input placeholder="例如：智能客服" />
+                      <Form.Item label={t('职位', 'Position')} name="position">
+                        <Input placeholder={t('例如：智能客服', 'e.g. AI support agent')} />
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={12}>
-                      <Form.Item label="默认 LLM 服务" name="defaultLlmServiceId">
-                        <Select allowClear options={llmServiceOptions} placeholder="请选择默认模型服务（可选）" />
+                      <Form.Item label={t('默认 LLM 服务', 'Default LLM service')} name="defaultLlmServiceId">
+                        <Select allowClear options={llmServiceOptions} placeholder={t('请选择默认模型服务（可选）', 'Select a default model service (optional)')} />
                       </Form.Item>
                     </Col>
                   </Row>
-                  <Form.Item label="头像" name="avatarKey">
+                  <Form.Item label={t('头像', 'Avatar')} name="avatarKey">
                     <Radio.Group>
                       <Space wrap>
                         {avatarOptions.map((option) => (
@@ -144,60 +149,60 @@ export const EmployeeDrawer = ({
                       </Space>
                     </Radio.Group>
                   </Form.Item>
-                  <Form.Item label="简介" name="description">
-                    <Input.TextArea rows={3} placeholder="简单说明这个 AI 员工的职责与边界" />
+                  <Form.Item label={t('简介', 'Description')} name="description">
+                    <Input.TextArea rows={3} placeholder={t('简单说明这个 AI 员工的职责与边界', 'Briefly describe this AI employee’s responsibilities and boundaries')} />
                   </Form.Item>
-                  <Form.Item label="问候语" name="greeting">
-                    <Input.TextArea rows={2} placeholder="用户打开对话时展示的欢迎语" />
+                  <Form.Item label={t('问候语', 'Greeting')} name="greeting">
+                    <Input.TextArea rows={2} placeholder={t('用户打开对话时展示的欢迎语', 'Welcome message shown when the user opens a conversation')} />
                   </Form.Item>
                 </Space>
               ),
             },
             {
               key: 'prompt',
-              label: '人物设定',
+              label: t('人物设定', 'Persona'),
               children: (
                 <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-                  <Alert type="info" showIcon message="AI 模型的系统提示词，决定了‘我’是谁，遵循哪些要求来工作和完成任务。" />
+                  <Alert type="info" showIcon message={t('AI 模型的系统提示词，决定了‘我’是谁，遵循哪些要求来工作和完成任务。', 'The system prompt defines who this AI is and the rules it follows to work and complete tasks.')} />
                   <Space wrap>
                     <Button
                       onClick={() => {
                         form.setFieldValue('systemPrompt', '');
                       }}
                     >
-                      清空
+                      {t('清空', 'Clear')}
                     </Button>
                     <Button
                       onClick={() => {
                         form.setFieldValue('systemPrompt', employeePromptTemplate);
                       }}
                     >
-                      恢复默认模板
+                      {t('恢复默认模板', 'Restore default template')}
                     </Button>
                   </Space>
                   <Form.Item name="systemPrompt" label="systemPrompt">
-                    <Input.TextArea rows={12} placeholder="请输入系统提示词" />
+                    <Input.TextArea rows={12} placeholder={t('请输入系统提示词', 'Please enter the system prompt')} />
                   </Form.Item>
                 </Space>
               ),
             },
             {
               key: 'security',
-              label: '能力边界',
+              label: t('能力边界', 'Capability boundaries'),
               children: (
                 <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                   <Alert
                     type="info"
                     showIcon
-                    message="能力边界按每个 AI 员工独立配置；查看类能力只允许访问或禁用，增删改启停类能力只允许允许或禁用，写入动作仍会二次确认。"
+                    message={t('能力边界按每个 AI 员工独立配置；查看类能力只允许访问或禁用，增删改启停类能力只允许允许或禁用，写入动作仍会二次确认。', 'Capability boundaries are configured per AI employee. View-only capabilities can only be allowed or disabled; create/update/delete/enable/disable capabilities can only be allowed or disabled; write actions still require confirmation.')}
                   />
-                  <Form.Item label="绑定知识库">
+                  <Form.Item label={t('绑定知识库', 'Bound knowledge bases')}>
                     <Select
                       mode="multiple"
                       allowClear
                       showSearch
                       optionFilterProp="label"
-                      placeholder="选择该 AI 员工回答时可引用的知识库"
+                      placeholder={t('选择该 AI 员工回答时可引用的知识库', 'Select knowledge bases this AI employee may reference when answering')}
                       options={knowledgeBaseOptions}
                       value={employeeKnowledgeBaseIds}
                       onChange={(values) => onKnowledgeBaseIdsChange(values.map(Number))}
@@ -216,9 +221,9 @@ export const EmployeeDrawer = ({
                                     <Typography.Text strong>{capability.capabilityName}</Typography.Text>
                                     <Tag>{capability.capabilityCode}</Tag>
                                     {capability.riskLevel ? <Tag color={capability.riskLevel === 'HIGH' ? 'red' : capability.riskLevel === 'MEDIUM' ? 'orange' : 'green'}>{capability.riskLevel}</Tag> : null}
-                                    {capability.needConfirm ? <Tag color="volcano">二次确认</Tag> : null}
+                                    {capability.needConfirm ? <Tag color="volcano">{t('二次确认', 'Confirm before action')}</Tag> : null}
                                   </Space>
-                                  <Typography.Text type="secondary">{capability.description || '暂无描述'}</Typography.Text>
+                                  <Typography.Text type="secondary">{capability.description || t('暂无描述', 'No description')}</Typography.Text>
                                 </Space>
                                 <Checkbox
                                   checked={checked}
@@ -226,7 +231,7 @@ export const EmployeeDrawer = ({
                                     onCapabilityModeChange(capability.capabilityCode, event.target.checked, Boolean(capability.readOnly));
                                   }}
                                 >
-                                  {capability.readOnly ? '可查看' : '可操作'}
+                                  {capability.readOnly ? t('可查看', 'View only') : t('可操作', 'Can operate')}
                                 </Checkbox>
                               </div>
                             );
@@ -235,7 +240,7 @@ export const EmployeeDrawer = ({
                       </Card>
                     ))
                   ) : (
-                    <Alert type="warning" showIcon message="请先创建 AI 员工，保存后再编辑它的能力边界。" />
+                    <Alert type="warning" showIcon message={t('请先创建 AI 员工，保存后再编辑它的能力边界。', 'Please create the AI employee first, then save before editing its capability boundaries.')} />
                   )}
                 </Space>
               ),

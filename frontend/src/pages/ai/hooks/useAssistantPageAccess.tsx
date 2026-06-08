@@ -52,6 +52,11 @@ import {
 } from '../utils/sessions';
 import { getConversationGroup } from '@/pages/ai/utils/sessions';
 import type { AiChatStreamEvent } from '@/services/ai/types';
+import { getLocale } from '@umijs/max';
+import { normalizeLocale } from '@/i18n/locale';
+
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const resolveNextActiveSessionId = (sessions: ChatSession[], currentSessionId: string, deletedSessionId: string) => {
   if (currentSessionId !== deletedSessionId) {
@@ -264,7 +269,7 @@ const useAiChatData = (shareToken: string) => {
         }));
       } catch (error) {
         if (alive) {
-          showErrorMessage(error, '加载对话记录失败');
+          showErrorMessage(error, t('加载对话记录失败', 'Failed to load conversation messages'));
         }
       }
     };
@@ -277,12 +282,12 @@ const useAiChatData = (shareToken: string) => {
   const handleCreateSession = useCallback(() => {
     if (isShareMode) return;
     if (isDraftSession(activeSession)) {
-      message.info({ key: 'ai-assistant-current-new-session', content: '已经是最新的对话了' });
+      message.info({ key: 'ai-assistant-current-new-session', content: t('已经是最新的对话了', 'You are already on the latest conversation') });
       return;
     }
     const nextSession = buildInitialSession(employeeSelection.selectedEmployee);
     nextSession.id = buildBubbleKey('session');
-    nextSession.title = '新对话';
+    nextSession.title = t('新对话', 'New conversation');
     nextSession.preview = buildAssistantGreeting(employeeSelection.selectedEmployee);
     nextSession.messages = [];
     nextSession.pendingAttachments = [];
@@ -328,7 +333,7 @@ const useAiChatData = (shareToken: string) => {
         updateSession(session.id, toggleConversationPin);
         void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
       } catch (error) {
-        showErrorMessage(error, '置顶设置失败');
+        showErrorMessage(error, t('置顶设置失败', 'Failed to update pinned state'));
       }
     },
     [queryClient, updateSession],
@@ -489,9 +494,9 @@ const handleAiChatStreamToolEvent = ({
   placeholderKey,
   updateSession,
   tracker,
-  toolBlockedMessage = '该操作已被平台防护规则拦截。',
-  toolProposalMessage = '我已生成系统操作计划，请确认后执行。',
-  toolResultMessage = '系统操作已完成。',
+  toolBlockedMessage = t('该操作已被平台防护规则拦截。', 'This operation was blocked by platform protection rules.'),
+  toolProposalMessage = t('我已生成系统操作计划，请确认后执行。', 'I have generated a system operation plan. Please confirm to proceed.'),
+  toolResultMessage = t('系统操作已完成。', 'System operation completed.'),
 }: {
   event: AiChatStreamEvent;
   sessionId: string;
@@ -544,7 +549,7 @@ const handleAiChatStreamDoneEvent = ({
 const handleAiChatStreamErrorEvent = ({
   event,
   tracker,
-  errorMessage = '发送失败，请稍后重试',
+  errorMessage = t('发送失败，请稍后重试', 'Send failed. Please try again later'),
 }: {
   event: AiChatStreamEvent;
   tracker: AiChatStreamTracker;
@@ -687,16 +692,16 @@ const buildExportContent = (session: ChatSession, format: 'markdown' | 'text') =
   const lines: string[] = [];
   lines.push(markdown ? `# ${session.title}` : session.title);
   lines.push('');
-  lines.push(`AI 员工: ${session.employeeName}`);
-  lines.push(`更新时间: ${session.updatedAt}`);
+  lines.push(`${t('AI 员工', 'AI employee')}: ${session.employeeName}`);
+  lines.push(`${t('更新时间', 'Updated at')}: ${session.updatedAt}`);
   lines.push('');
 
   session.messages.forEach((messageItem) => {
-    lines.push(markdown ? `## ${messageItem.role === 'user' ? '用户' : 'AI'}` : `${messageItem.role === 'user' ? '用户' : 'AI'}:`);
+    lines.push(markdown ? `## ${messageItem.role === 'user' ? t('用户', 'User') : 'AI'}` : `${messageItem.role === 'user' ? t('用户', 'User') : 'AI'}:`);
     lines.push(messageItem.content);
     if (messageItem.attachments.length) {
       lines.push('');
-      lines.push('附件:');
+      lines.push(t('附件:', 'Attachments:'));
       messageItem.attachments.forEach((attachment) => {
         lines.push(`- ${attachment.originalFileName}`);
       });
@@ -722,9 +727,9 @@ const buildWelcomePanel = (isShareMode: boolean, sectionGap: number, isMobile: b
     <Space direction="vertical" align="center" size={sectionGap}>
       <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, isMobile)} icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
       <Typography.Title level={4} style={{ margin: 0 }}>
-        {isShareMode ? '分享会话为空' : '你好，我是企业 AI 助手'}
+        {isShareMode ? t('分享会话为空', 'Shared conversation is empty') : t('你好，我是企业 AI 助手', 'Hello, I am your enterprise AI assistant')}
       </Typography.Title>
-      <Typography.Text type="secondary">{isShareMode ? '这条分享会话还没有消息。' : '可以帮你查资料、写方案、拆任务。'}</Typography.Text>
+      <Typography.Text type="secondary">{isShareMode ? t('这条分享会话还没有消息。', 'This shared conversation has no messages yet.') : t('可以帮你查资料、写方案、拆任务。', 'I can help with research, planning, and breaking down tasks.')}</Typography.Text>
     </Space>
   </div>
 );
@@ -742,17 +747,17 @@ const buildConversationMenu = (
   const canShare = Boolean(session.conversationId);
   return {
     items: [
-      { key: 'rename', label: '重命名', icon: <EditOutlined /> },
-      { key: 'pin', label: session.isPinned ? '取消置顶' : '置顶', icon: <PushpinOutlined /> },
+      { key: 'rename', label: t('重命名', 'Rename'), icon: <EditOutlined /> },
+      { key: 'pin', label: session.isPinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin'), icon: <PushpinOutlined /> },
       ...(canShare
         ? [
-            { key: 'share', label: '复制分享链接', icon: <ShareAltOutlined /> },
-            { key: 'export-markdown', label: '导出 Markdown', icon: <DownloadOutlined /> },
-            { key: 'export-text', label: '导出文本', icon: <DownloadOutlined /> },
+            { key: 'share', label: t('复制分享链接', 'Copy share link'), icon: <ShareAltOutlined /> },
+            { key: 'export-markdown', label: t('导出 Markdown', 'Export Markdown'), icon: <DownloadOutlined /> },
+            { key: 'export-text', label: t('导出文本', 'Export text'), icon: <DownloadOutlined /> },
           ]
         : []),
       { type: 'divider' as const },
-      { key: 'delete', label: '删除', icon: <DeleteOutlined />, danger: true },
+      { key: 'delete', label: t('删除', 'Delete'), icon: <DeleteOutlined />, danger: true },
     ],
     onClick: ({ key }) => {
       if (key === 'rename') actions.openRenameModal(session);
@@ -804,7 +809,7 @@ const AiMessageContent = ({
           ) : (
             <div className="saas-ai-assistant-thinking__loading">
               <Spin size="small" />
-              <span>正在调用模型并生成回复。</span>
+              <span>{t('正在调用模型并生成回复。', 'Calling the model and generating a reply.')}</span>
             </div>
           )}
         </Think>
@@ -815,10 +820,10 @@ const AiMessageContent = ({
             <span className="saas-ai-tool-card__title">{plan.toolName || plan.toolCode}</span>
             <Tag color={blocked ? 'red' : plan.riskLevel === 'HIGH' ? 'orange' : 'blue'}>{plan.riskLevel || 'MEDIUM'}</Tag>
           </div>
-          <div className="saas-ai-tool-card__summary">{plan.summary || 'AI 已生成一个系统操作计划。'}</div>
+          <div className="saas-ai-tool-card__summary">{plan.summary || t('AI 已生成一个系统操作计划。', 'AI has generated a system operation plan.')}</div>
           <div className="saas-ai-tool-card__meta">
-            <span>权限：{plan.permissionKey || '按当前用户权限'}</span>
-            <span>监督：{plan.supervisorVerdict || 'REQUIRE_CONFIRM'}</span>
+            <span>{t('权限：', 'Permission: ')}{plan.permissionKey || t('按当前用户权限', 'Current user permission')}</span>
+            <span>{t('监督：', 'Supervision: ')}{plan.supervisorVerdict || 'REQUIRE_CONFIRM'}</span>
           </div>
           {Object.keys(args).length ? <pre className="saas-ai-tool-card__args">{JSON.stringify(args, null, 2)}</pre> : null}
           {plan.policyMessage || plan.supervisorMessage ? (
@@ -833,7 +838,7 @@ const AiMessageContent = ({
             <Alert
               type={result.resultStatus === 'SUCCESS' ? 'success' : 'error'}
               showIcon
-              message={result.message || (result.resultStatus === 'SUCCESS' ? '系统操作已完成' : '系统操作失败')}
+              message={result.message || (result.resultStatus === 'SUCCESS' ? t('系统操作已完成', 'System operation completed') : t('系统操作失败', 'System operation failed'))}
               className="saas-ai-tool-card__alert"
             />
           ) : (
@@ -846,10 +851,10 @@ const AiMessageContent = ({
                 loading={Boolean(item.toolPlan?.id && confirmingToolId === item.toolPlan.id)}
                 onClick={() => onConfirmTool?.(plan)}
               >
-                确认执行
+                {t('确认执行', 'Confirm execution')}
               </Button>
               <Button size="small" icon={<CloseCircleOutlined />} disabled={Boolean(item.toolPlan?.id && confirmingToolId === item.toolPlan.id)}>
-                取消
+                {t('取消', 'Cancel')}
               </Button>
             </div>
           )}
@@ -872,12 +877,12 @@ const renderSourcesSection = (references?: AiKnowledgeReferenceRecord[] | null) 
   const dedupedReferences = Array.from(new Map<number, AiKnowledgeReferenceRecord>(references.map((reference) => [reference.chunkId, reference])).values()).slice(0, 6);
   const sourceItems = dedupedReferences.map((reference) => ({
     key: reference.chunkId,
-    title: reference.documentTitle || reference.originalFileName || `知识片段 #${reference.chunkId}`,
+    title: reference.documentTitle || reference.originalFileName || `${t('知识片段', 'Knowledge chunk')} #${reference.chunkId}`,
     description: reference.knowledgeBaseName
-      ? `知识库：${reference.knowledgeBaseName}${reference.chunkIndex != null ? ` · 分片 #${reference.chunkIndex + 1}` : ''}`
+      ? `${t('知识库', 'Knowledge base')}: ${reference.knowledgeBaseName}${reference.chunkIndex != null ? ` ${t('· 分片', ' · Chunk')} #${reference.chunkIndex + 1}` : ''}`
       : reference.chunkIndex != null
-        ? `分片 #${reference.chunkIndex + 1}`
-        : '知识引用',
+        ? `${t('分片', 'Chunk')} #${reference.chunkIndex + 1}`
+        : t('知识引用', 'Knowledge reference'),
   }));
 
   return (
@@ -887,7 +892,7 @@ const renderSourcesSection = (references?: AiKnowledgeReferenceRecord[] | null) 
         title: 'saas-ai-assistant-sources__title',
         content: 'saas-ai-assistant-sources__content',
       }}
-      title={`参考来源（${sourceItems.length}）`}
+      title={`${t('参考来源', 'References')} (${sourceItems.length})`}
       expandIconPosition="end"
       items={sourceItems}
     />
@@ -915,7 +920,7 @@ const MessageBubbleFooter = ({
         items={[
           {
             key: 'copy',
-            label: '复制',
+            label: t('复制', 'Copy'),
             icon: <CopyOutlined />,
             onItemClick: () => onCopy(item.content),
           },
@@ -950,7 +955,7 @@ const renderConversationsPanel = (
       isShareMode
         ? undefined
         : {
-            label: '新建对话',
+            label: t('新建对话', 'New conversation'),
             icon: <PlusOutlined />,
             onClick: onCreateSession,
             align: 'center' as const,
@@ -991,8 +996,8 @@ const buildAiChatRequestEmployee = (
   const requestEmployee = requestEmployees[0] || null;
   const requestEmployeeName =
     requestEmployees.length > 1
-      ? `${requestEmployees.length} 个 Agent 协同`
-      : requestEmployee?.nickname?.trim() || requestEmployee?.username || activeSession.employeeName || 'AI 助手';
+      ? t('{count} 个 Agent 协同', '{count} agents collaborating').replace('{count}', String(requestEmployees.length))
+      : requestEmployee?.nickname?.trim() || requestEmployee?.username || activeSession.employeeName || t('AI 助手', 'AI assistant');
 
   return {
     requestEmployeeId,
@@ -1042,7 +1047,7 @@ const commitAiChatSendSuccess = (
       {
         key: `${params.placeholderKey}_final`,
         role: 'ai',
-        content: params.replyText || '我已经收到你的消息。',
+        content: params.replyText || t('我已经收到你的消息。', 'I have received your message.'),
         attachments: [],
         thinkingContent: params.response.thinkingContent,
         references: params.response.references,
@@ -1154,7 +1159,7 @@ export const useAssistantPageAccess = () => {
 
         if (streamState.error) throw streamState.error;
         const response = streamState.response;
-        if (!response) throw new Error('AI 回复生成失败');
+        if (!response) throw new Error(t('AI 回复生成失败', 'Failed to generate AI reply'));
 
         const responseConversationId = response.conversationId ?? activeSession.conversationId ?? null;
 
@@ -1186,7 +1191,7 @@ export const useAssistantPageAccess = () => {
         throw error;
       }
     } catch (error) {
-      showErrorMessage(error, '发送失败，请稍后重试');
+      showErrorMessage(error, t('发送失败，请稍后重试', 'Send failed. Please try again later'));
     } finally {
       setSending(false);
     }
@@ -1222,7 +1227,7 @@ export const useAssistantPageAccess = () => {
       for (const file of nextFiles) {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('category', 'AI 会话附件');
+        formData.append('category', t('AI 会话附件', 'AI conversation attachments'));
         formData.append('tags', 'ai,conversation');
         formData.append('remark', activeSession.title);
         formData.append('bucket', AI_CHAT_ATTACHMENT_BUCKET);
@@ -1241,7 +1246,7 @@ export const useAssistantPageAccess = () => {
       }));
       message.success(`已添加 ${uploadedAttachments.length} 个附件`);
     } catch (error) {
-      showErrorMessage(error, '附件上传失败');
+      showErrorMessage(error, t('附件上传失败', 'Attachment upload failed'));
     } finally {
       setAttachmentUploading(false);
     }
@@ -1298,7 +1303,7 @@ export const useAssistantPageAccess = () => {
     async (plan: AiToolPlanRecord) => {
       if (!activeSession || isShareMode || confirmingToolId) return;
 
-      const confirmText = `确认执行：${plan.summary || plan.toolName || plan.toolCode}`;
+      const confirmText = `${t('确认执行：', 'Confirm execution: ')}${plan.summary || plan.toolName || plan.toolCode}`;
       const userBubble: ChatBubble = { key: buildBubbleKey('user'), role: 'user', content: confirmText, attachments: [] };
       const assistantPlaceholder: ChatBubble = { key: buildBubbleKey('assistant'), role: 'ai', content: '', attachments: [], thinkingLoading: true, toolPlan: plan };
 
@@ -1330,7 +1335,7 @@ export const useAssistantPageAccess = () => {
               placeholderKey: assistantPlaceholder.key,
               updateSession,
               tracker: streamState,
-              errorMessage: '系统操作执行失败',
+              errorMessage: t('系统操作执行失败', 'System operation execution failed'),
             });
           },
         });
@@ -1339,7 +1344,7 @@ export const useAssistantPageAccess = () => {
         replaceAssistantPlaceholderWithResponse(activeSession.id, assistantPlaceholder.key, {
           replyText: streamState.response?.replyText || streamState.replyText || streamState.toolResult?.message,
           toolResult: streamState.response?.toolResult || streamState.toolResult,
-          fallbackMessage: '系统操作已完成。',
+          fallbackMessage: t('系统操作已完成。', 'System operation completed.'),
         });
         void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
       } catch (error) {
@@ -1347,7 +1352,7 @@ export const useAssistantPageAccess = () => {
           ...session,
           messages: session.messages.filter((item) => item.key !== assistantPlaceholder.key),
         }));
-        showErrorMessage(error, '系统操作执行失败');
+        showErrorMessage(error, t('系统操作执行失败', 'System operation execution failed'));
       } finally {
         setToolSending(false);
         setConfirmingToolId(null);
@@ -1383,7 +1388,7 @@ export const useAssistantPageAccess = () => {
       await copyTextToClipboard(shareUrl);
       message.success('分享链接已复制');
     } catch (error) {
-      showErrorMessage(error, '创建分享链接失败');
+      showErrorMessage(error, t('创建分享链接失败', 'Failed to create share link'));
     }
   }, [currentExportSession]);
   const handleExportConversation = useCallback(async (format: 'markdown' | 'text', session?: ChatSession | null) => {
@@ -1406,15 +1411,15 @@ export const useAssistantPageAccess = () => {
       const fileName = formatExportFileName(targetSession.title, format);
       downloadText(content, fileName, format === 'markdown' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8');
     } catch (error) {
-      showErrorMessage(error, '导出失败');
+      showErrorMessage(error, t('导出失败', 'Export failed'));
     }
   }, [currentExportSession]);
   const handleDeleteConversationWithConfirm = useCallback(
     (session: ChatSession) => {
       confirmAction({
-        title: '删除会话',
-        content: `确认删除会话「${session.title}」吗？删除后消息、附件和分享记录都会清理。`,
-        okText: '确认删除',
+        title: t('删除会话', 'Delete conversation'),
+        content: t(`确认删除会话「${session.title}」吗？删除后消息、附件和分享记录都会清理。`, `Delete conversation "${session.title}"? Messages, attachments, and share records will be removed.`),
+        okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: () => handleDeleteConversation(session),
       });
@@ -1554,7 +1559,7 @@ export const useAssistantPageAccess = () => {
     </aside>
   );
 
-  const pageTitle = isShareMode ? 'AI 会话分享' : 'AI 助手';
+  const pageTitle = isShareMode ? t('AI 会话分享', 'AI conversation share') : t('AI 助手', 'AI assistant');
 
   return {
     isShareMode,

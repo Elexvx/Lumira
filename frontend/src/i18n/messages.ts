@@ -1,7 +1,6 @@
-import { getLocale } from '@umijs/max';
 import enUSMessages from '@/locales/en-US';
 import zhCNMessages from '@/locales/zh-CN';
-import { normalizeLocale } from '@/i18n/locale';
+import { normalizeLocale, resolvePreferredLocale } from '@/i18n/locale';
 
 const BUILTIN_MESSAGES: Record<string, Record<string, string>> = {
   'zh-CN': zhCNMessages,
@@ -17,15 +16,15 @@ export const resolveBuiltinMessage = (id?: string | null, fallback?: string | nu
     return normalizedFallback || '';
   }
 
-  const locale = normalizeLocale(typeof getLocale === 'function' ? getLocale() : 'zh-CN');
+  const locale = typeof document !== 'undefined' ? normalizeLocale(document.documentElement.lang) : resolvePreferredLocale();
   const messages = BUILTIN_MESSAGES[locale] || BUILTIN_MESSAGES['zh-CN'];
-  const translated = messages[normalizedId];
+  const translated = (messages as Record<string, string>)[normalizedId];
   if (translated) {
     return translated;
   }
 
   if (normalizedFallback && looksLikeMessageKey(normalizedFallback)) {
-    const translatedFallback = messages[normalizedFallback];
+    const translatedFallback = (messages as Record<string, string>)[normalizedFallback];
     if (translatedFallback) {
       return translatedFallback;
     }

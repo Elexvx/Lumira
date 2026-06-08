@@ -107,16 +107,16 @@ const TopActionsPasswordDrawer = ({
 
   return (
     <Drawer
-      title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: '修改密码' })}
+      title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: 'Change password' })}
       open={open}
       width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       destroyOnHidden
       onClose={onClose}
       footer={
         <Space className="saas-user-password__footer">
-          <Button onClick={onClose}>{intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}</Button>
+          <Button onClick={onClose}>{intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}</Button>
           <Button type="primary" onClick={() => void form.submit()}>
-            {intl.formatMessage({ id: 'common.save', defaultMessage: '保存' })}
+            {intl.formatMessage({ id: 'common.save', defaultMessage: 'Save' })}
           </Button>
         </Space>
       }
@@ -124,20 +124,20 @@ const TopActionsPasswordDrawer = ({
       <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ currentPassword: '', newPassword: '', confirmPassword: '' }}>
         <Form.Item
           name="currentPassword"
-          label={intl.formatMessage({ id: 'nav.user.password.current', defaultMessage: '当前密码' })}
-          rules={[{ required: true, message: intl.formatMessage({ id: 'nav.user.password.enterCurrent', defaultMessage: '请输入当前密码' }) }]}
+          label={intl.formatMessage({ id: 'nav.user.password.current', defaultMessage: 'Current password' })}
+          rules={[{ required: true, message: intl.formatMessage({ id: 'nav.user.password.enterCurrent', defaultMessage: 'Please enter your current password' }) }]}
         >
           <Input.Password autoComplete="current-password" />
         </Form.Item>
         <Form.Item
           name="newPassword"
-          label={intl.formatMessage({ id: 'nav.user.password.new', defaultMessage: '新密码' })}
+          label={intl.formatMessage({ id: 'nav.user.password.new', defaultMessage: 'New password' })}
           extra={passwordPolicyHint}
           rules={[
-            { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterNew', defaultMessage: '请输入新密码' }) },
+            { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterNew', defaultMessage: 'Please enter a new password' }) },
             {
               min: Math.max(1, Number(securitySettings.passwordMinLength || 0)),
-              message: intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: '密码长度至少为 {length} 位' }, { length: securitySettings.passwordMinLength || 1 }),
+              message: intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: 'Password must be at least {length} characters long' }, { length: securitySettings.passwordMinLength || 1 }),
             },
           ]}
         >
@@ -145,16 +145,16 @@ const TopActionsPasswordDrawer = ({
         </Form.Item>
         <Form.Item
           name="confirmPassword"
-          label={intl.formatMessage({ id: 'nav.user.password.confirm', defaultMessage: '确认新密码' })}
+          label={intl.formatMessage({ id: 'nav.user.password.confirm', defaultMessage: 'Confirm new password' })}
           dependencies={['newPassword']}
           rules={[
-            { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterConfirm', defaultMessage: '请再次输入新密码' }) },
+            { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterConfirm', defaultMessage: 'Please re-enter the new password' }) },
             ({ getFieldValue }) => ({
               validator: async (_, value) => {
                 if (!value || value === getFieldValue('newPassword')) {
                   return Promise.resolve();
                 }
-                return Promise.reject(new Error(intl.formatMessage({ id: 'nav.user.password.confirmMismatch', defaultMessage: '两次密码输入不一致' })));
+                return Promise.reject(new Error(intl.formatMessage({ id: 'nav.user.password.confirmMismatch', defaultMessage: 'The two passwords do not match' })));
               },
             }),
           ]}
@@ -182,24 +182,24 @@ export const TopActions = () => {
   };
   const githubLink = brandingSettings.githubLinkEnabled ? resolveExternalLink(brandingSettings.githubLinkUrl) : '';
   const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
-  const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || '用户菜单';
+  const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || intl.formatMessage({ id: 'nav.user.menu', defaultMessage: 'User menu' });
   const userAvatarUrl = normalizeUploadUrl(currentUser?.avatarUrl || '');
   const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
   const availableRoles = useMemo(() => currentUser?.availableRoles || [], [currentUser?.availableRoles]);
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
   const selectedRoleLabel =
     simulatedRoleId == null
-      ? intl.formatMessage({ id: 'nav.user.role.current', defaultMessage: '当前账号权限' })
+      ? intl.formatMessage({ id: 'nav.user.role.current', defaultMessage: 'Current account permissions' })
       : availableRoles.find((item) => item.id === simulatedRoleId)?.roleName ||
         intl.formatMessage({
           id: 'nav.user.role.current',
-          defaultMessage: '当前账号权限',
+          defaultMessage: 'Current account permissions',
         });
   const roleSimulationHint =
     simulatedRoleId == null
       ? ''
       : intl.formatMessage(
-          { id: 'nav.user.role.simulationHint', defaultMessage: '当前正在模拟 {roleName}' },
+          { id: 'nav.user.role.simulationHint', defaultMessage: 'Currently simulating {roleName}' },
           { roleName: selectedRoleLabel },
         );
   const themeButtonIcon =
@@ -239,7 +239,7 @@ export const TopActions = () => {
       });
       setLocale(normalizedNextLocale, true);
     } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     } finally {
       setSwitchingLocale(false);
     }
@@ -260,7 +260,7 @@ export const TopActions = () => {
         ...buildLoggedOutInitialState(),
       }));
     } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     } finally {
       setLoggingOut(false);
     }
@@ -290,17 +290,17 @@ export const TopActions = () => {
       );
       message.success(
         intl.formatMessage(
-          { id: 'nav.user.role.switchSuccessWithName', defaultMessage: '已切换至 {roleName}' },
+          { id: 'nav.user.role.switchSuccessWithName', defaultMessage: 'Switched to {roleName}' },
           {
             roleName:
               availableRoles.find((role) => role.id === nextRoleId)?.roleName ||
-              intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: '角色已切换' }),
+              intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
           },
         ),
       );
       history.replace(DEFAULT_HOME_PATH);
     } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     } finally {
       setSwitchingRole(false);
     }
@@ -326,10 +326,10 @@ export const TopActions = () => {
   const themeMenuItems: MenuProps['items'] = useMemo(
     () =>
       [
-        { key: 'system', label: '跟随系统', icon: <SyncOutlined /> },
-        { key: 'light', label: '浅色主题', icon: <SunOutlined /> },
-        { key: 'dark', label: '暗黑主题', icon: <MoonOutlined /> },
-        { key: 'compact', label: '紧凑主题', icon: <CompressOutlined /> },
+        { key: 'system', label: intl.formatMessage({ id: 'theme.system', defaultMessage: 'Follow system' }), icon: <SyncOutlined /> },
+        { key: 'light', label: intl.formatMessage({ id: 'theme.light', defaultMessage: 'Light theme' }), icon: <SunOutlined /> },
+        { key: 'dark', label: intl.formatMessage({ id: 'theme.dark', defaultMessage: 'Dark theme' }), icon: <MoonOutlined /> },
+        { key: 'compact', label: intl.formatMessage({ id: 'theme.compact', defaultMessage: 'Compact theme' }), icon: <CompressOutlined /> },
       ].map((item) => ({
         key: item.key,
         label: (
@@ -348,7 +348,7 @@ export const TopActions = () => {
     () => [
       {
         key: 'zh-CN',
-        label: intl.formatMessage({ id: 'app.locale.zh-CN', defaultMessage: '中文' }),
+        label: intl.formatMessage({ id: 'app.locale.zh-CN', defaultMessage: 'Chinese' }),
         icon: currentLocale === 'zh-CN' ? <CheckOutlined /> : undefined,
       },
       {
@@ -372,7 +372,7 @@ export const TopActions = () => {
       {
         key: 'role-switch',
         icon: <SwapOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: '切换角色' }),
+        label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
         children: availableRoles.map((role) => ({
           key: String(role.id),
           label: role.roleName,
@@ -385,12 +385,12 @@ export const TopActions = () => {
       {
         key: 'profile',
         icon: <ProfileOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.profile', defaultMessage: '个人资料' }),
+        label: intl.formatMessage({ id: 'nav.user.profile', defaultMessage: 'Profile' }),
       },
       {
         key: 'password',
         icon: <LockOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: '修改密码' }),
+        label: intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: 'Change password' }),
       },
       ...(roleMenuItems.length
         ? [
@@ -403,7 +403,7 @@ export const TopActions = () => {
         key: 'logout',
         danger: true,
         icon: <LogoutOutlined />,
-        label: intl.formatMessage({ id: 'auth.logout', defaultMessage: '注销' }),
+        label: intl.formatMessage({ id: 'auth.logout', defaultMessage: 'Log out' }),
       },
     ],
     [intl, roleMenuItems],
@@ -424,10 +424,10 @@ export const TopActions = () => {
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
       });
-      message.success(intl.formatMessage({ id: 'nav.user.password.updateSuccess', defaultMessage: '密码已修改' }));
+      message.success(intl.formatMessage({ id: 'nav.user.password.updateSuccess', defaultMessage: 'Password updated' }));
       setPasswordDrawerOpen(false);
     } catch (error) {
-      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: '操作失败，请稍后重试' }));
+      showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     }
   };
   const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -506,7 +506,7 @@ export const TopActions = () => {
             loading={model.switchingLocale}
             aria-label={intl.formatMessage({
               id: 'app.locale.switch',
-              defaultMessage: '语言切换',
+              defaultMessage: 'Switch language',
             })}
           />
         </Dropdown>
@@ -523,21 +523,21 @@ export const TopActions = () => {
             type="text"
             icon={model.themeButtonIcon}
             aria-label={intl.formatMessage(
-              { id: 'theme.switch', defaultMessage: '主题切换，当前{theme}' },
-              { theme: intl.formatMessage({ id: `theme.${model.themePreference}`, defaultMessage: '主题' }) },
+              { id: 'theme.switch', defaultMessage: 'Theme switch, current {theme}' },
+              { theme: intl.formatMessage({ id: `theme.${model.themePreference}`, defaultMessage: 'Theme' }) },
             )}
           />
         </Dropdown>
         {model.roleSimulationHint ? (
           <Tag color="orange" className="saas-role-simulation-tag" title={model.roleSimulationHint}>
-            {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: '角色模拟' })}
+            {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: 'Role simulation' })}
           </Tag>
         ) : null}
         {model.helpLink ? (
           <Button
             type="text"
             icon={<QuestionCircleOutlined />}
-            aria-label={intl.formatMessage({ id: 'help.center', defaultMessage: '帮助中心' })}
+            aria-label={intl.formatMessage({ id: 'help.center', defaultMessage: 'Help center' })}
             onClick={() => {
               const nextUrl = resolveExternalLink(model.helpLink);
               if (nextUrl) {
@@ -550,7 +550,7 @@ export const TopActions = () => {
           <Button
             type="text"
             icon={<GithubOutlined />}
-            aria-label={intl.formatMessage({ id: 'github.link', defaultMessage: 'GitHub 链接' })}
+            aria-label={intl.formatMessage({ id: 'github.link', defaultMessage: 'GitHub link' })}
             onClick={() => {
               const nextUrl = resolveExternalLink(model.githubLink);
               if (nextUrl) {
