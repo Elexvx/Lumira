@@ -1,62 +1,15 @@
 import type { CurrentUser } from '@/types/api';
 import { tokenManager } from '@/auth/token';
-
-const PROTECTED_ADMIN_ID = 1001;
-const PROTECTED_ADMIN_USERNAME = 'admin';
-
-const isProtectedAdminAccount = (user?: Pick<CurrentUser, 'userId' | 'username'> | null) =>
-  Boolean(user && (user.userId === PROTECTED_ADMIN_ID || user.username?.toLowerCase() === PROTECTED_ADMIN_USERNAME));
+import { isSuperAdminUser } from '@/auth/adminAccess';
 
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
 
-const SYSTEM_MANAGEMENT_PERMISSIONS = [
-  'system:menu:view',
-  'system:dict:view',
-  'system:config:view',
-  'payment:view',
-  'payment:config:view',
-  'payment:config:update',
-  'payment:config:test',
-  'system:department:view',
-  'system:verification:view',
-  'system:verification:manage',
-  'system:notification:view',
-  'system:notification:write',
-  'system:file:view',
-  'system:file:manage',
-  'system:monitor:view',
-  'system:monitor:service:view',
-  'system:monitor:redis:view',
-  'system:monitor:docs:view',
-  'system:update:view',
-  'system:update:check',
-  'ai:view',
-  'audit:view',
-  'audit:login:view',
-  'audit:operation:view',
-  'message:message:view',
-  'plugin:management:view',
-];
-
-const SYSTEM_MONITORING_PERMISSIONS = [
-  'system:monitor:view',
-  'system:monitor:service:view',
-  'system:monitor:redis:view',
-  'system:monitor:docs:view',
-  'system:update:view',
-  'system:update:check',
-  'audit:view',
-  'audit:login:view',
-  'audit:operation:view',
-];
-
-const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
 const AI_PERMISSIONS = ['ai:chat:send', 'ai:knowledge:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
   const isLogin = Boolean(initialState?.currentUser?.sessionId) || tokenManager.hasToken();
-  const isProtectedAdmin = isProtectedAdminAccount(initialState?.currentUser);
+  const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
 
   return {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
@@ -69,49 +22,33 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
       ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'].some((item) =>
         hasPermission(permissions, item),
       ),
-    canVisitSystemManagement: isLogin && SYSTEM_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
-    canVisitSystemMonitoring: isLogin && isProtectedAdmin && SYSTEM_MONITORING_PERMISSIONS.some((item) => hasPermission(permissions, item)),
-    canVisitSystemMonitoringService: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:monitor:service:view'),
-    canVisitSystemMonitoringRedis: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:monitor:redis:view'),
-    canVisitSystemMonitoringDocs: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:monitor:docs:view'),
-    canVisitPlatformUpdate: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:update:view'),
+    canVisitSystemManagement: isLogin && isSettingsAdmin,
+    canVisitSystemMonitoring: isLogin && isSettingsAdmin,
+    canVisitSystemMonitoringService: isLogin && isSettingsAdmin,
+    canVisitSystemMonitoringRedis: isLogin && isSettingsAdmin,
+    canVisitSystemMonitoringDocs: isLogin && isSettingsAdmin,
+    canVisitPlatformUpdate: isLogin && isSettingsAdmin,
     canVisitSystemUsers: isLogin && hasPermission(permissions, 'system:user:view'),
     canVisitSystemDepartments: isLogin && hasPermission(permissions, 'system:department:view'),
     canVisitSystemRoles: isLogin && hasPermission(permissions, 'system:role:view'),
-    canVisitSystemMenus: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:menu:view'),
-    canVisitSystemDicts: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:dict:view'),
-    canVisitSystemProfileFields: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:config:view'),
-    canVisitSystemPersonalization: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:config:view'),
-    canVisitSystemSecurity: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:config:view'),
-    canVisitSystemVerification:
-      isLogin &&
-      isProtectedAdmin &&
-      (hasPermission(permissions, 'system:verification:view') ||
-        hasPermission(permissions, 'system:verification:manage') ||
-        hasPermission(permissions, 'system:config:view') ||
-        hasPermission(permissions, 'system:config:update')),
-    canVisitSystemPayment:
-      isLogin &&
-      isProtectedAdmin &&
-      (hasPermission(permissions, 'payment:view') ||
-        hasPermission(permissions, 'payment:config:view') ||
-        hasPermission(permissions, 'payment:config:update') ||
-        hasPermission(permissions, 'payment:config:test')),
-    canVisitSystemNotifications:
-      isLogin &&
-      isProtectedAdmin &&
-      (hasPermission(permissions, 'system:notification:view') ||
-        hasPermission(permissions, 'message:message:view')),
-    canVisitSystemFiles: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:file:manage'),
+    canVisitSystemMenus: isLogin && isSettingsAdmin,
+    canVisitSystemDicts: isLogin && isSettingsAdmin,
+    canVisitSystemProfileFields: isLogin && isSettingsAdmin,
+    canVisitSystemPersonalization: isLogin && isSettingsAdmin,
+    canVisitSystemSecurity: isLogin && isSettingsAdmin,
+    canVisitSystemVerification: isLogin && isSettingsAdmin,
+    canVisitSystemPayment: isLogin && isSettingsAdmin,
+    canVisitSystemNotifications: isLogin && isSettingsAdmin,
+    canVisitSystemFiles: isLogin && isSettingsAdmin,
     canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
-    canVisitSystemAllFiles: isLogin && isProtectedAdmin && hasPermission(permissions, 'system:file:manage'),
-    canVisitLocalization: isLogin && isProtectedAdmin && hasPermission(permissions, 'localization:view'),
-    canVisitAudit: isLogin && isProtectedAdmin && AUDIT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
-    canVisitSystemSettings: isLogin && !initialState?.currentUser?.simulatedRoleId && isProtectedAdmin,
+    canVisitSystemAllFiles: isLogin && isSettingsAdmin,
+    canVisitLocalization: isLogin && isSettingsAdmin,
+    canVisitAudit: isLogin && isSettingsAdmin,
+    canVisitSystemSettings: isLogin && isSettingsAdmin,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
-    canVisitSystemPlugins: isLogin && isProtectedAdmin && hasPermission(permissions, 'plugin:management:view'),
+    canVisitSystemPlugins: isLogin && isSettingsAdmin,
     canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
-    canVisitAiEmployees: isLogin && isProtectedAdmin && hasPermission(permissions, 'ai:view'),
+    canVisitAiEmployees: isLogin && isSettingsAdmin,
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),
     canVisitAiAssistant: isLogin && hasPermission(permissions, 'ai:chat:send'),
     canVisitPluginRuntime: isLogin,

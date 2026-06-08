@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useAccess } from '@umijs/max';
+import { isSettingsPermission, isSuperAdminUser } from '@/auth/adminAccess';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { TableActionItem } from '@/features/table/TableActionBar';
 
 export type PermissionRequirement = string | string[];
@@ -28,8 +30,13 @@ const normalizePermissions = (permission?: PermissionRequirement): string[] => {
 
 export const useActionPermission = () => {
   const access = useAccess();
-  const canAccess = useCallback((permission: string) => access.hasPermission(permission), [access]);
-  const canAccessAny = useCallback((permissions: string[]) => permissions.some((permission) => access.hasPermission(permission)), [access]);
+  const { initialState } = useInitialStateModel();
+  const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
+  const canAccess = useCallback(
+    (permission: string) => (isSettingsAdmin && isSettingsPermission(permission)) || access.hasPermission(permission),
+    [access, isSettingsAdmin],
+  );
+  const canAccessAny = useCallback((permissions: string[]) => permissions.some((permission) => canAccess(permission)), [canAccess]);
 
   return useMemo(
     () => ({

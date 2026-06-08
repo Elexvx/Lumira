@@ -35,6 +35,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/payment")
 public class PaymentController {
+    private static final Long PROTECTED_ADMIN_ID = 1001L;
+    private static final String PROTECTED_ADMIN_USERNAME = "admin";
 
     private final PaymentManagementAppService paymentManagementAppService;
     private final PaymentTransactionService paymentTransactionService;
@@ -150,17 +152,17 @@ public class PaymentController {
 
     private void requireView() {
         var currentUser = securityContextFacade.getCurrentUser();
-        requireAny(currentUser, "payment:view", "payment:config:view", "payment:config:update", "payment:config:test");
+        requireSettingsAdmin(currentUser);
     }
 
     private void requireManage() {
         var currentUser = securityContextFacade.getCurrentUser();
-        permissionGuard.requirePermission(currentUser, "payment:config:update");
+        requireSettingsAdmin(currentUser);
     }
 
     private void requireTest() {
         var currentUser = securityContextFacade.getCurrentUser();
-        requireAny(currentUser, "payment:config:test", "payment:config:update");
+        requireSettingsAdmin(currentUser);
     }
 
     private void requireOrderManage() {
@@ -197,6 +199,15 @@ public class PaymentController {
             }
         }
         throw new com.legendary.invention.common.exception.BizException(com.legendary.invention.common.enums.ErrorCode.FORBIDDEN, "缺少权限");
+    }
+
+    private void requireSettingsAdmin(com.legendary.invention.common.security.CurrentUser currentUser) {
+        if (currentUser != null
+                && (PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
+                || (currentUser.getUsername() != null && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername().trim())))) {
+            return;
+        }
+        throw new com.legendary.invention.common.exception.BizException(com.legendary.invention.common.enums.ErrorCode.FORBIDDEN, "仅超级管理员可访问设置");
     }
 
     private Long resolveTenantId(HttpServletRequest request) {
