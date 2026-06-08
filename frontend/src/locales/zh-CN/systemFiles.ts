@@ -69,4 +69,5 @@ export default {
   'system.files.field.actions': '操作',
   'system.files.title.my': '我的文件',
   'system.files.title.all': '文件管理器',
+  'system.files.title.downloadCenter': '下载中心',
 };

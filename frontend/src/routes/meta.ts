@@ -92,6 +92,7 @@ export const systemRoutes: BackendRouteRecord[] = [
   { path: '/files', redirect: '/settings/files/all' },
   { path: '/files/my', redirect: '/user-center/files' },
   { path: '/files/all', redirect: '/settings/files/all' },
+  { path: '/files/download-center', redirect: '/download-center' },
   { path: '/system/menus', redirect: '/settings/menus' },
   { path: '/system/dicts', redirect: '/settings/dicts' },
   { path: '/system/profile-fields', redirect: '/settings/profile-fields' },
@@ -184,10 +185,12 @@ const userCenterRoutes: BackendRouteRecord[] = [
 const dashboardRouteMeta: BackendRouteMeta[] = [
   { path: '/dashboard', name: 'nav.dashboard.root', icon: 'DashboardOutlined', access: 'canVisitDashboard', hideInMenu: true },
   { path: '/dashboard/home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
+  { path: '/download-center', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
 ];
 
 const dashboardRoutes: BackendRouteRecord[] = [
   { path: '/', redirect: '/dashboard/home' },
+  { path: '/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
   {
     path: '/dashboard',
     name: 'nav.dashboard.root',

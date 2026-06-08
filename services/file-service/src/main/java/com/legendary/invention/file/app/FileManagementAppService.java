@@ -51,6 +51,7 @@ public class FileManagementAppService {
     private static final String DEFAULT_SORT_COLUMN = "created_at";
     public static final String SCOPE_MINE = "mine";
     public static final String SCOPE_TENANT = "tenant";
+    public static final String SCOPE_DOWNLOAD_CENTER = "download-center";
     private static final Map<String, String> SORT_COLUMN_MAPPING = Map.ofEntries(
             Map.entry("createdAt", "created_at"),
             Map.entry("updatedAt", "updated_at"),
@@ -103,11 +104,12 @@ public class FileManagementAppService {
             String sortOrder
     ) {
         Long tenantId = currentTenantId(currentUser);
-        boolean tenantScope = SCOPE_TENANT.equalsIgnoreCase(scope);
+        boolean tenantScope = isTenantWideScope(scope);
+        boolean downloadCenterScope = SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("tenant_id", tenantId)
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, tenantScope);
+        applyFileDataPermission(queryWrapper, currentUser, tenantScope, downloadCenterScope);
         if (StringUtils.hasText(keyword)) {
             String normalizedKeyword = keyword.trim();
             queryWrapper.and(wrapper -> wrapper
@@ -155,12 +157,20 @@ public class FileManagementAppService {
     }
 
     public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope);
+        return getFile(currentUser, fileId, tenantScope, false);
+    }
+
+    public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
         return enrich(file);
     }
 
     public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        FileObjectDTO file = getFile(currentUser, fileId, tenantScope);
+        return getPreviewableFile(currentUser, fileId, tenantScope, false);
+    }
+
+    public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
+        FileObjectDTO file = getFile(currentUser, fileId, tenantScope, downloadCenterScope);
         if (!Boolean.TRUE.equals(file.previewable()) || "UNSUPPORTED".equalsIgnoreCase(file.previewMode())) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前文件不支持在线预览");
         }
@@ -435,7 +445,11 @@ public class FileManagementAppService {
     }
 
     public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope);
+        return resolveFilePath(currentUser, fileId, tenantScope, false);
+    }
+
+    public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
         Path target = resolveFilePath(file);
         if (target == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件路径无效");
@@ -444,12 +458,16 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
+        return queryFile(currentUser, fileId, tenantScope, false);
+    }
+
+    private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
         Long tenantId = currentTenantId(currentUser);
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("id", fileId)
                 .eq("tenant_id", tenantId)
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, tenantScope);
+        applyFileDataPermission(queryWrapper, currentUser, tenantScope, downloadCenterScope);
         FileObjectEntity entity = fileObjectMapper.selectOne(queryWrapper);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "文件不存在");
@@ -614,9 +632,12 @@ public class FileManagementAppService {
         return enrich(mapFileObject(inserted));
     }
 
-    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, CurrentUser currentUser, boolean tenantScopeRequested) {
+    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, CurrentUser currentUser, boolean tenantScopeRequested, boolean downloadCenterScope) {
         if (!tenantScopeRequested) {
             queryWrapper.eq("uploaded_by", currentUser.getUserId());
+            return;
+        }
+        if (downloadCenterScope) {
             return;
         }
         DataPermissionDecision decision = DataPermissionResolver.resolve(
@@ -651,6 +672,10 @@ public class FileManagementAppService {
                 nested.in("uploaded_by", userIds);
             }
         });
+    }
+
+    private boolean isTenantWideScope(String scope) {
+        return SCOPE_TENANT.equalsIgnoreCase(scope) || SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
 
     private StorageSpaceDTO getDefaultStorageSpace(Long tenantId) {

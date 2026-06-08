@@ -41,6 +41,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemNotifications: isLogin && isSettingsAdmin,
     canVisitSystemFiles: isLogin && isSettingsAdmin,
     canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
+    canVisitDownloadCenter: isLogin && hasPermission(permissions, 'download:center:view'),
     canVisitSystemAllFiles: isLogin && isSettingsAdmin,
     canVisitLocalization: isLogin && isSettingsAdmin,
     canVisitAudit: isLogin && isSettingsAdmin,

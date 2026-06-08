@@ -182,6 +182,7 @@ public final class SystemRouteCatalog {
         )));
 
         roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/DashboardHomePage", "DashboardOutlined", 0, "dashboard:view"));
+        roots.add(menu(-956L, 0L, "files.download-center", "下载中心", "MENU", "/download-center", "@/pages/files/DownloadCenter", "DownloadOutlined", 1, "download:center:view"));
         roots.add(aiRoot);
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
         userCenterRoot.setChildren(new ArrayList<>(List.of(

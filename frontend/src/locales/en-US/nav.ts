@@ -60,5 +60,6 @@ export default {
   'nav.files.root': 'File Center',
   'nav.files.my': 'My Files',
   'nav.files.all': 'File Manager',
+  'nav.files.downloadCenter': 'Download Center',
   'nav.localization.root': 'Localization Center',
 };

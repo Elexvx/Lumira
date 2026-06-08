@@ -62,8 +62,9 @@ public class FileController {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        boolean tenantScope = FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope);
-        require(tenantScope ? "system:file:manage" : "system:file:view");
+        boolean tenantScope = isTenantWideScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        require(resolveReadPermission(scope));
         return ApiResponse.success(
                 fileManagementAppService.listFiles(
                         securityContextFacade.getCurrentUser(),
@@ -134,9 +135,10 @@ public class FileController {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope);
-        require(tenantScope ? "system:file:manage" : "system:file:view");
-        return ApiResponse.success(fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope), TraceContext.getRequestId());
+        boolean tenantScope = isTenantWideScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        require(resolveReadPermission(scope));
+        return ApiResponse.success(fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope), TraceContext.getRequestId());
     }
 
     @GetMapping("/{id}/download")
@@ -144,10 +146,11 @@ public class FileController {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope);
-        require(tenantScope ? "system:file:manage" : "system:file:view");
-        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope);
+        boolean tenantScope = isTenantWideScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        require(resolveReadPermission(scope));
+        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
         String contentType = file.mimeType();
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (contentType != null && !contentType.isBlank()) {
@@ -173,10 +176,11 @@ public class FileController {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope);
-        require(tenantScope ? "system:file:manage" : "system:file:view");
-        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, tenantScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope);
+        boolean tenantScope = isTenantWideScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        require(resolveReadPermission(scope));
+        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
         String contentType = file.mimeType();
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (contentType != null && !contentType.isBlank()) {
@@ -227,5 +231,20 @@ public class FileController {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    }
+
+    private String resolveReadPermission(String scope) {
+        if (FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope)) {
+            return "download:center:view";
+        }
+        if (FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)) {
+            return "system:file:manage";
+        }
+        return "system:file:view";
+    }
+
+    private boolean isTenantWideScope(String scope) {
+        return FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)
+                || FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
 }

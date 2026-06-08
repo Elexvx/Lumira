@@ -60,5 +60,6 @@ export default {
   'nav.files.root': '文件中心',
   'nav.files.my': '我的文件',
   'nav.files.all': '文件管理器',
+  'nav.files.downloadCenter': '下载中心',
   'nav.localization.root': '本地化中心',
 };

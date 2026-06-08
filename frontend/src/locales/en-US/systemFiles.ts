@@ -69,4 +69,5 @@ export default {
   'system.files.field.actions': 'Actions',
   'system.files.title.my': 'My Files',
   'system.files.title.all': 'Global File Management',
+  'system.files.title.downloadCenter': 'Download Center',
 };

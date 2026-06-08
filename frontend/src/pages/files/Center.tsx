@@ -23,7 +23,7 @@ import { copyTextToClipboard } from '@/utils/clipboard';
 import { normalizeLocale } from '@/i18n/locale';
 
 type BuildFileListRequestParams = {
-  fileScope: 'mine' | 'tenant';
+  fileScope: 'mine' | 'tenant' | 'download-center';
   activeBucket: string;
   requestOptions: RequestOptions;
 };
@@ -35,6 +35,7 @@ type BuildStorageSpaceRequestParams = {
 type BuildFileObjectColumnsParams = {
   isMobile: boolean;
   isTenantScope: boolean;
+  readOnlyCenter: boolean;
   actionPermissionCanDelete: (permission?: string | string[]) => boolean;
   onOpenPreviewDrawer: (record: FileObjectRecord) => void;
   onDownload: (record: FileObjectRecord) => void;
@@ -139,6 +140,7 @@ const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpaceP
 const buildFileObjectColumns = ({
   isMobile,
   isTenantScope,
+  readOnlyCenter,
   actionPermissionCanDelete,
   onOpenPreviewDrawer,
   onDownload,
@@ -240,17 +242,27 @@ const buildFileObjectColumns = ({
         isMobile={isMobile}
         items={[
           {
+            key: 'preview',
+            label: t('预览', 'Preview'),
+            icon: <FileOutlined />,
+            onClick: () => void onOpenPreviewDrawer(record),
+          },
+          {
             key: 'download',
             label: formatMessage({ id: 'common.download', defaultMessage: 'Download' }),
             icon: <DownloadOutlined />,
             onClick: () => void onDownload(record),
           },
-          {
-            key: 'copy',
-            label: formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' }),
-            icon: <CopyOutlined />,
-            onClick: () => void onCopyLink(record),
-          },
+          ...(readOnlyCenter
+            ? []
+            : [
+                {
+                  key: 'copy',
+                  label: formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' }),
+                  icon: <CopyOutlined />,
+                  onClick: () => void onCopyLink(record),
+                },
+              ]),
           ...(actionPermissionCanDelete(isTenantScope ? 'system:file:manage:delete' : 'system:file:delete')
             ? [
                 {
@@ -537,6 +549,7 @@ function FilePreviewDrawer({
   onClose,
   onCopyLink,
   onDownload,
+  allowCopyLink,
 }: {
   open: boolean;
   record: FileObjectRecord | null;
@@ -555,6 +568,7 @@ function FilePreviewDrawer({
   onClose: () => void;
   onCopyLink: (record: FileObjectRecord) => void;
   onDownload: (record: FileObjectRecord) => void;
+  allowCopyLink: boolean;
 }) {
   return (
     <ManagementDrawer
@@ -564,9 +578,11 @@ function FilePreviewDrawer({
       footer={
         <div className="saas-drawer-footer">
           <Space wrap>
-            <Button icon={<CopyOutlined />} onClick={() => record && void onCopyLink(record)} disabled={!record}>
-              {t('复制链接', 'Copy link')}
-            </Button>
+            {allowCopyLink ? (
+              <Button icon={<CopyOutlined />} onClick={() => record && void onCopyLink(record)} disabled={!record}>
+                {t('复制链接', 'Copy link')}
+              </Button>
+            ) : null}
             <Button icon={<DownloadOutlined />} onClick={() => record && void onDownload(record)} disabled={!record}>
               {t('下载', 'Download')}
             </Button>
@@ -658,7 +674,7 @@ function FilePreviewDrawer({
   );
 }
 
-function SystemFilesPage() {
+function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' | 'download-center' }) {
   const { token } = theme.useToken();
   const location = useLocation();
   const responsive = useResponsive();
@@ -669,17 +685,20 @@ function SystemFilesPage() {
   const [uploading, setUploading] = useState(false);
   const [defaultStorageSpace, setDefaultStorageSpace] = useState<FileStorageSpaceRecord | null>(null);
 
+  const readOnlyCenter = variant === 'download-center';
   const isTenantScope = useMemo(
-    () => location.pathname === '/settings/files/all' || location.pathname === '/files/all' || location.pathname === '/system/files/all',
-    [location.pathname],
+    () => readOnlyCenter || location.pathname === '/settings/files/all' || location.pathname === '/files/all' || location.pathname === '/system/files/all',
+    [location.pathname, readOnlyCenter],
   );
   const activeBucket = useMemo(
     () => (isTenantScope ? new URLSearchParams(location.search).get('bucket') || '' : ''),
     [isTenantScope, location.search],
   );
-  const fileScope: 'mine' | 'tenant' = isTenantScope ? 'tenant' : 'mine';
+  const fileScope: 'mine' | 'tenant' | 'download-center' = readOnlyCenter ? 'download-center' : isTenantScope ? 'tenant' : 'mine';
   const pageTitle = isTenantScope
-    ? activeBucket
+    ? readOnlyCenter
+      ? formatMessage({ id: 'system.files.title.downloadCenter', defaultMessage: 'Download Center' })
+      : activeBucket
       ? t(`存储空间文件 / ${activeBucket}`, `Storage files / ${activeBucket}`)
       : t('文件管理器', 'File Manager')
     : formatMessage({ id: 'system.files.title.my', defaultMessage: 'My Files' });
@@ -693,7 +712,7 @@ function SystemFilesPage() {
   const canManageStorage = actionPermission.can('system:file:manage');
   const canDeleteStorage = actionPermission.can('system:file:manage:delete');
   const canUploadFile = actionPermission.can('system:file:upload');
-  const canUploadInCurrentScope = !isTenantScope && canUploadFile;
+  const canUploadInCurrentScope = !readOnlyCenter && !isTenantScope && canUploadFile;
   const buildToolbarActions = actionPermission.buildToolbarActions;
   const previewBackgroundColor = token.colorFillQuaternary;
   const previewContainerBackgroundColor = token.colorBgContainer;
@@ -799,6 +818,9 @@ function SystemFilesPage() {
   }, [closeStorageDrawer, defaultStorageSpace?.id, editingStorageSpace, requestOptions, storageDrawerMode, storageForm]);
   const handleDeleteStorageSpace = useCallback(
     (record: FileStorageSpaceRecord) => {
+      if (readOnlyCenter) {
+        return;
+      }
       confirmAction({
         title: t('删除存储空间', 'Delete storage space'),
         content: t(`确认删除存储空间「${record.title}」吗？仅空存储空间可以删除。`, `Delete storage space "${record.title}"? Only empty storage spaces can be deleted.`),
@@ -1153,7 +1175,7 @@ function SystemFilesPage() {
         },
       });
     },
-    [actionRef, closePreviewDrawer, isTenantScope, previewRecord, requestOptions, scopeParams],
+    [actionRef, closePreviewDrawer, isTenantScope, previewRecord, readOnlyCenter, requestOptions, scopeParams],
   );
 
   const openUploadDrawer = useCallback(() => {
@@ -1217,6 +1239,7 @@ function SystemFilesPage() {
   const fileColumns = buildFileObjectColumns({
     isMobile: responsive.isMobile,
     isTenantScope,
+    readOnlyCenter,
     actionPermissionCanDelete: canDeleteFile,
     onOpenPreviewDrawer: openPreviewDrawer,
     onDownload: handleDownload,
@@ -1250,7 +1273,7 @@ function SystemFilesPage() {
           ),
         },
         {
-          hidden: !activeBucket,
+          hidden: !activeBucket || readOnlyCenter,
           value: (
             <Button key="back" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => history.push('/settings/files/all')}>
               {t('返回存储空间', 'Back to storage spaces')}
@@ -1258,7 +1281,7 @@ function SystemFilesPage() {
           ),
         },
       ]),
-    [actionRef, activeBucket, buildToolbarActions, canUploadInCurrentScope, openUploadDrawer, responsive.isMobile],
+    [actionRef, activeBucket, buildToolbarActions, canUploadInCurrentScope, openUploadDrawer, readOnlyCenter, responsive.isMobile],
   );
   const fileListRequest = useMemo(
     () =>
@@ -1283,6 +1306,7 @@ function SystemFilesPage() {
     onClose: closePreviewDrawer,
     onCopyLink: handleCopyLink,
     onDownload: handleDownload,
+    allowCopyLink: !readOnlyCenter,
   };
   const browserSectionProps = {
     title: pageTitle,
@@ -1337,7 +1361,7 @@ function SystemFilesPage() {
   return (
     <ManagementPage title={browserSectionProps.title} ghost>
       <ManagementPageBody>
-        {browserSectionProps.isTenantScope && !browserSectionProps.activeBucket ? (
+        {browserSectionProps.isTenantScope && !browserSectionProps.activeBucket && !readOnlyCenter ? (
           <ManagementTable
             actionRef={browserSectionProps.storageActionRef}
             rowKey="id"
