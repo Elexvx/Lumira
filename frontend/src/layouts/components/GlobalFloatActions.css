@@ -1,9 +1,28 @@
 .saas-global-float-actions {
   z-index: 1090;
+  border-radius: var(--saas-card-radius);
+  overflow: hidden;
 }
 
 .saas-global-float-actions .ant-float-btn {
+  border-radius: var(--saas-card-radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.saas-global-float-actions .ant-float-btn-body {
+  border-radius: inherit;
+}
+
+.saas-global-float-actions .ant-float-btn:first-child,
+.saas-global-float-actions .ant-float-btn:first-child .ant-float-btn-body {
+  border-start-start-radius: var(--saas-card-radius);
+  border-start-end-radius: var(--saas-card-radius);
+}
+
+.saas-global-float-actions .ant-float-btn:last-child,
+.saas-global-float-actions .ant-float-btn:last-child .ant-float-btn-body {
+  border-end-start-radius: var(--saas-card-radius);
+  border-end-end-radius: var(--saas-card-radius);
 }
 
 .saas-global-float-actions__qr-popover .ant-popover-inner {

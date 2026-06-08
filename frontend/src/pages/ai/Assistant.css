@@ -93,7 +93,10 @@
   width: 100%;
   min-width: 0;
   border-right: 1px solid var(--ant-color-border-secondary);
+  border-start-start-radius: inherit;
+  border-end-start-radius: inherit;
   background: color-mix(in srgb, var(--ant-color-bg-layout) 72%, transparent);
+  overflow: hidden;
 }
 
 .saas-ai-assistant-conversations {
@@ -212,9 +215,12 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
   background:
     radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--ant-color-primary) 8%, transparent), transparent 36%),
     var(--ant-color-bg-container);
+  overflow: hidden;
 }
 
 .saas-ai-assistant-shell__chat-body {
@@ -395,6 +401,11 @@
   border-radius: var(--saas-card-radius);
 }
 
+.saas-ai-assistant-composer__tools .ant-btn > span,
+.saas-ai-assistant-composer__tools .ant-btn-icon {
+  border-radius: inherit;
+}
+
 .saas-ai-assistant-composer__agent-button {
   max-width: var(--saas-spacing-120);
 }
@@ -410,6 +421,7 @@
 
 .saas-ai-assistant-composer__tools .ant-sender-switch {
   border-radius: var(--saas-card-radius);
+  overflow: hidden;
 }
 
 .saas-ai-assistant-composer__tools .ant-sender-switch:not(.ant-sender-switch-checked) .ant-sender-switch-content {
@@ -716,7 +728,16 @@
   .saas-ai-assistant-mobile-shell .saas-ai-assistant-layout__sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--ant-color-border-secondary);
+    border-start-start-radius: inherit;
+    border-start-end-radius: inherit;
+    border-end-start-radius: 0;
     min-height: 0;
+  }
+
+  .saas-ai-assistant-mobile-shell .saas-ai-assistant-layout__chat {
+    border-start-end-radius: 0;
+    border-end-start-radius: inherit;
+    border-end-end-radius: inherit;
   }
 
   .saas-ai-assistant-mobile-shell .saas-ai-assistant-conversations {
