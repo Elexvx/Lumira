@@ -196,6 +196,8 @@ const USER_STATUS_OPTIONS = [
   { label: t('禁用', 'Disabled'), value: 'DISABLED' },
 ];
 
+const USERNAME_PATTERN = /^[A-Za-z0-9._-]+$/;
+
 const containsConsecutiveCharacters = (value: string) => {
   const lower = value.toLowerCase();
   for (let index = 0; index < lower.length - 2; index += 1) {
@@ -270,8 +272,19 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
   securitySettings: SecuritySettings;
 }) => (
   <Form {...formProps}>
-    <Form.Item name="username" label={t('用户名', 'Username')} rules={[{ required: true, message: t('请输入用户名', 'Please enter the username') }]} normalize={trimString}>
-      <Input />
+    <Form.Item
+      name="username"
+      label={t('用户名', 'Username')}
+      rules={[
+        { required: true, message: t('请输入用户名', 'Please enter the username') },
+        {
+          pattern: USERNAME_PATTERN,
+          message: t('用户名只能包含英文字母、数字、下划线、点和连字符', 'Username can only contain letters, numbers, underscores, dots, and hyphens'),
+        },
+      ]}
+      normalize={trimString}
+    >
+      <Input autoComplete="username" placeholder={t('例如：zhangsan', 'e.g. zhangsan')} />
     </Form.Item>
     <Form.Item name="roleIds" label={t('角色', 'Roles')} rules={[{ required: true, message: t('请选择角色', 'Please select roles') }]} extra={t('可为用户分配一个或多个角色', 'You can assign one or more roles to the user')}>
       <Select mode="multiple" allowClear options={roleOptions} placeholder={t('请选择角色', 'Select roles')} />

@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 public class SystemUserManagementAppService {
@@ -46,6 +47,7 @@ public class SystemUserManagementAppService {
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9._-]+$");
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
@@ -442,11 +444,13 @@ public class SystemUserManagementAppService {
     }
 
     private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId) {
+        String username = normalizeUsername(request.getUsername());
+        request.setUsername(username);
         String normalizedStatus = normalizeUserStatus(request.getStatus());
-        if (userId != null && isProtectedAdminAccount(userId, request.getUsername()) && "DISABLED".equals(normalizedStatus)) {
+        if (userId != null && isProtectedAdminAccount(userId, username) && "DISABLED".equals(normalizedStatus)) {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
         }
-        ensureUsernameAvailable(request.getUsername(), userId);
+        ensureUsernameAvailable(username, userId);
         if (userId == null) {
             if (!StringUtils.hasText(request.getPassword())) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "初始密码不能为空");
@@ -481,9 +485,9 @@ public class SystemUserManagementAppService {
             } catch (DuplicateKeyException exception) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
             }
-            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, request.getUsername());
+            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, username);
             userDomainService.findById(createdUserId).ifPresent(user -> {
-                iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
+                iamUserService.createUserWithIdentity(user, username, "ADMIN_CREATE");
                 iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
             });
             return createdUserId;
@@ -530,6 +534,17 @@ public class SystemUserManagementAppService {
         }
         userDomainService.findById(userId).ifPresent(iamUserService::updateProfile);
         return userId;
+    }
+
+    private String normalizeUsername(String username) {
+        String normalized = username == null ? "" : username.trim();
+        if (!StringUtils.hasText(normalized)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名不能为空");
+        }
+        if (!USERNAME_PATTERN.matcher(normalized).matches()) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名只能包含英文字母、数字、下划线、点和连字符");
+        }
+        return normalized;
     }
 
     private void ensureUsernameAvailable(String username, Long currentUserId) {

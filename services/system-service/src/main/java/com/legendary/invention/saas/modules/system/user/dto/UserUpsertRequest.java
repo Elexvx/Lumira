@@ -10,6 +10,7 @@ import java.util.List;
 public class UserUpsertRequest {
 
     @NotBlank
+    @Pattern(regexp = "^[A-Za-z0-9._-]+$", message = "用户名只能包含英文字母、数字、下划线、点和连字符")
     private String username;
     private String password;
     @Pattern(regexp = "^(?:$|1[3-9]\\d{9})$", message = "请输入有效手机号")
@@ -34,7 +35,7 @@ public class UserUpsertRequest {
     private Long primaryDeptId;
 
     public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
+    public void setUsername(String username) { this.username = username == null ? null : username.trim(); }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
     public String getMobile() { return mobile; }
