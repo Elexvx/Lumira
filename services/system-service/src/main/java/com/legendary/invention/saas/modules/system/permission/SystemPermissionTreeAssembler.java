@@ -46,7 +46,8 @@ public final class SystemPermissionTreeAssembler {
             Map.entry("system:monitor:view", List.of("system:monitor:")),
             Map.entry("system:update:view", List.of("system:update:")),
             Map.entry("system:notification:view", List.of("system:notification:", "message:message:")),
-            Map.entry("system:verification:view", List.of("system:verification:"))
+            Map.entry("system:verification:view", List.of("system:verification:")),
+            Map.entry("payment:view", List.of("payment:config:", "payment:order:", "payment:refund:", "payment:webhook:"))
     );
     private static final Set<String> LEGACY_PERMISSION_TREE_ALIAS_PATHS = Set.of(
             "/audit/overview",
@@ -144,6 +145,9 @@ public final class SystemPermissionTreeAssembler {
             return false;
         }
         String normalizedPath = path.trim();
+        if ("/settings/payment".equals(normalizedPath)) {
+            return false;
+        }
         return "/settings".equals(normalizedPath) || normalizedPath.startsWith("/settings/");
     }
 

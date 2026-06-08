@@ -716,7 +716,7 @@ public class SystemManagementAppService {
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
-        return jdbcTemplate.query(
+        List<SystemVO.PermissionVO> permissions = jdbcTemplate.query(
                 """
                         select permission_key as permissionKey, permission_name as permissionName,
                                permission_group as permissionGroup, source_type as sourceType, plugin_code as pluginCode
@@ -727,6 +727,10 @@ public class SystemManagementAppService {
                 new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class),
                 tenantId
         );
+        permissions.addAll(buildPaymentPermissions());
+        permissions.sort(Comparator.comparing(SystemVO.PermissionVO::getPermissionGroup, Comparator.nullsLast(String::compareTo))
+                .thenComparing(SystemVO.PermissionVO::getPermissionKey, Comparator.nullsLast(String::compareTo)));
+        return permissions;
     }
 
     public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
@@ -763,6 +767,30 @@ public class SystemManagementAppService {
         ).stream()
                 .toList();
         return buildMenuTree(menus);
+    }
+
+    private List<SystemVO.PermissionVO> buildPaymentPermissions() {
+        List<SystemVO.PermissionVO> permissions = new ArrayList<>();
+        permissions.add(permission("payment:view", "支付设置查看", "payment", "CORE"));
+        permissions.add(permission("payment:config:view", "支付配置查看", "payment", "CORE"));
+        permissions.add(permission("payment:config:update", "支付配置修改", "payment", "CORE"));
+        permissions.add(permission("payment:config:test", "支付配置测试", "payment", "CORE"));
+        permissions.add(permission("payment:order:view", "支付订单查看", "payment", "CORE"));
+        permissions.add(permission("payment:order:create", "支付订单创建", "payment", "CORE"));
+        permissions.add(permission("payment:refund:view", "退款单查看", "payment", "CORE"));
+        permissions.add(permission("payment:refund:create", "退款单创建", "payment", "CORE"));
+        permissions.add(permission("payment:webhook:view", "Webhook 查看", "payment", "CORE"));
+        permissions.add(permission("payment:webhook:retry", "Webhook 重试", "payment", "CORE"));
+        return permissions;
+    }
+
+    private SystemVO.PermissionVO permission(String permissionKey, String permissionName, String permissionGroup, String sourceType) {
+        SystemVO.PermissionVO permission = new SystemVO.PermissionVO();
+        permission.setPermissionKey(permissionKey);
+        permission.setPermissionName(permissionName);
+        permission.setPermissionGroup(permissionGroup);
+        permission.setSourceType(sourceType);
+        return permission;
     }
 
     @Transactional

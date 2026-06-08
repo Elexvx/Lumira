@@ -10,6 +10,7 @@ public class BackendJobClient {
 
     private final RestClient restClient;
     private final RestClient messageRestClient;
+    private final RestClient paymentRestClient;
     private final JobExecutorProperties properties;
 
     public BackendJobClient(JobExecutorProperties properties) {
@@ -20,6 +21,12 @@ public class BackendJobClient {
                 .build();
         this.messageRestClient = RestClient.builder()
                 .baseUrl(properties.getMessageServiceBaseUrl())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+        this.paymentRestClient = RestClient.builder()
+                .baseUrl(properties.getPaymentServiceBaseUrl() == null || properties.getPaymentServiceBaseUrl().isBlank()
+                        ? properties.getBackendBaseUrl()
+                        : properties.getPaymentServiceBaseUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
@@ -34,6 +41,10 @@ public class BackendJobClient {
 
     public void relayMessageOutbox() {
         post(messageRestClient, "/internal/jobs/outbox/relay");
+    }
+
+    public void relayPaymentOutbox() {
+        post(paymentRestClient, "/internal/jobs/outbox/relay");
     }
 
     public void sendOnlineSessionHeartbeat() {

@@ -7,6 +7,7 @@ public class JobExecutorProperties {
 
     private String backendBaseUrl;
     private String messageServiceBaseUrl;
+    private String paymentServiceBaseUrl;
     private String internalToken;
 
     public String getBackendBaseUrl() {
@@ -23,6 +24,14 @@ public class JobExecutorProperties {
 
     public void setMessageServiceBaseUrl(String messageServiceBaseUrl) {
         this.messageServiceBaseUrl = messageServiceBaseUrl;
+    }
+
+    public String getPaymentServiceBaseUrl() {
+        return paymentServiceBaseUrl;
+    }
+
+    public void setPaymentServiceBaseUrl(String paymentServiceBaseUrl) {
+        this.paymentServiceBaseUrl = paymentServiceBaseUrl;
     }
 
     public String getInternalToken() {

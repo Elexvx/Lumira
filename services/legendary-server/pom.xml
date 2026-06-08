@@ -47,6 +47,11 @@
         </dependency>
         <dependency>
             <groupId>com.legendary.invention</groupId>
+            <artifactId>payment-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.legendary.invention</groupId>
             <artifactId>job-executor</artifactId>
             <version>0.1.0</version>
         </dependency>

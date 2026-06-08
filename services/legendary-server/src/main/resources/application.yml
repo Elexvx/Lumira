@@ -62,6 +62,7 @@ saas:
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
+      - /api/v1/payment/webhooks/**
       - /api/uploads/**
       - /api/version
       - /api/v1/version

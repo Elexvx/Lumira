@@ -126,6 +126,120 @@ export interface SecuritySettings {
   passwordAllowConsecutiveCharacters: boolean;
 }
 
+export type PaymentProviderCode = 'alipay' | 'wechat_pay' | 'stripe' | 'paypal';
+
+export interface PaymentProviderSettings {
+  providerCode: PaymentProviderCode | string;
+  providerName: string;
+  enabled: boolean;
+  configured: boolean;
+  environment: string;
+  configuredFields: string[];
+  lastTestedAt?: string | null;
+  lastTestSuccess?: boolean | null;
+  lastTestMessage?: string | null;
+  appId?: string | null;
+  merchantId?: string | null;
+  merchantSerialNo?: string | null;
+  platformCertSerialNo?: string | null;
+  apiV3Key?: string | null;
+  clientId?: string | null;
+  clientSecret?: string | null;
+  publishableKey?: string | null;
+  secretKey?: string | null;
+  privateKey?: string | null;
+  publicKey?: string | null;
+  apiBaseUrl?: string | null;
+  notifyUrl?: string | null;
+  returnUrl?: string | null;
+  refundNotifyUrl?: string | null;
+  successUrl?: string | null;
+  cancelUrl?: string | null;
+  webhookSecret?: string | null;
+  webhookId?: string | null;
+  currency?: string | null;
+  extraConfig?: string | null;
+  sandboxEnabled?: boolean | null;
+}
+
+export interface PaymentProviderTestResult {
+  providerCode: string;
+  providerName: string;
+  success: boolean;
+  message: string;
+  checkedAt: string;
+}
+
+export interface PaymentCreateOrderRequest {
+  providerCode: PaymentProviderCode | string;
+  orderNo: string;
+  subject: string;
+  amountMinor: number;
+  currency: string;
+  clientIp?: string | null;
+  notifyUrl?: string | null;
+  returnUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
+  idempotencyKey?: string | null;
+}
+
+export interface PaymentOrderRecord {
+  orderNo: string;
+  providerCode: string;
+  providerOrderNo: string;
+  subject: string;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  paymentUrl?: string | null;
+  clientIp?: string | null;
+  notifyUrl?: string | null;
+  returnUrl?: string | null;
+  metadata?: Record<string, unknown>;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  paidAt?: string | null;
+}
+
+export interface PaymentCreateRefundRequest {
+  refundNo: string;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  metadata?: Record<string, unknown> | null;
+  idempotencyKey?: string | null;
+}
+
+export interface PaymentRefundRecord {
+  refundNo: string;
+  orderNo: string;
+  providerCode: string;
+  providerRefundNo: string;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  reason: string;
+  metadata?: Record<string, unknown>;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  refundedAt?: string | null;
+}
+
+export interface PaymentWebhookEventRecord {
+  providerCode: string;
+  eventId: string;
+  eventType: string;
+  signatureValid: boolean;
+  processed: boolean;
+  processMessage?: string | null;
+  receivedAt?: string | null;
+  processedAt?: string | null;
+}
+
 export interface CaptchaChallenge {
   captchaId: string;
   captchaType: CaptchaType;

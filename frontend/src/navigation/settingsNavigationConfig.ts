@@ -19,6 +19,7 @@ export const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/localization': '/settings/localization',
   '/settings/monitoring/api-docs': '/settings/api-docs',
   '/settings/monitoring/audit': '/settings/audit',
+  '/system/payment': '/settings/payment',
 };
 
 export const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSourceItem>([
@@ -57,6 +58,12 @@ export const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSour
     name: 'nav.system.verification',
     icon: 'SafetyOutlined',
     access: 'canVisitSystemVerification',
+  },
+  {
+    path: '/settings/payment',
+    name: 'nav.system.payment',
+    icon: 'CreditCardOutlined',
+    access: 'canVisitSystemPayment',
   },
   {
     path: '/settings/notifications',
@@ -115,6 +122,7 @@ export const SETTINGS_FALLBACK_PATH_SET = new Set([
   '/settings/personalization',
   '/settings/security',
   '/settings/verification',
+  '/settings/payment',
   '/settings/notifications',
   '/settings/ai-employees',
   '/settings/plugins',

@@ -42,6 +42,7 @@ public final class SystemRouteCatalog {
             "/settings/personalization",
             "/settings/security",
             "/settings/verification",
+            "/settings/payment",
             "/settings/smtp",
             "/settings/notifications",
             "/settings/ai-employees",
@@ -79,6 +80,7 @@ public final class SystemRouteCatalog {
             "@/pages/settings/personalization",
             "@/pages/settings/security",
             "@/pages/settings/verification",
+            "@/pages/settings/payment",
             "@/pages/settings/notifications/index",
             "@/pages/settings/ai-employees",
             "@/pages/settings/Plugins",
@@ -168,11 +170,12 @@ public final class SystemRouteCatalog {
                 menu(-1004L, -1000L, "settings.personalization", "个性化设置", "MENU", "/settings/personalization", "@/pages/settings/personalization", "SkinOutlined", 5, "system:config:view"),
                 menu(-1005L, -1000L, "settings.security", "安全设置", "MENU", "/settings/security", "@/pages/settings/security", "SafetyOutlined", 6, "system:config:view"),
                 menu(-1006L, -1000L, "settings.verification", "验证管理", "MENU", "/settings/verification", "@/pages/settings/verification", "SafetyOutlined", 7, "system:verification:view"),
-                menu(-1007L, -1000L, "settings.notifications", "通知中心", "MENU", "/settings/notifications", "@/pages/settings/notifications/index", "NotificationOutlined", 8, "system:notification:view"),
-                menu(-1008L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/plugins", "ApiOutlined", 9, "plugin:management:view"),
-                menu(-1009L, -1000L, "settings.ai-employees", "数字员工", "MENU", "/settings/ai-employees", "@/pages/settings/ai-employees", "RobotOutlined", 24, "ai:view"),
-                menu(-1010L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
-                menu(-1011L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
+                menu(-1007L, -1000L, "settings.payment", "支付设置", "MENU", "/settings/payment", "@/pages/settings/payment", "CreditCardOutlined", 8, "payment:view"),
+                menu(-1008L, -1000L, "settings.notifications", "通知中心", "MENU", "/settings/notifications", "@/pages/settings/notifications/index", "NotificationOutlined", 9, "system:notification:view"),
+                menu(-1009L, -1000L, "settings.plugins", "插件管理中心", "MENU", "/settings/plugins", "@/pages/settings/plugins", "ApiOutlined", 10, "plugin:management:view"),
+                menu(-1010L, -1000L, "settings.ai-employees", "数字员工", "MENU", "/settings/ai-employees", "@/pages/settings/ai-employees", "RobotOutlined", 24, "ai:view"),
+                menu(-1011L, -1000L, "localization.root", "本地化中心", "MENU", "/settings/localization", "@/pages/settings/localization", "TranslationOutlined", 29, "localization:view"),
+                menu(-1012L, -1000L, "settings.files", "全站文件管理", "MENU", "/settings/files/all", "@/pages/settings/files/Center", "FolderOpenOutlined", 9, "system:file:manage"),
                 monitoringRoot(),
                 menu(-1013L, -1000L, "settings.monitoring.api-docs", "接口文档", "MENU", "/settings/api-docs", "@/pages/settings/monitoring/ApiDocs", "FileTextOutlined", 11, "system:monitor:docs:view"),
                 menu(-1014L, -1000L, "settings.monitoring.audit", "审计中心", "MENU", "/settings/audit", "@/pages/settings/monitoring/Audit", "AuditOutlined", 12, "audit:view")
@@ -200,7 +203,7 @@ public final class SystemRouteCatalog {
 
     private static SystemVO.MenuVO monitoringRoot() {
         SystemVO.MenuVO monitoring = menu(
-                -1012L,
+                -1015L,
                 -1000L,
                 "settings.monitoring",
                 "系统监控",

@@ -13,6 +13,10 @@ const SYSTEM_MANAGEMENT_PERMISSIONS = [
   'system:menu:view',
   'system:dict:view',
   'system:config:view',
+  'payment:view',
+  'payment:config:view',
+  'payment:config:update',
+  'payment:config:test',
   'system:department:view',
   'system:verification:view',
   'system:verification:manage',
@@ -86,6 +90,13 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
         hasPermission(permissions, 'system:verification:manage') ||
         hasPermission(permissions, 'system:config:view') ||
         hasPermission(permissions, 'system:config:update')),
+    canVisitSystemPayment:
+      isLogin &&
+      isProtectedAdmin &&
+      (hasPermission(permissions, 'payment:view') ||
+        hasPermission(permissions, 'payment:config:view') ||
+        hasPermission(permissions, 'payment:config:update') ||
+        hasPermission(permissions, 'payment:config:test')),
     canVisitSystemNotifications:
       isLogin &&
       isProtectedAdmin &&

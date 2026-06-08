@@ -22,6 +22,7 @@ saas:
   job:
     backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:8080}
     message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:http://localhost:8085}
+    payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:http://localhost:8086}
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
 
 xxl:

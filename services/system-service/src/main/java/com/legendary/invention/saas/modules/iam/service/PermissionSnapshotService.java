@@ -39,6 +39,7 @@ public class PermissionSnapshotService {
             "audit:",
             "localization:",
             "plugin:management:",
+            "payment:",
             "system:config:",
             "system:dict:",
             "system:file:manage",
