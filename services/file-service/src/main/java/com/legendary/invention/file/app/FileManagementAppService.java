@@ -211,7 +211,14 @@ public class FileManagementAppService {
     ) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
-        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath(), storageContext.maxFileSizeBytes());
+        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(
+                file,
+                storageContext.storageRoot(),
+                storageContext.publicPath(),
+                storageContext.maxFileSizeBytes(),
+                storageContext.storageSpace().renameStrategy(),
+                storageContext.storageSpace().allowedMimeTypes()
+        );
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
@@ -243,7 +250,14 @@ public class FileManagementAppService {
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
-        ImageUploadService.StoredImage storedImage = imageUploadService.upload(file, storageContext.storageRoot(), storageContext.publicPath(), storageContext.maxFileSizeBytes());
+        ImageUploadService.StoredImage storedImage = imageUploadService.upload(
+                file,
+                storageContext.storageRoot(),
+                storageContext.publicPath(),
+                storageContext.maxFileSizeBytes(),
+                storageContext.storageSpace().renameStrategy(),
+                storageContext.storageSpace().allowedMimeTypes()
+        );
         Long insertedId = insertFileObject(
                 currentUser,
                 tenantId,
@@ -677,6 +691,9 @@ public class FileManagementAppService {
                 : getDefaultStorageSpace(tenantId);
         if (!"LOCAL".equalsIgnoreCase(storageSpace.provider())) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前仅支持本地存储空间上传");
+        }
+        if (!"ENABLED".equalsIgnoreCase(storageSpace.status())) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "存储空间已禁用，无法上传文件");
         }
         Path storageRoot = resolveStorageRoot(storageSpace);
         String publicPath = resolvePublicPath(storageRoot);

@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -70,6 +71,10 @@ public class DocumentUploadService {
     }
 
     public StoredDocument upload(MultipartFile file, Path storageRoot, String publicPath, long maxSizeBytes) {
+        return upload(file, storageRoot, publicPath, maxSizeBytes, "APPEND_RANDOM_ID", "*");
+    }
+
+    public StoredDocument upload(MultipartFile file, Path storageRoot, String publicPath, long maxSizeBytes, String renameStrategy, String allowedMimeTypes) {
         if (file == null || file.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请先选择文档文件");
         }
@@ -81,10 +86,11 @@ public class DocumentUploadService {
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() == null ? "" : file.getOriginalFilename());
         String extension = validateExtension(originalFilename);
         String contentType = validateContentType(file.getContentType(), extension);
+        validateAllowedMimeType(contentType, allowedMimeTypes);
         validateDocumentContent(bytes, extension);
 
         String dateFolder = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        String generatedName = UUID.randomUUID().toString().replace("-", "") + "." + extension;
+        String generatedName = buildStoredFileName(originalFilename, extension, renameStrategy);
         String relativePath = dateFolder + "/" + generatedName;
 
         Path normalizedStorageRoot = storageRoot == null
@@ -164,6 +170,57 @@ public class DocumentUploadService {
             throw new BizException(ErrorCode.BAD_REQUEST, "文档 Content-Type 与文件格式不一致");
         }
         return normalizedContentType;
+    }
+
+    private void validateAllowedMimeType(String contentType, String allowedMimeTypes) {
+        if (!StringUtils.hasText(allowedMimeTypes) || "*".equals(allowedMimeTypes.trim())) {
+            return;
+        }
+        String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
+        for (String allowed : allowedMimeTypes.split("[,，;\\s]+")) {
+            String normalizedAllowed = allowed.trim().toLowerCase(Locale.ROOT);
+            if (!StringUtils.hasText(normalizedAllowed)) {
+                continue;
+            }
+            if ("*".equals(normalizedAllowed)
+                    || normalizedContentType.equals(normalizedAllowed)
+                    || (normalizedAllowed.endsWith("/*") && normalizedContentType.startsWith(normalizedAllowed.substring(0, normalizedAllowed.length() - 1)))) {
+                return;
+            }
+        }
+        throw new BizException(ErrorCode.BAD_REQUEST, "当前存储空间不允许上传该文件类型");
+    }
+
+    private String buildStoredFileName(String originalFilename, String extension, String renameStrategy) {
+        String normalizedStrategy = StringUtils.hasText(renameStrategy) ? renameStrategy.trim().toUpperCase(Locale.ROOT) : "APPEND_RANDOM_ID";
+        String safeOriginalName = safeOriginalFilename(originalFilename, extension);
+        String baseName = safeOriginalName.substring(0, safeOriginalName.length() - extension.length() - 1);
+        return switch (normalizedStrategy) {
+            case "KEEP_ORIGINAL" -> safeOriginalName;
+            case "RANDOM_STRING" -> UUID.randomUUID().toString().replace("-", "") + "." + extension;
+            default -> baseName + "_" + shortId() + "." + extension;
+        };
+    }
+
+    private String safeOriginalFilename(String originalFilename, String extension) {
+        String fallback = "document." + extension;
+        if (!StringUtils.hasText(originalFilename)) {
+            return fallback;
+        }
+        String filename = Path.of(originalFilename).getFileName().toString();
+        filename = Pattern.compile("[\\\\/:*?\"<>|\\p{Cntrl}]").matcher(filename).replaceAll("_");
+        if (!StringUtils.hasText(filename) || ".".equals(filename) || "..".equals(filename)) {
+            return fallback;
+        }
+        if (!filename.toLowerCase(Locale.ROOT).endsWith("." + extension)) {
+            String baseName = StringUtils.stripFilenameExtension(filename);
+            filename = (StringUtils.hasText(baseName) ? baseName : "document") + "." + extension;
+        }
+        return filename;
+    }
+
+    private String shortId() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
 
     private void validateDocumentContent(byte[] bytes, String extension) {

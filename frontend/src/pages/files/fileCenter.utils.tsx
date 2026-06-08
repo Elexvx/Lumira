@@ -6,6 +6,11 @@ import { normalizeUploadUrl, resolveAbsoluteUploadUrl } from '@/utils/uploadUrl'
 import { Space, Tag } from 'antd';
 
 export const FILE_EXTENSION_LABELS: Record<string, string> = {
+  png: 'PNG',
+  jpg: 'JPG',
+  jpeg: 'JPG',
+  gif: 'GIF',
+  bmp: 'BMP',
   pdf: 'PDF',
   doc: 'Word',
   docx: 'Word',
@@ -13,6 +18,8 @@ export const FILE_EXTENSION_LABELS: Record<string, string> = {
   xlsx: 'Excel',
   ppt: 'PPT',
   pptx: 'PPT',
+  md: 'Markdown',
+  txt: 'Text',
 };
 
 export const PREVIEW_MODE_LABELS: Record<FilePreviewMode, { text: string; color: string }> = {
@@ -42,7 +49,7 @@ export const FILE_STORAGE_RENAME_STRATEGY_OPTIONS = [
   { label: formatMessage({ id: 'system.files.storage.rename.keepOriginal', defaultMessage: '保持原名（同名文件将被覆盖）' }), value: 'KEEP_ORIGINAL' },
 ] as const;
 
-export const ALLOWED_UPLOAD_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+export const ALLOWED_UPLOAD_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt'];
 export const FILE_ACCEPT = ALLOWED_UPLOAD_EXTENSIONS.map((extension) => `.${extension}`).join(',');
 export const MAX_UPLOAD_FILE_COUNT = 5;
 

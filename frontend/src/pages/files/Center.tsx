@@ -89,6 +89,35 @@ const STORAGE_PROVIDER_LABELS: Record<FileStorageProvider, string> = {
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
+const DEFAULT_STORAGE_MAX_FILE_SIZE_MB = 20;
+
+const parseAllowedMimeTypes = (allowedMimeTypes?: string) =>
+  (allowedMimeTypes || '*')
+    .split(/[,，;\s]+/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+const isMimeAllowedByStorage = (file: File, allowedMimeTypes?: string) => {
+  const rules = parseAllowedMimeTypes(allowedMimeTypes);
+  if (!rules.length || rules.includes('*')) {
+    return true;
+  }
+  const contentType = (file.type || '').toLowerCase();
+  if (!contentType) {
+    return false;
+  }
+  return rules.some((rule) => contentType === rule || (rule.endsWith('/*') && contentType.startsWith(rule.slice(0, -1))));
+};
+
+const storageUploadHint = (storageSpace?: FileStorageSpaceRecord | null) => {
+  const maxFileSizeMb = storageSpace?.maxFileSizeMb || DEFAULT_STORAGE_MAX_FILE_SIZE_MB;
+  const allowedMimeTypes = storageSpace?.allowedMimeTypes || '*';
+  if (allowedMimeTypes.trim() === '*') {
+    return t(`按存储空间配置允许的文件类型上传，单个文件不超过 ${maxFileSizeMb}MB，单次最多 5 个。`, `Upload file types allowed by the storage space. Each file must be under ${maxFileSizeMb}MB. Up to 5 files at a time.`);
+  }
+  return t(`仅允许 ${allowedMimeTypes}，单个文件不超过 ${maxFileSizeMb}MB，单次最多 5 个。`, `Only ${allowedMimeTypes} is allowed. Each file must be under ${maxFileSizeMb}MB. Up to 5 files at a time.`);
+};
+
 const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpacePayload => ({
   title: STORAGE_PROVIDER_LABELS[provider],
   provider,
@@ -355,6 +384,7 @@ function FileUploadDrawer({
   uploading,
   canUpload,
   sectionGap,
+  storageSpace,
   onClose,
   onSubmit,
 }: {
@@ -362,6 +392,7 @@ function FileUploadDrawer({
   uploading: boolean;
   canUpload: boolean;
   sectionGap: number;
+  storageSpace?: FileStorageSpaceRecord | null;
   onClose: () => void;
   onSubmit: (payload: { files: File[]; values: { category?: string; tags?: string; remark?: string } }) => Promise<void>;
 }) {
@@ -371,16 +402,28 @@ function FileUploadDrawer({
     remark?: string;
   }>();
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
+  const maxFileSizeMb = storageSpace?.maxFileSizeMb || DEFAULT_STORAGE_MAX_FILE_SIZE_MB;
+  const maxFileSizeBytes = maxFileSizeMb * 1024 * 1024;
+  const allowedMimeTypes = storageSpace?.allowedMimeTypes || '*';
+  const uploadHint = storageUploadHint(storageSpace);
 
   const uploadDraggerProps: UploadProps = useMemo(
     () => ({
       multiple: true,
-      accept: FILE_ACCEPT,
+      accept: allowedMimeTypes.trim() === '*' ? FILE_ACCEPT : allowedMimeTypes,
       fileList: uploadFileList,
       beforeUpload: (file) => {
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (!extension || !ALLOWED_UPLOAD_EXTENSIONS.includes(extension)) {
-          message.error(t('仅支持 PDF、Word、Excel 和 PPT 文件', 'Only PDF, Word, Excel, and PPT files are allowed'));
+          message.error(t('当前文件格式暂不支持安全上传', 'This file format is not supported for secure upload yet'));
+          return Upload.LIST_IGNORE;
+        }
+        if (file.size > maxFileSizeBytes) {
+          message.error(t(`文件大小不能超过 ${maxFileSizeMb}MB`, `The file size cannot exceed ${maxFileSizeMb}MB`));
+          return Upload.LIST_IGNORE;
+        }
+        if (!isMimeAllowedByStorage(file as File, allowedMimeTypes)) {
+          message.error(t('当前存储空间不允许上传该文件类型', 'This storage space does not allow this file type'));
           return Upload.LIST_IGNORE;
         }
         return false;
@@ -396,7 +439,7 @@ function FileUploadDrawer({
         return true;
       },
     }),
-    [uploadFileList],
+    [allowedMimeTypes, maxFileSizeBytes, maxFileSizeMb, uploadFileList],
   );
 
   const handleClose = () => {
@@ -435,7 +478,7 @@ function FileUploadDrawer({
 
   return (
     <ManagementDrawer
-      title={t('上传文档', 'Upload document')}
+      title={t('上传文件', 'Upload files')}
       open={open}
       onClose={handleClose}
       footerActions={[
@@ -451,7 +494,7 @@ function FileUploadDrawer({
                 <InboxOutlined />
               </p>
               <p className="ant-upload-text">{t('点击或拖拽文件到此处上传', 'Click or drag files here to upload')}</p>
-              <p className="ant-upload-hint">{t('仅支持 PDF、Word、Excel 和 PPT 文件，单次最多 5 个。', 'Only PDF, Word, Excel, and PPT files are allowed. Up to 5 files at a time.')}</p>
+              <p className="ant-upload-hint">{uploadHint}</p>
             </Upload.Dragger>
           </Card>
 
@@ -624,6 +667,7 @@ function SystemFilesPage() {
   const storageActionRef = useRef<ActionType | null>(null);
   const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [defaultStorageSpace, setDefaultStorageSpace] = useState<FileStorageSpaceRecord | null>(null);
 
   const isTenantScope = useMemo(
     () => location.pathname === '/settings/files/all' || location.pathname === '/files/all' || location.pathname === '/system/files/all',
@@ -662,6 +706,33 @@ function SystemFilesPage() {
   const storageProvider = Form.useWatch('provider', storageForm) as FileStorageProvider | undefined;
   const showRemoteStorageFields = Boolean(storageProvider && storageProvider !== 'LOCAL');
 
+  useEffect(() => {
+    let active = true;
+    void request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
+      method: 'GET',
+      params: {
+        pageNo: 1,
+        pageSize: 100,
+      },
+      ...requestOptions,
+    })
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        const records = result.records || [];
+        setDefaultStorageSpace(records.find((record) => record.defaultStorage) || records[0] || null);
+      })
+      .catch(() => {
+        if (active) {
+          setDefaultStorageSpace(null);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [requestOptions]);
+
   const openStorageDrawer = useCallback(
     (provider: FileStorageProvider, record?: FileStorageSpaceRecord) => {
       setStorageDrawerMode(record ? 'edit' : 'create');
@@ -698,30 +769,34 @@ function SystemFilesPage() {
     storageForm.resetFields();
   }, [storageForm]);
   const handleSaveStorageSpace = useCallback(async () => {
-      const values = (await storageForm.validateFields()) as FileStorageSpacePayload;
-      setStorageSaving(true);
-      try {
-        if (storageDrawerMode === 'edit' && editingStorageSpace) {
-          await request<FileStorageSpaceRecord>(`/v1/files/storage-spaces/${editingStorageSpace.id}`, {
-            method: 'PUT',
-            data: values,
-            ...requestOptions,
-          });
-          message.success(t('存储空间已更新', 'Storage space updated'));
-        } else {
-          await request<FileStorageSpaceRecord>('/v1/files/storage-spaces', {
-            method: 'POST',
-            data: values,
-            ...requestOptions,
-          });
-          message.success(t('存储空间已创建', 'Storage space created'));
-        }
+    const values = (await storageForm.validateFields()) as FileStorageSpacePayload;
+    setStorageSaving(true);
+    try {
+      let savedStorageSpace: FileStorageSpaceRecord;
+      if (storageDrawerMode === 'edit' && editingStorageSpace) {
+        savedStorageSpace = await request<FileStorageSpaceRecord>(`/v1/files/storage-spaces/${editingStorageSpace.id}`, {
+          method: 'PUT',
+          data: values,
+          ...requestOptions,
+        });
+        message.success(t('存储空间已更新', 'Storage space updated'));
+      } else {
+        savedStorageSpace = await request<FileStorageSpaceRecord>('/v1/files/storage-spaces', {
+          method: 'POST',
+          data: values,
+          ...requestOptions,
+        });
+        message.success(t('存储空间已创建', 'Storage space created'));
+      }
+      if (savedStorageSpace.defaultStorage || defaultStorageSpace?.id === savedStorageSpace.id) {
+        setDefaultStorageSpace(savedStorageSpace);
+      }
       closeStorageDrawer();
       storageActionRef.current?.reload();
     } finally {
       setStorageSaving(false);
     }
-  }, [closeStorageDrawer, editingStorageSpace, requestOptions, storageDrawerMode, storageForm]);
+  }, [closeStorageDrawer, defaultStorageSpace?.id, editingStorageSpace, requestOptions, storageDrawerMode, storageForm]);
   const handleDeleteStorageSpace = useCallback(
     (record: FileStorageSpaceRecord) => {
       confirmAction({
@@ -1247,6 +1322,7 @@ function SystemFilesPage() {
       canUpload: canUploadInCurrentScope,
       isMobile: responsive.isMobile,
       sectionGap,
+      storageSpace: defaultStorageSpace,
       onClose: closeUploadDrawer,
       onSubmit: handleUploadSubmit,
     },
