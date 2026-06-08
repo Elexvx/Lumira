@@ -384,6 +384,7 @@ const ApiDocsContent = () => {
   return (
     <ManagementPage
       title={t('接口文档', 'API docs')}
+      className="saas-monitoring-api-docs-page"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()}>

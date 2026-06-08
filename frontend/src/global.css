@@ -499,6 +499,28 @@ body,
   min-height: 0;
 }
 
+.saas-monitoring-api-docs-page {
+  --saas-api-docs-available-height: calc(100dvh - var(--saas-spacing-220));
+
+  min-height: 0;
+  overflow: hidden;
+}
+
+.saas-monitoring-api-docs-page .ant-pro-grid-content,
+.saas-monitoring-api-docs-page .ant-pro-page-container-children-container {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.saas-monitoring-api-docs-page .ant-pro-page-container-children-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: var(--saas-api-docs-available-height);
+}
+
 .saas-monitoring-api-docs {
   flex: 1 1 auto;
   min-height: 0;
@@ -507,14 +529,17 @@ body,
 .saas-monitoring-api-docs__card {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   height: 100%;
-  min-height: 0;
+  min-height: var(--saas-api-docs-available-height);
+  overflow: hidden;
 }
 
 .saas-monitoring-api-docs__surface {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
   background: var(--ant-color-bg-container);
 }
@@ -530,6 +555,7 @@ body,
   display: block;
   width: 100%;
   flex: 1 1 auto;
+  height: 100%;
   min-height: 0;
   border: 0;
 }
