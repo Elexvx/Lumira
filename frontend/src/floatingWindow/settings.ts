@@ -1,8 +1,9 @@
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import type { FloatingWindowSettings } from '@/types/api';
-import { resolveRuntimeLocale } from '@/i18n/locale';
+import { resolvePreferredLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => resolveRuntimeLocale().startsWith('en');
+// Avoid calling Umi runtime locale APIs during module evaluation.
+const isEnglishLocale = () => resolvePreferredLocale().startsWith('en');
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 export const DEFAULT_FLOATING_WINDOW_SETTINGS: FloatingWindowSettings = {
