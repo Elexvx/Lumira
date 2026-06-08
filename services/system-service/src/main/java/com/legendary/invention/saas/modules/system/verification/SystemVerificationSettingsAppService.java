@@ -3,6 +3,7 @@ package com.legendary.invention.saas.modules.system.verification;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
 import com.legendary.invention.saas.modules.system.support.SmtpMailService;
@@ -45,17 +46,20 @@ public class SystemVerificationSettingsAppService {
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
+    private final FieldCryptoService fieldCryptoService;
 
     public SystemVerificationSettingsAppService(
             MyBatisQueryOperations jdbcTemplate,
             SystemVerificationProperties properties,
             SmtpMailService smtpMailService,
-            WechatLoginSettingsService wechatLoginSettingsService
+            WechatLoginSettingsService wechatLoginSettingsService,
+            FieldCryptoService fieldCryptoService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
         this.wechatLoginSettingsService = wechatLoginSettingsService;
+        this.fieldCryptoService = fieldCryptoService;
     }
 
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
@@ -225,7 +229,7 @@ public class SystemVerificationSettingsAppService {
                     tenantId,
                     configKey,
                     configName,
-                    configValue,
+                    encryptConfigValue(configKey, configValue),
                     remark,
                     operatorId,
                     operatorId
@@ -240,7 +244,7 @@ public class SystemVerificationSettingsAppService {
                         where id = ?
                         """,
                 configName,
-                configValue,
+                encryptConfigValue(configKey, configValue),
                 remark,
                 operatorId,
                 LocalDateTime.now(),
@@ -312,10 +316,22 @@ public class SystemVerificationSettingsAppService {
         for (Map<String, Object> row : rows) {
             String configKey = String.valueOf(row.get("configKey"));
             if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
+                valueByKey.put(configKey, normalizeConfigText(decryptConfigValue(configKey, normalizeConfigTextRaw(row.get("configValue")))));
             }
         }
         return valueByKey;
+    }
+
+    private String encryptConfigValue(String configKey, String configValue) {
+        return isSensitiveConfigKey(configKey) ? fieldCryptoService.encrypt(configValue) : configValue;
+    }
+
+    private String decryptConfigValue(String configKey, String configValue) {
+        return isSensitiveConfigKey(configKey) ? fieldCryptoService.decrypt(configValue) : configValue;
+    }
+
+    private boolean isSensitiveConfigKey(String configKey) {
+        return SMS_CONFIG_ACCESS_KEY_SECRET_KEY.equals(configKey);
     }
 
     private String sanitizeText(String value, String fallback) {
@@ -399,6 +415,10 @@ public class SystemVerificationSettingsAppService {
 
     private String normalizeConfigText(Object value) {
         return value == null ? "" : value.toString().trim();
+    }
+
+    private String normalizeConfigTextRaw(Object value) {
+        return value == null ? "" : value.toString();
     }
 
     private record SmsVerificationSettingsRecord(

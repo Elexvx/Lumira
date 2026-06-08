@@ -4,6 +4,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.saas.common.vo.PageResponse;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.saas.infrastructure.security.service.AuthSessionStore;
 import com.legendary.invention.saas.infrastructure.security.service.SecuritySettingsService;
 import com.legendary.invention.saas.modules.audit.app.LoginAuditService;
@@ -175,6 +176,7 @@ public class SystemManagementAppService {
     private final IamUserService iamUserService;
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
+    private final FieldCryptoService fieldCryptoService;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     @Autowired
@@ -195,7 +197,8 @@ public class SystemManagementAppService {
             PasswordPolicyService passwordPolicyService,
             IamUserService iamUserService,
             SystemUserManagementAppService systemUserManagementAppService,
-            SystemRoleManagementAppService systemRoleManagementAppService
+            SystemRoleManagementAppService systemRoleManagementAppService,
+            FieldCryptoService fieldCryptoService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userDomainService = userDomainService;
@@ -214,6 +217,7 @@ public class SystemManagementAppService {
         this.iamUserService = iamUserService;
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.systemRoleManagementAppService = systemRoleManagementAppService;
+        this.fieldCryptoService = fieldCryptoService;
     }
 
     public SystemManagementAppService(
@@ -251,7 +255,8 @@ public class SystemManagementAppService {
                 passwordPolicyService,
                 iamUserService,
                 systemUserManagementAppService,
-                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService)
+                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
+                null
         );
     }
 
@@ -289,7 +294,8 @@ public class SystemManagementAppService {
                 passwordPolicyService,
                 iamUserService,
                 defaultUserManagementAppService(jdbcTemplate, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
-                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService)
+                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
+                null
         );
     }
 
@@ -1193,7 +1199,7 @@ public class SystemManagementAppService {
                         """,
                 request.getConfigKey(),
                 request.getConfigName(),
-                request.getConfigValue(),
+                resolveStoredConfigValue(id, request.getConfigKey(), request.getConfigValue()),
                 request.getConfigScope(),
                 request.getRemark(),
                 currentUser.getUserId(),
@@ -1241,7 +1247,7 @@ public class SystemManagementAppService {
                 tenantId,
                 request.getConfigKey(),
                 request.getConfigName(),
-                request.getConfigValue(),
+                encryptConfigValue(request.getConfigKey(), request.getConfigValue()),
                 request.getConfigScope(),
                 request.getRemark(),
                 currentUser.getUserId(),
@@ -1263,6 +1269,29 @@ public class SystemManagementAppService {
         );
         maskSensitiveConfigValue(config);
         return config;
+    }
+
+    private String resolveStoredConfigValue(Long id, String configKey, String requestedValue) {
+        if (isSensitiveConfigKey(configKey) && MASKED_CONFIG_VALUE.equals(requestedValue)) {
+            String currentValue = jdbcTemplate.queryForObject(
+                    """
+                            select config_value
+                            from sys_config
+                            where id = ? and deleted = 0
+                            """,
+                    String.class,
+                    id
+            );
+            return currentValue;
+        }
+        return encryptConfigValue(configKey, requestedValue);
+    }
+
+    private String encryptConfigValue(String configKey, String configValue) {
+        if (!isSensitiveConfigKey(configKey) || fieldCryptoService == null) {
+            return configValue;
+        }
+        return fieldCryptoService.encrypt(configValue);
     }
 
     public SystemVO.SecuritySettingsVO getSecuritySettings() {

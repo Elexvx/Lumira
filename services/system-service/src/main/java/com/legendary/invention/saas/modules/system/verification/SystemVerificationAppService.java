@@ -6,6 +6,7 @@ import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.web.TraceContext;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.saas.modules.auth.dto.SecondFactorCompleteRequest;
 import com.legendary.invention.saas.modules.auth.dto.LoginCodeCompleteRequest;
 import com.legendary.invention.saas.modules.auth.vo.LoginResponseVO;
@@ -71,6 +72,7 @@ public class SystemVerificationAppService {
     private final VerificationDeliveryAuditService verificationDeliveryAuditService;
     private final SystemVerificationSettingsAppService settingsAppService;
     private final SecuritySettingsService securitySettingsService;
+    private final FieldCryptoService fieldCryptoService;
     private final TotpService totpService = new TotpService();
 
     public SystemVerificationAppService(
@@ -82,7 +84,8 @@ public class SystemVerificationAppService {
             SmsVerificationSender smsVerificationSender,
             VerificationDeliveryAuditService verificationDeliveryAuditService,
             SystemVerificationSettingsAppService settingsAppService,
-            SecuritySettingsService securitySettingsService
+            SecuritySettingsService securitySettingsService,
+            FieldCryptoService fieldCryptoService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -93,6 +96,7 @@ public class SystemVerificationAppService {
         this.verificationDeliveryAuditService = verificationDeliveryAuditService;
         this.settingsAppService = settingsAppService;
         this.securitySettingsService = securitySettingsService;
+        this.fieldCryptoService = fieldCryptoService;
     }
 
     public List<SystemVO.VerificationProviderVO> listProviders(Long tenantId, Long userId) {
@@ -1122,8 +1126,8 @@ public class SystemVerificationAppService {
                 bound ? 1 : 0,
                 emailRequired ? 1 : 0,
                 maskedContact,
-                secretKey,
-                toJson(recoveryCodes),
+                fieldCryptoService.encrypt(secretKey),
+                encryptStringList(recoveryCodes),
                 verifiedAt,
                 operatorId,
                 operatorId
@@ -1138,8 +1142,8 @@ public class SystemVerificationAppService {
                             updated_by = ?, updated_at = current_timestamp
                         where tenant_id = ? and user_id = ? and factor_code = ? and deleted = 0
                         """,
-                binding.secretKey(),
-                toJson(binding.recoveryCodes()),
+                fieldCryptoService.encrypt(binding.secretKey()),
+                encryptStringList(binding.recoveryCodes()),
                 userId,
                 tenantId,
                 userId,
@@ -1191,9 +1195,9 @@ public class SystemVerificationAppService {
                 factorCode,
                 challengeType,
                 challengeExpiresAt(factorCode, challengeType),
-                setupSecret,
+                fieldCryptoService.encrypt(setupSecret),
                 setupUri,
-                toJson(recoveryCodes),
+                encryptStringList(recoveryCodes),
                 codeHash,
                 maskedContact,
                 properties.isExposeDebugCode() ? debugCode : null,
@@ -1318,9 +1322,9 @@ public class SystemVerificationAppService {
                             rs.getLong("user_id"),
                             rs.getString("factor_code"),
                             rs.getString("challenge_type"),
-                            rs.getString("setup_secret"),
+                            fieldCryptoService.decrypt(rs.getString("setup_secret")),
                             rs.getString("setup_uri"),
-                            parseStringList(rs.getString("recovery_codes_json")),
+                            decryptStringList(rs.getString("recovery_codes_json")),
                             rs.getString("code_hash"),
                             rs.getString("masked_contact"),
                             rs.getString("debug_code"),
@@ -1363,9 +1367,9 @@ public class SystemVerificationAppService {
                             rs.getLong("user_id"),
                             rs.getString("factor_code"),
                             rs.getString("challenge_type"),
-                            rs.getString("setup_secret"),
+                            fieldCryptoService.decrypt(rs.getString("setup_secret")),
                             rs.getString("setup_uri"),
-                            parseStringList(rs.getString("recovery_codes_json")),
+                            decryptStringList(rs.getString("recovery_codes_json")),
                             rs.getString("code_hash"),
                             rs.getString("masked_contact"),
                             rs.getString("debug_code"),
@@ -1410,8 +1414,8 @@ public class SystemVerificationAppService {
                             rs.getInt("bound") == 1,
                             rs.getInt("email_required") == 1,
                             rs.getString("masked_contact"),
-                            rs.getString("secret_key"),
-                            parseStringList(rs.getString("recovery_codes_json")),
+                            fieldCryptoService.decrypt(rs.getString("secret_key")),
+                            decryptStringList(rs.getString("recovery_codes_json")),
                             rs.getTimestamp("verified_at") == null ? null : rs.getTimestamp("verified_at").toLocalDateTime()
                     ));
                 },
@@ -1580,6 +1584,34 @@ public class SystemVerificationAppService {
             return values == null ? null : objectMapper.writeValueAsString(values);
         } catch (Exception exception) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "验证码数据序列化失败");
+        }
+    }
+
+    private String encryptStringList(List<String> values) {
+        String json = toJson(values);
+        if (!StringUtils.hasText(json)) {
+            return json;
+        }
+        try {
+            return objectMapper.writeValueAsString(fieldCryptoService.encrypt(json));
+        } catch (Exception exception) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "验证码数据加密失败");
+        }
+    }
+
+    private List<String> decryptStringList(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        String normalized = value.trim();
+        if (normalized.startsWith("[")) {
+            return parseStringList(normalized);
+        }
+        try {
+            String encrypted = objectMapper.readValue(normalized, String.class);
+            return parseStringList(fieldCryptoService.decrypt(encrypted));
+        } catch (Exception exception) {
+            return parseStringList(fieldCryptoService.decrypt(normalized));
         }
     }
 

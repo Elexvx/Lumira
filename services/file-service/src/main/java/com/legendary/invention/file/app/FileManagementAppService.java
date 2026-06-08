@@ -8,6 +8,7 @@ import com.legendary.invention.api.file.StorageSpaceDTO;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.common.security.data.DataPermissionDecision;
 import com.legendary.invention.common.security.data.DataPermissionResolver;
 import com.legendary.invention.common.security.data.DataScopeType;
@@ -67,6 +68,7 @@ public class FileManagementAppService {
     private final DocumentUploadService documentUploadService;
     private final ImageUploadService imageUploadService;
     private final FilePlatformEventPublisher filePlatformEventPublisher;
+    private final FieldCryptoService fieldCryptoService;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     public FileManagementAppService(
@@ -75,7 +77,8 @@ public class FileManagementAppService {
             UploadProperties uploadProperties,
             DocumentUploadService documentUploadService,
             ImageUploadService imageUploadService,
-            FilePlatformEventPublisher filePlatformEventPublisher
+            FilePlatformEventPublisher filePlatformEventPublisher,
+            FieldCryptoService fieldCryptoService
     ) {
         this.fileObjectMapper = fileObjectMapper;
         this.fileStorageSpaceMapper = fileStorageSpaceMapper;
@@ -83,6 +86,7 @@ public class FileManagementAppService {
         this.documentUploadService = documentUploadService;
         this.imageUploadService = imageUploadService;
         this.filePlatformEventPublisher = filePlatformEventPublisher;
+        this.fieldCryptoService = fieldCryptoService;
     }
 
     public PageResponse<FileObjectDTO> listFiles(
@@ -373,7 +377,7 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getEndpoint, payload.endpoint())
                         .set(FileStorageSpaceEntity::getRegion, payload.region())
                         .set(FileStorageSpaceEntity::getAccessKeyId, payload.accessKeyId())
-                        .set(FileStorageSpaceEntity::getAccessKeySecret, payload.accessKeySecret())
+                        .set(FileStorageSpaceEntity::getAccessKeySecret, encryptSecret(payload.accessKeySecret()))
                         .set(FileStorageSpaceEntity::getRenameStrategy, payload.renameStrategy())
                         .set(FileStorageSpaceEntity::getMaxFileSizeMb, payload.maxFileSizeMb())
                         .set(FileStorageSpaceEntity::getAllowedMimeTypes, payload.allowedMimeTypes())
@@ -795,7 +799,7 @@ public class FileManagementAppService {
         String accessKeyId = defaultIfBlank(request.getAccessKeyId(), existing == null ? "" : existing.accessKeyId());
         String accessKeySecret = StringUtils.hasText(request.getAccessKeySecret()) ? request.getAccessKeySecret().trim() : null;
         if (existing != null && !StringUtils.hasText(accessKeySecret)) {
-            accessKeySecret = fileStorageSpaceMapper.findAccessKeySecret(existing.tenantId(), existing.id());
+            accessKeySecret = decryptSecret(fileStorageSpaceMapper.findAccessKeySecret(existing.tenantId(), existing.id()));
         }
         String renameStrategy = normalizeRenameStrategy(defaultIfBlank(request.getRenameStrategy(), existing == null ? "APPEND_RANDOM_ID" : existing.renameStrategy()));
         Integer maxFileSizeMb = request.getMaxFileSizeMb() == null ? (existing == null ? 20 : existing.maxFileSizeMb()) : request.getMaxFileSizeMb();
@@ -843,6 +847,14 @@ public class FileManagementAppService {
 
     private String shortId() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    }
+
+    private String encryptSecret(String secret) {
+        return fieldCryptoService.encrypt(secret);
+    }
+
+    private String decryptSecret(String secret) {
+        return fieldCryptoService.decrypt(secret);
     }
 
     private String defaultIfBlank(String value, String fallback) {
@@ -901,7 +913,7 @@ public class FileManagementAppService {
         entity.setEndpoint(payload.endpoint());
         entity.setRegion(payload.region());
         entity.setAccessKeyId(payload.accessKeyId());
-        entity.setAccessKeySecret(payload.accessKeySecret());
+        entity.setAccessKeySecret(encryptSecret(payload.accessKeySecret()));
         entity.setRenameStrategy(payload.renameStrategy());
         entity.setMaxFileSizeMb(payload.maxFileSizeMb());
         entity.setAllowedMimeTypes(payload.allowedMimeTypes());

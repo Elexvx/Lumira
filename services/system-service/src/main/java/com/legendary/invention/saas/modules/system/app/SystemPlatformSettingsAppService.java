@@ -3,6 +3,7 @@ package com.legendary.invention.saas.modules.system.app;
 import com.legendary.invention.common.enums.ErrorCode;
 import com.legendary.invention.common.exception.BizException;
 import com.legendary.invention.common.security.CurrentUser;
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.saas.modules.audit.app.OperationAuditService;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
 import com.legendary.invention.saas.modules.system.vo.SystemVO;
@@ -139,10 +140,12 @@ public class SystemPlatformSettingsAppService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
+    private final FieldCryptoService fieldCryptoService;
 
-    public SystemPlatformSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
+    public SystemPlatformSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService, FieldCryptoService fieldCryptoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
+        this.fieldCryptoService = fieldCryptoService;
     }
 
     public SystemVO.BrandingSettingsVO getBrandingSettings(CurrentUser currentUser) {
@@ -472,10 +475,9 @@ public class SystemPlatformSettingsAppService {
         for (Map<String, Object> row : rows) {
             String configKey = String.valueOf(row.get("configKey"));
             if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(
-                        configKey,
-                        trimValues ? normalizeConfigText(row.get("configValue")) : normalizeConfigTextRaw(row.get("configValue"))
-                );
+                String rawValue = normalizeConfigTextRaw(row.get("configValue"));
+                String decryptedValue = decryptConfigValue(configKey, rawValue);
+                valueByKey.put(configKey, trimValues ? normalizeConfigText(decryptedValue) : decryptedValue);
             }
         }
         return valueByKey;
@@ -536,7 +538,7 @@ public class SystemPlatformSettingsAppService {
                     tenantId,
                     configKey,
                     configName,
-                    configValue,
+                    encryptConfigValue(configKey, configValue),
                     remark,
                     operatorId,
                     operatorId
@@ -551,7 +553,7 @@ public class SystemPlatformSettingsAppService {
                         where id = ?
                         """,
                 configName,
-                configValue,
+                encryptConfigValue(configKey, configValue),
                 remark,
                 operatorId,
                 LocalDateTime.now(),
@@ -576,6 +578,28 @@ public class SystemPlatformSettingsAppService {
         } catch (EmptyResultDataAccessException exception) {
             return null;
         }
+    }
+
+    private String encryptConfigValue(String configKey, String configValue) {
+        return isSensitiveConfigKey(configKey) ? fieldCryptoService.encrypt(configValue) : configValue;
+    }
+
+    private String decryptConfigValue(String configKey, String configValue) {
+        return isSensitiveConfigKey(configKey) ? fieldCryptoService.decrypt(configValue) : configValue;
+    }
+
+    private boolean isSensitiveConfigKey(String configKey) {
+        if (!StringUtils.hasText(configKey)) {
+            return false;
+        }
+        String normalized = configKey.trim().toLowerCase();
+        return normalized.endsWith(".password")
+                || normalized.endsWith(".secret")
+                || normalized.endsWith(".app-secret")
+                || normalized.endsWith(".access-key-secret")
+                || normalized.endsWith(".private-key")
+                || normalized.endsWith(".token")
+                || normalized.endsWith(".credential");
     }
 
     private String sanitizeBrandingText(String value, String fallback) {

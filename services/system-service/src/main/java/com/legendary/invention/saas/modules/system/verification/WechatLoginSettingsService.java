@@ -1,6 +1,7 @@
 package com.legendary.invention.saas.modules.system.verification;
 
 import com.legendary.invention.api.system.WechatLoginSettingsDTO;
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity;
 import com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper;
 import com.legendary.invention.saas.modules.system.dto.SystemDTO;
@@ -23,10 +24,12 @@ public class WechatLoginSettingsService {
 
     private final SysConfigMapper sysConfigMapper;
     private final WechatLoginProperties properties;
+    private final FieldCryptoService fieldCryptoService;
 
-    public WechatLoginSettingsService(SysConfigMapper sysConfigMapper, WechatLoginProperties properties) {
+    public WechatLoginSettingsService(SysConfigMapper sysConfigMapper, WechatLoginProperties properties, FieldCryptoService fieldCryptoService) {
         this.sysConfigMapper = sysConfigMapper;
         this.properties = properties;
+        this.fieldCryptoService = fieldCryptoService;
     }
 
     public WechatLoginSettingsRecord loadSettings(Long tenantId) {
@@ -98,7 +101,7 @@ public class WechatLoginSettingsService {
         entity.setTenantId(effectiveTenantId(tenantId));
         entity.setConfigKey(configKey);
         entity.setConfigName(configName);
-        entity.setConfigValue(normalizeConfigText(configValue));
+        entity.setConfigValue(encryptConfigValue(configKey, normalizeConfigText(configValue)));
         entity.setIsSystem(0);
         entity.setRemark(remark);
         entity.setCreatedBy(operatorId);
@@ -113,10 +116,18 @@ public class WechatLoginSettingsService {
         for (SysConfigEntity row : rows) {
             String configKey = row.getConfigKey();
             if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(configKey, normalizeConfigText(row.getConfigValue()));
+                valueByKey.put(configKey, normalizeConfigText(decryptConfigValue(configKey, normalizeConfigTextRaw(row.getConfigValue()))));
             }
         }
         return valueByKey;
+    }
+
+    private String encryptConfigValue(String configKey, String configValue) {
+        return APP_SECRET_KEY.equals(configKey) ? fieldCryptoService.encrypt(configValue) : configValue;
+    }
+
+    private String decryptConfigValue(String configKey, String configValue) {
+        return APP_SECRET_KEY.equals(configKey) ? fieldCryptoService.decrypt(configValue) : configValue;
     }
 
     private List<String> keys() {
@@ -137,6 +148,10 @@ public class WechatLoginSettingsService {
 
     private String normalizeConfigText(Object value) {
         return value == null ? "" : value.toString().trim();
+    }
+
+    private String normalizeConfigTextRaw(Object value) {
+        return value == null ? "" : value.toString();
     }
 
     private int parseInt(String value, int fallback) {

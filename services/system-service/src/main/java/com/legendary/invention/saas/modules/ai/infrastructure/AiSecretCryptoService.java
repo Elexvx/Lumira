@@ -1,5 +1,6 @@
 package com.legendary.invention.saas.modules.ai.infrastructure;
 
+import com.legendary.invention.common.security.FieldCryptoService;
 import com.legendary.invention.saas.infrastructure.security.SecurityProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -19,10 +20,11 @@ public class AiSecretCryptoService {
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int IV_LENGTH = 12;
     private static final int TAG_LENGTH = 128;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final FieldCryptoService fieldCryptoService;
     private final byte[] secretKeyBytes;
 
-    public AiSecretCryptoService(SecurityProperties securityProperties) {
+    public AiSecretCryptoService(SecurityProperties securityProperties, FieldCryptoService fieldCryptoService) {
+        this.fieldCryptoService = fieldCryptoService;
         String secretSeed = StringUtils.hasText(securityProperties.getFieldSecret())
                 ? securityProperties.getFieldSecret()
                 : securityProperties.getJwtSecret();
@@ -33,27 +35,15 @@ public class AiSecretCryptoService {
     }
 
     public String encrypt(String plainText) {
-        if (!StringUtils.hasText(plainText)) {
-            return null;
-        }
-        try {
-            byte[] iv = new byte[IV_LENGTH];
-            secureRandom.nextBytes(iv);
-            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(secretKeyBytes, "AES"), new GCMParameterSpec(TAG_LENGTH, iv));
-            byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-            ByteBuffer buffer = ByteBuffer.allocate(iv.length + encrypted.length);
-            buffer.put(iv);
-            buffer.put(encrypted);
-            return Base64.getEncoder().encodeToString(buffer.array());
-        } catch (Exception exception) {
-            throw new IllegalStateException("AI secret encryption failed", exception);
-        }
+        return fieldCryptoService.encrypt(plainText);
     }
 
     public String decrypt(String cipherText) {
         if (!StringUtils.hasText(cipherText)) {
             return null;
+        }
+        if (fieldCryptoService.isEncrypted(cipherText)) {
+            return fieldCryptoService.decrypt(cipherText);
         }
         try {
             byte[] decoded = Base64.getDecoder().decode(cipherText);

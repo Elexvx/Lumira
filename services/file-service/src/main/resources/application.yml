@@ -71,6 +71,7 @@ saas:
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN}
   security:
     jwt-secret: ${JWT_SECRET}
+    field-secret: ${FIELD_SECRET:}
     permit-paths:
       - /api/uploads/**
       - /api/version
