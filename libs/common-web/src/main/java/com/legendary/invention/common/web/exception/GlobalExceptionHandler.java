@@ -16,6 +16,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -37,6 +38,23 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return buildResponse(response, ErrorCode.VALIDATION_ERROR.getHttpStatus());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException exception,
+            HttpServletRequest request
+    ) {
+        log.warn("Upload size exceeded requestId={} traceId={}", TraceContext.getRequestId(), TraceContext.getTraceId());
+        String message = "文件过大，请上传符合大小限制的文件";
+        ApiResponse<Void> response = ApiResponse.fail(
+                ErrorCode.BAD_REQUEST,
+                message,
+                message,
+                TraceContext.getRequestId(),
+                request.getRequestURI()
+        );
+        return buildResponse(response, ErrorCode.BAD_REQUEST.getHttpStatus());
     }
 
     @ExceptionHandler(BizException.class)
