@@ -40,11 +40,11 @@ public class BackendJobClient {
     }
 
     public void relayMessageOutbox() {
-        post(messageRestClient, "/internal/jobs/outbox/relay");
+        post(messageRestClient, "/message/internal/jobs/outbox/relay");
     }
 
     public void relayPaymentOutbox() {
-        post(paymentRestClient, "/internal/jobs/outbox/relay");
+        post(paymentRestClient, "/payment/internal/jobs/outbox/relay");
     }
 
     public void sendOnlineSessionHeartbeat() {

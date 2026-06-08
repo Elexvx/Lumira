@@ -2,6 +2,7 @@ package com.legendary.invention.payment.service;
 
 import com.legendary.invention.api.payment.PaymentProviderSettingsDTO;
 import org.springframework.util.StringUtils;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@Component("paymentProviderCatalog")
 public final class PaymentProviderCatalog {
 
     private static final Map<String, PaymentProviderDefinition> DEFINITIONS = Map.of(

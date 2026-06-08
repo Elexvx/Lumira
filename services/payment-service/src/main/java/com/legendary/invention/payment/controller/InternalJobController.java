@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController("paymentInternalJobController")
-@RequestMapping("/internal/jobs")
+@RequestMapping("/payment/internal/jobs")
 public class InternalJobController {
 
     private final PaymentOutboxRelay paymentOutboxRelay;

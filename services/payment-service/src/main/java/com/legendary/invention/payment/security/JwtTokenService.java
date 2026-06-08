@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
-@Component
+@Component("paymentJwtTokenService")
 public class JwtTokenService {
 
     private static final String CLAIM_SESSION_ID = "sid";
