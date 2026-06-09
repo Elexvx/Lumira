@@ -2,7 +2,7 @@ import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { ProSettings } from '@ant-design/pro-components';
 import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
 import type { ReactNode } from 'react';
-import { ArrowLeftOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, MoreOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { Empty, Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { useQuery } from '@tanstack/react-query';
@@ -455,6 +455,11 @@ const GlobalFloatActions = () => {
     <FloatButton.Group
       className="saas-global-float-actions"
       shape="circle"
+      trigger="hover"
+      placement="top"
+      type="primary"
+      icon={<MoreOutlined />}
+      tooltip={intl.formatMessage({ id: 'global.float.more', defaultMessage: '快捷操作' })}
       style={{
         direction: 'ltr',
         right: floatButtonRight,
