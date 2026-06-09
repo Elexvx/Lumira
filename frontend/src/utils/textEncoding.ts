@@ -52,3 +52,25 @@ export const repairMojibakeText = (value: string) => {
 export const repairOptionalMojibakeText = <T extends string | null | undefined>(value: T): T | string => {
   return typeof value === 'string' ? repairMojibakeText(value) : value;
 };
+
+export const repairMojibakePayload = <T>(value: T): T => {
+  if (typeof value === 'string') {
+    return repairMojibakeText(value) as T;
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => repairMojibakePayload(item)) as T;
+  }
+
+  const source = value as Record<string, unknown>;
+  let changed = false;
+  const repaired: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(source)) {
+    const nextValue = repairMojibakePayload(item);
+    repaired[key] = nextValue;
+    changed ||= nextValue !== item;
+  }
+  return changed ? repaired as T : value;
+};

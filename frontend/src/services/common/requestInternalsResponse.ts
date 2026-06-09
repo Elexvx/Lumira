@@ -1,19 +1,20 @@
 import type { ApiResponse } from '@/types/api';
 import { REQUEST_ID_HEADER } from '@/constants/http';
+import { repairMojibakePayload } from '@/utils/textEncoding';
 
 export const parseResponseData = async (response: Response) => {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
-    return await response.json();
+    return repairMojibakePayload(await response.json());
   }
   const text = await response.text();
   if (!text) {
     return undefined;
   }
   try {
-    return JSON.parse(text);
+    return repairMojibakePayload(JSON.parse(text));
   } catch {
-    return text;
+    return repairMojibakePayload(text);
   }
 };
 
