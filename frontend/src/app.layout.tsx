@@ -3,7 +3,7 @@ import type { ProSettings } from '@ant-design/pro-components';
 import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { ArrowLeftOutlined, MoreOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
-import { Empty, Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
+import { Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { useQuery } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -443,7 +443,7 @@ const GlobalFloatActions = () => {
     staleTime: 5 * 60 * 1000,
   });
   const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);
-  const showApiDocsQr = floatingSettings.apiDocsQrEnabled;
+  const showApiDocsQr = floatingSettings.apiDocsQrEnabled && Boolean(floatingSettings.apiDocsQrImageUrl);
   const floatButtonRight = isMobile ? 16 : 32;
   const floatButtonBottom = isMobile ? 24 : 40;
 
@@ -477,11 +477,7 @@ const GlobalFloatActions = () => {
                 {floatingSettings.apiDocsQrTitle}
               </Typography.Text>
               <div className="saas-global-float-actions__qr-image-wrap">
-                {floatingSettings.apiDocsQrImageUrl ? (
-                  <img className="saas-global-float-actions__qr-image" src={floatingSettings.apiDocsQrImageUrl} alt={floatingSettings.apiDocsQrTitle} />
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={resolveBuiltinMessage('app.layout.uploadQrHint', '请在个性化设置上传二维码')} />
-                )}
+                <img className="saas-global-float-actions__qr-image" src={floatingSettings.apiDocsQrImageUrl} alt={floatingSettings.apiDocsQrTitle} />
               </div>
             </div>
           }
