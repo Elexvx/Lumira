@@ -3,6 +3,7 @@ import type { DrawerProps } from 'antd';
 import type { ReactNode } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useConfirmableDrawerClose } from './drawerCloseConfirm';
 
 export interface ManagementDrawerAction {
   key: string;
@@ -26,10 +27,12 @@ export const ManagementDrawer = ({
   footer,
   children,
   className,
+  onClose,
   ...props
 }: ManagementDrawerProps) => {
   const responsive = useResponsive();
   const drawerClassName = ['saas-management-drawer', className].filter(Boolean).join(' ');
+  const handleClose = useConfirmableDrawerClose(onClose);
   const renderedActions = footerActions?.length ? (
     <div className="saas-drawer-footer">
       <Space wrap>
@@ -51,7 +54,7 @@ export const ManagementDrawer = ({
   ) : undefined;
 
   return (
-    <Drawer {...props} className={drawerClassName} width={width} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions}>
+    <Drawer {...props} className={drawerClassName} width={width} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions} onClose={handleClose}>
       {children}
     </Drawer>
   );

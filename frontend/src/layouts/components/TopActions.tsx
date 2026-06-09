@@ -24,6 +24,7 @@ import type { ThemePreference } from '@/theme/settings';
 import type { CurrentUser, SecuritySettings } from '@/types/api';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
+import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
 import './TopActions.css';
 import {
   CheckOutlined,
@@ -104,6 +105,7 @@ const TopActionsPasswordDrawer = ({
       form.resetFields();
     }
   }, [form, open]);
+  const handleDrawerClose = useConfirmableDrawerClose(onClose);
 
   return (
     <Drawer
@@ -111,7 +113,7 @@ const TopActionsPasswordDrawer = ({
       open={open}
       width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       destroyOnHidden
-      onClose={onClose}
+      onClose={handleDrawerClose}
       footer={
         <Space className="saas-user-password__footer">
           <Button onClick={onClose}>{intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}</Button>

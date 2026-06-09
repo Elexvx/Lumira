@@ -10,6 +10,7 @@ import { EditOutlined, ExclamationCircleFilled, KeyOutlined, UserOutlined } from
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
 import { PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profile/center/hooks/useProfileCenterPageAccess';
 import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
@@ -342,24 +343,27 @@ const ProfileBasicEditDrawer = ({
   onEditOpenChange: (open: boolean) => void;
   onAvatarBeforeCrop: (file: File) => boolean;
   onAvatarUploadRequest: UploadProps['customRequest'];
-}) => (
-  <Drawer
-    title={t('编辑个人资料', 'Edit profile')}
-    open={editingOpen}
-    width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
-    destroyOnClose={false}
-    onClose={() => onEditOpenChange(false)}
-    footer={
-      <div className="saas-drawer-footer">
-        <Space>
-          <Button onClick={() => onEditOpenChange(false)}>{t('取消', 'Cancel')}</Button>
-          <Button type="primary" loading={profileSaving} onClick={onSave}>
-            {t('保存资料', 'Save profile')}
-          </Button>
-        </Space>
-      </div>
-    }
-  >
+}) => {
+  const handleDrawerClose = useConfirmableDrawerClose(() => onEditOpenChange(false));
+
+  return (
+    <Drawer
+      title={t('编辑个人资料', 'Edit profile')}
+      open={editingOpen}
+      width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
+      destroyOnClose={false}
+      onClose={handleDrawerClose}
+      footer={
+        <div className="saas-drawer-footer">
+          <Space>
+            <Button onClick={() => onEditOpenChange(false)}>{t('取消', 'Cancel')}</Button>
+            <Button type="primary" loading={profileSaving} onClick={onSave}>
+              {t('保存资料', 'Save profile')}
+            </Button>
+          </Space>
+        </div>
+      }
+    >
     <Form {...profileFormProps} layout="vertical">
       <Form.Item name="avatarUrl" hidden>
         <Input />
@@ -431,8 +435,9 @@ const ProfileBasicEditDrawer = ({
         <Empty description={t('当前未开启任何可编辑资料字段', 'No editable profile fields are enabled')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}
     </Form>
-  </Drawer>
-);
+    </Drawer>
+  );
+};
 
 type ProfileCenterOverviewSectionProps = {
   isMobile: boolean;

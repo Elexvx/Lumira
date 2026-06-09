@@ -5,6 +5,7 @@ import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import type { ProColumns } from '@ant-design/pro-components';
 import type { ActionType } from '@ant-design/pro-components';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
+import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
@@ -425,12 +426,13 @@ const KnowledgeDocumentDrawer = ({
   const { token } = theme.useToken();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
+  const handleDrawerClose = useConfirmableDrawerClose(onClose);
   return (
     <Drawer
       width={isMobile ? '100%' : STANDARD_DRAWER_WIDTH}
       title={selectedKnowledgeBase ? `${t('知识库文档', 'Knowledge base documents')} / ${selectedKnowledgeBase.name}` : t('知识库文档', 'Knowledge base documents')}
       open={Boolean(selectedKnowledgeBase)}
-      onClose={onClose}
+      onClose={handleDrawerClose}
       destroyOnHidden
     >
       {selectedKnowledgeBase ? (
