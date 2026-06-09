@@ -13,6 +13,7 @@ import { useStandardFormProps } from '@/features/form/config';
 import { API_OPTS } from '@/utils/errorMessage';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { request } from '@/services/common/request';
+import { repairOptionalMojibakeText } from '@/utils/textEncoding';
 import type {
   CurrentUser,
   LoginCapabilities,
@@ -71,6 +72,20 @@ const maskEmail = (email?: string | null) => {
   return `${localPart.slice(0, 2)}***@${domainPart}`;
 };
 
+function normalizeCurrentUserText(user: CurrentUser): CurrentUser;
+function normalizeCurrentUserText(user?: CurrentUser | null): CurrentUser | null | undefined;
+function normalizeCurrentUserText(user?: CurrentUser | null): CurrentUser | null | undefined {
+  if (!user) {
+    return user;
+  }
+  return {
+    ...user,
+    nickname: repairOptionalMojibakeText(user.nickname),
+    realName: repairOptionalMojibakeText(user.realName),
+    region: repairOptionalMojibakeText(user.region),
+  };
+}
+
 export const useProfileCenterPageAccess = () => {
   const [profileForm] = Form.useForm();
   const { initialState, setInitialState } = useInitialStateModel();
@@ -84,7 +99,10 @@ export const useProfileCenterPageAccess = () => {
       }),
   });
   const summary = profileQuery.data;
-  const currentUser = summary?.currentUser || initialState?.currentUser;
+  const currentUser = useMemo(
+    () => normalizeCurrentUserText(summary?.currentUser || initialState?.currentUser),
+    [initialState?.currentUser, summary?.currentUser],
+  );
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const loginCapabilitiesQuery = useQuery({
     queryKey: ['profile-login-capabilities'],
@@ -482,7 +500,7 @@ export const useProfileCenterPageAccess = () => {
     try {
       const values = await profileForm.validateFields();
       setProfileSaving(true);
-      const updatedUser = await request<CurrentUser>('/v1/profile', {
+      const updatedUser = normalizeCurrentUserText(await request<CurrentUser>('/v1/profile', {
         method: 'PUT',
         data: {
           ...values,
@@ -491,7 +509,7 @@ export const useProfileCenterPageAccess = () => {
           birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
         } satisfies ProfileBasicInfoPayload,
         ...API_OPTS.NO_REDIRECT,
-      });
+      }));
       setInitialState((prev: AppInitialState | undefined) =>
         prev
           ? {
