@@ -208,9 +208,10 @@ public class FileController {
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "tags", required = false) String tags,
             @RequestParam(name = "remark", required = false) String remark,
-            @RequestParam(name = "bucket", required = false) String bucket
+            @RequestParam(name = "bucket", required = false) String bucket,
+            @RequestParam(name = "scope", required = false) String scope
     ) {
-        require("system:file:upload");
+        require(FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) ? "download:center:create" : "system:file:upload");
         return ApiResponse.success(
                 fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark, bucket),
                 TraceContext.getRequestId()
@@ -223,9 +224,10 @@ public class FileController {
             @PathVariable("id") @Positive Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope);
-        require(tenantScope ? "system:file:manage:delete" : "system:file:delete");
-        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, tenantScope);
+        boolean tenantScope = isTenantWideScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        require(downloadCenterScope ? "download:center:delete" : FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope) ? "system:file:manage:delete" : "system:file:delete");
+        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 

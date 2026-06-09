@@ -36,6 +36,7 @@ type BuildFileObjectColumnsParams = {
   isMobile: boolean;
   isTenantScope: boolean;
   readOnlyCenter: boolean;
+  deletePermission?: string | string[];
   actionPermissionCanDelete: (permission?: string | string[]) => boolean;
   onOpenPreviewDrawer: (record: FileObjectRecord) => void;
   onDownload: (record: FileObjectRecord) => void;
@@ -141,6 +142,7 @@ const buildFileObjectColumns = ({
   isMobile,
   isTenantScope,
   readOnlyCenter,
+  deletePermission,
   actionPermissionCanDelete,
   onOpenPreviewDrawer,
   onDownload,
@@ -263,7 +265,7 @@ const buildFileObjectColumns = ({
                   onClick: () => void onCopyLink(record),
                 },
               ]),
-          ...(actionPermissionCanDelete(isTenantScope ? 'system:file:manage:delete' : 'system:file:delete')
+          ...(actionPermissionCanDelete(deletePermission ?? (isTenantScope ? 'system:file:manage:delete' : 'system:file:delete'))
             ? [
                 {
                   key: 'delete',
@@ -711,8 +713,10 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   const scopeParams = useMemo(() => ({ scope: fileScope }), [fileScope]);
   const canManageStorage = actionPermission.can('system:file:manage');
   const canDeleteStorage = actionPermission.can('system:file:manage:delete');
-  const canUploadFile = actionPermission.can('system:file:upload');
-  const canUploadInCurrentScope = !readOnlyCenter && !isTenantScope && canUploadFile;
+  const uploadPermission = readOnlyCenter ? 'download:center:create' : 'system:file:upload';
+  const deletePermission = readOnlyCenter ? 'download:center:delete' : isTenantScope ? 'system:file:manage:delete' : 'system:file:delete';
+  const canUploadFile = actionPermission.can(uploadPermission);
+  const canUploadInCurrentScope = readOnlyCenter ? canUploadFile : !isTenantScope && canUploadFile;
   const buildToolbarActions = actionPermission.buildToolbarActions;
   const previewBackgroundColor = token.colorFillQuaternary;
   const previewContainerBackgroundColor = token.colorBgContainer;
@@ -1183,13 +1187,13 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
       message.warning(
         formatMessage({
           id: 'system.files.bucketUploadDisabled',
-          defaultMessage: 'Storage buckets do not support uploads from the admin console',
+          defaultMessage: readOnlyCenter ? 'You do not have permission to upload files to the download center' : 'Storage buckets do not support uploads from the admin console',
         }),
       );
       return;
     }
     setUploadDrawerOpen(true);
-  }, [canUploadInCurrentScope]);
+  }, [canUploadInCurrentScope, readOnlyCenter]);
   const closeUploadDrawer = useCallback(() => {
     setUploadDrawerOpen(false);
     setUploading(false);
@@ -1214,6 +1218,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
           if (activeBucket) {
             formData.append('bucket', activeBucket);
           }
+          formData.append('scope', fileScope);
           await request<FileObjectRecord>('/v1/files/upload', {
             method: 'POST',
             headers: {},
@@ -1233,13 +1238,14 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         setUploading(false);
       }
     },
-    [activeBucket, closeUploadDrawer, requestOptions],
+    [activeBucket, closeUploadDrawer, fileScope, requestOptions],
   );
 
   const fileColumns = buildFileObjectColumns({
     isMobile: responsive.isMobile,
     isTenantScope,
     readOnlyCenter,
+    deletePermission,
     actionPermissionCanDelete: canDeleteFile,
     onOpenPreviewDrawer: openPreviewDrawer,
     onDownload: handleDownload,

@@ -13,6 +13,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY frontend/ ./
 RUN pnpm build
+RUN node scripts/adapt-cdn-assets.mjs
 
 FROM nginx:1.29-alpine
 

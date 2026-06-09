@@ -292,7 +292,12 @@ public class FileManagementAppService {
 
     @Transactional
     public void deleteFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope);
+        deleteFile(currentUser, fileId, tenantScope, false);
+    }
+
+    @Transactional
+    public void deleteFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
         if (!shouldRetainStoredFile(currentTenantId(currentUser), file.bucket())) {
             deleteStoredFile(file);
         }
