@@ -47,6 +47,13 @@ const allowedServices = new Set([
   'alloy',
   'grafana',
 ]);
+const appWritableDockerVolumes = [
+  { key: 'upload_data', mountPath: '/mnt/upload_data' },
+  { key: 'plugin_data', mountPath: '/mnt/plugin_data' },
+  { key: 'plugin_staging', mountPath: '/mnt/plugin_staging' },
+];
+const appRuntimeUid = process.env.LEGENDARY_APP_UID || '100';
+const appRuntimeGid = process.env.LEGENDARY_APP_GID || '101';
 
 
 function parseServiceNames(argv) {
@@ -421,6 +428,53 @@ function ensureHostMountedDirectories() {
   ensureWritableDirectory(resolvedXxlJobLogPath, 'XXL-Job executor log directory');
 }
 
+function shouldPrepareAppWritableVolumes() {
+  return serviceNames.length === 0 || serviceNames.includes('legendary-server');
+}
+
+function resolveComposeProjectName() {
+  const env = existsSync(envPath) ? parseEnvFile(envPath) : {};
+  const explicitProjectName = firstDeployText(
+    process.env.COMPOSE_PROJECT_NAME,
+    env.COMPOSE_PROJECT_NAME
+  );
+  if (explicitProjectName) {
+    return explicitProjectName;
+  }
+  return path.basename(path.dirname(composeFile));
+}
+
+function resolveComposeVolumeName(volumeKey) {
+  return `${resolveComposeProjectName()}_${volumeKey}`;
+}
+
+function ensureDockerVolumeOwnership() {
+  if (!shouldPrepareAppWritableVolumes()) {
+    return;
+  }
+
+  for (const volume of appWritableDockerVolumes) {
+    const resolvedVolumeName = resolveComposeVolumeName(volume.key);
+    run('docker', ['volume', 'create', resolvedVolumeName], { stdio: 'ignore' });
+    run(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '-v',
+        `${resolvedVolumeName}:${volume.mountPath}`,
+        'busybox:1.36',
+        'sh',
+        '-c',
+        `mkdir -p ${volume.mountPath} && chown -R ${appRuntimeUid}:${appRuntimeGid} ${volume.mountPath} && chmod -R ug+rwX ${volume.mountPath}`,
+      ],
+      { stdio: 'ignore' }
+    );
+  }
+
+  log(`Prepared app writable Docker volumes for project=${resolveComposeProjectName()} uid=${appRuntimeUid} gid=${appRuntimeGid}.`);
+}
+
 function mergedEnv() {
   return {
     ...parseEnvFile(envPath),
@@ -701,6 +755,7 @@ if (logs) {
 run('docker', composeArgs('config'), { stdio: 'ignore' });
 validateServiceNames();
 maybePruneDockerBuildCache('before-build');
+ensureDockerVolumeOwnership();
 
 if (serviceNames.length > 0) {
   log(`Deploying selected service(s) without dependency restart: ${serviceNames.join(', ')}`);

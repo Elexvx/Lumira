@@ -432,6 +432,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
 const GlobalFloatActions = () => {
   const intl = useIntl();
   const { isMobile } = useResponsive();
+  const floatActionZIndex = 980;
   const floatingSettingsQuery = useQuery({
     queryKey: ['floating-window-settings'],
     queryFn: () =>
@@ -464,6 +465,7 @@ const GlobalFloatActions = () => {
         direction: 'ltr',
         right: floatButtonRight,
         bottom: floatButtonBottom,
+        zIndex: floatActionZIndex,
       }}
     >
       {showApiDocsQr ? (
@@ -471,6 +473,7 @@ const GlobalFloatActions = () => {
           overlayClassName="saas-global-float-actions__qr-popover"
           placement="left"
           trigger={['hover', 'click']}
+          zIndex={floatActionZIndex + 1}
           content={
             <div className="saas-global-float-actions__qr-card">
               <Typography.Text className="saas-global-float-actions__qr-title" type="secondary">

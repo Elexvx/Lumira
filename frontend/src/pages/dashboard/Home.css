@@ -76,8 +76,7 @@
   padding: 18px;
   border: 1px solid var(--saas-color-border);
   border-radius: 20px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.88) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.88) 100%);
   box-shadow: var(--saas-shadow-sm);
 }
 
@@ -129,8 +128,7 @@ html[data-theme='dark'] .saas-dashboard-home__hero {
 
 html[data-theme='dark'] .saas-dashboard-home__shortcut-card,
 html[data-theme='dark'] .saas-dashboard-home__metric {
-  background:
-    linear-gradient(180deg, rgba(17, 17, 19, 0.96) 0%, rgba(24, 24, 27, 0.9) 100%);
+  background: linear-gradient(180deg, rgba(17, 17, 19, 0.96) 0%, rgba(24, 24, 27, 0.9) 100%);
 }
 
 html[data-theme='dark'] .saas-dashboard-home__metric-icon {

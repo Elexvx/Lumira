@@ -19,6 +19,10 @@ public final class PluginVO {
         private String status;
         private Integer builtinFlag;
         private Integer sortNo;
+        private String schemaMode;
+        private Boolean supportsHotDisable;
+        private Boolean supportsDataPurge;
+        private List<String> runtimeContributions;
 
         public String getPluginCode() {
             return pluginCode;
@@ -91,6 +95,38 @@ public final class PluginVO {
         public void setSortNo(Integer sortNo) {
             this.sortNo = sortNo;
         }
+
+        public String getSchemaMode() {
+            return schemaMode;
+        }
+
+        public void setSchemaMode(String schemaMode) {
+            this.schemaMode = schemaMode;
+        }
+
+        public Boolean getSupportsHotDisable() {
+            return supportsHotDisable;
+        }
+
+        public void setSupportsHotDisable(Boolean supportsHotDisable) {
+            this.supportsHotDisable = supportsHotDisable;
+        }
+
+        public Boolean getSupportsDataPurge() {
+            return supportsDataPurge;
+        }
+
+        public void setSupportsDataPurge(Boolean supportsDataPurge) {
+            this.supportsDataPurge = supportsDataPurge;
+        }
+
+        public List<String> getRuntimeContributions() {
+            return runtimeContributions;
+        }
+
+        public void setRuntimeContributions(List<String> runtimeContributions) {
+            this.runtimeContributions = runtimeContributions;
+        }
     }
 
     public static class PluginVersionVO {
@@ -106,6 +142,8 @@ public final class PluginVO {
         private String validationReportJson;
         private LocalDateTime installedAt;
         private LocalDateTime createdAt;
+        private String lifecycleStatus;
+        private String schemaStatus;
 
         public String getPluginCode() {
             return pluginCode;
@@ -201,6 +239,22 @@ public final class PluginVO {
 
         public void setCreatedAt(LocalDateTime createdAt) {
             this.createdAt = createdAt;
+        }
+
+        public String getLifecycleStatus() {
+            return lifecycleStatus;
+        }
+
+        public void setLifecycleStatus(String lifecycleStatus) {
+            this.lifecycleStatus = lifecycleStatus;
+        }
+
+        public String getSchemaStatus() {
+            return schemaStatus;
+        }
+
+        public void setSchemaStatus(String schemaStatus) {
+            this.schemaStatus = schemaStatus;
         }
     }
 
@@ -410,6 +464,11 @@ public final class PluginVO {
         private List<String> sharedDeps;
         private List<String> routes;
         private List<Map<String, Object>> menus;
+        private String lifecycleStatus;
+        private String schemaStatus;
+        private Boolean supportsHotDisable;
+        private Boolean supportsDataPurge;
+        private List<String> runtimeContributions;
 
         public String getPluginCode() {
             return pluginCode;
@@ -465,6 +524,148 @@ public final class PluginVO {
 
         public void setMenus(List<Map<String, Object>> menus) {
             this.menus = menus;
+        }
+
+        public String getLifecycleStatus() {
+            return lifecycleStatus;
+        }
+
+        public void setLifecycleStatus(String lifecycleStatus) {
+            this.lifecycleStatus = lifecycleStatus;
+        }
+
+        public String getSchemaStatus() {
+            return schemaStatus;
+        }
+
+        public void setSchemaStatus(String schemaStatus) {
+            this.schemaStatus = schemaStatus;
+        }
+
+        public Boolean getSupportsHotDisable() {
+            return supportsHotDisable;
+        }
+
+        public void setSupportsHotDisable(Boolean supportsHotDisable) {
+            this.supportsHotDisable = supportsHotDisable;
+        }
+
+        public Boolean getSupportsDataPurge() {
+            return supportsDataPurge;
+        }
+
+        public void setSupportsDataPurge(Boolean supportsDataPurge) {
+            this.supportsDataPurge = supportsDataPurge;
+        }
+
+        public List<String> getRuntimeContributions() {
+            return runtimeContributions;
+        }
+
+        public void setRuntimeContributions(List<String> runtimeContributions) {
+            this.runtimeContributions = runtimeContributions;
+        }
+    }
+
+    public static class PluginStatusVO {
+        private String pluginCode;
+        private String pluginName;
+        private String version;
+        private Boolean tenantEnabled;
+        private String lifecycleStatus;
+        private String schemaStatus;
+        private Boolean builtin;
+        private String schemaMode;
+        private Boolean supportsHotDisable;
+        private Boolean supportsDataPurge;
+        private List<String> runtimeContributions;
+
+        public String getPluginCode() {
+            return pluginCode;
+        }
+
+        public void setPluginCode(String pluginCode) {
+            this.pluginCode = pluginCode;
+        }
+
+        public String getPluginName() {
+            return pluginName;
+        }
+
+        public void setPluginName(String pluginName) {
+            this.pluginName = pluginName;
+        }
+
+        public String getVersion() {
+            return version;
+        }
+
+        public void setVersion(String version) {
+            this.version = version;
+        }
+
+        public Boolean getTenantEnabled() {
+            return tenantEnabled;
+        }
+
+        public void setTenantEnabled(Boolean tenantEnabled) {
+            this.tenantEnabled = tenantEnabled;
+        }
+
+        public String getLifecycleStatus() {
+            return lifecycleStatus;
+        }
+
+        public void setLifecycleStatus(String lifecycleStatus) {
+            this.lifecycleStatus = lifecycleStatus;
+        }
+
+        public String getSchemaStatus() {
+            return schemaStatus;
+        }
+
+        public void setSchemaStatus(String schemaStatus) {
+            this.schemaStatus = schemaStatus;
+        }
+
+        public Boolean getBuiltin() {
+            return builtin;
+        }
+
+        public void setBuiltin(Boolean builtin) {
+            this.builtin = builtin;
+        }
+
+        public String getSchemaMode() {
+            return schemaMode;
+        }
+
+        public void setSchemaMode(String schemaMode) {
+            this.schemaMode = schemaMode;
+        }
+
+        public Boolean getSupportsHotDisable() {
+            return supportsHotDisable;
+        }
+
+        public void setSupportsHotDisable(Boolean supportsHotDisable) {
+            this.supportsHotDisable = supportsHotDisable;
+        }
+
+        public Boolean getSupportsDataPurge() {
+            return supportsDataPurge;
+        }
+
+        public void setSupportsDataPurge(Boolean supportsDataPurge) {
+            this.supportsDataPurge = supportsDataPurge;
+        }
+
+        public List<String> getRuntimeContributions() {
+            return runtimeContributions;
+        }
+
+        public void setRuntimeContributions(List<String> runtimeContributions) {
+            this.runtimeContributions = runtimeContributions;
         }
     }
 

@@ -205,6 +205,7 @@ const dashboardRoutes: BackendRouteRecord[] = [
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [
+  { path: '/plugins/sensitive-words', name: 'nav.system.plugins', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
   { path: '/plugins/:pluginCode', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
   { path: '/blank/workflow', name: 'common.failure', hideInMenu: true },
   { path: '/user/login', name: 'page.login.title', hideInMenu: true },
@@ -213,6 +214,7 @@ const publicRouteMeta: BackendRouteMeta[] = [
 ];
 
 const publicRoutes: BackendRouteRecord[] = [
+  { path: '/plugins/sensitive-words', component: '@/pages/plugins/SensitiveWordsPage', name: 'nav.system.plugins', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
   { path: '/plugins/:pluginCode', component: '@/pages/plugins/RuntimeContainer', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
   { path: '/blank/workflow', redirect: '/404', name: 'common.failure', hideInMenu: true },
   { path: '/user/login', component: '@/pages/user/Login', layout: false, name: 'page.login.title', hideInMenu: true },

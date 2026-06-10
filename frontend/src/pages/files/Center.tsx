@@ -840,7 +840,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         },
       });
     },
-    [requestOptions],
+    [readOnlyCenter, requestOptions],
   );
   const handleTestStorageSpace = useCallback(
     async (record: FileStorageSpaceRecord) => {
@@ -1179,7 +1179,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         },
       });
     },
-    [actionRef, closePreviewDrawer, isTenantScope, previewRecord, readOnlyCenter, requestOptions, scopeParams],
+    [actionRef, closePreviewDrawer, isTenantScope, previewRecord, requestOptions, scopeParams],
   );
 
   const openUploadDrawer = useCallback(() => {

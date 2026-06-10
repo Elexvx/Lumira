@@ -122,6 +122,29 @@ class PluginManagementAppServiceTest {
         verify(pluginPersistenceService).enablePluginForTenant(1001L, "sms", "1.0.0", "{\"level\":\"basic\"}", 100L);
         verify(pluginPersistenceService).registerTenantPermissions(1001L, "sms", "1.0.0");
         verify(systemInternalApi).invalidatePermissionSnapshot(1001L);
+        verify(pluginMigrationService).executeUpMigrations("sms", "1.0.0", null, 100L);
+    }
+
+    @Test
+    void disable_shouldPurgeSchemaWhenRequested() {
+        PluginTenantEntity tenantEntity = new PluginTenantEntity();
+        tenantEntity.setTenantId(1001L);
+        tenantEntity.setPluginCode("sms");
+        tenantEntity.setPluginVersion("1.0.0");
+        tenantEntity.setEnabled(1);
+
+        when(pluginPersistenceService.findTenantPlugin(1001L, "sms")).thenReturn(Optional.of(tenantEntity));
+
+        PluginDTO.DisableRequest request = new PluginDTO.DisableRequest();
+        request.setTenantId(1001L);
+        request.setPluginCode("sms");
+        request.setPurgeData(true);
+
+        pluginManagementAppService.disable(request, currentUser());
+
+        verify(pluginPersistenceService).disablePluginForTenant(1001L, "sms", 100L);
+        verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L);
+        verify(systemInternalApi).invalidatePermissionSnapshot(1001L);
     }
 
     @Test

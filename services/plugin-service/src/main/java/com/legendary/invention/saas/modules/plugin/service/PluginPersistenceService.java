@@ -6,6 +6,7 @@ import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginD
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginPermissionRelEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginRuntimeLogEntity;
+import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginSchemaHistoryEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
 import com.legendary.invention.saas.modules.plugin.mapper.PluginPersistenceMapper;
@@ -61,7 +62,13 @@ public class PluginPersistenceService {
     }
 
     public List<PluginVO.PluginDefinitionVO> listDefinitions() {
-        return pluginPersistenceMapper.listDefinitions();
+        List<PluginVO.PluginDefinitionVO> definitions = pluginPersistenceMapper.listDefinitions();
+        definitions.forEach(item -> {
+            if (item.getRuntimeContributions() == null) {
+                item.setRuntimeContributions(List.of());
+            }
+        });
+        return definitions;
     }
 
     public List<PluginVO.PluginVersionVO> listVersions(String pluginCode) {
@@ -79,6 +86,17 @@ public class PluginPersistenceService {
 
     public List<PluginVO.PluginRuntimeLogVO> listRuntimeLogs(String pluginCode) {
         return pluginPersistenceMapper.listRuntimeLogs(pluginCode);
+    }
+
+    public Optional<PluginVO.PluginStatusVO> pluginStatus(Long tenantId, String pluginCode) {
+        PluginVO.PluginStatusVO status = pluginPersistenceMapper.pluginStatus(tenantId, pluginCode);
+        if (status == null) {
+            return Optional.empty();
+        }
+        if (status.getRuntimeContributions() == null) {
+            status.setRuntimeContributions(List.of());
+        }
+        return Optional.of(status);
     }
 
     @Transactional
@@ -112,9 +130,11 @@ public class PluginPersistenceService {
             String version,
             String installStatus,
             String loadStatus,
-            String healthStatus
+            String healthStatus,
+            String lifecycleStatus,
+            String schemaStatus
     ) {
-        pluginPersistenceMapper.updateVersionStatus(pluginCode, version, installStatus, loadStatus, healthStatus);
+        pluginPersistenceMapper.updateVersionStatus(pluginCode, version, installStatus, loadStatus, healthStatus, lifecycleStatus, schemaStatus);
     }
 
     @Transactional
@@ -231,6 +251,7 @@ public class PluginPersistenceService {
     @Transactional
     public void purgePluginData(String pluginCode, Long operatorId) {
         pluginPersistenceMapper.deleteRuntimeLogsByPlugin(pluginCode);
+        pluginPersistenceMapper.deleteSchemaHistoryByPlugin(pluginCode);
         pluginPersistenceMapper.deleteTenantsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteVersionsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteMenuRelationsByPlugin(pluginCode);
@@ -253,6 +274,25 @@ public class PluginPersistenceService {
 
     public List<PluginVersionEntity> listInstalledVersions(String pluginCode) {
         return pluginPersistenceMapper.listInstalledVersions(pluginCode);
+    }
+
+    public boolean hasSuccessfulSchemaHistory(String pluginCode, String pluginVersion, String direction, String stepName) {
+        Integer count = pluginPersistenceMapper.hasSuccessfulSchemaHistory(pluginCode, pluginVersion, direction, stepName);
+        return count != null && count > 0;
+    }
+
+    @Transactional
+    public void insertSchemaHistory(String pluginCode, String pluginVersion, String stepName, String direction, String scriptPath, String executionStatus, String detailMessage, Long operatorId) {
+        PluginSchemaHistoryEntity entity = new PluginSchemaHistoryEntity();
+        entity.setPluginCode(pluginCode);
+        entity.setPluginVersion(pluginVersion);
+        entity.setStepName(stepName);
+        entity.setDirection(direction);
+        entity.setScriptPath(scriptPath);
+        entity.setExecutionStatus(executionStatus);
+        entity.setDetailMessage(detailMessage);
+        entity.setCreatedBy(operatorId);
+        pluginPersistenceMapper.insertSchemaHistory(entity);
     }
 
     @Transactional
@@ -308,6 +348,10 @@ public class PluginPersistenceService {
         entity.setDescription(metadata.getDescription());
         entity.setAuthor(metadata.getAuthor());
         entity.setPluginApiVersion(metadata.getPluginApiVersion());
+        entity.setSchemaMode(metadata.getSchemaMode());
+        entity.setSupportsHotDisable(Boolean.TRUE.equals(metadata.getSupportsHotDisable()) ? 1 : 0);
+        entity.setSupportsDataPurge(Boolean.TRUE.equals(metadata.getSupportsDataPurge()) ? 1 : 0);
+        entity.setRuntimeContributionsJson(JsonUtils.toJson(metadata.getRuntimeContributions() == null ? List.of() : metadata.getRuntimeContributions()));
         entity.setCreatedBy(operatorId);
         entity.setUpdatedBy(operatorId);
         pluginPersistenceMapper.upsertDefinition(entity);

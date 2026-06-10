@@ -1,4 +1,4 @@
-import type { CurrentUser } from '@/types/api';
+import type { CurrentUser, TenantPlugin } from '@/types/api';
 import { tokenManager } from '@/auth/token';
 import { isSuperAdminUser } from '@/auth/adminAccess';
 
@@ -6,10 +6,11 @@ const hasPermission = (permissions: Set<string>, key: string) => permissions.has
 
 const AI_PERMISSIONS = ['ai:chat:send', 'ai:knowledge:view'];
 
-export default function access(initialState: { currentUser?: CurrentUser }) {
+export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: TenantPlugin[] }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
   const isLogin = Boolean(initialState?.currentUser?.sessionId) || tokenManager.hasToken();
   const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
+  const enabledPlugins = new Set((initialState?.availablePlugins ?? []).map((item) => item.pluginCode));
 
   return {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
@@ -48,6 +49,7 @@ export default function access(initialState: { currentUser?: CurrentUser }) {
     canVisitSystemSettings: isLogin && isSettingsAdmin,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && isSettingsAdmin,
+    canVisitSensitiveWordsPlugin: isLogin && enabledPlugins.has('sensitive-words') && hasPermission(permissions, 'plugin:sensitive-words:view'),
     canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitAiEmployees: isLogin && isSettingsAdmin,
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),

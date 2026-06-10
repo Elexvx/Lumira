@@ -1,5 +1,6 @@
 :root {
   color-scheme: light;
+
   --saas-page-content-width: 1280px;
   --saas-page-content-width-compact: 1120px;
   --saas-page-gutter: clamp(16px, 2.4vw, 28px);
@@ -91,9 +92,9 @@
   --saas-spacing-xl: 20px;
   --saas-qrcode-size: 132px;
   --saas-qrcode-size-mobile: 124px;
-  --saas-color-bg-layout: #ffffff;
+  --saas-color-bg-layout: #fff;
   --saas-color-bg-surface: rgba(255, 255, 255, 0.82);
-  --saas-color-bg-surface-strong: #ffffff;
+  --saas-color-bg-surface-strong: #fff;
   --saas-color-bg-muted: #f8fafc;
   --saas-color-bg-subtle: #f1f5f9;
   --saas-color-border: rgba(148, 163, 184, 0.2);
@@ -102,7 +103,7 @@
   --saas-color-text-secondary: #475569;
   --saas-color-text-tertiary: #64748b;
   --saas-color-accent: #0f172a;
-  --saas-color-accent-foreground: #ffffff;
+  --saas-color-accent-foreground: #fff;
   --saas-color-ring: rgba(15, 23, 42, 0.12);
   --saas-color-success: #16a34a;
   --saas-color-warning: #d97706;
@@ -115,6 +116,7 @@
 
 html[data-theme='dark'] {
   color-scheme: dark;
+
   --saas-color-bg-layout: #09090b;
   --saas-color-bg-surface: rgba(24, 24, 27, 0.84);
   --saas-color-bg-surface-strong: #111113;
@@ -1168,7 +1170,6 @@ select {
   background: rgba(255, 255, 255, 0.72) !important;
   border-bottom: 1px solid var(--saas-color-border);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .ant-pro-layout .ant-layout-sider {
@@ -1182,7 +1183,6 @@ select {
   border-radius: 24px;
   background: var(--saas-color-bg-surface);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   box-shadow: var(--saas-shadow-md);
 }
 
@@ -1437,7 +1437,6 @@ select {
   background: var(--saas-color-bg-surface);
   box-shadow: var(--saas-shadow-md);
   backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .saas-panel {

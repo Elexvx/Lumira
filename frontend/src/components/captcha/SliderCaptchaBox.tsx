@@ -63,7 +63,7 @@ export const SliderCaptchaBox = ({ mode = 'embed', onChallengeChange, onVerified
       bgUrl: challenge.bgUrl,
       puzzleUrl: challenge.puzzleUrl,
     };
-  }, [onChallengeChange, onReset, sliderPuzzleSize, sliderPuzzleTop]);
+  }, [intl, onChallengeChange, onReset, sliderPuzzleSize, sliderPuzzleTop]);
 
   const verifySliderCaptcha = useCallback(
     async (data: import('rc-slider-captcha').VerifyParam) => {

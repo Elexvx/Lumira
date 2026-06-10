@@ -275,6 +275,47 @@ public class SystemManagementAppService {
             OperationAuditService operationAuditService,
             SecuritySettingsService securitySettingsService,
             PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService
+    ) {
+        this(
+                jdbcTemplate,
+                userDomainService,
+                permissionSnapshotService,
+                systemPluginViewService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                iamUserService,
+                systemUserManagementAppService,
+                systemRoleManagementAppService,
+                null
+        );
+    }
+
+    public SystemManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemPluginViewService systemPluginViewService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
             IamUserService iamUserService
     ) {
         this(

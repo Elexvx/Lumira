@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
@@ -135,6 +136,17 @@ public class PluginManagementController {
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
+    @PostMapping("/{pluginCode}/enable")
+    @RepeatSubmit
+    public ApiResponse<Boolean> enable(@PathVariable("pluginCode") String pluginCode) {
+        require("plugin:management:enable");
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setTenantId(currentTenantId());
+        request.setPluginCode(pluginCode);
+        pluginManagementAppService.enable(request, currentUser());
+        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+    }
+
     @PostMapping("/disable")
     @RepeatSubmit
     public ApiResponse<Boolean> disable(@Valid @RequestBody PluginDTO.DisableRequest request) {
@@ -144,9 +156,37 @@ public class PluginManagementController {
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
+    @PostMapping("/{pluginCode}/disable")
+    @RepeatSubmit
+    public ApiResponse<Boolean> disable(@PathVariable("pluginCode") String pluginCode, @RequestBody(required = false) PluginDTO.DisableRequest request) {
+        require("plugin:management:disable");
+        PluginDTO.DisableRequest disableRequest = request == null ? new PluginDTO.DisableRequest() : request;
+        disableRequest.setTenantId(currentTenantId());
+        disableRequest.setPluginCode(pluginCode);
+        pluginManagementAppService.disable(disableRequest, currentUser());
+        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+    }
+
+    @GetMapping("/{pluginCode}/status")
+    public ApiResponse<PluginVO.PluginStatusVO> status(@PathVariable("pluginCode") String pluginCode) {
+        require("plugin:management:view");
+        return ApiResponse.success(pluginManagementAppService.status(currentTenantId(), pluginCode), TraceContext.getRequestId());
+    }
+
     @PostMapping("/{pluginCode}/uninstall")
     @RepeatSubmit
     public ApiResponse<Boolean> uninstall(
+            @PathVariable("pluginCode") String pluginCode,
+            @RequestBody(required = false) PluginDTO.UninstallRequest request
+    ) {
+        require("plugin:management:disable");
+        pluginManagementAppService.uninstall(pluginCode, request != null && request.isRemoveData(), currentUser());
+        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+    }
+
+    @DeleteMapping("/{pluginCode}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> uninstallDelete(
             @PathVariable("pluginCode") String pluginCode,
             @RequestBody(required = false) PluginDTO.UninstallRequest request
     ) {

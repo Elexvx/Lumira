@@ -5,10 +5,12 @@
     <insert id="upsertDefinition">
         insert into sys_plugin_definition (
             plugin_code, plugin_name, plugin_type, description, author, plugin_api_version,
-            builtin_flag, status, sort_no, created_by, updated_by, deleted
+            builtin_flag, status, sort_no, schema_mode, supports_hot_disable, supports_data_purge,
+            runtime_contributions_json, created_by, updated_by, deleted
         ) values (
             #{entity.pluginCode}, #{entity.pluginName}, #{entity.pluginType}, #{entity.description},
-            #{entity.author}, #{entity.pluginApiVersion}, 0, 'ENABLED', 0,
+            #{entity.author}, #{entity.pluginApiVersion}, 0, 'ENABLED', 0, #{entity.schemaMode},
+            #{entity.supportsHotDisable}, #{entity.supportsDataPurge}, #{entity.runtimeContributionsJson},
             #{entity.createdBy}, #{entity.updatedBy}, 0
         )
         on duplicate key update
@@ -17,6 +19,10 @@
             description = values(description),
             author = values(author),
             plugin_api_version = values(plugin_api_version),
+            schema_mode = values(schema_mode),
+            supports_hot_disable = values(supports_hot_disable),
+            supports_data_purge = values(supports_data_purge),
+            runtime_contributions_json = values(runtime_contributions_json),
             status = values(status),
             updated_by = values(updated_by),
             updated_at = current_timestamp,
@@ -26,11 +32,11 @@
     <insert id="upsertVersion">
         insert into sys_plugin_version (
             plugin_code, version, package_path, checksum, signature_path, min_platform_version,
-            install_status, load_status, health_status, is_active, rollbackable,
+            install_status, load_status, health_status, lifecycle_status, schema_status, is_active, rollbackable,
             metadata_json, validation_report_json, staged_path, created_by, updated_by, deleted
         ) values (
             #{entity.pluginCode}, #{entity.version}, #{entity.packagePath}, #{entity.checksum},
-            #{entity.signaturePath}, #{entity.minPlatformVersion}, 'VERIFIED', 'UNLOADED', 'UNKNOWN',
+            #{entity.signaturePath}, #{entity.minPlatformVersion}, 'VERIFIED', 'UNLOADED', 'UNKNOWN', 'INSTALLED', 'PENDING',
             0, 0, #{entity.metadataJson}, #{entity.validationReportJson}, #{entity.stagedPath},
             #{entity.createdBy}, #{entity.updatedBy}, 0
         )
@@ -42,6 +48,8 @@
             install_status = values(install_status),
             load_status = values(load_status),
             health_status = values(health_status),
+            lifecycle_status = values(lifecycle_status),
+            schema_status = values(schema_status),
             metadata_json = values(metadata_json),
             validation_report_json = values(validation_report_json),
             staged_path = values(staged_path),
@@ -60,7 +68,19 @@
     </select>
 
     <select id="listDefinitions" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginDefinitionVO">
-        select plugin_code, plugin_name, plugin_type, description, author, plugin_api_version, status, builtin_flag, sort_no
+        select plugin_code,
+               plugin_name,
+               plugin_type,
+               description,
+               author,
+               plugin_api_version,
+               status,
+               builtin_flag,
+               sort_no,
+               schema_mode,
+               supports_hot_disable,
+               supports_data_purge,
+               runtime_contributions_json as runtimeContributionsJson
         from sys_plugin_definition
         where deleted = 0
         order by sort_no asc, plugin_code asc
@@ -68,7 +88,8 @@
 
     <sql id="versionVoColumns">
         plugin_code, version, install_status, load_status, health_status, is_active, rollbackable,
-        min_platform_version, frontend_manifest_path, validation_report_json, installed_at, created_at
+        min_platform_version, frontend_manifest_path, validation_report_json, installed_at, created_at,
+        lifecycle_status, schema_status
     </sql>
 
     <select id="listVersions" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginVersionVO">
@@ -96,6 +117,32 @@
         limit 200
     </select>
 
+    <select id="pluginStatus" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginStatusVO">
+        select d.plugin_code,
+               d.plugin_name,
+               t.plugin_version as version,
+               case when t.enabled = 1 and t.deleted = 0 then 1 else 0 end as tenant_enabled,
+               coalesce(v.lifecycle_status, 'INSTALLED') as lifecycle_status,
+               coalesce(v.schema_status, 'PENDING') as schema_status,
+               case when d.builtin_flag = 1 then 1 else 0 end as builtin,
+               d.schema_mode,
+               case when d.supports_hot_disable = 1 then 1 else 0 end as supports_hot_disable,
+               case when d.supports_data_purge = 1 then 1 else 0 end as supports_data_purge,
+               d.runtime_contributions_json as runtimeContributionsJson
+        from sys_plugin_definition d
+        left join sys_plugin_tenant t
+          on t.plugin_code = d.plugin_code
+         and t.tenant_id = #{tenantId}
+         and t.deleted = 0
+        left join sys_plugin_version v
+          on v.plugin_code = d.plugin_code
+         and v.version = t.plugin_version
+         and v.deleted = 0
+        where d.plugin_code = #{pluginCode}
+          and d.deleted = 0
+        limit 1
+    </select>
+
     <update id="markInstalled">
         update sys_plugin_version
         set artifact_path = #{artifactPath},
@@ -104,6 +151,8 @@
             install_status = #{installStatus},
             load_status = #{loadStatus},
             health_status = #{healthStatus},
+            lifecycle_status = 'INSTALLED',
+            schema_status = 'READY',
             rollbackable = #{rollbackable},
             installed_at = current_timestamp,
             updated_at = current_timestamp
@@ -117,6 +166,8 @@
         set install_status = #{installStatus},
             load_status = #{loadStatus},
             health_status = #{healthStatus},
+            lifecycle_status = #{lifecycleStatus},
+            schema_status = #{schemaStatus},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and version = #{version}
@@ -256,6 +307,8 @@
         set install_status = 'UNINSTALLED',
             load_status = 'UNLOADED',
             health_status = 'UNKNOWN',
+            lifecycle_status = 'DISABLED',
+            schema_status = 'REMOVED',
             is_active = 0,
             deleted = 1,
             updated_by = #{operatorId},
@@ -308,6 +361,7 @@
     <delete id="deletePermissionRelationsByPlugin">delete from sys_plugin_permission_rel where plugin_code = #{pluginCode}</delete>
     <delete id="deleteDependenciesByPlugin">delete from sys_plugin_dependency where plugin_code = #{pluginCode}</delete>
     <delete id="deleteDefinitionByPlugin">delete from sys_plugin_definition where plugin_code = #{pluginCode}</delete>
+    <delete id="deleteSchemaHistoryByPlugin">delete from sys_plugin_schema_history where plugin_code = #{pluginCode}</delete>
 
     <select id="findTenantPlugin" resultType="com.legendary.invention.saas.modules.plugin.entity.PluginEntities$PluginTenantEntity">
         select tenant_id, plugin_code, plugin_version, enabled, config_json
@@ -351,6 +405,25 @@
           and deleted = 0
         order by created_at desc
     </select>
+
+    <select id="hasSuccessfulSchemaHistory" resultType="java.lang.Integer">
+        select count(1)
+        from sys_plugin_schema_history
+        where plugin_code = #{pluginCode}
+          and plugin_version = #{pluginVersion}
+          and direction = #{direction}
+          and step_name = #{stepName}
+          and execution_status = 'SUCCESS'
+    </select>
+
+    <insert id="insertSchemaHistory">
+        insert into sys_plugin_schema_history (
+            plugin_code, plugin_version, step_name, direction, script_path, execution_status, detail_message, created_by, created_at
+        ) values (
+            #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.stepName}, #{entity.direction},
+            #{entity.scriptPath}, #{entity.executionStatus}, #{entity.detailMessage}, #{entity.createdBy}, current_timestamp
+        )
+    </insert>
 
     <insert id="insertRuntimeLog">
         insert into sys_plugin_runtime_log (

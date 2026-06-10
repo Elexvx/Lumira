@@ -80,6 +80,7 @@ public final class PluginDTO {
         private Long tenantId;
         @NotBlank
         private String pluginCode;
+        private Boolean purgeData;
 
         public Long getTenantId() {
             return tenantId;
@@ -95,6 +96,14 @@ public final class PluginDTO {
 
         public void setPluginCode(String pluginCode) {
             this.pluginCode = pluginCode;
+        }
+
+        public Boolean getPurgeData() {
+            return purgeData;
+        }
+
+        public void setPurgeData(Boolean purgeData) {
+            this.purgeData = purgeData;
         }
     }
 
@@ -155,6 +164,10 @@ public final class PluginDTO {
         private List<PluginMenuDeclaration> menuDeclarations;
         private String configSchema;
         private String migrationStrategy;
+        private String schemaMode;
+        private Boolean supportsHotDisable;
+        private Boolean supportsDataPurge;
+        private List<String> runtimeContributions;
         @NotBlank
         private String checksumAlgorithm;
 
@@ -276,6 +289,38 @@ public final class PluginDTO {
 
         public void setMigrationStrategy(String migrationStrategy) {
             this.migrationStrategy = migrationStrategy;
+        }
+
+        public String getSchemaMode() {
+            return schemaMode;
+        }
+
+        public void setSchemaMode(String schemaMode) {
+            this.schemaMode = schemaMode;
+        }
+
+        public Boolean getSupportsHotDisable() {
+            return supportsHotDisable;
+        }
+
+        public void setSupportsHotDisable(Boolean supportsHotDisable) {
+            this.supportsHotDisable = supportsHotDisable;
+        }
+
+        public Boolean getSupportsDataPurge() {
+            return supportsDataPurge;
+        }
+
+        public void setSupportsDataPurge(Boolean supportsDataPurge) {
+            this.supportsDataPurge = supportsDataPurge;
+        }
+
+        public List<String> getRuntimeContributions() {
+            return runtimeContributions;
+        }
+
+        public void setRuntimeContributions(List<String> runtimeContributions) {
+            this.runtimeContributions = runtimeContributions;
         }
 
         public String getChecksumAlgorithm() {
@@ -478,6 +523,19 @@ public final class PluginDTO {
 
         public void setSharedDeps(List<String> sharedDeps) {
             this.sharedDeps = sharedDeps;
+        }
+    }
+
+    public static class PluginStatusRequest {
+        @NotNull
+        private Long tenantId;
+
+        public Long getTenantId() {
+            return tenantId;
+        }
+
+        public void setTenantId(Long tenantId) {
+            this.tenantId = tenantId;
         }
     }
 }

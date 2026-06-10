@@ -754,6 +754,10 @@ export interface PluginDefinition {
   status: string;
   builtinFlag: number;
   sortNo: number;
+  schemaMode?: string;
+  supportsHotDisable?: boolean;
+  supportsDataPurge?: boolean;
+  runtimeContributions?: string[];
 }
 
 export interface PluginVersion {
@@ -769,6 +773,8 @@ export interface PluginVersion {
   validationReportJson?: string;
   installedAt?: string;
   createdAt?: string;
+  lifecycleStatus?: string;
+  schemaStatus?: string;
 }
 
 export interface PluginUploadResult {
@@ -809,6 +815,57 @@ export interface TenantPlugin {
   sharedDeps?: string[];
   routes?: string[];
   menus?: MenuNode[];
+  lifecycleStatus?: string;
+  schemaStatus?: string;
+  supportsHotDisable?: boolean;
+  supportsDataPurge?: boolean;
+  runtimeContributions?: string[];
+}
+
+export interface PluginStatus {
+  pluginCode: string;
+  pluginName: string;
+  version?: string;
+  tenantEnabled: boolean;
+  lifecycleStatus: string;
+  schemaStatus: string;
+  builtin?: boolean;
+  schemaMode?: string;
+  supportsHotDisable?: boolean;
+  supportsDataPurge?: boolean;
+  runtimeContributions?: string[];
+}
+
+export interface SensitiveWordRecord {
+  id: number;
+  tenantId: number;
+  word: string;
+  normalizedWord: string;
+  category?: string | null;
+  severity?: string | null;
+  enabled: boolean;
+  createdBy?: number | null;
+  createdAt?: string | null;
+  updatedBy?: number | null;
+  updatedAt?: string | null;
+}
+
+export interface SensitiveWordImportResult {
+  total: number;
+  imported: number;
+  duplicated: number;
+  invalid: number;
+}
+
+export interface SensitiveWordMatchItem {
+  fieldPath?: string | null;
+  word: string;
+  maskedWord: string;
+}
+
+export interface SensitiveWordCheckResult {
+  hit: boolean;
+  matches: SensitiveWordMatchItem[];
 }
 
 export interface NotificationRecord {

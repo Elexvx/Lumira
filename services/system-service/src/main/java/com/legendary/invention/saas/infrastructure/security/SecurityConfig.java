@@ -22,6 +22,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import com.legendary.invention.saas.modules.system.sensitive.security.SensitiveWordFormFilter;
 
 import java.io.IOException;
 
@@ -33,19 +34,22 @@ public class SecurityConfig {
     private final InternalServiceTokenAuthFilter internalServiceTokenAuthFilter;
     private final SecurityProperties securityProperties;
     private final ObjectMapper objectMapper;
+    private final SensitiveWordFormFilter sensitiveWordFormFilter;
 
     public SecurityConfig(
             TraceIdFilter traceIdFilter,
             JwtAuthFilter jwtAuthFilter,
             InternalServiceTokenAuthFilter internalServiceTokenAuthFilter,
             SecurityProperties securityProperties,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            SensitiveWordFormFilter sensitiveWordFormFilter
     ) {
         this.traceIdFilter = traceIdFilter;
         this.jwtAuthFilter = jwtAuthFilter;
         this.internalServiceTokenAuthFilter = internalServiceTokenAuthFilter;
         this.securityProperties = securityProperties;
         this.objectMapper = objectMapper;
+        this.sensitiveWordFormFilter = sensitiveWordFormFilter;
     }
 
     @Bean
@@ -70,7 +74,8 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .addFilterBefore(traceIdFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(internalServiceTokenAuthFilter, TraceIdFilter.class)
-                .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class);
+                .addFilterAfter(jwtAuthFilter, InternalServiceTokenAuthFilter.class)
+                .addFilterAfter(sensitiveWordFormFilter, JwtAuthFilter.class);
         return http.build();
     }
 

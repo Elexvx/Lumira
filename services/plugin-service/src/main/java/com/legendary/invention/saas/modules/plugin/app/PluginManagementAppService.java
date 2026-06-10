@@ -44,6 +44,7 @@ public class PluginManagementAppService {
     private static final Logger log = LoggerFactory.getLogger(PluginManagementAppService.class);
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
     };
+    private static final String BUILTIN_SENSITIVE_WORDS_PLUGIN = "sensitive-words";
 
     private final PluginArtifactLoader pluginArtifactLoader;
     private final PluginPersistenceService pluginPersistenceService;
@@ -123,7 +124,7 @@ public class PluginManagementAppService {
         validateDependencies(metadata);
         Path versionHome = pluginArtifactLoader.installToVersionHome(pluginCode, version, Path.of(versionEntity.getStagedPath()));
         log(null, pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "插件文件已落盘", null, currentUser.getUserId());
-        pluginMigrationService.executeMigrations(versionHome);
+        pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, currentUser.getUserId());
         log(null, pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "插件私有迁移已完成", null, currentUser.getUserId());
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(metadata, versionHome);
         pluginRegistry.register(descriptor);
@@ -178,10 +179,14 @@ public class PluginManagementAppService {
             String resolvedVersion = request.getVersion();
             if (resolvedVersion == null || resolvedVersion.isBlank()) {
                 resolvedVersion = pluginRegistry.findActiveVersion(request.getPluginCode())
-                        .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "当前插件不存在激活版本"));
+                        .orElseGet(() -> pluginPersistenceService.listInstalledVersions(request.getPluginCode()).stream()
+                                .findFirst()
+                                .map(PluginVersionEntity::getVersion)
+                                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "当前插件不存在激活版本")));
             }
             final String version = resolvedVersion;
             ensureLoaded(request.getPluginCode(), version);
+            pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), currentUser.getUserId());
             enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
             transactionTemplate.executeWithoutResult(status -> {
                 pluginPersistenceService.enablePluginForTenant(
@@ -192,6 +197,7 @@ public class PluginManagementAppService {
                         currentUser.getUserId()
                 );
                 pluginPersistenceService.registerTenantPermissions(request.getTenantId(), request.getPluginCode(), version);
+                pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY");
             });
             systemInternalApi.invalidatePermissionSnapshot(request.getTenantId());
             safeLog(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "平台插件已启用", null, currentUser.getUserId());
@@ -207,8 +213,36 @@ public class PluginManagementAppService {
         PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(request.getTenantId(), request.getPluginCode())
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前尚未启用该插件"));
         pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());
+        boolean purgeData = Boolean.TRUE.equals(request.getPurgeData());
+        if (purgeData) {
+            pluginMigrationService.executeDownMigrations(
+                    request.getPluginCode(),
+                    tenantEntity.getPluginVersion(),
+                    resolveVersionHome(request.getPluginCode(), tenantEntity.getPluginVersion()),
+                    currentUser.getUserId()
+            );
+        }
+        pluginPersistenceService.updateVersionStatus(
+                request.getPluginCode(),
+                tenantEntity.getPluginVersion(),
+                "LOADED",
+                purgeData ? "UNLOADED" : "LOADED",
+                "HEALTHY",
+                "DISABLED",
+                purgeData ? "REMOVED" : "READY"
+        );
         systemInternalApi.invalidatePermissionSnapshot(request.getTenantId());
-        safeLog(request.getTenantId(), request.getPluginCode(), tenantEntity.getPluginVersion(), "DISABLE", "DISABLED", "SUCCESS", "平台插件已停用", null, currentUser.getUserId());
+        safeLog(
+                request.getTenantId(),
+                request.getPluginCode(),
+                tenantEntity.getPluginVersion(),
+                "DISABLE",
+                "DISABLED",
+                "SUCCESS",
+                purgeData ? "平台插件已停用并删除独立数据表" : "平台插件已停用",
+                null,
+                currentUser.getUserId()
+        );
     }
 
     public List<PluginVO.PluginDefinitionVO> listDefinitions() {
@@ -250,11 +284,26 @@ public class PluginManagementAppService {
         return normalized;
     }
 
+    public PluginVO.PluginStatusVO status(Long tenantId, String pluginCode) {
+        PluginVO.PluginStatusVO status = pluginPersistenceService.pluginStatus(tenantId, pluginCode)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "插件不存在"));
+        if (status.getRuntimeContributions() == null || status.getRuntimeContributions().isEmpty()) {
+            status.setRuntimeContributions(resolveRuntimeContributions(pluginCode));
+        }
+        return status;
+    }
+
     @Transactional
     public void uninstall(String pluginCode, boolean removeData, CurrentUser currentUser) {
+        if (isBuiltinCorePlugin(pluginCode)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "内置插件不支持卸载，请改为停用插件");
+        }
         List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
         List<Long> tenantIds = pluginPersistenceService.listTenantIdsForPlugin(pluginCode);
         for (PluginVersionEntity versionEntity : versions) {
+            if (removeData) {
+                pluginMigrationService.executeDownMigrations(pluginCode, versionEntity.getVersion(), resolveVersionHome(pluginCode, versionEntity.getVersion()), currentUser.getUserId());
+            }
             removePluginVersionArtifacts(versionEntity);
             try {
                 pluginRegistry.unload(pluginCode, versionEntity.getVersion());
@@ -369,6 +418,9 @@ public class PluginManagementAppService {
     }
 
     public Path resolveManifestPath(String pluginCode, String version) {
+        if (isBuiltinCorePlugin(pluginCode)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "内置插件不提供独立前端清单");
+        }
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
         if (versionEntity.getFrontendManifestPath() == null || versionEntity.getFrontendManifestPath().isBlank()) {
             throw new BizException(ErrorCode.NOT_FOUND, "插件清单不存在");
@@ -397,6 +449,9 @@ public class PluginManagementAppService {
     }
 
     private void ensureLoaded(String pluginCode, String version) {
+        if (isBuiltinCorePlugin(pluginCode)) {
+            return;
+        }
         if (pluginRegistry.find(pluginCode, version).isPresent()) {
             return;
         }
@@ -439,6 +494,22 @@ public class PluginManagementAppService {
     }
 
     private void populateRuntimeMetadata(PluginVO.TenantPluginVO plugin) throws Exception {
+        PluginVO.PluginStatusVO status = pluginPersistenceService.pluginStatus(
+                        com.legendary.invention.common.constant.PlatformConstants.PLATFORM_TENANT_ID,
+                        plugin.getPluginCode()
+                )
+                .orElse(null);
+        if (isBuiltinCorePlugin(plugin.getPluginCode())) {
+            plugin.setSharedDeps(List.of());
+            plugin.setRoutes(List.of("/plugins/sensitive-words"));
+            plugin.setMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
+            plugin.setLifecycleStatus(status == null ? "ENABLED" : status.getLifecycleStatus());
+            plugin.setSchemaStatus(status == null ? "READY" : status.getSchemaStatus());
+            plugin.setSupportsHotDisable(status == null ? Boolean.TRUE : status.getSupportsHotDisable());
+            plugin.setSupportsDataPurge(status == null ? Boolean.TRUE : status.getSupportsDataPurge());
+            plugin.setRuntimeContributions(status == null ? resolveRuntimeContributions(plugin.getPluginCode()) : status.getRuntimeContributions());
+            return;
+        }
         PluginVersionEntity versionEntity = requireVersion(plugin.getPluginCode(), plugin.getVersion());
         if (versionEntity.getArtifactPath() == null || versionEntity.getArtifactPath().isBlank()) {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行目录不存在");
@@ -449,6 +520,13 @@ public class PluginManagementAppService {
         plugin.setSharedDeps(manifest.getSharedDeps());
         plugin.setRoutes(manifest.getRoutes());
         plugin.setMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
+        if (status != null) {
+            plugin.setLifecycleStatus(status.getLifecycleStatus());
+            plugin.setSchemaStatus(status.getSchemaStatus());
+            plugin.setSupportsHotDisable(status.getSupportsHotDisable());
+            plugin.setSupportsDataPurge(status.getSupportsDataPurge());
+            plugin.setRuntimeContributions(status.getRuntimeContributions());
+        }
     }
 
     private void validateRuntimeAssets(Path versionHome, PluginDTO.FrontendPluginManifest manifest) {
@@ -598,6 +676,31 @@ public class PluginManagementAppService {
     private boolean isMenuAllowed(Map<String, Object> menu, java.util.Set<String> permissions) {
         String permissionKey = (String) menu.get("permissionKey");
         return permissionKey == null || permissionKey.isBlank() || permissions.contains("*") || permissions.contains(permissionKey);
+    }
+
+    private boolean isBuiltinCorePlugin(String pluginCode) {
+        return BUILTIN_SENSITIVE_WORDS_PLUGIN.equals(pluginCode);
+    }
+
+    private Path resolveVersionHome(String pluginCode, String version) {
+        if (isBuiltinCorePlugin(pluginCode)) {
+            return null;
+        }
+        PluginVersionEntity versionEntity = pluginPersistenceService.findVersion(pluginCode, version).orElse(null);
+        if (versionEntity == null) {
+            return null;
+        }
+        if (!StringUtils.hasText(versionEntity.getArtifactPath())) {
+            return null;
+        }
+        return Path.of(versionEntity.getArtifactPath());
+    }
+
+    private List<String> resolveRuntimeContributions(String pluginCode) {
+        if (isBuiltinCorePlugin(pluginCode)) {
+            return List.of("routes", "menus", "permissions", "importers", "interceptors");
+        }
+        return List.of();
     }
 
     private PluginVersionEntity requireVersion(String pluginCode, String version) {

@@ -24,6 +24,10 @@ public final class PluginEntities {
         private Integer builtinFlag;
         private String status;
         private Integer sortNo;
+        private String schemaMode;
+        private Integer supportsHotDisable;
+        private Integer supportsDataPurge;
+        private String runtimeContributionsJson;
         private Long createdBy;
         private LocalDateTime createdAt;
         private Long updatedBy;
@@ -110,6 +114,38 @@ public final class PluginEntities {
             this.sortNo = sortNo;
         }
 
+        public String getSchemaMode() {
+            return schemaMode;
+        }
+
+        public void setSchemaMode(String schemaMode) {
+            this.schemaMode = schemaMode;
+        }
+
+        public Integer getSupportsHotDisable() {
+            return supportsHotDisable;
+        }
+
+        public void setSupportsHotDisable(Integer supportsHotDisable) {
+            this.supportsHotDisable = supportsHotDisable;
+        }
+
+        public Integer getSupportsDataPurge() {
+            return supportsDataPurge;
+        }
+
+        public void setSupportsDataPurge(Integer supportsDataPurge) {
+            this.supportsDataPurge = supportsDataPurge;
+        }
+
+        public String getRuntimeContributionsJson() {
+            return runtimeContributionsJson;
+        }
+
+        public void setRuntimeContributionsJson(String runtimeContributionsJson) {
+            this.runtimeContributionsJson = runtimeContributionsJson;
+        }
+
         public Long getCreatedBy() {
             return createdBy;
         }
@@ -167,6 +203,8 @@ public final class PluginEntities {
         private String installStatus;
         private String loadStatus;
         private String healthStatus;
+        private String lifecycleStatus;
+        private String schemaStatus;
         private Integer isActive;
         private Integer rollbackable;
         private String metadataJson;
@@ -281,6 +319,22 @@ public final class PluginEntities {
 
         public void setHealthStatus(String healthStatus) {
             this.healthStatus = healthStatus;
+        }
+
+        public String getLifecycleStatus() {
+            return lifecycleStatus;
+        }
+
+        public void setLifecycleStatus(String lifecycleStatus) {
+            this.lifecycleStatus = lifecycleStatus;
+        }
+
+        public String getSchemaStatus() {
+            return schemaStatus;
+        }
+
+        public void setSchemaStatus(String schemaStatus) {
+            this.schemaStatus = schemaStatus;
         }
 
         public Integer getIsActive() {
@@ -934,6 +988,101 @@ public final class PluginEntities {
 
         public void setDeleted(Integer deleted) {
             this.deleted = deleted;
+        }
+    }
+
+    @TableName("sys_plugin_schema_history")
+    public static class PluginSchemaHistoryEntity {
+        @TableId(type = IdType.AUTO)
+        private Long id;
+        private String pluginCode;
+        private String pluginVersion;
+        private String stepName;
+        private String direction;
+        private String scriptPath;
+        private String executionStatus;
+        private String detailMessage;
+        private Long createdBy;
+        private LocalDateTime createdAt;
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public String getPluginCode() {
+            return pluginCode;
+        }
+
+        public void setPluginCode(String pluginCode) {
+            this.pluginCode = pluginCode;
+        }
+
+        public String getPluginVersion() {
+            return pluginVersion;
+        }
+
+        public void setPluginVersion(String pluginVersion) {
+            this.pluginVersion = pluginVersion;
+        }
+
+        public String getStepName() {
+            return stepName;
+        }
+
+        public void setStepName(String stepName) {
+            this.stepName = stepName;
+        }
+
+        public String getDirection() {
+            return direction;
+        }
+
+        public void setDirection(String direction) {
+            this.direction = direction;
+        }
+
+        public String getScriptPath() {
+            return scriptPath;
+        }
+
+        public void setScriptPath(String scriptPath) {
+            this.scriptPath = scriptPath;
+        }
+
+        public String getExecutionStatus() {
+            return executionStatus;
+        }
+
+        public void setExecutionStatus(String executionStatus) {
+            this.executionStatus = executionStatus;
+        }
+
+        public String getDetailMessage() {
+            return detailMessage;
+        }
+
+        public void setDetailMessage(String detailMessage) {
+            this.detailMessage = detailMessage;
+        }
+
+        public Long getCreatedBy() {
+            return createdBy;
+        }
+
+        public void setCreatedBy(Long createdBy) {
+            this.createdBy = createdBy;
+        }
+
+        public LocalDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
         }
     }
 }

@@ -31,6 +31,8 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     List<PluginVO.PluginRuntimeLogVO> listRuntimeLogs(@Param("pluginCode") String pluginCode);
 
+    PluginVO.PluginStatusVO pluginStatus(@Param("tenantId") Long tenantId, @Param("pluginCode") String pluginCode);
+
     void markInstalled(
             @Param("pluginCode") String pluginCode,
             @Param("version") String version,
@@ -48,7 +50,9 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
             @Param("version") String version,
             @Param("installStatus") String installStatus,
             @Param("loadStatus") String loadStatus,
-            @Param("healthStatus") String healthStatus
+            @Param("healthStatus") String healthStatus,
+            @Param("lifecycleStatus") String lifecycleStatus,
+            @Param("schemaStatus") String schemaStatus
     );
 
     void deactivateOtherVersions(@Param("pluginCode") String pluginCode, @Param("version") String version);
@@ -103,6 +107,8 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     void deleteDefinitionByPlugin(@Param("pluginCode") String pluginCode);
 
+    void deleteSchemaHistoryByPlugin(@Param("pluginCode") String pluginCode);
+
     PluginTenantEntity findTenantPlugin(@Param("tenantId") Long tenantId, @Param("pluginCode") String pluginCode);
 
     List<PluginVO.TenantPluginVO> listTenantPlugins(@Param("tenantId") Long tenantId);
@@ -110,6 +116,15 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
     List<Long> listTenantIdsForPlugin(@Param("pluginCode") String pluginCode);
 
     List<PluginVersionEntity> listInstalledVersions(@Param("pluginCode") String pluginCode);
+
+    Integer hasSuccessfulSchemaHistory(
+            @Param("pluginCode") String pluginCode,
+            @Param("pluginVersion") String pluginVersion,
+            @Param("direction") String direction,
+            @Param("stepName") String stepName
+    );
+
+    void insertSchemaHistory(@Param("entity") com.legendary.invention.saas.modules.plugin.entity.PluginEntities.PluginSchemaHistoryEntity entity);
 
     void insertRuntimeLog(@Param("entity") PluginRuntimeLogEntity entity);
 

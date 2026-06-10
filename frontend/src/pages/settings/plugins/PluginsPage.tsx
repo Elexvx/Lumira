@@ -105,7 +105,7 @@ const PluginCardsGrid = ({
                   <Button disabled={!canViewLogs} onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>
                     {t('日志', 'Logs')}
                   </Button>
-                  <Button danger disabled={!canDisable} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
+                  <Button danger disabled={!canDisable || plugin.builtinFlag === 1} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
                     {t('卸载', 'Uninstall')}
                   </Button>
                 </Space>
@@ -298,6 +298,12 @@ export type PluginPanelState = {
   setUninstallTarget: (value: PluginDefinition | null | ((current: PluginDefinition | null) => PluginDefinition | null)) => void;
   removePluginData: boolean;
   setRemovePluginData: (value: boolean | ((current: boolean) => boolean)) => void;
+  disableDialogOpen: boolean;
+  setDisableDialogOpen: (value: boolean | ((current: boolean) => boolean)) => void;
+  disableTarget: PluginDefinition | null;
+  setDisableTarget: (value: PluginDefinition | null | ((current: PluginDefinition | null) => PluginDefinition | null)) => void;
+  purgePluginDataOnDisable: boolean;
+  setPurgePluginDataOnDisable: (value: boolean | ((current: boolean) => boolean)) => void;
 };
 
 type UsePluginMutationActionsParams = {
@@ -470,21 +476,11 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
   );
   const handleDisable = useCallback(
     async (pluginCode: string) => {
-      await confirmMutation(formatMessage({ id: 'page.plugins.disable', defaultMessage: 'Disable plugin' }), pluginCode, async () =>
-        runVersionMutation(
-          () =>
-            request<boolean>('/v1/plugins/disable', {
-              method: 'POST',
-              data: { tenantId: 1001, pluginCode },
-              ...API_OPTS.NO_REDIRECT,
-            }),
-          panel.setMutationLoading,
-          formatMessage({ id: 'page.plugins.success.disabled', defaultMessage: 'Plugin disabled' }),
-          formatMessage({ id: 'page.plugins.error.disable', defaultMessage: 'Failed to disable plugin, please try again later' }),
-        ),
-      );
+      panel.setDisableTarget(definitions.find((item) => item.pluginCode === pluginCode) || null);
+      panel.setPurgePluginDataOnDisable(false);
+      panel.setDisableDialogOpen(true);
     },
-    [confirmMutation, panel, runVersionMutation],
+    [definitions, panel],
   );
   const handleRollback = useCallback(
     async (pluginCode: string, version: string) => {
@@ -536,6 +532,33 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
       await refreshAfterMutation();
     } catch (error) {
       handlePluginPageError(error, formatMessage({ id: 'page.plugins.error.uninstall', defaultMessage: 'Failed to uninstall plugin, please try again later' }));
+    } finally {
+      panel.setMutationLoading(false);
+    }
+  }, [handlePluginPageError, panel, refreshAfterMutation]);
+
+  const confirmDisable = useCallback(async () => {
+    if (!panel.disableTarget) {
+      return;
+    }
+
+    panel.setMutationLoading(true);
+    try {
+      await request<boolean>(`/v1/plugins/${panel.disableTarget.pluginCode}/disable`, {
+        method: 'POST',
+        data: { purgeData: panel.purgePluginDataOnDisable },
+        ...API_OPTS.NO_REDIRECT,
+      });
+      message.success(
+        panel.purgePluginDataOnDisable
+          ? formatMessage({ id: 'page.plugins.success.disabledAndPurged', defaultMessage: 'Plugin disabled and plugin tables removed' })
+          : formatMessage({ id: 'page.plugins.success.disabled', defaultMessage: 'Plugin disabled' }),
+      );
+      panel.setDisableDialogOpen(false);
+      panel.setDisableTarget(null);
+      await refreshAfterMutation();
+    } catch (error) {
+      handlePluginPageError(error, formatMessage({ id: 'page.plugins.error.disable', defaultMessage: 'Failed to disable plugin, please try again later' }));
     } finally {
       panel.setMutationLoading(false);
     }
@@ -609,6 +632,7 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
     handleRollback,
     handleUninstall,
     confirmUninstall,
+    confirmDisable,
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
@@ -645,6 +669,9 @@ const usePluginManagementActions = ({
   const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
   const [uninstallTarget, setUninstallTarget] = useState<PluginDefinition | null>(null);
   const [removePluginData, setRemovePluginData] = useState(false);
+  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
+  const [disableTarget, setDisableTarget] = useState<PluginDefinition | null>(null);
+  const [purgePluginDataOnDisable, setPurgePluginDataOnDisable] = useState(false);
   const panel: PluginPanelState = {
     selectedPlugin,
     setSelectedPlugin,
@@ -670,6 +697,12 @@ const usePluginManagementActions = ({
     setUninstallTarget,
     removePluginData,
     setRemovePluginData,
+    disableDialogOpen,
+    setDisableDialogOpen,
+    disableTarget,
+    setDisableTarget,
+    purgePluginDataOnDisable,
+    setPurgePluginDataOnDisable,
   };
   const { token } = theme.useToken();
   const { actionPermission, responsive } = usePagePermissionActions();
@@ -700,6 +733,7 @@ const usePluginManagementActions = ({
     handleRollback,
     handleUninstall,
     confirmUninstall,
+    confirmDisable,
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
@@ -752,6 +786,7 @@ const usePluginManagementActions = ({
     handleEnable,
     handleDisable,
     confirmUninstall,
+    confirmDisable,
   };
 };
 
@@ -835,8 +870,16 @@ const PluginDetailDrawer = ({
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.status', defaultMessage: 'Status' })}>{selectedPlugin.status}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentVersion', defaultMessage: 'Current version' })}>{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.enabled', defaultMessage: 'Enabled' })}>{selectedTenantPlugin ? formatMessage({ id: 'page.plugins.enabled.true', defaultMessage: 'Enabled' }) : formatMessage({ id: 'page.plugins.enabled.false', defaultMessage: 'Disabled' })}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaMode', defaultMessage: 'Schema mode' })}>{selectedPlugin.schemaMode || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.lifecycleStatus', defaultMessage: 'Lifecycle status' })}>{selectedTenantPlugin?.lifecycleStatus || selectedActiveVersion?.lifecycleStatus || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaStatus', defaultMessage: 'Schema status' })}>{selectedTenantPlugin?.schemaStatus || selectedActiveVersion?.schemaStatus || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.hotDisable', defaultMessage: 'Hot disable' })}>{selectedPlugin.supportsHotDisable ? t('支持', 'Supported') : t('不支持', 'Not supported')}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.dataPurge', defaultMessage: 'Data purge' })}>{selectedPlugin.supportsDataPurge ? t('支持', 'Supported') : t('不支持', 'Not supported')}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.menuCount', defaultMessage: 'Menu count' })}>{selectedTenantPlugin?.menus?.length || 0}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.routeCount', defaultMessage: 'Route count' })}>{selectedTenantPlugin?.routes?.length || 0}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.runtimeContributions', defaultMessage: 'Runtime contributions' })}>
+          {(selectedTenantPlugin?.runtimeContributions || selectedPlugin.runtimeContributions || []).join(', ') || '-'}
+        </Descriptions.Item>
       </Descriptions>
     ) : null}
   </ManagementDrawer>
@@ -996,6 +1039,100 @@ const PluginUninstallModal = ({
   );
 };
 
+const PluginDisableModal = ({
+  token,
+  isMobile,
+  disableDialogOpen,
+  disableTarget,
+  purgePluginDataOnDisable,
+  mutationLoading,
+  setDisableDialogOpen,
+  setDisableTarget,
+  setPurgePluginDataOnDisable,
+  confirmDisable,
+}: {
+  token: { colorBorderSecondary: string; colorPrimary: string; colorBgContainer: string; colorPrimaryBg: string; colorError: string; colorErrorBg: string };
+  disableDialogOpen: boolean;
+  disableTarget: PluginDefinition | null;
+  purgePluginDataOnDisable: boolean;
+  mutationLoading: boolean;
+  setDisableDialogOpen: (open: boolean) => void;
+  setDisableTarget: (plugin: PluginDefinition | null) => void;
+  setPurgePluginDataOnDisable: (remove: boolean) => void;
+  confirmDisable: () => Promise<void>;
+  isMobile: boolean;
+}) => {
+  const rowGutterPanel = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
+  const microOffset = resolveResponsiveValue(APP_SPACING.microOffset, isMobile);
+  const rowGutterPadHorizontal = rowGutterPanel[1] + microOffset;
+
+  return (
+    <Modal
+      title={
+        disableTarget
+          ? formatMessage({ id: 'page.plugins.disableWithName', defaultMessage: 'Disable {name}' }, { name: disableTarget.pluginName })
+          : formatMessage({ id: 'page.plugins.disable', defaultMessage: 'Disable plugin' })
+      }
+      open={disableDialogOpen}
+      onCancel={() => {
+        if (mutationLoading) {
+          return;
+        }
+        setDisableDialogOpen(false);
+        setDisableTarget(null);
+      }}
+      okText={formatMessage({ id: 'page.plugins.confirm', defaultMessage: 'Confirm' })}
+      cancelText={formatMessage({ id: 'page.plugins.cancel', defaultMessage: 'Cancel' })}
+      confirmLoading={mutationLoading}
+      onOk={() => void confirmDisable()}
+      destroyOnHidden
+    >
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+        <Typography.Paragraph style={{ marginBottom: 0 }}>
+          {formatMessage({ id: 'page.plugins.confirmDisable', defaultMessage: 'You are about to disable {name}.' }, { name: disableTarget?.pluginName || disableTarget?.pluginCode || '-' })}
+        </Typography.Paragraph>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {formatMessage({ id: 'page.plugins.disableDesc', defaultMessage: 'Choose whether to keep plugin data for later re-enable, or remove plugin-owned tables and data now.' })}
+        </Typography.Paragraph>
+        <Radio.Group value={purgePluginDataOnDisable} onChange={(event) => setPurgePluginDataOnDisable(event.target.value)} style={{ width: '100%' }}>
+          <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.modalFooterGap, isMobile)} style={{ width: '100%' }}>
+            <Radio
+              value={false}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                marginInlineStart: 0,
+                padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
+                borderRadius: 'var(--saas-card-radius)',
+                border: `1px solid ${purgePluginDataOnDisable ? token.colorBorderSecondary : token.colorPrimary}`,
+                background: purgePluginDataOnDisable ? token.colorBgContainer : token.colorPrimaryBg,
+              }}
+            >
+              {formatMessage({ id: 'page.plugins.disableKeepData', defaultMessage: 'Disable only and keep data for later recovery' })}
+            </Radio>
+            <Radio
+              value={true}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                marginInlineStart: 0,
+                padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
+                borderRadius: 'var(--saas-card-radius)',
+                border: `1px solid ${purgePluginDataOnDisable ? token.colorError : token.colorBorderSecondary}`,
+                background: purgePluginDataOnDisable ? token.colorErrorBg : token.colorBgContainer,
+              }}
+            >
+              {formatMessage({ id: 'page.plugins.disableAndDeleteData', defaultMessage: 'Disable and remove plugin-owned tables/data' })}
+            </Radio>
+          </Space>
+        </Radio.Group>
+      </Space>
+    </Modal>
+  );
+};
+
 const PluginUploadModal = ({
   uploadVisible,
   canUploadPlugin,
@@ -1067,6 +1204,9 @@ const PluginsPage = () => {
     uninstallDialogOpen,
     uninstallTarget,
     removePluginData,
+    disableDialogOpen,
+    disableTarget,
+    purgePluginDataOnDisable,
     versionDrawerOpen,
     logDrawerOpen,
     detailDrawerOpen,
@@ -1086,6 +1226,9 @@ const PluginsPage = () => {
     setUninstallDialogOpen,
     setUninstallTarget,
     setRemovePluginData,
+    setDisableDialogOpen,
+    setDisableTarget,
+    setPurgePluginDataOnDisable,
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
@@ -1094,6 +1237,7 @@ const PluginsPage = () => {
     handleEnable,
     handleDisable,
     confirmUninstall,
+    confirmDisable,
   } = { ...pluginPageDataPack, ...pluginActions };
 
   return (
@@ -1183,6 +1327,18 @@ const PluginsPage = () => {
         setUninstallTarget={setUninstallTarget}
         setRemovePluginData={setRemovePluginData}
         confirmUninstall={confirmUninstall}
+        isMobile={responsive.isMobile}
+      />
+      <PluginDisableModal
+        token={token}
+        disableDialogOpen={disableDialogOpen}
+        disableTarget={disableTarget}
+        purgePluginDataOnDisable={purgePluginDataOnDisable}
+        mutationLoading={mutationLoading}
+        setDisableDialogOpen={setDisableDialogOpen}
+        setDisableTarget={setDisableTarget}
+        setPurgePluginDataOnDisable={setPurgePluginDataOnDisable}
+        confirmDisable={confirmDisable}
         isMobile={responsive.isMobile}
       />
       <PluginUploadModal
