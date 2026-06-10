@@ -13,7 +13,7 @@
 ### Task 1: Service And Data Ownership
 
 **Files:**
-- Create: `docs/15-service-data-ownership.md`
+- Create: `docs/13-service-data-ownership.md`
 
 **Steps:**
 - Inventory current service modules and Flyway-owned tables.
@@ -23,7 +23,7 @@
 ### Task 2: system-service Boundaries
 
 **Files:**
-- Create: `docs/16-system-service-module-boundaries.md`
+- Create: `docs/14-system-service-module-boundaries.md`
 
 **Steps:**
 - Document IAM, AI, configuration, audit, monitor, online-session, and plugin-view responsibilities.
@@ -32,7 +32,7 @@
 ### Task 3: Gateway, Auth, Permission Boundaries
 
 **Files:**
-- Create: `docs/17-gateway-auth-permission-boundaries.md`
+- Create: `docs/15-gateway-auth-permission-boundaries.md`
 
 **Steps:**
 - Document request flow and role matrix for frontend, gateway, auth, system IAM, and business services.
@@ -41,7 +41,7 @@
 ### Task 4: Event And Outbox
 
 **Files:**
-- Create: `docs/18-event-outbox-architecture.md`
+- Create: `docs/16-event-outbox-architecture.md`
 - Create: `services/system-service/src/main/resources/db/migration/V33__platform_event_outbox.sql`
 - Create: `services/system-service/src/main/java/com/legendary/invention/saas/infrastructure/event/PlatformEventTypes.java`
 - Create: `services/system-service/src/main/java/com/legendary/invention/saas/infrastructure/event/PlatformEventPublisher.java`
@@ -58,7 +58,7 @@
 ### Task 5: Runbook And Index
 
 **Files:**
-- Create: `docs/19-architecture-runbook.md`
+- Create: `docs/17-architecture-runbook.md`
 - Modify: `README.md`
 
 **Steps:**
@@ -84,8 +84,8 @@ git diff --check
 - Create: `services/file-service/src/main/java/com/legendary/invention/file/event/*`
 - Modify: `services/file-service/src/main/java/com/legendary/invention/file/app/FileManagementAppService.java`
 - Test: `services/file-service/src/test/java/com/legendary/invention/file/event/*Test.java`
-- Modify: `docs/15-service-data-ownership.md`
-- Modify: `docs/18-event-outbox-architecture.md`
+- Modify: `docs/13-service-data-ownership.md`
+- Modify: `docs/16-event-outbox-architecture.md`
 
 **Steps:**
 - Add file-service owner migration for `file_storage_space`.

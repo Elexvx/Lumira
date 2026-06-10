@@ -544,17 +544,23 @@ docs/
 ├─ 06-frontend-architecture.md
 ├─ 07-backend-architecture.md
 ├─ 08-development-roadmap.md
-├─ 09-first-phase-codex-execution.md
-├─ 10-first-round-codex-prompt.md
-├─ 11-bootstrap-setup.md
-├─ 12-microservice-restructure.md
-├─ 12-realtime-message-notification-api.md
-├─ 13-project-directory-guide.md
+├─ 09-realtime-message-notification-api.md
+├─ 10-project-directory-guide.md
+├─ 11-1panel-container-deploy.md
+├─ 12-plugin-duplication-maintenance.md
+├─ 13-service-data-ownership.md
+├─ 14-system-service-module-boundaries.md
+├─ 15-gateway-auth-permission-boundaries.md
+├─ 16-event-outbox-architecture.md
+├─ 17-architecture-runbook.md
+├─ 20-product-requirements-document.md
 └─ antdesign-doc/
 ```
 
-- `01-...` 到 `12-...`：前期技术方案、架构设计、权限设计、重构说明等。
-- `13-project-directory-guide.md`：就是这份目录结构说明。
+- `01-...` 到 `08-...`：总体技术方案、架构规范、开发规范和实施路线。
+- `09-...` 到 `17-...`：专项接口、目录说明、部署说明和架构治理专题。
+- `10-project-directory-guide.md`：就是这份目录结构说明。
+- `20-product-requirements-document.md`：产品需求书（PRD）。
 - `antdesign-doc/`：本地 Ant Design 参考文档。
 
 ## 7. database/

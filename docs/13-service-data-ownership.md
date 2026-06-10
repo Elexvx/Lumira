@@ -70,4 +70,4 @@
 - 将 `sys_plugin_*` 的长期写入口收口到 `plugin-service`，`system-service` 只保留菜单和权限视图。
 - 将 `sys_localization_*` 的长期 owner 收口到 `localization-service`。
 - 为文件事件补充 relay/dispatcher 与下游消费者；当前已记录 `FILE_OBJECT_UPLOADED` 和 `FILE_OBJECT_DELETED` outbox 事件。
-- 为跨服务事件继续完善统一事件命名、payload schema 和消费策略，详见 [事件与 Outbox 架构](./18-event-outbox-architecture.md)。
+- 为跨服务事件继续完善统一事件命名、payload schema 和消费策略，详见 [事件与 Outbox 架构](./16-event-outbox-architecture.md)。
