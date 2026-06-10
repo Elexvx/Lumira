@@ -17,9 +17,11 @@ import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, Pr
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { normalizeLocale } from '@/i18n/locale';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const normalizeAvatarSrc = (value?: string | null) => normalizeUploadUrl(value || '') || undefined;
 
 const GENDER_OPTIONS = [
   { label: t('男', 'Male'), value: 'MALE' },
@@ -345,6 +347,7 @@ const ProfileBasicEditDrawer = ({
   onAvatarUploadRequest: UploadProps['customRequest'];
 }) => {
   const handleDrawerClose = useConfirmableDrawerClose(() => onEditOpenChange(false));
+  const avatarSrc = normalizeAvatarSrc(avatarValue || currentUser?.avatarUrl);
 
   return (
     <Drawer
@@ -375,7 +378,7 @@ const ProfileBasicEditDrawer = ({
             <ImgCrop rotationSlider aspect={1} modalTitle={t('裁切头像', 'Crop avatar')} beforeCrop={onAvatarBeforeCrop}>
               <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
                 <Tooltip title={t('点击头像修改', 'Click avatar to edit')} placement="top">
-                  <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.large, isMobile)} src={avatarValue || currentUser?.avatarUrl || undefined} icon={<UserOutlined />} />
+                  <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.large, isMobile)} src={avatarSrc} icon={<UserOutlined />} />
                 </Tooltip>
               </Upload>
             </ImgCrop>
@@ -480,6 +483,8 @@ const ProfileCenterOverviewSection = ({
   onAvatarUploadRequest,
   recentLoginLogs,
 }: ProfileCenterOverviewSectionProps) => {
+  const avatarSrc = normalizeAvatarSrc(avatarValue || currentUser?.avatarUrl);
+
   return (
     <>
       <div className="saas-profile-page__top-row">
@@ -489,7 +494,7 @@ const ProfileCenterOverviewSection = ({
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.mobileProfileSectionGap, isMobile)} className="saas-profile-page__welcome-profile">
                 <Avatar
                   size={isMobile ? 56 : 64}
-                  src={avatarValue || currentUser?.avatarUrl || undefined}
+                  src={avatarSrc}
                   icon={<UserOutlined />}
                   className="saas-profile-page__account-avatar"
                 />
@@ -571,13 +576,13 @@ const ProfileCenterOverviewSection = ({
       <Card
         title={formatMessage({ id: 'page.profile.recentLogins', defaultMessage: 'Recent login records' })}
         loading={loading}
-        className="saas-profile-page__card"
+        className="saas-profile-page__card saas-profile-page__login-records-card"
       >
         {recentLoginLogs.length ? (
           <Timeline
             items={recentLoginLogs.map((item) => ({
               children: (
-                <Space direction="vertical" size={0}>
+                <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)}>
                   <Typography.Text strong>{item.username || formatMessage({ id: 'page.profile.recentLogins.unknownUser', defaultMessage: 'Unknown user' })}</Typography.Text>
                   <Typography.Text type="secondary">
                     {item.logResult || item.failReason || formatMessage({ id: 'page.profile.recentLogins.record', defaultMessage: 'Login record' })} · {item.createdAt}

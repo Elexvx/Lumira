@@ -4,6 +4,8 @@
   --saas-ai-assistant-available-height: calc(100dvh - var(--saas-spacing-220));
   --saas-ai-assistant-radius: var(--ant-border-radius-lg);
   --saas-ai-sender-radius: calc(var(--ant-border-radius) * 2);
+  --saas-ai-assistant-page-max-width: 1680px;
+  --saas-ai-assistant-chat-max-width: 1360px;
 
   min-height: 0;
   overflow: hidden;
@@ -42,7 +44,7 @@
 
 .saas-ai-assistant-desktop-shell {
   display: grid;
-  grid-template-columns: var(--saas-spacing-280) minmax(0, 1fr);
+  grid-template-columns: clamp(280px, 18vw, 360px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
@@ -238,7 +240,8 @@
 }
 
 .saas-ai-assistant-shell__welcome {
-  max-width: var(--saas-spacing-840);
+  width: min(100%, var(--saas-ai-assistant-chat-max-width));
+  max-width: var(--saas-spacing-940);
   margin: 0 auto;
   padding-top: var(--saas-spacing-32);
   text-align: center;
@@ -270,7 +273,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--saas-spacing-md);
-  width: 100%;
+  width: min(100%, var(--saas-ai-assistant-chat-max-width));
+  margin-inline: auto;
   padding: var(--saas-spacing-2xs) 0 var(--saas-spacing-xs);
 }
 
@@ -322,6 +326,11 @@
   flex: 0 0 auto;
   padding: 0 var(--saas-ai-chat-gutter) var(--saas-ai-chat-gutter);
   background: transparent;
+}
+
+.saas-ai-assistant-shell__composer > .saas-ai-assistant-composer {
+  width: min(100%, var(--saas-ai-assistant-chat-max-width));
+  margin-inline: auto;
 }
 
 .saas-ai-assistant-share-alert {
@@ -766,7 +775,7 @@
 
 @media (min-width: 769px) {
   .saas-ai-assistant-page .ant-pro-page-container-children-container {
-    width: min(100%, var(--saas-page-content-width));
+    width: min(100%, var(--saas-ai-assistant-page-max-width));
     margin-inline: auto;
   }
 

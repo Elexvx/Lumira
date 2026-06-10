@@ -793,6 +793,27 @@ body,
     overflow: hidden;
   }
 
+  .saas-profile-page__login-records-card > .ant-card-body {
+    overflow: visible;
+  }
+
+  .saas-profile-page__login-records-card .ant-timeline.ant-steps {
+    margin: 0;
+  }
+
+  .saas-profile-page__login-records-card .ant-timeline-item {
+    min-height: var(--saas-spacing-64);
+    padding-bottom: var(--saas-spacing-lg);
+  }
+
+  .saas-profile-page__login-records-card .ant-timeline-item:last-child {
+    padding-bottom: 0;
+  }
+
+  .saas-profile-page__login-records-card .ant-timeline-item-content {
+    min-height: auto;
+  }
+
   .saas-profile-page__card > .ant-card-head {
     border-start-start-radius: inherit;
     border-start-end-radius: inherit;
