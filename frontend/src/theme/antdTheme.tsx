@@ -1,7 +1,6 @@
-import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
+import { ConfigProvider, theme as antdTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
-import type { ReactNode } from 'react';
 import { resolveRuntimeLocale } from '@/i18n/locale';
 import { getThemeRuntimeSnapshot } from '@/theme/runtime';
 import type { ThemePreference } from '@/theme/settings';
@@ -21,31 +20,41 @@ export const resolveResponsiveSpaceSize = (isMobile: boolean): NonNullable<Respo
   isMobile ? 'small' : 'middle';
 
 const baseThemeToken: NonNullable<AntdThemeConfig>['token'] = {
-  colorPrimary: '#0f172a',
-  colorInfo: '#0f172a',
-  colorLink: '#2563eb',
+  colorPrimary: '#1677ff',
+  colorInfo: '#1677ff',
+  colorLink: '#1677ff',
   colorSuccess: '#16a34a',
   colorWarning: '#d97706',
   colorError: '#dc2626',
-  colorBgLayout: '#ffffff',
-  colorBgContainer: '#ffffff',
-  colorBgElevated: '#ffffff',
-  colorBgSpotlight: '#ffffff',
-  colorBorder: '#e2e8f0',
-  colorBorderSecondary: '#e2e8f0',
-  colorFillQuaternary: '#f8fafc',
-  colorFillTertiary: '#f8fafc',
-  colorText: '#0f172a',
-  colorTextSecondary: '#475569',
-  colorTextTertiary: '#64748b',
-  colorTextQuaternary: '#94a3b8',
-  borderRadius: 12,
-  borderRadiusLG: 16,
-  borderRadiusSM: 10,
+  borderRadius: 6,
+  borderRadiusLG: 8,
+  borderRadiusSM: 4,
 };
 
 const buildGlobalSpacingToken = (isMobile: boolean): NonNullable<AntdThemeConfig>['token'] =>
   isMobile ? APP_SPACING.antdMobileTokens : APP_SPACING.antdDesktopTokens;
+
+const lightThemeToken: NonNullable<AntdThemeConfig>['token'] = {
+  colorBgBase: '#ffffff',
+  colorBgContainer: '#ffffff',
+  colorBgElevated: '#ffffff',
+  colorBgLayout: '#f5f5f5',
+  colorTextBase: '#000000',
+  colorText: 'rgba(0, 0, 0, 0.88)',
+  colorBorder: '#d9d9d9',
+  colorBorderSecondary: '#f0f0f0',
+};
+
+const darkThemeToken: NonNullable<AntdThemeConfig>['token'] = {
+  colorBgBase: '#000000',
+  colorBgContainer: '#141414',
+  colorBgElevated: '#1f1f1f',
+  colorBgLayout: '#141414',
+  colorTextBase: '#ffffff',
+  colorText: 'rgba(255, 255, 255, 0.85)',
+  colorBorder: '#434343',
+  colorBorderSecondary: '#303030',
+};
 
 const resolveIsMobile = () => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -80,6 +89,7 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
       cssVar,
       token: {
         ...baseThemeToken,
+        ...lightThemeToken,
         ...globalSpacingToken,
       },
       algorithm: [antdTheme.defaultAlgorithm, antdTheme.compactAlgorithm],
@@ -90,8 +100,9 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
     return {
       cssVar,
       token: {
-        ...baseThemeToken,
+        ...lightThemeToken,
         ...globalSpacingToken,
+        ...baseThemeToken,
       },
       algorithm: [antdTheme.defaultAlgorithm],
     };
@@ -101,48 +112,11 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
     cssVar,
     algorithm: [antdTheme.darkAlgorithm],
     token: {
+      ...darkThemeToken,
       ...globalSpacingToken,
       ...baseThemeToken,
-      colorPrimary: '#f8fafc',
-      colorInfo: '#f8fafc',
-      colorLink: '#93c5fd',
-      colorBgBase: '#09090b',
-      colorBgLayout: '#09090b',
-      colorBgContainer: '#111113',
-      colorBgElevated: '#18181b',
-      colorBgSpotlight: '#18181b',
-      colorBorder: '#27272a',
-      colorBorderSecondary: '#27272a',
-      colorFillQuaternary: '#161618',
-      colorFillTertiary: '#161618',
-      colorText: '#f4f4f5',
-      colorTextSecondary: '#d4d4d8',
-      colorTextTertiary: '#a1a1aa',
-      colorTextQuaternary: '#71717a',
     },
   };
 };
 
-export const syncAntdStaticThemeHolder = (options?: BuildAntdThemeConfigOptions) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const isMobile = options?.isMobile ?? resolveIsMobile();
-  const themeConfig = buildAntdThemeConfig({
-    themePreference: options?.themePreference,
-    resolvedColorMode: options?.resolvedColorMode,
-    isMobile,
-  });
-  ConfigProvider.config({
-    holderRender: (children: ReactNode) => (
-      <ConfigProvider
-        locale={resolveAntdLocale()}
-        theme={themeConfig}
-        space={{ size: resolveResponsiveSpaceSize(isMobile) }}
-      >
-        <AntdApp>{children}</AntdApp>
-      </ConfigProvider>
-    ),
-  });
-};
+export { resolveAntdLocale };

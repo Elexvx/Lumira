@@ -5,7 +5,7 @@ import enUS from 'antd/locale/en_US';
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveRuntimeLocale } from '@/i18n/locale';
-import { buildAntdThemeConfig, resolveResponsiveSpaceSize, syncAntdStaticThemeHolder } from '@/theme/antdTheme';
+import { buildAntdThemeConfig, resolveResponsiveSpaceSize } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
 import { registerAntdFeedbackApi } from '@/theme/antdFeedbackBridge';
 import {
@@ -127,14 +127,6 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
   const themeSnapshot = syncThemePreferenceRuntime(themePreference, systemDarkMode);
   const resolvedColorMode = themeSnapshot.resolvedColorMode;
 
-  useLayoutEffect(() => {
-    syncAntdStaticThemeHolder({
-      themePreference,
-      resolvedColorMode,
-      isMobile,
-    });
-  }, [isMobile, resolvedColorMode, themePreference]);
-
   const themeConfig = useMemo(
     () =>
       buildAntdThemeConfig({
@@ -150,14 +142,9 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
 
   const setThemePreference = useCallback((value: ThemePreference) => {
     const nextThemePreference = normalizeThemePreference(value);
-    const nextSnapshot = commitThemePreference(nextThemePreference, { systemDarkMode });
-    syncAntdStaticThemeHolder({
-      themePreference: nextThemePreference,
-      resolvedColorMode: nextSnapshot.resolvedColorMode,
-      isMobile,
-    });
+    commitThemePreference(nextThemePreference, { systemDarkMode });
     setThemePreferenceState(nextThemePreference);
-  }, [systemDarkMode, isMobile]);
+  }, [systemDarkMode]);
 
   const contextValue = useMemo<ThemePreferenceContextValue>(
     () => ({
@@ -168,13 +155,11 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
     }),
     [resolvedColorMode, setThemePreference, themePreference],
   );
-
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
       <ConfigProvider
         locale={resolveAntdLocale()}
         theme={themeConfig}
-        variant="outlined"
         space={{ size: resolveResponsiveSpaceSize(isMobile) }}
       >
         <ProConfigProvider intl={resolveProComponentsIntl()}>

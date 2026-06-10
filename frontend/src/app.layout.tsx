@@ -38,6 +38,7 @@ import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
 import { resolveThemeRuntimeSnapshot } from '@/theme/runtime';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import GlobalSensitiveWordGuard from '@/components/GlobalSensitiveWordGuard';
 import './layouts/components/GlobalFloatActions.css';
 import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
 
@@ -848,6 +849,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       <SessionActivityGuard>
         <ThemeRuntimeBridge />
         {dom}
+        <GlobalSensitiveWordGuard />
         <GlobalFloatActions />
       </SessionActivityGuard>
     ),

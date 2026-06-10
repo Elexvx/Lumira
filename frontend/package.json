@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "node scripts/console-banner.mjs && max dev",
-    "build": "max setup && max build",
+    "build": "max setup && max build && node scripts/adapt-cdn-assets.mjs",
     "start": "node scripts/console-banner.mjs && max preview",
     "lint": "max lint",
     "stylelint": "max lint --stylelint-only",

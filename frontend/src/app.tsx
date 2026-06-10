@@ -9,7 +9,6 @@ import { queryClient } from '@/query/queryClient';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { getWatermarkSettingsSnapshot, subscribeWatermarkSettings } from '@/watermark/settingsStorage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
-import GlobalSensitiveWordGuard from '@/components/GlobalSensitiveWordGuard';
 import './global.css';
 
 export type { AppInitialState } from '@/app.types';
@@ -67,7 +66,6 @@ export const rootContainer = (container: ReactNode) => (
     <ThemePreferenceProvider>
       <AppWatermarkLayer>
         {container}
-        <GlobalSensitiveWordGuard />
       </AppWatermarkLayer>
     </ThemePreferenceProvider>
   </QueryClientProvider>
