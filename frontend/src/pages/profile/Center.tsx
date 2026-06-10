@@ -676,6 +676,7 @@ type ProfileCenterBindingSectionProps = {
   isMobile: boolean;
   loginMethods: LoginMethodItem[];
   passkeys: PasskeyCredentialRecord[];
+  passkeyBinding: boolean;
   loginMethodsLoading: boolean;
   providers: SecondFactorProviderStatus[];
   providersLoading: boolean;
@@ -692,6 +693,7 @@ const ProfileCenterBindingSection = ({
   isMobile,
   loginMethods,
   passkeys,
+  passkeyBinding,
   loginMethodsLoading,
   providers,
   providersLoading,
@@ -855,7 +857,7 @@ const ProfileCenterBindingSection = ({
         loading={loginMethodsLoading}
         className="saas-profile-page__card"
         extra={
-          <Button icon={<KeyOutlined />} onClick={onBindPasskey}>
+          <Button icon={<KeyOutlined />} loading={passkeyBinding} disabled={passkeyBinding} onClick={onBindPasskey}>
             {t('新增通行密钥', 'Add passkey')}
           </Button>
         }
@@ -963,6 +965,7 @@ const ProfileCenterPage = () => {
                 isMobile={responsive.isMobile}
                 loginMethods={interactionAccess.passkeyAccess.loginMethods}
                 passkeys={passkeys}
+                passkeyBinding={interactionAccess.passkeyAccess.passkeyBinding}
                 loginMethodsLoading={loginMethodsLoading}
                 providers={providers}
                 providersLoading={providersLoading}

@@ -133,6 +133,7 @@ export const useProfileCenterPageAccess = () => {
       }),
     enabled: Boolean(currentUser),
   });
+  const [passkeyBinding, setPasskeyBinding] = useState(false);
   const [bindModalOpen, setBindModalOpen] = useState(false);
   const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
   const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
@@ -634,11 +635,17 @@ export const useProfileCenterPageAccess = () => {
       message.warning(formatMessage({ id: 'page.profile.passkey.unsupported', defaultMessage: '当前浏览器不支持通行密钥' }));
       return;
     }
+    if (passkeyBinding) {
+      return;
+    }
+    let shouldRefreshPasskeys = false;
+    setPasskeyBinding(true);
     try {
       const options = await request<PasskeyOptions>('/v1/auth/passkeys/registration/options', {
         method: 'POST',
         ...API_OPTS.SILENT_NO_REDIRECT,
       });
+      shouldRefreshPasskeys = true;
       const credential = await navigator.credentials.create({
         publicKey: toPublicKeyCreationOptions(options),
       });
@@ -658,8 +665,13 @@ export const useProfileCenterPageAccess = () => {
         return;
       }
       showErrorMessage(error, formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥绑定失败' }));
+    } finally {
+      if (shouldRefreshPasskeys) {
+        await passkeyQuery.refetch();
+      }
+      setPasskeyBinding(false);
     }
-  }, [passkeyQuery]);
+  }, [passkeyBinding, passkeyQuery]);
   const handleRenamePasskey = useCallback(
     async (id: number, currentLabel?: string) => {
       const label = window.prompt(formatMessage({ id: 'page.profile.passkey.renamePrompt', defaultMessage: '请输入通行密钥名称' }), currentLabel || '通行密钥');
@@ -721,6 +733,7 @@ export const useProfileCenterPageAccess = () => {
     interactionAccess: {
       passkeyAccess: {
         loginMethods: loginMethodItems,
+        passkeyBinding,
         onBindPasskey: handleBindPasskey,
         onRenamePasskey: handleRenamePasskey,
         onDeletePasskey: handleDeletePasskey,

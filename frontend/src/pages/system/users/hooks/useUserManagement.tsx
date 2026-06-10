@@ -1,7 +1,7 @@
 import { Form, Tag, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -250,6 +250,7 @@ export const useUserManagement = () => {
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
   const [departmentLoading, setDepartmentLoading] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+  const selectedDepartmentInitializedRef = useRef(false);
   const [editorForm] = Form.useForm();
   const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
   const [saving, setSaving] = useState(false);
@@ -297,6 +298,14 @@ export const useUserManagement = () => {
   useEffect(() => {
     void loadDepartments();
   }, [loadDepartments]);
+
+  useEffect(() => {
+    if (!selectedDepartmentInitializedRef.current) {
+      selectedDepartmentInitializedRef.current = true;
+      return;
+    }
+    reloadTable();
+  }, [reloadTable, selectedDepartmentId]);
 
   const protectedAdminSelected = useMemo(
     () => isProtectedAdminUserAccount(drawer.currentRecord ? { id: drawer.currentRecord.id, username: drawer.currentRecord.username } : null),
