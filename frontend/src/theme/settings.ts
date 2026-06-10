@@ -4,8 +4,8 @@ export type ThemePreference = 'system' | 'light' | 'dark' | 'compact';
 
 const THEME_PREFERENCE_KEY = 'theme_preference';
 export const THEME_PREFERENCE_STORAGE_KEY = buildStorageKey(THEME_PREFERENCE_KEY);
-const LIGHT_BACKGROUND_COLOR = '#f5f5f5';
-const DARK_BACKGROUND_COLOR = '#0f1115';
+const LIGHT_BACKGROUND_COLOR = '#ffffff';
+const DARK_BACKGROUND_COLOR = '#09090b';
 
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'system';
 

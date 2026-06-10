@@ -1,12 +1,12 @@
 export const APP_SPACING = {
   layout: {
     headerHeight: {
-      desktop: 48,
-      mobile: 48,
+      desktop: 56,
+      mobile: 56,
     },
     siderWidth: {
-      desktop: 200,
-      mobile: 200,
+      desktop: 224,
+      mobile: 224,
     },
   },
   pageContainerPaddingInline: {

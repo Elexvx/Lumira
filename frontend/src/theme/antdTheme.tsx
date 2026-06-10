@@ -21,7 +21,27 @@ export const resolveResponsiveSpaceSize = (isMobile: boolean): NonNullable<Respo
   isMobile ? 'small' : 'middle';
 
 const baseThemeToken: NonNullable<AntdThemeConfig>['token'] = {
-  colorPrimary: '#1677ff',
+  colorPrimary: '#0f172a',
+  colorInfo: '#0f172a',
+  colorLink: '#2563eb',
+  colorSuccess: '#16a34a',
+  colorWarning: '#d97706',
+  colorError: '#dc2626',
+  colorBgLayout: '#ffffff',
+  colorBgContainer: '#ffffff',
+  colorBgElevated: '#ffffff',
+  colorBgSpotlight: '#ffffff',
+  colorBorder: '#e2e8f0',
+  colorBorderSecondary: '#e2e8f0',
+  colorFillQuaternary: '#f8fafc',
+  colorFillTertiary: '#f8fafc',
+  colorText: '#0f172a',
+  colorTextSecondary: '#475569',
+  colorTextTertiary: '#64748b',
+  colorTextQuaternary: '#94a3b8',
+  borderRadius: 12,
+  borderRadiusLG: 16,
+  borderRadiusSM: 10,
 };
 
 const buildGlobalSpacingToken = (isMobile: boolean): NonNullable<AntdThemeConfig>['token'] =>
@@ -83,12 +103,22 @@ export const buildAntdThemeConfig = (options?: BuildAntdThemeConfigOptions): Ant
     token: {
       ...globalSpacingToken,
       ...baseThemeToken,
-      colorBgBase: '#0f1115',
-      colorBgLayout: '#0f1115',
-      colorBgContainer: '#151515',
-      colorBgElevated: '#1b1b1b',
-      colorBorderSecondary: '#2a2a2a',
-      colorText: '#f5f7fa',
+      colorPrimary: '#f8fafc',
+      colorInfo: '#f8fafc',
+      colorLink: '#93c5fd',
+      colorBgBase: '#09090b',
+      colorBgLayout: '#09090b',
+      colorBgContainer: '#111113',
+      colorBgElevated: '#18181b',
+      colorBgSpotlight: '#18181b',
+      colorBorder: '#27272a',
+      colorBorderSecondary: '#27272a',
+      colorFillQuaternary: '#161618',
+      colorFillTertiary: '#161618',
+      colorText: '#f4f4f5',
+      colorTextSecondary: '#d4d4d8',
+      colorTextTertiary: '#a1a1aa',
+      colorTextQuaternary: '#71717a',
     },
   };
 };

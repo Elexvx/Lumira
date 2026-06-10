@@ -174,7 +174,7 @@ export const ThemePreferenceProvider = ({ children }: { children: ReactNode }) =
       <ConfigProvider
         locale={resolveAntdLocale()}
         theme={themeConfig}
-        variant="filled"
+        variant="outlined"
         space={{ size: resolveResponsiveSpaceSize(isMobile) }}
       >
         <ProConfigProvider intl={resolveProComponentsIntl()}>

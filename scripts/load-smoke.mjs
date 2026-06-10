@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
-const baseUrl = process.env.LOAD_SMOKE_BASE_URL || process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
+const baseUrl =
+  process.env.LOAD_SMOKE_BASE_URL ||
+  process.env.DEPLOY_CHECK_BASE_URL ||
+  (process.env.API_DOMAIN ? `https://${process.env.API_DOMAIN}` : 'http://127.0.0.1:8000');
 const durationMs = Number(process.env.LOAD_SMOKE_DURATION_MS || 30_000);
 const concurrency = Number(process.env.LOAD_SMOKE_CONCURRENCY || 24);
 const targetRps = Number(process.env.LOAD_SMOKE_RPS || Math.max(8, concurrency * 2));

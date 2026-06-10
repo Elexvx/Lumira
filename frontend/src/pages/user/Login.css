@@ -421,3 +421,117 @@ html[data-theme='dark'] .saas-login-page__actions {
     padding-inline: var(--saas-spacing-xs);
   }
 }
+
+.saas-login-page {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(37, 99, 235, 0.08), transparent 24%),
+    radial-gradient(circle at 82% 14%, rgba(15, 23, 42, 0.08), transparent 20%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.saas-login-page::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%),
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.02) 72%);
+  opacity: 1;
+}
+
+.saas-login-page::after {
+  background-image: none;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.08), transparent 22%),
+    radial-gradient(circle at 86% 16%, rgba(15, 23, 42, 0.06), transparent 20%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.7) 0%, rgba(255, 255, 255, 0.92) 100%);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.saas-login-page .ant-pro-form-login-page-container {
+  border-radius: 28px;
+  border-color: var(--saas-color-border);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: var(--saas-shadow-lg);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.saas-login-page .ant-pro-form-login-page-title {
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+
+.saas-login-page .ant-pro-form-login-page-desc {
+  color: var(--saas-color-text-secondary);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.saas-login-page .ant-form-item-label > label {
+  color: var(--saas-color-text-secondary);
+  font-weight: 500;
+}
+
+.saas-login-page .ant-input,
+.saas-login-page .ant-input-affix-wrapper,
+.saas-login-page .ant-select-selector,
+.saas-login-page .ant-segmented {
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.saas-login-page .ant-pro-form-login-page-main .ant-btn-primary {
+  height: 48px;
+  margin-top: 20px;
+  border-radius: 14px;
+  box-shadow: var(--saas-shadow-sm);
+}
+
+.saas-login-page .ant-checkbox-wrapper {
+  color: var(--saas-color-text-secondary);
+}
+
+.saas-login-page__mode-segmented {
+  padding: 4px;
+  border: 1px solid var(--saas-color-border);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.saas-login-page__mode-segmented .ant-segmented-item-label {
+  min-height: 44px;
+}
+
+.saas-login-page__actions {
+  color: var(--saas-color-text-secondary);
+}
+
+html[data-theme='dark'] .saas-login-page {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(37, 99, 235, 0.16), transparent 24%),
+    radial-gradient(circle at 82% 14%, rgba(255, 255, 255, 0.08), transparent 20%),
+    linear-gradient(180deg, #09090b 0%, #111113 100%);
+}
+
+html[data-theme='dark'] .saas-login-page::before {
+  background:
+    linear-gradient(180deg, rgba(9, 9, 11, 0.12) 0%, rgba(9, 9, 11, 0.04) 100%),
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01) 72%);
+}
+
+html[data-theme='dark'] .saas-login-page::after {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.1), transparent 22%),
+    radial-gradient(circle at 86% 16%, rgba(255, 255, 255, 0.04), transparent 20%),
+    linear-gradient(180deg, rgba(17, 17, 19, 0.86) 0%, rgba(9, 9, 11, 0.98) 100%);
+}
+
+html[data-theme='dark'] .saas-login-page .ant-pro-form-login-page-container {
+  background: rgba(17, 17, 19, 0.88);
+  border-color: var(--saas-color-border);
+}
+
+html[data-theme='dark'] .saas-login-page .ant-input,
+html[data-theme='dark'] .saas-login-page .ant-input-affix-wrapper,
+html[data-theme='dark'] .saas-login-page .ant-select-selector,
+html[data-theme='dark'] .saas-login-page .ant-segmented {
+  background: rgba(24, 24, 27, 0.96) !important;
+}

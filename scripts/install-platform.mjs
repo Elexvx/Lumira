@@ -241,8 +241,10 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
   }
 
   if (!skipNetworkChecks) {
-    const apiProxyAvailable = await checkPortAvailability(8000);
-    addEnvironmentCheck(checks, apiProxyAvailable ? 'pass' : 'warn', 'Port 8000', apiProxyAvailable ? 'available' : 'already in use');
+    const httpAvailable = await checkPortAvailability(80);
+    addEnvironmentCheck(checks, httpAvailable ? 'pass' : 'warn', 'Port 80', httpAvailable ? 'available' : 'already in use');
+    const httpsAvailable = await checkPortAvailability(443);
+    addEnvironmentCheck(checks, httpsAvailable ? 'pass' : 'warn', 'Port 443', httpsAvailable ? 'available' : 'already in use');
     const backendAvailable = await checkPortAvailability(8080);
     addEnvironmentCheck(checks, backendAvailable ? 'pass' : 'warn', 'Port 8080', backendAvailable ? 'available' : 'already in use');
 
@@ -393,6 +395,7 @@ function ensureEnvFile(options, profile) {
     API_DOMAIN: options.apiDomain,
     FRONTEND_ORIGIN: options.frontendOrigin,
     API_PROXY_BIND: existingEnv.API_PROXY_BIND || '127.0.0.1:8000',
+    FRONTEND_BIND: existingEnv.FRONTEND_BIND || '127.0.0.1:8001',
     CORS_ALLOWED_ORIGIN_PATTERNS: corsOrigins.join(','),
     JAVA_OPTS: tunable('JAVA_OPTS', profile.javaOpts),
     REDIS_MAXMEMORY: tunable('REDIS_MAXMEMORY', profile.redisMaxmemory),
@@ -543,7 +546,7 @@ function runVerification(options, profile) {
   if (noStart) {
     return;
   }
-  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
+  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || `https://${options.apiDomain}`;
   const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8080';
   run('node', ['scripts/check-deployment.mjs'], {
     env: {

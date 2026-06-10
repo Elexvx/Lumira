@@ -428,6 +428,16 @@ function mergedEnv() {
   };
 }
 
+function resolvePublicBaseUrl(env = mergedEnv()) {
+  if (process.env.DEPLOY_CHECK_BASE_URL) {
+    return process.env.DEPLOY_CHECK_BASE_URL;
+  }
+  if (env.API_DOMAIN) {
+    return `https://${env.API_DOMAIN}`;
+  }
+  return 'http://127.0.0.1:8000';
+}
+
 function isEnabled(value) {
   return String(value ?? '').trim().toLowerCase() === 'true';
 }
@@ -531,7 +541,7 @@ function composeArgs(...extraArgs) {
 
 
 async function checkDeployment() {
-  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
+  const baseUrl = resolvePublicBaseUrl();
   const backendUrl = 'http://127.0.0.1:8080';
 
   log('Running deployment health checks...');
@@ -552,7 +562,7 @@ async function checkSelectedServiceReadiness() {
     return;
   }
 
-  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || 'http://127.0.0.1:8000';
+  const baseUrl = resolvePublicBaseUrl();
   const checks = {
     'legendary-server': [
       [`${baseUrl}/api/v1/public/security-settings`, 'legendary-server public settings API'],
@@ -714,5 +724,6 @@ if (!skipCheck) {
 }
 
 log('Complete deployment started.');
-log('API proxy: http://127.0.0.1:8000');
+log(`Public edge entry: ${resolvePublicBaseUrl()}`);
+log('Local API proxy: http://127.0.0.1:8000');
 log('legendary-server health: http://127.0.0.1:8080/actuator/health');
