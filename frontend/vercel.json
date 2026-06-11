@@ -18,35 +18,35 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://8.160.166.241/api/:path*"
+      "destination": "https://saas.elexvx.com/api/:path*"
     },
     {
       "source": "/ws/:path*",
-      "destination": "http://8.160.166.241/ws/:path*"
+      "destination": "https://saas.elexvx.com/ws/:path*"
     },
     {
       "source": "/api-docs/:path*",
-      "destination": "http://8.160.166.241/api-docs/:path*"
+      "destination": "https://saas.elexvx.com/api-docs/:path*"
     },
     {
       "source": "/api-docs",
-      "destination": "http://8.160.166.241/api-docs"
+      "destination": "https://saas.elexvx.com/api-docs"
     },
     {
       "source": "/swagger-ui.html",
-      "destination": "http://8.160.166.241/swagger-ui.html"
+      "destination": "https://saas.elexvx.com/swagger-ui.html"
     },
     {
       "source": "/swagger-ui/:path*",
-      "destination": "http://8.160.166.241/swagger-ui/:path*"
+      "destination": "https://saas.elexvx.com/swagger-ui/:path*"
     },
     {
       "source": "/webjars/:path*",
-      "destination": "http://8.160.166.241/webjars/:path*"
+      "destination": "https://saas.elexvx.com/webjars/:path*"
     },
     {
       "source": "/api/uploads/:path*",
-      "destination": "http://8.160.166.241/api/uploads/:path*"
+      "destination": "https://saas.elexvx.com/api/uploads/:path*"
     },
     {
       "source": "/:path*",

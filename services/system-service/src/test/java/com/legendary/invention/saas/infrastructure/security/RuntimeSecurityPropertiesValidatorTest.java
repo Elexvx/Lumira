@@ -15,7 +15,7 @@ class RuntimeSecurityPropertiesValidatorTest {
                 "saas_foundation_jwt_secret_for_dev_env_please_change_me_2026",
                 "prod-field-secret-with-at-least-32-characters",
                 "strong-database-password",
-                "http://8.160.166.241",
+                "https://saas.elexvx.com",
                 "prod"
         );
 
@@ -28,7 +28,7 @@ class RuntimeSecurityPropertiesValidatorTest {
                 "prod-jwt-secret-with-at-least-32-characters",
                 "prod-field-secret-with-at-least-32-characters",
                 "123456",
-                "http://8.160.166.241",
+                "https://saas.elexvx.com",
                 "prod"
         );
 
@@ -41,7 +41,7 @@ class RuntimeSecurityPropertiesValidatorTest {
                 "prod-jwt-secret-with-at-least-32-characters",
                 "prod-field-secret-with-at-least-32-characters",
                 "prod-database-password",
-                "http://8.160.166.241",
+                "https://saas.elexvx.com",
                 "prod"
         );
 
@@ -67,7 +67,7 @@ class RuntimeSecurityPropertiesValidatorTest {
                 "prod-jwt-secret-with-at-least-32-characters",
                 "",
                 "prod-database-password",
-                "http://8.160.166.241",
+                "https://saas.elexvx.com",
                 "prod"
         );
 
@@ -80,7 +80,7 @@ class RuntimeSecurityPropertiesValidatorTest {
                 "prod-jwt-secret-with-at-least-32-characters",
                 "prod-field-secret-with-at-least-32-characters",
                 "prod-database-password",
-                "http://localhost:8000,http://8.160.166.241",
+                "http://localhost:8000,https://saas.elexvx.com",
                 "prod"
         );
 

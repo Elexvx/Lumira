@@ -110,9 +110,9 @@ public class SystemVerificationSettingsAppService {
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "true")));
         settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "true")));
         settings.setSelfBindingEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_SELF_BINDING_ENABLED_KEY), "true")));
-        settings.setRpId(defaultIfBlank(values.get(PASSKEY_RP_ID_KEY), "8.160.166.241"));
+        settings.setRpId(defaultIfBlank(values.get(PASSKEY_RP_ID_KEY), "saas.elexvx.com"));
         settings.setRpName(defaultIfBlank(values.get(PASSKEY_RP_NAME_KEY), "宏翔商道后台管理系统"));
-        settings.setAllowedOrigins(splitLines(defaultIfBlank(values.get(PASSKEY_ALLOWED_ORIGINS_KEY), "http://8.160.166.241")));
+        settings.setAllowedOrigins(splitLines(defaultIfBlank(values.get(PASSKEY_ALLOWED_ORIGINS_KEY), "https://saas.elexvx.com")));
         settings.setChallengeTtlSeconds(parseInt(defaultIfBlank(values.get(PASSKEY_CHALLENGE_TTL_KEY), "120"), 120));
         return settings;
     }

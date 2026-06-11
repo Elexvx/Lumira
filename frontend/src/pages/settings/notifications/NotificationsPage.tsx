@@ -246,7 +246,7 @@ const NotificationWechatOfficialChannelSettingsForm = ({
       <Input placeholder={t('公众号后台配置的模板消息 ID', 'Template message ID configured in the official account admin console')} />
     </Form.Item>
     <Form.Item name="detailUrl" label={t('通知详情链接', 'Notification detail URL')} extra={t('模板消息点击后打开的页面，可留空', 'Page opened after clicking the template message, optional')}>
-      <Input placeholder={t('例如：http://8.160.166.241/messages', 'e.g. https://test.example.com/messages')} />
+      <Input placeholder={t('例如：https://saas.elexvx.com/messages', 'e.g. https://test.example.com/messages')} />
     </Form.Item>
   </Form>
 );

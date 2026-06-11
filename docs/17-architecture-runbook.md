@@ -103,7 +103,7 @@ node scripts/check-deployment.mjs
 公网后端检查：
 
 ```bash
-DEPLOY_CHECK_BASE_URL=http://8.160.166.241 \
+DEPLOY_CHECK_BASE_URL=https://saas.elexvx.com \
 DEPLOY_CHECK_GATEWAY_URL=http://127.0.0.1:8000 \
 node scripts/check-deployment.mjs
 ```

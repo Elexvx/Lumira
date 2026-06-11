@@ -421,7 +421,7 @@ const PasskeyDrawerContent = ({
           <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
         </Form.Item>
         <Form.Item name="rpId" label={t('RP ID', 'RP ID')} rules={[{ required: true, message: t('请输入 RP ID', 'Please enter the RP ID') }]}>
-          <Input disabled={!canManageSettings} placeholder="8.160.166.241" />
+          <Input disabled={!canManageSettings} placeholder="saas.elexvx.com" />
         </Form.Item>
         <Form.Item name="rpName" label={t('RP 名称', 'RP name')} rules={[{ required: true, message: t('请输入 RP 名称', 'Please enter the RP name') }]}>
           <Input disabled={!canManageSettings} placeholder={t('宏翔商道后台管理系统', 'SaaS admin system')} />
@@ -432,7 +432,7 @@ const PasskeyDrawerContent = ({
           rules={[{ required: true, message: t('请输入允许的 Origin', 'Please enter the allowed origins') }]}
           extra={t('每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。', 'One HTTPS origin per line. Vercel Preview domains are not allowed by default.')}
         >
-          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder="http://8.160.166.241" />
+          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder="https://saas.elexvx.com" />
         </Form.Item>
         <Form.Item name="challengeTtlSeconds" label={t('Challenge 有效期', 'Challenge TTL')}>
           <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter={t('秒', 's')} />
@@ -695,10 +695,10 @@ export const useAuthenticatorConfigDrawer = ({
       enabled: true,
       passwordlessEnabled: true,
       selfBindingEnabled: true,
-      rpId: '8.160.166.241',
+      rpId: 'saas.elexvx.com',
       rpName: t('宏翔商道后台管理系统', 'Hongxiang Shangdao admin system'),
-      allowedOrigins: ['http://8.160.166.241'],
-      allowedOriginsText: 'http://8.160.166.241',
+      allowedOrigins: ['https://saas.elexvx.com'],
+      allowedOriginsText: 'https://saas.elexvx.com',
       challengeTtlSeconds: 120,
     },
   });

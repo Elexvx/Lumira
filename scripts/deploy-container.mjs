@@ -328,7 +328,7 @@ function generatedEnvDefaults() {
     GRAFANA_SMTP_FROM_NAME: 'Legendary Observability',
     GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
     GRAFANA_ALERT_WEBHOOK_URL: '',
-    CORS_ALLOWED_ORIGIN_PATTERNS: 'http://8.160.166.241',
+    CORS_ALLOWED_ORIGIN_PATTERNS: 'https://saas.elexvx.com',
     REDIS_MAXMEMORY: '256mb',
     REDIS_MEM_LIMIT: '384m',
     JAVA_OPTS: '-XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom',
