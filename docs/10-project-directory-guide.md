@@ -476,14 +476,19 @@ docs/
 ├─ 16-event-outbox-architecture.md
 ├─ 17-architecture-runbook.md
 ├─ 20-product-requirements-document.md
-└─ antdesign-doc/
+├─ 21-test-strategy-and-cases.md
+├─ 22-test-execution-checklist-template.md
+├─ 23-test-report-template.md
+├─ 24-page-manual-test-workbook.md
+├─ 24-page-manual-test-workbook.docx
+└─ 25-monolith-service-split-readiness.md
 ```
 
 - `01-...` 到 `08-...`：总体技术方案、架构规范、开发规范和实施路线。
 - `09-...` 到 `17-...`：专项接口、目录说明、部署说明和架构治理专题。
 - `10-project-directory-guide.md`：就是这份目录结构说明。
 - `20-product-requirements-document.md`：产品需求书（PRD）。
-- `antdesign-doc/`：本地 Ant Design 参考文档。
+- `21-...` 到 `25-...`：测试策略、测试模板、手工测试工作簿和单体微服务拆分边界说明。
 
 ## 7. database/
 
