@@ -9,10 +9,21 @@ spring:
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:50MB}
   main:
     allow-bean-definition-overriding: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: false
+    locations:
+      - classpath:db/migration
+    ignore-migration-patterns:
+      - "*:missing"
+    placeholders:
+      defaultAdminInitEnabled: false
+      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
 
-# Monolith mode flag - disables sub-module security configs that would conflict
+# Monolith mode flag - disables sub-module security configs that would conflict.
 lumira:
-  monolith: ${LEGENDARY_MONOLITH:true}
+  monolith: ${LUMIRA_MONOLITH:${LEGENDARY_MONOLITH:true}}
 
 server:
   port: 8080
@@ -35,10 +46,35 @@ spring.cloud.sentinel.enabled: false
 spring.datasource.url: ${DB_URL:jdbc:mysql://localhost:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
 spring.datasource.username: ${DB_USERNAME:root}
 spring.datasource.password: ${DB_PASSWORD:root}
+spring.datasource.driver-class-name: com.mysql.cj.jdbc.Driver
 
 spring.data.redis.host: ${REDIS_HOST:localhost}
 spring.data.redis.port: ${REDIS_PORT:6379}
 spring.data.redis.password: ${REDIS_PASSWORD:}
+spring.data.redis.database: ${REDIS_DATABASE:0}
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
 
 # Security settings - forward environment variables to saas.security config
 saas:
@@ -51,6 +87,9 @@ saas:
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
     captcha-enabled: ${CAPTCHA_ENABLED:false}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
+    allow-unsafe-default-admin-login: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:false}
+    register-ip-max-count: ${REGISTER_IP_MAX_COUNT:20}
+    register-ip-window-minutes: ${REGISTER_IP_WINDOW_MINUTES:10}
     permit-paths:
       - /api/v1/auth/login
       - /api/v1/auth/login/code/challenge
@@ -88,12 +127,17 @@ saas:
     staging-root: ${PLUGIN_STAGING_ROOT:storage/plugin-staging}
     signature-secret: ${PLUGIN_SIGNATURE_SECRET:}
     shared-deps-version: ${PLUGIN_SHARED_DEPS_VERSION:1}
+    max-gateway-body-bytes: ${PLUGIN_MAX_GATEWAY_BODY_BYTES:1048576}
+    require-http-permission: ${PLUGIN_REQUIRE_HTTP_PERMISSION:true}
   upload:
     storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
     public-path: /api/uploads
     max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
     max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}
   job:
+    backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}
+    message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:http://localhost:${server.port}}
+    payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:http://localhost:${server.port}}
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
   event:
     outbox:
@@ -113,6 +157,22 @@ saas:
       app-secret: ${WECHAT_APP_SECRET:}
       redirect-uri: ${WECHAT_REDIRECT_URI:}
       state-expire-minutes: ${WECHAT_STATE_EXPIRE_MINUTES:10}
+  message:
+    ws-ticket-expires-in-seconds: ${MESSAGE_WS_TICKET_EXPIRES_IN_SECONDS:30}
+    outbox-relay-batch-size: ${MESSAGE_OUTBOX_RELAY_BATCH_SIZE:100}
+  payment:
+    public-base-url: ${PAYMENT_PUBLIC_BASE_URL:http://localhost:${server.port}}
+    auth-service-base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:${server.port}}
+  verification:
+    issuer: ${VERIFICATION_ISSUER:lumira}
+    totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
+    totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
+    bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
+    login-challenge-expire-minutes: ${VERIFICATION_LOGIN_CHALLENGE_EXPIRE_MINUTES:5}
+    recovery-code-count: ${VERIFICATION_RECOVERY_CODE_COUNT:8}
+    recovery-code-length: ${VERIFICATION_RECOVERY_CODE_LENGTH:8}
+    expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
+    email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
 
 # XXL-Job executor config (from job-executor module)
 xxl:
@@ -129,3 +189,64 @@ xxl:
       port: ${XXL_JOB_EXECUTOR_PORT:9998}
       logpath: ${XXL_JOB_EXECUTOR_LOG_PATH:/tmp/xxl-job/logs}
       logretentiondays: ${XXL_JOB_EXECUTOR_LOG_RETENTION_DAYS:30}
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  flyway:
+    out-of-order: true
+    placeholders:
+      defaultAdminInitEnabled: true
+      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
+
+saas:
+  web:
+    cors-allowed-origin-patterns:
+      - http://localhost:*
+      - http://127.0.0.1:*
+    trust-forwarded-headers: false
+    trusted-proxy-cidrs:
+      - 127.0.0.1/32
+      - ::1/128
+  security:
+    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  flyway:
+    placeholders:
+      defaultAdminInitEnabled: false
+      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
+
+saas:
+  web:
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000}
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    trusted-proxy-cidrs: ${TRUSTED_PROXY_CIDRS:127.0.0.1/32}
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  flyway:
+    placeholders:
+      defaultAdminInitEnabled: false
+      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
+
+saas:
+  web:
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
+    trust-forwarded-headers: ${TRUST_FORWARD_HEADERS:${TRUST_FORWARDED_HEADERS:true}}
+    trusted-proxy-cidrs: ${TRUSTED_PROXY_CIDRS}
+  redis:
+    clear-on-startup: false
+    allow-clear-on-startup-in-prod: ${ELEXVX_REDIS_ALLOW_CLEAR_ON_STARTUP_IN_PROD:false}
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}

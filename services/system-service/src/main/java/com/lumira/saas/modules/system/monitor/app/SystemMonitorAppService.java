@@ -69,12 +69,12 @@ public class SystemMonitorAppService {
         RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
         ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
-        long totalPhysicalMemoryBytes = osBean == null ? -1L : Math.max(osBean.getTotalPhysicalMemorySize(), 0L);
-        long freePhysicalMemoryBytes = osBean == null ? -1L : Math.max(osBean.getFreePhysicalMemorySize(), 0L);
+        long totalPhysicalMemoryBytes = osBean == null ? -1L : Math.max(osBean.getTotalMemorySize(), 0L);
+        long freePhysicalMemoryBytes = osBean == null ? -1L : Math.max(osBean.getFreeMemorySize(), 0L);
         long usedPhysicalMemoryBytes = Math.max(totalPhysicalMemoryBytes - freePhysicalMemoryBytes, 0L);
         HostMemory hostMemory = readHostMemory();
         Double processCpuLoad = osBean == null ? null : normalizePercent(osBean.getProcessCpuLoad());
-        Double systemCpuLoad = osBean == null ? null : normalizePercent(osBean.getSystemCpuLoad());
+        Double systemCpuLoad = osBean == null ? null : normalizePercent(osBean.getCpuLoad());
         Double idlePercent = systemCpuLoad == null ? null : clampPercent(100D - systemCpuLoad);
         double loadAverage = osBean == null ? -1D : osBean.getSystemLoadAverage();
         long uptimeSeconds = Duration.between(applicationStartInstant, Instant.now()).toSeconds();

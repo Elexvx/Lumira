@@ -1,6 +1,7 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
@@ -27,6 +28,9 @@ import java.util.UUID;
 public class PaymentTransactionService {
 
     private final JdbcTemplate jdbcTemplate;
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
+    };
+
     private final ObjectMapper objectMapper;
     private final PaymentManagementAppService paymentManagementAppService;
     private final PaymentProviderCatalog providerCatalog;
@@ -477,7 +481,7 @@ public class PaymentTransactionService {
             return Map.of();
         }
         try {
-            return objectMapper.readValue(json, Map.class);
+            return objectMapper.readValue(json, MAP_TYPE);
         } catch (Exception ignored) {
             return Map.of("raw", json);
         }
