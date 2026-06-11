@@ -7,10 +7,10 @@
 ```text
 用户浏览器
   -> Vercel 前端
-    -> /api/** rewrite 到 https://api.elexvx.com/api/**
-    -> /ws/**  rewrite 到 https://api.elexvx.com/ws/**
+    -> /api/** rewrite 到 http://8.160.166.241/api/**
+    -> /ws/**  rewrite 到 http://8.160.166.241/ws/**
 
-api.elexvx.com / HTTPS / CDN / WAF
+8.160.166.241 / HTTPS / CDN / WAF
   -> 服务器 edge-proxy Nginx (80/443)
     -> /api/** 反向代理到 legendary-api-proxy
     -> /ws/** 反向代理到 legendary-api-proxy
@@ -89,8 +89,8 @@ node scripts/install-platform.mjs --yes
 
 ```bash
 node scripts/install-platform.mjs \
-  --api-domain=api.elexvx.com \
-  --frontend-origin=https://test.elexvx.com \
+  --api-domain=8.160.166.241 \
+  --frontend-origin=http://8.160.166.241 \
   --yes
 ```
 
@@ -129,12 +129,12 @@ node scripts/deploy-container.mjs --rebuild
 
 部署完成后脚本会自动检查：
 
-- 对外入口：`https://api.elexvx.com/health`
-- API 健康检查：`https://api.elexvx.com/api/health`
-- 版本检查：`https://api.elexvx.com/api/version`
+- 对外入口：`http://8.160.166.241/health`
+- API 健康检查：`http://8.160.166.241/api/health`
+- 版本检查：`http://8.160.166.241/api/version`
 - 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/legendary-invention/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
 - legendary-server 健康检查：`http://127.0.0.1:8080/actuator/health`
-- 公开登录配置接口：`https://api.elexvx.com/api/v1/public/login-capabilities`
+- 公开登录配置接口：`http://8.160.166.241/api/v1/public/login-capabilities`
 
 ## 可观测性闭环
 
@@ -169,7 +169,7 @@ Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Ob
 部署后可以跑一个轻量压力冒烟：
 
 ```bash
-LOAD_SMOKE_BASE_URL=https://api.elexvx.com \
+LOAD_SMOKE_BASE_URL=http://8.160.166.241 \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
@@ -179,7 +179,7 @@ node scripts/load-smoke.mjs
 公网域名检查：
 
 ```bash
-LOAD_SMOKE_BASE_URL=https://api.elexvx.com \
+LOAD_SMOKE_BASE_URL=http://8.160.166.241 \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
@@ -193,14 +193,14 @@ node scripts/load-smoke.mjs
 ```json
 {
   "source": "/api/:path*",
-  "destination": "https://api.elexvx.com/api/:path*"
+  "destination": "http://8.160.166.241/api/:path*"
 }
 ```
 
 前端默认使用同源 `/api`。如果不使用 Vercel rewrites，也可以在 Vercel 环境变量中配置：
 
 ```text
-UMI_APP_API_BASE_URL=https://api.elexvx.com
+UMI_APP_API_BASE_URL=http://8.160.166.241
 ```
 
 ## 服务器域名和 HTTPS
@@ -208,7 +208,7 @@ UMI_APP_API_BASE_URL=https://api.elexvx.com
 推荐让主机 Nginx、1Panel、负载均衡器、CDN 或 WAF 负责 HTTPS，并反向代理到容器 edge proxy：
 
 ```text
-https://api.elexvx.com -> http://127.0.0.1:80
+http://8.160.166.241 -> http://127.0.0.1:80
 ```
 
 默认对外只暴露 80/443；`API_PROXY_BIND` 和 `FRONTEND_BIND` 只保留本机调试用途。
@@ -260,7 +260,7 @@ DRY_RUN=1 bash deploy/restore-platform.sh backups/20260520-120000
 如果要检查公网后端域名：
 
 ```bash
-DEPLOY_CHECK_BASE_URL=https://api.elexvx.com \
+DEPLOY_CHECK_BASE_URL=http://8.160.166.241 \
 DEPLOY_CHECK_BACKEND_URL=http://127.0.0.1:8080 \
 node scripts/check-deployment.mjs
 ```
@@ -296,7 +296,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --r
 ## 安全配置
 
 - `deploy/.env` 不要提交到 Git。
-- 对外只暴露 `https://api.elexvx.com`，容器内部服务端口只在内网访问。
+- 对外只暴露 `http://8.160.166.241`，容器内部服务端口只在内网访问。
 - `DB_PASSWORD`、`JWT_SECRET`、`FIELD_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_JOB_INTERNAL_TOKEN` 必须使用强随机值。
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
 - `DEFAULT_ADMIN_INIT_ENABLED` 在正式演示环境建议保持 `false`。
@@ -306,7 +306,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --r
 ## 入口约定
 
 - 前端访问入口：Vercel 域名
-- 后端公网入口：`https://api.elexvx.com`
+- 后端公网入口：`http://8.160.166.241`
 - 前端请求后端：`/api`
 - WebSocket：`/ws`
 - 本机 API proxy：`http://127.0.0.1:8000`

@@ -18,35 +18,35 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.elexvx.com/api/:path*"
+      "destination": "http://8.160.166.241/api/:path*"
     },
     {
       "source": "/ws/:path*",
-      "destination": "https://api.elexvx.com/ws/:path*"
+      "destination": "http://8.160.166.241/ws/:path*"
     },
     {
       "source": "/api-docs/:path*",
-      "destination": "https://api.elexvx.com/api-docs/:path*"
+      "destination": "http://8.160.166.241/api-docs/:path*"
     },
     {
       "source": "/api-docs",
-      "destination": "https://api.elexvx.com/api-docs"
+      "destination": "http://8.160.166.241/api-docs"
     },
     {
       "source": "/swagger-ui.html",
-      "destination": "https://api.elexvx.com/swagger-ui.html"
+      "destination": "http://8.160.166.241/swagger-ui.html"
     },
     {
       "source": "/swagger-ui/:path*",
-      "destination": "https://api.elexvx.com/swagger-ui/:path*"
+      "destination": "http://8.160.166.241/swagger-ui/:path*"
     },
     {
       "source": "/webjars/:path*",
-      "destination": "https://api.elexvx.com/webjars/:path*"
+      "destination": "http://8.160.166.241/webjars/:path*"
     },
     {
       "source": "/api/uploads/:path*",
-      "destination": "https://api.elexvx.com/api/uploads/:path*"
+      "destination": "http://8.160.166.241/api/uploads/:path*"
     },
     {
       "source": "/:path*",
