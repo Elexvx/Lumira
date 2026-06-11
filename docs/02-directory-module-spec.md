@@ -1,4 +1,4 @@
-# Legendary Invention 目录结构与模块拆分规范
+# Lumira 目录结构与模块拆分规范
 
 ## 1. 文档定位
 
@@ -6,7 +6,7 @@
 
 它的目标不是“目录好看”，而是保证系统在长期演进中仍然具备高可维护性、高可读性、高复用性和高可靠性。
 
-当前仓库以实际目录为准：前端主工程位于 `frontend/src/`，后端正式运行入口位于 `services/legendary-server/`，其余 `services/*-service` 为聚合运行下的模块边界与未来拆分预留。
+当前仓库以实际目录为准：前端主工程位于 `frontend/src/`，后端正式运行入口位于 `services/lumira-server/`，其余 `services/*-service` 为聚合运行下的模块边界与未来拆分预留。
 
 ## 2. 总体拆分原则
 
@@ -92,9 +92,9 @@
 
 ## 5. 后端目录建议
 
-后端当前采用模块化单体，正式运行入口为 `services/legendary-server/`，并聚合以下目录族：
+后端当前采用模块化单体，正式运行入口为 `services/lumira-server/`，并聚合以下目录族：
 
-- `services/legendary-server/`
+- `services/lumira-server/`
 - `services/system-service/`
 - `services/auth-service/`
 - `services/file-service/`
@@ -105,7 +105,7 @@
 - `services/job-executor/`
 - `libs/`
 
-### 5.1 `legendary-server`
+### 5.1 `lumira-server`
 
 正式 Spring Boot 启动入口，对外统一承载系统、认证、文件、消息、插件、本地化、支付和任务模块。
 
@@ -186,7 +186,7 @@
 
 后端优先落地：
 
-- `services/legendary-server`
+- `services/lumira-server`
 - `services/system-service`
 - `services/auth-service`
 - `services/file-service`

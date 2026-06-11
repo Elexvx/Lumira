@@ -1,10 +1,10 @@
-# Legendary Invention 项目后端开发规范
+# Lumira 项目后端开发规范
 
 ## 1. 文档定位
 
-本文档是 Legendary Invention 项目的后端开发规范，适用于当前仓库中的 `services/` 与 `libs/` 模块。
+本文档是 Lumira 项目的后端开发规范，适用于当前仓库中的 `services/` 与 `libs/` 模块。
 
-本文档以当前项目实际形态为准：代码按多模块拆分，运行入口以 `services/legendary-server` 聚合启动为主。也就是说，设计上保留服务边界，运行上以聚合服务承载主线能力。
+本文档以当前项目实际形态为准：代码按多模块拆分，运行入口以 `services/lumira-server` 聚合启动为主。也就是说，设计上保留服务边界，运行上以聚合服务承载主线能力。
 
 ## 2. 适用范围
 
@@ -18,9 +18,9 @@
 
 根 `pom.xml` 与各模块结构表明，当前项目包含如下主要模块：
 
-- 启动聚合：`services/legendary-server`
+- 启动聚合：`services/lumira-server`
 - 业务服务：`system-service`、`auth-service`、`file-service`、`message-service`、`plugin-service`、`localization-service`、`payment-service`、`job-executor`
-- 公共库：`common-core`、`common-domain`、`common-web`、`common-security`、`legendary-api`、`plugin-api`
+- 公共库：`common-core`、`common-domain`、`common-web`、`common-security`、`lumira-api`、`plugin-api`
 
 ### 3.2 当前技术栈
 
@@ -38,7 +38,7 @@
 
 ### 3.3 当前运行方式
 
-当前默认运行方式不是将所有模块独立部署，而是通过 `legendary-server` 聚合：
+当前默认运行方式不是将所有模块独立部署，而是通过 `lumira-server` 聚合：
 
 - 对外主入口统一
 - 内部代码边界保留
@@ -51,20 +51,20 @@
 
 ### 3.4 单体微服务运行基线
 
-当前仓库主线采用“单体微服务”模式：运行时收敛为一个后端进程 `services/legendary-server`，工程内继续保留 `services/*-service` 的模块边界、契约边界和数据 owner。
+当前仓库主线采用“单体微服务”模式：运行时收敛为一个后端进程 `services/lumira-server`，工程内继续保留 `services/*-service` 的模块边界、契约边界和数据 owner。
 
 这意味着：
 
 1. 不是回到历史大单体随意耦合。
 2. 也不是默认要求每个服务独立部署。
-3. 当前唯一推荐后端启动入口是 `services/legendary-server`。
+3. 当前唯一推荐后端启动入口是 `services/lumira-server`。
 4. 各业务服务模块是未来可物理拆分的边界，不允许在聚合运行阶段把边界写坏。
 
 ### 3.5 聚合运行与部署约束
 
 当前后端聚合运行至少遵循以下约束：
 
-1. `services/legendary-server` 是正式 Spring Boot 启动入口。
+1. `services/lumira-server` 是正式 Spring Boot 启动入口。
 2. 聚合模式下，对外主 API 入口统一。
 3. `api-proxy` 统一暴露 `/api/**`、`/ws/**` 等对外路径时，上游应指向聚合服务。
 4. 当前默认不以 Nacos 服务发现作为本地开发前提，相关配置仅为后续拆分预留。
@@ -75,7 +75,7 @@
 后端联调和部署说明中，默认启动顺序应保持一致：
 
 1. 启动 MySQL、Redis、XXL-JOB Admin 等基础依赖
-2. 启动 `services/legendary-server`
+2. 启动 `services/lumira-server`
 3. 启动 `api-proxy`
 4. 启动前端
 5. 按需启动 Prometheus、Grafana、Loki、Tempo 等观测组件
@@ -146,7 +146,7 @@
 | `common-domain` | 领域通用抽象与共享模型 |
 | `common-web` | Web 层公共能力、异常处理、Trace、RepeatSubmit |
 | `common-security` | JWT、安全上下文、字段加解密、数据权限 |
-| `legendary-api` | 跨模块 API DTO 与客户端契约 |
+| `lumira-api` | 跨模块 API DTO 与客户端契约 |
 | `plugin-api` | 插件 SPI 与插件运行时接口 |
 
 ## 5.3 依赖方向

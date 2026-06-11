@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.legendary.invention.message.mapper.MessageDeliveryLogMapper">
+<mapper namespace="com.lumira.message.mapper.MessageDeliveryLogMapper">
 
     <sql id="deliveryFilters">
         l.tenant_id = #{query.tenantId}
@@ -39,7 +39,7 @@
         where <include refid="deliveryFilters"/>
     </select>
 
-    <select id="listDeliveryLogs" resultType="com.legendary.invention.message.vo.MessageVO$DeliveryLogVO">
+    <select id="listDeliveryLogs" resultType="com.lumira.message.vo.MessageVO$DeliveryLogVO">
         select l.id,
                l.tenant_id as tenantId,
                l.notice_id as noticeId,

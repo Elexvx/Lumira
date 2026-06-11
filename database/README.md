@@ -1,6 +1,6 @@
 # 数据库初始化口径
 
-当前生产运行以 `legendary-server` 聚合服务为主，推荐数据库初始化以 `services/system-service/src/main/resources/db/migration` 下的 Flyway 迁移为准。
+当前生产运行以 `lumira-server` 聚合服务为主，推荐数据库初始化以 `services/system-service/src/main/resources/db/migration` 下的 Flyway 迁移为准。
 
 `database/saas.sql` 是面向开源用户和手动安装场景的全量初始化脚本，可直接导入空库。该脚本会写入 `flyway_schema_history` 的 V1 基线记录，因此后续启动服务时 Flyway 可以继续执行 V2 及之后的增量迁移。
 

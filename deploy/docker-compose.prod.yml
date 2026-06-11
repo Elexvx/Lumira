@@ -75,7 +75,7 @@ x-common-env:
   OTEL_METRICS_EXPORTER: none
   OTEL_LOGS_EXPORTER: none
   OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: ${OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED:-true}
-  OTEL_RESOURCE_ATTRIBUTES: service.namespace=legendary-invention,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=lumira,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
 x-json-logging: &id001
   driver: json-file
   options:
@@ -86,7 +86,7 @@ services:
     profiles:
     - local-mysql
     image: mysql:8.4
-    container_name: legendary-mysql
+    container_name: lumira-mysql
     restart: unless-stopped
     logging: *id001
     mem_limit: ${MYSQL_MEM_LIMIT:-768m}
@@ -103,7 +103,7 @@ services:
     - mysql_data:/var/lib/mysql
   redis:
     image: redis:7.4
-    container_name: legendary-redis
+    container_name: lumira-redis
     restart: unless-stopped
     logging: *id001
     mem_limit: ${REDIS_MEM_LIMIT:-384m}
@@ -122,7 +122,7 @@ services:
     - redis_data:/data
   xxl-job-admin:
     image: xuxueli/xxl-job-admin:3.4.0
-    container_name: legendary-xxl-job-admin
+    container_name: lumira-xxl-job-admin
     restart: unless-stopped
     logging: *id001
     mem_limit: ${XXL_JOB_ADMIN_MEM_LIMIT:-384m}
@@ -141,7 +141,7 @@ services:
     - 1panel-network
   api-proxy:
     image: nginx:1.29-alpine
-    container_name: legendary-api-proxy
+    container_name: lumira-api-proxy
     restart: unless-stopped
     logging: *id001
     mem_limit: ${API_PROXY_MEM_LIMIT:-128m}
@@ -151,13 +151,13 @@ services:
     volumes:
     - ./nginx/api.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-    - legendary-server
+    - lumira-server
   frontend:
     build:
       context: ..
       dockerfile: deploy/docker/frontend.Dockerfile
-    image: legendary/frontend:0.1.0
-    container_name: legendary-frontend
+    image: lumira/frontend:0.1.0
+    container_name: lumira-frontend
     restart: unless-stopped
     logging: *id001
     mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
@@ -165,10 +165,10 @@ services:
     ports:
     - ${FRONTEND_BIND:-127.0.0.1:8001}:80
     depends_on:
-    - legendary-server
+    - lumira-server
   edge-proxy:
     image: nginx:1.29-alpine
-    container_name: legendary-edge-proxy
+    container_name: lumira-edge-proxy
     restart: unless-stopped
     logging: *id001
     mem_limit: ${EDGE_PROXY_MEM_LIMIT:-128m}
@@ -186,7 +186,7 @@ services:
     profiles:
     - observability
     image: ${PROMETHEUS_IMAGE:-prom/prometheus@sha256:e4254400b85610324913f0dc4acf92603d9984e7519414c5a12811aa6146acc3}
-    container_name: legendary-prometheus
+    container_name: lumira-prometheus
     restart: unless-stopped
     logging: *id001
     command:
@@ -199,12 +199,12 @@ services:
     - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     - prometheus_data:/prometheus
     depends_on:
-    - legendary-server
+    - lumira-server
   loki:
     profiles:
     - observability
     image: ${LOKI_IMAGE:-grafana/loki@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86}
-    container_name: legendary-loki
+    container_name: lumira-loki
     restart: unless-stopped
     logging: *id001
     command:
@@ -218,7 +218,7 @@ services:
     profiles:
     - observability
     image: ${TEMPO_IMAGE:-grafana/tempo@sha256:2513658c41faa9197dc7373599bb6119eb27bcb4232cc83779e2bc87cbc34299}
-    container_name: legendary-tempo
+    container_name: lumira-tempo
     restart: unless-stopped
     logging: *id001
     command:
@@ -232,7 +232,7 @@ services:
     profiles:
     - observability
     image: ${ALLOY_IMAGE:-grafana/alloy@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0}
-    container_name: legendary-alloy
+    container_name: lumira-alloy
     restart: unless-stopped
     logging: *id001
     command:
@@ -253,7 +253,7 @@ services:
     profiles:
     - observability
     image: ${GRAFANA_IMAGE:-grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5}
-    container_name: legendary-grafana
+    container_name: lumira-grafana
     restart: unless-stopped
     logging: *id001
     environment:
@@ -264,8 +264,8 @@ services:
       GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-}
       GF_SMTP_USER: ${GRAFANA_SMTP_USER:-}
       GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD:-}
-      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM_ADDRESS:-alerts@legendary-invention.local}
-      GF_SMTP_FROM_NAME: ${GRAFANA_SMTP_FROM_NAME:-Legendary Observability}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM_ADDRESS:-alerts@lumira.local}
+      GF_SMTP_FROM_NAME: ${GRAFANA_SMTP_FROM_NAME:-Lumira Observability}
     ports:
     - 127.0.0.1:3001:3000
     volumes:
@@ -278,15 +278,15 @@ services:
     - prometheus
     - loki
     - tempo
-  legendary-server:
+  lumira-server:
     build:
       context: ..
       dockerfile: deploy/docker/service.Dockerfile
       args:
-        SERVICE_DIR: services/legendary-server
-        SERVICE_MODULE: services/legendary-server
-    image: legendary/legendary-server:0.1.0
-    container_name: legendary-server
+        SERVICE_DIR: services/lumira-server
+        SERVICE_MODULE: services/lumira-server
+    image: lumira/lumira-server:0.1.0
+    container_name: lumira-server
     restart: unless-stopped
     logging:
       driver: json-file
@@ -318,9 +318,9 @@ services:
         is required}
       SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN
         is required}
-      XXL_JOB_ADMIN_ADDRESSES: ${XXL_JOB_ADMIN_ADDRESSES:-http://legendary-xxl-job-admin:8080/xxl-job-admin}
+      XXL_JOB_ADMIN_ADDRESSES: ${XXL_JOB_ADMIN_ADDRESSES:-http://lumira-xxl-job-admin:8080/xxl-job-admin}
       XXL_JOB_ADMIN_ACCESS_TOKEN: ${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
-      XXL_JOB_EXECUTOR_APPNAME: ${XXL_JOB_EXECUTOR_APPNAME:-legendary-server}
+      XXL_JOB_EXECUTOR_APPNAME: ${XXL_JOB_EXECUTOR_APPNAME:-lumira-server}
       XXL_JOB_EXECUTOR_PORT: ${XXL_JOB_EXECUTOR_PORT:-9998}
       XXL_JOB_EXECUTOR_LOG_PATH: ${XXL_JOB_EXECUTOR_LOG_PATH:-/tmp/xxl-job/logs}
       TRUST_FORWARDED_HEADERS: 'true'
@@ -379,9 +379,9 @@ services:
       OTEL_METRICS_EXPORTER: none
       OTEL_LOGS_EXPORTER: none
       OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: ${OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED:-true}
-      OTEL_RESOURCE_ATTRIBUTES: service.namespace=legendary-invention,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=lumira,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
       SERVER_PORT: 8080
-      OTEL_SERVICE_NAME: legendary-server
+      OTEL_SERVICE_NAME: lumira-server
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
       PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
       PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}

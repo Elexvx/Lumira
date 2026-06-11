@@ -33,7 +33,7 @@ xxl:
       timeout: ${XXL_JOB_ADMIN_TIMEOUT:3}
     executor:
       enabled: ${XXL_JOB_EXECUTOR_ENABLED:true}
-      appname: ${XXL_JOB_EXECUTOR_APPNAME:legendary-job-executor}
+      appname: ${XXL_JOB_EXECUTOR_APPNAME:lumira-job-executor}
       address: ${XXL_JOB_EXECUTOR_ADDRESS:}
       ip: ${XXL_JOB_EXECUTOR_IP:}
       port: ${XXL_JOB_EXECUTOR_PORT:9998}

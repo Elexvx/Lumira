@@ -8,4 +8,4 @@
 2. 如与 `docs/01` 到 `docs/23` 这类正式文档冲突，以正式文档和当前代码实现为准。
 3. 其中关于多进程微服务、物理拆分、组件替换、治理路线等表述，默认视为“当时的规划选项”，不是当前运行主线。
 
-当前仓库正式主线以 `services/legendary-server` 聚合运行、`api-proxy` 统一入口和 `frontend/` 管理端实现为准。
+当前仓库正式主线以 `services/lumira-server` 聚合运行、`api-proxy` 统一入口和 `frontend/` 管理端实现为准。

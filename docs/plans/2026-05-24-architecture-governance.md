@@ -43,10 +43,10 @@
 **Files:**
 - Create: `docs/16-event-outbox-architecture.md`
 - Create: `services/system-service/src/main/resources/db/migration/V33__platform_event_outbox.sql`
-- Create: `services/system-service/src/main/java/com/legendary/invention/saas/infrastructure/event/PlatformEventTypes.java`
-- Create: `services/system-service/src/main/java/com/legendary/invention/saas/infrastructure/event/PlatformEventPublisher.java`
-- Modify: `services/system-service/src/main/java/com/legendary/invention/saas/modules/ai/app/AiKnowledgeBaseAppService.java`
-- Test: `services/system-service/src/test/java/com/legendary/invention/saas/infrastructure/event/PlatformEventPublisherTest.java`
+- Create: `services/system-service/src/main/java/com/lumira/saas/infrastructure/event/PlatformEventTypes.java`
+- Create: `services/system-service/src/main/java/com/lumira/saas/infrastructure/event/PlatformEventPublisher.java`
+- Modify: `services/system-service/src/main/java/com/lumira/saas/modules/ai/app/AiKnowledgeBaseAppService.java`
+- Test: `services/system-service/src/test/java/com/lumira/saas/infrastructure/event/PlatformEventPublisherTest.java`
 
 **Steps:**
 - Add the missing system-service outbox migration.
@@ -81,9 +81,9 @@ git diff --check
 **Files:**
 - Create: `services/file-service/src/main/resources/db/migration/V3__file_storage_space.sql`
 - Create: `services/file-service/src/main/resources/db/migration/V4__platform_event_outbox.sql`
-- Create: `services/file-service/src/main/java/com/legendary/invention/file/event/*`
-- Modify: `services/file-service/src/main/java/com/legendary/invention/file/app/FileManagementAppService.java`
-- Test: `services/file-service/src/test/java/com/legendary/invention/file/event/*Test.java`
+- Create: `services/file-service/src/main/java/com/lumira/file/event/*`
+- Modify: `services/file-service/src/main/java/com/lumira/file/app/FileManagementAppService.java`
+- Test: `services/file-service/src/test/java/com/lumira/file/event/*Test.java`
 - Modify: `docs/13-service-data-ownership.md`
 - Modify: `docs/16-event-outbox-architecture.md`
 

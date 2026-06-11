@@ -1,4 +1,4 @@
-# Legendary Invention 测试报告模板
+# Lumira 测试报告模板
 
 ## 1. 文档用途
 
@@ -16,15 +16,15 @@
 
 执行建议：
 
-1. 页面级手工测试明细记录在 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)
-2. 页面级结果汇总记录在 [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/22-test-execution-checklist-template.md)
+1. 页面级手工测试明细记录在 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)
+2. 页面级结果汇总记录在 [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/22-test-execution-checklist-template.md)
 3. 本文档用于形成正式测试结论
 
 ## 2. 基本信息
 
 | 字段 | 内容 |
 | --- | --- |
-| 项目名称 | Legendary Invention |
+| 项目名称 | Lumira |
 | 测试版本 |  |
 | 报告类型 | 提测报告 / 回归报告 / 上线报告 |
 | 测试环境 |  |
@@ -251,6 +251,6 @@
 
 关联文档：
 
-- 主测试方案：[`docs/21-test-strategy-and-cases.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/21-test-strategy-and-cases.md)
-- 执行台账模板：[`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/22-test-execution-checklist-template.md)
-- 逐页手工测试工作簿：[`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)
+- 主测试方案：[`docs/21-test-strategy-and-cases.md`](/Users/johntao/Documents/GitHub/lumira/docs/21-test-strategy-and-cases.md)
+- 执行台账模板：[`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/22-test-execution-checklist-template.md)
+- 逐页手工测试工作簿：[`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)

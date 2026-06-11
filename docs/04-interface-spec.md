@@ -1,4 +1,4 @@
-# Legendary Invention 接口规范与统一响应标准
+# Lumira 接口规范与统一响应标准
 
 ## 1. 文档定位
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.legendary.invention.saas.modules.localization.mapper.LocalizationManagementMapper">
+<mapper namespace="com.lumira.saas.modules.localization.mapper.LocalizationManagementMapper">
 
     <sql id="entryBaseFrom">
         from sys_localization_entry e
@@ -63,7 +63,7 @@
           e.updated_at as updated_at
     </sql>
 
-    <select id="listEntries" resultType="com.legendary.invention.saas.modules.localization.vo.LocalizationVO$EntryVO">
+    <select id="listEntries" resultType="com.lumira.saas.modules.localization.vo.LocalizationVO$EntryVO">
         <include refid="entrySelectColumns"/>
         <include refid="entryBaseFrom"/>
         order by ${query.sortColumn} ${query.sortDirection}
@@ -75,7 +75,7 @@
         <include refid="entryBaseFrom"/>
     </select>
 
-    <select id="findEntry" resultType="com.legendary.invention.saas.modules.localization.vo.LocalizationVO$EntryVO">
+    <select id="findEntry" resultType="com.lumira.saas.modules.localization.vo.LocalizationVO$EntryVO">
         <include refid="entrySelectColumns"/>
         from sys_localization_entry e
         join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
@@ -98,7 +98,7 @@
         limit 1
     </select>
 
-    <select id="listRuntimeMessages" resultType="com.legendary.invention.saas.modules.localization.dto.LocalizationQueryModels$RuntimeMessageRow">
+    <select id="listRuntimeMessages" resultType="com.lumira.saas.modules.localization.dto.LocalizationQueryModels$RuntimeMessageRow">
         select
           e.message_key as message_key,
           e.default_message as default_message,

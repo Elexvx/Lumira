@@ -25,7 +25,7 @@ discovery.relabel "containers" {
 loki.source.docker "containers" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.relabel.containers.output
-  labels     = {"platform" = "legendary-invention"}
+  labels     = {"platform" = "lumira"}
   forward_to = [loki.write.default.receiver]
 }
 

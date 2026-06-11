@@ -46,7 +46,7 @@
 - `services/system-service/` 当前承担 `system-service`，保留核心管理控制面和一批业务域。
 - `services/gateway-service/` 已收口统一入口。
 - `services/auth-service/`、`file-service/`、`message-service/`、`plugin-service/`、`localization-service/`、`job-executor/` 已有独立服务骨架。
-- `libs/common-core/`、`common-web/`、`common-security/`、`legendary-api/` 已承担共享契约和基础能力。
+- `libs/common-core/`、`common-web/`、`common-security/`、`lumira-api/` 已承担共享契约和基础能力。
 - 管理前端 `frontend/` 已经以后端菜单和权限为主驱动菜单。
 - 公开门户和内容发布能力当前不在运行代码中；后续如需恢复，应作为独立业务能力重新立项，并避免与管理端耦合。
 
@@ -304,7 +304,7 @@ DRAFT -> INSTALLED -> ENABLED -> DISABLED -> DEPRECATED -> UNINSTALLED
 新内置模块建议遵循：
 
 ```text
-services/system-service/src/main/java/com/legendary/invention/saas/modules/<module>/
+services/system-service/src/main/java/com/lumira/saas/modules/<module>/
   controller/
   app/
   domain/
@@ -360,7 +360,7 @@ services/system-service/src/main/java/com/legendary/invention/saas/modules/<modu
 优先级：
 
 1. 同一服务内通过 app/service 调用，不跨 controller。
-2. 已独立服务通过 `legendary-api` 定义内部契约。
+2. 已独立服务通过 `lumira-api` 定义内部契约。
 3. 跨服务写操作通过事件/outbox 解耦。
 4. 插件只能通过公开 SPI、HTTP handler 上下文或受控内部 API 调用平台能力。
 
@@ -683,22 +683,22 @@ DRAFT
 **Files:**
 
 - Create: `docs/plans/2026-05-17-modular-platform-architecture.md`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalog.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleRegistry.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/StaticPlatformModuleRegistry.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/DatabasePlatformModuleRepository.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/CompositePlatformModuleRegistry.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleDefinitionValidator.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/vo/PlatformModuleVO.java`
-- Created: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/vo/PlatformModuleValidationVO.java`
-- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalogTest.java`
-- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/StaticPlatformModuleRegistryTest.java`
-- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/CompositePlatformModuleRegistryTest.java`
-- Created: `services/system-service/src/test/java/com/legendary/invention/saas/modules/system/module/PlatformModuleDefinitionValidatorTest.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/PlatformModuleCatalog.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/PlatformModuleRegistry.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/StaticPlatformModuleRegistry.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/DatabasePlatformModuleRepository.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/CompositePlatformModuleRegistry.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/PlatformModuleDefinitionValidator.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/vo/PlatformModuleVO.java`
+- Created: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/vo/PlatformModuleValidationVO.java`
+- Created: `services/system-service/src/test/java/com/lumira/saas/modules/system/module/PlatformModuleCatalogTest.java`
+- Created: `services/system-service/src/test/java/com/lumira/saas/modules/system/module/StaticPlatformModuleRegistryTest.java`
+- Created: `services/system-service/src/test/java/com/lumira/saas/modules/system/module/CompositePlatformModuleRegistryTest.java`
+- Created: `services/system-service/src/test/java/com/lumira/saas/modules/system/module/PlatformModuleDefinitionValidatorTest.java`
 - Created: `services/system-service/src/main/resources/db/migration/V11__platform_module_registry.sql`
 - Created: `services/system-service/src/main/resources/db/migration/V12__seed_platform_module_journal.sql`
-- Modified: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/controller/SystemController.java`
-- Modified: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/app/SystemManagementAppService.java`
+- Modified: `services/system-service/src/main/java/com/lumira/saas/modules/system/controller/SystemController.java`
+- Modified: `services/system-service/src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java`
 - Modified: `frontend/src/types/api.ts`
 - Modified: `frontend/src/services/system/index.ts`
 - Created: `frontend/src/pages/settings/modules/index.tsx`
@@ -707,7 +707,7 @@ DRAFT
 - Modified: `frontend/src/access.ts`
 - Modified: `frontend/src/locales/zh-CN.ts`
 - Modified: `frontend/src/locales/en-US.ts`
-- Modified: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/app/SystemRouteCatalog.java`
+- Modified: `services/system-service/src/main/java/com/lumira/saas/modules/system/app/SystemRouteCatalog.java`
 - Created: `docs/15-module-registration-spec.md`
 
 **Steps:**
@@ -726,8 +726,8 @@ rg -n "moduleCode|模块注册|competition|journal" docs
 
 **Files:**
 
-- Later Create: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/module/PlatformModuleCatalog.java`
-- Later Modify: `services/system-service/src/main/java/com/legendary/invention/saas/modules/system/app/SystemRouteCatalog.java`
+- Later Create: `services/system-service/src/main/java/com/lumira/saas/modules/system/module/PlatformModuleCatalog.java`
+- Later Modify: `services/system-service/src/main/java/com/lumira/saas/modules/system/app/SystemRouteCatalog.java`
 
 **Steps:**
 

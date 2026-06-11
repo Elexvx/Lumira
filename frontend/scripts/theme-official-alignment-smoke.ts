@@ -66,9 +66,9 @@ const assertOfficialTokenDerivation = () => {
   assert.equal(lightConfig?.components, undefined, 'light theme should not retain legacy component token overrides');
   assert.equal(darkConfig?.components, undefined, 'dark theme should not retain legacy component token overrides');
   assert.equal(compactConfig?.components, undefined, 'compact theme should not retain legacy component token overrides');
-  assert.deepEqual(lightConfig?.cssVar, { key: 'legendary-light' }, 'light theme should use an explicit official cssVar key');
-  assert.deepEqual(darkConfig?.cssVar, { key: 'legendary-dark' }, 'dark theme should use an explicit official cssVar key');
-  assert.deepEqual(compactConfig?.cssVar, { key: 'legendary-compact' }, 'compact theme should use an explicit official cssVar key');
+  assert.deepEqual(lightConfig?.cssVar, { key: 'lumira-light' }, 'light theme should use an explicit official cssVar key');
+  assert.deepEqual(darkConfig?.cssVar, { key: 'lumira-dark' }, 'dark theme should use an explicit official cssVar key');
+  assert.deepEqual(compactConfig?.cssVar, { key: 'lumira-compact' }, 'compact theme should use an explicit official cssVar key');
 
   const lightToken = antdTheme.getDesignToken(lightConfig);
   const darkToken = antdTheme.getDesignToken(darkConfig);

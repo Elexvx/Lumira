@@ -2,12 +2,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.legendary.invention</groupId>
-        <artifactId>legendary-invention-parent</artifactId>
+        <groupId>com.lumira</groupId>
+        <artifactId>lumira-parent</artifactId>
         <version>0.1.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
-    <groupId>com.legendary.invention</groupId>
+    <groupId>com.lumira</groupId>
     <artifactId>system-service</artifactId>
     <version>0.1.0</version>
     <name>system-service</name>
@@ -55,27 +55,27 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
-            <artifactId>legendary-api</artifactId>
+            <groupId>com.lumira</groupId>
+            <artifactId>lumira-api</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>plugin-api</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>common-web</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>common-core</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>common-security</artifactId>
             <version>0.1.0</version>
         </dependency>

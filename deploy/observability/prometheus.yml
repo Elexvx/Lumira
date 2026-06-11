@@ -8,10 +8,10 @@ scrape_configs:
       - targets:
           - prometheus:9090
 
-  - job_name: legendary-server
+  - job_name: lumira-server
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - legendary-server:8080
+          - lumira-server:8080
         labels:
-          service_name: legendary-server
+          service_name: lumira-server

@@ -3,16 +3,16 @@
 ## 1. 请求主链路
 
 ```text
-frontend -> /api -> api-proxy -> legendary-server -> module -> database/cache/outbox
+frontend -> /api -> api-proxy -> lumira-server -> module -> database/cache/outbox
 ```
 
 当前单体微服务模式下，请求主链路是：
 
 ```text
-frontend -> /api -> api-proxy -> legendary-server -> module -> database/cache/outbox
+frontend -> /api -> api-proxy -> lumira-server -> module -> database/cache/outbox
 ```
 
-前端不直接绑定业务模块地址。所有业务 API 都从 `/api` 进入 `api-proxy`，由 `legendary-server` 内部聚合模块处理。未来拆回物理微服务时，可以恢复 `gateway-service -> target service` 这条路径，但前端调用路径保持不变。
+前端不直接绑定业务模块地址。所有业务 API 都从 `/api` 进入 `api-proxy`，由 `lumira-server` 内部聚合模块处理。未来拆回物理微服务时，可以恢复 `gateway-service -> target service` 这条路径，但前端调用路径保持不变。
 
 ## 2. 职责矩阵
 
@@ -84,7 +84,7 @@ frontend -> /api -> api-proxy -> legendary-server -> module -> database/cache/ou
 
 ## 6. 路由策略
 
-当前 `legendary-server` 聚合处理以下路径。未来拆分时，这些路径可以迁移为网关路由：
+当前 `lumira-server` 聚合处理以下路径。未来拆分时，这些路径可以迁移为网关路由：
 
 - `/api/v1/auth/**` -> `auth-service`
 - `/api/v1/files/**`、`/api/uploads/**` -> `file-service`

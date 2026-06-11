@@ -6,8 +6,8 @@
 
 Plugin runtime code currently exists in two application modules:
 
-- `services/system-service/src/main/java/com/legendary/invention/saas/modules/plugin/`
-- `services/plugin-service/src/main/java/com/legendary/invention/saas/modules/plugin/`
+- `services/system-service/src/main/java/com/lumira/saas/modules/plugin/`
+- `services/plugin-service/src/main/java/com/lumira/saas/modules/plugin/`
 
 This duplication is intentional during the microservice migration period. Do not delete either side until routing, persistence, permissions, plugin gateway, and startup ownership are fully moved to one runtime.
 

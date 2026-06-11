@@ -536,7 +536,7 @@ function installContainers(options) {
     ...(options.useNacos ? ['nacos'] : []),
   ]);
   composeUp(options, 'job admin', ['xxl-job-admin']);
-  composeUp(options, 'monolith backend', ['legendary-server']);
+  composeUp(options, 'monolith backend', ['lumira-server']);
   composeUp(options, 'API proxy', ['api-proxy']);
   composeUp(options, 'frontend container', options.useFrontendContainer ? ['frontend'] : []);
   composeUp(options, 'observability', options.useObservability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []);

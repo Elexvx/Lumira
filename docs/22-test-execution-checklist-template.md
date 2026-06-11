@@ -1,4 +1,4 @@
-# Legendary Invention 测试执行台账模板
+# Lumira 测试执行台账模板
 
 ## 1. 使用说明
 
@@ -11,7 +11,7 @@
 执行方式：
 
 1. 先填写版本、环境、执行人、测试范围
-2. 逐页手工测试时，先复制 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)
+2. 逐页手工测试时，先复制 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)
 3. 在逐页工作簿里填写每条用例的实际结果、状态、缺陷编号和备注
 4. 本文档用于汇总页面执行结论、冒烟结果、自动化结果和风险项
 5. 失败项必须关联缺陷编号
@@ -87,7 +87,7 @@
 
 说明：
 
-- 逐页详细操作、预期结果和留空填写位请使用 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)
+- 逐页详细操作、预期结果和留空填写位请使用 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)
 - 本节用于按页面汇总本轮执行结论，方便提测、回归和上线汇报
 
 | 页面分组 | 页面/路由 | 计划用例数 | 已执行 | 通过 | 失败 | 阻塞 | 页面结论 | 缺陷编号 | 备注 |

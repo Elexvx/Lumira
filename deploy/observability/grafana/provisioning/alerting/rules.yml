@@ -2,12 +2,12 @@ apiVersion: 1
 
 groups:
   - orgId: 1
-    name: legendary-production-observability
-    folder: Legendary Observability
+    name: lumira-production-observability
+    folder: Lumira Observability
     interval: 1m
     rules:
-      - uid: legendary-service-down
-        title: Legendary service down
+      - uid: lumira-service-down
+        title: Lumira service down
         condition: C
         data:
           - refId: A
@@ -20,7 +20,7 @@ groups:
                 type: prometheus
                 uid: prometheus
               editorMode: code
-              expr: up{job="legendary-server"} == 0
+              expr: up{job="lumira-server"} == 0
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -73,13 +73,13 @@ groups:
         for: 2m
         annotations:
           summary: "The backend service target is down."
-          description: "Prometheus reports the legendary-server target as unavailable."
+          description: "Prometheus reports the lumira-server target as unavailable."
         labels:
           severity: critical
-          service_namespace: legendary-invention
+          service_namespace: lumira
 
-      - uid: legendary-service-5xx-rate-high
-        title: Legendary service 5xx rate high
+      - uid: lumira-service-5xx-rate-high
+        title: Lumira service 5xx rate high
         condition: C
         data:
           - refId: A
@@ -94,9 +94,9 @@ groups:
               editorMode: code
               expr: |
                 (
-                  sum(rate(http_server_requests_seconds_count{job="legendary-server",status=~"5.."}[5m])) by (application, service)
+                  sum(rate(http_server_requests_seconds_count{job="lumira-server",status=~"5.."}[5m])) by (application, service)
                   /
-                  clamp_min(sum(rate(http_server_requests_seconds_count{job="legendary-server"}[5m])) by (application, service), 0.001)
+                  clamp_min(sum(rate(http_server_requests_seconds_count{job="lumira-server"}[5m])) by (application, service), 0.001)
                 ) > 0.05
               instant: true
               intervalMs: 1000
@@ -153,10 +153,10 @@ groups:
           description: "A backend service has elevated server-side errors over the last 5 minutes."
         labels:
           severity: warning
-          service_namespace: legendary-invention
+          service_namespace: lumira
 
-      - uid: legendary-service-p95-latency-high
-        title: Legendary service P95 latency high
+      - uid: lumira-service-p95-latency-high
+        title: Lumira service P95 latency high
         condition: C
         data:
           - refId: A
@@ -172,7 +172,7 @@ groups:
               expr: |
                 histogram_quantile(
                   0.95,
-                  sum(rate(http_server_requests_seconds_bucket{job="legendary-server"}[5m])) by (le, application, service)
+                  sum(rate(http_server_requests_seconds_bucket{job="lumira-server"}[5m])) by (le, application, service)
                 ) > 1
               instant: true
               intervalMs: 1000
@@ -229,10 +229,10 @@ groups:
           description: "A backend service has sustained high request latency."
         labels:
           severity: warning
-          service_namespace: legendary-invention
+          service_namespace: lumira
 
-      - uid: legendary-jvm-heap-usage-high
-        title: Legendary JVM heap usage high
+      - uid: lumira-jvm-heap-usage-high
+        title: Lumira JVM heap usage high
         condition: C
         data:
           - refId: A
@@ -247,9 +247,9 @@ groups:
               editorMode: code
               expr: |
                 (
-                  sum(jvm_memory_used_bytes{job="legendary-server",area="heap"}) by (application, service)
+                  sum(jvm_memory_used_bytes{job="lumira-server",area="heap"}) by (application, service)
                   /
-                  sum(jvm_memory_max_bytes{job="legendary-server",area="heap"}) by (application, service)
+                  sum(jvm_memory_max_bytes{job="lumira-server",area="heap"}) by (application, service)
                 ) > 0.85
               instant: true
               intervalMs: 1000
@@ -306,10 +306,10 @@ groups:
           description: "A backend JVM heap has stayed above the configured usage threshold."
         labels:
           severity: warning
-          service_namespace: legendary-invention
+          service_namespace: lumira
 
-      - uid: legendary-service-up-flapping
-        title: Legendary service availability flapping
+      - uid: lumira-service-up-flapping
+        title: Lumira service availability flapping
         condition: C
         data:
           - refId: A
@@ -322,7 +322,7 @@ groups:
                 type: prometheus
                 uid: prometheus
               editorMode: code
-              expr: changes(up{job="legendary-server"}[10m]) > 3
+              expr: changes(up{job="lumira-server"}[10m]) > 3
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -378,4 +378,4 @@ groups:
           description: "Prometheus observed repeated UP/DOWN transitions for a backend service."
         labels:
           severity: warning
-          service_namespace: legendary-invention
+          service_namespace: lumira

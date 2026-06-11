@@ -33,7 +33,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --r
 
 ## 1Panel 部署方式
 
-1. 将代码上传到服务器，例如 `/opt/legendary-invention`。
+1. 将代码上传到服务器，例如 `/opt/lumira`。
 2. 复制环境变量模板：
 
 ```bash

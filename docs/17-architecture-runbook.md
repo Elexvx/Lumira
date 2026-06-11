@@ -17,7 +17,7 @@
 node scripts/start-platform.mjs
 ```
 
-脚本会检查端口、复用已有 MySQL/Redis，再启动聚合后端 `legendary-server`、API 代理和前端。
+脚本会检查端口、复用已有 MySQL/Redis，再启动聚合后端 `lumira-server`、API 代理和前端。
 
 常用参数：
 
@@ -74,7 +74,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f 
 Vercel frontend
   -> /api rewrite
   -> api-proxy Nginx
-  -> legendary-server
+  -> lumira-server
   -> system/auth/file/message/plugin/localization/payment/job modules
   -> MySQL / Redis / XXL-Job
   -> Nacos（仅为未来拆分预留，默认不启用）
@@ -119,7 +119,7 @@ node scripts/check-deployment.mjs
 指定聚合后端构建：
 
 ```bash
-./mvnw -q -pl services/legendary-server -am -DskipTests compile
+./mvnw -q -pl services/lumira-server -am -DskipTests compile
 ```
 
 前端检查：
@@ -142,7 +142,7 @@ git diff --check
 1. 检查浏览器请求是否打到 `/api`。
 2. 检查 Vercel rewrite 或 `UMI_APP_API_BASE_URL`。
 3. 检查 `api-proxy` 是否健康。
-4. 检查 `legendary-server` 日志。
+4. 检查 `lumira-server` 日志。
 5. 检查目标模块配置、数据库和依赖服务状态。
 
 ### 5.2 登录失败
@@ -152,7 +152,7 @@ git diff --check
 3. 检查 `system-service` 用户状态和安全设置读取。
 4. 检查 Redis 会话和 token 配置。
 
-当前生产与本地默认运行在聚合入口 `legendary-server` 内，因此排障时优先检查聚合服务日志，再定位具体模块代码归属。
+当前生产与本地默认运行在聚合入口 `lumira-server` 内，因此排障时优先检查聚合服务日志，再定位具体模块代码归属。
 
 ### 5.3 权限或菜单异常
 

@@ -64,7 +64,7 @@ ON DUPLICATE KEY UPDATE
   `deleted` = 0;
 
 INSERT INTO `sys_plugin_definition` (`id`, `plugin_code`, `plugin_name`, `plugin_type`, `description`, `author`, `plugin_api_version`, `builtin_flag`, `status`, `sort_no`, `schema_mode`, `supports_hot_disable`, `supports_data_purge`, `runtime_contributions_json`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`) VALUES
-(10001,'sensitive-words','敏感词拦截','BUSINESS','全局检测后台输入中的敏感词并阻止提交','legendary-invention','1.0.0',1,'ENABLED',30,'ISOLATED',1,1,JSON_ARRAY('routes','menus','permissions','importers','interceptors'),0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0)
+(10001,'sensitive-words','敏感词拦截','BUSINESS','全局检测后台输入中的敏感词并阻止提交','lumira','1.0.0',1,'ENABLED',30,'ISOLATED',1,1,JSON_ARRAY('routes','menus','permissions','importers','interceptors'),0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0)
 ON DUPLICATE KEY UPDATE
   `plugin_name` = VALUES(`plugin_name`),
   `plugin_type` = VALUES(`plugin_type`),

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.legendary.invention.saas.modules.system.config.mapper.SysConfigMapper">
+<mapper namespace="com.lumira.saas.modules.system.config.mapper.SysConfigMapper">
     <select id="findValue" resultType="java.lang.String">
         select config_value
         from sys_config
@@ -12,7 +12,7 @@
         limit 1
     </select>
 
-    <select id="listEffectiveValues" resultType="com.legendary.invention.saas.modules.system.config.entity.SysConfigEntity">
+    <select id="listEffectiveValues" resultType="com.lumira.saas.modules.system.config.entity.SysConfigEntity">
         select *
         from sys_config
         where deleted = 0

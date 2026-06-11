@@ -6,7 +6,7 @@
 ## 1. 根目录
 
 ```text
-legendary-invention/
+lumira/
 ├─ README.md                 仓库总说明、启动方式、架构概览
 ├─ pom.xml                   根 Maven 父 POM，聚合 services / libs
 ├─ services/                 聚合后端与各模块目录
@@ -24,7 +24,7 @@ legendary-invention/
 
 - `README.md`：项目的整体入口说明，包含仓库定位、技术栈和启动方式。
 - `pom.xml`：根 Maven 聚合文件，定义了多模块结构和统一依赖版本。
-- `services/`：聚合后端入口 `legendary-server` 和各业务模块目录。
+- `services/`：聚合后端入口 `lumira-server` 和各业务模块目录。
 - `frontend/`：前端管理台，负责页面、布局、权限、登录态和 API 调用。
 - `libs/`：共享能力和内部接口契约，供后端各模块与服务复用。
 - `docs/`：架构设计、目录规范、数据库设计、权限设计、微服务重构说明等。
@@ -33,7 +33,7 @@ legendary-invention/
 
 ## 2. services/ 与聚合后端入口
 
-当前正式运行入口是 `services/legendary-server/`。它在运行时聚合 `system-service`、`auth-service`、`file-service`、`message-service`、`plugin-service`、`localization-service`、`payment-service` 和 `job-executor` 模块。
+当前正式运行入口是 `services/lumira-server/`。它在运行时聚合 `system-service`、`auth-service`、`file-service`、`message-service`、`plugin-service`、`localization-service`、`payment-service` 和 `job-executor` 模块。
 
 `services/system-service/` 不再是独立对外主入口，而是聚合后端中的核心业务模块之一。
 
@@ -41,7 +41,7 @@ legendary-invention/
 
 ```text
 services/
-├─ legendary-server/         当前默认后端启动入口
+├─ lumira-server/         当前默认后端启动入口
 ├─ system-service/           系统、权限、AI、审计等核心模块
 ├─ auth-service/             认证模块
 ├─ file-service/             文件模块
@@ -52,30 +52,30 @@ services/
 └─ job-executor/             作业执行器
 ```
 
-- `legendary-server/`：Spring Boot 聚合启动类和正式打包入口。
+- `lumira-server/`：Spring Boot 聚合启动类和正式打包入口。
 - `*-service/`：按业务边界拆分的 Maven 模块，既是逻辑边界，也是未来再次拆成物理微服务时的基础。
 
-### 2.2 legendary-server
+### 2.2 lumira-server
 
 ```text
-services/legendary-server/
+services/lumira-server/
 ├─ pom.xml
-└─ src/main/java/com/legendary/invention/server/
-   ├─ LegendaryServerApplication.java
+└─ src/main/java/com/lumira/server/
+   ├─ LumiraServerApplication.java
    └─ config/
 ```
 
 作用说明：
 
-- `LegendaryServerApplication.java`：当前默认启动类。
-- `legendary-server` 自身不承载大量业务实现，它的核心职责是把各模块聚合成一个正式运行进程。
+- `LumiraServerApplication.java`：当前默认启动类。
+- `lumira-server` 自身不承载大量业务实现，它的核心职责是把各模块聚合成一个正式运行进程。
 
 ### 2.3 system-service 模块结构
 
 `services/system-service/` 仍然是平台核心模块，主要承载系统配置、权限、用户体系、AI、审计和监控能力。
 
 ```text
-services/system-service/src/main/java/com/legendary/invention/saas/
+services/system-service/src/main/java/com/lumira/saas/
 ├─ common/                   通用响应、异常、分页、常量
 ├─ infrastructure/           安全、Redis、Trace、任务、事件等基础设施
 └─ modules/                  业务模块
@@ -360,11 +360,11 @@ frontend/src/
 
 ## 4. services/* 业务模块
 
-`services/` 下每个目录都是一个 Maven 模块。当前默认以“单体微服务”方式运行，即由 `legendary-server` 聚合启动；但这些目录本身仍保持清晰模块边界，为未来再次拆成独立服务预留条件。
+`services/` 下每个目录都是一个 Maven 模块。当前默认以“单体微服务”方式运行，即由 `lumira-server` 聚合启动；但这些目录本身仍保持清晰模块边界，为未来再次拆成独立服务预留条件。
 
 ```text
 services/
-├─ legendary-server/         当前默认后端启动入口
+├─ lumira-server/         当前默认后端启动入口
 ├─ auth-service/             认证服务
 ├─ file-service/             文件服务
 ├─ message-service/          消息服务
@@ -374,45 +374,45 @@ services/
 └─ job-executor/             XXL-JOB 执行器
 ```
 
-### 4.1 legendary-server
+### 4.1 lumira-server
 
-- `src/main/java/com/legendary/invention/server/`：聚合启动类和少量运行配置。
+- `src/main/java/com/lumira/server/`：聚合启动类和少量运行配置。
 - 当前部署、健康检查、日志、监控和打包都以它为准。
 
 ### 4.2 auth-service
 
-- `src/main/java/com/legendary/invention/auth/`：认证启动类、认证应用服务、控制器等。
+- `src/main/java/com/lumira/auth/`：认证启动类、认证应用服务、控制器等。
 - `src/main/resources/`：认证服务配置。
 - 负责登录、会话、刷新、认证内部能力。
 
 ### 4.3 file-service
 
-- `src/main/java/com/legendary/invention/file/`：文件服务启动类、文件控制器、安全过滤器。
+- `src/main/java/com/lumira/file/`：文件服务启动类、文件控制器、安全过滤器。
 - 负责文件上传、下载、公开资源和文件鉴权。
 
 ### 4.5 message-service
 
-- `src/main/java/com/legendary/invention/message/`：消息服务、WebSocket、内部任务、鉴权逻辑。
+- `src/main/java/com/lumira/message/`：消息服务、WebSocket、内部任务、鉴权逻辑。
 - 负责站内消息、实时消息、消息 outbox、会话校验。
 
 ### 4.6 plugin-service
 
-- `src/main/java/com/legendary/invention/plugin/`：插件服务启动类、插件管理、运行时、网关适配。
+- `src/main/java/com/lumira/plugin/`：插件服务启动类、插件管理、运行时、网关适配。
 - 负责插件生命周期、插件运行时和插件扩展能力。
 
 ### 4.7 localization-service
 
-- `src/main/java/com/legendary/invention/localization/`：本地化服务启动类。
+- `src/main/java/com/lumira/localization/`：本地化服务启动类。
 - 负责独立语言包、本地化资源、翻译中心相关能力。
 
 ### 4.8 payment-service
 
-- `src/main/java/com/legendary/invention/payment/`：支付服务启动类、支付配置、回调和 Outbox。
+- `src/main/java/com/lumira/payment/`：支付服务启动类、支付配置、回调和 Outbox。
 - 负责支付服务商配置、订单、Webhook 和异步事件。
 
 ### 4.9 job-executor
 
-- `src/main/java/com/legendary/invention/job/`：XXL-JOB 执行器、任务处理器、后端调用客户端。
+- `src/main/java/com/lumira/job/`：XXL-JOB 执行器、任务处理器、后端调用客户端。
 - 负责 outbox relay、消息心跳、在线会话心跳等后台任务。
 
 ## 5. libs/
@@ -424,32 +424,32 @@ libs/
 ├─ common-core/
 ├─ common-web/
 ├─ common-security/
-└─ legendary-api/
+└─ lumira-api/
 ```
 
 ### 5.1 common-core
 
-- `src/main/java/com/legendary/invention/common/api/`：统一响应对象。
-- `src/main/java/com/legendary/invention/common/constant/`：通用常量。
-- `src/main/java/com/legendary/invention/common/enums/`：错误码和基础枚举。
-- `src/main/java/com/legendary/invention/common/exception/`：业务异常。
-- `src/main/java/com/legendary/invention/common/vo/`：通用 VO。
+- `src/main/java/com/lumira/common/api/`：统一响应对象。
+- `src/main/java/com/lumira/common/constant/`：通用常量。
+- `src/main/java/com/lumira/common/enums/`：错误码和基础枚举。
+- `src/main/java/com/lumira/common/exception/`：业务异常。
+- `src/main/java/com/lumira/common/vo/`：通用 VO。
 
 ### 5.2 common-web
 
-- `src/main/java/com/legendary/invention/common/web/`：请求上下文、Trace、Feign 请求头转发等。
+- `src/main/java/com/lumira/common/web/`：请求上下文、Trace、Feign 请求头转发等。
 
 ### 5.3 common-security
 
-- `src/main/java/com/legendary/invention/common/security/`：当前用户对象、内部令牌过滤器、权限守卫、安全上下文。
+- `src/main/java/com/lumira/common/security/`：当前用户对象、内部令牌过滤器、权限守卫、安全上下文。
 
-### 5.4 legendary-api
+### 5.4 lumira-api
 
-- `src/main/java/com/legendary/invention/api/auth/`：认证 DTO。
-- `src/main/java/com/legendary/invention/api/client/`：内部 Feign 接口。
-- `src/main/java/com/legendary/invention/api/file/`：文件 DTO。
-- `src/main/java/com/legendary/invention/api/message/`：消息 DTO。
-- `src/main/java/com/legendary/invention/api/system/`：系统侧 DTO、菜单树、权限快照、验证能力。
+- `src/main/java/com/lumira/api/auth/`：认证 DTO。
+- `src/main/java/com/lumira/api/client/`：内部 Feign 接口。
+- `src/main/java/com/lumira/api/file/`：文件 DTO。
+- `src/main/java/com/lumira/api/message/`：消息 DTO。
+- `src/main/java/com/lumira/api/system/`：系统侧 DTO、菜单树、权限快照、验证能力。
 - 作用：服务之间共享的契约和数据对象。
 
 ## 6. docs/
@@ -508,7 +508,7 @@ docs/
 
 - `frontend/src/.umi/` 和 `frontend/src/.umi-production/` 是生成目录，会让树看起来更杂
 - `services/system-service/modules/plugin/runtime/runtime/` 这种重复命名的目录，视觉上会显得有点绕
-- 某些历史说明仍然会提到重新拆分后的独立服务形态，阅读时要以 `legendary-server` 聚合运行模式为当前事实
+- 某些历史说明仍然会提到重新拆分后的独立服务形态，阅读时要以 `lumira-server` 聚合运行模式为当前事实
 
 如果你要继续，我可以下一步把这份文档再整理成“更适合提交到仓库的正式版”，比如：
 

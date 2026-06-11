@@ -4,7 +4,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 产品名称 | Legendary Invention 企业级 SaaS 智能应用平台 |
+| 产品名称 | Lumira 企业级 SaaS 智能应用平台 |
 | 文档类型 | 产品需求分析报告（PRD） |
 | 当前版本 | V1.1 |
 | 编写日期 | 2026-06-11 |
@@ -25,9 +25,9 @@
 
 随着企业数字化系统不断增多，后台管理系统往往面临用户体系重复建设、权限模型不统一、文件与消息能力分散、系统配置难以审计、AI 能力难以接入生产流程、插件扩展缺少治理等问题。传统后台模板通常只能满足基础页面搭建，难以支撑长期运营、多人协作、模块扩展、安全治理和准生产部署。
 
-Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项目以 React、TypeScript、Umi Max、Ant Design、Java 21、Spring Boot、MySQL、Redis、Docker 等技术为基础，提供认证、权限、系统管理、AI 助手、知识库、文件中心、消息中心、插件中心、国际化、支付配置、审计监控和容器化部署等能力。
+Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React、TypeScript、Umi Max、Ant Design、Java 21、Spring Boot、MySQL、Redis、Docker 等技术为基础，提供认证、权限、系统管理、AI 助手、知识库、文件中心、消息中心、插件中心、国际化、支付配置、审计监控和容器化部署等能力。
 
-当前项目已经从早期“多进程微服务”收敛为“单体微服务”运行模式：生产和本地默认只启动 `services/legendary-server` 一个后端入口，由它聚合系统、认证、文件、消息、插件、本地化、支付和任务能力；代码仍按 `services/*-service` 和 `libs/*` 保留模块边界，为后续物理拆分预留条件。
+当前项目已经从早期“多进程微服务”收敛为“单体微服务”运行模式：生产和本地默认只启动 `services/lumira-server` 一个后端入口，由它聚合系统、认证、文件、消息、插件、本地化、支付和任务能力；代码仍按 `services/*-service` 和 `libs/*` 保留模块边界，为后续物理拆分预留条件。
 
 ## 3. 产品定位
 
@@ -66,7 +66,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 ### 4.3 技术目标
 
 1. 保持前后端分离架构，统一 API 响应、请求封装、错误处理和鉴权方式。
-2. 后端以 `legendary-server` 为统一运行入口，保留模块化边界和未来拆分可能。
+2. 后端以 `lumira-server` 为统一运行入口，保留模块化边界和未来拆分可能。
 3. 支持 MySQL 持久化、Redis 会话与缓存、Flyway 数据迁移。
 4. 支持 Docker Compose 部署、生产环境变量隔离、API 代理、健康检查和轻量压测。
 5. 支持 Prometheus、Grafana、Loki、Tempo、OpenTelemetry 等可观测性能力按需启用。
@@ -513,7 +513,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 ### 7.6 部署运维流程
 
 1. 前端部署到 Vercel，默认通过 `/api` 和 `/ws` 转发到后端公网域名。
-2. 后端通过 Docker Compose 启动 `legendary-server`、API proxy、MySQL、Redis、XXL-Job 等组件。
+2. 后端通过 Docker Compose 启动 `lumira-server`、API proxy、MySQL、Redis、XXL-Job 等组件。
 3. 部署脚本执行环境检测、构建、启动和健康检查。
 4. 运维人员通过健康接口、日志、监控页面和可观测性看板检查系统状态。
 5. 重要变更前执行备份，异常时通过恢复脚本回滚数据与文件。
@@ -677,7 +677,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 需求编号 | 需求名称 | 需求说明 | 优先级 |
 | --- | --- | --- | --- |
 | DEPLOY-001 | 前端部署 | 支持 Vercel 托管，前端通过 `/api` 和 `/ws` 转发到后端 | P0 |
-| DEPLOY-002 | 后端部署 | 支持 Docker Compose 部署 `legendary-server` 和 API proxy | P0 |
+| DEPLOY-002 | 后端部署 | 支持 Docker Compose 部署 `lumira-server` 和 API proxy | P0 |
 | DEPLOY-003 | 环境检查 | 支持部署前检查 CPU、内存、磁盘、Docker、端口和环境变量 | P0 |
 | DEPLOY-004 | 健康检查 | 支持 `/health`、`/api/health`、`/actuator/health` 等检查 | P0 |
 | DEPLOY-005 | 备份恢复 | 支持 MySQL、Redis、上传文件、插件文件和环境配置备份恢复 | P1 |
@@ -813,7 +813,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 2. 后端按 `services/*-service` 和 `libs/*` 组织，禁止跨模块随意穿透内部实现。
 3. 新增业务能力必须明确模块 owner、表归属、API 契约和权限标识。
 4. 数据库变更必须通过迁移脚本管理。
-5. 文档、脚本、监控和部署说明默认以 `legendary-server` 为后端运行入口。
+5. 文档、脚本、监控和部署说明默认以 `lumira-server` 为后端运行入口。
 
 ### 12.4 可扩展性
 
@@ -875,7 +875,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | --- | --- |
 | 前端类型检查 | `corepack pnpm --dir frontend typecheck` 能够通过 |
 | 前端测试 | 关键 smoke 和 Vitest 测试能够通过 |
-| 后端构建 | `./mvnw -pl services/legendary-server -am package` 能够构建 |
+| 后端构建 | `./mvnw -pl services/lumira-server -am package` 能够构建 |
 | 后端测试 | 系统、认证、插件等核心模块单元测试能够通过 |
 | 数据迁移 | Flyway 迁移脚本可在新库初始化并完成基线数据准备 |
 | 部署脚本 | `node scripts/deploy-container.mjs --rebuild` 可完成后端重建部署 |
@@ -948,7 +948,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 
 ## 17. 结论
 
-Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品形态。它既包含传统管理后台必需的用户、角色、权限、菜单、配置、审计和监控，也加入了 AI 助手、知识库、工具调用、插件管理、国际化、文件中心、消息中心和支付配置等扩展能力。
+Lumira 已经具备企业级 SaaS 智能应用平台的核心产品形态。它既包含传统管理后台必需的用户、角色、权限、菜单、配置、审计和监控，也加入了 AI 助手、知识库、工具调用、插件管理、国际化、文件中心、消息中心和支付配置等扩展能力。
 
 从需求角度看，当前版本已经能够支撑“可登录、可授权、可配置、可审计、可扩展、可部署、可演示”的完整闭环。后续工作重点不应再盲目扩展大功能，而应围绕演示数据、租户运营、AI 治理、插件生态、运维交付和模块拆分路线继续打磨。
 

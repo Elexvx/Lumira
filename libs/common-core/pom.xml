@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.legendary.invention</groupId>
-        <artifactId>legendary-invention-parent</artifactId>
+        <groupId>com.lumira</groupId>
+        <artifactId>lumira-parent</artifactId>
         <version>0.1.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>

@@ -13,7 +13,7 @@ def strip_annotations(filepath):
         f.write(content)
     print(f"Stripped {filepath}")
 
-api_dir = 'libs/legendary-api/src/main/java/com/legendary/invention/api/client'
+api_dir = 'libs/lumira-api/src/main/java/com/lumira/api/client'
 for file in os.listdir(api_dir):
     if file.endswith('.java'):
         strip_annotations(os.path.join(api_dir, file))

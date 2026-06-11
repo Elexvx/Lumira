@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.legendary.invention.saas.modules.plugin.mapper.PluginPersistenceMapper">
+<mapper namespace="com.lumira.saas.modules.plugin.mapper.PluginPersistenceMapper">
 
     <insert id="upsertDefinition">
         insert into sys_plugin_definition (
@@ -58,7 +58,7 @@
             deleted = 0
     </insert>
 
-    <select id="findVersion" resultType="com.legendary.invention.saas.modules.plugin.entity.PluginEntities$PluginVersionEntity">
+    <select id="findVersion" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginVersionEntity">
         select *
         from sys_plugin_version
         where plugin_code = #{pluginCode}
@@ -67,7 +67,7 @@
         limit 1
     </select>
 
-    <select id="listDefinitions" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginDefinitionVO">
+    <select id="listDefinitions" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$PluginDefinitionVO">
         select plugin_code,
                plugin_name,
                plugin_type,
@@ -92,7 +92,7 @@
         lifecycle_status, schema_status
     </sql>
 
-    <select id="listVersions" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginVersionVO">
+    <select id="listVersions" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$PluginVersionVO">
         select <include refid="versionVoColumns"/>
         from sys_plugin_version
         where plugin_code = #{pluginCode}
@@ -100,14 +100,14 @@
         order by created_at desc
     </select>
 
-    <select id="listAllVersions" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginVersionVO">
+    <select id="listAllVersions" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$PluginVersionVO">
         select <include refid="versionVoColumns"/>
         from sys_plugin_version
         where deleted = 0
         order by plugin_code asc, created_at desc
     </select>
 
-    <select id="listRuntimeLogs" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginRuntimeLogVO">
+    <select id="listRuntimeLogs" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$PluginRuntimeLogVO">
         select id, tenant_id, plugin_code, plugin_version, operation_type, lifecycle_status, result_status,
                detail_message, request_id, trace_id, failure_stack, created_at
         from sys_plugin_runtime_log
@@ -117,7 +117,7 @@
         limit 200
     </select>
 
-    <select id="pluginStatus" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$PluginStatusVO">
+    <select id="pluginStatus" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$PluginStatusVO">
         select d.plugin_code,
                d.plugin_name,
                t.plugin_version as version,
@@ -248,7 +248,7 @@
         )
     </insert>
 
-    <select id="listMenuRelations" resultType="com.legendary.invention.saas.modules.plugin.entity.PluginEntities$PluginMenuRelEntity">
+    <select id="listMenuRelations" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginMenuRelEntity">
         select plugin_code, plugin_version, menu_code, menu_name, route_path, icon, permission_key, parent_menu_code, sort_no
         from sys_plugin_menu_rel
         where plugin_code = #{pluginCode}
@@ -257,7 +257,7 @@
         order by sort_no asc, id asc
     </select>
 
-    <select id="listPermissionRelations" resultType="com.legendary.invention.saas.modules.plugin.entity.PluginEntities$PluginPermissionRelEntity">
+    <select id="listPermissionRelations" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginPermissionRelEntity">
         select plugin_code, plugin_version, permission_key, permission_name, permission_group
         from sys_plugin_permission_rel
         where plugin_code = #{pluginCode}
@@ -363,7 +363,7 @@
     <delete id="deleteDefinitionByPlugin">delete from sys_plugin_definition where plugin_code = #{pluginCode}</delete>
     <delete id="deleteSchemaHistoryByPlugin">delete from sys_plugin_schema_history where plugin_code = #{pluginCode}</delete>
 
-    <select id="findTenantPlugin" resultType="com.legendary.invention.saas.modules.plugin.entity.PluginEntities$PluginTenantEntity">
+    <select id="findTenantPlugin" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginTenantEntity">
         select tenant_id, plugin_code, plugin_version, enabled, config_json
         from sys_plugin_tenant
         where tenant_id = #{tenantId}
@@ -372,7 +372,7 @@
         limit 1
     </select>
 
-    <select id="listTenantPlugins" resultType="com.legendary.invention.saas.modules.plugin.vo.PluginVO$TenantPluginVO">
+    <select id="listTenantPlugins" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$TenantPluginVO">
         select d.plugin_code,
                d.plugin_name,
                t.plugin_version as version,
@@ -398,7 +398,7 @@
           and deleted = 0
     </select>
 
-    <select id="listInstalledVersions" resultType="com.legendary.invention.saas.modules.plugin.entity.PluginEntities$PluginVersionEntity">
+    <select id="listInstalledVersions" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginVersionEntity">
         select *
         from sys_plugin_version
         where plugin_code = #{pluginCode}

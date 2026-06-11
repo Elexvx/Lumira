@@ -1,14 +1,14 @@
-# Legendary Invention 测试方案与测试用例文档
+# Lumira 测试方案与测试用例文档
 
 ## 1. 文档目标
 
-本文档用于指导 Legendary Invention 企业级 SaaS 智能应用平台的测试设计、测试执行、测试验收与回归管理。目标是让测试负责人、研发、产品和运维可以基于同一份文档直接开展测试工作。
+本文档用于指导 Lumira 企业级 SaaS 智能应用平台的测试设计、测试执行、测试验收与回归管理。目标是让测试负责人、研发、产品和运维可以基于同一份文档直接开展测试工作。
 
 配套文档：
 
-- 执行台账模板：[`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/22-test-execution-checklist-template.md)
-- 测试报告模板：[`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/23-test-report-template.md)
-- 逐页手工测试工作簿：[`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)
+- 执行台账模板：[`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/22-test-execution-checklist-template.md)
+- 测试报告模板：[`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/23-test-report-template.md)
+- 逐页手工测试工作簿：[`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)
 
 本文档覆盖：
 
@@ -24,14 +24,14 @@
 建议实际执行方式：
 
 1. 先阅读本文档，明确范围、环境、账号、优先级和用例口径。
-2. 手工逐页测试时，以 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md) 作为主执行文档，直接填写“实际结果/状态/缺陷编号/备注”。
-3. 每轮测试结束后，再把页面级结果汇总到 [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/22-test-execution-checklist-template.md) 和 [`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/23-test-report-template.md)。
+2. 手工逐页测试时，以 [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md) 作为主执行文档，直接填写“实际结果/状态/缺陷编号/备注”。
+3. 每轮测试结束后，再把页面级结果汇总到 [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/22-test-execution-checklist-template.md) 和 [`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/23-test-report-template.md)。
 
 ## 2. 项目测试对象
 
 ### 2.1 系统形态
 
-当前系统采用“单体微服务”运行模式，默认后端统一入口为 `services/legendary-server`，聚合以下模块：
+当前系统采用“单体微服务”运行模式，默认后端统一入口为 `services/lumira-server`，聚合以下模块：
 
 - 认证模块：`auth-service`
 - 系统模块：`system-service`
@@ -335,7 +335,7 @@ node scripts/check-deployment.mjs
 
 每个页面的详细操作步骤与结果留空位，统一见：
 
-- [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)
+- [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)
 
 ## 11. 模块测试用例
 
@@ -724,7 +724,7 @@ corepack pnpm --dir frontend test:smoke
 推荐执行命令：
 
 ```bash
-./mvnw -pl services/legendary-server -am -DskipTests package
+./mvnw -pl services/lumira-server -am -DskipTests package
 corepack pnpm --dir frontend typecheck
 corepack pnpm --dir frontend build
 ./mvnw test
@@ -777,8 +777,8 @@ git diff --check
 
 落地执行时建议按下面三份文档配合使用：
 
-1. [`docs/21-test-strategy-and-cases.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/21-test-strategy-and-cases.md)：总方案、风险、模块用例库
-2. [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/24-page-manual-test-workbook.md)：逐页手工测试步骤和结果填写
-3. [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/22-test-execution-checklist-template.md) / [`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/23-test-report-template.md)：轮次汇总与正式结论
+1. [`docs/21-test-strategy-and-cases.md`](/Users/johntao/Documents/GitHub/lumira/docs/21-test-strategy-and-cases.md)：总方案、风险、模块用例库
+2. [`docs/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/docs/24-page-manual-test-workbook.md)：逐页手工测试步骤和结果填写
+3. [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/22-test-execution-checklist-template.md) / [`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/23-test-report-template.md)：轮次汇总与正式结论
 
 按本文档执行，可以形成一套可持续复用的测试基线，后续新模块也可以沿用本结构追加测试范围和测试用例。

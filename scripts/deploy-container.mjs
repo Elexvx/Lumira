@@ -35,7 +35,7 @@ const skipDockerPrune = args.has('--skip-docker-prune');
 const serviceNames = parseServiceNames(rawArgs);
 const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
 const allowedServices = new Set([
-  'legendary-server',
+  'lumira-server',
   'mysql',
   'redis',
   'xxl-job-admin',
@@ -201,7 +201,7 @@ function printHelp() {
 
 Options:
   --rebuild   Force image rebuild.
-  --services  Deploy only selected services, comma-separated. Example: --services legendary-server
+  --services  Deploy only selected services, comma-separated. Example: --services lumira-server
   --stop      Stop the deployment.
   --reset     Stop and remove volumes. This deletes database and uploaded data.
               Requires typing ${resetConfirmPhrase} or setting DEPLOY_RESET_CONFIRM=${resetConfirmPhrase}.
@@ -324,8 +324,8 @@ function generatedEnvDefaults() {
     GRAFANA_SMTP_HOST: '',
     GRAFANA_SMTP_USER: '',
     GRAFANA_SMTP_PASSWORD: '',
-    GRAFANA_SMTP_FROM_ADDRESS: 'alerts@legendary-invention.local',
-    GRAFANA_SMTP_FROM_NAME: 'Legendary Observability',
+    GRAFANA_SMTP_FROM_ADDRESS: 'alerts@lumira.local',
+    GRAFANA_SMTP_FROM_NAME: 'Lumira Observability',
     GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
     GRAFANA_ALERT_WEBHOOK_URL: '',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'https://saas.elexvx.com',
@@ -423,13 +423,13 @@ function ensureWritableDirectory(hostPath, label) {
 
 function ensureHostMountedDirectories() {
   const env = parseEnvFile(envPath);
-  const xxlJobLogPath = env.XXL_JOB_EXECUTOR_LOG_HOST_PATH || '/opt/legendary-invention/data/xxl-job/logs';
+  const xxlJobLogPath = env.XXL_JOB_EXECUTOR_LOG_HOST_PATH || '/opt/lumira/data/xxl-job/logs';
   const resolvedXxlJobLogPath = path.isAbsolute(xxlJobLogPath) ? xxlJobLogPath : path.resolve(repoRoot, xxlJobLogPath);
   ensureWritableDirectory(resolvedXxlJobLogPath, 'XXL-Job executor log directory');
 }
 
 function shouldPrepareAppWritableVolumes() {
-  return serviceNames.length === 0 || serviceNames.includes('legendary-server');
+  return serviceNames.length === 0 || serviceNames.includes('lumira-server');
 }
 
 function resolveComposeProjectName() {
@@ -524,7 +524,7 @@ function ensureObservabilityProvisioning() {
   const receivers = [];
   if (isEnabled(env.GRAFANA_ALERT_EMAIL_ENABLED) && env.GRAFANA_ALERT_EMAIL_TO) {
     receivers.push({
-      uid: 'legendary-email',
+      uid: 'lumira-email',
       type: 'email',
       settings: {
         addresses: env.GRAFANA_ALERT_EMAIL_TO,
@@ -533,7 +533,7 @@ function ensureObservabilityProvisioning() {
   }
   if (isEnabled(env.GRAFANA_ALERT_WEBHOOK_ENABLED) && env.GRAFANA_ALERT_WEBHOOK_URL) {
     receivers.push({
-      uid: 'legendary-webhook',
+      uid: 'lumira-webhook',
       type: 'webhook',
       settings: {
         url: env.GRAFANA_ALERT_WEBHOOK_URL,
@@ -542,10 +542,10 @@ function ensureObservabilityProvisioning() {
   }
   if (receivers.length === 0) {
     receivers.push({
-      uid: 'legendary-noop',
+      uid: 'lumira-noop',
       type: 'webhook',
       settings: {
-        url: 'http://127.0.0.1:9/legendary-alerts-disabled',
+        url: 'http://127.0.0.1:9/lumira-alerts-disabled',
       },
     });
   }
@@ -558,7 +558,7 @@ function ensureObservabilityProvisioning() {
 
 contactPoints:
   - orgId: 1
-    name: legendary-alerts
+    name: lumira-alerts
     receivers:
 ${receivers.map(renderReceiver).join('\n')}
 `
@@ -569,7 +569,7 @@ ${receivers.map(renderReceiver).join('\n')}
 
 policies:
   - orgId: 1
-    receiver: legendary-alerts
+    receiver: lumira-alerts
     group_by:
       - grafana_folder
       - alertname
@@ -601,8 +601,8 @@ async function checkDeployment() {
   log('Running deployment health checks...');
   await waitForHttp(`${baseUrl}/health`, 'API proxy');
   await waitForHttp(`${baseUrl}/api/health`, 'system API through API proxy');
-  await waitForHttp(`${baseUrl}/api/v1/system/version`, 'legendary-server version API');
-  await waitForHttp(`${backendUrl}/actuator/health`, 'legendary-server actuator');
+  await waitForHttp(`${baseUrl}/api/v1/system/version`, 'lumira-server version API');
+  await waitForHttp(`${backendUrl}/actuator/health`, 'lumira-server actuator');
   await waitForHttp(`${baseUrl}/api/v1/public/login-capabilities`, 'public login capabilities API');
   await waitForHttp(`${baseUrl}/api/v1/localization/languages`, 'protected localization management API is routed', { expectedStatus: 401 });
   if (observability) {
@@ -618,10 +618,10 @@ async function checkSelectedServiceReadiness() {
 
   const baseUrl = resolvePublicBaseUrl();
   const checks = {
-    'legendary-server': [
-      [`${baseUrl}/api/v1/public/security-settings`, 'legendary-server public settings API'],
-      [`${baseUrl}/api/health`, 'legendary-server health API'],
-      [`${baseUrl}/api/v1/public/login-capabilities`, 'legendary-server login capabilities API'],
+    'lumira-server': [
+      [`${baseUrl}/api/v1/public/security-settings`, 'lumira-server public settings API'],
+      [`${baseUrl}/api/health`, 'lumira-server health API'],
+      [`${baseUrl}/api/v1/public/login-capabilities`, 'lumira-server login capabilities API'],
     ]
   };
 
@@ -639,7 +639,7 @@ async function checkSelectedServiceReadiness() {
 }
 
 async function waitForPrometheusTargets() {
-  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22legendary-server%22%7D';
+  const queryUrl = 'http://127.0.0.1:9090/api/v1/query?query=up%7Bjob%3D%22lumira-server%22%7D';
   const timeoutMs = 240_000;
   const intervalMs = 3_000;
   const startedAt = Date.now();
@@ -653,7 +653,7 @@ async function waitForPrometheusTargets() {
         const payload = JSON.parse(result.text);
         const series = payload.data?.result ?? [];
         const upSeries = series.filter((item) => item.value?.[1] === '1');
-        lastSummary = `${upSeries.length}/${series.length} legendary targets are UP`;
+        lastSummary = `${upSeries.length}/${series.length} lumira targets are UP`;
         if (series.length >= 8 && upSeries.length >= 8) {
           log(`Prometheus targets are ready: ${lastSummary}`);
           return;
@@ -669,7 +669,7 @@ async function waitForPrometheusTargets() {
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 
-  throw new Error(`Prometheus did not report all legendary service targets as UP (${lastSummary}).`);
+  throw new Error(`Prometheus did not report all lumira service targets as UP (${lastSummary}).`);
 }
 
 async function checkGrafanaAlertingProvisioning() {
@@ -683,17 +683,17 @@ async function checkGrafanaAlertingProvisioning() {
     {
       url: 'http://127.0.0.1:3001/api/v1/provisioning/alert-rules',
       label: 'Grafana alert rules provisioning API',
-      includes: 'legendary-service-down',
+      includes: 'lumira-service-down',
     },
     {
       url: 'http://127.0.0.1:3001/api/v1/provisioning/contact-points',
       label: 'Grafana contact points provisioning API',
-      includes: 'legendary-alerts',
+      includes: 'lumira-alerts',
     },
     {
       url: 'http://127.0.0.1:3001/api/v1/provisioning/policies',
       label: 'Grafana notification policies provisioning API',
-      includes: 'legendary-alerts',
+      includes: 'lumira-alerts',
     },
   ];
 
@@ -781,4 +781,4 @@ if (!skipCheck) {
 log('Complete deployment started.');
 log(`Public edge entry: ${resolvePublicBaseUrl()}`);
 log('Local API proxy: http://127.0.0.1:8000');
-log('legendary-server health: http://127.0.0.1:8080/actuator/health');
+log('lumira-server health: http://127.0.0.1:8080/actuator/health');

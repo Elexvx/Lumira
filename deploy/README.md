@@ -12,14 +12,14 @@
 
 saas.elexvx.com / HTTPS / CDN / WAF
   -> 服务器 edge-proxy Nginx (80/443)
-    -> /api/** 反向代理到 legendary-api-proxy
-    -> /ws/** 反向代理到 legendary-api-proxy
-    -> /health 反向代理到 legendary-api-proxy
-  -> legendary-api-proxy
-    -> /api/** 反向代理到 legendary-server
-    -> /ws/** 反向代理到 legendary-server
-    -> /api/health 反向代理到 legendary-server
-  -> legendary-server
+    -> /api/** 反向代理到 lumira-api-proxy
+    -> /ws/** 反向代理到 lumira-api-proxy
+    -> /health 反向代理到 lumira-api-proxy
+  -> lumira-api-proxy
+    -> /api/** 反向代理到 lumira-server
+    -> /ws/** 反向代理到 lumira-server
+    -> /api/health 反向代理到 lumira-server
+  -> lumira-server
     -> auth module
     -> system module
     -> file module
@@ -39,7 +39,7 @@ saas.elexvx.com / HTTPS / CDN / WAF
 - XXL-Job Admin：`xuxueli/xxl-job-admin:3.4.0`
 - edge-proxy：80/443 对外统一入口，负责 HTTPS 终止和路由
 - api-proxy：Nginx 后端统一入口
-- legendary-server：单体微服务后端入口，聚合系统、认证、文件、消息、插件、本地化和任务模块
+- lumira-server：单体微服务后端入口，聚合系统、认证、文件、消息、插件、本地化和任务模块
 
 `frontend` 容器只作为本地备用预览，默认不随生产部署启动。正式前端由 Vercel 托管。
 
@@ -76,7 +76,7 @@ node scripts/install-platform.mjs
 - 交互确认 API 域名、前端 Origin、是否启用内置 MySQL、Nacos、前端容器和观测栈。
 - 按服务器规格自动写入 `deploy/.env` 的 JVM、容器内存、Redis、数据库连接池、Tomcat 线程池、限流和日志轮转参数。
 - 检查 Docker；Linux 服务器缺少 Docker 时可自动安装。
-- 按阶段启动基础组件、`legendary-server`、API proxy、可选前端容器和可选观测栈。
+- 按阶段启动基础组件、`lumira-server`、API proxy、可选前端容器和可选观测栈。
 - 自动运行部署健康检查和轻量并发冒烟。
 
 无人值守安装：
@@ -132,8 +132,8 @@ node scripts/deploy-container.mjs --rebuild
 - 对外入口：`https://saas.elexvx.com/health`
 - API 健康检查：`https://saas.elexvx.com/api/health`
 - 版本检查：`https://saas.elexvx.com/api/version`
-- 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/legendary-invention/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
-- legendary-server 健康检查：`http://127.0.0.1:8080/actuator/health`
+- 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/lumira/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
+- lumira-server 健康检查：`http://127.0.0.1:8080/actuator/health`
 - 公开登录配置接口：`https://saas.elexvx.com/api/v1/public/login-capabilities`
 
 ## 可观测性闭环
@@ -152,7 +152,7 @@ node scripts/deploy-container.mjs --rebuild --observability
 - Tempo：`http://127.0.0.1:3200`
 - Alloy：`http://127.0.0.1:12345`
 
-Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Legendary Observability Overview` 看板。`legendary-server` 会暴露 `/actuator/prometheus`，并在启用观测栈时通过 OpenTelemetry Java Agent 把 trace 发送到 Alloy。
+Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Lumira Observability Overview` 看板。`lumira-server` 会暴露 `/actuator/prometheus`，并在启用观测栈时通过 OpenTelemetry Java Agent 把 trace 发送到 Alloy。
 
 4C4G 服务器上不建议常驻完整观测栈；需要排查性能问题时短时开启，排查结束后停止观测栈释放内存。
 
@@ -234,13 +234,13 @@ bash deploy/backup-platform.sh
 脚本会导出 MySQL、Redis RDB、上传文件目录、插件目录和 `deploy/.env` 快照，默认保存到 `backups/<时间戳>/`。如需指定备份根目录：
 
 ```bash
-BACKUP_ROOT=/opt/legendary-invention/backups bash deploy/backup-platform.sh
+BACKUP_ROOT=/opt/lumira/backups bash deploy/backup-platform.sh
 ```
 
 演练备份命令链但不写入数据、不访问容器：
 
 ```bash
-DRY_RUN=1 BACKUP_ROOT=/tmp/legendary-backup-dry-run bash deploy/backup-platform.sh
+DRY_RUN=1 BACKUP_ROOT=/tmp/lumira-backup-dry-run bash deploy/backup-platform.sh
 ```
 
 恢复到测试环境或灾备环境：
@@ -301,7 +301,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --r
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
 - `DEFAULT_ADMIN_INIT_ENABLED` 在正式演示环境建议保持 `false`。
 - HTTPS/CDN/WAF 放在容器前面，API proxy 只承担容器内反向代理。
-- `XXL_JOB_EXECUTOR_LOG_HOST_PATH` 默认使用 `/opt/legendary-invention/data/xxl-job/logs`，部署前会授权给容器内 `app` 用户写入。
+- `XXL_JOB_EXECUTOR_LOG_HOST_PATH` 默认使用 `/opt/lumira/data/xxl-job/logs`，部署前会授权给容器内 `app` 用户写入。
 
 ## 入口约定
 
@@ -311,4 +311,4 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --r
 - WebSocket：`/ws`
 - 本机 API proxy：`http://127.0.0.1:8000`
 - 本机前端预览：`http://127.0.0.1:8001`
-- 本机 legendary-server 健康检查：`http://127.0.0.1:8080/actuator/health`
+- 本机 lumira-server 健康检查：`http://127.0.0.1:8080/actuator/health`

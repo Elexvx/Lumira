@@ -14,7 +14,7 @@ const bannerLines = [
   '',
   '',
   ' Frontend Service ::  Umi Max / React',
-  ' Workspace        ::  legendary-invention',
+  ' Workspace        ::  lumira',
   ` Mode             ::  ${process.env.NODE_ENV || 'development'}`,
   '',
 ];

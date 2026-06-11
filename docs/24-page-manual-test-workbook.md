@@ -1,4 +1,4 @@
-# Legendary Invention 逐页手工测试工作簿
+# Lumira 逐页手工测试工作簿
 
 ## 1. 使用说明
 
@@ -13,8 +13,8 @@
 3. `状态` 建议填写：`PASS` / `FAIL` / `BLOCKED` / `SKIP` / `NOT RUN`
 4. 若失败或阻塞，请补 `缺陷编号` 和 `备注`。
 5. 测试完成后，将本页结果汇总到：
-   - [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/22-test-execution-checklist-template.md)
-   - [`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/legendary-invention/docs/23-test-report-template.md)
+   - [`docs/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/22-test-execution-checklist-template.md)
+   - [`docs/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/docs/23-test-report-template.md)
 
 ## 2. 测试轮次信息
 

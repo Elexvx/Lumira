@@ -15,7 +15,7 @@ COPY libs/common-core/pom.xml libs/common-core/pom.xml
 COPY libs/common-domain/pom.xml libs/common-domain/pom.xml
 COPY libs/common-security/pom.xml libs/common-security/pom.xml
 COPY libs/common-web/pom.xml libs/common-web/pom.xml
-COPY libs/legendary-api/pom.xml libs/legendary-api/pom.xml
+COPY libs/lumira-api/pom.xml libs/lumira-api/pom.xml
 COPY libs/plugin-api/pom.xml libs/plugin-api/pom.xml
 COPY services/auth-service/pom.xml services/auth-service/pom.xml
 COPY services/file-service/pom.xml services/file-service/pom.xml
@@ -23,7 +23,7 @@ COPY services/message-service/pom.xml services/message-service/pom.xml
 COPY services/plugin-service/pom.xml services/plugin-service/pom.xml
 COPY services/localization-service/pom.xml services/localization-service/pom.xml
 COPY services/job-executor/pom.xml services/job-executor/pom.xml
-COPY services/legendary-server/pom.xml services/legendary-server/pom.xml
+COPY services/lumira-server/pom.xml services/lumira-server/pom.xml
 
 COPY . .
 

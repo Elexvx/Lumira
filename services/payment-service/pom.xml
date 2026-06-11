@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.legendary.invention</groupId>
-        <artifactId>legendary-invention-parent</artifactId>
+        <groupId>com.lumira</groupId>
+        <artifactId>lumira-parent</artifactId>
         <version>0.1.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
@@ -67,23 +67,23 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>common-core</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>common-web</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
+            <groupId>com.lumira</groupId>
             <artifactId>common-security</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>
-            <groupId>com.legendary.invention</groupId>
-            <artifactId>legendary-api</artifactId>
+            <groupId>com.lumira</groupId>
+            <artifactId>lumira-api</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>

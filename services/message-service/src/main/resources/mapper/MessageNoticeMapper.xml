@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.legendary.invention.message.mapper.MessageNoticeMapper">
+<mapper namespace="com.lumira.message.mapper.MessageNoticeMapper">
 
     <sql id="noticeColumns">
         n.id,
@@ -109,7 +109,7 @@
           and <include refid="visiblePredicate"/>
     </select>
 
-    <select id="listVisiblePublished" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+    <select id="listVisiblePublished" resultType="com.lumira.message.vo.MessageVO$NoticeVO">
         select <include refid="noticeColumns"/>
         from msg_notice n
         <include refid="noticeJoins"/>
@@ -170,7 +170,7 @@
         where <include refid="archiveFilters"/>
     </select>
 
-    <select id="listArchive" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+    <select id="listArchive" resultType="com.lumira.message.vo.MessageVO$NoticeVO">
         select <include refid="noticeColumns"/>
         from msg_notice n
         <include refid="noticeJoins"/>
@@ -189,7 +189,7 @@
         limit #{query.limit} offset #{query.offset}
     </select>
 
-    <select id="findNoticeById" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+    <select id="findNoticeById" resultType="com.lumira.message.vo.MessageVO$NoticeVO">
         select <include refid="noticeColumns"/>
         from msg_notice n
         <include refid="noticeJoins"/>
@@ -199,7 +199,7 @@
         limit 1
     </select>
 
-    <select id="findVisibleNoticeById" resultType="com.legendary.invention.message.vo.MessageVO$NoticeVO">
+    <select id="findVisibleNoticeById" resultType="com.lumira.message.vo.MessageVO$NoticeVO">
         select <include refid="noticeColumns"/>
         from msg_notice n
         <include refid="noticeJoins"/>
@@ -216,7 +216,7 @@
         on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
     </insert>
 
-    <select id="listUserRecipient" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
+    <select id="listUserRecipient" resultType="com.lumira.message.dto.MessageQueryModels$RecipientRow">
         select u.id as userId, u.username, u.email, wb.openid as wechatOpenid
         from sys_user u
         join sys_user_tenant ut
@@ -232,7 +232,7 @@
         limit 1
     </select>
 
-    <select id="listRoleRecipients" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
+    <select id="listRoleRecipients" resultType="com.lumira.message.dto.MessageQueryModels$RecipientRow">
         select distinct u.id as userId, u.username, u.email, wb.openid as wechatOpenid
         from sys_user u
         join sys_user_role ur
@@ -248,7 +248,7 @@
         order by u.id asc
     </select>
 
-    <select id="listTenantRecipients" resultType="com.legendary.invention.message.dto.MessageQueryModels$RecipientRow">
+    <select id="listTenantRecipients" resultType="com.lumira.message.dto.MessageQueryModels$RecipientRow">
         select distinct u.id as userId, u.username, u.email, wb.openid as wechatOpenid
         from sys_user u
         join sys_user_tenant ut

@@ -17,18 +17,18 @@ def update_docker_compose(filepath):
             'job-executor'
         ]
 
-        # Use system-service config as template for legendary-server
+        # Use system-service config as template for lumira-server
         if 'services' in data and 'system-service' in data['services']:
-            legendary_server_config = deepcopy(data['services']['system-service'])
-            legendary_server_config['image'] = 'legendary/legendary-server:0.1.0'
-            legendary_server_config['container_name'] = 'legendary-server'
+            lumira_server_config = deepcopy(data['services']['system-service'])
+            lumira_server_config['image'] = 'lumira/lumira-server:0.1.0'
+            lumira_server_config['container_name'] = 'lumira-server'
             # Adjust ports if necessary, usually it doesn't map directly in prod if using api-proxy
             # Remove from original services
             for svc in services_to_remove:
                 if svc in data['services']:
                     del data['services'][svc]
             
-            data['services']['legendary-server'] = legendary_server_config
+            data['services']['lumira-server'] = lumira_server_config
 
         # Update depends_on
         if 'services' in data:
@@ -38,8 +38,8 @@ def update_docker_compose(filepath):
                         new_deps = []
                         for dep in s_data['depends_on']:
                             if dep in services_to_remove:
-                                if 'legendary-server' not in new_deps:
-                                    new_deps.append('legendary-server')
+                                if 'lumira-server' not in new_deps:
+                                    new_deps.append('lumira-server')
                             else:
                                 new_deps.append(dep)
                         s_data['depends_on'] = new_deps
@@ -47,7 +47,7 @@ def update_docker_compose(filepath):
                         new_deps = {}
                         for dep, cfg in s_data['depends_on'].items():
                             if dep in services_to_remove:
-                                new_deps['legendary-server'] = cfg
+                                new_deps['lumira-server'] = cfg
                             else:
                                 new_deps[dep] = cfg
                         s_data['depends_on'] = new_deps

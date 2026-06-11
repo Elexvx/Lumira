@@ -2,20 +2,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.legendary.invention</groupId>
-    <artifactId>legendary-invention-parent</artifactId>
+    <groupId>com.lumira</groupId>
+    <artifactId>lumira-parent</artifactId>
     <version>0.1.0</version>
     <packaging>pom</packaging>
-    <name>legendary-invention-parent</name>
+    <name>lumira-parent</name>
 
     <modules>
         <module>services/system-service</module>
-        <module>services/legendary-server</module>
+        <module>services/lumira-server</module>
         <module>libs/common-core</module>
         <module>libs/common-domain</module>
         <module>libs/common-web</module>
         <module>libs/common-security</module>
-        <module>libs/legendary-api</module>
+        <module>libs/lumira-api</module>
         <module>libs/plugin-api</module>
         <module>services/auth-service</module>
         <module>services/file-service</module>

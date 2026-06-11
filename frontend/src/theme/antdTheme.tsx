@@ -66,10 +66,10 @@ const resolveIsMobile = () => {
 
 const resolveCssVarKey = (themePreference: ThemePreference, resolvedColorMode: 'light' | 'dark') => {
   if (themePreference === 'compact') {
-    return 'legendary-compact';
+    return 'lumira-compact';
   }
 
-  return `legendary-${resolvedColorMode}`;
+  return `lumira-${resolvedColorMode}`;
 };
 
 const resolveAntdLocale = () => (resolveRuntimeLocale().startsWith('en') ? enUS : zhCN);

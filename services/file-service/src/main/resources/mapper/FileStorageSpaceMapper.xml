@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.legendary.invention.file.mapper.FileStorageSpaceMapper">
+<mapper namespace="com.lumira.file.mapper.FileStorageSpaceMapper">
 
     <sql id="storageSpaceWithUsage">
         select s.*,
@@ -15,7 +15,7 @@
         ) files on files.bucket = s.storage_key
     </sql>
 
-    <select id="listWithUsage" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+    <select id="listWithUsage" resultType="com.lumira.file.entity.FileStorageSpaceEntity">
         <include refid="storageSpaceWithUsage"/>
         where s.tenant_id = #{tenantId}
           and s.deleted = 0
@@ -23,7 +23,7 @@
         limit #{limit} offset #{offset}
     </select>
 
-    <select id="findDefault" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+    <select id="findDefault" resultType="com.lumira.file.entity.FileStorageSpaceEntity">
         select s.*, 0 as file_count, 0 as total_size_bytes
         from file_storage_space s
         where s.tenant_id = #{tenantId}
@@ -32,14 +32,14 @@
         limit 1
     </select>
 
-    <select id="findByStorageKey" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+    <select id="findByStorageKey" resultType="com.lumira.file.entity.FileStorageSpaceEntity">
         <include refid="storageSpaceWithUsage"/>
         where s.tenant_id = #{tenantId}
           and s.storage_key = #{storageKey}
           and s.deleted = 0
     </select>
 
-    <select id="findByIdWithUsage" resultType="com.legendary.invention.file.entity.FileStorageSpaceEntity">
+    <select id="findByIdWithUsage" resultType="com.lumira.file.entity.FileStorageSpaceEntity">
         <include refid="storageSpaceWithUsage"/>
         where s.tenant_id = #{tenantId}
           and s.id = #{id}

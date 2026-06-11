@@ -8,7 +8,7 @@ const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CH
 const checks = [
   { label: 'API proxy', url: `${baseUrl}/health` },
   { label: 'system API through API proxy', url: `${baseUrl}/api/health` },
-  { label: 'legendary-server actuator', url: `${backendUrl}/actuator/health` },
+  { label: 'lumira-server actuator', url: `${backendUrl}/actuator/health` },
   { label: 'public login capabilities API', url: `${baseUrl}/api/v1/public/login-capabilities` },
   { label: 'protected localization management API is routed', url: `${baseUrl}/api/v1/localization/languages`, expectedStatus: 401 },
 ];
