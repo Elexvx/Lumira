@@ -6,10 +6,20 @@
 | --- | --- |
 | 产品名称 | Legendary Invention 企业级 SaaS 智能应用平台 |
 | 文档类型 | 产品需求分析报告（PRD） |
-| 当前版本 | V1.0 |
-| 编写日期 | 2026-06-10 |
+| 当前版本 | V1.1 |
+| 编写日期 | 2026-06-11 |
 | 适用范围 | 已完成的 Web 管理端、后端聚合服务、部署与运维能力 |
 | 目标读者 | 项目评审人员、产品负责人、研发人员、测试人员、运维人员、后续业务模块建设人员 |
+
+### 1.1 本次更新摘要
+
+相较上一版需求文档，本次补充了当前仓库已经落地但原文档描述不足的能力：
+
+1. 补充资料字段配置、个性化协议设置、通知中心配置与手动测试发布能力。
+2. 补充 AI 会话分享、只读分享页和分享 token 访问模式。
+3. 补充平台更新中心、API 文档入口、在线用户会话管理等运维侧能力。
+4. 补充内置敏感词插件、敏感词治理和表单内容拦截能力。
+5. 补充品牌、水印、浮窗、协议等更细颗粒度的平台配置项。
 
 ## 2. 项目背景
 
@@ -51,6 +61,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 4. 普通用户能够使用个人中心、我的文件、下载中心、消息通知和 AI 助手。
 5. AI 管理人员能够配置 AI 员工、模型服务、知识库和工具策略。
 6. 平台运营人员能够管理插件、国际化词条、支付服务商配置和通知渠道配置。
+7. 平台配置人员能够维护资料字段、品牌视觉、水印、浮窗、协议文案和平台更新检查策略。
 
 ### 4.3 技术目标
 
@@ -474,6 +485,14 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 5. 用户可管理会话、导出会话或生成分享链接。
 6. AI 调用、工具调用和敏感行为进入审计或治理记录。
 
+### 7.3.1 通知与内容治理流程
+
+1. 管理员进入通知中心，配置站内通知、邮箱通知、微信公众号通知等渠道参数。
+2. 管理员可执行测试发布，验证通知链路是否可用。
+3. 业务侧表单提交或导入文本内容时，系统按启用状态接入敏感词检测。
+4. 如果命中敏感词规则，系统返回用户可理解的拦截提示，并记录治理事件。
+5. 敏感词插件管理员可维护词条、导入词库、启停策略和检查结果。
+
 ### 7.4 文件与下载流程
 
 1. 用户进入我的文件或全部文件中心。
@@ -557,13 +576,14 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 需求编号 | 需求名称 | 需求说明 | 优先级 |
 | --- | --- | --- | --- |
 | SYS-001 | 字典管理 | 支持字典类型、字典项的查询、新增、编辑、状态维护 | P0 |
-| SYS-002 | 个性化设置 | 支持品牌、主题、水印、浮窗等前端运行时设置 | P1 |
+| SYS-002 | 个性化设置 | 支持品牌、主题、水印、浮窗、用户协议和隐私协议等前端运行时设置 | P1 |
 | SYS-003 | 安全设置 | 支持密码策略、会话策略、登录保护等安全配置 | P0 |
 | SYS-004 | 验证设置 | 支持短信、微信、Passkey、二次验证等验证渠道配置 | P1 |
-| SYS-005 | 通知设置 | 支持微信公众号等通知渠道配置 | P1 |
+| SYS-005 | 通知设置 | 支持站内通知、SMTP 邮件、微信公众号等通知渠道配置与测试发布 | P1 |
 | SYS-006 | 支付设置 | 支持支付服务商配置、密钥保存、启停和连通性测试 | P1 |
 | SYS-007 | API 文档 | 支持在系统监控区域查看接口文档入口 | P1 |
 | SYS-008 | 平台更新 | 支持检查平台更新状态，提示当前版本与远端更新信息 | P2 |
+| SYS-009 | 资料字段配置 | 支持资料字段启停、排序、必填和展示规则配置 | P1 |
 
 ### 8.6 AI 智能应用模块
 
@@ -615,6 +635,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | PLUGIN-005 | 插件日志 | 支持查看插件生命周期和运行日志 | P1 |
 | PLUGIN-006 | 插件运行时 | 支持通过 `/plugins/:pluginCode` 访问已安装插件 | P1 |
 | PLUGIN-007 | 插件菜单权限 | 支持插件暴露菜单、权限和静态资源 | P1 |
+| PLUGIN-008 | 敏感词治理 | 支持通过内置敏感词插件维护词库、启停词条、批量导入和命中检查 | P1 |
 
 ### 8.10 国际化模块
 
@@ -684,6 +705,9 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 国际化词条 | 语言、命名空间、文案 key、默认文案、翻译文案和发布版本 |
 | 支付对象 | 服务商配置、订单、退款、回调事件和 Outbox 事件 |
 | 审计日志 | 登录、操作、AI 调用、验证行为等可追踪记录 |
+| 资料字段配置 | 用户资料字段定义、排序、显隐、必填和校验规则 |
+| AI 会话分享 | 分享 token、分享标题、过期时间和只读分享状态 |
+| 敏感词词库 | 敏感词条、分类、启停状态、导入结果和命中记录 |
 
 ### 9.2 数据设计原则
 
@@ -711,7 +735,9 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 接口分组 | 前缀 | 说明 |
 | --- | --- | --- |
 | 认证 | `/api/v1/auth` | 登录、登出、刷新 token、Passkey、二次验证、微信登录 |
+| 公共配置 | `/api/v1/public` | 登录能力、公开品牌、公开协议、公开安全策略 |
 | 系统管理 | `/api/v1/system` | 用户、角色、菜单、权限、配置等系统能力 |
+| 平台更新 | `/api/v1/system/update` | 当前版本、更新源检查和版本比较 |
 | 部门 | `/api/v1/system/departments` | 部门树和部门维护 |
 | 验证配置 | `/api/v1/system/verification` | 验证渠道、短信、微信、Passkey 配置 |
 | 监控 | `/api/v1/system/monitor` | 服务、Redis、API 文档等监控信息 |
@@ -721,6 +747,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 文件 | `/api/v1/files` | 文件列表、上传、下载、预览、存储空间 |
 | 消息 | `/api/v1/message` | 站内信、已读、未读数、WebSocket、归档、投递日志 |
 | 插件 | `/api/v1/plugins` | 插件定义、版本、上传、安装、运行时资源 |
+| 敏感词 | `/api/v1/sensitive-words` | 敏感词查询、维护、导入和内容检查 |
 | 国际化 | `/api/v1/localization` | 语言、命名空间、词条、同步、发布、回滚 |
 | 支付 | `/api/v1/payment` | 服务商、订单、退款、Webhook |
 | 健康检查 | `/api/health`、`/actuator/health` | 服务存活和部署检查 |
@@ -744,7 +771,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 菜单管理 | `/settings/menus` | 菜单、路由和权限标识维护 |
 | 字典管理 | `/settings/dicts` | 字典类型和字典项维护 |
 | 资料字段 | `/settings/profile-fields` | 用户资料字段配置 |
-| 个性化 | `/settings/personalization` | 品牌、主题、水印、浮窗配置 |
+| 个性化 | `/settings/personalization` | 品牌、主题、水印、浮窗和协议配置 |
 | 安全设置 | `/settings/security` | 密码、会话和安全策略 |
 | 验证设置 | `/settings/verification` | 短信、微信、Passkey、二次验证配置 |
 | 支付设置 | `/settings/payment` | 支付服务商配置 |
@@ -756,6 +783,7 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 系统监控 | `/settings/monitoring` | 服务、Redis、平台更新等监控 |
 | API 文档 | `/settings/api-docs` | 接口文档入口 |
 | 审计日志 | `/settings/audit` | 审计日志查询 |
+| 敏感词插件 | `/plugins/sensitive-words` | 内置敏感词插件管理页 |
 | 插件运行时 | `/plugins/:pluginCode` | 插件页面容器 |
 | 无权限 | `/403` | 无权限提示页 |
 | 未找到 | `/404` | 页面不存在提示页 |
@@ -834,7 +862,9 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 | 知识库 | 管理员可创建知识库、上传文档、重建索引和执行检索 |
 | 文件中心 | 用户可上传、查询、预览或下载文件，权限受控 |
 | 消息中心 | 用户可查看未读数、消息列表、标记已读和接收 WebSocket 配置 |
+| 平台配置 | 管理员可维护资料字段、品牌、水印、浮窗、协议和通知配置 |
 | 插件中心 | 管理员可上传插件、校验、安装、启停、回滚并查看日志 |
+| 敏感词治理 | 管理员可维护敏感词词库并验证内容拦截效果 |
 | 国际化 | 管理员可维护语言、命名空间、词条，并发布或回滚 |
 | 审计监控 | 管理员可查看登录日志、操作日志、系统服务和 Redis 状态 |
 | 部署检查 | 后端健康检查、API proxy、前端 API 转发和公网接口检查可通过 |
@@ -862,8 +892,9 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 6. 进入 AI 助手发起一次对话。
 7. 创建知识库或展示已有知识库文档。
 8. 查看消息入口和未读消息。
-9. 查看插件管理、国际化、支付配置等扩展能力。
-10. 查看审计日志、系统监控和健康状态。
+9. 展示资料字段、品牌水印、通知中心或协议设置等平台配置能力。
+10. 查看插件管理、敏感词治理、国际化、支付配置等扩展能力。
+11. 查看审计日志、系统监控、平台更新和健康状态。
 
 ## 14. 当前范围与边界
 
@@ -880,6 +911,8 @@ Legendary Invention 项目定位为企业级 SaaS 智能应用平台底座。项
 9. 支付服务商配置、订单、退款和回调基础能力。
 10. 审计、监控、健康检查和可观测性配置。
 11. Docker 后端部署、Vercel 前端部署、备份恢复和轻量压测。
+12. 资料字段、协议设置、品牌水印和通知渠道等平台级配置。
+13. 内置敏感词插件和基础内容治理能力。
 
 ### 14.2 当前不作为重点范围
 
@@ -994,7 +1027,36 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | footerIcp | string? | 普通文本 | 备案号 | 页脚文本 |
 | footerCopyright | string? | 普通文本 | 版权文案 | 页脚文本 |
 
-#### 18.2.3 获取验证码挑战
+#### 18.2.3 获取公开协议配置
+
+- 接口：`GET /api/v1/public/agreement-settings`
+- 作用：登录页、注册页或公开入口加载用户协议和隐私协议文案。
+- 对应页面：登录页、公开协议入口。
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| userAgreementMarkdown | string? | Markdown | 用户协议内容 | 协议弹窗/只读页 |
+| privacyAgreementMarkdown | string? | Markdown | 隐私协议内容 | 协议弹窗/只读页 |
+| updatedAt | string? | 日期时间 | 最近更新时间 | 页脚提示/版本说明 |
+
+#### 18.2.4 获取公开安全配置
+
+- 接口：`GET /api/v1/public/security-settings`
+- 作用：登录页加载密码策略、会话策略和公开安全校验参数。
+- 对应页面：登录页、公开认证流程。
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| passwordMinLength | number | 数值 | 密码最小长度 | 密码校验提示 |
+| passwordRequireUppercase/passwordRequireLowercase/passwordRequireSpecialCharacter | boolean | `true/false` | 密码复杂度要求 | 提示文案 |
+| passwordAllowConsecutiveCharacters | boolean | `true/false` | 是否允许连续字符 | 提示文案 |
+| sessionIdleTimeoutMinutes | number? | 数值 | 会话空闲时长 | 提示文案 |
+
+#### 18.2.5 获取验证码挑战
 
 - 接口：`GET /api/v1/public/captcha/challenge`
 - 作用：获取图片验证码或滑块验证码资源。
@@ -1020,7 +1082,7 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | puzzleLeft/puzzleTop | number? | 像素 | 拼图位置 | 控件内部定位 |
 | expiresInSeconds | number? | 秒 | 验证码过期时间 | 倒计时/自动刷新 |
 
-#### 18.2.4 获取登录加密公钥
+#### 18.2.6 获取登录加密公钥
 
 - 接口：`GET /api/v1/auth/login-encryption-key`
 - 作用：前端加密密码后再提交。
@@ -1034,7 +1096,7 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | keyId | string | 唯一字符串 | 公钥版本 | 不展示 |
 | publicKey | string | Base64/SPKI | 公钥内容 | 不展示 |
 
-#### 18.2.5 账号密码登录
+#### 18.2.7 账号密码登录
 
 - 接口：`POST /api/v1/auth/login`
 - 作用：提交账号密码完成登录主流程。
@@ -1067,7 +1129,7 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | requiresCaptcha | boolean? | `true/false` | 是否继续要求验证码 | 验证码显隐 |
 | requiresPasswordChange | boolean? | `true/false` | 是否强制改密 | 弹窗 |
 
-#### 18.2.6 验证码登录挑战
+#### 18.2.8 验证码登录挑战
 
 - 接口：`POST /api/v1/auth/login/code/challenge`
 - 作用：短信/邮箱登录前先获取挑战和倒计时。
@@ -1092,7 +1154,7 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | expiresInSeconds | number? | 秒 | 过期时间 | 倒计时 |
 | cooldownSeconds | number? | 秒 | 重发冷却时间 | 按钮倒计时 |
 
-#### 18.2.7 验证码登录完成
+#### 18.2.9 验证码登录完成
 
 - 接口：`POST /api/v1/auth/login/code/complete`
 - 作用：提交验证码完成短信/邮箱登录。
@@ -1110,7 +1172,7 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 
 返回结构与 `POST /api/v1/auth/login` 相同，页面处理方式也相同。
 
-#### 18.2.8 完成二次验证
+#### 18.2.10 完成二次验证
 
 - 接口：`POST /api/v1/auth/second-factor/complete`
 - 作用：在已通过主登录后补充二次验证。
@@ -1128,7 +1190,7 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 
 返回结构与 `POST /api/v1/auth/login` 相同，验证通过后进入系统首页。
 
-#### 18.2.9 获取当前用户
+#### 18.2.11 获取当前用户
 
 - 接口：`GET /api/v1/auth/current-user`
 - 作用：获取当前登录用户、权限、角色、部门和默认首页。
@@ -1439,6 +1501,87 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | passwordRequireUppercase/passwordRequireLowercase/passwordRequireSpecialCharacter | boolean | `true/false` | 密码复杂度 | Switch/Checkbox |
 | passwordAllowConsecutiveCharacters | boolean | `true/false` | 是否允许连续字符 | Switch |
 
+#### 18.4.3.1 查询资料字段配置
+
+- 接口：`GET /api/v1/system/profile-field-settings`
+- 作用：查询个人资料表单字段定义。
+- 对应页面：系统设置 -> 资料字段。
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| fields[].fieldKey | string | 文本 | 字段标识 | 列表 key |
+| fields[].fieldLabel | string | 文本 | 字段名称 | 表格主列 |
+| fields[].enabled | boolean | `true/false` | 是否启用 | Switch |
+| fields[].required | boolean | `true/false` | 是否必填 | Switch |
+| fields[].sortNo | number | 数值 | 排序号 | 数字输入 |
+| fields[].placeholder | string? | 文本 | 占位提示 | 文本 |
+| fields[].fieldType | string | 文本 | 输入类型 | Tag |
+
+#### 18.4.3.2 保存资料字段配置
+
+- 接口：`PUT /api/v1/system/profile-field-settings`
+- 作用：保存资料字段启停、排序和校验规则。
+- 对应页面：系统设置 -> 资料字段。
+
+请求字段：
+
+| 字段 | 类型 | 必填 | 格式 | 页面控件 |
+| --- | --- | --- | --- | --- |
+| fields | array | 是 | 字段数组 | 可编辑表格 |
+| fields[].fieldKey | string | 是 | 文本 | 隐式字段 |
+| fields[].enabled/required | boolean | 是 | `true/false` | Switch |
+| fields[].sortNo | number | 是 | 数值 | 数字输入 |
+| fields[].placeholder | string? | 否 | 文本 | 输入框 |
+
+#### 18.4.3.3 查询通知渠道配置
+
+- 接口：`GET /api/v1/system/smtp-settings`、`GET /api/v1/system/notification/wechat-official-settings`
+- 作用：查询邮件通知和微信公众号通知配置。
+- 对应页面：系统设置 -> 通知设置。
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| smtp.host/port/username | string/number | 文本/数值 | SMTP 连接信息 | 表单输入 |
+| smtp.passwordConfigured | boolean? | `true/false` | 密码是否已配置 | 状态提示 |
+| smtp.sslEnabled/startTlsEnabled | boolean | `true/false` | 安全连接开关 | Switch |
+| wechatOfficial.enabled | boolean | `true/false` | 是否启用公众号通知 | Switch |
+| wechatOfficial.appId/templateId/detailUrl | string? | 文本/URL | 公众号基础配置 | 表单输入 |
+
+#### 18.4.3.4 保存通知渠道配置
+
+- 接口：`PUT /api/v1/system/smtp-settings`、`PUT /api/v1/system/notification/wechat-official-settings`
+- 作用：保存邮件通知和微信公众号通知参数。
+- 对应页面：系统设置 -> 通知设置。
+
+请求字段：
+
+| 字段 | 类型 | 必填 | 格式 | 页面控件 |
+| --- | --- | --- | --- | --- |
+| smtp.host/port/username | string/number | 否 | 文本/数值 | 表单输入 |
+| smtp.password | string? | 否 | 文本 | 密码框 |
+| smtp.sslEnabled/startTlsEnabled | boolean | 否 | `true/false` | Switch |
+| smtp.fromName/fromAddress | string? | 否 | 文本/邮箱 | 输入框 |
+| wechatOfficial.enabled | boolean | 否 | `true/false` | Switch |
+| wechatOfficial.appId/appSecret/templateId/detailUrl | string? | 否 | 文本/URL | 表单输入 |
+
+#### 18.4.3.5 测试通知渠道
+
+- 接口：`POST /api/v1/system/smtp-settings/test`
+- 作用：发送测试通知，验证通知渠道配置是否生效。
+- 对应页面：系统设置 -> 通知设置。
+
+请求字段：
+
+| 字段 | 类型 | 必填 | 格式 | 页面控件 |
+| --- | --- | --- | --- | --- |
+| to | string | 是 | 邮箱地址 | 输入框 |
+| subject | string | 是 | 文本 | 输入框 |
+| content | string | 是 | 长文本 | TextArea |
+
 #### 18.4.4 保存品牌设置
 
 - 接口：`PUT /api/v1/system/branding-settings`
@@ -1462,6 +1605,25 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 返回字段：
 
 返回字段与请求字段一致，用于回填表单和实时预览。
+
+#### 18.4.4.1 查询和保存水印、浮窗与协议设置
+
+- 接口：`GET/PUT /api/v1/system/watermark-settings`
+- 接口：`GET/PUT /api/v1/system/floating-window-settings`
+- 接口：`GET/PUT /api/v1/system/agreement-settings`
+- 作用：维护全局水印、浮窗能力、用户协议和隐私协议内容。
+- 对应页面：系统设置 -> 个性化设置。
+
+典型字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| enabled | boolean? | `true/false` | 是否启用对应能力 | Switch |
+| imageUrl | string? | URL | 水印图片地址 | 图片上传/预览 |
+| opacity | number? | 数值 | 水印透明度 | Slider/数字输入 |
+| userAgreementMarkdown | string? | Markdown | 用户协议内容 | Markdown 编辑器 |
+| privacyAgreementMarkdown | string? | Markdown | 隐私协议内容 | Markdown 编辑器 |
+| entryLabel/entryUrl | string? | 文本/URL | 浮窗入口文案和链接 | 输入框 |
 
 ### 18.5 AI 接口
 
@@ -1572,6 +1734,23 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | response | object? | 聊天响应对象 | 完整回复 | 最终消息 |
 | toolPlan | object? | 工具计划 | 工具提议 | 工具确认卡片 |
 | toolResult | object? | 工具结果 | 执行结果 | 工具结果卡片 |
+
+#### 18.5.5 会话分享与只读访问
+
+- 接口：`POST /api/ai/conversations/{id}/share`、`GET /api/ai/shares/{token}`
+- 作用：为会话生成分享链接，并通过分享 token 读取只读会话内容。
+- 对应页面：AI 助手页、AI 分享页。
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| shareToken | string | 唯一字符串 | 分享 token | 链接拼接 |
+| shareTitle | string? | 文本 | 分享标题 | 页面标题 |
+| expiresAt | string? | 日期时间 | 过期时间 | 提示文案 |
+| conversation.id/title | number/string | 会话信息 | 原始会话 | 头部信息 |
+| messages | array | 消息数组 | 分享会话消息 | 只读消息流 |
+| readOnly | boolean? | `true/false` | 是否只读分享 | 输入框禁用/提示条 |
 
 ### 18.6 文件接口
 
@@ -1704,6 +1883,46 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | installStatus | string | 状态值 | 安装准备状态 | Tag |
 | validationReportJson | string | JSON 字符串 | 校验报告 | 代码块/JSON 查看器 |
 
+#### 18.7.4 敏感词列表与导入
+
+- 接口：`GET /api/v1/sensitive-words`、`POST /api/v1/sensitive-words/import`
+- 作用：查询敏感词词库、批量导入敏感词。
+- 对应页面：敏感词插件页。
+
+请求字段：
+
+| 字段 | 类型 | 必填 | 格式 | 页面控件 |
+| --- | --- | --- | --- | --- |
+| keyword | string? | 否 | 文本 | 搜索框 |
+| enabled | boolean? | 否 | `true/false` | 状态筛选 |
+| pageNo/pageSize | number | 否 | 分页参数 | 分页器 |
+| file | multipart file | 导入时是 | txt/csv/xlsx 等 | Upload |
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| records[].id | number | int64 | 词条 ID | 列表 key |
+| records[].word | string | 文本 | 敏感词 | 表格主列 |
+| records[].category | string? | 文本 | 分类 | Tag |
+| records[].enabled | boolean | `true/false` | 是否启用 | Switch |
+| records[].hitCount | number? | 数值 | 命中次数 | 数字文本 |
+| records[].updatedAt | string? | 日期时间 | 更新时间 | 表格时间列 |
+| importResult.created/updated/skipped | number? | 数值 | 导入结果统计 | 结果摘要 |
+
+#### 18.7.5 敏感词命中检查
+
+- 接口：`POST /api/v1/sensitive-words/check`
+- 作用：校验一段文本是否命中敏感词规则。
+- 对应页面：敏感词插件页、系统表单拦截链路。
+
+请求字段：
+
+| 字段 | 类型 | 必填 | 格式 | 页面控件 |
+| --- | --- | --- | --- | --- |
+| text | string | 是 | 长文本 | TextArea |
+| fieldPath | string? | 否 | 字段路径 | 隐式字段/输入框 |
+
 ### 18.8 国际化与支付接口
 
 #### 18.8.1 查询国际化词条
@@ -1829,6 +2048,31 @@ Legendary Invention 已经具备企业级 SaaS 智能应用平台的核心产品
 | jvm | object | JVM 对象 | JVM 版本、线程、启动时间 | 文本卡片 |
 | services | array? | 服务状态数组 | 各服务健康检查结果 | 表格/状态卡片 |
 | apiDocs | array? | 文档状态数组 | API 文档地址和状态 | 链接列表 |
+
+#### 18.9.4 查询平台更新状态
+
+- 接口：`GET /api/v1/system/update/status`
+- 作用：读取当前运行版本、更新源状态和版本比较结果。
+- 对应页面：系统监控 -> 平台更新。
+
+返回字段：
+
+| 字段 | 类型 | 格式 | 说明 | 页面呈现 |
+| --- | --- | --- | --- | --- |
+| status | string | `UP_TO_DATE/UPDATE_AVAILABLE/CHECK_FAILED/UNKNOWN` | 更新状态 | 状态 Tag |
+| updateAvailable | boolean | `true/false` | 是否发现新版本 | 提示条/按钮 |
+| current.version/commitId/branch | string? | 文本 | 当前运行版本信息 | 描述列表 |
+| latest.version/commitId/branch | string? | 文本 | 更新源版本信息 | 描述列表 |
+| checkedAt | string? | 日期时间 | 最近检查时间 | 文本 |
+| sourceType/sourceUrl | string? | 文本/URL | 更新源信息 | 链接/文本 |
+| comparisonBasis | string? | 文本 | 比较依据，例如 commit | 文本 |
+| errorMessage/actionRequired | string? | 文本 | 错误或建议动作 | Alert |
+
+#### 18.9.5 触发平台更新检查
+
+- 接口：`POST /api/v1/system/update/check`
+- 作用：主动重新连接更新源并刷新比较结果。
+- 对应页面：系统监控 -> 平台更新。
 
 ### 18.10 字段呈现验收规则
 

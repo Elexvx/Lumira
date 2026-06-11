@@ -8,10 +8,9 @@
 ```text
 legendary-invention/
 ├─ README.md                 仓库总说明、启动方式、架构概览
-├─ pom.xml                   根 Maven 父 POM，聚合 backend / services / libs
-├─ services/system-service/                  主后端 system-service
+├─ pom.xml                   根 Maven 父 POM，聚合 services / libs
+├─ services/                 聚合后端与各模块目录
 ├─ frontend/                 前端管理端
-├─ services/                 独立微服务集合
 ├─ libs/                     共享库与内部契约
 ├─ docs/                     架构、设计、迁移与规范文档
 ├─ database/                 数据库脚本与初始化文件
@@ -25,43 +24,60 @@ legendary-invention/
 
 - `README.md`：项目的整体入口说明，包含仓库定位、技术栈和启动方式。
 - `pom.xml`：根 Maven 聚合文件，定义了多模块结构和统一依赖版本。
-- `services/system-service/`：当前系统主后端，承载 `system-service` 的核心业务。
+- `services/`：聚合后端入口 `legendary-server` 和各业务模块目录。
 - `frontend/`：前端管理台，负责页面、布局、权限、登录态和 API 调用。
-- `services/`：微服务拆分后的独立服务，每个服务都有自己的 `pom.xml` 和 `main` 启动类。
 - `libs/`：共享能力和内部接口契约，供后端各模块与服务复用。
 - `docs/`：架构设计、目录规范、数据库设计、权限设计、微服务重构说明等。
 - `database/`：独立数据库脚本，例如 `saas.sql`。
 - `deploy/`：部署说明和 Docker Compose 相关文件。
 
-## 2. services/system-service/
+## 2. services/ 与聚合后端入口
 
-`services/system-service/` 现在是主后端工程，也就是 `system-service`。它不是“所有服务的容器”，而是一个独立 Spring Boot 应用。
+当前正式运行入口是 `services/legendary-server/`。它在运行时聚合 `system-service`、`auth-service`、`file-service`、`message-service`、`plugin-service`、`localization-service`、`payment-service` 和 `job-executor` 模块。
 
-### 2.1 backend 顶层
+`services/system-service/` 不再是独立对外主入口，而是聚合后端中的核心业务模块之一。
+
+### 2.1 services 顶层
 
 ```text
-services/system-service/
-├─ pom.xml
-├─ src/
-│  ├─ main/java/com/legendary/invention/saas/
-│  └─ main/resources/
-├─ storage/                  本地运行时存储目录
-└─ target/                   Maven 构建产物
+services/
+├─ legendary-server/         当前默认后端启动入口
+├─ system-service/           系统、权限、AI、审计等核心模块
+├─ auth-service/             认证模块
+├─ file-service/             文件模块
+├─ message-service/          消息模块
+├─ plugin-service/           插件模块
+├─ localization-service/     国际化模块
+├─ payment-service/          支付模块
+└─ job-executor/             作业执行器
 ```
 
-- `pom.xml`：定义 system-service 的依赖、插件和构建方式。
-- `src/main/java/com/legendary/invention/saas/`：后端源码根包。
-- `src/main/resources/`：配置文件、Flyway 迁移、日志配置、启动 banner 等。
-- `storage/`：本地运行时存储目录，通常用于文件、任务、日志等。
-- `target/`：构建产物目录，属于生成内容。
+- `legendary-server/`：Spring Boot 聚合启动类和正式打包入口。
+- `*-service/`：按业务边界拆分的 Maven 模块，既是逻辑边界，也是未来再次拆成物理微服务时的基础。
 
-### 2.2 backend 源码分层
+### 2.2 legendary-server
+
+```text
+services/legendary-server/
+├─ pom.xml
+└─ src/main/java/com/legendary/invention/server/
+   ├─ LegendaryServerApplication.java
+   └─ config/
+```
+
+作用说明：
+
+- `LegendaryServerApplication.java`：当前默认启动类。
+- `legendary-server` 自身不承载大量业务实现，它的核心职责是把各模块聚合成一个正式运行进程。
+
+### 2.3 system-service 模块结构
+
+`services/system-service/` 仍然是平台核心模块，主要承载系统配置、权限、用户体系、AI、审计和监控能力。
 
 ```text
 services/system-service/src/main/java/com/legendary/invention/saas/
-├─ SaasApplication.java      后端启动类
 ├─ common/                   通用响应、异常、分页、常量
-├─ infrastructure/           安全、Redis、Trace、任务、上传等基础设施
+├─ infrastructure/           安全、Redis、Trace、任务、事件等基础设施
 └─ modules/                  业务模块
 ```
 
@@ -77,109 +93,20 @@ services/system-service/src/main/java/com/legendary/invention/saas/
 
 #### `infrastructure/`
 
-这一层放的是技术基础设施，不放业务规则。
-
-- `config/`：Web MVC、上传安全、Jackson 兼容等配置。
-- `event/`：平台事件、Outbox、事件发布与转发。
-- `http/`：Feign 请求头转发配置。
-- `job/`：内部任务控制器。
-- `observability/`：TraceId、请求上下文。
-- `redis/`：Redis 配置与缓存模板。
-- `repeatsubmit/`：防重复提交切面。
-- `security/`：认证过滤器、权限上下文、安全配置、JWT 逻辑。
-- `sentinel/`：限流与熔断相关配置。
-- `upload/`：上传相关能力。
+- 这一层放技术基础设施，不放业务规则。
+- 包含 `event/`、`job/`、`redis/`、`security/`、`config/` 等公共实现。
 
 #### `modules/`
 
-业务模块按领域拆分，每个模块内部再按职责分层。
+业务模块按领域拆分，每个模块内部再按职责分层。当前重点包括：
 
-##### `audit/`
+- `ai/`：AI 员工、模型服务、知识库、工具治理、对话和分享。
+- `audit/`：登录审计、操作审计等日志记录。
+- `iam/`：角色、菜单、按钮权限、权限快照。
+- `system/`：用户、角色、菜单、配置、个人中心、监控、公开接口等。
+- `user/`：用户基础数据与领域模型。
 
-- `app/`：审计应用服务。
-- `controller/`：审计接口控制器。
-- `entity/`：审计实体。
-- `mapper/`：审计表映射器。
-- 作用：登录审计、操作审计等日志记录。
-
-##### `auth/`
-
-- `app/`：登录、刷新、第二因素、加密等应用服务。
-- `controller/`：认证相关接口。
-- `dto/`：登录请求、刷新请求、挑战请求等入参。
-- `vo/`：认证返回结果、登录加密 key、会话信息等。
-- 作用：登录、登出、刷新 token、验证码、二次验证、会话管理。
-
-##### `config/`
-
-- `controller/`：健康检查等系统基础接口。
-- 作用：承载一些最基础的系统入口。
-
-##### `file/`
-
-- `app/`：文件管理应用服务。
-- `controller/`：文件上传、下载、文件中心接口。
-- `vo/`：文件展示对象。
-- 作用：文件上传、文件元数据、访问控制。
-
-##### `iam/`
-
-- `service/`：权限守卫、权限快照、菜单树等能力。
-- 作用：角色、菜单、按钮权限、权限判断。
-
-##### `localization/`
-
-- `app/`：本地化管理、语言包构建、发布等。
-- `controller/`：本地化中心接口。
-- `dto/`：语言、命名空间、翻译、发布请求。
-- `vo/`：语言、命名空间、条目、发布结果、运行时 bundle。
-- 作用：语言包管理、翻译管理、运行时语言包发布。
-
-##### `message/`
-
-- `app/`：消息中心应用服务。
-- `config/`：消息相关配置。
-- `controller/`：消息列表、未读数、WebSocket、归档等接口。
-- `dto/`：消息创建、查询、通知等请求。
-- `service/`：消息推送、会话校验、消息处理。
-- `vo/`：消息列表、通知、WebSocket 凭证等返回对象。
-- 作用：站内信、消息推送、消息中心实时通信。
-
-##### `plugin/`
-
-- `app/`：插件管理应用服务。
-- `controller/`：插件管理接口。
-- `dto/`：插件安装、启停、配置请求。
-- `entity/`：插件实体。
-- `gateway/`：插件网关控制器。
-- `loader/`：插件包加载与运行时加载。
-- `mapper/`：插件数据库映射。
-- `registry/`：插件注册与运行时描述。
-- `runtime/`：插件运行时配置、上下文、SPI、调度、健康检查等。
-- `service/`：插件迁移、持久化、版本处理。
-- `vo/`：插件展示对象。
-- 作用：插件安装、运行、卸载、权限、菜单和生命周期管理。
-
-##### `system/`
-
-- `app/`：系统管理、在线会话管理、系统路由目录等。
-- `controller/`：用户、角色、菜单、配置、个人中心、监控、公开接口等。
-- `dto/`：系统管理入参。
-- `monitor/`：系统监控应用、控制器、返回对象。
-- `online/`：在线会话事件、发布、订阅、Redis Stream 支持。
-- `support/`：SMTP 等辅助能力。
-- `verification/`：系统验证、TOTP、Base32 编解码等。
-- `vo/`：系统页面返回对象。
-- 作用：后台系统管理主模块。
-
-##### `user/`
-
-- `domain/`：用户领域逻辑。
-- `entity/`：用户实体。
-- `mapper/`：用户数据访问。
-- 作用：用户基础数据与领域模型。
-
-### 2.3 backend 资源目录
+### 2.4 system-service 资源目录
 
 ```text
 services/system-service/src/main/resources/
@@ -323,9 +250,9 @@ frontend/src/
 
 布局壳层目录，里面有：
 
-- `BlankLayout/`：空白布局
+- `AiLayout/`：AI 助手页布局
+- `DashboardLayout/`：登录后主后台布局
 - `SettingsLayout/`：设置中心布局
-- `UserLayout/`：登录和用户相关布局
 - `components/`：顶部动作区、消息中心抽屉等布局组件
 
 #### `locales/`
@@ -340,52 +267,49 @@ frontend/src/
 
 这是页面目录，按业务域分层。
 
-- `audit/`：审计页面
+- `ai/`：AI 助手与分享页
 - `dashboard/`：首页仪表盘
 - `exception/`：异常页，包括无权限、未找到等
 - `files/`：文件中心
-- `iam/`：权限相关页面
-- `localization/`：本地化页面
 - `plugins/`：插件运行容器
 - `profile/`：个人中心
 - `settings/`：系统设置中心
 - `system/`：系统管理页面
 - `user/`：登录页
-- `user-center/`：用户中心
 
 ##### `pages/profile/`
 
-- `center/`：个人中心主体
-- `center/components/`：个人资料卡、绑定弹窗、二次验证弹窗等
+- `Center.tsx`：个人中心主体
+- `center/components/`、`center/hooks/`：个人资料卡、绑定弹窗、二次验证弹窗等
 
 ##### `pages/settings/`
 
 系统设置中心的主页面集合，里面包括：
 
-- `dicts/`：字典管理
-- `files/`：文件中心设置
+- `ai-employees/`：AI 员工管理
+- `dicts.tsx`：字典管理
 - `localization/`：本地化管理
-- `menus/`：菜单管理
-- `monitoring/`：监控中心
+- `menus.tsx`：菜单管理
+- `monitoring/`：监控中心、审计页
 - `notifications/`：通知中心
-- `personalization/`：品牌、协议、水印等个性化设置
+- `payment.tsx`：支付设置
+- `personalization.tsx`：品牌、协议、水印等个性化设置
 - `plugins/`：插件设置
-- `profile-fields/`：个人资料字段设置
-- `security/`：安全设置
-- `verification/`：验证设置
+- `profile-fields.tsx`：个人资料字段设置
+- `security.tsx`：安全设置
+- `verification.tsx`：验证设置
 
 ##### `pages/system/`
 
-- `roles/`：角色管理
-- `users/`：用户管理
+- `departments.tsx`：部门管理
 - `online-users.tsx`：在线用户管理
-- `smtp.tsx`：SMTP 配置
+- `roles.tsx`：角色管理
+- `users.tsx`：用户管理
 
 ##### `pages/user/`
 
 - `Login.tsx`、`Login.css`：登录页
-- `login/components/`：登录表单相关组件
-- `login/captchaInput.ts`：验证码输入逻辑
+- `login/`：登录表单组件、验证码逻辑、hooks 和样式拆分
 
 #### `plugins/`
 
@@ -395,9 +319,9 @@ frontend/src/
 
 - 请求查询客户端和统一数据请求层。
 
-#### `responsive/`
+#### 响应式能力
 
-- 断点、响应式工具和设备适配。
+- 当前未单独拆出 `responsive/` 顶级目录，断点、设备适配与布局收敛在 `layouts/`、`hooks/`、`theme/` 等目录中。
 
 #### `services/`
 
@@ -406,7 +330,6 @@ frontend/src/
 - `audit/`：审计相关接口
 - `auth/`：认证接口
 - `common/`：通用请求、错误处理
-- `config/`：配置相关接口
 - `dashboard/`：首页数据接口
 - `dict/`：字典接口
 - `file/`：文件接口
@@ -435,27 +358,26 @@ frontend/src/
 
 - 水印配置和显示控制。
 
-## 4. services/
+## 4. services/* 业务模块
 
-`services/` 下每个目录都是一个独立 Spring Boot 服务。它们都各自有自己的 `pom.xml`、`src/main/java`、`src/main/resources`，部分还有 `src/test/java`。
+`services/` 下每个目录都是一个 Maven 模块。当前默认以“单体微服务”方式运行，即由 `legendary-server` 聚合启动；但这些目录本身仍保持清晰模块边界，为未来再次拆成独立服务预留条件。
 
 ```text
 services/
-├─ gateway-service/          统一网关
+├─ legendary-server/         当前默认后端启动入口
 ├─ auth-service/             认证服务
 ├─ file-service/             文件服务
 ├─ message-service/          消息服务
 ├─ plugin-service/           插件服务
 ├─ localization-service/     本地化服务
-├─ job-executor/             XXL-JOB 执行器
-└─ audit-service/            已剥离的旧审计服务目录，若残留通常仅是历史或生成物
+├─ payment-service/          支付服务
+└─ job-executor/             XXL-JOB 执行器
 ```
 
-### 4.1 gateway-service
+### 4.1 legendary-server
 
-- `src/main/java/com/legendary/invention/gateway/`：网关启动类和 Sentinel 配置。
-- `src/main/resources/application.yml`：路由、网关端口、Nacos、Sentinel 相关配置。
-- 负责统一入口、路由转发、限流和入口治理。
+- `src/main/java/com/legendary/invention/server/`：聚合启动类和少量运行配置。
+- 当前部署、健康检查、日志、监控和打包都以它为准。
 
 ### 4.2 auth-service
 
@@ -483,15 +405,15 @@ services/
 - `src/main/java/com/legendary/invention/localization/`：本地化服务启动类。
 - 负责独立语言包、本地化资源、翻译中心相关能力。
 
-### 4.8 job-executor
+### 4.8 payment-service
+
+- `src/main/java/com/legendary/invention/payment/`：支付服务启动类、支付配置、回调和 Outbox。
+- 负责支付服务商配置、订单、Webhook 和异步事件。
+
+### 4.9 job-executor
 
 - `src/main/java/com/legendary/invention/job/`：XXL-JOB 执行器、任务处理器、后端调用客户端。
 - 负责 outbox relay、消息心跳、在线会话心跳等后台任务。
-
-### 4.9 audit-service
-
-- 该目录在当前工程里已经不再作为活跃服务主线使用。
-- 如果目录还残留，通常是历史遗留或构建产物，不代表它仍在参与当前启动链路。
 
 ## 5. libs/
 
@@ -576,7 +498,7 @@ docs/
 
 从目录结构上看，这个仓库整体是比较工整的，原因是：
 
-- 顶层按职责分成了 `services/system-service/`、`frontend/`、`services/`、`libs/`、`docs/`、`database/`、`deploy/`
+- 顶层按职责分成了 `services/`、`frontend/`、`libs/`、`docs/`、`database/`、`deploy/`
 - 后端按 `common / infrastructure / modules` 分层
 - 前端按 `pages / services / components / layouts / auth / i18n / theme` 分层
 - 独立服务都放在 `services/` 下，边界清楚
@@ -586,7 +508,7 @@ docs/
 
 - `frontend/src/.umi/` 和 `frontend/src/.umi-production/` 是生成目录，会让树看起来更杂
 - `services/system-service/modules/plugin/runtime/runtime/` 这种重复命名的目录，视觉上会显得有点绕
-- `audit-service` 目录目前已不在主线中，建议后续如果确认不再使用，可以考虑把历史残留再彻底清掉
+- 某些历史说明仍然会提到重新拆分后的独立服务形态，阅读时要以 `legendary-server` 聚合运行模式为当前事实
 
 如果你要继续，我可以下一步把这份文档再整理成“更适合提交到仓库的正式版”，比如：
 

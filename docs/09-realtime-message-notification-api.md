@@ -82,6 +82,24 @@
 
 返回当前租户的站内信归档记录，支持按关键字、目标范围、状态和发布时间范围筛选。
 
+### 3.8 申请 WebSocket 连接票据
+
+- `POST /api/v1/message/ws-ticket`
+
+当前前端不会直接拿 `accessToken` 建立 WebSocket，而是先申请一次性票据，再用该票据连接 `/ws/message`。
+
+### 3.9 查询 WebSocket 运行态
+
+- `GET /api/v1/message/ws-runtime`
+
+用于系统监控页查看当前活跃连接数、租户连接分布和采样时间。
+
+### 3.10 查询通知投递日志
+
+- `GET /api/v1/message/delivery-logs?pageNo=1&pageSize=10`
+
+返回各通知渠道的投递结果、接收人和错误信息，供通知中心排障使用。
+
 ## 4. WebSocket 实时通道
 
 ### 4.1 连接方式
@@ -89,15 +107,18 @@
 浏览器或前端可通过以下方式连接：
 
 ```text
-ws://localhost:8080/ws/message?accessToken=YOUR_ACCESS_TOKEN
+1. POST /api/v1/message/ws-ticket
+2. 使用返回的 ticket 建立同源 WebSocket：
+   ws://localhost:8000/ws/message?ticket=YOUR_WS_TICKET
 ```
 
-也支持在握手请求中带 `Authorization: Bearer <token>`。
+生产环境同理，优先走当前站点同源 `/ws/message`，由 `api-proxy` 转发到聚合后端。
 
 ### 4.2 认证规则
 
-- 握手时必须携带当前登录态 `accessToken`
-- 服务端会校验会话、租户、权限快照和过期状态
+- 握手时必须携带 `ticket`
+- `ticket` 由已登录 HTTP 会话通过 `POST /api/v1/message/ws-ticket` 申请
+- 服务端会把 `ticket` 还原为当前会话，再校验租户、权限快照和过期状态
 - 认证失败时握手直接拒绝
 
 ### 4.3 事件格式

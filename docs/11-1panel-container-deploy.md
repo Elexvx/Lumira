@@ -117,7 +117,7 @@ Compose 已使用 Docker volume 保存：
 
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml ps
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f gateway-service
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml restart gateway-service
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f api-proxy
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml restart api-proxy
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml down
 ```

@@ -17,7 +17,7 @@
 node scripts/start-platform.mjs
 ```
 
-脚本会检查端口、复用已有 MySQL/Redis/Nacos，再启动后端服务、网关和前端。
+脚本会检查端口、复用已有 MySQL/Redis，再启动聚合后端 `legendary-server`、API 代理和前端。
 
 常用参数：
 
@@ -36,9 +36,9 @@ node scripts/stop-platform.mjs
 ### 1.3 本地访问
 
 - 前端：`http://localhost:8000`
-- 网关：`http://localhost:8081`
-- system-service：`http://localhost:8080`
-- API 健康检查：`http://localhost:8081/api/health`
+- API 代理：`http://localhost:8000/api`
+- 后端：`http://localhost:8080`
+- API 健康检查：`http://localhost:8000/api/health`
 
 ## 2. 测试环境
 
@@ -54,7 +54,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --
 
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml ps
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f gateway-service
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f api-proxy
 ```
 
 测试环境必须显式配置：
@@ -74,9 +74,10 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f 
 Vercel frontend
   -> /api rewrite
   -> api-proxy Nginx
-  -> gateway-service
-  -> auth/system/file/message/plugin/localization/job services
-  -> MySQL / Redis / Nacos / XXL-Job
+  -> legendary-server
+  -> system/auth/file/message/plugin/localization/payment/job modules
+  -> MySQL / Redis / XXL-Job
+  -> Nacos（仅为未来拆分预留，默认不启用）
 ```
 
 最简单部署：
@@ -103,7 +104,7 @@ node scripts/check-deployment.mjs
 
 ```bash
 DEPLOY_CHECK_BASE_URL=https://api.elexvx.com \
-DEPLOY_CHECK_GATEWAY_URL=http://127.0.0.1:8081 \
+DEPLOY_CHECK_GATEWAY_URL=http://127.0.0.1:8000 \
 node scripts/check-deployment.mjs
 ```
 
@@ -115,10 +116,10 @@ node scripts/check-deployment.mjs
 ./mvnw -DskipTests package
 ```
 
-指定服务构建：
+指定聚合后端构建：
 
 ```bash
-./mvnw -q -pl services/system-service -am -DskipTests compile
+./mvnw -q -pl services/legendary-server -am -DskipTests compile
 ```
 
 前端检查：
@@ -141,8 +142,8 @@ git diff --check
 1. 检查浏览器请求是否打到 `/api`。
 2. 检查 Vercel rewrite 或 `UMI_APP_API_BASE_URL`。
 3. 检查 `api-proxy` 是否健康。
-4. 检查 `gateway-service` 路由和日志。
-5. 检查目标业务服务日志。
+4. 检查 `legendary-server` 日志。
+5. 检查目标模块配置、数据库和依赖服务状态。
 
 ### 5.2 登录失败
 
@@ -150,6 +151,8 @@ git diff --check
 2. 检查 `auth-service` 日志。
 3. 检查 `system-service` 用户状态和安全设置读取。
 4. 检查 Redis 会话和 token 配置。
+
+当前生产与本地默认运行在聚合入口 `legendary-server` 内，因此排障时优先检查聚合服务日志，再定位具体模块代码归属。
 
 ### 5.3 权限或菜单异常
 

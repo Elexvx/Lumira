@@ -1,10 +1,12 @@
-# Ant Design Pro 大型 SaaS 系统开发实施路线与第一阶段落地清单
+# Legendary Invention 开发实施路线与阶段落地清单
 
 ## 1. 文档定位
 
 本规范用于统一大型 SaaS 系统脚手架从方案阶段进入正式开发阶段后的实施顺序、阶段目标、模块优先级、依赖关系、里程碑划分、阶段性交付物与验收标准。
 
 它不是架构补充说明，而是整套平台底座的实施蓝图。
+
+说明：本文档保留了分阶段实施视角，但阅读时要以当前仓库已落地事实为准。当前主线已经具备 `legendary-server + api-proxy` 聚合运行模式、系统管理主链路、AI、文件、消息、插件、国际化、支付、平台配置与基础部署能力，因此文中“第一阶段/第二阶段”更多用于回顾建设顺序和规划后续增强，不再表示当前仓库仍停留在对应早期阶段。
 
 ## 2. 实施原则
 
@@ -295,7 +297,7 @@
 
 核心任务：
 
-- 建立 `BasicLayout`、`UserLayout`、`BlankLayout`
+- 建立主后台布局、设置布局、AI 布局和登录入口布局
 - 建立 `TenantSelector`、`QueryPanel`、`ActionBar`、`DataTable`、`DetailDrawer`、`PermissionButton`、`EmptyState`
 - 建立统一列表页、表单页、详情页模板
 
@@ -410,9 +412,9 @@
 
 ## 9. 第一阶段前端落地清单
 
-- `BasicLayout`
-- `UserLayout`
-- `BlankLayout`
+- `DashboardLayout`
+- `SettingsLayout`
+- `AiLayout`
 - `TenantSelector`
 - 统一 `request`
 - 登录态恢复与失效跳转

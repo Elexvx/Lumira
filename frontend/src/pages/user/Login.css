@@ -10,7 +10,7 @@
   padding: var(--saas-spacing-lg);
   box-sizing: border-box;
   overflow: hidden;
-  background: var(--ant-color-bg-layout);
+  background: transparent;
   color: var(--ant-color-text-heading);
 }
 
@@ -21,8 +21,8 @@
   pointer-events: none;
   content: '';
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.22) 46%, rgba(255, 255, 255, 0.14) 100%),
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.2) 78%);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 46%, rgba(255, 255, 255, 0.06) 100%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.12) 78%);
 }
 
 .saas-login-page::after {
@@ -35,6 +35,8 @@
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
+  opacity: 0.98;
+  filter: saturate(1.08) contrast(1.04);
 }
 
 .saas-login-page .ant-pro-form-login-page {
@@ -69,12 +71,12 @@
   margin: 0 auto;
   padding: var(--saas-spacing-42) var(--saas-spacing-48) var(--saas-spacing-42);
   box-sizing: border-box !important;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.68);
   background-image: none;
-  border: 1px solid rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: var(--saas-card-radius);
   box-shadow: 0 18px 52px rgba(33, 70, 93, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.86);
-  backdrop-filter: saturate(112%);
+  backdrop-filter: blur(16px) saturate(118%);
 }
 
 .saas-login-page .ant-pro-form-login-page-main {

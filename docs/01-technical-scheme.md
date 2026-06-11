@@ -1,10 +1,12 @@
-# Ant Design Pro 大型 SaaS 系统技术方案
+# Legendary Invention 技术方案总览
 
 ## 1. 项目定位
 
 本项目面向大型 SaaS 场景，不是普通后台管理模板。
 
 目标是构建一套可长期运营、可维护、可扩展、可容灾的中后台系统底座，支持多租户隔离、多端访问、高可用、灰度发布、可观测运维和业务快速扩展。
+
+当前仓库已经从早期的“多进程微服务演进设想”收敛为“单体微服务”主线：正式后端入口为 `services/legendary-server`，通过 `api-proxy` 统一暴露 `/api`、`/ws` 和 `/health`；代码层仍保留 `services/*-service` 模块边界，为后续物理拆分预留条件。
 
 ## 2. 建设目标
 
@@ -16,9 +18,9 @@
 
 ## 3. 总体技术路线
 
-- 前端：React 19.2.5、TypeScript、Umi Max、Ant Design 6.3.7、Ant Design Pro、ProComponents。
-- 后端：Java 21、Spring Boot 4.0.6、Spring Security、MyBatis Plus、Redis、MySQL 8、消息队列、对象存储、监控体系。
-- 架构：前后端分离，微服务骨架演进，云原生部署预留，逻辑隔离优先的多租户路线。
+- 前端：React 19.2.6、TypeScript、Umi Max、Ant Design 6.3.7、Ant Design Pro、ProComponents。
+- 后端：Java 21、Spring Boot 4.0.6、Spring Security、MyBatis Plus、Redis、MySQL 8、Outbox、监控体系。
+- 架构：前后端分离，模块化单体优先、保留微服务拆分边界、云原生部署预留，逻辑隔离优先的多租户路线。
 
 ## 4. 架构分层
 
@@ -42,6 +44,7 @@
 ## 6. 后端核心原则
 
 - 优先采用模块化单体。
+- 当前默认统一由 `legendary-server` 聚合启动，对外经 `api-proxy` 暴露。
 - 业务模块边界清晰，公共能力集中治理。
 - 使用 MyBatis Plus 配合关键 SQL 手写，保证可控性。
 - 核心模块至少包含认证、租户、用户、组织、权限、字典、配置、文件、消息、任务、审计和监控。
