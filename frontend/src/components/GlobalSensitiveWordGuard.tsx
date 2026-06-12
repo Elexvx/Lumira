@@ -115,7 +115,7 @@ const GlobalSensitiveWordGuard = () => {
           background: '#fff7e6',
           color: '#ad6800',
           border: '1px solid #ffd591',
-          borderRadius: 6,
+          borderRadius: 'var(--ant-border-radius)',
           padding: '6px 10px',
           fontSize: 12,
           lineHeight: 1.4,

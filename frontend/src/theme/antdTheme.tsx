@@ -42,13 +42,12 @@ const lightThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorTextBase: '#000000',
   colorText: 'rgba(0, 0, 0, 0.88)',
   colorBorder: '#d9d9d9',
-  colorBorderSecondary: '#f0f0f0',
 };
 
 const darkThemeToken: NonNullable<AntdThemeConfig>['token'] = {
   colorBgBase: '#000000',
   colorBgContainer: '#141414',
-  colorBgElevated: '#1f1f1f',
+  colorBgElevated: '#1b1b1b',
   colorBgLayout: '#141414',
   colorTextBase: '#ffffff',
   colorText: 'rgba(255, 255, 255, 0.85)',

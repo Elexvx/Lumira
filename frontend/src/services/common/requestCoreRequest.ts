@@ -36,7 +36,7 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
 
       if (isApiResponse<T>(apiResponse)) {
         if (apiResponse.code === ErrorCode.SUCCESS) {
-          return apiResponse.data;
+          return apiResponse.data as T;
         }
 
         if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, apiResponse.code, refreshedAfterUnauthorized, authSnapshot)) {

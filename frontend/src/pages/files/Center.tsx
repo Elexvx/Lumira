@@ -20,6 +20,7 @@ import { resolveSortParams } from '@/pages/files/fileCenter.utils';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { confirmAction } from '@/utils/confirm';
 import { copyTextToClipboard } from '@/utils/clipboard';
+import { showErrorMessage } from '@/utils/errorMessage';
 import { normalizeLocale } from '@/i18n/locale';
 
 type BuildFileListRequestParams = {
@@ -1224,6 +1225,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
             headers: {},
             data: formData,
             ...requestOptions,
+            silent: true,
           });
           uploadedCount += 1;
         }
@@ -1232,8 +1234,8 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         );
         closeUploadDrawer();
         actionRef.current?.reload();
-      } catch {
-        message.error(formatMessage({ id: 'system.files.uploadFailed', defaultMessage: 'File upload failed, please try again later' }));
+      } catch (error) {
+        showErrorMessage(error, formatMessage({ id: 'system.files.uploadFailed', defaultMessage: 'File upload failed, please try again later' }));
       } finally {
         setUploading(false);
       }

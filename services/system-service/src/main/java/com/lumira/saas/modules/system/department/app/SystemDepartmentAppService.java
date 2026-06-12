@@ -9,6 +9,7 @@ import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
 import com.lumira.saas.modules.system.department.vo.DepartmentVO;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -72,7 +73,7 @@ public class SystemDepartmentAppService {
     public DepartmentVO getDepartment(CurrentUser currentUser, Long id) {
         DepartmentVO department = queryDepartment(currentTenantId(currentUser), id);
         if (department == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "部门不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
         }
         return department;
     }
@@ -82,22 +83,26 @@ public class SystemDepartmentAppService {
         Long tenantId = currentTenantId(currentUser);
         validateParent(tenantId, null, request.getParentId());
         validateDeptCodeUnique(tenantId, null, request.getDeptCode());
-        jdbcTemplate.update(
-                """
-                        insert into sys_department (
-                            tenant_id, parent_id, dept_code, dept_name, sort_no, status,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
-                tenantId,
-                normalizeParentId(request.getParentId()),
-                request.getDeptCode(),
-                request.getDeptName(),
-                request.getSortNo() == null ? 0 : request.getSortNo(),
-                normalizeStatus(request.getStatus()),
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
+        try {
+            jdbcTemplate.update(
+                    """
+                            insert into sys_department (
+                                tenant_id, parent_id, dept_code, dept_name, sort_no, status,
+                                created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            """,
+                    tenantId,
+                    normalizeParentId(request.getParentId()),
+                    request.getDeptCode(),
+                    request.getDeptName(),
+                    request.getSortNo() == null ? 0 : request.getSortNo(),
+                    normalizeStatus(request.getStatus()),
+                    currentUser.getUserId(),
+                    currentUser.getUserId()
+            );
+        } catch (DuplicateKeyException exception) {
+            throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
+        }
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
@@ -110,32 +115,37 @@ public class SystemDepartmentAppService {
         DepartmentVO existing = getDepartment(currentUser, id);
         validateParent(tenantId, id, request.getParentId());
         validateDeptCodeUnique(tenantId, id, request.getDeptCode());
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_department
-                        set parent_id = ?,
-                            dept_code = ?,
-                            dept_name = ?,
-                            sort_no = ?,
-                            status = ?,
-                            updated_by = ?,
-                            updated_at = ?
-                        where tenant_id = ?
-                          and id = ?
-                          and deleted = 0
-                        """,
-                normalizeParentId(request.getParentId()),
-                request.getDeptCode(),
-                request.getDeptName(),
-                request.getSortNo() == null ? 0 : request.getSortNo(),
-                normalizeStatus(request.getStatus()),
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                tenantId,
-                id
-        );
+        int updated;
+        try {
+            updated = jdbcTemplate.update(
+                    """
+                            update sys_department
+                            set parent_id = ?,
+                                dept_code = ?,
+                                dept_name = ?,
+                                sort_no = ?,
+                                status = ?,
+                                updated_by = ?,
+                                updated_at = ?
+                            where tenant_id = ?
+                              and id = ?
+                              and deleted = 0
+                            """,
+                    normalizeParentId(request.getParentId()),
+                    request.getDeptCode(),
+                    request.getDeptName(),
+                    request.getSortNo() == null ? 0 : request.getSortNo(),
+                    normalizeStatus(request.getStatus()),
+                    currentUser.getUserId(),
+                    LocalDateTime.now(),
+                    tenantId,
+                    id
+            );
+        } catch (DuplicateKeyException exception) {
+            throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
+        }
         if (updated == 0) {
-            throw new BizException(ErrorCode.NOT_FOUND, "部门不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
         }
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "department", "update", "UPDATE", "SUCCESS", "更新部门: " + existing.getDeptName());
@@ -153,7 +163,7 @@ public class SystemDepartmentAppService {
                 id
         );
         if (childCount != null && childCount > 0) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "存在下级部门，不能删除");
+            throw visibleBizException(ErrorCode.BIZ_ERROR, "存在下级部门，不能删除");
         }
         Long userCount = jdbcTemplate.queryForObject(
                 "select count(1) from sys_user_department where tenant_id = ? and dept_id = ? and deleted = 0",
@@ -162,7 +172,7 @@ public class SystemDepartmentAppService {
                 id
         );
         if (userCount != null && userCount > 0) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "部门下仍有用户，不能删除");
+            throw visibleBizException(ErrorCode.BIZ_ERROR, "部门下仍有用户，不能删除");
         }
         jdbcTemplate.update(
                 """
@@ -219,17 +229,17 @@ public class SystemDepartmentAppService {
             return;
         }
         if (normalizedParentId.equals(currentId)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "上级部门不能选择自身");
+            throw visibleBizException(ErrorCode.VALIDATION_ERROR, "上级部门不能选择自身");
         }
         DepartmentVO parent = queryDepartment(tenantId, normalizedParentId);
         if (parent == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "上级部门不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "上级部门不存在");
         }
         Long cursor = parent.getParentId();
         int guard = 0;
         while (cursor != null && cursor > 0 && guard++ < 32) {
             if (cursor.equals(currentId)) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "不能把部门移动到自己的下级");
+                throw visibleBizException(ErrorCode.VALIDATION_ERROR, "不能把部门移动到自己的下级");
             }
             DepartmentVO ancestor = queryDepartment(tenantId, cursor);
             cursor = ancestor == null ? null : ancestor.getParentId();
@@ -246,7 +256,6 @@ public class SystemDepartmentAppService {
                         from sys_department
                         where tenant_id = ?
                           and dept_code = ?
-                          and deleted = 0
                           and (? is null or id <> ?)
                         """,
                 Long.class,
@@ -256,7 +265,7 @@ public class SystemDepartmentAppService {
                 currentId
         );
         if (count != null && count > 0) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "部门编码已存在");
+            throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
     }
 
@@ -301,7 +310,7 @@ public class SystemDepartmentAppService {
         }
         String normalized = status.trim().toUpperCase();
         if (!List.of("ENABLED", "DISABLED").contains(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "部门状态只能是 ENABLED 或 DISABLED");
+            throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门状态只能是 ENABLED 或 DISABLED");
         }
         return normalized;
     }
@@ -311,5 +320,9 @@ public class SystemDepartmentAppService {
             throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
         }
         return currentUser.getCurrentTenantId();
+    }
+
+    private BizException visibleBizException(ErrorCode errorCode, String message) {
+        return new BizException(errorCode, message, message);
     }
 }

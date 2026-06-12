@@ -78,15 +78,15 @@ INSERT INTO `sys_config` (`id`, `tenant_id`, `config_key`, `config_name`, `confi
 (7382,1001,'verification.wechat-login.app-secret','微信 AppSecret','','PLATFORM',0,'微信开放平台网站应用 AppSecret',1,'2026-05-15 00:52:27',1,'2026-05-15 00:52:27',0),
 (7383,1001,'verification.wechat-login.redirect-uri','微信登录回调地址','','PLATFORM',0,'微信开放平台授权回调地址',1,'2026-05-15 00:52:27',1,'2026-05-15 00:52:27',0),
 (7384,1001,'verification.wechat-login.state-expire-minutes','微信登录状态有效期','10','PLATFORM',0,'微信登录 state 缓存有效期，单位分钟',1,'2026-05-15 00:52:27',1,'2026-05-15 00:52:27',0),
-(7385,1001,'verification.passkey.enabled','通行密钥启用','true','PLATFORM',0,'是否启用通行密钥登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7386,1001,'verification.passkey.passwordless-enabled','通行密钥无账号登录','true','PLATFORM',0,'是否允许发现式凭据无账号登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7387,1001,'verification.passkey.self-binding-enabled','通行密钥自助绑定','true','PLATFORM',0,'是否允许用户在个人中心自助绑定通行密钥',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7385,1001,'verification.passkey.enabled','通行密钥启用','false','PLATFORM',0,'是否启用通行密钥登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7386,1001,'verification.passkey.passwordless-enabled','通行密钥无账号登录','false','PLATFORM',0,'是否允许发现式凭据无账号登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7387,1001,'verification.passkey.self-binding-enabled','通行密钥自助绑定','false','PLATFORM',0,'是否允许用户在个人中心自助绑定通行密钥',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7388,1001,'verification.passkey.rp-id','通行密钥 RP ID','saas.elexvx.com','PLATFORM',0,'WebAuthn RP ID',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7389,1001,'verification.passkey.rp-name','通行密钥 RP 名称','宏翔商道后台管理系统','PLATFORM',0,'WebAuthn RP 显示名称',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7390,1001,'verification.passkey.allowed-origins','通行密钥允许 Origin','https://saas.elexvx.com','PLATFORM',0,'WebAuthn 允许的前端 Origin',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7391,1001,'verification.passkey.challenge-ttl-seconds','通行密钥 Challenge TTL','120','PLATFORM',0,'WebAuthn challenge 有效期秒数',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7392,1001,'verification.password-login.enabled','密码登录','true','PLATFORM',0,'是否启用账号密码登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7393,1001,'verification.login-mode.order','登录方式排序','passkey,sms,email,wechat,password','PLATFORM',0,'登录页分段控制器展示顺序',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7393,1001,'verification.login-mode.order','登录方式排序','password','PLATFORM',0,'登录页分段控制器展示顺序',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7394,1001,'floating-window.api-docs-qr-enabled','接口文档二维码开关','true','PLATFORM',0,'是否在全局悬浮窗展示接口文档二维码入口',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7395,1001,'floating-window.api-docs-qr-title','接口文档二维码标题','微信扫码联系我们','PLATFORM',0,'接口文档二维码弹层标题',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7396,1001,'floating-window.api-docs-qr-image-url','接口文档二维码图片','','PLATFORM',0,'接口文档悬浮入口展开后展示的二维码图片',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
@@ -366,6 +366,9 @@ INSERT INTO `sys_permission` (`id`, `tenant_id`, `permission_key`, `permission_n
 (142,1001,'system:verification:view','查看验证管理','system','CORE',NULL,0,'2026-04-22 21:55:16',0,'2026-04-22 21:55:16',0),
 (143,1001,'system:verification:manage','管理验证方式','system','CORE',NULL,0,'2026-04-22 21:55:16',0,'2026-04-22 21:55:16',0),
 (145,1001,'download:center:view','查看下载中心','download','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(149,1001,'download:center:create','上传下载中心文件','download','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(150,1001,'download:center:update','编辑下载中心文件','download','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(151,1001,'download:center:delete','删除下载中心文件','download','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (146,1001,'system:file:view','查看文件中心','system','CORE',NULL,0,'2026-05-04 14:23:01',0,'2026-05-04 14:23:01',0),
 (147,1001,'system:file:upload','上传文档','system','CORE',NULL,0,'2026-05-04 14:23:01',0,'2026-05-04 14:23:01',0),
 (148,1001,'system:file:delete','删除文档','system','CORE',NULL,0,'2026-05-04 14:23:01',0,'2026-05-04 14:23:01',0),
@@ -378,6 +381,16 @@ INSERT INTO `sys_permission` (`id`, `tenant_id`, `permission_key`, `permission_n
 (160,1001,'localization:sync','同步翻译词条','system','CORE',NULL,0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (161,1001,'localization:publish','发布翻译版本','system','CORE',NULL,0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (162,1001,'localization:rollback','回滚翻译版本','system','CORE',NULL,0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
+(163,1001,'payment:view','支付设置查看','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(164,1001,'payment:config:view','支付配置查看','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(165,1001,'payment:config:update','支付配置修改','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(166,1001,'payment:config:test','支付配置测试','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(167,1001,'payment:order:view','支付订单查看','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(169,1001,'payment:order:create','支付订单创建','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(170,1001,'payment:refund:view','退款单查看','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(171,1001,'payment:refund:create','退款单创建','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(172,1001,'payment:webhook:view','Webhook 查看','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(173,1001,'payment:webhook:retry','Webhook 重试','payment','CORE',NULL,0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (180,1001,'ai:view','查看数字员工','ai','CORE',NULL,0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (181,1001,'ai:employee:create','创建数字员工','ai','CORE',NULL,0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (182,1001,'ai:employee:update','编辑数字员工','ai','CORE',NULL,0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
@@ -631,6 +644,9 @@ INSERT INTO `sys_role_permission` (`id`, `tenant_id`, `role_id`, `permission_key
 (179,1001,2001,'system:file:delete',0,'2026-05-04 14:23:01',0,'2026-05-04 14:23:01',0),
 (180,1001,2001,'system:file:upload',0,'2026-05-04 14:23:01',0,'2026-05-04 14:23:01',0),
 (181,1001,2001,'system:file:view',0,'2026-05-04 14:23:01',0,'2026-05-04 14:23:01',0),
+(182,1001,2001,'download:center:create',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(183,1001,2001,'download:center:update',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(184,1001,2001,'download:center:delete',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (185,1001,2001,'system:file:manage',0,'2026-05-15 00:52:26',0,'2026-05-15 00:52:26',0),
 (186,1001,2001,'system:file:manage:delete',0,'2026-05-15 00:52:26',0,'2026-05-15 00:52:26',0),
 (187,1001,2001,'download:center:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
@@ -641,6 +657,15 @@ INSERT INTO `sys_role_permission` (`id`, `tenant_id`, `role_id`, `permission_key
 (193,1001,2001,'localization:sync',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (194,1001,2001,'localization:publish',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (195,1001,2001,'localization:rollback',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
+(196,1001,2001,'payment:config:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(197,1001,2001,'payment:config:update',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(198,1001,2001,'payment:config:test',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(199,1001,2001,'payment:order:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(200,1001,2001,'payment:order:create',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(201,1001,2001,'payment:refund:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(202,1001,2001,'payment:refund:create',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(203,1001,2001,'payment:webhook:view',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(204,1001,2001,'payment:webhook:retry',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (213,1001,2001,'ai:view',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (214,1001,2001,'ai:employee:create',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
 (215,1001,2001,'ai:employee:update',0,'2026-05-15 00:52:27',0,'2026-05-15 00:52:27',0),
@@ -767,7 +792,7 @@ CREATE TABLE IF NOT EXISTS `sys_verification_binding` (
   `bound` tinyint NOT NULL DEFAULT '0',
   `email_required` tinyint NOT NULL DEFAULT '0',
   `masked_contact` varchar(255) DEFAULT NULL,
-  `secret_key` varchar(255) DEFAULT NULL,
+  `secret_key` varchar(512) DEFAULT NULL,
   `recovery_codes_json` json DEFAULT NULL,
   `verified_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
@@ -787,7 +812,7 @@ CREATE TABLE IF NOT EXISTS `sys_verification_challenge` (
   `challenge_type` varchar(16) NOT NULL,
   `expires_at` datetime NOT NULL,
   `consumed_flag` tinyint NOT NULL DEFAULT '0',
-  `setup_secret` varchar(255) DEFAULT NULL,
+  `setup_secret` varchar(512) DEFAULT NULL,
   `setup_uri` varchar(512) DEFAULT NULL,
   `recovery_codes_json` json DEFAULT NULL,
   `code_hash` varchar(128) DEFAULT NULL,
@@ -885,7 +910,7 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
   `endpoint` varchar(255) DEFAULT NULL,
   `region` varchar(128) DEFAULT NULL,
   `access_key_id` varchar(255) DEFAULT NULL,
-  `access_key_secret` varchar(512) DEFAULT NULL,
+  `access_key_secret` varchar(2048) DEFAULT NULL,
   `rename_strategy` varchar(32) NOT NULL DEFAULT 'APPEND_RANDOM_ID',
   `max_file_size_mb` int NOT NULL DEFAULT '20',
   `allowed_mime_types` varchar(1024) NOT NULL DEFAULT '*',
@@ -904,7 +929,144 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
 
 INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
 (1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,'ENABLED',1,1,0),
-(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,'ENABLED',1,1,0);
+(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,'ENABLED',1,1,0),
+(1001,'AI 知识库文档','ai_knowledge','LOCAL','storage/uploads/ai_knowledge/','APPEND_RANDOM_ID',50,'*',0,0,'ENABLED',1,1,0);
+
+CREATE TABLE IF NOT EXISTS `payment_provider_config` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `provider_code` varchar(64) NOT NULL,
+  `provider_name` varchar(128) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `environment` varchar(32) NOT NULL,
+  `encrypted_config_json` longtext NOT NULL,
+  `configured` tinyint(1) NOT NULL DEFAULT '0',
+  `last_tested_at` datetime DEFAULT NULL,
+  `last_test_success` tinyint(1) DEFAULT NULL,
+  `last_test_message` varchar(512) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_payment_provider_config_tenant_provider` (`tenant_id`,`provider_code`),
+  KEY `idx_payment_provider_config_tenant_deleted` (`tenant_id`,`deleted`),
+  KEY `idx_payment_provider_config_provider` (`provider_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payment_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `order_no` varchar(64) NOT NULL,
+  `provider_code` varchar(64) NOT NULL,
+  `provider_order_no` varchar(128) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `amount_minor` bigint NOT NULL,
+  `currency` varchar(16) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `payment_url` varchar(1024) DEFAULT NULL,
+  `client_ip` varchar(64) DEFAULT NULL,
+  `notify_url` varchar(1024) DEFAULT NULL,
+  `return_url` varchar(1024) DEFAULT NULL,
+  `request_json` longtext,
+  `response_json` longtext,
+  `idempotency_key` varchar(128) DEFAULT NULL,
+  `failure_code` varchar(64) DEFAULT NULL,
+  `failure_message` varchar(512) DEFAULT NULL,
+  `expires_at` datetime DEFAULT NULL,
+  `paid_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_payment_order_tenant_order_no` (`tenant_id`,`order_no`),
+  UNIQUE KEY `uk_payment_order_tenant_idempotency_key` (`tenant_id`,`idempotency_key`),
+  KEY `idx_payment_order_tenant_status` (`tenant_id`,`status`),
+  KEY `idx_payment_order_provider` (`tenant_id`,`provider_code`,`provider_order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payment_refund` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `refund_no` varchar(64) NOT NULL,
+  `order_no` varchar(64) NOT NULL,
+  `provider_code` varchar(64) NOT NULL,
+  `provider_refund_no` varchar(128) NOT NULL,
+  `amount_minor` bigint NOT NULL,
+  `currency` varchar(16) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `reason` varchar(255) NOT NULL,
+  `request_json` longtext,
+  `response_json` longtext,
+  `idempotency_key` varchar(128) DEFAULT NULL,
+  `failure_code` varchar(64) DEFAULT NULL,
+  `failure_message` varchar(512) DEFAULT NULL,
+  `refunded_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_payment_refund_tenant_refund_no` (`tenant_id`,`refund_no`),
+  UNIQUE KEY `uk_payment_refund_tenant_idempotency_key` (`tenant_id`,`idempotency_key`),
+  KEY `idx_payment_refund_tenant_status` (`tenant_id`,`status`),
+  KEY `idx_payment_refund_order_no` (`tenant_id`,`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payment_webhook_event` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `provider_code` varchar(64) NOT NULL,
+  `event_id` varchar(128) NOT NULL,
+  `event_type` varchar(128) NOT NULL,
+  `nonce` varchar(128) DEFAULT NULL,
+  `request_timestamp` varchar(64) DEFAULT NULL,
+  `payload_json` longtext NOT NULL,
+  `signature` varchar(2048) DEFAULT NULL,
+  `signature_valid` tinyint(1) NOT NULL DEFAULT '0',
+  `processed` tinyint(1) NOT NULL DEFAULT '0',
+  `process_message` varchar(512) DEFAULT NULL,
+  `received_at` datetime NOT NULL,
+  `processed_at` datetime DEFAULT NULL,
+  `retry_count` int NOT NULL DEFAULT '0',
+  `next_retry_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_payment_webhook_event_tenant_provider_event` (`tenant_id`,`provider_code`,`event_id`),
+  KEY `idx_payment_webhook_event_nonce` (`tenant_id`,`provider_code`,`nonce`),
+  KEY `idx_payment_webhook_event_status` (`tenant_id`,`processed`,`retry_count`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payment_event_outbox` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `user_id` bigint DEFAULT NULL,
+  `source_type` varchar(64) NOT NULL,
+  `event_type` varchar(128) NOT NULL,
+  `event_key` varchar(128) NOT NULL,
+  `payload_json` longtext NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `retry_count` int NOT NULL DEFAULT '0',
+  `next_retry_at` datetime DEFAULT NULL,
+  `last_error_message` varchar(512) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_payment_outbox_event` (`tenant_id`,`source_type`,`event_type`,`event_key`),
+  KEY `idx_payment_outbox_status` (`tenant_id`,`status`,`next_retry_at`),
+  KEY `idx_payment_outbox_created_at` (`tenant_id`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `msg_notice` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -1769,6 +1931,50 @@ WHERE t.`deleted` = 0
     FROM `file_storage_space` s
     WHERE s.`tenant_id` = t.`id`
       AND s.`storage_key` = 'ai_chat'
+  );
+
+
+-- -----------------------------------------------------------------------------
+-- Folded migration: V11__seed_ai_knowledge_storage_space.sql
+-- -----------------------------------------------------------------------------
+INSERT INTO `file_storage_space` (
+  `tenant_id`,
+  `title`,
+  `storage_key`,
+  `provider`,
+  `root_path`,
+  `rename_strategy`,
+  `max_file_size_mb`,
+  `allowed_mime_types`,
+  `default_flag`,
+  `retain_file_on_record_delete`,
+  `status`,
+  `created_by`,
+  `updated_by`,
+  `deleted`
+)
+SELECT
+  t.`id`,
+  'AI 知识库文档',
+  'ai_knowledge',
+  'LOCAL',
+  'storage/uploads/ai_knowledge/',
+  'APPEND_RANDOM_ID',
+  50,
+  '*',
+  0,
+  0,
+  'ENABLED',
+  1,
+  1,
+  0
+FROM `sys_tenant` t
+WHERE t.`deleted` = 0
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `file_storage_space` s
+    WHERE s.`tenant_id` = t.`id`
+      AND s.`storage_key` = 'ai_knowledge'
   );
 
 
@@ -3157,7 +3363,7 @@ ON DUPLICATE KEY UPDATE
 -- Folded migration: V46__include_wechat_login_mode_order.sql
 -- -----------------------------------------------------------------------------
 UPDATE `sys_config`
-SET `config_value` = 'passkey,sms,email,wechat,password',
+SET `config_value` = 'password',
     `updated_by` = 0,
     `updated_at` = CURRENT_TIMESTAMP
 WHERE `tenant_id` = 1001
@@ -3183,7 +3389,7 @@ VALUES (
   1001,
   'verification.login-mode.order',
   '登录方式排序',
-  'passkey,sms,email,wechat,password',
+  'password',
   'PLATFORM',
   0,
   '登录页分段控制器展示顺序',

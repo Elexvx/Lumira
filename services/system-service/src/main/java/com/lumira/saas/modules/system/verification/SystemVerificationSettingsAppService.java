@@ -25,7 +25,7 @@ public class SystemVerificationSettingsAppService {
     private static final String PASSWORD_LOGIN_ENABLED_KEY = "verification.password-login.enabled";
     private static final String EMAIL_LOGIN_ENABLED_KEY = "verification.email-login.enabled";
     private static final String LOGIN_MODE_ORDER_KEY = "verification.login-mode.order";
-    private static final List<String> DEFAULT_LOGIN_MODE_ORDER = List.of("passkey", "sms", "email", "wechat", "password");
+    private static final List<String> DEFAULT_LOGIN_MODE_ORDER = List.of("password", "sms", "email", "wechat", "passkey");
     private static final String SMS_CONFIG_ENABLED_KEY = "verification.sms.enabled";
     private static final String SMS_CONFIG_PROVIDER_KEY = "verification.sms.provider";
     private static final String SMS_CONFIG_SIGN_NAME_KEY = "verification.sms.sign-name";
@@ -107,9 +107,9 @@ public class SystemVerificationSettingsAppService {
     public SystemVO.PasskeySettingsVO getPasskeySettings(Long tenantId) {
         Map<String, String> values = loadConfigValuesByKeys(tenantId, passkeyConfigKeys());
         SystemVO.PasskeySettingsVO settings = new SystemVO.PasskeySettingsVO();
-        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "true")));
-        settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "true")));
-        settings.setSelfBindingEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_SELF_BINDING_ENABLED_KEY), "true")));
+        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "false")));
+        settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "false")));
+        settings.setSelfBindingEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_SELF_BINDING_ENABLED_KEY), "false")));
         settings.setRpId(defaultIfBlank(values.get(PASSKEY_RP_ID_KEY), "saas.elexvx.com"));
         settings.setRpName(defaultIfBlank(values.get(PASSKEY_RP_NAME_KEY), "宏翔商道后台管理系统"));
         settings.setAllowedOrigins(splitLines(defaultIfBlank(values.get(PASSKEY_ALLOWED_ORIGINS_KEY), "https://saas.elexvx.com")));
@@ -382,7 +382,8 @@ public class SystemVerificationSettingsAppService {
         if (!StringUtils.hasText(configured)) {
             return DEFAULT_LOGIN_MODE_ORDER;
         }
-        return normalizeLoginModeOrder(List.of(configured.split(",")));
+        List<String> normalized = normalizeLoginModeOrder(List.of(configured.split(",")));
+        return normalized.isEmpty() ? DEFAULT_LOGIN_MODE_ORDER : normalized;
     }
 
     private List<String> normalizeLoginModeOrder(List<String> values) {
@@ -393,11 +394,6 @@ public class SystemVerificationSettingsAppService {
             }
             String mode = value.trim();
             if (("passkey".equals(mode) || "sms".equals(mode) || "email".equals(mode) || "wechat".equals(mode) || "password".equals(mode)) && !normalized.contains(mode)) {
-                normalized.add(mode);
-            }
-        }
-        for (String mode : DEFAULT_LOGIN_MODE_ORDER) {
-            if (!normalized.contains(mode)) {
                 normalized.add(mode);
             }
         }

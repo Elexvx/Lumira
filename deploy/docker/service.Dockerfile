@@ -51,7 +51,10 @@ ENV JAVA_OPTS="" \
 
 WORKDIR /app
 
-RUN addgroup --system app && adduser --system --ingroup app app && mkdir -p /tmp/nacos /tmp/sentinel && chown -R app:app /tmp/nacos /tmp/sentinel
+RUN addgroup --system app \
+    && adduser --system --ingroup app app \
+    && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging \
+    && chown -R app:app /tmp/nacos /tmp/sentinel /data
 
 COPY --from=builder /workspace/app.jar /app/app.jar
 COPY --from=builder /workspace/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar

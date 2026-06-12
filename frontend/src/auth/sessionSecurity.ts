@@ -7,6 +7,7 @@ import type { SecuritySettings } from '@/types/api';
 export const loadSecuritySettings = async (
   options: {
     allowUnauthorizedWithoutRedirect?: boolean;
+    timeoutMs?: number;
   } = {},
 ): Promise<SecuritySettings> => {
   try {
@@ -19,6 +20,7 @@ export const loadSecuritySettings = async (
     const securitySettings = normalizeSecuritySettings(
       await request<SecuritySettings>('/v1/system/security-settings', {
         method: 'GET',
+        timeoutMs: options.timeoutMs,
         ...requestOptions,
       }),
     );

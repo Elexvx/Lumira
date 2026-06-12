@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { theme as antdTheme } from 'antd';
 import { buildAntdThemeConfig } from '../src/theme/antdTheme';
 
 const projectRoot = new URL('..', import.meta.url);
+const sourceRoot = join(projectRoot.pathname, 'src');
 const sourceFiles = [
   'src/theme/antdTheme.tsx',
   'src/theme/ThemePreferenceProvider.tsx',
@@ -18,9 +19,18 @@ const sourceFiles = [
   'src/pages/system/roles.css',
   'src/pages/system/users.css',
 ];
+const radiusScanExtensions = new Set(['.css', '.ts', '.tsx']);
+const allowedRadiusValuePatterns = [
+  /^var\(--ant-border-radius(?:-[a-z]+)?\)$/,
+  /^var\(--saas-(?:card-radius|border-radius-(?:base|sm|lg)|profile-card-radius|ai-[a-z-]+-radius)\)$/,
+  /^calc\(var\(--ant-border-radius\) \* \d+\)$/,
+  /^inherit$/,
+  /^0(?: !important)?$/,
+  /^50%$/,
+];
 
 const legacyThemePatterns = [
-  /var\(--saas-(page-bg|text|surface|border|input|icon|code|action)/,
+  /var\(--saas-(page-bg|text|surface|border(?!-radius)|input|icon|code|action)/,
   /var\(--ant-[^)]*,\s*(var\(--saas-|#[0-9a-fA-F]{3,8}|rgba?\()/,
   /rgba\(22,\s*119,\s*255/,
   /#52c41a/i,
@@ -40,6 +50,21 @@ const themeReloadPatterns = [
 const readProjectFile = (relativePath: string) =>
   readFileSync(join(projectRoot.pathname, relativePath), 'utf8');
 
+const collectSourceFiles = (directory: string): string[] =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      return collectSourceFiles(absolutePath);
+    }
+
+    const extension = entry.name.slice(entry.name.lastIndexOf('.'));
+    if (!radiusScanExtensions.has(extension)) {
+      return [];
+    }
+
+    return [relative(projectRoot.pathname, absolutePath)];
+  });
+
 const assertNoLegacyThemePatterns = () => {
   for (const relativePath of sourceFiles) {
     const content = readProjectFile(relativePath);
@@ -54,6 +79,37 @@ const assertThemeSwitchDoesNotForcePageReload = () => {
     const content = readProjectFile(relativePath);
     for (const pattern of themeReloadPatterns) {
       assert.equal(pattern.test(content), false, `${relativePath} should not force a full page reload or remount for theme switching`);
+    }
+  }
+};
+
+const assertRadiusTokensFollowOfficialTheme = () => {
+  const radiusDeclarationPattern = /\bborder-radius\s*:\s*([^;]+);/g;
+  const radiusStylePattern = /\bborderRadius\s*:\s*([^,\n}]+)/g;
+  const tokenDeclarationPattern = /--saas-(?:card-radius|border-radius-(?:base|sm|lg))\s*:\s*([^;]+);/g;
+
+  for (const relativePath of collectSourceFiles(sourceRoot)) {
+    const content = readProjectFile(relativePath);
+    const checks = [
+      { pattern: radiusDeclarationPattern, label: 'border-radius' },
+      { pattern: radiusStylePattern, label: 'borderRadius' },
+      { pattern: tokenDeclarationPattern, label: 'radius token' },
+    ];
+
+    for (const { pattern, label } of checks) {
+      for (const match of content.matchAll(pattern)) {
+        if (relativePath === 'src/theme/antdTheme.tsx' && label === 'borderRadius') {
+          continue;
+        }
+
+        const value = match[1].trim().replace(/^['"]|['"]$/g, '');
+        const isAllowed = allowedRadiusValuePatterns.some((allowedPattern) => allowedPattern.test(value));
+        assert.equal(
+          isAllowed,
+          true,
+          `${relativePath} ${label} should use Ant Design radius tokens instead of ${value}`,
+        );
+      }
     }
   }
 };
@@ -85,6 +141,7 @@ const run = () => {
   assertOfficialTokenDerivation();
   assertNoLegacyThemePatterns();
   assertThemeSwitchDoesNotForcePageReload();
+  assertRadiusTokensFollowOfficialTheme();
   console.log('theme-official-alignment-smoke: ok');
 };
 

@@ -58,9 +58,11 @@
 }
 
 .saas-login-page .ant-pro-form-login-page-left {
-  flex: none;
-  width: 100%;
-  max-width: none;
+  flex: 0 1 auto;
+  width: min(var(--saas-spacing-536), calc(100vw - var(--saas-spacing-48)));
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
   padding: 0;
   margin: 0;
 }
@@ -68,6 +70,10 @@
 .saas-login-page .ant-pro-form-login-page-container {
   width: 100%;
   max-width: var(--saas-spacing-536);
+  min-height: var(--saas-spacing-560);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   margin: 0 auto;
   padding: var(--saas-spacing-42) var(--saas-spacing-48) var(--saas-spacing-42);
   box-sizing: border-box !important;
@@ -411,6 +417,7 @@ html[data-theme='dark'] .saas-login-page__actions {
   .saas-login-page .ant-pro-form-login-page-container {
     width: min(100%, calc(100vw - var(--saas-spacing-32)));
     max-width: min(100%, calc(100vw - var(--saas-spacing-32)));
+    min-height: auto;
     padding: var(--saas-spacing-lg) var(--saas-spacing-md) calc(var(--saas-spacing-lg) + var(--saas-spacing-2xs));
   }
 
@@ -440,17 +447,18 @@ html[data-theme='dark'] .saas-login-page__actions {
 }
 
 .saas-login-page::after {
-  background:
+  background-image:
     radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.08), transparent 22%),
     radial-gradient(circle at 86% 16%, rgba(15, 23, 42, 0.06), transparent 20%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.7) 0%, rgba(255, 255, 255, 0.92) 100%);
+    linear-gradient(180deg, rgba(248, 250, 252, 0.14) 0%, rgba(255, 255, 255, 0.28) 100%),
+    var(--saas-login-background-image, url('../../assets/login-cloud-platform.png'));
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
 }
 
 .saas-login-page .ant-pro-form-login-page-container {
-  border-radius: 28px;
+  border-radius: var(--saas-card-radius);
   border-color: var(--saas-color-border);
   background: rgba(255, 255, 255, 0.84);
   box-shadow: var(--saas-shadow-lg);
@@ -483,7 +491,7 @@ html[data-theme='dark'] .saas-login-page__actions {
 .saas-login-page .ant-pro-form-login-page-main .ant-btn-primary {
   height: 48px;
   margin-top: 20px;
-  border-radius: 14px;
+  border-radius: var(--ant-border-radius);
   box-shadow: var(--saas-shadow-sm);
 }
 
@@ -519,10 +527,11 @@ html[data-theme='dark'] .saas-login-page::before {
 }
 
 html[data-theme='dark'] .saas-login-page::after {
-  background:
+  background-image:
     radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.1), transparent 22%),
     radial-gradient(circle at 86% 16%, rgba(255, 255, 255, 0.04), transparent 20%),
-    linear-gradient(180deg, rgba(17, 17, 19, 0.86) 0%, rgba(9, 9, 11, 0.98) 100%);
+    linear-gradient(180deg, rgba(17, 17, 19, 0.5) 0%, rgba(9, 9, 11, 0.72) 100%),
+    var(--saas-login-background-image, url('../../assets/login-cloud-platform.png'));
 }
 
 html[data-theme='dark'] .saas-login-page .ant-pro-form-login-page-container {

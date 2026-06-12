@@ -8,10 +8,10 @@
   --saas-form-item-gap: var(--saas-spacing-xs);
   --saas-form-label-gap: var(--saas-spacing-xs);
   --saas-form-control-max-width: 720px;
-  --saas-card-radius: 8px;
-  --saas-border-radius-base: 6px;
-  --saas-border-radius-sm: 4px;
-  --saas-border-radius-lg: 8px;
+  --saas-card-radius: var(--ant-border-radius-lg);
+  --saas-border-radius-base: var(--ant-border-radius);
+  --saas-border-radius-sm: var(--ant-border-radius-sm);
+  --saas-border-radius-lg: var(--ant-border-radius-lg);
   --saas-card-padding: clamp(18px, 2.2vw, 24px);
   --saas-control-height: 56px;
   --saas-control-height-compact: 48px;
@@ -96,7 +96,7 @@
   --saas-color-bg-surface: rgba(255, 255, 255, 0.9);
   --saas-color-bg-surface-strong: #fff;
   --saas-color-bg-muted: #fafafa;
-  --saas-color-bg-subtle: #f0f0f0;
+  --saas-color-bg-subtle: var(--ant-color-fill-tertiary);
   --saas-color-border: rgba(5, 5, 5, 0.08);
   --saas-color-border-strong: rgba(5, 5, 5, 0.16);
   --saas-color-text: rgba(0, 0, 0, 0.88);
@@ -104,7 +104,7 @@
   --saas-color-text-tertiary: rgba(0, 0, 0, 0.45);
   --saas-color-accent: #1677ff;
   --saas-color-accent-foreground: #fff;
-  --saas-color-ring: rgba(22, 119, 255, 0.18);
+  --saas-color-ring: var(--ant-control-outline);
   --saas-color-success: #16a34a;
   --saas-color-warning: #d97706;
   --saas-color-danger: #dc2626;
@@ -129,7 +129,7 @@ html[data-theme='dark'] {
   --saas-color-text-tertiary: rgba(255, 255, 255, 0.45);
   --saas-color-accent: #1677ff;
   --saas-color-accent-foreground: #fff;
-  --saas-color-ring: rgba(22, 119, 255, 0.24);
+  --saas-color-ring: var(--ant-control-outline);
   --saas-color-success: #4ade80;
   --saas-color-warning: #fbbf24;
   --saas-color-danger: #f87171;

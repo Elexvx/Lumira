@@ -12,6 +12,11 @@ export interface SessionBootstrapResult {
   securitySettings: SecuritySettings;
 }
 
+const LOGIN_CURRENT_USER_TIMEOUT_MS = 2500;
+const RESTORE_CURRENT_USER_TIMEOUT_MS = 5000;
+const POST_LOGIN_SECURITY_TIMEOUT_MS = 2500;
+const RESTORE_SECURITY_TIMEOUT_MS = 5000;
+
 function loadCurrentUserOrFallback(loginResponse: LoginResponse): Promise<CurrentUser>;
 function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise<CurrentUser | null>;
 async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise<CurrentUser | null> {
@@ -20,6 +25,7 @@ async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise
       method: 'GET',
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: loginResponse ? LOGIN_CURRENT_USER_TIMEOUT_MS : RESTORE_CURRENT_USER_TIMEOUT_MS,
     });
     return currentUser;
   } catch {
@@ -59,13 +65,19 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
         sessionVersion: undefined,
         permissionsVersion: undefined,
       });
-      const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+      const securitySettings = await loadSecuritySettings({
+        allowUnauthorizedWithoutRedirect: true,
+        timeoutMs: RESTORE_SECURITY_TIMEOUT_MS,
+      });
       return { currentUser: persistedCurrentUser, securitySettings };
     }
 
     applyLocalePreference(currentUser.locale, false);
     const persistedCurrentUser = persistCurrentUser(currentUser);
-    const securitySettings = await loadSecuritySettings({ allowUnauthorizedWithoutRedirect: true });
+    const securitySettings = await loadSecuritySettings({
+      allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: RESTORE_SECURITY_TIMEOUT_MS,
+    });
     return { currentUser: persistedCurrentUser, securitySettings };
   });
 
@@ -79,9 +91,11 @@ const initializeLoginSession = async (loginResponse: LoginResponse): Promise<Ses
 
   persistSessionActivity(Date.now());
 
-  const currentUser = await loadCurrentUserOrFallback(loginResponse);
+  const [currentUser, securitySettings] = await Promise.all([
+    loadCurrentUserOrFallback(loginResponse),
+    loadSecuritySettings({ timeoutMs: POST_LOGIN_SECURITY_TIMEOUT_MS }),
+  ]);
   applyLocalePreference(currentUser?.locale || loginResponse.user.locale, false);
   const persistedCurrentUser = persistCurrentUser(currentUser);
-  const securitySettings = await loadSecuritySettings();
   return { currentUser: persistedCurrentUser, securitySettings };
 };

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
-import { isLoggedIn } from '@/auth/sessionLifecycle';
+import { isLoggedIn, tryRefreshToken } from '@/auth/sessionLifecycle';
 import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
@@ -114,6 +114,9 @@ type ForcedPasswordChangeFormValues = {
 const INITIAL_PASSWORD = '123456';
 type CodeLoginMode = 'sms' | 'email';
 
+const POST_LOGIN_MENU_TIMEOUT_MS = 2500;
+const POST_LOGIN_OPTIONAL_TIMEOUT_MS = 1200;
+
 const TEXT_ENCODER = new TextEncoder();
 const KEY_CACHE = new Map<string, Promise<CryptoKey>>();
 
@@ -209,39 +212,18 @@ const useLoginFlowInteractions = ({
   const completeSuccessfulLogin = useCallback(
     async (loginResponse: LoginResponse) => {
       const sessionResult = await initializeAfterLogin(loginResponse);
-      const [menuResult, pluginResult, brandingResult, watermarkResult] = await Promise.allSettled([
-        request<MenuNode[]>('/v1/plugins/current/menus', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        request<TenantPlugin[]>('/v1/plugins/current/available', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        request<BrandingSettings>('/v1/system/branding-settings', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-        request<WatermarkSettings>('/v1/system/watermark-settings', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-        }),
-      ]);
+      const menuTree = await request<MenuNode[]>('/v1/plugins/current/menus', {
+        method: 'GET',
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+        timeoutMs: POST_LOGIN_MENU_TIMEOUT_MS,
+      }).catch(() => initialState?.menuTree || []);
       const resources = {
-        menuTree: menuResult.status === 'fulfilled' ? menuResult.value : [],
-        availablePlugins: pluginResult.status === 'fulfilled' ? pluginResult.value : [],
-        brandingSettings: normalizeBrandingSettings(
-          brandingResult.status === 'fulfilled' ? brandingResult.value : initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS,
-        ),
-        watermarkSettings: watermarkResult.status === 'fulfilled' ? watermarkResult.value : initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS,
+        menuTree,
+        availablePlugins: initialState?.availablePlugins || [],
+        brandingSettings: normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
+        watermarkSettings: initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS,
       };
 
       persistBrandingSettings(resources.brandingSettings);
@@ -261,9 +243,60 @@ const useLoginFlowInteractions = ({
         }));
       });
       const redirectTarget = resolveAuthorizedLoginRedirectTarget(locationSearch, sessionResult.currentUser, resources.menuTree);
+      message.success(formatMessage({ id: 'page.login.success.loggedIn', defaultMessage: '登录成功，正在进入系统' }));
       history.replace(redirectTarget);
+
+      void Promise.allSettled([
+        request<TenantPlugin[]>('/v1/plugins/current/available', {
+          method: 'GET',
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+          timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+        }),
+        request<BrandingSettings>('/v1/system/branding-settings', {
+          method: 'GET',
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+          timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+        }),
+        request<WatermarkSettings>('/v1/system/watermark-settings', {
+          method: 'GET',
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+          timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+        }),
+      ]).then(([pluginResult, brandingResult, watermarkResult]) => {
+        const nextBrandingSettings = normalizeBrandingSettings(
+          brandingResult.status === 'fulfilled' ? brandingResult.value : resources.brandingSettings,
+        );
+        const nextWatermarkSettings = watermarkResult.status === 'fulfilled' ? watermarkResult.value : resources.watermarkSettings;
+        persistBrandingSettings(nextBrandingSettings);
+        persistWatermarkSettings(nextWatermarkSettings);
+        setInitialState((prev: AppInitialState | undefined) =>
+          prev
+            ? {
+                ...prev,
+                availablePlugins: pluginResult.status === 'fulfilled' ? pluginResult.value : prev.availablePlugins,
+                brandingSettings: nextBrandingSettings,
+                watermarkSettings: nextWatermarkSettings,
+              }
+            : prev,
+        );
+      });
     },
-    [bootstrapFlow.agreementSettings, bootstrapFlow.loginCapabilities, initialState?.brandingSettings, initialState?.watermarkSettings, locationSearch, setInitialState],
+    [
+      bootstrapFlow.agreementSettings,
+      bootstrapFlow.loginCapabilities,
+      initialState?.availablePlugins,
+      initialState?.brandingSettings,
+      initialState?.menuTree,
+      initialState?.watermarkSettings,
+      locationSearch,
+      setInitialState,
+    ],
   );
   const startForcedPasswordChange = useCallback(
     async (loginResponse: LoginResponse, currentPassword: string) => {
@@ -281,10 +314,7 @@ const useLoginFlowInteractions = ({
       return;
     }
 
-    const currentUser = {
-      ...restoredSession.currentUser,
-      requiresPasswordChange: false,
-    };
+    const currentUser = restoredSession.currentUser;
     flushSync(() => {
       setInitialState((prev: AppInitialState | undefined) =>
         prev
@@ -1071,6 +1101,7 @@ export const useLoginFlowRuntime = ({
 }: UseLoginFlowRuntimeParams) => {
   const redirectTarget = resolveLoginRedirectTarget(locationSearch);
   const wechatCallbackHandledRef = useRef(false);
+  const passwordChangeRestoreHandledRef = useRef(false);
 
   const {
     postLoginPack,
@@ -1132,14 +1163,19 @@ export const useLoginFlowRuntime = ({
   ]);
   useEffect(() => {
     if (!isLoggedIn() || !initialState?.currentUser?.requiresPasswordChange) {
+      passwordChangeRestoreHandledRef.current = false;
       return;
     }
+    if (passwordChangeRestoreHandledRef.current) {
+      return;
+    }
+    passwordChangeRestoreHandledRef.current = true;
+    void tryRefreshToken();
     flowState.setRestoredPasswordChangeRequired(true);
     flowState.setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
     flowState.forcedPasswordChangeForm.resetFields();
     message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
   }, [
-    flowState,
     flowState.forcedPasswordChangeForm,
     flowState.setPendingPasswordChangeCurrentPassword,
     flowState.setRestoredPasswordChangeRequired,

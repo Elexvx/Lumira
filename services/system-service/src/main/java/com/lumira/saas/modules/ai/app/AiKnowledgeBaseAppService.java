@@ -13,6 +13,8 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -32,11 +34,14 @@ import java.util.UUID;
 @Service
 public class AiKnowledgeBaseAppService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiKnowledgeBaseAppService.class);
+
     private static final int CHUNK_SIZE = 1400;
     private static final int CHUNK_OVERLAP = 180;
     private static final long MAX_PAGE_SIZE = 100L;
     private static final String SCOPE_PERSONAL = "PERSONAL";
     private static final String SCOPE_TENANT = "TENANT";
+    private static final String KNOWLEDGE_STORAGE_BUCKET = "ai_knowledge";
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final FileInternalApi fileInternalApi;
@@ -234,7 +239,7 @@ public class AiKnowledgeBaseAppService {
         Long tenantId = currentTenantId(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.MANAGE);
         AiKnowledgeTextExtractor.ExtractedText extracted = textExtractor.extract(file);
-        FileObjectDTO uploaded = fileInternalApi.uploadDocument(file, "AI 知识库", "knowledge-base", "知识库文档");
+        FileObjectDTO uploaded = uploadKnowledgeDocumentFile(file);
         LocalDateTime now = LocalDateTime.now();
         String title = cleanTitle(file.getOriginalFilename());
         jdbcTemplate.update(
@@ -280,6 +285,23 @@ public class AiKnowledgeBaseAppService {
         );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-upload", "CREATE", "SUCCESS", "上传知识库文档: " + title);
         return requireDocument(tenantId, knowledgeBaseId, documentId);
+    }
+
+    private FileObjectDTO uploadKnowledgeDocumentFile(MultipartFile file) {
+        try {
+            return fileInternalApi.uploadDocument(file, "AI 知识库", "knowledge-base", "知识库文档", KNOWLEDGE_STORAGE_BUCKET);
+        } catch (BizException exception) {
+            ErrorCode errorCode = exception.getErrorCode();
+            if (errorCode == ErrorCode.BAD_REQUEST || errorCode == ErrorCode.VALIDATION_ERROR) {
+                throw exception;
+            }
+            String message = "知识库文件上传失败：" + visibleUploadMessage(exception);
+            throw new BizException(ErrorCode.BIZ_ERROR, message, message);
+        } catch (RuntimeException exception) {
+            log.warn("Knowledge document file upload failed", exception);
+            String message = "知识库文件上传失败，请检查存储空间配置或稍后重试";
+            throw new BizException(ErrorCode.BIZ_ERROR, message, message);
+        }
     }
 
     @Transactional
@@ -670,7 +692,7 @@ public class AiKnowledgeBaseAppService {
 
     private void validateKnowledgeName(Long tenantId, Long ownerUserId, String name, Long excludeId) {
         if (!StringUtils.hasText(name)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "知识库名称不能为空");
+            throw new BizException(ErrorCode.BAD_REQUEST, "知识库名称不能为空", "知识库名称不能为空");
         }
         Integer count = jdbcTemplate.queryForObject(
                 """
@@ -686,8 +708,23 @@ public class AiKnowledgeBaseAppService {
                 excludeId
         );
         if (count != null && count > 0) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "知识库名称已存在");
+            throw new BizException(ErrorCode.BIZ_ERROR, "知识库名称已存在", "知识库名称已存在");
         }
+    }
+
+    private String visibleUploadMessage(BizException exception) {
+        if (StringUtils.hasText(exception.getUserMessage())
+                && !ErrorCode.SYSTEM_ERROR.getDefaultUserMessage().equals(exception.getUserMessage())
+                && !ErrorCode.BIZ_ERROR.getDefaultUserMessage().equals(exception.getUserMessage())) {
+            return exception.getUserMessage().trim();
+        }
+        if (exception.getErrorCode() == ErrorCode.SYSTEM_ERROR) {
+            return "请检查存储空间配置或稍后重试";
+        }
+        if (StringUtils.hasText(exception.getMessage())) {
+            return exception.getMessage().trim();
+        }
+        return "请稍后重试";
     }
 
     private void appendAccessibleKnowledgeBaseFilter(

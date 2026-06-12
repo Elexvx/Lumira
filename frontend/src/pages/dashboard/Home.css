@@ -6,12 +6,17 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--saas-color-border);
-  border-radius: 28px;
+  border-radius: var(--saas-border-radius-lg);
   background:
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 22%),
     radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.05), transparent 24%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.9) 100%);
   box-shadow: var(--saas-shadow-lg);
+}
+
+.saas-dashboard-home__hero.ant-pro-card,
+.saas-dashboard-home__hero .ant-pro-card-body {
+  border-radius: var(--saas-border-radius-lg);
 }
 
 .saas-dashboard-home__hero::before {
@@ -24,19 +29,26 @@
     linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
 }
 
-.saas-dashboard-home__hero .ant-card-body {
+.saas-dashboard-home__hero .ant-pro-card-body {
   position: relative;
   z-index: 1;
+  overflow: hidden;
 }
 
 .saas-dashboard-home__panel {
   height: 100%;
-  border-radius: 24px;
+  overflow: hidden;
+  border-radius: var(--saas-card-radius);
   background: var(--saas-color-bg-surface-strong);
   box-shadow: var(--saas-shadow-sm);
 }
 
-.saas-dashboard-home__panel .ant-card-body {
+.saas-dashboard-home__panel.ant-pro-card,
+.saas-dashboard-home__panel .ant-pro-card-body {
+  border-radius: var(--saas-card-radius);
+}
+
+.saas-dashboard-home__panel .ant-pro-card-body {
   height: 100%;
 }
 
@@ -44,7 +56,7 @@
   height: 100%;
   padding: 18px;
   border: 1px solid var(--saas-color-border);
-  border-radius: 20px;
+  border-radius: var(--saas-card-radius);
   background: rgba(255, 255, 255, 0.85);
   box-shadow: var(--saas-shadow-sm);
   transition:
@@ -75,7 +87,7 @@
   height: 100%;
   padding: 18px;
   border: 1px solid var(--saas-color-border);
-  border-radius: 20px;
+  border-radius: var(--saas-card-radius);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.88) 100%);
   box-shadow: var(--saas-shadow-sm);
 }
@@ -86,7 +98,7 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: rgba(15, 23, 42, 0.06);
   color: var(--saas-color-text);
 }
@@ -105,6 +117,20 @@
 
 .saas-dashboard-home__activity-table.ant-pro-table .ant-pro-card-body {
   padding-inline: 0;
+}
+
+.saas-dashboard-home__activity-table .ant-pro-card,
+.saas-dashboard-home__activity-table .ant-pro-card-body,
+.saas-dashboard-home__activity-table .ant-table-wrapper,
+.saas-dashboard-home__activity-table .ant-table,
+.saas-dashboard-home__activity-table .ant-table-container {
+  border-radius: var(--saas-card-radius);
+}
+
+.saas-dashboard-home__activity-table .ant-pro-card,
+.saas-dashboard-home__activity-table .ant-table-wrapper,
+.saas-dashboard-home__activity-table .ant-table-container {
+  overflow: hidden;
 }
 
 .saas-dashboard-home__activity-table .ant-pro-table-list-toolbar {

@@ -68,5 +68,5 @@ export const isApiResponse = <T>(payload: unknown): payload is ApiResponse<T> =>
     return false;
   }
   const candidate = payload as Partial<ApiResponse<T>>;
-  return typeof candidate.code === 'string' && typeof candidate.message === 'string' && 'data' in candidate;
+  return typeof candidate.code === 'string' && typeof candidate.message === 'string';
 };

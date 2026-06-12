@@ -1,7 +1,6 @@
 package com.lumira.api.client;
 
 import com.lumira.api.file.FileObjectDTO;
-import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface FileInternalApi {
@@ -14,10 +13,20 @@ public interface FileInternalApi {
     );
 
     
-    FileObjectDTO uploadDocument(
+    default FileObjectDTO uploadDocument(
              MultipartFile file,
              String category,
              String tags,
              String remark
+    ) {
+        return uploadDocument(file, category, tags, remark, null);
+    }
+
+    FileObjectDTO uploadDocument(
+             MultipartFile file,
+             String category,
+             String tags,
+             String remark,
+             String bucket
     );
 }
