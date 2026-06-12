@@ -9,12 +9,17 @@ import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.export.ExportDTO;
+import com.lumira.saas.modules.system.export.ExportFieldVO;
+import com.lumira.saas.modules.system.export.ExportTaskService;
+import com.lumira.saas.modules.system.export.ExportVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.api.file.FileObjectDTO;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,17 +41,23 @@ public class SystemController {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final FileInternalApi fileInternalApi;
+    private final UserExportAppService userExportAppService;
+    private final ExportTaskService exportTaskService;
 
     public SystemController(
             SystemManagementAppService systemManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            FileInternalApi fileInternalApi
+            FileInternalApi fileInternalApi,
+            UserExportAppService userExportAppService,
+            ExportTaskService exportTaskService
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.fileInternalApi = fileInternalApi;
+        this.userExportAppService = userExportAppService;
+        this.exportTaskService = exportTaskService;
     }
 
     @GetMapping("/permissions")
@@ -107,6 +118,24 @@ public class SystemController {
     public ApiResponse<SystemVO.UserDetailVO> user(@PathVariable("id") Long id) {
         require("system:user:view");
         return ApiResponse.success(systemManagementAppService.getUser(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/users/export-fields")
+    public ApiResponse<List<ExportFieldVO>> userExportFields() {
+        require("system:user:export");
+        return ApiResponse.success(userExportAppService.listUserExportFields(), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/users/export")
+    public ApiResponse<ExportVO.ExportStartVO> exportUsers(@Valid @RequestBody ExportDTO.UserExportRequest request) {
+        require("system:user:export");
+        return ApiResponse.success(userExportAppService.exportUsers(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/export-tasks/{taskId}")
+    public ApiResponse<ExportVO.ExportTaskVO> exportTask(@PathVariable("taskId") Long taskId) {
+        require("system:user:export");
+        return ApiResponse.success(exportTaskService.getTask(securityContextFacade.getCurrentUser(), taskId), TraceContext.getRequestId());
     }
 
     @PostMapping("/users")

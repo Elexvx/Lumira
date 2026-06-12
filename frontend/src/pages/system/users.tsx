@@ -5,7 +5,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Button, Card, DatePicker, Empty, Form, Input, Select, Spin, Tree } from 'antd';
+import { Alert, Button, Card, DatePicker, Empty, Form, Input, Modal, Select, Space, Spin, Transfer, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserManagement } from './users/hooks/useUserManagement';
@@ -364,7 +364,20 @@ const UserManagementPage = () => {
     setSelectedDepartmentId,
     selectedUserDetail,
     detailProps,
+    exportModalOpen,
+    setExportModalOpen,
+    exportFields,
+    selectedExportFields,
+    setSelectedExportFields,
+    exportLoading,
+    exportTaskOpen,
+    setExportTaskOpen,
+    exportTask,
     openCreate,
+    openExport,
+    confirmExport,
+    downloadExportTaskFile,
+    openDownloadCenter,
     saveUser,
     loadDepartments,
   } = userManagement;
@@ -397,6 +410,12 @@ const UserManagementPage = () => {
                     type: 'primary',
                     label: t('新增用户', 'Add user'),
                     onClick: () => void openCreate(),
+                  },
+                  {
+                    key: 'export',
+                    permission: 'system:user:export',
+                    label: t('导出', 'Export'),
+                    onClick: () => void openExport(),
                   },
                   {
                     key: 'refresh',
@@ -438,6 +457,66 @@ const UserManagementPage = () => {
           <ProDescriptions<UserDetail> {...detailProps} columns={userDetailColumns} />
         ) : null}
       </ManagementDrawer>
+
+      <Modal
+        title={t('导出用户', 'Export users')}
+        open={exportModalOpen}
+        onCancel={() => setExportModalOpen(false)}
+        onOk={() => void confirmExport()}
+        okText={t('开始导出', 'Start export')}
+        cancelText={t('取消', 'Cancel')}
+        confirmLoading={exportLoading}
+        width={720}
+        destroyOnHidden
+      >
+        <Transfer
+          dataSource={exportFields.map((field) => ({ key: field.key, title: field.label }))}
+          titles={[t('可选字段', 'Available fields'), t('导出字段', 'Export fields')]}
+          targetKeys={selectedExportFields}
+          onChange={(nextTargetKeys) => setSelectedExportFields(nextTargetKeys.map(String))}
+          render={(item) => item.title}
+          listStyle={{ width: 300, height: 360 }}
+          showSearch
+        />
+      </Modal>
+
+      <Modal
+        title={t('导出任务', 'Export task')}
+        open={exportTaskOpen}
+        onCancel={() => setExportTaskOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setExportTaskOpen(false)}>
+            {t('关闭', 'Close')}
+          </Button>,
+          <Button key="center" onClick={openDownloadCenter}>
+            {t('前往下载中心', 'Download center')}
+          </Button>,
+          <Button key="download" type="primary" disabled={exportTask?.status !== 'SUCCESS' || !exportTask.downloadUrl} onClick={downloadExportTaskFile}>
+            {t('下载文件', 'Download file')}
+          </Button>,
+        ]}
+      >
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            type={exportTask?.status === 'FAILED' ? 'error' : exportTask?.status === 'SUCCESS' ? 'success' : 'info'}
+            showIcon
+            message={
+              exportTask?.status === 'SUCCESS'
+                ? t('导出完成', 'Export complete')
+                : exportTask?.status === 'FAILED'
+                  ? t('导出失败', 'Export failed')
+                  : t('导出进行中', 'Export in progress')
+            }
+            description={exportTask?.errorMessage || t('数据较多时会在后台生成文件，完成后可在下载中心获取。', 'Large exports are generated in the background and can be downloaded from the download center.')}
+          />
+          <Typography.Text type="secondary">
+            {t('记录数', 'Records')}: {exportTask?.totalCount ?? '-'}
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            {t('文件名', 'File name')}: {exportTask?.fileName || '-'}
+          </Typography.Text>
+        </Space>
+      </Modal>
     </ManagementPage>
   );
 };

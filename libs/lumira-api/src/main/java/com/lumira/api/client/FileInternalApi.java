@@ -29,4 +29,17 @@ public interface FileInternalApi {
              String remark,
              String bucket
     );
+
+    default FileObjectDTO uploadDocumentForUser(
+             MultipartFile file,
+             String category,
+             String tags,
+             String remark,
+             String bucket,
+             Long tenantId,
+             Long userId,
+             String username
+    ) {
+        return uploadDocument(file, category, tags, remark, bucket);
+    }
 }

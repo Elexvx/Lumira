@@ -25,6 +25,7 @@ public final class SystemPermissionTreeAssembler {
             "manage",
             "submit",
             "approve",
+            "export",
             "score",
             "review",
             "archive",

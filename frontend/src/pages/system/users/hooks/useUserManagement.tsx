@@ -38,6 +38,49 @@ const flattenDepartments = (departments: DepartmentRecord[], depth = 0): { label
   ]);
 
 type UserOption = { label: string; value: number };
+type UserExportField = { key: string; label: string; defaultSelected: boolean; orderNo: number };
+type UserExportStart = {
+  mode: 'SYNC' | 'ASYNC';
+  taskId?: number;
+  fileName?: string;
+  contentType?: string;
+  contentBase64?: string;
+  totalCount?: number;
+};
+type UserExportTask = {
+  id: number;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED';
+  totalCount?: number;
+  fileId?: number | null;
+  fileName?: string | null;
+  downloadUrl?: string | null;
+  errorMessage?: string | null;
+};
+
+const downloadBase64File = (contentBase64: string, contentType: string, fileName: string) => {
+  const binary = atob(contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  const blob = new Blob([bytes], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+const exportableQueryParams = (params: Record<string, unknown>, deptId: number | null) => {
+  const { pageNo, pageSize, current, cursorId, cursorCreatedAt, ...rest } = params;
+  return {
+    ...rest,
+    deptId: deptId || undefined,
+  };
+};
 
 const userListIdentityColumns: ProColumns<UserRecord>[] = [
   {
@@ -254,6 +297,13 @@ export const useUserManagement = () => {
   const [editorForm] = Form.useForm();
   const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
   const [saving, setSaving] = useState(false);
+  const lastUserQueryParamsRef = useRef<Record<string, unknown>>({});
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFields, setExportFields] = useState<UserExportField[]>([]);
+  const [selectedExportFields, setSelectedExportFields] = useState<string[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportTaskOpen, setExportTaskOpen] = useState(false);
+  const [exportTask, setExportTask] = useState<UserExportTask | null>(null);
 
   const loadDepartments = useCallback(async () => {
     setDepartmentLoading(true);
@@ -306,6 +356,25 @@ export const useUserManagement = () => {
     }
     reloadTable();
   }, [reloadTable, selectedDepartmentId]);
+
+  useEffect(() => {
+    if (!exportTaskOpen || !exportTask?.id || ['SUCCESS', 'FAILED'].includes(exportTask.status)) {
+      return undefined;
+    }
+    const timer = window.setInterval(async () => {
+      try {
+        const result = await request<UserExportTask>(`/v1/system/export-tasks/${exportTask.id}`, {
+          method: 'GET',
+          ...API_OPTS.NO_REDIRECT,
+          silent: true,
+        });
+        setExportTask(result);
+      } catch {
+        window.clearInterval(timer);
+      }
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [exportTask?.id, exportTask?.status, exportTaskOpen]);
 
   const protectedAdminSelected = useMemo(
     () => isProtectedAdminUserAccount(drawer.currentRecord ? { id: drawer.currentRecord.id, username: drawer.currentRecord.username } : null),
@@ -476,6 +545,78 @@ export const useUserManagement = () => {
     [loadDepartments, reloadTable],
   );
 
+  const openExport = useCallback(async () => {
+    setExportLoading(true);
+    try {
+      const fields = exportFields.length
+        ? exportFields
+        : await request<UserExportField[]>('/v1/system/users/export-fields', {
+            method: 'GET',
+            ...API_OPTS.NO_REDIRECT,
+          });
+      const orderedFields = [...fields].sort((left, right) => left.orderNo - right.orderNo);
+      setExportFields(orderedFields);
+      setSelectedExportFields((current) =>
+        current.length ? current : orderedFields.filter((field) => field.defaultSelected).map((field) => field.key),
+      );
+      setExportModalOpen(true);
+    } finally {
+      setExportLoading(false);
+    }
+  }, [exportFields]);
+
+  const confirmExport = useCallback(async () => {
+    if (!selectedExportFields.length) {
+      message.warning(t('请至少选择一个导出字段', 'Please select at least one export field'));
+      return;
+    }
+    setExportLoading(true);
+    try {
+      const result = await request<UserExportStart>('/v1/system/users/export', {
+        method: 'POST',
+        data: {
+          ...exportableQueryParams(lastUserQueryParamsRef.current, selectedDepartmentId),
+          fields: selectedExportFields,
+        },
+        timeoutMs: 120000,
+        ...API_OPTS.NO_REDIRECT,
+      });
+      if (result.mode === 'SYNC' && result.contentBase64) {
+        downloadBase64File(
+          result.contentBase64,
+          result.contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          result.fileName || t('用户管理导出.xlsx', 'User management export.xlsx'),
+        );
+        message.success(t('导出文件已生成', 'Export file generated'));
+        setExportModalOpen(false);
+        return;
+      }
+      if (result.mode === 'ASYNC' && result.taskId) {
+        setExportTask({
+          id: result.taskId,
+          status: 'PENDING',
+          totalCount: result.totalCount,
+          fileName: result.fileName,
+        });
+        setExportTaskOpen(true);
+        setExportModalOpen(false);
+        message.success(t('数据较多，已创建异步导出任务', 'Large export task created'));
+      }
+    } finally {
+      setExportLoading(false);
+    }
+  }, [selectedDepartmentId, selectedExportFields]);
+
+  const downloadExportTaskFile = useCallback(() => {
+    if (exportTask?.downloadUrl) {
+      window.open(exportTask.downloadUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [exportTask?.downloadUrl]);
+
+  const openDownloadCenter = useCallback(() => {
+    window.location.assign('/download-center');
+  }, []);
+
   const columns = useMemo(
     () =>
       buildUserColumns({
@@ -493,16 +634,17 @@ export const useUserManagement = () => {
 
   const tableRequest = useMemo(
     () =>
-      buildTableRequest((params) =>
-        request<PagedResult<UserRecord>>('/v1/system/users', {
+      buildTableRequest((params) => {
+        lastUserQueryParamsRef.current = params;
+        return request<PagedResult<UserRecord>>('/v1/system/users', {
           method: 'GET',
           params: {
             ...params,
             deptId: selectedDepartmentId || undefined,
           },
           ...API_OPTS.NO_REDIRECT,
-        }),
-      ),
+        });
+      }),
     [selectedDepartmentId],
   );
 
@@ -528,8 +670,21 @@ export const useUserManagement = () => {
     setSelectedDepartmentId,
     selectedUserDetail,
     detailProps,
+    exportModalOpen,
+    setExportModalOpen,
+    exportFields,
+    selectedExportFields,
+    setSelectedExportFields,
+    exportLoading,
+    exportTaskOpen,
+    setExportTaskOpen,
+    exportTask,
     openCreate,
     openEdit,
+    openExport,
+    confirmExport,
+    downloadExportTaskFile,
+    openDownloadCenter,
     saveUser,
     handleStatusToggle,
     handleDelete,
