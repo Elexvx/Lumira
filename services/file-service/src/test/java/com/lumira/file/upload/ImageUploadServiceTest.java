@@ -53,6 +53,43 @@ class ImageUploadServiceTest {
         assertTrue(storedImage.fileExtension().equals(".png"));
     }
 
+    @Test
+    void acceptsRasterImageWhenClientOmitsContentType() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
+        ImageUploadService service = new ImageUploadService(properties);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "avatar.png",
+                null,
+                generatePngBytes()
+        );
+
+        ImageUploadService.StoredImage storedImage = service.upload(file);
+
+        assertEquals("image/png", storedImage.contentType());
+        assertTrue(storedImage.publicUrl().startsWith("/api/uploads/"));
+    }
+
+    @Test
+    void acceptsRasterImageWhenClientSendsOctetStream() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
+        ImageUploadService service = new ImageUploadService(properties);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "avatar.png",
+                "application/octet-stream",
+                generatePngBytes()
+        );
+
+        ImageUploadService.StoredImage storedImage = service.upload(file);
+
+        assertEquals("image/png", storedImage.contentType());
+    }
+
     private byte[] generatePngBytes() throws Exception {
         BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream output = new ByteArrayOutputStream();

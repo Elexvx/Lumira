@@ -192,7 +192,7 @@ public class FileManagementAppService {
             String bucket
     ) {
         if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
         }
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
@@ -202,7 +202,7 @@ public class FileManagementAppService {
         if (DocumentUploadService.supports(originalFilename, contentType)) {
             return uploadDocument(currentUser, file, category, tags, remark, bucket);
         }
-        throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 文件");
+        throw visibleBizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 文件");
     }
 
     @Transactional
@@ -694,7 +694,7 @@ public class FileManagementAppService {
     private StorageSpaceDTO queryStorageSpace(Long tenantId, String storageKey) {
         FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(tenantId, storageKey);
         if (entity == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "存储空间不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "存储空间不存在");
         }
         return mapStorageSpace(entity);
     }
@@ -720,10 +720,10 @@ public class FileManagementAppService {
                 ? queryStorageSpace(tenantId, normalizedBucket)
                 : getDefaultStorageSpace(tenantId);
         if (!"LOCAL".equalsIgnoreCase(storageSpace.provider())) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "当前仅支持本地存储空间上传");
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "当前仅支持本地存储空间上传");
         }
         if (!"ENABLED".equalsIgnoreCase(storageSpace.status())) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "存储空间已禁用，无法上传文件");
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "存储空间已禁用，无法上传文件");
         }
         Path storageRoot = resolveStorageRoot(storageSpace);
         String publicPath = resolvePublicPath(storageRoot);
@@ -740,6 +740,9 @@ public class FileManagementAppService {
     }
 
     private Path resolveStorageRoot(String rootPath) {
+        if (!StringUtils.hasText(rootPath)) {
+            return Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        }
         Path root = Path.of(rootPath);
         if (root.isAbsolute()) {
             return root.normalize();
@@ -838,6 +841,10 @@ public class FileManagementAppService {
             return currentUser.getCurrentTenantId();
         }
         return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    }
+
+    private BizException visibleBizException(ErrorCode errorCode, String message) {
+        return new BizException(errorCode, message, message);
     }
 
     private StoragePayload normalizeStoragePayload(FileStorageSpaceRequest request, String providerFallback, String storageKeyFallback, StorageSpaceDTO existing) {

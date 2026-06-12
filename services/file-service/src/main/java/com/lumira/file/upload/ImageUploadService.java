@@ -38,6 +38,7 @@ public class ImageUploadService {
             "gif", "image/gif",
             "bmp", "image/bmp"
     );
+    private static final Set<String> UNKNOWN_CONTENT_TYPES = Set.of("", "application/octet-stream", "binary/octet-stream");
 
     private final UploadProperties uploadProperties;
 
@@ -78,10 +79,10 @@ public class ImageUploadService {
 
     public StoredImage upload(MultipartFile file, Path storageRoot, String publicPath, long maxSizeBytes, String renameStrategy, String allowedMimeTypes) {
         if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "请先选择图片文件");
+            throw badRequest("请先选择图片文件");
         }
         if (file.getSize() > maxSizeBytes) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片不能超过 " + readableSize(maxSizeBytes));
+            throw badRequest("图片不能超过 " + readableSize(maxSizeBytes));
         }
 
         byte[] bytes = readBytes(file);
@@ -103,13 +104,14 @@ public class ImageUploadService {
                 .resolve(generatedName)
                 .normalize();
         if (!target.startsWith(normalizedStorageRoot)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片存储路径无效");
+            throw badRequest("图片存储路径无效");
         }
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "图片上传失败: " + exception.getMessage());
+            String message = "图片上传失败，请检查存储空间配置或稍后重试";
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "图片上传失败: " + exception.getMessage(), message);
         }
 
         return new StoredImage(
@@ -141,32 +143,44 @@ public class ImageUploadService {
         try {
             return file.getBytes();
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "读取图片文件失败");
+            throw badRequest("读取图片文件失败");
         }
     }
 
     private String validateExtension(String originalFilename) {
         String extension = StringUtils.getFilenameExtension(originalFilename);
         if (!StringUtils.hasText(extension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片文件必须包含格式后缀");
+            throw badRequest("图片文件必须包含格式后缀");
         }
         String normalizedExtension = extension.toLowerCase(Locale.ROOT);
         if (!ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "仅支持 PNG、JPG、GIF、BMP 图片，禁止上传 SVG");
+            throw badRequest("仅支持 PNG、JPG、GIF、BMP 图片，禁止上传 SVG");
         }
         return normalizedExtension;
     }
 
     private String validateContentType(String contentType, String extension) {
+        String expectedContentType = EXTENSION_CONTENT_TYPES.get(extension);
         if (!StringUtils.hasText(contentType)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片 Content-Type 不能为空");
+            return expectedContentType;
         }
         String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
-        String expectedContentType = EXTENSION_CONTENT_TYPES.get(extension);
-        if (!expectedContentType.equals(normalizedContentType)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片 Content-Type 与文件格式不一致");
+        if (UNKNOWN_CONTENT_TYPES.contains(normalizedContentType)) {
+            return expectedContentType;
         }
-        return normalizedContentType;
+        if (("jpg".equals(extension) || "jpeg".equals(extension)) && Set.of("image/pjpeg", "image/jpg").contains(normalizedContentType)) {
+            return expectedContentType;
+        }
+        if ("png".equals(extension) && Set.of("image/x-png", "image/png").contains(normalizedContentType)) {
+            return expectedContentType;
+        }
+        if ("bmp".equals(extension) && Set.of("image/x-ms-bmp", "image/x-bmp", "image/bmp").contains(normalizedContentType)) {
+            return expectedContentType;
+        }
+        if (!expectedContentType.equals(normalizedContentType)) {
+            throw badRequest("图片 Content-Type 与文件格式不一致");
+        }
+        return expectedContentType;
     }
 
     private void validateAllowedMimeType(String contentType, String allowedMimeTypes) {
@@ -185,7 +199,7 @@ public class ImageUploadService {
                 return;
             }
         }
-        throw new BizException(ErrorCode.BAD_REQUEST, "当前存储空间不允许上传该文件类型");
+        throw badRequest("当前存储空间不允许上传该文件类型");
     }
 
     private String buildStoredFileName(String originalFilename, String extension, String renameStrategy) {
@@ -230,7 +244,7 @@ public class ImageUploadService {
             default -> false;
         };
         if (!valid) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片文件内容与声明格式不一致");
+            throw badRequest("图片文件内容与声明格式不一致");
         }
     }
 
@@ -239,7 +253,7 @@ public class ImageUploadService {
         try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(normalizedExtension);
             if (!readers.hasNext()) {
-                throw new BizException(ErrorCode.BAD_REQUEST, "当前运行环境不支持解析该图片格式");
+                throw badRequest("当前运行环境不支持解析该图片格式");
             }
             ImageReader reader = readers.next();
             try {
@@ -247,18 +261,22 @@ public class ImageUploadService {
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
                 if (width <= 0 || height <= 0 || width > MAX_IMAGE_WIDTH || height > MAX_IMAGE_HEIGHT || (long) width * height > MAX_IMAGE_PIXELS) {
-                    throw new BizException(ErrorCode.BAD_REQUEST, "图片尺寸超出允许范围");
+                    throw badRequest("图片尺寸超出允许范围");
                 }
                 BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(bytes));
                 if (decoded == null) {
-                    throw new BizException(ErrorCode.BAD_REQUEST, "图片内容无法被安全解析");
+                    throw badRequest("图片内容无法被安全解析");
                 }
             } finally {
                 reader.dispose();
             }
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "图片内容无法被安全解析");
+            throw badRequest("图片内容无法被安全解析");
         }
+    }
+
+    private BizException badRequest(String message) {
+        return new BizException(ErrorCode.BAD_REQUEST, message, message);
     }
 
     private boolean startsWith(byte[] bytes, int... prefix) {

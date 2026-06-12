@@ -36,6 +36,8 @@ public class DocumentUploadService {
             "md", "text/markdown",
             "txt", "text/plain"
     );
+    private static final String OCTET_STREAM_CONTENT_TYPE = "application/octet-stream";
+    private static final Set<String> OPEN_XML_EXTENSIONS = Set.of("docx", "xlsx", "pptx");
 
     private final UploadProperties uploadProperties;
 
@@ -76,10 +78,10 @@ public class DocumentUploadService {
 
     public StoredDocument upload(MultipartFile file, Path storageRoot, String publicPath, long maxSizeBytes, String renameStrategy, String allowedMimeTypes) {
         if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "请先选择文档文件");
+            throw badRequest("请先选择文档文件");
         }
         if (file.getSize() > maxSizeBytes) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文件不能超过 " + readableSize(maxSizeBytes));
+            throw badRequest("文件不能超过 " + readableSize(maxSizeBytes));
         }
 
         byte[] bytes = readBytes(file);
@@ -98,13 +100,14 @@ public class DocumentUploadService {
                 : storageRoot.toAbsolutePath().normalize();
         Path target = normalizedStorageRoot.resolve(relativePath).normalize();
         if (!target.startsWith(normalizedStorageRoot)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文件存储路径无效");
+            throw badRequest("文件存储路径无效");
         }
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传失败: " + exception.getMessage());
+            String message = "文件上传失败，请检查存储空间配置或稍后重试";
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传失败: " + exception.getMessage(), message);
         }
 
         String publicUrl = normalizePublicPath(StringUtils.hasText(publicPath) ? publicPath : uploadProperties.getPublicPath()) + "/" + relativePath;
@@ -141,33 +144,42 @@ public class DocumentUploadService {
         try {
             return file.getBytes();
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "读取文档文件失败");
+            throw badRequest("读取文档文件失败");
         }
     }
 
     private String validateExtension(String originalFilename) {
         String extension = StringUtils.getFilenameExtension(originalFilename);
         if (!StringUtils.hasText(extension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文档文件必须包含格式后缀");
+            throw badRequest("文档文件必须包含格式后缀");
         }
         String normalizedExtension = extension.toLowerCase(Locale.ROOT);
         if (!ALLOWED_EXTENSIONS.contains(normalizedExtension)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "仅允许上传 PDF、Word、Excel、PPT 文件");
+            throw badRequest("仅允许上传 PDF、Word、Excel、PPT、Markdown、TXT 文件");
         }
         return normalizedExtension;
     }
 
     private String validateContentType(String contentType, String extension) {
+        String expectedContentType = EXPECTED_CONTENT_TYPES.get(extension);
         if (!StringUtils.hasText(contentType)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文档 Content-Type 不能为空");
+            return expectedContentType;
         }
         String normalizedContentType = contentType.toLowerCase(Locale.ROOT).trim();
-        String expectedContentType = EXPECTED_CONTENT_TYPES.get(extension);
+        if (OCTET_STREAM_CONTENT_TYPE.equals(normalizedContentType)) {
+            return expectedContentType;
+        }
+        if (OPEN_XML_EXTENSIONS.contains(extension) && "application/zip".equals(normalizedContentType)) {
+            return expectedContentType;
+        }
+        if ("md".equals(extension) && Set.of("text/markdown", "text/x-markdown", "text/plain").contains(normalizedContentType)) {
+            return normalizedContentType;
+        }
         if (Set.of("md", "txt").contains(extension) && normalizedContentType.startsWith("text/")) {
             return normalizedContentType;
         }
         if (!expectedContentType.equals(normalizedContentType)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文档 Content-Type 与文件格式不一致");
+            throw badRequest("文档 Content-Type 与文件格式不一致");
         }
         return normalizedContentType;
     }
@@ -188,7 +200,7 @@ public class DocumentUploadService {
                 return;
             }
         }
-        throw new BizException(ErrorCode.BAD_REQUEST, "当前存储空间不允许上传该文件类型");
+        throw badRequest("当前存储空间不允许上传该文件类型");
     }
 
     private String buildStoredFileName(String originalFilename, String extension, String renameStrategy) {
@@ -234,8 +246,12 @@ public class DocumentUploadService {
             default -> false;
         };
         if (!valid) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文档文件内容与声明格式不一致");
+            throw badRequest("文档文件内容与声明格式不一致");
         }
+    }
+
+    private BizException badRequest(String message) {
+        return new BizException(ErrorCode.BAD_REQUEST, message, message);
     }
 
     private boolean isUtf8LikeText(byte[] bytes) {
