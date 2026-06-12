@@ -20,8 +20,8 @@ create table if not exists `sys_export_task` (
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
 
 insert into `sys_permission`
-  (`tenant_id`, `permission_key`, `permission_name`, `permission_group`, `source_type`, `remark`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`)
-select 1001, 'system:user:export', '导出用户', 'system', 'CORE', null, 0, current_timestamp, 0, current_timestamp, 0
+  (`tenant_id`, `permission_key`, `permission_name`, `permission_group`, `source_type`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`)
+select 1001, 'system:user:export', '导出用户', 'system', 'CORE', 0, current_timestamp, 0, current_timestamp, 0
 where not exists (
   select 1 from `sys_permission` where `tenant_id` = 1001 and `permission_key` = 'system:user:export' and `deleted` = 0
 );
