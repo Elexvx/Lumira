@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `uploaded_by` bigint DEFAULT NULL,
   `uploaded_by_name` varchar(128) DEFAULT NULL,
   `department_id` bigint DEFAULT NULL,
+  `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL',
   `original_filename` varchar(255) NOT NULL,
   `file_extension` varchar(32) DEFAULT NULL,
   `content_type` varchar(128) DEFAULT NULL,
@@ -28,7 +29,8 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_file_object_key` (`tenant_id`,`object_key`),
-  KEY `idx_file_object_department` (`tenant_id`,`department_id`,`deleted`)
+  KEY `idx_file_object_department` (`tenant_id`,`department_id`,`deleted`),
+  KEY `idx_file_object_visibility` (`tenant_id`,`visibility_scope`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `file_storage_space` (
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
   `allowed_mime_types` varchar(1024) NOT NULL DEFAULT '*',
   `default_flag` tinyint NOT NULL DEFAULT '0',
   `retain_file_on_record_delete` tinyint NOT NULL DEFAULT '0',
+  `anonymous_access_allowed` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,9 +62,10 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
   KEY `idx_file_storage_space_default` (`tenant_id`,`default_flag`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
-(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,'ENABLED',1,1,0),
-(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,'ENABLED',1,1,0);
+INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `anonymous_access_allowed`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
+(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,0,'ENABLED',1,1,0),
+(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,0,'ENABLED',1,1,0),
+(1001,'下载中心文件','download_center','LOCAL','storage/uploads/download_center/','APPEND_RANDOM_ID',100,'*',0,0,0,'ENABLED',1,1,0);
 
 CREATE TABLE IF NOT EXISTS `platform_event_outbox` (
   `id` bigint NOT NULL AUTO_INCREMENT,
