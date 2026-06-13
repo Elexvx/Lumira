@@ -37,6 +37,7 @@ export const isSettingsPermission = (permission: string) =>
   permission.startsWith('system:update:') ||
   permission.startsWith('system:verification:') ||
   permission.startsWith('plugin:management:') ||
+  permission.startsWith('plugin:sensitive-words:') ||
   permission.startsWith('audit:') ||
   permission.startsWith('localization:') ||
   permission === 'system:file:manage' ||

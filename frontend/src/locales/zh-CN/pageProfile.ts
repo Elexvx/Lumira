@@ -53,6 +53,7 @@ export default {
   'page.profile.passkey.unsupported': '当前浏览器不支持通行密钥',
   'page.profile.passkey.bound': '通行密钥已绑定',
   'page.profile.passkey.cancelled': '已取消通行密钥绑定',
+  'page.profile.passkey.timeout': '通行密钥绑定超时，请重新尝试',
   'page.profile.passkey.failed': '通行密钥绑定失败',
   'page.profile.passkey.renamePrompt': '请输入通行密钥名称',
   'page.profile.passkey.renamed': '通行密钥已重命名',

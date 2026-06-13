@@ -522,6 +522,7 @@ const useLoginSecurityFlow = ({ initialSecuritySettings }: { initialSecuritySett
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captchaImageLoadFailed, setCaptchaImageLoadFailed] = useState(false);
   const securitySettingsRef = useRef(securitySettings);
+  const loadedCaptchaTypeRef = useRef<CaptchaType | null>(null);
   const captchaRefreshControllerRef = useRef(
     createCaptchaRefreshController({
       getCaptchaEnabled: () => securitySettingsRef.current.captchaEnabled,
@@ -550,10 +551,17 @@ const useLoginSecurityFlow = ({ initialSecuritySettings }: { initialSecuritySett
     securitySettingsRef.current = securitySettings;
   }, [securitySettings]);
 
-  const refreshCaptcha = useCallback(async () => captchaRefreshControllerRef.current.refresh(), []);
+  const refreshCaptcha = useCallback(async () => {
+    const challenge = await captchaRefreshControllerRef.current.refresh();
+    if (challenge?.captchaType) {
+      loadedCaptchaTypeRef.current = challenge.captchaType;
+    }
+    return challenge;
+  }, []);
 
   useEffect(() => {
     if (!securitySettings.captchaEnabled) {
+      loadedCaptchaTypeRef.current = null;
       setCaptchaChallenge(null);
       setCaptchaImageLoadFailed(false);
       setCaptchaLoading(false);
@@ -562,16 +570,17 @@ const useLoginSecurityFlow = ({ initialSecuritySettings }: { initialSecuritySett
     }
 
     if (securitySettings.captchaType === 'SLIDER') {
+      loadedCaptchaTypeRef.current = null;
       captchaRefreshControllerRef.current.invalidate();
       setCaptchaImageLoadFailed(false);
       setCaptchaLoading(false);
       return;
     }
 
-    if (!captchaChallenge?.captchaId || captchaChallenge.captchaType !== securitySettings.captchaType) {
+    if (loadedCaptchaTypeRef.current !== securitySettings.captchaType) {
       void refreshCaptcha();
     }
-  }, [captchaChallenge?.captchaId, captchaChallenge?.captchaType, refreshCaptcha, securitySettings.captchaEnabled, securitySettings.captchaType]);
+  }, [refreshCaptcha, securitySettings.captchaEnabled, securitySettings.captchaType]);
 
   return {
     securitySettings,
@@ -831,6 +840,7 @@ export const useLoginFlowAuthInteractions = ({
         skipAuth: true,
         silent: true,
         autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
       });
       const credential = await navigator.credentials.get({
         publicKey: toPublicKeyRequestOptions(options),
@@ -844,6 +854,7 @@ export const useLoginFlowAuthInteractions = ({
         skipAuth: true,
         silent: true,
         autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
       });
       await completeSuccessfulLogin(loginResponse);
     } catch (error) {

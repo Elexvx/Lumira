@@ -15,6 +15,7 @@ public class FileStorageSpaceRequest {
     private String allowedMimeTypes;
     private Boolean defaultStorage;
     private Boolean retainFileOnRecordDelete;
+    private Boolean anonymousAccessAllowed;
     private String status;
 
     public String getTitle() { return title; }
@@ -45,6 +46,8 @@ public class FileStorageSpaceRequest {
     public void setDefaultStorage(Boolean defaultStorage) { this.defaultStorage = defaultStorage; }
     public Boolean getRetainFileOnRecordDelete() { return retainFileOnRecordDelete; }
     public void setRetainFileOnRecordDelete(Boolean retainFileOnRecordDelete) { this.retainFileOnRecordDelete = retainFileOnRecordDelete; }
+    public Boolean getAnonymousAccessAllowed() { return anonymousAccessAllowed; }
+    public void setAnonymousAccessAllowed(Boolean anonymousAccessAllowed) { this.anonymousAccessAllowed = anonymousAccessAllowed; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 

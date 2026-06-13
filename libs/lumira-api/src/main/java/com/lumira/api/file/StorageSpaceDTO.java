@@ -19,6 +19,7 @@ public record StorageSpaceDTO(
         String allowedMimeTypes,
         Boolean defaultStorage,
         Boolean retainFileOnRecordDelete,
+        Boolean anonymousAccessAllowed,
         String status,
         Long fileCount,
         Long totalSizeBytes,

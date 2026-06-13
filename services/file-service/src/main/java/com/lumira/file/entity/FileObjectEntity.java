@@ -18,6 +18,7 @@ public class FileObjectEntity {
     private Long uploadedBy;
     private String uploadedByName;
     private Long departmentId;
+    private String visibilityScope;
     private String originalFilename;
     private String fileExtension;
     private String contentType;
@@ -98,6 +99,14 @@ public class FileObjectEntity {
 
     public void setDepartmentId(Long departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public String getVisibilityScope() {
+        return visibilityScope;
+    }
+
+    public void setVisibilityScope(String visibilityScope) {
+        this.visibilityScope = visibilityScope;
     }
 
     public String getOriginalFilename() {

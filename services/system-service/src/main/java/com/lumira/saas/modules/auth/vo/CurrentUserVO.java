@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.auth.vo;
 
 import java.util.List;
+import java.util.Map;
 
 public class CurrentUserVO {
 
@@ -16,6 +17,7 @@ public class CurrentUserVO {
     private String region;
     private String availableTime;
     private String idCardNumber;
+    private Map<String, String> extraProfileValues;
     private String locale;
     private Long simulatedRoleId;
     private List<RoleOptionVO> availableRoles;
@@ -119,6 +121,14 @@ public class CurrentUserVO {
 
     public void setIdCardNumber(String idCardNumber) {
         this.idCardNumber = idCardNumber;
+    }
+
+    public Map<String, String> getExtraProfileValues() {
+        return extraProfileValues;
+    }
+
+    public void setExtraProfileValues(Map<String, String> extraProfileValues) {
+        this.extraProfileValues = extraProfileValues;
     }
 
     public String getLocale() {

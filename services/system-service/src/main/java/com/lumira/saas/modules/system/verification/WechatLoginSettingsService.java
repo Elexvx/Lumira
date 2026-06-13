@@ -40,8 +40,7 @@ public class WechatLoginSettingsService {
         String redirectUri = defaultIfBlank(values.get(REDIRECT_URI_KEY), properties.getRedirectUri());
         int stateExpireMinutes = parseInt(defaultIfBlank(values.get(STATE_EXPIRE_MINUTES_KEY), String.valueOf(properties.getStateExpireMinutes())), 10);
         stateExpireMinutes = Math.max(1, stateExpireMinutes);
-        boolean configured = enabled
-                && StringUtils.hasText(appId)
+        boolean configured = StringUtils.hasText(appId)
                 && StringUtils.hasText(appSecret)
                 && StringUtils.hasText(redirectUri);
         return new WechatLoginSettingsRecord(enabled, appId, appSecret, redirectUri, stateExpireMinutes, configured);
@@ -93,6 +92,15 @@ public class WechatLoginSettingsService {
         upsertConfigValue(tenantId, APP_SECRET_KEY, "微信 AppSecret", appSecret, "微信开放平台网站应用 AppSecret", operatorId);
         upsertConfigValue(tenantId, REDIRECT_URI_KEY, "微信登录回调地址", redirectUri, "微信开放平台授权回调地址", operatorId);
         upsertConfigValue(tenantId, STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(stateExpireMinutes), "微信登录 state 缓存有效期，单位分钟", operatorId);
+        return getSettings(tenantId);
+    }
+
+    public SystemVO.WechatLoginSettingsVO resetSettings(Long tenantId, Long operatorId) {
+        upsertConfigValue(tenantId, ENABLED_KEY, "微信登录启用", "false", "是否启用微信扫码登录", operatorId);
+        upsertConfigValue(tenantId, APP_ID_KEY, "微信 AppID", "", "微信开放平台网站应用 AppID", operatorId);
+        upsertConfigValue(tenantId, APP_SECRET_KEY, "微信 AppSecret", "", "微信开放平台网站应用 AppSecret", operatorId);
+        upsertConfigValue(tenantId, REDIRECT_URI_KEY, "微信登录回调地址", "", "微信开放平台授权回调地址", operatorId);
+        upsertConfigValue(tenantId, STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(Math.max(1, properties.getStateExpireMinutes())), "微信登录 state 缓存有效期，单位分钟", operatorId);
         return getSettings(tenantId);
     }
 

@@ -1,8 +1,13 @@
 package com.lumira.saas.modules.system.app;
 
-import com.lumira.saas.modules.auth.vo.CurrentUserVO;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
+import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.profile.dto.ProfileFieldSettingItem;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionGroupVO;
@@ -17,9 +22,11 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,19 +37,27 @@ public class SystemProfileSettingsAppService {
     private static final String PROFILE_FIELD_GROUP_BASIC_KEY = "basic";
     private static final String PROFILE_FIELD_GROUP_CONTACT_KEY = "contact";
     private static final String PROFILE_FIELD_GROUP_IDENTITY_KEY = "identity";
+    private static final String PROFILE_FIELD_GROUP_CUSTOM_KEY = "custom";
+    private static final String PROFILE_FIELD_GROUP_CUSTOM_LABEL = "自定义资料";
+    private static final String CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY = "profile.field.custom.definitions";
+    private static final Set<String> SUPPORTED_CUSTOM_FIELD_TYPES = Set.of("TEXT", "NUMBER", "DATE", "SELECT", "TEXTAREA");
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS = List.of(
-            new ProfileFieldDefinition("avatarUrl", "头像", "控制个人中心是否展示头像上传与预览区域", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.avatar.visible", "profile.field.avatar.weight", true, 10),
-            new ProfileFieldDefinition("realName", "姓名", "控制个人中心是否展示姓名字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.real-name.visible", "profile.field.real-name.weight", true, 15),
-            new ProfileFieldDefinition("mobile", "手机号", "控制个人中心是否展示手机号字段", PROFILE_FIELD_GROUP_CONTACT_KEY, "联系方式", "profile.field.mobile.visible", "profile.field.mobile.weight", true, 15),
-            new ProfileFieldDefinition("email", "邮箱", "控制个人中心是否展示邮箱字段", PROFILE_FIELD_GROUP_CONTACT_KEY, "联系方式", "profile.field.email.visible", "profile.field.email.weight", true, 15),
-            new ProfileFieldDefinition("birthMonth", "出生年月", "控制个人中心是否展示出生年月字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.birth-month.visible", "profile.field.birth-month.weight", true, 10),
-            new ProfileFieldDefinition("gender", "性别", "控制个人中心是否展示性别字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.gender.visible", "profile.field.gender.weight", true, 10),
-            new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.region.visible", "profile.field.region.weight", true, 10),
-            new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_GROUP_IDENTITY_KEY, "证件信息", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5)
+            new ProfileFieldDefinition("avatarUrl", "头像", "控制个人中心是否展示头像上传与预览区域", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.avatar.visible", "profile.field.avatar.weight", true, 10, "IMAGE", false, null, 10, false),
+            new ProfileFieldDefinition("realName", "姓名", "控制个人中心是否展示姓名字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.real-name.visible", "profile.field.real-name.weight", true, 15, "TEXT", false, "请输入姓名", 20, false),
+            new ProfileFieldDefinition("mobile", "手机号", "控制个人中心是否展示手机号字段", PROFILE_FIELD_GROUP_CONTACT_KEY, "联系方式", "profile.field.mobile.visible", "profile.field.mobile.weight", true, 15, "MOBILE", false, "请输入手机号", 30, false),
+            new ProfileFieldDefinition("email", "邮箱", "控制个人中心是否展示邮箱字段", PROFILE_FIELD_GROUP_CONTACT_KEY, "联系方式", "profile.field.email.visible", "profile.field.email.weight", true, 15, "EMAIL", false, "请输入邮箱", 40, false),
+            new ProfileFieldDefinition("birthMonth", "出生年月", "控制个人中心是否展示出生年月字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.birth-month.visible", "profile.field.birth-month.weight", true, 10, "MONTH", false, "请选择出生年月", 50, false),
+            new ProfileFieldDefinition("gender", "性别", "控制个人中心是否展示性别字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.gender.visible", "profile.field.gender.weight", true, 10, "SELECT", false, "请选择性别", 60, false),
+            new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.region.visible", "profile.field.region.weight", true, 10, "TEXT", false, "请输入所在地区", 70, false),
+            new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_GROUP_IDENTITY_KEY, "证件信息", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5, "ID_CARD", false, "请输入身份证号码", 80, false)
     );
     private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
             .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey()).stream())
-            .toList();
+            .collect(Collectors.collectingAndThen(Collectors.toCollection(ArrayList::new), keys -> {
+                keys.add(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY);
+                return List.copyOf(keys);
+            }));
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
@@ -61,6 +76,7 @@ public class SystemProfileSettingsAppService {
         Long tenantId = currentTenantId(currentUser);
         Map<String, ProfileFieldSettingItem> requestedSettings = new LinkedHashMap<>();
         request.getItems().forEach(item -> requestedSettings.put(item.getFieldKey(), item));
+        List<ProfileFieldDefinition> customDefinitions = normalizeCustomDefinitions(request.getItems(), requestedSettings.keySet());
         PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
                 tenantId,
                 definition.visibleConfigKey(),
@@ -77,21 +93,42 @@ public class SystemProfileSettingsAppService {
                 definition.fieldDescription(),
                 currentUser.getUserId()
         ));
+        upsertConfigValue(
+                tenantId,
+                CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY,
+                "自定义资料字段定义",
+                serializeCustomDefinitions(customDefinitions),
+                "保存个人中心可扩展的自定义资料字段定义",
+                currentUser.getUserId()
+        );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
         return loadProfileFieldSettings(tenantId);
     }
 
     private List<ProfileFieldSettingVO> loadProfileFieldSettings(Long tenantId) {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, PROFILE_FIELD_CONFIG_KEYS);
-        return PROFILE_FIELD_DEFINITIONS.stream().map(definition -> {
+        List<ProfileFieldDefinition> definitions = new ArrayList<>(PROFILE_FIELD_DEFINITIONS);
+        definitions.addAll(parseCustomDefinitions(valueByKey.get(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY)));
+        return definitions.stream()
+                .sorted(Comparator.comparing(ProfileFieldDefinition::sortNo).thenComparing(ProfileFieldDefinition::fieldKey))
+                .map(definition -> {
             ProfileFieldSettingVO item = new ProfileFieldSettingVO();
             item.setFieldKey(definition.fieldKey());
             item.setFieldLabel(definition.fieldLabel());
             item.setFieldDescription(definition.fieldDescription());
             item.setGroupKey(definition.groupKey());
             item.setGroupLabel(definition.groupLabel());
-            item.setVisible(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.visibleConfigKey()), String.valueOf(definition.defaultVisible()))));
-            item.setWeight(parseInteger(defaultIfBlank(valueByKey.get(definition.weightConfigKey()), String.valueOf(definition.defaultWeight())), definition.defaultWeight()));
+            item.setVisible(definition.custom()
+                    ? definition.defaultVisible()
+                    : Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.visibleConfigKey()), String.valueOf(definition.defaultVisible()))));
+            item.setWeight(definition.custom()
+                    ? definition.defaultWeight()
+                    : parseInteger(defaultIfBlank(valueByKey.get(definition.weightConfigKey()), String.valueOf(definition.defaultWeight())), definition.defaultWeight()));
+            item.setFieldType(definition.fieldType());
+            item.setRequired(definition.required());
+            item.setPlaceholder(definition.placeholder());
+            item.setSortNo(definition.sortNo());
+            item.setCustom(definition.custom());
             return item;
         }).toList();
     }
@@ -186,6 +223,109 @@ public class SystemProfileSettingsAppService {
         summary.setGroups(groups);
         summary.setIncompleteItems(incompleteItems);
         return summary;
+    }
+
+    private List<ProfileFieldDefinition> normalizeCustomDefinitions(List<ProfileFieldSettingItem> items, Set<String> requestedKeys) {
+        Map<String, ProfileFieldDefinition> builtInByKey = PROFILE_FIELD_DEFINITIONS.stream()
+                .collect(Collectors.toMap(ProfileFieldDefinition::fieldKey, item -> item, (left, right) -> left, LinkedHashMap::new));
+        List<ProfileFieldDefinition> customDefinitions = new ArrayList<>();
+        Set<String> usedKeys = new java.util.HashSet<>(builtInByKey.keySet());
+        int fallbackSortNo = 1000;
+        for (ProfileFieldSettingItem item : items) {
+            if (item == null || !Boolean.TRUE.equals(item.getCustom())) {
+                continue;
+            }
+            String fieldKey = normalizeCustomFieldKey(item.getFieldKey());
+            if (!StringUtils.hasText(fieldKey) || usedKeys.contains(fieldKey)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "自定义字段标识不可为空或重复");
+            }
+            if (!requestedKeys.contains(item.getFieldKey())) {
+                continue;
+            }
+            String fieldLabel = normalizeLimitedText(item.getFieldLabel(), 64);
+            if (!StringUtils.hasText(fieldLabel)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "自定义字段名称不能为空");
+            }
+            String fieldType = normalizeCustomFieldType(item.getFieldType());
+            int weight = resolveRequestedWeight(item, 5);
+            int sortNo = item.getSortNo() == null ? fallbackSortNo : Math.max(1, item.getSortNo());
+            fallbackSortNo = sortNo + 10;
+            customDefinitions.add(new ProfileFieldDefinition(
+                    fieldKey,
+                    fieldLabel,
+                    normalizeLimitedText(item.getFieldDescription(), 200),
+                    defaultIfBlank(normalizeCustomFieldKey(item.getGroupKey()), PROFILE_FIELD_GROUP_CUSTOM_KEY),
+                    defaultIfBlank(normalizeLimitedText(item.getGroupLabel(), 64), PROFILE_FIELD_GROUP_CUSTOM_LABEL),
+                    null,
+                    null,
+                    requestedVisibility(item, true),
+                    weight,
+                    fieldType,
+                    Boolean.TRUE.equals(item.getRequired()),
+                    normalizeLimitedText(item.getPlaceholder(), 120),
+                    sortNo,
+                    true
+            ));
+            usedKeys.add(fieldKey);
+        }
+        return customDefinitions;
+    }
+
+    private List<ProfileFieldDefinition> parseCustomDefinitions(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            List<ProfileFieldSettingItem> items = OBJECT_MAPPER.readValue(json, new TypeReference<>() {
+            });
+            return normalizeCustomDefinitions(items, items.stream().map(ProfileFieldSettingItem::getFieldKey).collect(Collectors.toSet()));
+        } catch (JsonProcessingException | RuntimeException exception) {
+            return List.of();
+        }
+    }
+
+    private String serializeCustomDefinitions(List<ProfileFieldDefinition> definitions) {
+        List<ProfileFieldSettingItem> items = definitions.stream().map(definition -> {
+            ProfileFieldSettingItem item = new ProfileFieldSettingItem();
+            item.setFieldKey(definition.fieldKey());
+            item.setFieldLabel(definition.fieldLabel());
+            item.setFieldDescription(definition.fieldDescription());
+            item.setGroupKey(definition.groupKey());
+            item.setGroupLabel(definition.groupLabel());
+            item.setVisible(definition.defaultVisible());
+            item.setWeight(definition.defaultWeight());
+            item.setFieldType(definition.fieldType());
+            item.setRequired(definition.required());
+            item.setPlaceholder(definition.placeholder());
+            item.setSortNo(definition.sortNo());
+            item.setCustom(true);
+            return item;
+        }).toList();
+        try {
+            return OBJECT_MAPPER.writeValueAsString(items);
+        } catch (JsonProcessingException exception) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "自定义字段定义序列化失败");
+        }
+    }
+
+    private String normalizeCustomFieldKey(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.trim().replaceAll("[^A-Za-z0-9_]", "");
+    }
+
+    private String normalizeCustomFieldType(String value) {
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase() : "TEXT";
+        return SUPPORTED_CUSTOM_FIELD_TYPES.contains(normalized) ? normalized : "TEXT";
+    }
+
+    private String normalizeLimitedText(String value, int maxLength) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        String normalized = value.trim();
+        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
     }
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
@@ -332,7 +472,8 @@ public class SystemProfileSettingsAppService {
             case "gender" -> StringUtils.hasText(currentUser.getGender());
             case "region" -> StringUtils.hasText(currentUser.getRegion());
             case "idCardNumber" -> StringUtils.hasText(currentUser.getIdCardNumber());
-            default -> false;
+            default -> currentUser.getExtraProfileValues() != null
+                    && StringUtils.hasText(currentUser.getExtraProfileValues().get(fieldKey));
         };
     }
 
@@ -349,7 +490,9 @@ public class SystemProfileSettingsAppService {
             case "gender" -> defaultIfBlank(currentUser.getGender(), "-");
             case "region" -> defaultIfBlank(currentUser.getRegion(), "-");
             case "idCardNumber" -> maskIdCardNumber(currentUser.getIdCardNumber());
-            default -> "-";
+            default -> currentUser.getExtraProfileValues() == null
+                    ? "-"
+                    : defaultIfBlank(currentUser.getExtraProfileValues().get(fieldKey), "-");
         };
     }
 
@@ -474,6 +617,11 @@ public class SystemProfileSettingsAppService {
         private final String weightConfigKey;
         private final boolean defaultVisible;
         private final int defaultWeight;
+        private final String fieldType;
+        private final boolean required;
+        private final String placeholder;
+        private final int sortNo;
+        private final boolean custom;
 
         private ProfileFieldDefinition(
                 String fieldKey,
@@ -484,7 +632,12 @@ public class SystemProfileSettingsAppService {
                 String visibleConfigKey,
                 String weightConfigKey,
                 boolean defaultVisible,
-                int defaultWeight
+                int defaultWeight,
+                String fieldType,
+                boolean required,
+                String placeholder,
+                int sortNo,
+                boolean custom
         ) {
             this.fieldKey = fieldKey;
             this.fieldLabel = fieldLabel;
@@ -495,6 +648,11 @@ public class SystemProfileSettingsAppService {
             this.weightConfigKey = weightConfigKey;
             this.defaultVisible = defaultVisible;
             this.defaultWeight = defaultWeight;
+            this.fieldType = fieldType;
+            this.required = required;
+            this.placeholder = placeholder;
+            this.sortNo = sortNo;
+            this.custom = custom;
         }
 
         private String fieldKey() {
@@ -531,6 +689,26 @@ public class SystemProfileSettingsAppService {
 
         private int defaultWeight() {
             return defaultWeight;
+        }
+
+        private String fieldType() {
+            return fieldType;
+        }
+
+        private boolean required() {
+            return required;
+        }
+
+        private String placeholder() {
+            return placeholder;
+        }
+
+        private int sortNo() {
+            return sortNo;
+        }
+
+        private boolean custom() {
+            return custom;
         }
     }
 }

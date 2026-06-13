@@ -13,6 +13,7 @@ public class BrandingSettingsRequest {
     private String companyName;
     private Integer copyrightStartYear;
     private String footerIcp;
+    private String footerPoliceBeian;
     private String footerCopyright;
 
     public String getWebsiteName() {
@@ -101,6 +102,14 @@ public class BrandingSettingsRequest {
 
     public void setFooterIcp(String footerIcp) {
         this.footerIcp = footerIcp;
+    }
+
+    public String getFooterPoliceBeian() {
+        return footerPoliceBeian;
+    }
+
+    public void setFooterPoliceBeian(String footerPoliceBeian) {
+        this.footerPoliceBeian = footerPoliceBeian;
     }
 
     public String getFooterCopyright() {

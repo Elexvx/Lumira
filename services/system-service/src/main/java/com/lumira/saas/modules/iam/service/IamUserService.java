@@ -653,7 +653,7 @@ public class IamUserService {
                                                 gender = values(gender),
                                                 birth_month = values(birth_month),
                                                 region = values(region),
-                                                extra_json = values(extra_json),
+                                                extra_json = json_merge_patch(coalesce(extra_json, json_object()), values(extra_json)),
                                                 deleted = values(deleted),
                                                 updated_at = current_timestamp
                         """,

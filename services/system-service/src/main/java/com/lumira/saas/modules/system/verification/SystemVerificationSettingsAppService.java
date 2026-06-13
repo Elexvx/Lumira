@@ -110,9 +110,9 @@ public class SystemVerificationSettingsAppService {
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "false")));
         settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "false")));
         settings.setSelfBindingEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_SELF_BINDING_ENABLED_KEY), "false")));
-        settings.setRpId(defaultIfBlank(values.get(PASSKEY_RP_ID_KEY), "saas.elexvx.com"));
-        settings.setRpName(defaultIfBlank(values.get(PASSKEY_RP_NAME_KEY), "宏翔商道后台管理系统"));
-        settings.setAllowedOrigins(splitLines(defaultIfBlank(values.get(PASSKEY_ALLOWED_ORIGINS_KEY), "https://saas.elexvx.com")));
+        settings.setRpId(defaultIfBlank(values.get(PASSKEY_RP_ID_KEY), ""));
+        settings.setRpName(defaultIfBlank(values.get(PASSKEY_RP_NAME_KEY), ""));
+        settings.setAllowedOrigins(splitLines(defaultIfBlank(values.get(PASSKEY_ALLOWED_ORIGINS_KEY), "")));
         settings.setChallengeTtlSeconds(parseInt(defaultIfBlank(values.get(PASSKEY_CHALLENGE_TTL_KEY), "120"), 120));
         return settings;
     }
@@ -158,9 +158,28 @@ public class SystemVerificationSettingsAppService {
         return getSmsSettings(tenantId);
     }
 
+    public SystemVO.SmsVerificationSettingsVO resetSmsSettings(CurrentUser currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENABLED_KEY, "短信验证码启用", "false", "是否启用短信验证码服务", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", "aliyun", "短信验证码服务提供方", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_SIGN_NAME_KEY, "短信签名", "", "短信验证码签名", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", "", "短信验证码模板编码", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", "", "短信验证码访问密钥 ID", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", "", "短信验证码访问密钥 Secret", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", "", "短信验证码服务端点", operatorId);
+        upsertSmsConfigValue(tenantId, SMS_CONFIG_REGION_KEY, "短信服务地域", "", "短信验证码服务地域", operatorId);
+        return getSmsSettings(tenantId);
+    }
+
     public SystemVO.WechatLoginSettingsVO updateWechatSettings(CurrentUser currentUser, SystemDTO.WechatLoginSettingsRequest request) {
         Long tenantId = requireTenantId(currentUser);
         return wechatLoginSettingsService.updateSettings(tenantId, currentUser.getUserId(), request);
+    }
+
+    public SystemVO.WechatLoginSettingsVO resetWechatSettings(CurrentUser currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        return wechatLoginSettingsService.resetSettings(tenantId, currentUser.getUserId());
     }
 
     public SystemVO.PasskeySettingsVO updatePasskeySettings(CurrentUser currentUser, SystemDTO.PasskeySettingsRequest request) {
@@ -189,6 +208,19 @@ public class SystemVerificationSettingsAppService {
         return getPasskeySettings(tenantId);
     }
 
+    public SystemVO.PasskeySettingsVO resetPasskeySettings(CurrentUser currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        upsertPlatformConfigValue(tenantId, PASSKEY_ENABLED_KEY, "通行密钥启用", "false", "是否启用通行密钥登录", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", "false", "是否允许发现式凭据无账号登录", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", "true", "是否允许用户在个人中心自助绑定通行密钥", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_RP_ID_KEY, "通行密钥 RP ID", "", "WebAuthn RP ID", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", "", "WebAuthn RP 显示名称", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", "", "WebAuthn 允许的前端 Origin", operatorId);
+        upsertPlatformConfigValue(tenantId, PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", "120", "WebAuthn challenge 有效期秒数", operatorId);
+        return getPasskeySettings(tenantId);
+    }
+
     private SmsVerificationSettingsRecord loadSmsSettingsRecord(Long tenantId) {
         Map<String, String> values = loadConfigValuesByKeys(tenantId, smsConfigKeys());
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(SMS_CONFIG_ENABLED_KEY), "false"));
@@ -199,8 +231,7 @@ public class SystemVerificationSettingsAppService {
         String accessKeySecret = defaultIfBlank(values.get(SMS_CONFIG_ACCESS_KEY_SECRET_KEY), "");
         String endpoint = defaultIfBlank(values.get(SMS_CONFIG_ENDPOINT_KEY), "");
         String region = defaultIfBlank(values.get(SMS_CONFIG_REGION_KEY), "");
-        boolean configured = enabled
-                && StringUtils.hasText(provider)
+        boolean configured = StringUtils.hasText(provider)
                 && StringUtils.hasText(signName)
                 && StringUtils.hasText(templateCode)
                 && StringUtils.hasText(accessKeyId)

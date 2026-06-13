@@ -144,7 +144,15 @@ node scripts/check-deployment.mjs
 生产部署以 `lumira-server` 聚合容器为核心：
 
 ```bash
-node scripts/deploy-container.mjs --rebuild
+node scripts/deploy-container.mjs --pull
+```
+
+`main` 分支 CI 会在后端测试、前端 lint/typecheck/test 都通过后，自动构建并发布 `lumira-server` 和 `frontend` Docker 镜像到 GitHub Container Registry。服务器默认使用 `deploy/.env` 里的 `LUMIRA_SERVER_IMAGE` 和 `LUMIRA_FRONTEND_IMAGE` 拉取镜像；如果需要在服务器本机重新编译镜像，再使用 `node scripts/deploy-container.mjs --rebuild`。
+
+如果没有外部 MySQL，使用内置 MySQL 启动完整本地环境：
+
+```bash
+node scripts/deploy-container.mjs --pull --local-mysql
 ```
 
 常用运维命令：

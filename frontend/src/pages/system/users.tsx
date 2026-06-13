@@ -4,7 +4,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { ProDescriptions } from '@ant-design/pro-components';
-import { ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, DatePicker, Empty, Form, Input, Modal, Select, Space, Spin, Transfer, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useEffect, useMemo, useState } from 'react';
@@ -414,7 +414,8 @@ const UserManagementPage = () => {
                   {
                     key: 'export',
                     permission: 'system:user:export',
-                    label: t('导出', 'Export'),
+                    icon: <DownloadOutlined />,
+                    label: t('导出用户', 'Export users'),
                     onClick: () => void openExport(),
                   },
                   {

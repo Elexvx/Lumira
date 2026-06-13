@@ -1,4 +1,4 @@
-import { Button, Card, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
+import { Button, Form, Image, Input, Space, Switch, Typography, Upload } from 'antd';
 import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import ImgCrop from 'antd-img-crop';
 import type { FormProps } from 'antd';
@@ -268,7 +268,7 @@ export const BrandingTab = ({
         <Form.Item label={t('GitHub 链接', 'GitHub link')}>
           <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
             <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
-              <Switch checkedChildren={t('显示', 'Show')} unCheckedChildren={t('隐藏', 'Hide')} />
+              <Switch />
             </Form.Item>
             <Form.Item noStyle shouldUpdate={(prev, next) => prev.githubLinkEnabled !== next.githubLinkEnabled}>
               {({ getFieldValue }) => (
@@ -282,7 +282,7 @@ export const BrandingTab = ({
         <Form.Item label={t('帮助链接', 'Help link')}>
           <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
             <Form.Item name="helpLinkEnabled" valuePropName="checked" noStyle>
-              <Switch checkedChildren={t('显示', 'Show')} unCheckedChildren={t('隐藏', 'Hide')} />
+              <Switch />
             </Form.Item>
             <Form.Item noStyle shouldUpdate={(prev, next) => prev.helpLinkEnabled !== next.helpLinkEnabled}>
               {({ getFieldValue }) => (
@@ -293,24 +293,18 @@ export const BrandingTab = ({
             </Form.Item>
           </Space>
         </Form.Item>
-        <Form.Item name="footerIcp" label={t('Footer ICP', 'Footer ICP')}>
+        <Form.Item name="footerIcp" label={t('ICP备案号', 'ICP filing number')}>
           <Input />
         </Form.Item>
-        <Form.Item name="footerCopyright" label={t('Footer 版权声明', 'Footer copyright')}>
+        <Form.Item name="footerPoliceBeian" label={t('公安备案号', 'Public security filing number')}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="footerCopyright" label={t('版权声明', 'Copyright notice')}>
           <Input.TextArea rows={3} />
         </Form.Item>
       </Form>
 
-      <Card title={t('预览', 'Preview')}>
-        <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
-          <Typography.Title level={4} style={{ marginBottom: 0 }}>
-            {previewState.websiteName}
-          </Typography.Title>
-          <Typography.Text type="secondary">{previewState.footerCopyright || t('版权信息会显示在页面底部', 'Copyright information will be shown at the bottom of the page')}</Typography.Text>
-        </Space>
-      </Card>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
           {t('保存设置', 'Save settings')}
         </Button>

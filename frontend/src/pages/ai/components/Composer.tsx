@@ -203,8 +203,6 @@ const ComposerFooterControls = ({
                   icon={<ThunderboltOutlined />}
                   value={deepThink}
                   disabled={readOnly || sending || !activeSessionExists}
-                  checkedChildren={t('思考', 'Think')}
-                  unCheckedChildren={t('思考', 'Think')}
                   onChange={(nextValue) => onDeepThinkChange(Boolean(nextValue))}
                 />
                 <Suggestion items={conversationAgentItems} onSelect={onConversationAgentSelect}>

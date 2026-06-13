@@ -100,9 +100,22 @@ node scripts/install-platform.mjs \
 node scripts/install-platform.mjs --local-mysql --nacos --frontend
 ```
 
-日常已有环境重建可继续使用轻量部署脚本。
+日常已有环境更新推荐直接拉取 CI 产物：
 
 从仓库根目录运行：
+
+```bash
+node scripts/deploy-container.mjs --pull
+```
+
+`main` 分支 CI 会在后端 Maven 测试、前端 lint/typecheck/test 都通过后，自动构建并发布镜像：
+
+- `ghcr.io/elexvx/lumira/lumira-server:main`
+- `ghcr.io/elexvx/lumira/frontend:main`
+- `ghcr.io/elexvx/lumira/lumira-server:sha-<12位提交>`
+- `ghcr.io/elexvx/lumira/frontend:sha-<12位提交>`
+
+服务器使用 `deploy/.env` 中的 `LUMIRA_SERVER_IMAGE` 和 `LUMIRA_FRONTEND_IMAGE` 决定要部署哪个镜像。追求可回滚和可复现时，建议把 `main` 改成对应的 `sha-<提交>` tag。如果需要在服务器本机重新编译镜像，可继续使用：
 
 ```bash
 node scripts/deploy-container.mjs --rebuild

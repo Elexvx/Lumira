@@ -423,6 +423,13 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.updateSmtpSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
+    @DeleteMapping("/smtp-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.SmtpSettingsVO> resetSmtpSettings() {
+        require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.resetSmtpSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
     @GetMapping("/notification/wechat-official-settings")
     public ApiResponse<SystemVO.WechatOfficialAccountSettingsVO> wechatOfficialAccountSettings() {
         require("system:config:view");

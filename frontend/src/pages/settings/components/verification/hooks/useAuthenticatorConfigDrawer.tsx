@@ -20,6 +20,8 @@ import type { ManagementDrawerAction } from '@/features/management/ManagementDra
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { normalizeLocale } from '@/i18n/locale';
+import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
+import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -66,6 +68,57 @@ const smtpTestInitialValues: SmtpTestPayload = {
 const SMS_ACCESS_KEY_SECRET_MASK = '********';
 const SMTP_PASSWORD_MASK = '********';
 const WECHAT_APP_SECRET_MASK = '********';
+const LEGACY_PASSKEY_RP_ID = 'saas.elexvx.com';
+const LEGACY_PASSKEY_ORIGIN = 'https://saas.elexvx.com';
+const LOCAL_PASSKEY_RP_IDS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+
+const resolveCurrentPasskeyOrigin = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return window.location.origin;
+};
+
+const resolveCurrentPasskeyRpId = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return window.location.hostname;
+};
+
+const isReplaceablePasskeyRpId = (rpId?: string) => {
+  const normalized = rpId?.trim().toLowerCase();
+  return !normalized || normalized === LEGACY_PASSKEY_RP_ID || LOCAL_PASSKEY_RP_IDS.has(normalized);
+};
+
+const isReplaceablePasskeyOrigin = (origin?: string) => {
+  const normalized = origin?.trim();
+  if (!normalized || normalized === LEGACY_PASSKEY_ORIGIN) {
+    return true;
+  }
+  try {
+    return LOCAL_PASSKEY_RP_IDS.has(new URL(normalized).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+};
+
+const shouldUseDynamicPasskeyOrigins = (origins?: string[]) =>
+  !origins?.length || origins.every(isReplaceablePasskeyOrigin);
+
+const buildPasskeyDefaults = (rpName: string) => {
+  const currentOrigin = resolveCurrentPasskeyOrigin();
+  return {
+    enabled: true,
+    passwordlessEnabled: true,
+    selfBindingEnabled: true,
+    rpId: resolveCurrentPasskeyRpId(),
+    rpName,
+    allowedOrigins: currentOrigin ? [currentOrigin] : [],
+    allowedOriginsText: currentOrigin,
+    challengeTtlSeconds: 120,
+  };
+};
 
 const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
   { label: t('阿里云短信', 'Alibaba Cloud SMS'), value: 'aliyun' },
@@ -129,6 +182,7 @@ type DrawerFooterRouteParams = {
   handleSaveWechatSettings: () => Promise<void>;
   handleSavePasskeySettings: () => Promise<void>;
   handleTestSmtpSettings: () => Promise<void>;
+  onAuthenticatorSaved?: (mode: 'sms' | 'email' | 'wechat' | 'passkey' | 'password') => Promise<unknown>;
 };
 
 type DrawerContentRouteParams = {
@@ -182,7 +236,7 @@ const TotpDrawerContent = ({
           valuePropName="checked"
           extra={t('关闭后，系统中的高危操作二次确认将不再要求 2FA。', 'When disabled, high-risk operation confirmations will no longer require 2FA.')}
         >
-          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
+          <Switch disabled={!canManageSettings} />
         </Form.Item>
       </Form>
     </Space>
@@ -261,6 +315,8 @@ const EmailDrawerContent = ({
 }) => {
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const currentRpId = resolveCurrentPasskeyRpId();
+  const currentOrigin = resolveCurrentPasskeyOrigin();
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -361,7 +417,7 @@ const WechatDrawerContent = ({
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...wechatFormProps}>
         <Form.Item name="enabled" label={t('启用微信登录', 'Enable WeChat login')} valuePropName="checked">
-          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
+          <Switch disabled={!canManageSettings} />
         </Form.Item>
         <Form.Item
           name="appId"
@@ -405,6 +461,8 @@ const PasskeyDrawerContent = ({
 }) => {
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
+  const currentRpId = resolveCurrentPasskeyRpId();
+  const currentOrigin = resolveCurrentPasskeyOrigin();
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -415,13 +473,13 @@ const PasskeyDrawerContent = ({
           valuePropName="checked"
           extra={t('开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。', 'When enabled, the login page can directly open your password manager or system keychain to select a passkey.')}
         >
-          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
+          <Switch disabled={!canManageSettings} />
         </Form.Item>
         <Form.Item name="selfBindingEnabled" label={t('允许用户自助绑定', 'Allow self-service binding')} valuePropName="checked">
-          <Switch disabled={!canManageSettings} checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} />
+          <Switch disabled={!canManageSettings} />
         </Form.Item>
         <Form.Item name="rpId" label={t('RP ID', 'RP ID')} rules={[{ required: true, message: t('请输入 RP ID', 'Please enter the RP ID') }]}>
-          <Input disabled={!canManageSettings} placeholder="saas.elexvx.com" />
+          <Input disabled={!canManageSettings} placeholder={currentRpId || t('当前网站域名', 'Current website host')} />
         </Form.Item>
         <Form.Item name="rpName" label={t('RP 名称', 'RP name')} rules={[{ required: true, message: t('请输入 RP 名称', 'Please enter the RP name') }]}>
           <Input disabled={!canManageSettings} placeholder={t('宏翔商道后台管理系统', 'SaaS admin system')} />
@@ -430,9 +488,9 @@ const PasskeyDrawerContent = ({
           name="allowedOriginsText"
           label={t('允许的 Origin', 'Allowed origins')}
           rules={[{ required: true, message: t('请输入允许的 Origin', 'Please enter the allowed origins') }]}
-          extra={t('每行一个 HTTPS Origin。Vercel Preview 域名不会默认放行。', 'One HTTPS origin per line. Vercel Preview domains are not allowed by default.')}
+          extra={t('每行一个当前站点 Origin；生产环境应使用 HTTPS，localhost 调试除外。Vercel Preview 域名不会默认放行。', 'One current-site origin per line. Use HTTPS in production, except localhost development. Vercel Preview domains are not allowed by default.')}
         >
-          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder="https://saas.elexvx.com" />
+          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder={currentOrigin || t('当前网站 Origin', 'Current website origin')} />
         </Form.Item>
         <Form.Item name="challengeTtlSeconds" label={t('Challenge 有效期', 'Challenge TTL')}>
           <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter={t('秒', 's')} />
@@ -569,9 +627,10 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.verificationLoading,
         label: t('保存设置', 'Save settings'),
-        onSave: () => {
+        onSave: async () => {
           params.verificationForm.setFieldValue('passwordLoginEnabled', true);
-          return params.handleSaveVerificationSettings({ closeDrawer: true });
+          await params.handleSaveVerificationSettings({ closeDrawer: true });
+          await params.onAuthenticatorSaved?.('password');
         },
       });
   }
@@ -596,6 +655,7 @@ interface UseAuthenticatorConfigDrawerParams {
   onSmtpSettingsRefetch: () => Promise<unknown>;
   onWechatSettingsRefetch: () => Promise<unknown>;
   onPasskeySettingsRefetch: () => Promise<unknown>;
+  onAuthenticatorSaved?: (mode: 'sms' | 'email' | 'wechat' | 'passkey' | 'password') => Promise<unknown>;
 }
 
 export const useAuthenticatorConfigDrawer = ({
@@ -617,7 +677,15 @@ export const useAuthenticatorConfigDrawer = ({
   onSmtpSettingsRefetch,
   onWechatSettingsRefetch,
   onPasskeySettingsRefetch,
+  onAuthenticatorSaved,
 }: UseAuthenticatorConfigDrawerParams) => {
+  const { initialState } = useInitialStateModel();
+  const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
+  const dynamicPasskeyDefaults = useMemo(
+    () => buildPasskeyDefaults(t(`${brandingSettings.websiteName}后台管理系统`, `${brandingSettings.websiteName} admin system`)),
+    [brandingSettings.websiteName],
+  );
+
   const normalizeProviderCode = (value?: string | null): SmsProviderCode => {
     if (value === 'tencent' || value === 'mock' || value === 'custom') {
       return value;
@@ -691,16 +759,7 @@ export const useAuthenticatorConfigDrawer = ({
   });
   const passkeyFormProps = useStandardFormProps({
     form: passkeySettingsForm,
-    initialValues: {
-      enabled: true,
-      passwordlessEnabled: true,
-      selfBindingEnabled: true,
-      rpId: 'saas.elexvx.com',
-      rpName: t('宏翔商道后台管理系统', 'Hongxiang Shangdao admin system'),
-      allowedOrigins: ['https://saas.elexvx.com'],
-      allowedOriginsText: 'https://saas.elexvx.com',
-      challengeTtlSeconds: 120,
-    },
+    initialValues: dynamicPasskeyDefaults,
   });
   useEffect(() => {
     if (verificationSettingsData) {
@@ -725,12 +784,18 @@ export const useAuthenticatorConfigDrawer = ({
   }, [wechatSettingsData, wechatSettingsForm]);
   useEffect(() => {
     if (passkeySettingsData) {
+      const shouldUseDynamicRpId = isReplaceablePasskeyRpId(passkeySettingsData.rpId);
+      const shouldUseDynamicOrigins = shouldUseDynamicPasskeyOrigins(passkeySettingsData.allowedOrigins);
+      const nextAllowedOrigins = shouldUseDynamicOrigins ? dynamicPasskeyDefaults.allowedOrigins : passkeySettingsData.allowedOrigins || [];
       passkeySettingsForm.setFieldsValue({
         ...passkeySettingsData,
-        allowedOriginsText: passkeySettingsData.allowedOrigins?.join('\n') || '',
+        rpId: shouldUseDynamicRpId ? dynamicPasskeyDefaults.rpId : passkeySettingsData.rpId,
+        rpName: passkeySettingsData.rpName || dynamicPasskeyDefaults.rpName,
+        allowedOrigins: nextAllowedOrigins,
+        allowedOriginsText: nextAllowedOrigins.join('\n'),
       });
     }
-  }, [passkeySettingsData, passkeySettingsForm]);
+  }, [dynamicPasskeyDefaults, passkeySettingsData, passkeySettingsForm]);
   const resetVerificationDraft = useCallback(() => {
     if (verificationSettingsData) {
       verificationForm.setFieldsValue(verificationSettingsData);
@@ -754,12 +819,18 @@ export const useAuthenticatorConfigDrawer = ({
   }, [wechatSettingsData, wechatSettingsForm]);
   const resetPasskeyDraft = useCallback(() => {
     if (passkeySettingsData) {
+      const shouldUseDynamicRpId = isReplaceablePasskeyRpId(passkeySettingsData.rpId);
+      const shouldUseDynamicOrigins = shouldUseDynamicPasskeyOrigins(passkeySettingsData.allowedOrigins);
+      const nextAllowedOrigins = shouldUseDynamicOrigins ? dynamicPasskeyDefaults.allowedOrigins : passkeySettingsData.allowedOrigins || [];
       passkeySettingsForm.setFieldsValue({
         ...passkeySettingsData,
-        allowedOriginsText: passkeySettingsData.allowedOrigins?.join('\n') || '',
+        rpId: shouldUseDynamicRpId ? dynamicPasskeyDefaults.rpId : passkeySettingsData.rpId,
+        rpName: passkeySettingsData.rpName || dynamicPasskeyDefaults.rpName,
+        allowedOrigins: nextAllowedOrigins,
+        allowedOriginsText: nextAllowedOrigins.join('\n'),
       });
     }
-  }, [passkeySettingsData, passkeySettingsForm]);
+  }, [dynamicPasskeyDefaults, passkeySettingsData, passkeySettingsForm]);
   const resetConfigDrafts = useMemo(
     () => () => {
       resetVerificationDraft();
@@ -927,6 +998,9 @@ export const useAuthenticatorConfigDrawer = ({
 
       message.success('邮箱验证码登录与 SMTP 配置已保存');
       await Promise.all([onVerificationSettingsRefetch(), onSmtpSettingsRefetch()]);
+      if (smtpResult.configured) {
+        await onAuthenticatorSaved?.('email');
+      }
       closeConfigDrawer();
     } finally {
       setSavingEmailSettings(false);
@@ -936,6 +1010,7 @@ export const useAuthenticatorConfigDrawer = ({
     closeConfigDrawer,
     onSmtpSettingsRefetch,
     onVerificationSettingsRefetch,
+    onAuthenticatorSaved,
     smtpSettingsForm,
     verificationForm,
   ]);
@@ -959,11 +1034,14 @@ export const useAuthenticatorConfigDrawer = ({
       });
       message.success(result.configured ? '短信验证码配置已保存' : '短信验证码配置已保存，当前仍未完全启用');
       await onSmsSettingsRefetch();
+      if (result.configured) {
+        await onAuthenticatorSaved?.('sms');
+      }
       closeConfigDrawer();
     } finally {
       setSavingSmsSettings(false);
     }
-  }, [canManageSettings, closeConfigDrawer, onSmsSettingsRefetch, smsSettingsForm]);
+  }, [canManageSettings, closeConfigDrawer, onAuthenticatorSaved, onSmsSettingsRefetch, smsSettingsForm]);
 
   const handleSaveWechatSettings = useCallback(async () => {
     if (!canManageSettings) {
@@ -986,11 +1064,14 @@ export const useAuthenticatorConfigDrawer = ({
       });
       message.success(result.configured ? '微信登录配置已保存' : '微信登录配置已保存，当前仍未完全启用');
       await onWechatSettingsRefetch();
+      if (result.configured) {
+        await onAuthenticatorSaved?.('wechat');
+      }
       closeConfigDrawer();
     } finally {
       setSavingWechatSettings(false);
     }
-  }, [canManageSettings, closeConfigDrawer, onWechatSettingsRefetch, wechatSettingsForm]);
+  }, [canManageSettings, closeConfigDrawer, onAuthenticatorSaved, onWechatSettingsRefetch, wechatSettingsForm]);
 
   const handleSavePasskeySettings = useCallback(
     async (options?: { forceEnabled?: boolean; closeDrawer?: boolean }) => {
@@ -1019,6 +1100,7 @@ export const useAuthenticatorConfigDrawer = ({
         });
         message.success('通行密钥配置已保存');
         await onPasskeySettingsRefetch();
+        await onAuthenticatorSaved?.('passkey');
         if (options?.closeDrawer !== false) {
           closeConfigDrawer();
         }
@@ -1026,7 +1108,7 @@ export const useAuthenticatorConfigDrawer = ({
         setSavingPasskeySettings(false);
       }
     },
-    [canManageSettings, closeConfigDrawer, onPasskeySettingsRefetch, passkeySettingsForm],
+    [canManageSettings, closeConfigDrawer, onAuthenticatorSaved, onPasskeySettingsRefetch, passkeySettingsForm],
   );
 
   const resolveDrawerFooterActions = useCallback(
@@ -1047,6 +1129,7 @@ export const useAuthenticatorConfigDrawer = ({
         handleSavePasskeySettings,
         handleTestSmtpSettings,
         verificationForm,
+        onAuthenticatorSaved,
       }),
     [
       canManageSettings,
@@ -1065,6 +1148,7 @@ export const useAuthenticatorConfigDrawer = ({
       testingSmtpSettings,
       verificationForm,
       verificationLoading,
+      onAuthenticatorSaved,
     ],
   );
 

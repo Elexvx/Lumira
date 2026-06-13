@@ -1,5 +1,8 @@
 package com.lumira.saas.modules.system.app;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.common.vo.PageResponse;
@@ -74,7 +77,11 @@ public class SystemManagementAppService {
     private static final String BRANDING_COMPANY_NAME_KEY = "branding.company-name";
     private static final String BRANDING_COPYRIGHT_START_YEAR_KEY = "branding.copyright-start-year";
     private static final String BRANDING_FOOTER_ICP_KEY = "branding.footer-icp";
+    private static final String BRANDING_FOOTER_POLICE_BEIAN_KEY = "branding.footer-police-beian";
     private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
+    private static final String EXTRA_PROFILE_VALUES_KEY = "customProfileValues";
+    private static final int CUSTOM_PROFILE_VALUE_MAX_LENGTH = 1000;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<String> BRANDING_CONFIG_KEYS = List.of(
             BRANDING_WEBSITE_NAME_KEY,
             BRANDING_WEBSITE_FAVICON_URL_KEY,
@@ -85,6 +92,7 @@ public class SystemManagementAppService {
             BRANDING_COMPANY_NAME_KEY,
             BRANDING_COPYRIGHT_START_YEAR_KEY,
             BRANDING_FOOTER_ICP_KEY,
+            BRANDING_FOOTER_POLICE_BEIAN_KEY,
             BRANDING_FOOTER_COPYRIGHT_KEY
     );
 
@@ -450,6 +458,9 @@ public class SystemManagementAppService {
                 user.getId()
         );
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
+        if (request.getExtraProfileValues() != null) {
+            updateCurrentUserExtraProfileValues(currentUser, user.getId(), request.getExtraProfileValues());
+        }
         operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
         return buildCurrentUser(currentUser);
     }
@@ -1265,6 +1276,10 @@ public class SystemManagementAppService {
         return systemPlatformSettingsAppService.updateSmtpSettings(currentUser, request);
     }
 
+    public SystemVO.SmtpSettingsVO resetSmtpSettings(CurrentUser currentUser) {
+        return systemPlatformSettingsAppService.resetSmtpSettings(currentUser);
+    }
+
     @Transactional
     public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
         return systemPlatformSettingsAppService.updateWechatOfficialAccountSettings(currentUser, request);
@@ -1704,6 +1719,7 @@ public class SystemManagementAppService {
         settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
         settings.setCopyrightStartYear(parseInteger(valueByKey.get(BRANDING_COPYRIGHT_START_YEAR_KEY), LocalDate.now().getYear()));
         settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
+        settings.setFooterPoliceBeian(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_POLICE_BEIAN_KEY), ""));
         settings.setFooterCopyright(defaultIfBlank(
                 valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY),
                 buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())
@@ -2218,6 +2234,7 @@ public class SystemManagementAppService {
         response.setRegion(user.getRegion());
         response.setAvailableTime(user.getAvailableTime());
         response.setIdCardNumber(user.getIdCardNumber());
+        response.setExtraProfileValues(loadExtraProfileValues(user.getId()));
         response.setLocale(resolveLocale(tenantId, user.getId()));
         response.setSimulatedRoleId(currentUser.getSimulatedRoleId());
         response.setAvailableRoles(listAvailableRoles(currentUser.getUserId(), tenantId));
@@ -2227,6 +2244,85 @@ public class SystemManagementAppService {
         response.setPermissions(snapshot.getPermissionList());
         response.setDefaultHomePath(snapshot.getDefaultHomePath());
         return response;
+    }
+
+    private void updateCurrentUserExtraProfileValues(CurrentUser currentUser, Long userId, Map<String, String> requestedValues) {
+        Map<String, String> sanitizedValues = sanitizeExtraProfileValues(currentUser, requestedValues);
+        try {
+            String extraJson = OBJECT_MAPPER.writeValueAsString(Map.of(EXTRA_PROFILE_VALUES_KEY, sanitizedValues));
+            jdbcTemplate.update(
+                    """
+                            insert into iam_user_profile (user_id, extra_json, deleted)
+                            values (?, ?, 0)
+                            on duplicate key update extra_json = json_merge_patch(coalesce(extra_json, json_object()), values(extra_json)),
+                                                    deleted = 0,
+                                                    updated_at = current_timestamp
+                            """,
+                    userId,
+                    extraJson
+            );
+        } catch (JsonProcessingException ex) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "自定义资料序列化失败");
+        }
+    }
+
+    private Map<String, String> sanitizeExtraProfileValues(CurrentUser currentUser, Map<String, String> requestedValues) {
+        Set<String> allowedKeys = systemProfileSettingsAppService.getProfileFieldSettings(currentUser).stream()
+                .filter(item -> Boolean.TRUE.equals(item.getCustom()))
+                .map(ProfileFieldSettingVO::getFieldKey)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, String> sanitizedValues = new LinkedHashMap<>();
+        if (requestedValues == null || requestedValues.isEmpty() || allowedKeys.isEmpty()) {
+            return sanitizedValues;
+        }
+        for (String fieldKey : allowedKeys) {
+            String value = normalizeNullableText(requestedValues.get(fieldKey));
+            if (!StringUtils.hasText(value)) {
+                continue;
+            }
+            sanitizedValues.put(fieldKey, value.length() > CUSTOM_PROFILE_VALUE_MAX_LENGTH
+                    ? value.substring(0, CUSTOM_PROFILE_VALUE_MAX_LENGTH)
+                    : value);
+        }
+        return sanitizedValues;
+    }
+
+    private Map<String, String> loadExtraProfileValues(Long userId) {
+        String extraJson;
+        try {
+            extraJson = jdbcTemplate.queryForObject(
+                    """
+                            select extra_json
+                            from iam_user_profile
+                            where user_id = ? and deleted = 0
+                            limit 1
+                            """,
+                    String.class,
+                    userId
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return Map.of();
+        }
+        if (!StringUtils.hasText(extraJson)) {
+            return Map.of();
+        }
+        try {
+            Map<String, Object> payload = OBJECT_MAPPER.readValue(extraJson, new TypeReference<>() {});
+            Object rawValues = payload.get(EXTRA_PROFILE_VALUES_KEY);
+            if (!(rawValues instanceof Map<?, ?> rawMap)) {
+                return Map.of();
+            }
+            Map<String, String> values = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> {
+                if (key instanceof String fieldKey && value instanceof String fieldValue && StringUtils.hasText(fieldValue)) {
+                    values.put(fieldKey, fieldValue);
+                }
+            });
+            return values;
+        } catch (JsonProcessingException ex) {
+            return Map.of();
+        }
     }
 
     private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long tenantId, Long userId, Long simulatedRoleId) {

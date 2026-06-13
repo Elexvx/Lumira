@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -70,6 +69,50 @@ class SystemProfileSettingsAppServiceTest {
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.weight"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.avatar.weight", "12"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.visible", "false"));
+    }
+
+    @Test
+    void profileFieldSettingsSupportCustomDefinitions() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
+                "profile.field.custom.definitions",
+                "[{\"fieldKey\":\"school\",\"fieldLabel\":\"学校\",\"fieldDescription\":\"就读学校\",\"fieldType\":\"TEXT\",\"visible\":true,\"required\":true,\"weight\":8,\"groupLabel\":\"教育信息\",\"sortNo\":120,\"custom\":true}]"
+        ));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        List<ProfileFieldSettingVO> settings = service.getProfileFieldSettings(buildCurrentUser());
+
+        ProfileFieldSettingVO school = findSetting(settings, "school");
+        assertTrue(school.getCustom());
+        assertEquals("学校", school.getFieldLabel());
+        assertEquals("TEXT", school.getFieldType());
+        assertEquals("教育信息", school.getGroupLabel());
+        assertTrue(school.getRequired());
+        assertEquals(8, school.getWeight());
+    }
+
+    @Test
+    void updateProfileFieldSettingsPersistsCustomDefinitionsAsJson() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        List<ProfileFieldSettingItem> items = new ArrayList<>();
+        items.add(profileFieldSetting("avatarUrl", true, 12));
+        ProfileFieldSettingItem school = profileFieldSetting("school", true, 8);
+        school.setCustom(true);
+        school.setFieldLabel("学校");
+        school.setFieldType("TEXT");
+        school.setRequired(true);
+        school.setGroupLabel("教育信息");
+        school.setSortNo(120);
+        items.add(school);
+        request.setItems(items);
+
+        service.updateProfileFieldSettings(buildCurrentUser(), request);
+
+        assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.custom.definitions"));
+        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldKey\":\"school\""));
+        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldLabel\":\"学校\""));
     }
 
     @Test
@@ -207,6 +250,15 @@ class SystemProfileSettingsAppServiceTest {
         private boolean hasInsertValue(String configKey, String expectedValue) {
             for (Object[] args : insertedRows) {
                 if (args.length > 3 && configKey.equals(String.valueOf(args[1])) && expectedValue.equals(String.valueOf(args[3]))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean hasInsertValueContaining(String configKey, String expectedValuePart) {
+            for (Object[] args : insertedRows) {
+                if (args.length > 3 && configKey.equals(String.valueOf(args[1])) && String.valueOf(args[3]).contains(expectedValuePart)) {
                     return true;
                 }
             }

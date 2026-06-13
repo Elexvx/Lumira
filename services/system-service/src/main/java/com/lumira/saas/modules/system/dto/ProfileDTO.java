@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+import java.util.Map;
+
 public final class ProfileDTO {
 
     private ProfileDTO() {
@@ -54,6 +56,7 @@ public final class ProfileDTO {
         private String availableTime;
         @Pattern(regexp = "^(?:$|\\d{15}|\\d{17}[\\dXx])$", message = "请输入有效身份证号码")
         private String idCardNumber;
+        private Map<String, String> extraProfileValues;
 
         public String getAvatarUrl() {
             return avatarUrl;
@@ -133,6 +136,14 @@ public final class ProfileDTO {
 
         public void setIdCardNumber(String idCardNumber) {
             this.idCardNumber = idCardNumber == null ? null : idCardNumber.trim();
+        }
+
+        public Map<String, String> getExtraProfileValues() {
+            return extraProfileValues;
+        }
+
+        public void setExtraProfileValues(Map<String, String> extraProfileValues) {
+            this.extraProfileValues = extraProfileValues;
         }
     }
 

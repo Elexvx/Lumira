@@ -6,32 +6,12 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--saas-color-border);
-  border-radius: var(--saas-border-radius-lg);
-  background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 22%),
-    radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.05), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.9) 100%);
-  box-shadow: var(--saas-shadow-lg);
-}
-
-.saas-dashboard-home__hero.ant-pro-card,
-.saas-dashboard-home__hero .ant-pro-card-body {
-  border-radius: var(--saas-border-radius-lg);
-}
-
-.saas-dashboard-home__hero::before {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  content: '';
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, transparent 36%),
-    linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
+  border-radius: var(--saas-card-radius);
+  background: var(--saas-color-bg-surface-strong);
+  box-shadow: var(--saas-shadow-sm);
 }
 
 .saas-dashboard-home__hero .ant-pro-card-body {
-  position: relative;
-  z-index: 1;
   overflow: hidden;
 }
 
@@ -41,11 +21,6 @@
   border-radius: var(--saas-card-radius);
   background: var(--saas-color-bg-surface-strong);
   box-shadow: var(--saas-shadow-sm);
-}
-
-.saas-dashboard-home__panel.ant-pro-card,
-.saas-dashboard-home__panel .ant-pro-card-body {
-  border-radius: var(--saas-card-radius);
 }
 
 .saas-dashboard-home__panel .ant-pro-card-body {
@@ -143,13 +118,6 @@
 
 .saas-dashboard-home__page .ant-tabs-tab + .ant-tabs-tab {
   margin-left: 16px;
-}
-
-html[data-theme='dark'] .saas-dashboard-home__hero {
-  background:
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 22%),
-    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.04), transparent 24%),
-    linear-gradient(180deg, rgba(17, 17, 19, 0.96) 0%, rgba(24, 24, 27, 0.9) 100%);
 }
 
 html[data-theme='dark'] .saas-dashboard-home__shortcut-card,

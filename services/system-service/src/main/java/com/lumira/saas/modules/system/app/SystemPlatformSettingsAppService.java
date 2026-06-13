@@ -41,6 +41,7 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_COMPANY_NAME_KEY = "branding.company-name";
     private static final String BRANDING_COPYRIGHT_START_YEAR_KEY = "branding.copyright-start-year";
     private static final String BRANDING_FOOTER_ICP_KEY = "branding.footer-icp";
+    private static final String BRANDING_FOOTER_POLICE_BEIAN_KEY = "branding.footer-police-beian";
     private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
     private static final List<String> BRANDING_CONFIG_KEYS = List.of(
             BRANDING_WEBSITE_NAME_KEY,
@@ -54,6 +55,7 @@ public class SystemPlatformSettingsAppService {
             BRANDING_COMPANY_NAME_KEY,
             BRANDING_COPYRIGHT_START_YEAR_KEY,
             BRANDING_FOOTER_ICP_KEY,
+            BRANDING_FOOTER_POLICE_BEIAN_KEY,
             BRANDING_FOOTER_COPYRIGHT_KEY
     );
 
@@ -183,6 +185,7 @@ public class SystemPlatformSettingsAppService {
         upsertBrandingConfig(tenantId, BRANDING_COMPANY_NAME_KEY, "公司名称", companyName, "页脚版权主体名称", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_COPYRIGHT_START_YEAR_KEY, "版权起始年份", String.valueOf(copyrightStartYear), "页脚版权起始年份", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_FOOTER_ICP_KEY, "页脚 ICP 备案", sanitizeBrandingText(request.getFooterIcp(), ""), "页脚备案信息", operatorId);
+        upsertBrandingConfig(tenantId, BRANDING_FOOTER_POLICE_BEIAN_KEY, "页脚公安备案", sanitizeBrandingText(request.getFooterPoliceBeian(), ""), "页脚公安备案信息", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_FOOTER_COPYRIGHT_KEY, "页脚版权声明", buildCopyrightText(companyName, copyrightStartYear), "页脚版权声明（由公司名称和起始年份生成）", operatorId);
         operationAuditService.log(
                 tenantId,
@@ -304,6 +307,23 @@ public class SystemPlatformSettingsAppService {
     }
 
     @Transactional
+    public SystemVO.SmtpSettingsVO resetSmtpSettings(CurrentUser currentUser) {
+        Long tenantId = currentTenantId(currentUser);
+        Long operatorId = currentUser.getUserId();
+        upsertPlatformConfig(tenantId, SMTP_ENABLED_KEY, "SMTP 邮箱通知启用", "false", "是否启用邮箱通知渠道", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_HOST_KEY, "SMTP 主机", "", "邮件服务器地址", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_PORT_KEY, "SMTP 端口", "25", "邮件服务器端口", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_USERNAME_KEY, "SMTP 用户名", "", "SMTP 登录用户名", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_PASSWORD_KEY, "SMTP 密码", "", "SMTP 登录密码", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_FROM_KEY, "发件人地址", "", "SMTP 默认发件人", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_AUTH_ENABLED_KEY, "SMTP 认证", "true", "是否启用 SMTP AUTH", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", "true", "是否启用 STARTTLS", operatorId);
+        upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "是否启用 SSL", operatorId);
+        operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "重置 SMTP 配置");
+        return loadSmtpSettings(tenantId);
+    }
+
+    @Transactional
     public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
         Long tenantId = currentTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
@@ -366,6 +386,7 @@ public class SystemPlatformSettingsAppService {
         settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
         settings.setCopyrightStartYear(parseInteger(valueByKey.get(BRANDING_COPYRIGHT_START_YEAR_KEY), LocalDate.now().getYear()));
         settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
+        settings.setFooterPoliceBeian(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_POLICE_BEIAN_KEY), ""));
         settings.setFooterCopyright(defaultIfBlank(
                 valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY),
                 buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())

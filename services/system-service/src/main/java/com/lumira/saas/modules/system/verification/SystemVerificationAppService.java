@@ -249,13 +249,28 @@ public class SystemVerificationAppService {
     }
 
     @Transactional
+    public SystemVO.SmsVerificationSettingsVO resetSmsSettings(CurrentUser currentUser) {
+        return settingsAppService.resetSmsSettings(currentUser);
+    }
+
+    @Transactional
     public SystemVO.WechatLoginSettingsVO updateWechatSettings(CurrentUser currentUser, SystemDTO.WechatLoginSettingsRequest request) {
         return settingsAppService.updateWechatSettings(currentUser, request);
     }
 
     @Transactional
+    public SystemVO.WechatLoginSettingsVO resetWechatSettings(CurrentUser currentUser) {
+        return settingsAppService.resetWechatSettings(currentUser);
+    }
+
+    @Transactional
     public SystemVO.PasskeySettingsVO updatePasskeySettings(CurrentUser currentUser, SystemDTO.PasskeySettingsRequest request) {
         return settingsAppService.updatePasskeySettings(currentUser, request);
+    }
+
+    @Transactional
+    public SystemVO.PasskeySettingsVO resetPasskeySettings(CurrentUser currentUser) {
+        return settingsAppService.resetPasskeySettings(currentUser);
     }
 
     @Transactional

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     websiteFaviconUrl: '',
     footerCopyright: '',
     footerIcp: '',
+    footerPoliceBeian: '',
   },
   defaultWatermarkSettings: {
     enabled: false,

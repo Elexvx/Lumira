@@ -15,6 +15,23 @@ export const ANT_DESIGN_ICON_SUFFIX = 'Outlined';
 export const SETTINGS_ROUTE_PREFIX = '/settings';
 export const PROFILE_PATH = '/user-center/personal-center/profile';
 export const LEGACY_SETTING_ROUTE_PREFIXES = ['/system'];
+export const SETTING_ROUTE_ORDER_KEY = 'settings_route_order';
+export const DEFAULT_SETTING_ROUTE_ORDER = [
+  '/settings/menus',
+  '/settings/dicts',
+  '/settings/profile-fields',
+  '/settings/personalization',
+  '/settings/security',
+  '/settings/verification',
+  '/settings/notifications',
+  '/settings/ai-employees',
+  '/settings/plugins',
+  '/settings/files/all',
+  '/settings/localization',
+  '/settings/monitoring',
+  '/settings/api-docs',
+  '/settings/audit',
+];
 export const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/localization': '/settings/localization',
   '/settings/monitoring/api-docs': '/settings/api-docs',

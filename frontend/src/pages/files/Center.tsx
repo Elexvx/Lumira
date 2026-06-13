@@ -136,6 +136,7 @@ const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpaceP
   allowedMimeTypes: '*',
   defaultStorage: false,
   retainFileOnRecordDelete: false,
+  anonymousAccessAllowed: false,
   status: 'ENABLED',
 });
 
@@ -239,7 +240,7 @@ const buildFileObjectColumns = ({
     title: formatMessage({ id: 'system.files.field.actions', defaultMessage: 'Actions' }),
     valueType: 'option',
     fixed: 'right',
-    width: 'var(--saas-spacing-220)',
+    width: isMobile ? 64 : 'var(--saas-spacing-220)',
     render: (_: unknown, record: FileObjectRecord) => (
       <TableActionBar
         isMobile={isMobile}
@@ -379,6 +380,13 @@ function FileStorageDrawer({
           </Form.Item>
           <Form.Item name="retainFileOnRecordDelete" valuePropName="checked">
             <Checkbox>{t('删除文件记录时保留文件', 'Keep the file when its record is deleted')}</Checkbox>
+          </Form.Item>
+          <Form.Item
+            name="anonymousAccessAllowed"
+            valuePropName="checked"
+            extra={t('关闭后，该存储空间下的文件即使标记为公开，也不能被未登录用户通过直链访问。', 'When disabled, files in this storage space cannot be accessed by anonymous users through direct links, even if they are marked public.')}
+          >
+            <Checkbox>{t('允许未登录访问公开文件', 'Allow anonymous access to public files')}</Checkbox>
           </Form.Item>
           <Form.Item name="status" label={t('状态', 'Status')}>
             <Select
@@ -596,22 +604,24 @@ function FilePreviewDrawer({
     >
       {record ? (
         <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-          <Descriptions bordered column={isMobile ? 1 : 2} size="small">
+          <Descriptions bordered column={1} size="small">
             <Descriptions.Item label={t('文件名', 'File name')}>{record.originalFileName}</Descriptions.Item>
             <Descriptions.Item label={t('类型', 'Type')}>{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
             <Descriptions.Item label={t('大小', 'Size')}>{record.fileSizeLabel || formatFileSize(record.fileSizeBytes)}</Descriptions.Item>
             <Descriptions.Item label={t('预览', 'Preview')}>{<Tag color={previewMeta.color}>{previewMeta.text}</Tag>}</Descriptions.Item>
             <Descriptions.Item label={t('分类', 'Category')}>{record.category || '-'}</Descriptions.Item>
             <Descriptions.Item label={t('上传人', 'Uploader')}>{record.uploadedByName || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('标签', 'Tags')} span={2}>
+            <Descriptions.Item label={t('标签', 'Tags')}>
               {renderTags(record.tags)}
             </Descriptions.Item>
-            <Descriptions.Item label={t('备注', 'Remark')} span={2}>
+            <Descriptions.Item label={t('备注', 'Remark')}>
               {record.remark || '-'}
             </Descriptions.Item>
             <Descriptions.Item label={t('上传时间', 'Upload time')}>{formatDateTime(record.createdAt)}</Descriptions.Item>
             <Descriptions.Item label={t('下载链接', 'Download link')}>
-              <Typography.Text copyable={{ text: previewAbsoluteUrl }}>{previewAbsoluteUrl || '-'}</Typography.Text>
+              <Typography.Text copyable={{ text: previewAbsoluteUrl }} style={{ wordBreak: 'break-all' }}>
+                {previewAbsoluteUrl || '-'}
+              </Typography.Text>
             </Descriptions.Item>
           </Descriptions>
 
@@ -778,6 +788,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
               allowedMimeTypes: record.allowedMimeTypes || '*',
               defaultStorage: Boolean(record.defaultStorage),
               retainFileOnRecordDelete: Boolean(record.retainFileOnRecordDelete),
+              anonymousAccessAllowed: Boolean(record.anonymousAccessAllowed),
               status: record.status,
             }
           : defaultStoragePayload(provider),
@@ -888,6 +899,12 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         dataIndex: 'defaultStorage',
         width: 'var(--saas-spacing-160)',
         render: (_, record) => (record.defaultStorage ? <span style={{ color: token.colorSuccess, fontSize: 20 }}>✓</span> : '-'),
+      },
+      {
+        title: t('匿名访问', 'Anonymous access'),
+        dataIndex: 'anonymousAccessAllowed',
+        width: 'var(--saas-spacing-140)',
+        render: (_, record) => (record.anonymousAccessAllowed ? <Tag color="green">{t('允许', 'Allowed')}</Tag> : <Tag>{t('关闭', 'Off')}</Tag>),
       },
       {
         title: t('文件数', 'File count'),

@@ -100,6 +100,7 @@ const LoginPageMainSection = ({
           children: submitButtonText,
           loading: submitting,
           block: true,
+          'data-testid': 'login-submit-button',
           style: activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? { display: 'none' } : undefined,
         },
         resetButtonProps: false,
@@ -255,7 +256,7 @@ const Login = () => {
               },
             ]}
           >
-            <Input.Password autoComplete="new-password" />
+            <Input.Password autoComplete="new-password" data-testid="forced-password-new-input" />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -273,9 +274,9 @@ const Login = () => {
               }),
             ]}
           >
-            <Input.Password autoComplete="new-password" />
+            <Input.Password autoComplete="new-password" data-testid="forced-password-confirm-input" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={loginFlow.viewState.passwordChangeSubmitting}>
+          <Button type="primary" htmlType="submit" block loading={loginFlow.viewState.passwordChangeSubmitting} data-testid="forced-password-submit">
             {formatMessage({ id: 'page.login.initialPasswordChange.submit', defaultMessage: '确认修改' })}
           </Button>
         </Form>

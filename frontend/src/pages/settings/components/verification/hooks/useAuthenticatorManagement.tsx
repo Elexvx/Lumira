@@ -25,6 +25,7 @@ const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 type AuthenticatorCode = 'passkey_login' | 'sms_login' | 'email_login' | 'wechat_login' | 'password_login';
 type ConfigDrawerMode = 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | 'basic';
+type LoginMode = 'passkey' | 'sms' | 'email' | 'wechat' | 'password';
 
 interface AuthenticatorRecord {
   key: AuthenticatorCode;
@@ -34,32 +35,29 @@ interface AuthenticatorRecord {
   title: string;
   description: string;
   enabled: boolean;
+  configured: boolean;
 }
 
 const SMS_ACCESS_KEY_SECRET_MASK = '********';
+const WECHAT_APP_SECRET_MASK = '********';
+const DEFAULT_LOGIN_MODE_ORDER: LoginMode[] = ['passkey', 'sms', 'email', 'wechat', 'password'];
 
 type AuthenticatorDeletionDeps = {
   canManageSettings: boolean;
-  verificationForm: {
-    setFieldValue: (name: keyof VerificationSettings, value: unknown) => void;
-  };
-  smsSettingsForm: {
-    getFieldsValue: (all?: boolean) => SmsVerificationSettings;
-  };
-  passkeySettingsForm: {
-    setFieldValue: (name: keyof (PasskeySettings & { allowedOriginsText?: string }), value: unknown) => void;
-  };
-  wechatSettingsForm: {
-    setFieldValue: (name: keyof WechatLoginSettings, value: unknown) => void;
-  };
+  verificationForm: FormInstance<VerificationSettings>;
+  smsSettingsForm: FormInstance<SmsVerificationSettings>;
+  passkeySettingsForm: FormInstance<PasskeySettings & { allowedOriginsText?: string }>;
+  wechatSettingsForm: FormInstance<WechatLoginSettings>;
   passkeySettingsData?: PasskeySettings;
   smsSettingsData?: SmsVerificationSettings;
   verificationSettingsData?: VerificationSettings;
   wechatSettingsData?: WechatLoginSettings;
+  smtpSettingsData?: SmtpSettings & { passwordConfigured?: boolean };
+  onVerificationSettingsRefetch: () => Promise<unknown>;
   onSmsSettingsRefetch: () => Promise<unknown>;
-  handleSaveVerificationSettings: () => Promise<void>;
-  handleSaveWechatSettings: () => Promise<void>;
-  handleSavePasskeySettings: (params: { forceEnabled: boolean; closeDrawer: boolean }) => Promise<void>;
+  onSmtpSettingsRefetch: () => Promise<unknown>;
+  onWechatSettingsRefetch: () => Promise<unknown>;
+  onPasskeySettingsRefetch: () => Promise<unknown>;
 };
 
 const getEnabledAuthenticatorKeys = (
@@ -93,19 +91,159 @@ const disableSmsAuthenticator = async ({
   if (!canManageSettings) {
     return;
   }
-  const currentValues = smsSettingsForm.getFieldsValue(true);
-  const accessKeySecret = currentValues.accessKeySecret === SMS_ACCESS_KEY_SECRET_MASK ? undefined : currentValues.accessKeySecret;
-  await request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
+  const result = await request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
     method: 'PUT',
-    data: {
-      ...currentValues,
-      enabled: false,
-      accessKeySecret,
-    },
+    data: { enabled: false },
     ...API_OPTS.NO_REDIRECT,
+  });
+  smsSettingsForm.setFieldsValue({
+    ...result,
+    accessKeySecret: result.accessKeySecretConfigured ? SMS_ACCESS_KEY_SECRET_MASK : '',
   });
   message.success(t('短信认证器已停用', 'SMS authenticator disabled'));
   await onSmsSettingsRefetch();
+};
+
+const disableVerificationSettingsAuthenticator = async (
+  key: Extract<AuthenticatorCode, 'email_login' | 'password_login'>,
+  {
+    canManageSettings,
+    verificationForm,
+    onVerificationSettingsRefetch,
+  }: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'verificationForm' | 'onVerificationSettingsRefetch'>,
+) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const result = await request<VerificationSettings>('/v1/system/verification/settings', {
+    method: 'PUT',
+    data: key === 'email_login' ? { emailLoginEnabled: false } : { passwordLoginEnabled: false },
+    ...API_OPTS.NO_REDIRECT,
+  });
+  verificationForm.setFieldsValue(result);
+  message.success(key === 'email_login' ? t('邮箱认证器已停用', 'Email authenticator disabled') : t('密码登录已停用', 'Password sign-in disabled'));
+  await onVerificationSettingsRefetch();
+};
+
+const disablePasskeyAuthenticator = async ({
+  canManageSettings,
+  passkeySettingsForm,
+  onPasskeySettingsRefetch,
+}: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'passkeySettingsForm' | 'onPasskeySettingsRefetch'>) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const result = await request<PasskeySettings>('/v1/system/verification/passkey-settings', {
+    method: 'PUT',
+    data: { enabled: false },
+    ...API_OPTS.NO_REDIRECT,
+  });
+  passkeySettingsForm.setFieldsValue({
+    ...result,
+    allowedOriginsText: result.allowedOrigins?.join('\n') || '',
+  });
+  message.success(t('通行密钥已停用', 'Passkey disabled'));
+  await onPasskeySettingsRefetch();
+};
+
+const disableWechatAuthenticator = async ({
+  canManageSettings,
+  wechatSettingsForm,
+  onWechatSettingsRefetch,
+}: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'wechatSettingsForm' | 'onWechatSettingsRefetch'>) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const result = await request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
+    method: 'PUT',
+    data: { enabled: false },
+    ...API_OPTS.NO_REDIRECT,
+  });
+  wechatSettingsForm.setFieldsValue({
+    ...result,
+    appSecret: result.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
+  });
+  message.success(t('微信认证器已停用', 'WeChat authenticator disabled'));
+  await onWechatSettingsRefetch();
+};
+
+const resetSmsAuthenticator = async ({
+  canManageSettings,
+  smsSettingsForm,
+  onSmsSettingsRefetch,
+}: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'smsSettingsForm' | 'onSmsSettingsRefetch'>) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const result = await request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
+    method: 'DELETE',
+    ...API_OPTS.NO_REDIRECT,
+  });
+  smsSettingsForm.setFieldsValue({
+    ...result,
+    accessKeySecret: '',
+  });
+  await onSmsSettingsRefetch();
+};
+
+const resetEmailAuthenticator = async ({
+  canManageSettings,
+  verificationForm,
+  onVerificationSettingsRefetch,
+  onSmtpSettingsRefetch,
+}: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'verificationForm' | 'onVerificationSettingsRefetch' | 'onSmtpSettingsRefetch'>) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const verificationResult = await request<VerificationSettings>('/v1/system/verification/settings', {
+    method: 'PUT',
+    data: { emailLoginEnabled: false },
+    ...API_OPTS.NO_REDIRECT,
+  });
+  verificationForm.setFieldsValue(verificationResult);
+  await request<SmtpSettings>('/v1/system/smtp-settings', {
+    method: 'DELETE',
+    ...API_OPTS.NO_REDIRECT,
+  });
+  await Promise.all([onVerificationSettingsRefetch(), onSmtpSettingsRefetch()]);
+};
+
+const resetPasskeyAuthenticator = async ({
+  canManageSettings,
+  passkeySettingsForm,
+  onPasskeySettingsRefetch,
+}: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'passkeySettingsForm' | 'onPasskeySettingsRefetch'>) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const result = await request<PasskeySettings>('/v1/system/verification/passkey-settings', {
+    method: 'DELETE',
+    ...API_OPTS.NO_REDIRECT,
+  });
+  passkeySettingsForm.setFieldsValue({
+    ...result,
+    allowedOriginsText: result.allowedOrigins?.join('\n') || '',
+  });
+  await onPasskeySettingsRefetch();
+};
+
+const resetWechatAuthenticator = async ({
+  canManageSettings,
+  wechatSettingsForm,
+  onWechatSettingsRefetch,
+}: Pick<AuthenticatorDeletionDeps, 'canManageSettings' | 'wechatSettingsForm' | 'onWechatSettingsRefetch'>) => {
+  if (!canManageSettings) {
+    return;
+  }
+  const result = await request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
+    method: 'DELETE',
+    ...API_OPTS.NO_REDIRECT,
+  });
+  wechatSettingsForm.setFieldsValue({
+    ...result,
+    appSecret: '',
+  });
+  await onWechatSettingsRefetch();
 };
 
 const resolveLoginModeFromAuthenticatorKey = (key: AuthenticatorCode) => {
@@ -124,6 +262,102 @@ const resolveLoginModeFromAuthenticatorKey = (key: AuthenticatorCode) => {
   return 'password';
 };
 
+const isLoginMode = (mode?: string | null): mode is LoginMode =>
+  mode === 'passkey' || mode === 'sms' || mode === 'email' || mode === 'wechat' || mode === 'password';
+
+const normalizeExistingLoginModeOrder = (order?: string[]): LoginMode[] => {
+  const result: LoginMode[] = [];
+  (order?.length ? order : DEFAULT_LOGIN_MODE_ORDER).forEach((item) => {
+    if (isLoginMode(item) && !result.includes(item)) {
+      result.push(item);
+    }
+  });
+  return result.length ? result : DEFAULT_LOGIN_MODE_ORDER;
+};
+
+const appendLoginMode = (order: string[] | undefined, mode: LoginMode) => {
+  const existing = normalizeExistingLoginModeOrder(order);
+  return existing.includes(mode) ? existing : [...existing, mode];
+};
+
+const removeLoginMode = (order: string[] | undefined, mode: LoginMode) =>
+  normalizeExistingLoginModeOrder(order).filter((item) => item !== mode);
+
+const updateLoginModeOrder = async (loginModeOrder: LoginMode[], deps: Pick<AuthenticatorDeletionDeps, 'verificationForm' | 'onVerificationSettingsRefetch'>) => {
+  const result = await request<VerificationSettings>('/v1/system/verification/settings', {
+    method: 'PUT',
+    data: { loginModeOrder },
+    ...API_OPTS.NO_REDIRECT,
+  });
+  deps.verificationForm.setFieldsValue(result);
+  await deps.onVerificationSettingsRefetch();
+  return result;
+};
+
+const enableConfiguredAuthenticator = async (record: AuthenticatorRecord, deps: AuthenticatorDeletionDeps) => {
+  if (!deps.canManageSettings) {
+    return false;
+  }
+  if (!record.configured && record.key !== 'password_login' && record.key !== 'passkey_login') {
+    return false;
+  }
+
+  if (record.key === 'sms_login') {
+    const result = await request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
+      method: 'PUT',
+      data: { enabled: true },
+      ...API_OPTS.NO_REDIRECT,
+    });
+    deps.smsSettingsForm.setFieldsValue({
+      ...result,
+      accessKeySecret: result.accessKeySecretConfigured ? SMS_ACCESS_KEY_SECRET_MASK : '',
+    });
+    await deps.onSmsSettingsRefetch();
+    message.success(t('短信认证器已启用', 'SMS authenticator enabled'));
+    return true;
+  }
+
+  if (record.key === 'email_login' || record.key === 'password_login') {
+    const result = await request<VerificationSettings>('/v1/system/verification/settings', {
+      method: 'PUT',
+      data: record.key === 'email_login' ? { emailLoginEnabled: true } : { passwordLoginEnabled: true },
+      ...API_OPTS.NO_REDIRECT,
+    });
+    deps.verificationForm.setFieldsValue(result);
+    await deps.onVerificationSettingsRefetch();
+    message.success(record.key === 'email_login' ? t('邮箱认证器已启用', 'Email authenticator enabled') : t('密码登录已启用', 'Password sign-in enabled'));
+    return true;
+  }
+
+  if (record.key === 'passkey_login') {
+    const result = await request<PasskeySettings>('/v1/system/verification/passkey-settings', {
+      method: 'PUT',
+      data: { enabled: true, passwordlessEnabled: true },
+      ...API_OPTS.NO_REDIRECT,
+    });
+    deps.passkeySettingsForm.setFieldsValue({
+      ...result,
+      allowedOriginsText: result.allowedOrigins?.join('\n') || '',
+    });
+    await deps.onPasskeySettingsRefetch();
+    message.success(t('通行密钥已启用', 'Passkey enabled'));
+    return true;
+  }
+
+  const result = await request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
+    method: 'PUT',
+    data: { enabled: true },
+    ...API_OPTS.NO_REDIRECT,
+  });
+  deps.wechatSettingsForm.setFieldsValue({
+    ...result,
+    appSecret: result.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
+  });
+  await deps.onWechatSettingsRefetch();
+  message.success(t('微信认证器已启用', 'WeChat authenticator enabled'));
+  return true;
+};
+
 const buildAddAuthenticatorItems = ({
   canManageSettings,
   passkeyEnabled,
@@ -131,6 +365,7 @@ const buildAddAuthenticatorItems = ({
   emailEnabled,
   wechatEnabled,
   passwordEnabled,
+  existingLoginModes = [],
   onEnableAuthenticator,
 }: {
   canManageSettings: boolean;
@@ -139,6 +374,7 @@ const buildAddAuthenticatorItems = ({
   emailEnabled: boolean;
   wechatEnabled: boolean;
   passwordEnabled: boolean;
+  existingLoginModes: LoginMode[];
   onEnableAuthenticator: (mode: 'passkey' | 'sms' | 'email' | 'wechat' | 'password') => void;
 }) =>
   [
@@ -148,7 +384,7 @@ const buildAddAuthenticatorItems = ({
     { key: 'wechat', label: t('微信', 'WeChat'), enabled: wechatEnabled, mode: 'wechat' as const },
     { key: 'password', label: t('密码', 'Password'), enabled: passwordEnabled, mode: 'password' as const },
   ]
-    .filter((item) => !item.enabled)
+    .filter((item) => !existingLoginModes.includes(item.mode))
     .map((item) => ({
       key: item.key,
       label: item.label,
@@ -156,11 +392,11 @@ const buildAddAuthenticatorItems = ({
       onClick: () => void onEnableAuthenticator(item.mode),
     }));
 
-const deleteAuthenticatorByKey = async (key: AuthenticatorCode, deps: AuthenticatorDeletionDeps) => {
+const disableAuthenticatorByKey = async (key: AuthenticatorCode, deps: AuthenticatorDeletionDeps) => {
   const enabledKeys = getEnabledAuthenticatorKeys(deps.passkeySettingsData, deps.smsSettingsData, deps.verificationSettingsData, deps.wechatSettingsData);
   if (!canRemoveAuthenticators([key], enabledKeys)) {
     message.warning(t('至少需要保留一种可用登录方式', 'At least one login method must remain enabled'));
-    return;
+    return false;
   }
 
   if (key === 'sms_login') {
@@ -169,25 +405,81 @@ const deleteAuthenticatorByKey = async (key: AuthenticatorCode, deps: Authentica
       smsSettingsForm: deps.smsSettingsForm,
       onSmsSettingsRefetch: deps.onSmsSettingsRefetch,
     });
-    return;
+    return true;
   }
   if (key === 'email_login') {
-    deps.verificationForm.setFieldValue('emailLoginEnabled', false);
-    await deps.handleSaveVerificationSettings();
-    return;
+    await disableVerificationSettingsAuthenticator(key, {
+      canManageSettings: deps.canManageSettings,
+      verificationForm: deps.verificationForm,
+      onVerificationSettingsRefetch: deps.onVerificationSettingsRefetch,
+    });
+    return true;
   }
   if (key === 'passkey_login') {
-    deps.passkeySettingsForm.setFieldValue('enabled', false);
-    await deps.handleSavePasskeySettings({ forceEnabled: false, closeDrawer: false });
-    return;
+    await disablePasskeyAuthenticator({
+      canManageSettings: deps.canManageSettings,
+      passkeySettingsForm: deps.passkeySettingsForm,
+      onPasskeySettingsRefetch: deps.onPasskeySettingsRefetch,
+    });
+    return true;
   }
   if (key === 'wechat_login') {
-    deps.wechatSettingsForm.setFieldValue('enabled', false);
-    await deps.handleSaveWechatSettings();
+    await disableWechatAuthenticator({
+      canManageSettings: deps.canManageSettings,
+      wechatSettingsForm: deps.wechatSettingsForm,
+      onWechatSettingsRefetch: deps.onWechatSettingsRefetch,
+    });
+    return true;
+  }
+  await disableVerificationSettingsAuthenticator(key, {
+    canManageSettings: deps.canManageSettings,
+    verificationForm: deps.verificationForm,
+    onVerificationSettingsRefetch: deps.onVerificationSettingsRefetch,
+  });
+  return true;
+};
+
+const deleteAuthenticatorByKey = async (key: AuthenticatorCode, deps: AuthenticatorDeletionDeps) => {
+  const enabledKeys = getEnabledAuthenticatorKeys(deps.passkeySettingsData, deps.smsSettingsData, deps.verificationSettingsData, deps.wechatSettingsData);
+  if (!canRemoveAuthenticators([key], enabledKeys)) {
+    message.warning(t('至少需要保留一种可用登录方式', 'At least one login method must remain enabled'));
     return;
   }
-  deps.verificationForm.setFieldValue('passwordLoginEnabled', false);
-  await deps.handleSaveVerificationSettings();
+  if (key === 'sms_login') {
+    await resetSmsAuthenticator({
+      canManageSettings: deps.canManageSettings,
+      smsSettingsForm: deps.smsSettingsForm,
+      onSmsSettingsRefetch: deps.onSmsSettingsRefetch,
+    });
+  } else if (key === 'email_login') {
+    await resetEmailAuthenticator({
+      canManageSettings: deps.canManageSettings,
+      verificationForm: deps.verificationForm,
+      onVerificationSettingsRefetch: deps.onVerificationSettingsRefetch,
+      onSmtpSettingsRefetch: deps.onSmtpSettingsRefetch,
+    });
+  } else if (key === 'passkey_login') {
+    await resetPasskeyAuthenticator({
+      canManageSettings: deps.canManageSettings,
+      passkeySettingsForm: deps.passkeySettingsForm,
+      onPasskeySettingsRefetch: deps.onPasskeySettingsRefetch,
+    });
+  } else if (key === 'wechat_login') {
+    await resetWechatAuthenticator({
+      canManageSettings: deps.canManageSettings,
+      wechatSettingsForm: deps.wechatSettingsForm,
+      onWechatSettingsRefetch: deps.onWechatSettingsRefetch,
+    });
+  } else {
+    await disableVerificationSettingsAuthenticator(key, {
+      canManageSettings: deps.canManageSettings,
+      verificationForm: deps.verificationForm,
+      onVerificationSettingsRefetch: deps.onVerificationSettingsRefetch,
+    });
+  }
+  const nextOrder = removeLoginMode(deps.verificationForm.getFieldValue('loginModeOrder') as string[] | undefined, resolveLoginModeFromAuthenticatorKey(key));
+  await updateLoginModeOrder(nextOrder, deps);
+  message.success(t('认证器已删除', 'Authenticator deleted'));
 };
 
 const deleteSelectedAuthenticators = async (selectedAuthenticatorKeys: Key[], deps: AuthenticatorDeletionDeps) => {
@@ -208,23 +500,6 @@ const deleteSelectedAuthenticators = async (selectedAuthenticatorKeys: Key[], de
   for (const key of keysToDelete) {
     await deleteAuthenticatorByKey(key, deps);
   }
-};
-
-const DEFAULT_LOGIN_MODE_ORDER = ['passkey', 'sms', 'email', 'wechat', 'password'] as const;
-
-const normalizeLoginModeOrder = (order?: string[]) => {
-  const result: Array<(typeof DEFAULT_LOGIN_MODE_ORDER)[number]> = [];
-  (order || []).forEach((item) => {
-    if ((item === 'passkey' || item === 'sms' || item === 'email' || item === 'wechat' || item === 'password') && !result.includes(item)) {
-      result.push(item);
-    }
-  });
-  DEFAULT_LOGIN_MODE_ORDER.forEach((item) => {
-    if (!result.includes(item)) {
-      result.push(item);
-    }
-  });
-  return result;
 };
 
 const resolveAuthenticatorDrawerMode = (key: AuthenticatorCode): ConfigDrawerMode => {
@@ -249,13 +524,23 @@ const buildAuthenticatorRowMap = ({
   emailEnabled,
   wechatEnabled,
   passwordEnabled,
+  passkeyConfigured,
+  smsConfigured,
+  emailConfigured,
+  wechatConfigured,
+  passwordConfigured,
 }: {
   passkeyEnabled: boolean;
   smsEnabled: boolean;
   emailEnabled: boolean;
   wechatEnabled: boolean;
   passwordEnabled: boolean;
-}): Record<(typeof DEFAULT_LOGIN_MODE_ORDER)[number], Omit<AuthenticatorRecord, 'order'>> => ({
+  passkeyConfigured: boolean;
+  smsConfigured: boolean;
+  emailConfigured: boolean;
+  wechatConfigured: boolean;
+  passwordConfigured: boolean;
+}): Record<LoginMode, Omit<AuthenticatorRecord, 'order'>> => ({
   passkey: {
     key: 'passkey_login',
     identifier: t('通行密钥', 'Passkey'),
@@ -263,6 +548,7 @@ const buildAuthenticatorRowMap = ({
     title: t('通行密钥', 'Passkey'),
     description: t('使用系统钥匙串或密码管理器进行 WebAuthn 验证', 'Use your system keychain or password manager for WebAuthn verification'),
     enabled: passkeyEnabled,
+    configured: passkeyConfigured,
   },
   sms: {
     key: 'sms_login',
@@ -271,6 +557,7 @@ const buildAuthenticatorRowMap = ({
     title: t('短信验证', 'SMS verification'),
     description: t('使用短信验证码登录', 'Sign in with an SMS code'),
     enabled: smsEnabled,
+    configured: smsConfigured,
   },
   email: {
     key: 'email_login',
@@ -279,6 +566,7 @@ const buildAuthenticatorRowMap = ({
     title: t('邮箱验证码', 'Email verification code'),
     description: t('使用邮箱验证码登录', 'Sign in with an email code'),
     enabled: emailEnabled,
+    configured: emailConfigured,
   },
   wechat: {
     key: 'wechat_login',
@@ -287,6 +575,7 @@ const buildAuthenticatorRowMap = ({
     title: t('微信扫码登录', 'WeChat QR sign-in'),
     description: t('使用微信扫码登录，未注册用户可自动创建账号', 'Sign in with WeChat QR code; unregistered users can be auto-created'),
     enabled: wechatEnabled,
+    configured: wechatConfigured,
   },
   password: {
     key: 'password_login',
@@ -295,6 +584,7 @@ const buildAuthenticatorRowMap = ({
     title: t('账号密码登录', 'Username/password sign-in'),
     description: t('使用账号密码登录', 'Sign in with username and password'),
     enabled: passwordEnabled,
+    configured: passwordConfigured,
   },
 });
 
@@ -305,6 +595,11 @@ const buildAuthenticatorRows = ({
   emailEnabled,
   wechatEnabled,
   passwordEnabled,
+  passkeyConfigured,
+  smsConfigured,
+  emailConfigured,
+  wechatConfigured,
+  passwordConfigured,
 }: {
   configuredLoginModeOrder?: string[];
   passkeyEnabled: boolean;
@@ -312,6 +607,11 @@ const buildAuthenticatorRows = ({
   emailEnabled: boolean;
   wechatEnabled: boolean;
   passwordEnabled: boolean;
+  passkeyConfigured: boolean;
+  smsConfigured: boolean;
+  emailConfigured: boolean;
+  wechatConfigured: boolean;
+  passwordConfigured: boolean;
 }): AuthenticatorRecord[] => {
   const rowsByMode = buildAuthenticatorRowMap({
     passkeyEnabled,
@@ -319,14 +619,17 @@ const buildAuthenticatorRows = ({
     emailEnabled,
     wechatEnabled,
     passwordEnabled,
+    passkeyConfigured,
+    smsConfigured,
+    emailConfigured,
+    wechatConfigured,
+    passwordConfigured,
   });
 
-  return normalizeLoginModeOrder(configuredLoginModeOrder)
-    .filter((mode) => rowsByMode[mode].enabled)
-    .map((mode, index) => ({
-      ...rowsByMode[mode],
-      order: index + 1,
-    }));
+  return normalizeExistingLoginModeOrder(configuredLoginModeOrder).map((mode, index) => ({
+    ...rowsByMode[mode],
+    order: index + 1,
+  }));
 };
 
 const buildAuthenticatorOrderColumn = ({
@@ -559,6 +862,13 @@ export const useAuthenticatorManagement = ({
 }: UseAuthenticatorManagementParams) => {
   const [selectedAuthenticatorKeys, setSelectedAuthenticatorKeys] = useState<Key[]>([]);
   const [reorderingAuthenticators, setReorderingAuthenticators] = useState(false);
+  const handleAuthenticatorSaved = useCallback(
+    async (mode: LoginMode) => {
+      const nextOrder = appendLoginMode(verificationForm.getFieldValue('loginModeOrder') as string[] | undefined, mode);
+      await updateLoginModeOrder(nextOrder, { verificationForm, onVerificationSettingsRefetch });
+    },
+    [onVerificationSettingsRefetch, verificationForm],
+  );
 
   const {
     drawerState,
@@ -584,6 +894,7 @@ export const useAuthenticatorManagement = ({
     onSmtpSettingsRefetch,
     onWechatSettingsRefetch,
     onPasskeySettingsRefetch,
+    onAuthenticatorSaved: handleAuthenticatorSaved,
   });
   const configuredLoginModeOrder = useMemo(
     () =>
@@ -601,8 +912,26 @@ export const useAuthenticatorManagement = ({
         emailEnabled: Boolean(verificationSettingsData?.emailLoginEnabled),
         wechatEnabled: Boolean(wechatSettingsData?.enabled),
         passwordEnabled: Boolean(verificationSettingsData?.passwordLoginEnabled ?? true),
+        passkeyConfigured: Boolean(passkeySettingsData?.rpId || passkeySettingsData?.rpName || passkeySettingsData?.allowedOrigins?.length),
+        smsConfigured: Boolean(smsSettingsData?.configured),
+        emailConfigured: Boolean(smtpSettingsData?.configured),
+        wechatConfigured: Boolean(wechatSettingsData?.configured),
+        passwordConfigured: true,
       }),
-    [configuredLoginModeOrder, passkeySettingsData?.enabled, smsSettingsData?.enabled, verificationSettingsData?.emailLoginEnabled, verificationSettingsData?.passwordLoginEnabled, wechatSettingsData?.enabled],
+    [
+      configuredLoginModeOrder,
+      passkeySettingsData?.allowedOrigins,
+      passkeySettingsData?.enabled,
+      passkeySettingsData?.rpId,
+      passkeySettingsData?.rpName,
+      smsSettingsData?.configured,
+      smsSettingsData?.enabled,
+      smtpSettingsData?.configured,
+      verificationSettingsData?.emailLoginEnabled,
+      verificationSettingsData?.passwordLoginEnabled,
+      wechatSettingsData?.configured,
+      wechatSettingsData?.enabled,
+    ],
   );
 
   const deletionDeps = useMemo(
@@ -616,25 +945,29 @@ export const useAuthenticatorManagement = ({
       smsSettingsData,
       verificationSettingsData,
       wechatSettingsData,
+      smtpSettingsData,
+      onVerificationSettingsRefetch,
       onSmsSettingsRefetch,
-      handleSaveVerificationSettings: saveState.handleSaveVerificationSettings,
-      handleSaveWechatSettings: saveState.handleSaveWechatSettings,
-      handleSavePasskeySettings: saveState.handleSavePasskeySettings,
+      onSmtpSettingsRefetch,
+      onWechatSettingsRefetch,
+      onPasskeySettingsRefetch,
     }),
     [
       canManageSettings,
+      onPasskeySettingsRefetch,
       onSmsSettingsRefetch,
+      onSmtpSettingsRefetch,
+      onVerificationSettingsRefetch,
+      onWechatSettingsRefetch,
       passkeySettingsData,
       passkeySettingsForm,
-      saveState.handleSavePasskeySettings,
-      saveState.handleSaveVerificationSettings,
-      saveState.handleSaveWechatSettings,
       smsSettingsData,
       smsSettingsForm,
       verificationForm,
       verificationSettingsData,
       wechatSettingsData,
       wechatSettingsForm,
+      smtpSettingsData,
     ],
   );
   const handleDeleteAuthenticator = useCallback(
@@ -746,7 +1079,11 @@ export const useAuthenticatorManagement = ({
       setTogglingAuthenticatorKey(record.key);
       try {
         if (record.enabled) {
-          await handleDeleteAuthenticator(record.key);
+          await disableAuthenticatorByKey(record.key, deletionDeps);
+          return;
+        }
+        const enabled = await enableConfiguredAuthenticator(record, deletionDeps);
+        if (enabled) {
           return;
         }
         handleEnableAuthenticator(resolveLoginModeFromAuthenticatorKey(record.key));
@@ -754,7 +1091,11 @@ export const useAuthenticatorManagement = ({
         setTogglingAuthenticatorKey(null);
       }
     },
-    [canManageSettings, handleDeleteAuthenticator, handleEnableAuthenticator],
+    [canManageSettings, deletionDeps, handleEnableAuthenticator],
+  );
+  const existingLoginModes = useMemo(
+    () => authenticatorRows.map((row) => resolveLoginModeFromAuthenticatorKey(row.key)),
+    [authenticatorRows],
   );
 
   const addAuthenticatorItems = useMemo(
@@ -766,10 +1107,12 @@ export const useAuthenticatorManagement = ({
         emailEnabled: Boolean(verificationSettingsData?.emailLoginEnabled),
         wechatEnabled: Boolean(wechatSettingsData?.enabled),
         passwordEnabled: Boolean(verificationSettingsData?.passwordLoginEnabled ?? true),
+        existingLoginModes,
         onEnableAuthenticator: handleEnableAuthenticator,
       }),
     [
       canManageSettings,
+      existingLoginModes,
       handleEnableAuthenticator,
       passkeySettingsData?.enabled,
       smsSettingsData?.enabled,

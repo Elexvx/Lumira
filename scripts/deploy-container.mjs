@@ -23,6 +23,7 @@ const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafan
 const rawArgs = process.argv.slice(2);
 const args = new Set(rawArgs);
 const rebuild = args.has('--rebuild');
+const pullImages = args.has('--pull');
 const stop = args.has('--stop');
 const logs = args.has('--logs');
 const ps = args.has('--ps');
@@ -31,6 +32,7 @@ const help = args.has('--help') || args.has('-h');
 const skipCheck = args.has('--skip-check');
 const skipReadiness = args.has('--skip-readiness');
 const observability = args.has('--observability');
+const localMysql = args.has('--local-mysql');
 const skipDockerPrune = args.has('--skip-docker-prune');
 const serviceNames = parseServiceNames(rawArgs);
 const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
@@ -168,6 +170,22 @@ function configureBuildIdentity() {
   log(`Build identity: version=${buildVersion}, commit=${gitCommit || 'unknown'}, branch=${gitBranch || 'unknown'}`);
 }
 
+function configureLocalDeploymentDefaults() {
+  if (!localMysql) {
+    return;
+  }
+  if (!process.env.SPRING_PROFILES_ACTIVE) {
+    process.env.SPRING_PROFILES_ACTIVE = 'dev';
+  }
+  if (!process.env.DEPLOY_CHECK_BASE_URL) {
+    process.env.DEPLOY_CHECK_BASE_URL = 'http://127.0.0.1:8000';
+  }
+  if (!process.env.SPRING_FLYWAY_ENABLED) {
+    process.env.SPRING_FLYWAY_ENABLED = 'true';
+  }
+  log(`Local deployment defaults: profile=${process.env.SPRING_PROFILES_ACTIVE}, checkBaseUrl=${process.env.DEPLOY_CHECK_BASE_URL}`);
+}
+
 function firstDeployText(...values) {
   for (const value of values) {
     const text = String(value ?? '').trim();
@@ -201,6 +219,7 @@ function printHelp() {
 
 Options:
   --rebuild   Force image rebuild.
+  --pull      Pull configured images before startup. Use this for CI-built images.
   --services  Deploy only selected services, comma-separated. Example: --services lumira-server
   --stop      Stop the deployment.
   --reset     Stop and remove volumes. This deletes database and uploaded data.
@@ -211,6 +230,7 @@ Options:
   --skip-readiness Skip selected-service readiness waits.
   --skip-docker-prune Skip automatic Docker build cache cleanup before rebuilds.
   --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
+  --local-mysql Start bundled MySQL and use local-friendly defaults.
   --nacos     Start the bundled Nacos container. This is also enabled when Nacos config or discovery is enabled in deploy/.env.
   -h, --help  Show this help message.
 `);
@@ -328,6 +348,8 @@ function generatedEnvDefaults() {
     GRAFANA_SMTP_FROM_NAME: 'Lumira Observability',
     GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
     GRAFANA_ALERT_WEBHOOK_URL: '',
+    LUMIRA_SERVER_IMAGE: 'ghcr.io/elexvx/lumira/lumira-server:main',
+    LUMIRA_FRONTEND_IMAGE: 'ghcr.io/elexvx/lumira/frontend:main',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'https://saas.elexvx.com',
     REDIS_MAXMEMORY: '256mb',
     REDIS_MEM_LIMIT: '384m',
@@ -585,6 +607,8 @@ function composeArgs(...extraArgs) {
   const env = parseEnvFile(envPath);
   const useNacos = args.has('--nacos') || isEnabled(env.NACOS_CONFIG_ENABLED) || isEnabled(env.NACOS_DISCOVERY_ENABLED);
   const profileArgs = [
+    ...(!localMysql ? ['--profile', 'edge'] : []),
+    ...(localMysql ? ['--profile', 'local-mysql'] : []),
     ...(observability ? ['--profile', 'observability'] : []),
     ...(useNacos ? ['--profile', 'nacos'] : []),
   ];
@@ -596,13 +620,11 @@ function composeArgs(...extraArgs) {
 
 async function checkDeployment() {
   const baseUrl = resolvePublicBaseUrl();
-  const backendUrl = 'http://127.0.0.1:8080';
 
   log('Running deployment health checks...');
   await waitForHttp(`${baseUrl}/health`, 'API proxy');
   await waitForHttp(`${baseUrl}/api/health`, 'system API through API proxy');
   await waitForHttp(`${baseUrl}/api/v1/system/version`, 'lumira-server version API');
-  await waitForHttp(`${backendUrl}/actuator/health`, 'lumira-server actuator');
   await waitForHttp(`${baseUrl}/api/v1/public/login-capabilities`, 'public login capabilities API');
   await waitForHttp(`${baseUrl}/api/v1/localization/languages`, 'protected localization management API is routed', { expectedStatus: 401 });
   if (observability) {
@@ -727,6 +749,7 @@ if (help) {
 
 ensureEnvFile();
 configureBuildIdentity();
+configureLocalDeploymentDefaults();
 await confirmReset();
 ensureDockerReady();
 ensureHostMountedDirectories();
@@ -759,6 +782,9 @@ ensureDockerVolumeOwnership();
 
 if (serviceNames.length > 0) {
   log(`Deploying selected service(s) without dependency restart: ${serviceNames.join(', ')}`);
+  if (pullImages && !rebuild) {
+    runWithRetry('docker', composeArgs('pull', ...serviceNames), 1);
+  }
   if (rebuild) {
     runWithRetry('docker', composeArgs('build', ...serviceNames), 1);
   }
@@ -768,6 +794,8 @@ if (serviceNames.length > 0) {
   const upArgs = ['up', '-d'];
   if (rebuild) {
     upArgs.push('--build');
+  } else if (pullImages) {
+    runWithRetry('docker', composeArgs('pull'), 1);
   }
   runWithRetry('docker', composeArgs(...upArgs), 1);
 }
@@ -781,4 +809,4 @@ if (!skipCheck) {
 log('Complete deployment started.');
 log(`Public edge entry: ${resolvePublicBaseUrl()}`);
 log('Local API proxy: http://127.0.0.1:8000');
-log('lumira-server health: http://127.0.0.1:8080/actuator/health');
+log(`lumira-server health: ${resolvePublicBaseUrl()}/api/health`);

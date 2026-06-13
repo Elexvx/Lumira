@@ -52,6 +52,10 @@ public class FileManagementAppService {
     public static final String SCOPE_MINE = "mine";
     public static final String SCOPE_TENANT = "tenant";
     public static final String SCOPE_DOWNLOAD_CENTER = "download-center";
+    private static final String STORAGE_KEY_DOWNLOAD_CENTER = "download_center";
+    private static final String VISIBILITY_SCOPE_PERSONAL = "PERSONAL";
+    private static final String VISIBILITY_SCOPE_DOWNLOAD_CENTER = "DOWNLOAD_CENTER";
+    private static final String VISIBILITY_SCOPE_PUBLIC = "PUBLIC";
     private static final Map<String, String> SORT_COLUMN_MAPPING = Map.ofEntries(
             Map.entry("createdAt", "created_at"),
             Map.entry("updatedAt", "updated_at"),
@@ -191,16 +195,31 @@ public class FileManagementAppService {
             String remark,
             String bucket
     ) {
+        return uploadFile(currentUser, file, category, tags, remark, bucket, null);
+    }
+
+    @Transactional
+    public FileObjectDTO uploadFile(
+            CurrentUser currentUser,
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket,
+            String scope
+    ) {
         if (file == null || file.isEmpty()) {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
         }
+        String visibilityScope = resolveVisibilityScope(scope);
+        String uploadBucket = resolveUploadBucket(bucket, scope);
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
         if (ImageUploadService.supports(originalFilename, contentType)) {
-            return uploadImage(currentUser, file, category, remark, bucket);
+            return uploadImage(currentUser, file, category, remark, uploadBucket, visibilityScope);
         }
         if (DocumentUploadService.supports(originalFilename, contentType)) {
-            return uploadDocument(currentUser, file, category, tags, remark, bucket);
+            return uploadDocument(currentUser, file, category, tags, remark, uploadBucket, visibilityScope);
         }
         throw visibleBizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 文件");
     }
@@ -218,6 +237,18 @@ public class FileManagementAppService {
             String tags,
             String remark,
             String bucket
+    ) {
+        return uploadDocument(currentUser, file, category, tags, remark, bucket, VISIBILITY_SCOPE_PERSONAL);
+    }
+
+    private FileObjectDTO uploadDocument(
+            CurrentUser currentUser,
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket,
+            String visibilityScope
     ) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
@@ -242,6 +273,7 @@ public class FileManagementAppService {
                 storedDocument.publicUrl(),
                 storedDocument.previewMode(),
                 storedDocument.previewable(),
+                visibilityScope,
                 StringUtils.hasText(category) ? category : "我的文件",
                 tags,
                 remark
@@ -258,6 +290,15 @@ public class FileManagementAppService {
 
     @Transactional
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
+        return uploadImage(currentUser, file, category, remark, bucket, VISIBILITY_SCOPE_PERSONAL);
+    }
+
+    @Transactional
+    public FileObjectDTO uploadPublicImage(CurrentUser currentUser, MultipartFile file, String category, String remark) {
+        return uploadImage(currentUser, file, category, remark, null, VISIBILITY_SCOPE_PUBLIC);
+    }
+
+    private FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket, String visibilityScope) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
         ImageUploadService.StoredImage storedImage = imageUploadService.upload(
@@ -281,6 +322,7 @@ public class FileManagementAppService {
                 storedImage.publicUrl(),
                 resolvePreviewMode(storedImage.fileExtension(), storedImage.contentType()),
                 true,
+                visibilityScope,
                 StringUtils.hasText(category) ? category : "图片",
                 null,
                 remark
@@ -412,6 +454,7 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getAllowedMimeTypes, payload.allowedMimeTypes())
                         .set(FileStorageSpaceEntity::getDefaultFlag, payload.defaultStorage() ? 1 : 0)
                         .set(FileStorageSpaceEntity::getRetainFileOnRecordDelete, payload.retainFileOnRecordDelete() ? 1 : 0)
+                        .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, payload.anonymousAccessAllowed() ? 1 : 0)
                         .set(FileStorageSpaceEntity::getStatus, payload.status())
                         .set(FileStorageSpaceEntity::getUpdatedBy, currentUser.getUserId())
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
@@ -593,6 +636,7 @@ public class FileManagementAppService {
             String publicUrl,
             String previewMode,
             boolean previewable,
+            String visibilityScope,
             String category,
             String tags,
             String remark
@@ -606,6 +650,7 @@ public class FileManagementAppService {
         entity.setUploadedBy(currentUser.getUserId());
         entity.setUploadedByName(currentUser.getUsername());
         entity.setDepartmentId(currentUser.getPrimaryDeptId());
+        entity.setVisibilityScope(resolveVisibilityScope(visibilityScope));
         entity.setOriginalFilename(originalFilename);
         entity.setFileExtension(fileExtension);
         entity.setContentType(contentType);
@@ -638,6 +683,7 @@ public class FileManagementAppService {
     }
 
     private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, CurrentUser currentUser, boolean tenantScopeRequested, boolean downloadCenterScope) {
+        applyFileVisibilityScope(queryWrapper, downloadCenterScope);
         if (!tenantScopeRequested) {
             queryWrapper.eq("uploaded_by", currentUser.getUserId());
             return;
@@ -679,6 +725,45 @@ public class FileManagementAppService {
         });
     }
 
+    private void applyFileVisibilityScope(QueryWrapper<FileObjectEntity> queryWrapper, boolean downloadCenterScope) {
+        if (downloadCenterScope) {
+            queryWrapper
+                    .eq("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER)
+                    .eq("bucket", STORAGE_KEY_DOWNLOAD_CENTER);
+            return;
+        }
+        queryWrapper
+                .and(wrapper -> wrapper
+                        .isNull("visibility_scope")
+                        .or()
+                        .ne("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER))
+                .ne("bucket", STORAGE_KEY_DOWNLOAD_CENTER);
+    }
+
+    private String resolveVisibilityScope(String scope) {
+        if (SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) || VISIBILITY_SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope)) {
+            return VISIBILITY_SCOPE_DOWNLOAD_CENTER;
+        }
+        if (VISIBILITY_SCOPE_PUBLIC.equalsIgnoreCase(scope)) {
+            return VISIBILITY_SCOPE_PUBLIC;
+        }
+        return VISIBILITY_SCOPE_PERSONAL;
+    }
+
+    private String resolveUploadBucket(String bucket, String scope) {
+        if (isDownloadCenterScope(scope)) {
+            return STORAGE_KEY_DOWNLOAD_CENTER;
+        }
+        if (StringUtils.hasText(bucket) && STORAGE_KEY_DOWNLOAD_CENTER.equals(normalizeStorageKey(bucket))) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "普通文件不能写入下载中心存储空间");
+        }
+        return bucket;
+    }
+
+    private boolean isDownloadCenterScope(String scope) {
+        return SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) || VISIBILITY_SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+    }
+
     private boolean isTenantWideScope(String scope) {
         return SCOPE_TENANT.equalsIgnoreCase(scope) || SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
@@ -688,7 +773,7 @@ public class FileManagementAppService {
         if (entity != null) {
             return mapStorageSpace(entity);
         }
-        return new StorageSpaceDTO(null, tenantId, "Local storage", "local", "LOCAL", "storage/uploads/", null, null, null, null, false, "APPEND_RANDOM_ID", 20, "*", true, false, "ENABLED", 0L, 0L, "0B", null, null);
+        return new StorageSpaceDTO(null, tenantId, "Local storage", "local", "LOCAL", "storage/uploads/", null, null, null, null, false, "APPEND_RANDOM_ID", 20, "*", true, false, false, "ENABLED", 0L, 0L, "0B", null, null);
     }
 
     private StorageSpaceDTO queryStorageSpace(Long tenantId, String storageKey) {
@@ -865,11 +950,12 @@ public class FileManagementAppService {
         String allowedMimeTypes = defaultIfBlank(request.getAllowedMimeTypes(), existing == null ? "*" : existing.allowedMimeTypes());
         boolean defaultStorage = request.getDefaultStorage() == null ? existing == null || Boolean.TRUE.equals(existing.defaultStorage()) : request.getDefaultStorage();
         boolean retain = request.getRetainFileOnRecordDelete() == null ? existing != null && Boolean.TRUE.equals(existing.retainFileOnRecordDelete()) : request.getRetainFileOnRecordDelete();
+        boolean anonymousAccessAllowed = request.getAnonymousAccessAllowed() == null ? existing != null && Boolean.TRUE.equals(existing.anonymousAccessAllowed()) : request.getAnonymousAccessAllowed();
         String status = "DISABLED".equalsIgnoreCase(request.getStatus()) ? "DISABLED" : "ENABLED";
         if (maxFileSizeMb == null || maxFileSizeMb < 1) {
             throw new BizException(ErrorCode.BIZ_ERROR, "文件大小限制最小为 1MB");
         }
-        return new StoragePayload(title, storageKey, provider, rootPath, bucketName, endpoint, region, accessKeyId, accessKeySecret, renameStrategy, maxFileSizeMb, allowedMimeTypes, defaultStorage, retain, status);
+        return new StoragePayload(title, storageKey, provider, rootPath, bucketName, endpoint, region, accessKeyId, accessKeySecret, renameStrategy, maxFileSizeMb, allowedMimeTypes, defaultStorage, retain, anonymousAccessAllowed, status);
     }
 
     private String normalizeProvider(String provider) {
@@ -978,6 +1064,7 @@ public class FileManagementAppService {
         entity.setAllowedMimeTypes(payload.allowedMimeTypes());
         entity.setDefaultFlag(payload.defaultStorage() ? 1 : 0);
         entity.setRetainFileOnRecordDelete(payload.retainFileOnRecordDelete() ? 1 : 0);
+        entity.setAnonymousAccessAllowed(payload.anonymousAccessAllowed() ? 1 : 0);
         entity.setStatus(payload.status());
         entity.setCreatedBy(operatorId);
         entity.setCreatedAt(now);
@@ -1007,6 +1094,7 @@ public class FileManagementAppService {
                 entity.getAllowedMimeTypes(),
                 entity.getDefaultFlag() != null && entity.getDefaultFlag() == 1,
                 entity.getRetainFileOnRecordDelete() != null && entity.getRetainFileOnRecordDelete() == 1,
+                entity.getAnonymousAccessAllowed() != null && entity.getAnonymousAccessAllowed() == 1,
                 entity.getStatus(),
                 fileCount,
                 totalSizeBytes,
@@ -1031,6 +1119,7 @@ public class FileManagementAppService {
             String allowedMimeTypes,
             boolean defaultStorage,
             boolean retainFileOnRecordDelete,
+            boolean anonymousAccessAllowed,
             String status
     ) {
     }

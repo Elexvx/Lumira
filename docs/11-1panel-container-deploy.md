@@ -10,10 +10,23 @@
 如果是在普通服务器命令行部署，推荐直接运行：
 
 ```bash
-node scripts/deploy-container.mjs --rebuild
+node scripts/deploy-container.mjs --pull
 ```
 
-脚本会自动生成 `deploy/.env`，填入随机密钥，然后执行 Docker Compose 部署。默认不会启动前端 Nginx 容器。
+脚本会自动生成 `deploy/.env`，填入随机密钥，拉取 CI 已构建好的镜像，然后执行 Docker Compose 部署。默认不会启动前端 Nginx 容器。
+
+`main` 分支 CI 会在编译和测试通过后发布镜像到 GitHub Container Registry。默认镜像配置在 `deploy/.env`：
+
+```bash
+LUMIRA_SERVER_IMAGE=ghcr.io/elexvx/lumira/lumira-server:main
+LUMIRA_FRONTEND_IMAGE=ghcr.io/elexvx/lumira/frontend:main
+```
+
+如果需要固定到某次发布，把 `main` 替换为 `sha-<12位提交>`。如果服务器必须本机重新构建镜像，再运行：
+
+```bash
+node scripts/deploy-container.mjs --rebuild
+```
 
 常用命令：
 
@@ -57,7 +70,8 @@ cp deploy/.env.example deploy/.env
 也可以在服务器命令行验证：
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml pull
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d
 ```
 
 如果需要启用 Nacos profile，再替换 `NACOS_AUTH_TOKEN`、`NACOS_AUTH_IDENTITY_KEY`、`NACOS_AUTH_IDENTITY_VALUE`。

@@ -53,6 +53,7 @@ export default {
   'page.profile.passkey.unsupported': 'Your browser does not support passkeys',
   'page.profile.passkey.bound': 'Passkey bound',
   'page.profile.passkey.cancelled': 'Passkey binding cancelled',
+  'page.profile.passkey.timeout': 'Passkey binding timed out. Please try again.',
   'page.profile.passkey.failed': 'Passkey binding failed',
   'page.profile.passkey.renamePrompt': 'Enter a passkey name',
   'page.profile.passkey.renamed': 'Passkey renamed',
