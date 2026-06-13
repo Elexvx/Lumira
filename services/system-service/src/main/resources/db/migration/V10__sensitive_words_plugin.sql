@@ -1,12 +1,12 @@
 ALTER TABLE `sys_plugin_definition`
-  ADD COLUMN IF NOT EXISTS `schema_mode` varchar(32) NOT NULL DEFAULT 'ISOLATED',
-  ADD COLUMN IF NOT EXISTS `supports_hot_disable` tinyint NOT NULL DEFAULT '1',
-  ADD COLUMN IF NOT EXISTS `supports_data_purge` tinyint NOT NULL DEFAULT '0',
-  ADD COLUMN IF NOT EXISTS `runtime_contributions_json` json DEFAULT NULL;
+  ADD COLUMN `schema_mode` varchar(32) NOT NULL DEFAULT 'ISOLATED',
+  ADD COLUMN `supports_hot_disable` tinyint NOT NULL DEFAULT '1',
+  ADD COLUMN `supports_data_purge` tinyint NOT NULL DEFAULT '0',
+  ADD COLUMN `runtime_contributions_json` json DEFAULT NULL;
 
 ALTER TABLE `sys_plugin_version`
-  ADD COLUMN IF NOT EXISTS `lifecycle_status` varchar(32) NOT NULL DEFAULT 'INSTALLED',
-  ADD COLUMN IF NOT EXISTS `schema_status` varchar(32) NOT NULL DEFAULT 'PENDING';
+  ADD COLUMN `lifecycle_status` varchar(32) NOT NULL DEFAULT 'INSTALLED',
+  ADD COLUMN `schema_status` varchar(32) NOT NULL DEFAULT 'PENDING';
 
 CREATE TABLE IF NOT EXISTS `sys_plugin_schema_history` (
   `id` bigint NOT NULL AUTO_INCREMENT,

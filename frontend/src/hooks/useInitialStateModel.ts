@@ -13,6 +13,7 @@ export const useInitialStateModel = () => {
   let runtimeModel: InitialStateModel | null = null;
 
   try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     runtimeModel = useModel('@@initialState' as never) as unknown as InitialStateModel;
   } catch {
     runtimeModel = null;

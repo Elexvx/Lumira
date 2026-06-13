@@ -29,6 +29,7 @@ INSERT INTO `sys_config` (`id`, `tenant_id`, `config_key`, `config_name`, `confi
 (7008,1001,'branding.website-logo-url','站点 Logo 地址','','PLATFORM',0,'控制台左上角品牌 Logo 地址',0,'2026-04-03 16:25:38',1001,'2026-04-06 04:47:43',0),
 (7009,1001,'branding.footer-icp','页脚 ICP 备案','','PLATFORM',0,'页脚备案信息',0,'2026-04-03 16:25:38',1001,'2026-04-06 04:47:43',0),
 (7010,1001,'branding.footer-copyright','页脚版权声明','','PLATFORM',0,'页脚版权声明',0,'2026-04-03 16:25:38',1001,'2026-04-06 04:47:43',0),
+(7011,1001,'branding.footer-police-beian','页脚公安备案','','PLATFORM',0,'页脚公安备案信息',0,'2026-06-12 00:00:00',1001,'2026-06-12 00:00:00',0),
 (7013,1001,'agreement.user-agreement-markdown','用户协议','欢迎使用宏翔商道后台管理系统。\n\n在使用本系统前，请仔细阅读并理解以下内容：\n\n1. 您在登录、访问和使用本系统相关功能时，应遵守国家法律法规以及平台规则。\n2. 您应妥善保管账号、密码及相关身份信息，不得将账号转借、共享或提供给无关第三方。\n3. 平台可能会在提供服务所必需的范围内处理您的账号、日志与业务数据。\n4. 如您不同意本协议内容，请停止使用本系统。\n\n本协议自发布或更新之日起生效。','PLATFORM',0,'用户协议 Markdown',0,'2026-04-07 04:32:25',1001,'2026-05-04 13:44:05',0),
 (7014,1001,'agreement.privacy-agreement-markdown','隐私协议','我们重视并保护您的个人信息。\n\n在提供服务所必需的范围内，我们可能会收集、使用、存储和传输您的账号信息、操作日志和业务数据。\n\n我们不会在未经授权的情况下向无关第三方披露您的个人信息，除非法律法规或监管要求另有规定。\n\n如您对隐私保护有任何疑问，请联系系统管理员。','PLATFORM',0,'隐私协议 Markdown',0,'2026-04-07 04:32:25',1001,'2026-05-04 13:44:05',0),
 (7111,1001,'watermark.enabled','水印开关','false','PLATFORM',0,'全局水印开关',1001,'2026-04-05 17:14:57',1001,'2026-05-04 01:26:17',0),
@@ -81,9 +82,9 @@ INSERT INTO `sys_config` (`id`, `tenant_id`, `config_key`, `config_name`, `confi
 (7385,1001,'verification.passkey.enabled','通行密钥启用','false','PLATFORM',0,'是否启用通行密钥登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7386,1001,'verification.passkey.passwordless-enabled','通行密钥无账号登录','false','PLATFORM',0,'是否允许发现式凭据无账号登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7387,1001,'verification.passkey.self-binding-enabled','通行密钥自助绑定','false','PLATFORM',0,'是否允许用户在个人中心自助绑定通行密钥',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7388,1001,'verification.passkey.rp-id','通行密钥 RP ID','saas.elexvx.com','PLATFORM',0,'WebAuthn RP ID',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7389,1001,'verification.passkey.rp-name','通行密钥 RP 名称','宏翔商道后台管理系统','PLATFORM',0,'WebAuthn RP 显示名称',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
-(7390,1001,'verification.passkey.allowed-origins','通行密钥允许 Origin','https://saas.elexvx.com','PLATFORM',0,'WebAuthn 允许的前端 Origin',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7388,1001,'verification.passkey.rp-id','通行密钥 RP ID','','PLATFORM',0,'WebAuthn RP ID',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7389,1001,'verification.passkey.rp-name','通行密钥 RP 名称','','PLATFORM',0,'WebAuthn RP 显示名称',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
+(7390,1001,'verification.passkey.allowed-origins','通行密钥允许 Origin','','PLATFORM',0,'WebAuthn 允许的前端 Origin',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7391,1001,'verification.passkey.challenge-ttl-seconds','通行密钥 Challenge TTL','120','PLATFORM',0,'WebAuthn challenge 有效期秒数',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7392,1001,'verification.password-login.enabled','密码登录','true','PLATFORM',0,'是否启用账号密码登录',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
 (7393,1001,'verification.login-mode.order','登录方式排序','password','PLATFORM',0,'登录页分段控制器展示顺序',0,CURRENT_TIMESTAMP,0,CURRENT_TIMESTAMP,0),
@@ -435,6 +436,10 @@ CREATE TABLE IF NOT EXISTS `sys_plugin_definition` (
   `builtin_flag` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `sort_no` int NOT NULL DEFAULT '0',
+  `schema_mode` varchar(32) NOT NULL DEFAULT 'ISOLATED',
+  `supports_hot_disable` tinyint NOT NULL DEFAULT '1',
+  `supports_data_purge` tinyint NOT NULL DEFAULT '0',
+  `runtime_contributions_json` json DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
@@ -537,6 +542,8 @@ CREATE TABLE IF NOT EXISTS `sys_plugin_version` (
   `install_status` varchar(32) NOT NULL DEFAULT 'UPLOADED',
   `load_status` varchar(32) NOT NULL DEFAULT 'UNLOADED',
   `health_status` varchar(32) NOT NULL DEFAULT 'UNKNOWN',
+  `lifecycle_status` varchar(32) NOT NULL DEFAULT 'INSTALLED',
+  `schema_status` varchar(32) NOT NULL DEFAULT 'PENDING',
   `is_active` tinyint NOT NULL DEFAULT '0',
   `rollbackable` tinyint NOT NULL DEFAULT '0',
   `metadata_json` json DEFAULT NULL,
@@ -877,6 +884,7 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `uploaded_by` bigint DEFAULT NULL,
   `uploaded_by_name` varchar(128) DEFAULT NULL,
   `department_id` bigint DEFAULT NULL,
+  `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL',
   `original_filename` varchar(255) NOT NULL,
   `file_extension` varchar(32) DEFAULT NULL,
   `content_type` varchar(128) DEFAULT NULL,
@@ -896,7 +904,8 @@ CREATE TABLE IF NOT EXISTS `file_object` (
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_file_object_key` (`tenant_id`,`object_key`),
-  KEY `idx_file_object_department` (`tenant_id`,`department_id`,`deleted`)
+  KEY `idx_file_object_department` (`tenant_id`,`department_id`,`deleted`),
+  KEY `idx_file_object_visibility` (`tenant_id`,`visibility_scope`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `file_storage_space` (
@@ -916,6 +925,7 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
   `allowed_mime_types` varchar(1024) NOT NULL DEFAULT '*',
   `default_flag` tinyint NOT NULL DEFAULT '0',
   `retain_file_on_record_delete` tinyint NOT NULL DEFAULT '0',
+  `anonymous_access_allowed` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -927,10 +937,11 @@ CREATE TABLE IF NOT EXISTS `file_storage_space` (
   KEY `idx_file_storage_space_default` (`tenant_id`,`default_flag`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
-(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,'ENABLED',1,1,0),
-(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,'ENABLED',1,1,0),
-(1001,'AI 知识库文档','ai_knowledge','LOCAL','storage/uploads/ai_knowledge/','APPEND_RANDOM_ID',50,'*',0,0,'ENABLED',1,1,0);
+INSERT INTO `file_storage_space` (`tenant_id`, `title`, `storage_key`, `provider`, `root_path`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`, `default_flag`, `retain_file_on_record_delete`, `anonymous_access_allowed`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
+(1001,'Local storage','local','LOCAL','storage/uploads/','APPEND_RANDOM_ID',20,'*',1,0,0,'ENABLED',1,1,0),
+(1001,'AI 聊天附件','ai_chat','LOCAL','storage/uploads/ai_chat/','APPEND_RANDOM_ID',20,'*',0,0,0,'ENABLED',1,1,0),
+(1001,'AI 知识库文档','ai_knowledge','LOCAL','storage/uploads/ai_knowledge/','APPEND_RANDOM_ID',50,'*',0,0,0,'ENABLED',1,1,0),
+(1001,'下载中心文件','download_center','LOCAL','storage/uploads/download_center/','APPEND_RANDOM_ID',100,'*',0,0,0,'ENABLED',1,1,0);
 
 CREATE TABLE IF NOT EXISTS `payment_provider_config` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -1976,6 +1987,96 @@ WHERE t.`deleted` = 0
     WHERE s.`tenant_id` = t.`id`
       AND s.`storage_key` = 'ai_knowledge'
   );
+
+
+-- -----------------------------------------------------------------------------
+-- Folded migration: V14__seed_download_center_storage_space.sql
+-- -----------------------------------------------------------------------------
+INSERT INTO `file_storage_space` (
+  `tenant_id`,
+  `title`,
+  `storage_key`,
+  `provider`,
+  `root_path`,
+  `rename_strategy`,
+  `max_file_size_mb`,
+  `allowed_mime_types`,
+  `default_flag`,
+  `retain_file_on_record_delete`,
+  `status`,
+  `created_by`,
+  `updated_by`,
+  `deleted`
+)
+SELECT
+  t.`id`,
+  '下载中心文件',
+  'download_center',
+  'LOCAL',
+  'storage/uploads/download_center/',
+  'APPEND_RANDOM_ID',
+  100,
+  '*',
+  0,
+  0,
+  'ENABLED',
+  1,
+  1,
+  0
+FROM `sys_tenant` t
+WHERE t.`deleted` = 0
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `file_storage_space` s
+    WHERE s.`tenant_id` = t.`id`
+      AND s.`storage_key` = 'download_center'
+  );
+
+
+-- -----------------------------------------------------------------------------
+-- Folded migration: V15__user_export_tasks.sql
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `sys_export_task` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `module_key` varchar(128) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `request_payload` json DEFAULT NULL,
+  `selected_fields` json DEFAULT NULL,
+  `total_count` bigint DEFAULT '0',
+  `file_id` bigint DEFAULT NULL,
+  `file_name` varchar(255) DEFAULT NULL,
+  `error_message` varchar(1000) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `started_at` datetime DEFAULT NULL,
+  `finished_at` datetime DEFAULT NULL,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_sys_export_task_tenant_creator` (`tenant_id`,`created_by`,`created_at`),
+  KEY `idx_sys_export_task_status` (`status`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `sys_permission`
+  (`tenant_id`, `permission_key`, `permission_name`, `permission_group`, `source_type`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`)
+SELECT 1001, 'system:user:export', '导出用户', 'system', 'CORE', 0, CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM `sys_permission` WHERE `tenant_id` = 1001 AND `permission_key` = 'system:user:export' AND `deleted` = 0
+);
+
+INSERT INTO `sys_role_permission`
+  (`tenant_id`, `role_id`, `permission_key`, `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`)
+SELECT 1001, 2001, 'system:user:export', 0, CURRENT_TIMESTAMP, 0, CURRENT_TIMESTAMP, 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM `sys_role_permission`
+  WHERE `tenant_id` = 1001 AND `role_id` = 2001 AND `permission_key` = 'system:user:export' AND `deleted` = 0
+);
+
+
+-- -----------------------------------------------------------------------------
+-- Folded migration: V16__storage_space_anonymous_access_allowed.sql
+-- -----------------------------------------------------------------------------
+-- The column is included in the `file_storage_space` table definition above.
 
 
 -- -----------------------------------------------------------------------------
@@ -3495,16 +3596,6 @@ WHERE `tenant_id` = 1001
   AND `menu_code` = 'settings.monitoring.update';
 
 
-ALTER TABLE `sys_plugin_definition`
-  ADD COLUMN IF NOT EXISTS `schema_mode` varchar(32) NOT NULL DEFAULT 'ISOLATED',
-  ADD COLUMN IF NOT EXISTS `supports_hot_disable` tinyint NOT NULL DEFAULT '1',
-  ADD COLUMN IF NOT EXISTS `supports_data_purge` tinyint NOT NULL DEFAULT '0',
-  ADD COLUMN IF NOT EXISTS `runtime_contributions_json` json DEFAULT NULL;
-
-ALTER TABLE `sys_plugin_version`
-  ADD COLUMN IF NOT EXISTS `lifecycle_status` varchar(32) NOT NULL DEFAULT 'INSTALLED',
-  ADD COLUMN IF NOT EXISTS `schema_status` varchar(32) NOT NULL DEFAULT 'PENDING';
-
 CREATE TABLE IF NOT EXISTS `sys_plugin_schema_history` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `plugin_code` varchar(64) NOT NULL,
@@ -3695,7 +3786,22 @@ INSERT INTO `flyway_schema_history` (
   `success`
 )
 VALUES
-  (1, '1', 'baseline', 'SQL', 'V1__baseline.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1)
+  (1, '1', 'baseline', 'SQL', 'V1__baseline.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (2, '2', 'cleanup unused schema', 'SQL', 'V2__cleanup_unused_schema.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (3, '3', 'role default home path', 'SQL', 'V3__role_default_home_path.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (4, '4', 'grant payment view to default admin', 'SQL', 'V4__grant_payment_view_to_default_admin.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (5, '5', 'baseline payment domain', 'SQL', 'V5__baseline_payment_domain.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (6, '6', 'grant payment config permissions to default admin', 'SQL', 'V6__grant_payment_config_permissions_to_default_admin.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (7, '7', 'expand encrypted secret columns', 'SQL', 'V7__expand_encrypted_secret_columns.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (8, '8', 'seed download center', 'SQL', 'V8__seed_download_center.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (9, '9', 'download center action permissions', 'SQL', 'V9__download_center_action_permissions.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (10, '10', 'sensitive words plugin', 'SQL', 'V10__sensitive_words_plugin.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (11, '11', 'seed ai knowledge storage space', 'SQL', 'V11__seed_ai_knowledge_storage_space.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (12, '12', 'branding police beian', 'SQL', 'V12__branding_police_beian.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (13, '13', 'file object visibility scope', 'SQL', 'V13__file_object_visibility_scope.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (14, '14', 'seed download center storage space', 'SQL', 'V14__seed_download_center_storage_space.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (15, '15', 'user export tasks', 'SQL', 'V15__user_export_tasks.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1),
+  (16, '16', 'storage space anonymous access allowed', 'SQL', 'V16__storage_space_anonymous_access_allowed.sql', NULL, 'manual-saas-sql', CURRENT_TIMESTAMP, 0, 1)
 ON DUPLICATE KEY UPDATE
   `version` = VALUES(`version`),
   `description` = VALUES(`description`),
