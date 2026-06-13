@@ -13,6 +13,7 @@ import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.auth.dto.SecondFactorVerifyRequest;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -168,6 +169,17 @@ public class SystemVerificationController {
         );
     }
 
+    @DeleteMapping("/sms-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.SmsVerificationSettingsVO> resetSmsSettings() {
+        CurrentUser currentUser = currentUser();
+        requireConfigManage();
+        return ApiResponse.success(
+                verificationAppService.resetSmsSettings(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PutMapping("/wechat-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.WechatLoginSettingsVO> updateWechatSettings(@Valid @RequestBody SystemDTO.WechatLoginSettingsRequest request) {
@@ -179,6 +191,17 @@ public class SystemVerificationController {
         );
     }
 
+    @DeleteMapping("/wechat-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.WechatLoginSettingsVO> resetWechatSettings() {
+        CurrentUser currentUser = currentUser();
+        requireConfigManage();
+        return ApiResponse.success(
+                verificationAppService.resetWechatSettings(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PutMapping("/passkey-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.PasskeySettingsVO> updatePasskeySettings(@Valid @RequestBody SystemDTO.PasskeySettingsRequest request) {
@@ -186,6 +209,17 @@ public class SystemVerificationController {
         requireConfigManage();
         return ApiResponse.success(
                 verificationAppService.updatePasskeySettings(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @DeleteMapping("/passkey-settings")
+    @RepeatSubmit
+    public ApiResponse<SystemVO.PasskeySettingsVO> resetPasskeySettings() {
+        CurrentUser currentUser = currentUser();
+        requireConfigManage();
+        return ApiResponse.success(
+                verificationAppService.resetPasskeySettings(currentUser),
                 TraceContext.getRequestId()
         );
     }

@@ -27,7 +27,12 @@
     "test:login-redirect-target": "tsx scripts/login-redirect-target-smoke.ts",
     "test:login-storage-sync": "tsx scripts/login-storage-sync-smoke.ts",
     "test:online-users-session-removal": "tsx scripts/online-users-session-removal-smoke.ts",
-    "test:antd-static-theme": "tsx scripts/antd-static-theme-smoke.ts"
+    "test:antd-static-theme": "tsx scripts/antd-static-theme-smoke.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "test:e2e:reset": "node ../scripts/reset-e2e-platform.mjs && playwright test",
+    "test:e2e:reset:smoke": "node ../scripts/reset-e2e-platform.mjs && playwright test --grep @smoke",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.2",
@@ -44,6 +49,7 @@
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.6.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

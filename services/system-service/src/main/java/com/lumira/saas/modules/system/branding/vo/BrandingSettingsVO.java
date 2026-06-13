@@ -13,6 +13,7 @@ public class BrandingSettingsVO {
     private String companyName;
     private Integer copyrightStartYear;
     private String footerIcp;
+    private String footerPoliceBeian;
     private String footerCopyright;
 
     public String getWebsiteName() { return websiteName; }
@@ -37,6 +38,8 @@ public class BrandingSettingsVO {
     public void setCopyrightStartYear(Integer copyrightStartYear) { this.copyrightStartYear = copyrightStartYear; }
     public String getFooterIcp() { return footerIcp; }
     public void setFooterIcp(String footerIcp) { this.footerIcp = footerIcp; }
+    public String getFooterPoliceBeian() { return footerPoliceBeian; }
+    public void setFooterPoliceBeian(String footerPoliceBeian) { this.footerPoliceBeian = footerPoliceBeian; }
     public String getFooterCopyright() { return footerCopyright; }
     public void setFooterCopyright(String footerCopyright) { this.footerCopyright = footerCopyright; }
 }

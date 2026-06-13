@@ -213,7 +213,7 @@ public class FileController {
     ) {
         require(FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) ? "download:center:create" : "system:file:upload");
         return ApiResponse.success(
-                fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark, bucket),
+                fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark, bucket, scope),
                 TraceContext.getRequestId()
         );
     }

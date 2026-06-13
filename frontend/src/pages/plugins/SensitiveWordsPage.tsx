@@ -220,10 +220,7 @@ const SensitiveWordsPage = () => {
   }, [actionPermission, deleteWord, openEdit, responsive.isMobile, toggleEnabled]);
 
   return (
-    <ManagementPage
-      title="敏感词拦截"
-      subTitle="全局检测后台输入内容中的敏感词"
-    >
+    <ManagementPage title="敏感词拦截">
       <ManagementPageBody>
         {!pluginEnabled ? (
           <Empty

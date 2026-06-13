@@ -41,6 +41,26 @@ class SecurityPermitPathsTest {
         Assertions.assertTrue(testConfig.contains("- /api/v1/auth/wechat/login"), testConfig);
     }
 
+    @Test
+    void passkeyLoginEndpointsShouldBePublicInMainAndTestConfig() throws IOException {
+        String mainConfig = readMainConfig();
+        String testConfig = readConfig("src/test/resources/application.yml");
+
+        Assertions.assertTrue(mainConfig.contains("- /api/v1/auth/passkeys/authentication/options"), mainConfig);
+        Assertions.assertTrue(mainConfig.contains("- /api/v1/auth/passkeys/authentication/complete"), mainConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/v1/auth/passkeys/authentication/options"), testConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/v1/auth/passkeys/authentication/complete"), testConfig);
+    }
+
+    @Test
+    void uploadStaticResourcesShouldStayPublicForResourceInterceptorInMainAndTestConfig() throws IOException {
+        String mainConfig = readMainConfig();
+        String testConfig = readConfig("src/test/resources/application.yml");
+
+        Assertions.assertTrue(mainConfig.contains("- /api/uploads/**"), mainConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/uploads/**"), testConfig);
+    }
+
     private static String readConfig(String relativePath) throws IOException {
         return Files.readString(Path.of(relativePath), StandardCharsets.UTF_8);
     }

@@ -147,7 +147,7 @@ const deliveryLogs = (params: MessageArchiveQuery = {}) =>
   });
 
 const NotificationInboxInfo = ({ descriptionsProps }: { descriptionsProps: Parameters<typeof Descriptions>[0] }) => (
-    <Descriptions {...descriptionsProps} bordered>
+  <Descriptions {...descriptionsProps} bordered column={1}>
     <Descriptions.Item label={t('通知标识', 'Notification key')}>inbox_notice</Descriptions.Item>
     <Descriptions.Item label={t('状态', 'Status')}>{t('已启用', 'Enabled')}</Descriptions.Item>
     <Descriptions.Item label={t('能力', 'Capabilities')}>{t('消息中心、实时推送、已读状态、撤回', 'Message center, realtime push, read state, retract')}</Descriptions.Item>

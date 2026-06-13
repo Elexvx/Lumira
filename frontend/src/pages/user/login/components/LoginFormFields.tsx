@@ -298,6 +298,7 @@ const PasswordLoginImageCaptcha = ({
         placeholder={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the captcha' })}
         aria-label={formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Captcha' })}
         className="saas-login-page__captcha-native-input"
+        data-testid="login-captcha-input"
         onCompositionStart={(event) => event.preventDefault()}
         onKeyDown={(event) => {
           if (shouldBlockCaptchaKey(event)) {
@@ -317,6 +318,7 @@ const PasswordLoginImageCaptcha = ({
       title={formatMessage({ id: 'page.login.captcha.refresh', defaultMessage: 'Click to refresh the captcha' })}
       onClick={onRefreshCaptcha}
       className="saas-login-page__captcha-image-button"
+      data-testid="login-captcha-refresh"
     >
       {captchaLoading ? (
         <Skeleton.Image active className="saas-login-page__captcha-skeleton" />
@@ -477,6 +479,7 @@ const PasswordLoginCredentialsFields = () => {
           autoComplete="username"
           maxLength={128}
           placeholder={formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: 'Please enter your account, mobile number, or email' })}
+          data-testid="login-account-input"
           {...guardedInputEvents('account')}
         />
       </Form.Item>
@@ -493,6 +496,7 @@ const PasswordLoginCredentialsFields = () => {
           prefix={<LockOutlined className="saas-login-page__field-icon" />}
           autoComplete="current-password"
           placeholder={formatMessage({ id: 'page.login.error.pleaseEnterPassword', defaultMessage: 'Please enter your password' })}
+          data-testid="login-password-input"
         />
       </Form.Item>
     </>
@@ -533,6 +537,10 @@ const PasswordLoginPanel = ({
     const previous = previousPasswordCredentialsRef.current;
     previousPasswordCredentialsRef.current = { account: passwordAccount, password: passwordPassword };
 
+    if (securityCaptchaType !== 'SLIDER') {
+      return;
+    }
+
     if (!previous) {
       return;
     }
@@ -543,7 +551,7 @@ const PasswordLoginPanel = ({
       onSliderCaptchaChallengeChange(null);
       onSliderCaptchaReset();
     }
-  }, [onSliderCaptchaChallengeChange, onSliderCaptchaReset, passwordAccount, passwordPassword]);
+  }, [onSliderCaptchaChallengeChange, onSliderCaptchaReset, passwordAccount, passwordPassword, securityCaptchaType]);
 
   const handleStartSliderCaptcha = async () => {
     try {
@@ -679,7 +687,7 @@ export const LoginFormFields = ({
                   },
                 ]}
               >
-                <Checkbox>
+                <Checkbox data-testid="login-agreement-checkbox">
                   {formatMessage({ id: 'page.login.agreement.accept', defaultMessage: 'I have read and agree to' })}
                   <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
                     {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}

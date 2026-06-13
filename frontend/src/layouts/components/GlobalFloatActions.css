@@ -37,6 +37,21 @@
   display: block;
 }
 
+.saas-global-float-actions__qr-placeholder {
+  width: var(--saas-qrcode-size);
+  min-height: var(--saas-qrcode-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--saas-spacing-sm);
+  border: 1px dashed var(--ant-color-border);
+  border-radius: var(--saas-card-radius);
+  background: var(--ant-color-fill-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 @media (max-width: 767px) {
   .saas-global-float-actions .ant-float-btn {
     width: var(--saas-spacing-40);
@@ -54,5 +69,10 @@
   .saas-global-float-actions__qr-image {
     width: var(--saas-qrcode-size-mobile);
     height: var(--saas-qrcode-size-mobile);
+  }
+
+  .saas-global-float-actions__qr-placeholder {
+    width: var(--saas-qrcode-size-mobile);
+    min-height: var(--saas-qrcode-size-mobile);
   }
 }

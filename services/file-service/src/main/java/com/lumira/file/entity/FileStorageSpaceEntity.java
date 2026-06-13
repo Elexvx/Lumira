@@ -27,6 +27,7 @@ public class FileStorageSpaceEntity {
     private String allowedMimeTypes;
     private Integer defaultFlag;
     private Integer retainFileOnRecordDelete;
+    private Integer anonymousAccessAllowed;
     private String status;
     private Long createdBy;
     private LocalDateTime createdAt;
@@ -164,6 +165,14 @@ public class FileStorageSpaceEntity {
 
     public void setRetainFileOnRecordDelete(Integer retainFileOnRecordDelete) {
         this.retainFileOnRecordDelete = retainFileOnRecordDelete;
+    }
+
+    public Integer getAnonymousAccessAllowed() {
+        return anonymousAccessAllowed;
+    }
+
+    public void setAnonymousAccessAllowed(Integer anonymousAccessAllowed) {
+        this.anonymousAccessAllowed = anonymousAccessAllowed;
     }
 
     public String getStatus() {

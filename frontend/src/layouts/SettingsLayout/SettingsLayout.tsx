@@ -40,7 +40,7 @@ const SettingsLayout = () => {
   if (pathname === '/settings' || pathname === '/settings/overview') {
     return (
       <Navigate
-        to={resolveFirstSettingsNavigationPath(initialState?.menuTree, (accessKey) => accessValue(access, accessKey)) || DEFAULT_HOME_PATH}
+        to={resolveFirstSettingsNavigationPath(initialState?.menuTree, (accessKey) => accessValue(access, accessKey), initialState?.availablePlugins) || DEFAULT_HOME_PATH}
         replace
       />
     );

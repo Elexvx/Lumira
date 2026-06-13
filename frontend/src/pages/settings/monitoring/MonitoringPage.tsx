@@ -942,9 +942,6 @@ const ServiceMonitorContent = () => {
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-service-monitor-page saas-monitoring-tab-pane">
-      <Typography.Title level={3} style={{ margin: 0 }}>
-        {t('服务监控', 'Service monitoring')}
-      </Typography.Title>
       <Row gutter={rowGutter}>
         <Col xs={24} lg={12}>
           <Card title="CPU" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>

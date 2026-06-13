@@ -562,7 +562,7 @@ const PersonalizationSettingsPage = () => {
                       </Form.Item>
                     </Form>
 
-                    <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
+                    <Space wrap style={{ justifyContent: 'flex-start', width: '100%' }}>
                       <Button danger disabled={!canUpdate} onClick={() => handleClearAgreementField('userAgreementMarkdown')}>
                         {t('清空用户协议', 'Clear user agreement')}
                       </Button>

@@ -131,7 +131,7 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
           })}
         </Form.Item>
       </Form>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" loading={saving} disabled={!canUpdate} onClick={onSave}>
           {t('保存设置', 'Save settings')}
         </Button>

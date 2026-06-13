@@ -386,7 +386,8 @@ export const useUserManagement = () => {
     initialValues: { status: 'ENABLED', roleIds: [], deptIds: [] },
   });
   const detailProps = useDetailProDescriptionsProps<UserDetail>({
-    column: responsive.isMobile ? 1 : 2,
+    className: 'saas-user-detail-descriptions',
+    column: 1,
     dataSource: selectedUserDetail || undefined,
   });
 

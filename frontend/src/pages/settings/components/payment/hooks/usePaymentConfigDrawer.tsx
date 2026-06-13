@@ -234,7 +234,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
             <Input />
           </Form.Item>
           <Form.Item name="enabled" label={t('启用', 'Enabled')} valuePropName="checked" extra={t('停用后，新的支付和退款请求将被拦截。', 'When disabled, new payment and refund requests will be blocked.')}>
-            <Switch checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} disabled={!canUpdateSettings} />
+            <Switch disabled={!canUpdateSettings} />
           </Form.Item>
           <Form.Item name="environment" label={t('环境', 'Environment')} rules={[{ required: true, message: t('请选择环境', 'Please select an environment') }]}>
             <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canUpdateSettings} />
@@ -243,7 +243,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
             <Input disabled={!canUpdateSettings} maxLength={16} placeholder={t('例如：CNY', 'e.g. CNY')} />
           </Form.Item>
           <Form.Item name="sandboxEnabled" label={t('沙箱模式', 'Sandbox mode')} valuePropName="checked" extra={t('开启后优先按沙箱环境理解配置。', 'When enabled, the configuration is interpreted as sandbox first.')}>
-            <Switch checkedChildren={t('开启', 'On')} unCheckedChildren={t('关闭', 'Off')} disabled={!canUpdateSettings} />
+            <Switch disabled={!canUpdateSettings} />
           </Form.Item>
           {providerFields.map((field) => {
             const extraMessage =

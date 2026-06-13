@@ -62,8 +62,8 @@ export const TableActionBar = ({ items, isMobile = false, inlineCount }: TableAc
       ))}
       {menuItems.length ? (
         <Dropdown trigger={['click']} menu={{ items: menuItems }} placement="bottomRight">
-          <Button type="link" size="small" icon={<MoreOutlined />}>
-            {t('更多', 'More')}
+          <Button type="link" size="small" icon={<MoreOutlined />} aria-label={t('更多', 'More')} title={t('更多', 'More')}>
+            {isMobile ? null : t('更多', 'More')}
           </Button>
         </Dropdown>
       ) : null}

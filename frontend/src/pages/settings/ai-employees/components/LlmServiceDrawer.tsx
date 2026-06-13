@@ -165,7 +165,7 @@ export const LlmServiceDrawer = ({
             </Col>
           </Row>
           <Form.Item label={t('启用状态', 'Enabled status')} name="enabled" valuePropName="checked">
-            <Switch checkedChildren={t('启用', 'Enabled')} unCheckedChildren={t('禁用', 'Disabled')} />
+            <Switch />
           </Form.Item>
         </Space>
       </Form>

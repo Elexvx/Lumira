@@ -32,7 +32,7 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "remark", required = false) String remark
     ) {
-        return fileManagementAppService.uploadImage(securityContextFacade.getCurrentUser(), file, category, remark);
+        return fileManagementAppService.uploadPublicImage(securityContextFacade.getCurrentUser(), file, category, remark);
     }
 
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

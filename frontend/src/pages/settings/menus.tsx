@@ -32,6 +32,7 @@ import { isMainMenuHiddenSettingPath } from '@/navigation/settingsNavigationRunt
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { DEFAULT_SETTING_ROUTE_ORDER, SETTING_ROUTE_ORDER_KEY } from '@/navigation/settingsNavigationConfig';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -83,24 +84,6 @@ type SettingsRouteEditorValues = {
   sortNo?: number;
 };
 
-const DEFAULT_SETTING_ROUTE_ORDER = [
-  '/settings/menus',
-  '/settings/dicts',
-  '/settings/profile-fields',
-  '/settings/personalization',
-  '/settings/security',
-  '/settings/verification',
-  '/settings/notifications',
-  '/settings/ai-employees',
-  '/settings/plugins',
-  '/settings/files/all',
-  '/settings/localization',
-  '/settings/monitoring',
-  '/settings/api-docs',
-  '/settings/audit',
-];
-
-const SETTING_ROUTE_ORDER_KEY = 'settings_route_order';
 const SETTING_ROUTE_ICON_KEY = 'settings_route_icons';
 
 const getStoredSettingRouteOrder = () => {
@@ -491,7 +474,7 @@ const buildMenuColumns = ({
   {
     title: t('菜单名称', 'Menu name'),
     dataIndex: 'menuName',
-    width: 'var(--saas-spacing-260)',
+    width: isMobile ? 'var(--saas-spacing-220)' : 'var(--saas-spacing-260)',
     search: true,
     ellipsis: true,
     render: (_, record) => (
@@ -508,6 +491,7 @@ const buildMenuColumns = ({
     title: t('菜单类型', 'Menu type'),
     dataIndex: 'menuType',
     width: 'var(--saas-spacing-120)',
+    responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
     valueEnum: {
       CATALOG: { text: t('目录', 'Catalog') },
       MENU: { text: t('菜单', 'Menu') },
@@ -563,13 +547,14 @@ const buildMenuColumns = ({
     dataIndex: 'status',
     width: 'var(--saas-spacing-120)',
     search: false,
+    responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
   },
   {
     title: t('操作', 'Actions'),
     valueType: 'option',
     fixed: 'right',
-    width: 'var(--saas-spacing-180)',
+    width: isMobile ? 64 : 'var(--saas-spacing-180)',
     render: (_, record) => {
       const readonly = isReadonlyMenu(record);
       return (

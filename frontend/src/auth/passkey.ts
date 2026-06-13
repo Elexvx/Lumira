@@ -28,6 +28,8 @@ export interface PasskeyAuthenticationCompletePayload {
   authenticatorAttachment?: string | null;
 }
 
+const PASSKEY_OPERATION_TIMEOUT_MS = 60_000;
+
 const base64UrlToBuffer = (value: string): ArrayBuffer => {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
   const binary = window.atob(base64);
@@ -62,6 +64,46 @@ const credentialDescriptors = (value: unknown): PublicKeyCredentialDescriptor[] 
 
 export const isPasskeySupported = () =>
   typeof window !== 'undefined' && Boolean(window.PublicKeyCredential && navigator.credentials);
+
+const buildPasskeyTimeoutError = () => new DOMException('Passkey operation timed out', 'TimeoutError');
+
+export const createPasskeyCredential = async (
+  publicKey: PublicKeyCredentialCreationOptions,
+  timeoutMs = PASSKEY_OPERATION_TIMEOUT_MS,
+): Promise<PublicKeyCredential | null> => {
+  const controller = new AbortController();
+  let timeoutError: DOMException | undefined;
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = globalThis.setTimeout(() => {
+      timeoutError = buildPasskeyTimeoutError();
+      controller.abort(timeoutError);
+      reject(timeoutError);
+    }, timeoutMs);
+  });
+  const createPromise = navigator.credentials.create({
+    publicKey,
+    signal: controller.signal,
+  } as CredentialCreationOptions);
+
+  try {
+    const credential = await Promise.race([createPromise, timeoutPromise]);
+    return credential as PublicKeyCredential | null;
+  } catch (error) {
+    if (
+      timeoutError
+      && error instanceof DOMException
+      && (error.name === 'AbortError' || error.name === 'TimeoutError')
+    ) {
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    if (timeoutId !== undefined) {
+      globalThis.clearTimeout(timeoutId);
+    }
+  }
+};
 
 export const toPublicKeyCreationOptions = (options: PasskeyOptions): PublicKeyCredentialCreationOptions => {
   const publicKey = options.publicKey as Record<string, unknown>;

@@ -1,4 +1,4 @@
-import { formatMessage } from '@umijs/max';
+import { formatMessage, history } from '@umijs/max';
 import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -24,6 +24,13 @@ import { normalizeLocale } from '@/i18n/locale';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+
+const resolvePluginManagementPath = (pluginCode: string) => {
+  if (pluginCode === 'sensitive-words') {
+    return '/plugins/sensitive-words';
+  }
+  return null;
+};
 
 const PluginCardsGrid = ({
   isMobile,
@@ -75,6 +82,7 @@ const PluginCardsGrid = ({
         const enabled = Boolean(enabledPlugin);
         const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
         const canToggle = enabled ? canDisable : canEnable;
+        const managementPath = enabled ? resolvePluginManagementPath(plugin.pluginCode) : null;
 
         return (
           <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
@@ -100,6 +108,11 @@ const PluginCardsGrid = ({
               <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                 <Typography.Paragraph style={{ marginBottom: 0 }}>{plugin.description || t('暂无插件描述', 'No plugin description')}</Typography.Paragraph>
                 <Space wrap>
+                  {managementPath ? (
+                    <Button type="primary" onClick={() => history.push(managementPath)}>
+                      {t('管理', 'Manage')}
+                    </Button>
+                  ) : null}
                   <Button onClick={() => onOpenDetails(plugin)}>{t('详情', 'Details')}</Button>
                   <Button onClick={() => onOpenVersions(plugin)}>{t('版本', 'Versions')}</Button>
                   <Button disabled={!canViewLogs} onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>

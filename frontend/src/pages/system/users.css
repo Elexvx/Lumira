@@ -82,6 +82,18 @@
   min-width: 0;
 }
 
+.saas-user-detail-descriptions .ant-descriptions-item-label {
+  width: var(--saas-spacing-160);
+  min-width: var(--saas-spacing-160);
+  max-width: var(--saas-spacing-160);
+}
+
+.saas-user-detail-descriptions .ant-descriptions-item-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 @media (max-width: 991px) {
   .saas-user-management-layout {
     grid-template-columns: 1fr;

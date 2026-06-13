@@ -17,7 +17,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Collection;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,6 +35,7 @@ public class SensitiveWordService {
     private static final int MAX_PAGE_SIZE = 200L > Integer.MAX_VALUE ? Integer.MAX_VALUE : 200;
     private static final int MAX_WORD_LENGTH = 128;
     private static final int MAX_MATCHES = 20;
+    private static final int MAX_PAYLOAD_INSPECTION_DEPTH = 8;
     private static final Pattern IMPORT_SPLITTER = Pattern.compile("[\\r\\n,，;；、]+");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -269,7 +272,7 @@ public class SensitiveWordService {
         }
         List<SensitiveWordRecord> words = listEnabledWords(tenantId(currentUser));
         List<SensitiveWordVO.MatchItem> matches = new ArrayList<>();
-        inspectValue(payload, "", matches, words);
+        inspectValue(payload, "", matches, words, Collections.newSetFromMap(new IdentityHashMap<>()), 0);
         if (matches.size() > MAX_MATCHES) {
             matches = new ArrayList<>(matches.subList(0, MAX_MATCHES));
         }
@@ -351,9 +354,15 @@ public class SensitiveWordService {
         return new SensitiveWordVO.CheckResult(!matches.isEmpty(), matches);
     }
 
-    @SuppressWarnings("unchecked")
-    private void inspectValue(Object value, String fieldPath, List<SensitiveWordVO.MatchItem> matches, List<SensitiveWordRecord> words) {
-        if (value == null || matches.size() >= MAX_MATCHES) {
+    private void inspectValue(
+            Object value,
+            String fieldPath,
+            List<SensitiveWordVO.MatchItem> matches,
+            List<SensitiveWordRecord> words,
+            Set<Object> visited,
+            int depth
+    ) {
+        if (value == null || matches.size() >= MAX_MATCHES || depth > MAX_PAYLOAD_INSPECTION_DEPTH) {
             return;
         }
         if (value instanceof String text) {
@@ -363,10 +372,16 @@ public class SensitiveWordService {
             }
             return;
         }
+        if (isScalarValue(value)) {
+            return;
+        }
+        if (!visited.add(value)) {
+            return;
+        }
         if (value instanceof Map<?, ?> map) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String childPath = joinPath(fieldPath, String.valueOf(entry.getKey()));
-                inspectValue(entry.getValue(), childPath, matches, words);
+                inspectValue(entry.getValue(), childPath, matches, words, visited, depth + 1);
                 if (matches.size() >= MAX_MATCHES) {
                     return;
                 }
@@ -376,7 +391,7 @@ public class SensitiveWordService {
         if (value instanceof Collection<?> collection) {
             int index = 0;
             for (Object item : collection) {
-                inspectValue(item, fieldPath + "[" + index + "]", matches, words);
+                inspectValue(item, fieldPath + "[" + index + "]", matches, words, visited, depth + 1);
                 index += 1;
                 if (matches.size() >= MAX_MATCHES) {
                     return;
@@ -385,25 +400,46 @@ public class SensitiveWordService {
             return;
         }
         if (value.getClass().isArray()) {
-            Object[] items = (Object[]) value;
-            for (int i = 0; i < items.length; i += 1) {
-                inspectValue(items[i], fieldPath + "[" + i + "]", matches, words);
+            int length = java.lang.reflect.Array.getLength(value);
+            for (int i = 0; i < length; i += 1) {
+                inspectValue(java.lang.reflect.Array.get(value, i), fieldPath + "[" + i + "]", matches, words, visited, depth + 1);
                 if (matches.size() >= MAX_MATCHES) {
                     return;
                 }
             }
             return;
         }
+        if (shouldSkipReflectiveInspection(value.getClass())) {
+            return;
+        }
         for (java.lang.reflect.Field field : value.getClass().getDeclaredFields()) {
             field.setAccessible(true);
             try {
-                inspectValue(field.get(value), joinPath(fieldPath, field.getName()), matches, words);
-            } catch (IllegalAccessException ignored) {
+                inspectValue(field.get(value), joinPath(fieldPath, field.getName()), matches, words, visited, depth + 1);
+            } catch (IllegalAccessException | RuntimeException ignored) {
             }
             if (matches.size() >= MAX_MATCHES) {
                 return;
             }
         }
+    }
+
+    private boolean isScalarValue(Object value) {
+        return value instanceof Number
+                || value instanceof Boolean
+                || value instanceof Character
+                || value instanceof Enum<?>
+                || value instanceof java.time.temporal.TemporalAccessor;
+    }
+
+    private boolean shouldSkipReflectiveInspection(Class<?> type) {
+        Package valuePackage = type.getPackage();
+        String packageName = valuePackage == null ? "" : valuePackage.getName();
+        return type.isPrimitive()
+                || packageName.startsWith("java.")
+                || packageName.startsWith("javax.")
+                || packageName.startsWith("jakarta.")
+                || packageName.startsWith("org.springframework.");
     }
 
     private String joinPath(String base, String key) {

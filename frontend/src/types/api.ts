@@ -21,6 +21,7 @@ export interface AuthUser {
   region?: string | null;
   availableTime?: string | null;
   idCardNumber?: string | null;
+  extraProfileValues?: Record<string, string> | null;
   locale?: string | null;
 }
 
@@ -274,6 +275,7 @@ export interface BrandingSettings {
   companyName?: string;
   copyrightStartYear?: number;
   footerIcp?: string;
+  footerPoliceBeian?: string;
   footerCopyright?: string;
 }
 
@@ -331,6 +333,7 @@ export interface CurrentUser {
   region?: string | null;
   availableTime?: string | null;
   idCardNumber?: string | null;
+  extraProfileValues?: Record<string, string> | null;
   locale?: string | null;
   simulatedRoleId?: number | null;
   availableRoles?: CurrentUserRoleOption[];
@@ -1005,6 +1008,7 @@ export interface FileStorageSpaceRecord {
   allowedMimeTypes: string;
   defaultStorage?: boolean | null;
   retainFileOnRecordDelete?: boolean | null;
+  anonymousAccessAllowed?: boolean | null;
   status: 'ENABLED' | 'DISABLED';
   fileCount?: number | null;
   totalSizeBytes?: number | null;
@@ -1028,6 +1032,7 @@ export interface FileStorageSpacePayload {
   allowedMimeTypes: string;
   defaultStorage?: boolean;
   retainFileOnRecordDelete?: boolean;
+  anonymousAccessAllowed?: boolean;
   status?: 'ENABLED' | 'DISABLED';
 }
 
@@ -1411,6 +1416,11 @@ export interface ProfileFieldSetting {
   weight?: number | null;
   groupKey?: string | null;
   groupLabel?: string | null;
+  fieldType?: string | null;
+  required?: boolean | null;
+  placeholder?: string | null;
+  sortNo?: number | null;
+  custom?: boolean | null;
 }
 
 export interface ProfileCompletionSummary {

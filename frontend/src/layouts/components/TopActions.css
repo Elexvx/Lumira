@@ -75,6 +75,27 @@
 }
 
 @media (max-width: 767px) {
+  .saas-top-actions,
+  .saas-top-actions__inner {
+    min-width: 0;
+  }
+
+  .saas-top-actions__inner {
+    gap: var(--saas-spacing-xxs) !important;
+  }
+
+  .saas-top-actions .ant-btn {
+    width: var(--saas-spacing-40);
+    min-width: var(--saas-spacing-40);
+    padding-inline: 0;
+  }
+
+  .saas-user-menu-trigger {
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
   .saas-user-menu-trigger__name {
     display: none;
   }

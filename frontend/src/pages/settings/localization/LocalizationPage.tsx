@@ -156,6 +156,7 @@ const LocalizationPage = () => {
   const { actionPermission, responsive, searchConfig, buttonSize } = usePagePermissionActions();
   const tableActionRef = useRef<ActionType>(null);
   const searchValuesRef = useRef<{ namespaceCode?: string }>({ namespaceCode: 'all' });
+  const initialSyncAttemptedRef = useRef(false);
   const [languages, setLanguages] = useState<LocalizationLanguage[]>([]);
   const [namespaces, setNamespaces] = useState<LocalizationNamespace[]>([]);
   const [releases, setReleases] = useState<LocalizationRelease[]>([]);
@@ -169,6 +170,7 @@ const LocalizationPage = () => {
   const [savingEntryId, setSavingEntryId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<EntryDrafts>({});
   const [entryForm] = Form.useForm<LocalizationEntryPayload>();
+  const canSyncLocalization = actionPermission.can('localization:sync');
   const languageColumns = useMemo(() => {
     const enabled = languages.filter((item) => item.status !== 'DISABLED');
     const merged = new Map<string, LocalizationLanguage>();
@@ -363,21 +365,26 @@ const LocalizationPage = () => {
       setEntrySaving(false);
     }
   }, [editingEntry, entryForm, refreshBundles]);
-  const syncEntries = useCallback(async () => {
-    setSyncing(true);
-    try {
-      await request<import('@/types/api').LocalizationSyncResult>('/v1/localization/sync', {
+  const syncLocalizationSource = useCallback(
+    () =>
+      request<import('@/types/api').LocalizationSyncResult>('/v1/localization/sync', {
         method: 'POST',
         data: buildLocalizationSyncPayload(),
         autoRedirectOnUnauthorized: false,
         timeoutMs: 60000,
-      });
+      }),
+    [],
+  );
+  const syncEntries = useCallback(async () => {
+    setSyncing(true);
+    try {
+      await syncLocalizationSource();
       message.success(t('已同步', 'Synced'));
       await refreshBundles();
     } finally {
       setSyncing(false);
     }
-  }, [refreshBundles]);
+  }, [refreshBundles, syncLocalizationSource]);
   const publishEntries = useCallback(async () => {
     setPublishing(true);
     try {
@@ -552,22 +559,54 @@ const LocalizationPage = () => {
       const translationStatus = translationStatusValue && translationStatusValue !== 'all' ? translationStatusValue : undefined;
       searchValuesRef.current = { namespaceCode: namespaceCode || 'all' };
 
-      return request<import('@/types/api').PagedResult<import('@/types/api').LocalizationEntry>>('/v1/localization/entries', {
+      const pageNo = Number(params.current) || 1;
+      const pageSize = Number(params.pageSize) || DEFAULT_TABLE_PAGE_SIZE;
+      const sortField = Object.keys(sorter || {}).find((key) => ['ascend', 'descend'].includes(String((sorter as Record<string, unknown>)[key]))) || undefined;
+      const sortOrder = Object.values(sorter || {}).find((value) => value === 'ascend' || value === 'descend') as string | undefined;
+      const requestParams = {
+        localeCode,
+        namespaceCode,
+        keyword,
+        translationStatus,
+        pageNo,
+        pageSize,
+        sortField,
+        sortOrder,
+      };
+      const result = await request<import('@/types/api').PagedResult<import('@/types/api').LocalizationEntry>>('/v1/localization/entries', {
         method: 'GET',
-        params: {
-          localeCode,
-          namespaceCode,
-          keyword,
-          translationStatus,
-          pageNo: Number(params.current) || 1,
-          pageSize: Number(params.pageSize) || DEFAULT_TABLE_PAGE_SIZE,
-          sortField: Object.keys(sorter || {}).find((key) => ['ascend', 'descend'].includes(String((sorter as Record<string, unknown>)[key]))) || undefined,
-          sortOrder: Object.values(sorter || {}).find((value) => value === 'ascend' || value === 'descend') as string | undefined,
-        },
+        params: requestParams,
         ...API_OPTS.SILENT_NO_REDIRECT,
       });
+
+      const shouldInitialize =
+        !initialSyncAttemptedRef.current &&
+        canSyncLocalization &&
+        pageNo === 1 &&
+        !namespaceCode &&
+        !keyword &&
+        !translationStatus &&
+        result.total === 0;
+
+      if (!shouldInitialize) {
+        return result;
+      }
+
+      initialSyncAttemptedRef.current = true;
+      setSyncing(true);
+      try {
+        await syncLocalizationSource();
+        await refreshMeta();
+        return request<import('@/types/api').PagedResult<import('@/types/api').LocalizationEntry>>('/v1/localization/entries', {
+          method: 'GET',
+          params: requestParams,
+          ...API_OPTS.SILENT_NO_REDIRECT,
+        });
+      } finally {
+        setSyncing(false);
+      }
     },
-    [primaryLocale],
+    [canSyncLocalization, primaryLocale, refreshMeta, syncLocalizationSource],
   );
   const tableRequest = useMemo(() => buildTableRequest(requestEntries), [requestEntries]);
   const toolbarActions = actionPermission.buildToolbarActions([
@@ -575,7 +614,7 @@ const LocalizationPage = () => {
       value: createElement(Button, { key: 'delete', size: buttonSize, icon: createElement(DeleteOutlined, {}), disabled: !actionPermission.can('localization:delete') }, t('删除译文', 'Delete translation')),
     },
     {
-      value: createElement(Button, { key: 'sync', size: buttonSize, icon: createElement(SyncOutlined, {}), loading: syncing, disabled: !actionPermission.can('localization:sync'), onClick: () => void syncEntries() }, t('同步', 'Sync')),
+      value: createElement(Button, { key: 'sync', size: buttonSize, icon: createElement(SyncOutlined, {}), loading: syncing, disabled: !canSyncLocalization, onClick: () => void syncEntries() }, t('同步', 'Sync')),
     },
     {
       value: createElement(Button, { key: 'publish', type: 'primary', size: buttonSize, icon: createElement(SaveOutlined, {}), loading: publishing, disabled: !actionPermission.can('localization:publish'), onClick: () => void publishEntries() }, t('发布', 'Publish')),

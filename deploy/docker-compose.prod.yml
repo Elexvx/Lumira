@@ -8,10 +8,11 @@ x-common-env:
   NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
   SPRING_CLOUD_NACOS_CONFIG_ENABLED: ${NACOS_CONFIG_ENABLED:-false}
   SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
+  SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-}
   DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
   DB_USERNAME: ${DB_USERNAME:-root}
   DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-  SPRING_FLYWAY_ENABLED: 'false'
+  SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -156,7 +157,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/docker/frontend.Dockerfile
-    image: lumira/frontend:0.1.0
+    image: ${LUMIRA_FRONTEND_IMAGE:-lumira/frontend:0.1.0}
     container_name: lumira-frontend
     restart: unless-stopped
     logging: *id001
@@ -167,6 +168,8 @@ services:
     depends_on:
     - lumira-server
   edge-proxy:
+    profiles:
+    - edge
     image: nginx:1.29-alpine
     container_name: lumira-edge-proxy
     restart: unless-stopped
@@ -285,7 +288,7 @@ services:
       args:
         SERVICE_DIR: services/lumira-server
         SERVICE_MODULE: services/lumira-server
-    image: lumira/lumira-server:0.1.0
+    image: ${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}
     container_name: lumira-server
     restart: unless-stopped
     logging:
@@ -302,6 +305,7 @@ services:
       NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
       SPRING_CLOUD_NACOS_CONFIG_ENABLED: ${NACOS_CONFIG_ENABLED:-false}
       SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
+      SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-}
       DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
@@ -311,7 +315,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DATABASE: 0
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      SPRING_FLYWAY_ENABLED: 'false'
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       FIELD_SECRET: ${FIELD_SECRET:?FIELD_SECRET is required}
       PLUGIN_SIGNATURE_SECRET: ${PLUGIN_SIGNATURE_SECRET:?PLUGIN_SIGNATURE_SECRET

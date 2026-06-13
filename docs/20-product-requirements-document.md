@@ -1024,7 +1024,8 @@ Lumira 已经具备企业级 SaaS 智能应用平台的核心产品形态。它�
 | helpLinkUrl | string? | URL | 帮助链接地址 | 链接 |
 | companyName | string? | 普通文本 | 公司名称 | 页脚文本 |
 | copyrightStartYear | number? | 年份 | 起始年份 | 页脚文本 |
-| footerIcp | string? | 普通文本 | 备案号 | 页脚文本 |
+| footerIcp | string? | 普通文本 | ICP 备案号 | 页脚文本/备案查询链接 |
+| footerPoliceBeian | string? | 普通文本 | 公安备案号 | 页脚文本/备案查询链接 |
 | footerCopyright | string? | 普通文本 | 版权文案 | 页脚文本 |
 
 #### 18.2.3 获取公开协议配置
@@ -1600,7 +1601,7 @@ Lumira 已经具备企业级 SaaS 智能应用平台的核心产品形态。它�
 | githubLinkUrl/helpLinkUrl | string? | 否 | URL | 输入框 |
 | companyName | string? | 否 | 文本 | 输入框 |
 | copyrightStartYear | number? | 否 | 年份 | 数字输入 |
-| footerIcp/footerCopyright | string? | 否 | 文本 | 输入框 |
+| footerIcp/footerPoliceBeian/footerCopyright | string? | 否 | 文本 | 输入框 |
 
 返回字段：
 

@@ -45,6 +45,7 @@
   width: 100%;
   min-height: auto;
   height: auto;
+  align-items: center !important;
   justify-content: center;
   background: transparent !important;
 }
@@ -59,12 +60,13 @@
 
 .saas-login-page .ant-pro-form-login-page-left {
   flex: 0 1 auto;
+  align-self: center;
   width: min(var(--saas-spacing-536), calc(100vw - var(--saas-spacing-48)));
   max-width: 100%;
   display: flex;
   justify-content: center;
   padding: 0;
-  margin: 0;
+  margin: auto;
 }
 
 .saas-login-page .ant-pro-form-login-page-container {
@@ -544,4 +546,42 @@ html[data-theme='dark'] .saas-login-page .ant-input-affix-wrapper,
 html[data-theme='dark'] .saas-login-page .ant-select-selector,
 html[data-theme='dark'] .saas-login-page .ant-segmented {
   background: rgba(24, 24, 27, 0.96) !important;
+}
+
+@media (max-width: 575px) {
+  .saas-login-page {
+    align-items: center;
+    min-height: 100svh;
+    padding: var(--saas-spacing-md);
+    overflow-y: auto;
+    background: var(--ant-color-bg-layout);
+  }
+
+  .saas-login-page::before,
+  .saas-login-page::after {
+    display: none;
+  }
+
+  .saas-login-page .ant-pro-form-login-page-left {
+    width: 100%;
+  }
+
+  .saas-login-page .ant-pro-form-login-page-container {
+    width: 100%;
+    max-width: 430px;
+    background: var(--ant-color-bg-container);
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  html[data-theme='dark'] .saas-login-page {
+    background: var(--ant-color-bg-layout);
+  }
+
+  html[data-theme='dark'] .saas-login-page .ant-pro-form-login-page-container {
+    background: var(--ant-color-bg-container);
+    border: 0;
+    box-shadow: none;
+  }
 }

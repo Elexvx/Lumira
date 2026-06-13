@@ -211,7 +211,7 @@ export const WatermarkTab = ({
         </Watermark>
       </Card>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" loading={watermarkSaving} disabled={!canUpdate} onClick={onSave}>
           {t('保存设置', 'Save settings')}
         </Button>

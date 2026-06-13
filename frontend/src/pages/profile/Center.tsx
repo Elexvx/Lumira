@@ -6,14 +6,14 @@ import ImgCrop from 'antd-img-crop';
 import { StepsForm } from '@ant-design/pro-components';
 import { useEffect } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { EditOutlined, ExclamationCircleFilled, KeyOutlined, UserOutlined } from '@ant-design/icons';
+import { EditOutlined, KeyOutlined, UserOutlined } from '@ant-design/icons';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
 import { PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profile/center/hooks/useProfileCenterPageAccess';
-import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
+import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileFieldSetting, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { normalizeLocale } from '@/i18n/locale';
@@ -28,6 +28,17 @@ const GENDER_OPTIONS = [
   { label: t('女', 'Female'), value: 'FEMALE' },
   { label: t('其他', 'Other'), value: 'OTHER' },
 ];
+
+const renderCustomProfileInput = (field: ProfileFieldSetting) => {
+  const placeholder = field.placeholder || t(`请输入${field.fieldLabel}`, `Enter ${field.fieldLabel}`);
+  if (field.fieldType === 'TEXTAREA') {
+    return <Input.TextArea rows={4} maxLength={1000} placeholder={placeholder} />;
+  }
+  if (field.fieldType === 'NUMBER') {
+    return <Input type="number" placeholder={placeholder} />;
+  }
+  return <Input maxLength={1000} placeholder={placeholder} />;
+};
 
 const BindSecondFactorSubmitter = ({
   bindingSubmitting,
@@ -324,6 +335,7 @@ const ProfileBasicEditDrawer = ({
   profileSaving,
   profileFormProps,
   visibleProfileFields,
+  visibleCustomProfileFields,
   currentUser,
   avatarValue,
   avatarUploading,
@@ -337,6 +349,7 @@ const ProfileBasicEditDrawer = ({
   profileSaving: boolean;
   profileFormProps: FormProps;
   visibleProfileFields: Set<string>;
+  visibleCustomProfileFields: ProfileFieldSetting[];
   currentUser: CurrentUser | null | undefined;
   avatarValue?: string;
   avatarUploading: boolean;
@@ -433,6 +446,18 @@ const ProfileBasicEditDrawer = ({
               </Form.Item>
             </Col>
           ) : null}
+          {visibleCustomProfileFields.map((field) => (
+            <Col xs={24} key={field.fieldKey}>
+              <Form.Item
+                name={['extraProfileValues', field.fieldKey]}
+                label={field.fieldLabel}
+                normalize={trimString}
+                rules={field.required ? [{ required: true, message: t(`请输入${field.fieldLabel}`, `Please enter ${field.fieldLabel}`) }] : undefined}
+              >
+                {renderCustomProfileInput(field)}
+              </Form.Item>
+            </Col>
+          ))}
         </Row>
       ) : (
         <Empty description={t('当前未开启任何可编辑资料字段', 'No editable profile fields are enabled')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -450,10 +475,12 @@ type ProfileCenterOverviewSectionProps = {
   displayName: string;
   activeRoleName: string;
   loading: boolean;
+  profileCompletionSummary?: ProfileCompletionSummary | null;
   hasVisibleProfileFields: boolean;
   profileSaving: boolean;
   profileFormProps: FormProps;
   visibleProfileFields: Set<string>;
+  visibleCustomProfileFields: ProfileFieldSetting[];
   avatarUploading: boolean;
   editingOpen: boolean;
   onSave: () => void;
@@ -471,10 +498,12 @@ const ProfileCenterOverviewSection = ({
   displayName,
   activeRoleName,
   loading,
+  profileCompletionSummary,
   hasVisibleProfileFields,
   profileSaving,
   profileFormProps,
   visibleProfileFields,
+  visibleCustomProfileFields,
   avatarUploading,
   editingOpen,
   onSave,
@@ -484,6 +513,8 @@ const ProfileCenterOverviewSection = ({
   recentLoginLogs,
 }: ProfileCenterOverviewSectionProps) => {
   const avatarSrc = normalizeAvatarSrc(avatarValue || currentUser?.avatarUrl);
+  const { token } = theme.useToken();
+  const completionRate = profileCompletionSummary?.completionRate ?? 0;
 
   return (
     <>
@@ -512,6 +543,21 @@ const ProfileCenterOverviewSection = ({
                   {currentUser?.mobile ? <Typography.Text type="secondary">{currentUser.mobile}</Typography.Text> : null}
                 </Space>
               </Space>
+            </section>
+          </div>
+        </Card>
+        <Card className="saas-profile-page__card saas-profile-page__completion-inline-card" loading={loading}>
+          <div className="saas-profile-page__completion-block">
+            <section className="saas-profile-page__completion-panel" aria-label={t('完整度', 'Completeness')}>
+              <Progress
+                type="circle"
+                percent={completionRate}
+                size={isMobile ? 72 : 88}
+                strokeColor={completionRate === 100 ? token.colorSuccess : token.colorWhite}
+                trailColor="rgba(255, 255, 255, 0.22)"
+                format={(percent) => <span className="saas-profile-page__completion-percent">{percent ?? 0}%</span>}
+              />
+              <Typography.Text className="saas-profile-page__completion-label">{t('完整度', 'Completeness')}</Typography.Text>
             </section>
           </div>
         </Card>
@@ -551,6 +597,11 @@ const ProfileCenterOverviewSection = ({
                 ...(visibleProfileFields.has('gender') ? [{ key: 'gender', label: t('性别', 'Gender'), children: GENDER_OPTIONS.find((item) => item.value === currentUser?.gender)?.label || '-' }] : []),
                 ...(visibleProfileFields.has('region') ? [{ key: 'region', label: t('所在地区', 'Region'), children: currentUser?.region || '-' }] : []),
                 ...(visibleProfileFields.has('idCardNumber') ? [{ key: 'idCardNumber', label: t('身份证号码', 'ID card number'), children: currentUser?.idCardNumber || '-' }] : []),
+                ...visibleCustomProfileFields.map((field) => ({
+                  key: field.fieldKey,
+                  label: field.fieldLabel,
+                  children: currentUser?.extraProfileValues?.[field.fieldKey] || '-',
+                })),
               ]}
             />
           ) : (
@@ -562,6 +613,7 @@ const ProfileCenterOverviewSection = ({
           profileSaving={profileSaving}
           profileFormProps={profileFormProps}
           visibleProfileFields={visibleProfileFields}
+          visibleCustomProfileFields={visibleCustomProfileFields}
           currentUser={currentUser}
           avatarValue={avatarValue}
           avatarUploading={avatarUploading}
@@ -597,78 +649,6 @@ const ProfileCenterOverviewSection = ({
         )}
       </Card>
     </>
-  );
-};
-
-type ProfileCenterCompletionCardProps = {
-  loading: boolean;
-  isMobile: boolean;
-  profileCompletionSummary?: ProfileCompletionSummary | null;
-  onProfileCompletionAction: (item: ProfileCompletionSummary['incompleteItems'][number]) => void;
-};
-
-const ProfileCenterCompletionCard = ({
-  loading,
-  isMobile,
-  profileCompletionSummary,
-  onProfileCompletionAction,
-}: ProfileCenterCompletionCardProps) => {
-  const { token } = theme.useToken();
-  const incompleteItems = profileCompletionSummary?.incompleteItems || [];
-  const visibleIncompleteItems = incompleteItems.slice(0, 3);
-  const firstActionableItem = incompleteItems.find((item) => item.actionAvailable !== false && Boolean(item.actionType));
-
-  return (
-    <Card
-      title={t('信息完整度', 'Profile completeness')}
-      loading={loading}
-      className="saas-profile-page__card saas-profile-page__completion-card saas-profile-page__completion-card--compact"
-      style={{ width: '100%' }}
-      extra={profileCompletionSummary ? <Tag color={profileCompletionSummary.completionRate === 100 ? 'green' : 'blue'}>{profileCompletionSummary.completionRate}%</Tag> : null}
-    >
-      {profileCompletionSummary ? (
-        <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
-          <Space align="baseline" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
-            <Typography.Title level={3} style={{ margin: 0 }}>
-              {profileCompletionSummary.completionRate}%
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              {incompleteItems.length ? t('{count} 项待完善', '{count} items to complete').replace('{count}', String(incompleteItems.length)) : t('资料已完善', 'Profile complete')}
-            </Typography.Text>
-            <Typography.Text type="secondary">
-              {profileCompletionSummary.score}/{profileCompletionSummary.maxScore} {t('分', 'points')}
-            </Typography.Text>
-          </Space>
-          <Progress
-            percent={profileCompletionSummary.completionRate}
-            showInfo={false}
-            strokeColor={profileCompletionSummary.completionRate === 100 ? token.colorSuccess : token.colorPrimary}
-          />
-          {visibleIncompleteItems.length ? (
-            <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
-              {visibleIncompleteItems.map((item) =>
-                item.actionAvailable === false ? (
-                  <Tag key={item.fieldKey}>{t('待开启', 'Pending')} · {item.fieldLabel}</Tag>
-                ) : (
-                  <Button key={item.fieldKey} type="link" size="small" icon={<ExclamationCircleFilled />} onClick={() => onProfileCompletionAction(item)}>
-                    {item.fieldLabel}
-                  </Button>
-                ),
-              )}
-              {incompleteItems.length > visibleIncompleteItems.length ? <Typography.Text type="secondary">{t('还有 {count} 项', '{count} more items').replace('{count}', String(incompleteItems.length - visibleIncompleteItems.length))}</Typography.Text> : null}
-            </Space>
-          ) : null}
-
-          {firstActionableItem ? (
-            <Button type="primary" block onClick={() => onProfileCompletionAction(firstActionableItem)}>
-              {t('一键去完善', 'Complete now')}
-            </Button>
-          ) : null}
-        </Space>
-      ) : (
-        <Empty description={t('当前暂无可评分字段', 'No fields are available for scoring yet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-      )}
-    </Card>
   );
 };
 
@@ -885,7 +865,6 @@ const ProfileCenterBindingSection = ({
 const ProfileCenterPage = () => {
   const {
     responsive,
-    profileForm,
     currentUser,
     profileSectionAccess,
     interactionAccess,
@@ -894,33 +873,6 @@ const ProfileCenterPage = () => {
     providers,
     providersLoading,
   } = useProfileCenterPageAccess();
-
-  const handleProfileCompletionAction = (item: ProfileCompletionSummary['incompleteItems'][number]) => {
-    if (item.actionAvailable === false) {
-      return;
-    }
-
-    if (item.actionType === 'CONTACT_BIND') {
-      if (item.actionTarget === 'mobile') {
-        interactionAccess.contactBindAccess.openContactBindModal('mobile');
-      } else if (item.actionTarget === 'email') {
-        interactionAccess.contactBindAccess.openContactBindModal('email');
-      }
-      return;
-    }
-
-    if (item.actionTarget === 'avatarUrl') {
-      profileSectionAccess.setProfileEditingOpen(true);
-      profileSectionAccess.profileBasicCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-
-    if (item.actionTarget) {
-      profileSectionAccess.setProfileEditingOpen(true);
-      profileForm.scrollToField([item.actionTarget]);
-      profileSectionAccess.profileBasicCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   return (
     <ManagementPage
@@ -939,10 +891,12 @@ const ProfileCenterPage = () => {
                 displayName={profileSectionAccess.displayName}
                 activeRoleName={profileSectionAccess.activeRoleName}
                 loading={profileSectionAccess.loading}
+                profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
                 hasVisibleProfileFields={profileSectionAccess.hasVisibleProfileFields}
                 profileSaving={profileSectionAccess.profileSaving}
                 profileFormProps={profileSectionAccess.profileFormProps}
                 visibleProfileFields={profileSectionAccess.visibleProfileFields}
+                visibleCustomProfileFields={profileSectionAccess.visibleCustomProfileFields}
                 avatarUploading={profileSectionAccess.avatarUploading}
                 editingOpen={profileSectionAccess.editingOpen}
                 onSave={profileSectionAccess.onSave}
@@ -955,12 +909,6 @@ const ProfileCenterPage = () => {
           </div>
           <div className="saas-profile-page__rail-column">
             <div className="saas-profile-page__rail-block">
-              <ProfileCenterCompletionCard
-                loading={profileSectionAccess.loading}
-                isMobile={responsive.isMobile}
-                profileCompletionSummary={profileSectionAccess.profileCompletionSummary}
-                onProfileCompletionAction={handleProfileCompletionAction}
-              />
               <ProfileCenterBindingSection
                 isMobile={responsive.isMobile}
                 loginMethods={interactionAccess.passkeyAccess.loginMethods}

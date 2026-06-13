@@ -16,6 +16,7 @@ import { request } from '@/services/common/request';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import {
   buildSettingsDropdownItems,
+  isPluginSettingsShellPath,
   isSettingsShellPath,
   resolveActiveSettingsNavigationPath,
 } from '@/navigation/settingsNavigationRuntime';
@@ -309,8 +310,8 @@ export const TopActions = () => {
   };
   const canVisitSystemSettings = Boolean(access.canVisitSystemSettings);
   const settingsMenuItems = useMemo(
-    () => buildSettingsDropdownItems(initialState?.menuTree, (accessKey) => Boolean((access as Record<string, unknown>)[accessKey])),
-    [access, initialState?.menuTree],
+    () => buildSettingsDropdownItems(initialState?.menuTree, (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]), initialState?.availablePlugins),
+    [access, initialState?.availablePlugins, initialState?.menuTree],
   );
   const activeSettingsPath = useMemo(
     () =>
@@ -318,12 +319,13 @@ export const TopActions = () => {
         location.pathname,
         initialState?.menuTree,
         (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
+        initialState?.availablePlugins,
       ),
-    [access, initialState?.menuTree, location.pathname],
+    [access, initialState?.availablePlugins, initialState?.menuTree, location.pathname],
   );
   const settingsMenuSelectedKeys = useMemo(
-    () => (isSettingsShellPath(location.pathname) && activeSettingsPath ? [activeSettingsPath] : []),
-    [activeSettingsPath, location.pathname],
+    () => ((isSettingsShellPath(location.pathname) || isPluginSettingsShellPath(location.pathname, initialState?.availablePlugins)) && activeSettingsPath ? [activeSettingsPath] : []),
+    [activeSettingsPath, initialState?.availablePlugins, location.pathname],
   );
   const themeMenuItems: MenuProps['items'] = useMemo(
     () =>
@@ -488,9 +490,10 @@ export const TopActions = () => {
   };
 
   return (
-    <Space size="small" align="center">
+    <Space size={model.isMobile ? APP_SPACING.microGap.mobile : 'small'} align="center" className="saas-top-actions">
       <Space
             size={resolveResponsiveValue(APP_SPACING.tagWrapGap, model.isMobile)}
+            className="saas-top-actions__inner"
             wrap={false}
           >
         <Dropdown
@@ -535,7 +538,7 @@ export const TopActions = () => {
             {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: 'Role simulation' })}
           </Tag>
         ) : null}
-        {model.helpLink ? (
+        {model.helpLink && !model.isMobile ? (
           <Button
             type="text"
             icon={<QuestionCircleOutlined />}
@@ -548,7 +551,7 @@ export const TopActions = () => {
             }}
           />
         ) : null}
-        {model.githubLink ? (
+        {model.githubLink && !model.isMobile ? (
           <Button
             type="text"
             icon={<GithubOutlined />}
@@ -592,6 +595,7 @@ export const TopActions = () => {
             type="text"
             className="saas-user-menu-trigger"
             disabled={model.loggingOut || model.switchingRole}
+            data-testid="top-user-menu-button"
             icon={
               <Avatar
                 size="small"

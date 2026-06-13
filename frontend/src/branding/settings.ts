@@ -17,6 +17,7 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   companyName: '宏翔商道',
   copyrightStartYear: new Date().getFullYear(),
   footerIcp: '',
+  footerPoliceBeian: '',
   footerCopyright: '',
 };
 
@@ -34,6 +35,7 @@ export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> |
     companyName: normalizeText(settings?.companyName, websiteName),
     copyrightStartYear: normalizeYear(settings?.copyrightStartYear, new Date().getFullYear()),
     footerIcp: normalizeText(settings?.footerIcp, ''),
+    footerPoliceBeian: normalizeText(settings?.footerPoliceBeian, ''),
     footerCopyright: normalizeText(settings?.footerCopyright, ''),
   };
 };

@@ -10,8 +10,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
   const isLogin = Boolean(initialState?.currentUser?.sessionId) || tokenManager.hasToken();
   const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
-  const enabledPlugins = new Set((initialState?.availablePlugins ?? []).map((item) => item.pluginCode));
-
   return {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
     isLogin,
@@ -48,8 +46,8 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitAudit: isLogin && isSettingsAdmin,
     canVisitSystemSettings: isLogin && isSettingsAdmin,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
-    canVisitSystemPlugins: isLogin && isSettingsAdmin,
-    canVisitSensitiveWordsPlugin: isLogin && enabledPlugins.has('sensitive-words') && hasPermission(permissions, 'plugin:sensitive-words:view'),
+    canVisitSystemPlugins: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:management:view')),
+    canVisitSensitiveWordsPlugin: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view')),
     canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitAiEmployees: isLogin && isSettingsAdmin,
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),

@@ -106,13 +106,8 @@ const SecuritySettingsPage = () => {
     }
   };
 
-  const handleReset = () => {
-    form.setFieldsValue(DEFAULT_SECURITY_SETTINGS);
-  };
-
   const renderFooter = (fieldNames: (keyof SecuritySettings)[]) => (
     <Space>
-      <Button onClick={handleReset}>{formatMessage({ id: 'page.security.resetDefault', defaultMessage: 'Restore defaults' })}</Button>
       <Button type="primary" loading={saving} disabled={!canUpdate} onClick={() => void handleSave(fieldNames)}>
         {formatMessage({ id: 'page.security.save', defaultMessage: 'Save settings' })}
       </Button>
@@ -180,7 +175,7 @@ const SecuritySettingsPage = () => {
                         valuePropName="checked"
                         extra={formatMessage({ id: 'page.security.multiDeviceLogin.help', defaultMessage: 'If disabled, the previous session will expire when the account logs in on a new device.' })}
                       >
-                        <Switch checkedChildren={formatMessage({ id: 'common.enable', defaultMessage: 'Enable' })} unCheckedChildren={formatMessage({ id: 'common.disable', defaultMessage: 'Disable' })} />
+                        <Switch />
                       </Form.Item>
                       {renderFooter(tokenFieldNames)}
                     </Space>
@@ -197,7 +192,7 @@ const SecuritySettingsPage = () => {
                         valuePropName="checked"
                         extra={formatMessage({ id: 'page.security.enableCaptcha.help', defaultMessage: 'When disabled, the login page will not show a captcha.' })}
                       >
-                        <Switch checkedChildren={formatMessage({ id: 'common.enable', defaultMessage: 'Enable' })} unCheckedChildren={formatMessage({ id: 'common.disable', defaultMessage: 'Disable' })} />
+                        <Switch />
                       </Form.Item>
                       <Form.Item
                         name="captchaType"
@@ -312,7 +307,7 @@ const SecuritySettingsPage = () => {
                         valuePropName="checked"
                         extra={formatMessage({ id: 'page.security.password.uppercase.help', defaultMessage: 'Force passwords to include A-Z.' })}
                       >
-                        <Switch checkedChildren={formatMessage({ id: 'common.enable', defaultMessage: 'Enable' })} unCheckedChildren={formatMessage({ id: 'common.disable', defaultMessage: 'Disable' })} />
+                        <Switch />
                       </Form.Item>
                       <Form.Item
                         name="passwordRequireLowercase"
@@ -320,7 +315,7 @@ const SecuritySettingsPage = () => {
                         valuePropName="checked"
                         extra={formatMessage({ id: 'page.security.password.lowercase.help', defaultMessage: 'Force passwords to include a-z.' })}
                       >
-                        <Switch checkedChildren={formatMessage({ id: 'common.enable', defaultMessage: 'Enable' })} unCheckedChildren={formatMessage({ id: 'common.disable', defaultMessage: 'Disable' })} />
+                        <Switch />
                       </Form.Item>
                       <Form.Item
                         name="passwordRequireSpecialCharacter"
@@ -328,7 +323,7 @@ const SecuritySettingsPage = () => {
                         valuePropName="checked"
                         extra={formatMessage({ id: 'page.security.password.special.help', defaultMessage: 'Force passwords to include special characters such as !@#$%^&*.' })}
                       >
-                        <Switch checkedChildren={formatMessage({ id: 'common.enable', defaultMessage: 'Enable' })} unCheckedChildren={formatMessage({ id: 'common.disable', defaultMessage: 'Disable' })} />
+                        <Switch />
                       </Form.Item>
                       <Form.Item
                         name="passwordAllowConsecutiveCharacters"
@@ -336,7 +331,7 @@ const SecuritySettingsPage = () => {
                         valuePropName="checked"
                         extra={formatMessage({ id: 'page.security.password.consecutive.help', defaultMessage: 'When disabled, passwords cannot contain consecutive sequences such as 123 or abc.' })}
                       >
-                        <Switch checkedChildren={formatMessage({ id: 'common.allow', defaultMessage: 'Allow' })} unCheckedChildren={formatMessage({ id: 'common.forbid', defaultMessage: 'Forbid' })} />
+                        <Switch />
                       </Form.Item>
                       {renderFooter(passwordFieldNames)}
                     </Space>

@@ -1,13 +1,14 @@
 import { formatMessage } from '@umijs/max';
 import { Form } from 'antd';
 import { type UploadProps } from 'antd';
+import dayjs from 'dayjs';
 import { message } from '@/theme/antdFeedbackBridge';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { HTMLAttributes } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
-import { isPasskeySupported, toPublicKeyCreationOptions, toRegistrationPayload } from '@/auth/passkey';
+import { createPasskeyCredential, isPasskeySupported, toPublicKeyCreationOptions, toRegistrationPayload } from '@/auth/passkey';
 import type { AppInitialState } from '@/app';
 import { useStandardFormProps } from '@/features/form/config';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -35,6 +36,7 @@ interface ProfileBasicInfoPayload {
   gender?: string;
   region?: string;
   idCardNumber?: string;
+  extraProfileValues?: Record<string, string>;
 }
 
 export interface LoginMethodItem {
@@ -485,6 +487,14 @@ export const useProfileCenterPageAccess = () => {
     () => new Set(summary?.profileFieldSettings?.filter((item) => item.visible).map((item) => item.fieldKey)),
     [summary?.profileFieldSettings],
   );
+  const visibleCustomProfileFields = useMemo(
+    () => (summary?.profileFieldSettings || []).filter((item) => item.visible && item.custom),
+    [summary?.profileFieldSettings],
+  );
+  const visibleCustomProfileFieldKeys = useMemo(
+    () => new Set(visibleCustomProfileFields.map((item) => item.fieldKey)),
+    [visibleCustomProfileFields],
+  );
   const profileCompletionSummary = summary?.profileCompletion;
   const roleNames = currentUser?.availableRoles?.map((role) => role.roleName).filter(Boolean) || [];
   const activeRoleName =
@@ -497,6 +507,35 @@ export const useProfileCenterPageAccess = () => {
   const [profileEditingOpen, setProfileEditingOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>();
+
+  useEffect(() => {
+    if (!profileEditingOpen || !currentUser) {
+      return;
+    }
+
+    profileForm.setFieldsValue({
+      avatarUrl: currentUser.avatarUrl || '',
+      nickname: currentUser.nickname || '',
+      realName: currentUser.realName || '',
+      birthMonth: currentUser.birthMonth ? dayjs(currentUser.birthMonth, 'YYYY-MM') : null,
+      gender: currentUser.gender || undefined,
+      region: currentUser.region || '',
+      idCardNumber: currentUser.idCardNumber || '',
+      extraProfileValues: Object.fromEntries(
+        visibleCustomProfileFields.map((item) => [item.fieldKey, currentUser.extraProfileValues?.[item.fieldKey] || '']),
+      ),
+    });
+    setAvatarPreviewUrl(undefined);
+  }, [currentUser, profileEditingOpen, profileForm, visibleCustomProfileFields]);
+
+  const handleProfileEditOpenChange = useCallback((open: boolean) => {
+    setProfileEditingOpen(open);
+    if (!open) {
+      setAvatarPreviewUrl(undefined);
+    }
+  }, []);
+
   const handleSaveProfile = useCallback(async () => {
     try {
       const values = await profileForm.validateFields();
@@ -504,10 +543,25 @@ export const useProfileCenterPageAccess = () => {
       const updatedUser = normalizeCurrentUserText(await request<CurrentUser>('/v1/profile', {
         method: 'PUT',
         data: {
-          ...values,
+          avatarUrl: values.avatarUrl ?? currentUser?.avatarUrl ?? '',
+          nickname: values.nickname ?? currentUser?.nickname ?? '',
+          realName: values.realName ?? currentUser?.realName ?? '',
           mobile: currentUser?.mobile || '',
           email: currentUser?.email || '',
-          birthMonth: values.birthMonth ? values.birthMonth.format('YYYY-MM') : '',
+          birthMonth: values.birthMonth === undefined
+            ? currentUser?.birthMonth || ''
+            : values.birthMonth
+              ? values.birthMonth.format('YYYY-MM')
+              : '',
+          gender: values.gender ?? currentUser?.gender ?? '',
+          region: values.region ?? currentUser?.region ?? '',
+          idCardNumber: values.idCardNumber ?? currentUser?.idCardNumber ?? '',
+          extraProfileValues: Object.fromEntries(
+            visibleCustomProfileFields.map((item) => [
+              item.fieldKey,
+              values.extraProfileValues?.[item.fieldKey] ?? currentUser?.extraProfileValues?.[item.fieldKey] ?? '',
+            ]),
+          ),
         } satisfies ProfileBasicInfoPayload,
         ...API_OPTS.NO_REDIRECT,
       }));
@@ -520,11 +574,12 @@ export const useProfileCenterPageAccess = () => {
           : prev,
       );
       message.success(formatMessage({ id: 'page.profile.bind.updateSuccess', defaultMessage: 'Profile updated' }));
+      handleProfileEditOpenChange(false);
       await profileQuery.refetch();
     } finally {
       setProfileSaving(false);
     }
-  }, [currentUser?.email, currentUser?.mobile, profileForm, profileQuery, setInitialState]);
+  }, [currentUser, handleProfileEditOpenChange, profileForm, profileQuery, setInitialState, visibleCustomProfileFields]);
   const handleAvatarBeforeCrop = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
       message.error(formatMessage({ id: 'page.profile.avatar.selectImage', defaultMessage: 'Please select an image file' }));
@@ -544,17 +599,7 @@ export const useProfileCenterPageAccess = () => {
         ...API_OPTS.NO_REDIRECT,
       });
       profileForm.setFieldValue('avatarUrl', avatarUrl);
-      setInitialState((prev) =>
-        prev?.currentUser
-          ? {
-              ...prev,
-              currentUser: {
-                ...prev.currentUser,
-                avatarUrl,
-              },
-            }
-          : prev,
-      );
+      setAvatarPreviewUrl(avatarUrl);
       message.success(formatMessage({ id: 'page.profile.avatar.uploadSuccess', defaultMessage: 'Avatar uploaded, please click save profile' }));
       onSuccess?.(avatarUrl);
     } catch (error) {
@@ -563,7 +608,7 @@ export const useProfileCenterPageAccess = () => {
     } finally {
       setAvatarUploading(false);
     }
-  }, [profileForm, setInitialState]);
+  }, [profileForm]);
 
   const summaryMobileBindAvailable = Boolean(summary?.mobileBindAvailable ?? summary?.mobileBindVerificationRequired);
   const summaryEmailBindAvailable = Boolean(summary?.emailBindAvailable ?? summary?.emailBindVerificationRequired);
@@ -638,17 +683,13 @@ export const useProfileCenterPageAccess = () => {
     if (passkeyBinding) {
       return;
     }
-    let shouldRefreshPasskeys = false;
     setPasskeyBinding(true);
     try {
       const options = await request<PasskeyOptions>('/v1/auth/passkeys/registration/options', {
         method: 'POST',
         ...API_OPTS.SILENT_NO_REDIRECT,
       });
-      shouldRefreshPasskeys = true;
-      const credential = await navigator.credentials.create({
-        publicKey: toPublicKeyCreationOptions(options),
-      });
+      const credential = await createPasskeyCredential(toPublicKeyCreationOptions(options));
       if (!credential) {
         return;
       }
@@ -664,11 +705,12 @@ export const useProfileCenterPageAccess = () => {
         message.info(formatMessage({ id: 'page.profile.passkey.cancelled', defaultMessage: '已取消通行密钥绑定' }));
         return;
       }
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        message.warning(formatMessage({ id: 'page.profile.passkey.timeout', defaultMessage: '通行密钥绑定超时，请重新尝试' }));
+        return;
+      }
       showErrorMessage(error, formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥绑定失败' }));
     } finally {
-      if (shouldRefreshPasskeys) {
-        await passkeyQuery.refetch();
-      }
       setPasskeyBinding(false);
     }
   }, [passkeyBinding, passkeyQuery]);
@@ -701,7 +743,7 @@ export const useProfileCenterPageAccess = () => {
   );
   const profileSectionAccess = {
     profileBasicCardRef,
-    avatarValue,
+    avatarValue: avatarPreviewUrl ?? avatarValue,
     displayName,
     activeRoleName,
     loading: profileQuery.isLoading,
@@ -709,10 +751,12 @@ export const useProfileCenterPageAccess = () => {
     profileSaving,
     profileFormProps,
     visibleProfileFields,
+    visibleCustomProfileFields,
+    visibleCustomProfileFieldKeys,
     avatarUploading,
     editingOpen: profileEditingOpen,
     onSave: handleSaveProfile,
-    onEditOpenChange: setProfileEditingOpen,
+    onEditOpenChange: handleProfileEditOpenChange,
     onAvatarBeforeCrop: handleAvatarBeforeCrop,
     onAvatarUploadRequest: handleAvatarUploadRequest,
     profileCompletionSummary,

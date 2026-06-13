@@ -8,6 +8,7 @@ interface PageToolbarButtonConfig {
   key: string;
   label: ReactNode;
   onClick: () => void;
+  icon?: ReactNode;
   permission?: PermissionRequirement;
   hidden?: boolean;
   disabled?: boolean;
@@ -47,6 +48,7 @@ export const usePagePermissionActions = () => {
             key={item.key}
             type={item.type}
             size={buttonSize}
+            icon={item.icon}
             disabled={item.disabled || !allowed}
             onClick={item.onClick}
           >
