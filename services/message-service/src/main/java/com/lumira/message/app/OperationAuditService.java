@@ -1,19 +1,16 @@
 package com.lumira.message.app;
 
-import com.lumira.common.web.TraceContext;
-import com.lumira.message.entity.AuditOperationLogEntity;
-import com.lumira.message.mapper.MessageAuditOperationLogMapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
 
 @Service("messageOperationAuditService")
 public class OperationAuditService {
 
-    private final MessageAuditOperationLogMapper auditOperationLogMapper;
+    private final SystemInternalApi systemInternalApi;
 
-    public OperationAuditService(MessageAuditOperationLogMapper auditOperationLogMapper) {
-        this.auditOperationLogMapper = auditOperationLogMapper;
+    public OperationAuditService(SystemInternalApi systemInternalApi) {
+        this.systemInternalApi = systemInternalApi;
     }
 
     public void log(
@@ -26,20 +23,15 @@ public class OperationAuditService {
             String resultStatus,
             String detailMessage
     ) {
-        AuditOperationLogEntity entity = new AuditOperationLogEntity();
-        entity.setTenantId(tenantId);
-        entity.setUserId(userId);
-        entity.setUsername(username);
-        entity.setModuleName(moduleName);
-        entity.setActionName(actionName);
-        entity.setOperationType(operationType);
-        entity.setResultStatus(resultStatus);
-        entity.setDetailMessage(detailMessage);
-        entity.setRequestId(TraceContext.getRequestId());
-        entity.setTraceId(TraceContext.getTraceId());
-        entity.setCreatedBy(userId == null ? 0L : userId);
-        entity.setCreatedAt(LocalDateTime.now());
-        entity.setDeleted(0);
-        auditOperationLogMapper.insert(entity);
+        systemInternalApi.recordOperationAudit(new OperationAuditRecordRequestDTO(
+                tenantId,
+                userId,
+                username,
+                moduleName,
+                actionName,
+                operationType,
+                resultStatus,
+                detailMessage
+        ));
     }
 }

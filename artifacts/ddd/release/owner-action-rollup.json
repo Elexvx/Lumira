@@ -1,0 +1,2488 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "inputArtifacts": {
+    "releaseGate": {
+      "file": "artifacts/ddd/release/release-evidence-gate.json",
+      "relativePath": "release/release-evidence-gate.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T21:34:10.599Z",
+      "generatedAt": "2026-06-16T21:34:10.597Z",
+      "status": null,
+      "blockers": 0,
+      "warnings": 16
+    },
+    "manifest": {
+      "file": "artifacts/ddd/release/evidence-manifest.json",
+      "relativePath": "release/evidence-manifest.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-17T08:10:19.879Z",
+      "generatedAt": "2026-06-17T08:10:19.878Z",
+      "status": "PASS",
+      "blockers": 0,
+      "warnings": null
+    },
+    "releaseEnvLint": {
+      "file": "artifacts/ddd/release/release-env-lint.json",
+      "relativePath": "release/release-env-lint.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-17T05:46:16.011Z",
+      "generatedAt": "2026-06-17T05:46:16.010Z",
+      "status": "FAIL",
+      "blockers": 156,
+      "warnings": 0
+    },
+    "releaseConfig": {
+      "file": "artifacts/ddd/config/release-config-evidence.json",
+      "relativePath": "config/release-config-evidence.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-17T06:28:34.953Z",
+      "generatedAt": "2026-06-17T06:28:34.918Z",
+      "status": "FAIL",
+      "blockers": 63,
+      "warnings": 0
+    },
+    "docker": {
+      "file": "artifacts/ddd/build/docker-image-evidence.json",
+      "relativePath": "build/docker-image-evidence.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T21:45:55.214Z",
+      "generatedAt": "2026-06-16T21:45:55.209Z",
+      "status": "FAIL",
+      "blockers": 2,
+      "warnings": null
+    },
+    "migration": {
+      "file": "artifacts/ddd/migration/migration-evidence.json",
+      "relativePath": "migration/migration-evidence.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T20:56:46.905Z",
+      "generatedAt": "2026-06-16T20:56:46.902Z",
+      "status": "PASS",
+      "blockers": 0,
+      "warnings": null
+    },
+    "runtimeReadiness": {
+      "file": "artifacts/ddd/readiness/summary.json",
+      "relativePath": "readiness/summary.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T06:22:07.615Z",
+      "generatedAt": "2026-06-16T06:22:07.611Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "authenticatedPerformanceActual": {
+      "file": "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "relativePath": "performance/authenticated-runtime-actual.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T20:51:41.453Z",
+      "generatedAt": "2026-06-16T20:51:41.443Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "authenticatedPerformanceBaseline": {
+      "file": "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+      "relativePath": "performance/authenticated-runtime-baseline.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T13:36:36.271Z",
+      "generatedAt": "2026-06-13T18:38:43.975Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "authenticatedPerformanceBaselinePromotion": {
+      "file": "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+      "relativePath": "performance/authenticated-runtime-baseline-promotion.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T13:36:36.277Z",
+      "generatedAt": "2026-06-13T18:38:43.975Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "fileProcessing": {
+      "file": "artifacts/ddd/file/file-processing-e2e.json",
+      "relativePath": "file/file-processing-e2e.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "generatedAt": null,
+      "status": "PASS",
+      "blockers": null,
+      "warnings": null
+    },
+    "paymentWebhook": {
+      "file": "artifacts/ddd/payment/payment-webhook-e2e.json",
+      "relativePath": "payment/payment-webhook-e2e.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "generatedAt": null,
+      "status": "PASS",
+      "blockers": null,
+      "warnings": null
+    },
+    "jobE2e": {
+      "file": "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "relativePath": "jobs/job-e2e-smoke.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "generatedAt": "2026-06-13T19:15:58.531Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "frontendSmoke": {
+      "file": "artifacts/ddd/frontend/frontend-smoke.json",
+      "relativePath": "frontend/frontend-smoke.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T20:51:08.158Z",
+      "generatedAt": "2026-06-16T20:51:08.151Z",
+      "status": "PASS",
+      "blockers": 0,
+      "warnings": null
+    },
+    "aiRuntime": {
+      "file": "artifacts/ddd/ai/ai-runtime-drill.json",
+      "relativePath": "ai/ai-runtime-drill.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T20:51:41.732Z",
+      "generatedAt": "2026-06-16T20:51:41.726Z",
+      "status": "PASS",
+      "blockers": null,
+      "warnings": null
+    },
+    "rollback": {
+      "file": "artifacts/ddd/rollback/rollback-drill.json",
+      "relativePath": "rollback/rollback-drill.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T06:24:20.376Z",
+      "generatedAt": "2026-06-16T06:24:20.373Z",
+      "status": "PASS",
+      "blockers": 0,
+      "warnings": 0
+    },
+    "orchestrator": {
+      "file": "artifacts/ddd/release/orchestrator-report.json",
+      "relativePath": "release/orchestrator-report.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-16T21:33:57.990Z",
+      "generatedAt": "2026-06-16T21:33:57.249Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "ownerQueueRunReport": {
+      "file": "artifacts/ddd/release/release-final-owner-queue-run-report.json",
+      "relativePath": "release/release-final-owner-queue-run-report.json",
+      "present": false,
+      "missing": true,
+      "invalid": null,
+      "modifiedAt": null,
+      "generatedAt": null,
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "ownerQueueEnvInitReceipt": {
+      "file": "artifacts/ddd/release/release-final-owner-queue-env-init-receipt.json",
+      "relativePath": "release/release-final-owner-queue-env-init-receipt.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T00:59:03.189Z",
+      "generatedAt": "2026-06-15T00:59:03.187Z",
+      "status": null,
+      "blockers": null,
+      "warnings": null
+    },
+    "explainGateReport": {
+      "file": "artifacts/ddd/release/explain-gate-report.json",
+      "relativePath": "release/explain-gate-report.json",
+      "present": true,
+      "missing": false,
+      "invalid": null,
+      "modifiedAt": "2026-06-15T20:41:37.877Z",
+      "generatedAt": "2026-06-15T20:41:37.875Z",
+      "status": "PASS",
+      "blockers": 0,
+      "warnings": null
+    }
+  },
+  "gate": {
+    "strict": false,
+    "blockers": 0,
+    "warnings": 16
+  },
+  "ownerCount": 17,
+  "activeOwnerCount": 17,
+  "collapsedOnlyOwnerCount": 0,
+  "activeOwners": [
+    "ai",
+    "ai-owner",
+    "auth-owner",
+    "database",
+    "file-owner",
+    "frontend",
+    "iam-owner",
+    "job-owner",
+    "localization-owner",
+    "message-owner",
+    "payment-owner",
+    "platform-events",
+    "platform-owner",
+    "platform-owners",
+    "plugin-owner",
+    "release-infra",
+    "release-owner"
+  ],
+  "collapsedOnlyOwners": [],
+  "totalPendingItems": 95,
+  "totalCollapsedItems": 2,
+  "owners": {
+    "ai": {
+      "owner": "ai",
+      "pendingItems": 3,
+      "collapsedItems": 1,
+      "envKeys": [
+        "BASE_URL",
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+        "DDD_AI_EXPECT_PROVIDER_REMOTE",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_AI_BASE_URL",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_BASE_URL"
+      ],
+      "sources": {
+        "ai-runtime": 3
+      },
+      "collapsedSources": {
+        "orchestrator": 1
+      },
+      "items": [
+        {
+          "source": "ai-runtime",
+          "id": "ai-owner-gateway",
+          "check": "ai-owner-gateway",
+          "reason": "ownerGateway status=CONFIGURED configuredOwners=0",
+          "detail": "ownerGateway status=CONFIGURED configuredOwners=0",
+          "structured": false,
+          "action": "Configure and verify remote AI owner gateways for IAM/File/Platform integrations.",
+          "envKeys": [
+            "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+            "LUMIRA_AI_OWNER_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": "ai:ai-owner-gateway"
+        },
+        {
+          "source": "ai-runtime",
+          "id": "ai-provider-runtime",
+          "check": "ai-provider-runtime",
+          "reason": "provider status=CONFIGURED remoteConfigured=false",
+          "detail": "provider status=CONFIGURED remoteConfigured=false",
+          "structured": false,
+          "action": "Configure and verify a remote AI provider runtime; strict release must not rely on local fallback.",
+          "envKeys": [
+            "DDD_AI_EXPECT_PROVIDER_REMOTE",
+            "LUMIRA_AI_PROVIDER",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
+          ],
+          "artifact": null,
+          "rootCauseKey": "ai:ai-provider-runtime"
+        },
+        {
+          "source": "ai-runtime",
+          "id": "ai-runtime-base-url",
+          "check": "ai-runtime-base-url",
+          "reason": "missing production-equivalent AI base URL",
+          "detail": "missing production-equivalent AI base URL",
+          "structured": false,
+          "action": "Run AI runtime drill against an HTTPS non-local AI runtime base URL.",
+          "envKeys": [
+            "LUMIRA_AI_BASE_URL",
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL",
+            "BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": "ai:ai-runtime-base-url"
+        }
+      ],
+      "collapsed": [
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-preflight-ai-runtime-base-url",
+          "reason": "missing AI runtime base URL",
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_BASE_URL",
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL",
+            "BASE_URL"
+          ],
+          "rootCauseKey": "ai:ai-runtime-base-url",
+          "coveredBy": {
+            "source": "ai-runtime",
+            "id": "ai-runtime-base-url"
+          }
+        }
+      ]
+    },
+    "ai-owner": {
+      "owner": "ai-owner",
+      "pendingItems": 13,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_API_KEY",
+        "LUMIRA_AI_PROVIDER_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN"
+      ],
+      "sources": {
+        "release-config": 12,
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "release-config",
+          "id": "file owner url",
+          "check": "file owner url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_FILE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "file owner url",
+          "check": "file owner url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_FILE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "iam owner url",
+          "check": "iam owner url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL or LUMIRA_AI_OWNER_IAM_BASE_URL for iam owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_IAM_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "iam owner url",
+          "check": "iam owner url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL or LUMIRA_AI_OWNER_IAM_BASE_URL for iam owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_IAM_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "owner internal token",
+          "check": "owner internal token",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN or LUMIRA_AI_OWNER_INTERNAL_TOKEN or SAAS_JOB_INTERNAL_TOKEN for owner internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+            "SAAS_JOB_INTERNAL_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "owner internal token",
+          "check": "owner internal token",
+          "reason": "must be at least 32 characters",
+          "detail": "must be at least 32 characters",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN or LUMIRA_AI_OWNER_INTERNAL_TOKEN or SAAS_JOB_INTERNAL_TOKEN for owner internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+            "SAAS_JOB_INTERNAL_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "platform owner url",
+          "check": "platform owner url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL or LUMIRA_AI_OWNER_PLATFORM_BASE_URL for platform owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "platform owner url",
+          "check": "platform owner url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL or LUMIRA_AI_OWNER_PLATFORM_BASE_URL for platform owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "provider api key",
+          "check": "provider api key",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY or LUMIRA_AI_PROVIDER_API_KEY for provider api key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_API_KEY"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "provider api key",
+          "check": "provider api key",
+          "reason": "must be at least 32 characters",
+          "detail": "must be at least 32 characters",
+          "structured": false,
+          "action": "Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY or LUMIRA_AI_PROVIDER_API_KEY for provider api key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_API_KEY"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "provider base url",
+          "check": "provider base url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL or LUMIRA_AI_PROVIDER_BASE_URL for provider base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_AI_PROVIDER_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "provider base url",
+          "check": "provider base url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL or LUMIRA_AI_PROVIDER_BASE_URL for provider base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_AI_PROVIDER_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "rollback",
+          "id": "AI",
+          "check": "AI",
+          "reason": "AI rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "AI rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "auth-owner": {
+      "owner": "auth-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "sources": {
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "rollback",
+          "id": "Auth",
+          "check": "Auth",
+          "reason": "Auth rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Auth rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "database": {
+      "owner": "database",
+      "pendingItems": 7,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_EXPLAIN_DIR",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EXPLAIN_STRICT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
+        "MYSQL_CLI",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PASSWORD",
+        "MYSQL_PORT",
+        "MYSQL_USER"
+      ],
+      "sources": {
+        "explain": 6,
+        "orchestrator": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "explain",
+          "id": "ai-knowledge-index-retry.json",
+          "check": "ai-knowledge-index-retry.json",
+          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "message-visible-list.json",
+          "check": "message-visible-list.json",
+          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "platform-outbox-owner-relay-file.json",
+          "check": "platform-outbox-owner-relay-file.json",
+          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "platform-outbox-owner-relay-message.json",
+          "check": "platform-outbox-owner-relay-message.json",
+          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "platform-runtime-appearance.json",
+          "check": "platform-runtime-appearance.json",
+          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "plugin-bootstrap.json",
+          "check": "plugin-bootstrap.json",
+          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-preflight-migration-runtime-evidence",
+          "check": "migration-runtime-evidence",
+          "reason": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+          "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+          "structured": false,
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+          ],
+          "artifact": null,
+          "rootCauseKey": "database:migration-runtime-evidence"
+        }
+      ],
+      "collapsed": []
+    },
+    "file-owner": {
+      "owner": "file-owner",
+      "pendingItems": 2,
+      "collapsedItems": 0,
+      "envKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "LUMIRA_JOB_INTERNAL_TOKEN",
+        "LUMIRA_UPLOAD_STORAGE_ROOT"
+      ],
+      "sources": {
+        "business-e2e": 1,
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "business-e2e",
+          "id": "file-processing-production-equivalence",
+          "check": "file-processing-production-equivalence",
+          "reason": "strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+          "detail": "strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+          "structured": false,
+          "action": "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL",
+            "BASE_URL",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+            "LUMIRA_UPLOAD_STORAGE_ROOT",
+            "LUMIRA_JOB_INTERNAL_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "rollback",
+          "id": "File",
+          "check": "File",
+          "reason": "File rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "File rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise file processing pause, stable object-key access, and task rerun by id; attach upload, processing row, and storage evidence. Required evidence: file processing pause/resume command or job output; stable object-key read evidence after rollback; processing task rerun by id with final state; storage artifact or upload row proving access continuity. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "frontend": {
+      "owner": "frontend",
+      "pendingItems": 2,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "FRONTEND_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "sources": {
+        "frontend-smoke": 1,
+        "orchestrator": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "frontend-smoke",
+          "id": "frontend-deployed-expectation",
+          "check": "frontend-deployed-expectation",
+          "reason": "strict release requires deployed frontend smoke expectation",
+          "detail": "strict release requires deployed frontend smoke expectation",
+          "structured": false,
+          "action": "Set DDD_FRONTEND_EXPECT_DEPLOYED=true for strict deployed frontend smoke evidence.",
+          "envKeys": [
+            "DDD_FRONTEND_EXPECT_DEPLOYED"
+          ],
+          "artifact": null,
+          "rootCauseKey": "frontend:frontend-deployed-expectation"
+        },
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-preflight-frontend-runtime-base-url",
+          "check": "frontend-runtime-base-url",
+          "reason": "missing deployed frontend base URL",
+          "detail": "missing deployed frontend base URL",
+          "structured": false,
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": "frontend:frontend-base-url"
+        }
+      ],
+      "collapsed": []
+    },
+    "iam-owner": {
+      "owner": "iam-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "sources": {
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "rollback",
+          "id": "IAM",
+          "check": "IAM",
+          "reason": "IAM rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "IAM rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "job-owner": {
+      "owner": "job-owner",
+      "pendingItems": 2,
+      "collapsedItems": 0,
+      "envKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ],
+      "sources": {
+        "business-e2e": 1,
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "business-e2e",
+          "id": "job-e2e-production-equivalence",
+          "check": "job-e2e-production-equivalence",
+          "reason": "strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+          "detail": "strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+          "structured": false,
+          "action": "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node scripts/ddd-job-e2e-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL",
+            "BASE_URL",
+            "LUMIRA_JOB_INTERNAL_TOKEN",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "rollback",
+          "id": "Job",
+          "check": "Job",
+          "reason": "Job rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Job rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise XXL-JOB handler disablement and manual owner internal endpoint fallback; attach dashboard, token, and endpoint evidence. Required evidence: XXL-JOB handler disablement or dashboard evidence; manual owner internal endpoint fallback result; internal job token provenance or redacted request evidence; job readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "localization-owner": {
+      "owner": "localization-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "sources": {
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "rollback",
+          "id": "Localization",
+          "check": "Localization",
+          "reason": "Localization rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Localization rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "message-owner": {
+      "owner": "message-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "sources": {
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "rollback",
+          "id": "Message",
+          "check": "Message",
+          "reason": "Message rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Message rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "payment-owner": {
+      "owner": "payment-owner",
+      "pendingItems": 4,
+      "collapsedItems": 0,
+      "envKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "sources": {
+        "business-e2e": 1,
+        "release-config": 2,
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "business-e2e",
+          "id": "payment-webhook-production-equivalence",
+          "check": "payment-webhook-production-equivalence",
+          "reason": "strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+          "detail": "strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+          "structured": false,
+          "action": "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node scripts/ddd-payment-webhook-e2e-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL",
+            "BASE_URL",
+            "PAYMENT_PUBLIC_BASE_URL",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "payment public url",
+          "check": "payment public url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "payment public url",
+          "check": "payment public url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "rollback",
+          "id": "Payment",
+          "check": "Payment",
+          "reason": "Payment rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Payment rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "platform-events": {
+      "owner": "platform-events",
+      "pendingItems": 17,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_JOB_INTERNAL_TOKEN",
+        "LUMIRA_EVENT_REDIS_STREAM_KEY",
+        "LUMIRA_JOB_BACKEND_BASE_URL",
+        "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_INTERNAL_TOKEN",
+        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_XXL_JOB_ACCESS_TOKEN",
+        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "sources": {
+        "release-config": 17
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "release-config",
+          "id": "event stream key",
+          "check": "event stream key",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_EVENT_REDIS_STREAM_KEY or LUMIRA_EVENT_REDIS_STREAM_KEY for event stream key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_EVENT_REDIS_STREAM_KEY",
+            "LUMIRA_EVENT_REDIS_STREAM_KEY"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job backend url",
+          "check": "job backend url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_JOB_BACKEND_BASE_URL or LUMIRA_JOB_BACKEND_BASE_URL for job backend url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "LUMIRA_JOB_BACKEND_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job backend url",
+          "check": "job backend url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set SAAS_JOB_BACKEND_BASE_URL or LUMIRA_JOB_BACKEND_BASE_URL for job backend url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "LUMIRA_JOB_BACKEND_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job file url",
+          "check": "job file url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_JOB_FILE_SERVICE_BASE_URL or LUMIRA_JOB_FILE_SERVICE_BASE_URL for job file url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job file url",
+          "check": "job file url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set SAAS_JOB_FILE_SERVICE_BASE_URL or LUMIRA_JOB_FILE_SERVICE_BASE_URL for job file url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job internal token",
+          "check": "job internal token",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_JOB_INTERNAL_TOKEN or DDD_JOB_INTERNAL_TOKEN or LUMIRA_JOB_INTERNAL_TOKEN for job internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "DDD_JOB_INTERNAL_TOKEN",
+            "LUMIRA_JOB_INTERNAL_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job internal token",
+          "check": "job internal token",
+          "reason": "must be at least 32 characters",
+          "detail": "must be at least 32 characters",
+          "structured": false,
+          "action": "Set SAAS_JOB_INTERNAL_TOKEN or DDD_JOB_INTERNAL_TOKEN or LUMIRA_JOB_INTERNAL_TOKEN for job internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "DDD_JOB_INTERNAL_TOKEN",
+            "LUMIRA_JOB_INTERNAL_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job message url",
+          "check": "job message url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_JOB_MESSAGE_SERVICE_BASE_URL or LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL for job message url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job message url",
+          "check": "job message url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set SAAS_JOB_MESSAGE_SERVICE_BASE_URL or LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL for job message url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job payment url",
+          "check": "job payment url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_JOB_PAYMENT_SERVICE_BASE_URL or LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL for job payment url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job payment url",
+          "check": "job payment url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set SAAS_JOB_PAYMENT_SERVICE_BASE_URL or LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL for job payment url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job plugin url",
+          "check": "job plugin url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SAAS_JOB_PLUGIN_SERVICE_BASE_URL or LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL for job plugin url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job plugin url",
+          "check": "job plugin url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set SAAS_JOB_PLUGIN_SERVICE_BASE_URL or LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL for job plugin url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "xxl job admin",
+          "check": "xxl job admin",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set XXL_JOB_ADMIN_ADDRESSES or LUMIRA_XXL_JOB_ADMIN_ADDRESSES for xxl job admin in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "XXL_JOB_ADMIN_ADDRESSES",
+            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "xxl job admin",
+          "check": "xxl job admin",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set XXL_JOB_ADMIN_ADDRESSES or LUMIRA_XXL_JOB_ADMIN_ADDRESSES for xxl job admin in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "XXL_JOB_ADMIN_ADDRESSES",
+            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "xxl job token",
+          "check": "xxl job token",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set XXL_JOB_ACCESS_TOKEN or XXL_JOB_ADMIN_ACCESS_TOKEN or LUMIRA_XXL_JOB_ACCESS_TOKEN for xxl job token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ACCESS_TOKEN",
+            "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "xxl job token",
+          "check": "xxl job token",
+          "reason": "must be at least 32 characters",
+          "detail": "must be at least 32 characters",
+          "structured": false,
+          "action": "Set XXL_JOB_ACCESS_TOKEN or XXL_JOB_ADMIN_ACCESS_TOKEN or LUMIRA_XXL_JOB_ACCESS_TOKEN for xxl job token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ACCESS_TOKEN",
+            "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "platform-owner": {
+      "owner": "platform-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "sources": {
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "rollback",
+          "id": "Platform",
+          "check": "Platform",
+          "reason": "Platform rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Platform rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "platform-owners": {
+      "owner": "platform-owners",
+      "pendingItems": 18,
+      "collapsedItems": 0,
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "FILE_SERVICE_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "SYSTEM_SERVICE_BASE_URL"
+      ],
+      "sources": {
+        "release-config": 18
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "release-config",
+          "id": "ai service",
+          "check": "ai service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "ai service",
+          "check": "ai service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "auth service",
+          "check": "auth service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set AUTH_SERVICE_BASE_URL or LUMIRA_AUTH_SERVICE_BASE_URL for auth service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "AUTH_SERVICE_BASE_URL",
+            "LUMIRA_AUTH_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "auth service",
+          "check": "auth service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set AUTH_SERVICE_BASE_URL or LUMIRA_AUTH_SERVICE_BASE_URL for auth service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "AUTH_SERVICE_BASE_URL",
+            "LUMIRA_AUTH_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "file service",
+          "check": "file service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set FILE_SERVICE_BASE_URL or LUMIRA_FILE_SERVICE_BASE_URL for file service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "FILE_SERVICE_BASE_URL",
+            "LUMIRA_FILE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "file service",
+          "check": "file service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set FILE_SERVICE_BASE_URL or LUMIRA_FILE_SERVICE_BASE_URL for file service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "FILE_SERVICE_BASE_URL",
+            "LUMIRA_FILE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job executor",
+          "check": "job executor",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set JOB_EXECUTOR_BASE_URL or LUMIRA_JOB_EXECUTOR_BASE_URL for job executor in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "JOB_EXECUTOR_BASE_URL",
+            "LUMIRA_JOB_EXECUTOR_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "job executor",
+          "check": "job executor",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set JOB_EXECUTOR_BASE_URL or LUMIRA_JOB_EXECUTOR_BASE_URL for job executor in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "JOB_EXECUTOR_BASE_URL",
+            "LUMIRA_JOB_EXECUTOR_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "localization service",
+          "check": "localization service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LOCALIZATION_SERVICE_BASE_URL or LUMIRA_LOCALIZATION_SERVICE_BASE_URL for localization service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "localization service",
+          "check": "localization service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set LOCALIZATION_SERVICE_BASE_URL or LUMIRA_LOCALIZATION_SERVICE_BASE_URL for localization service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "message service",
+          "check": "message service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set MESSAGE_SERVICE_BASE_URL or LUMIRA_MESSAGE_SERVICE_BASE_URL for message service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "message service",
+          "check": "message service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set MESSAGE_SERVICE_BASE_URL or LUMIRA_MESSAGE_SERVICE_BASE_URL for message service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "payment service",
+          "check": "payment service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set PAYMENT_SERVICE_BASE_URL or LUMIRA_PAYMENT_SERVICE_BASE_URL for payment service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "payment service",
+          "check": "payment service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set PAYMENT_SERVICE_BASE_URL or LUMIRA_PAYMENT_SERVICE_BASE_URL for payment service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "plugin service",
+          "check": "plugin service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set PLUGIN_SERVICE_BASE_URL or LUMIRA_PLUGIN_SERVICE_BASE_URL for plugin service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "plugin service",
+          "check": "plugin service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set PLUGIN_SERVICE_BASE_URL or LUMIRA_PLUGIN_SERVICE_BASE_URL for plugin service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "system service",
+          "check": "system service",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set SYSTEM_SERVICE_BASE_URL or LUMIRA_SYSTEM_SERVICE_BASE_URL for system service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SYSTEM_SERVICE_BASE_URL",
+            "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "system service",
+          "check": "system service",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set SYSTEM_SERVICE_BASE_URL or LUMIRA_SYSTEM_SERVICE_BASE_URL for system service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "SYSTEM_SERVICE_BASE_URL",
+            "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "plugin-owner": {
+      "owner": "plugin-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "sources": {
+        "rollback": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "rollback",
+          "id": "Plugin",
+          "check": "Plugin",
+          "reason": "Plugin rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Plugin rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "release-infra": {
+      "owner": "release-infra",
+      "pendingItems": 20,
+      "collapsedItems": 1,
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "BASE_URL",
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "DDD_AUTH_PASSWORD",
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_ENVIRONMENT",
+        "DDD_AUTH_USERNAME",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_DOCKER_BUILD_STRICT",
+        "DDD_DOCKER_COMMAND",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_MIGRATION_COMPLETED_AT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DEPLOY_CHECK_BASE_URL",
+        "FIELD_SECRET",
+        "FILE_SERVICE_BASE_URL",
+        "FRONTEND_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "JWT_SECRET",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PASSWORD",
+        "MYSQL_PORT",
+        "MYSQL_USER",
+        "PAYMENT_PUBLIC_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "REDIS_HOST",
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "SAAS_SECURITY_FIELD_SECRET",
+        "SAAS_SECURITY_JWT_SECRET",
+        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
+        "SPRING_DATASOURCE_PASSWORD",
+        "SPRING_DATASOURCE_URL",
+        "SPRING_DATASOURCE_USERNAME",
+        "SPRING_DATA_REDIS_HOST",
+        "SYSTEM_SERVICE_BASE_URL",
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "sources": {
+        "docker": 4,
+        "release-config": 14,
+        "release-env-lint": 2
+      },
+      "collapsedSources": {
+        "orchestrator": 1
+      },
+      "items": [
+        {
+          "source": "docker",
+          "id": "docker-blocker-1",
+          "check": "docker-blocker-1",
+          "reason": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "detail": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "structured": false,
+          "action": "Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "envKeys": [
+            "DDD_DOCKER_COMMAND",
+            "DDD_DOCKER_BUILD_STRICT"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "docker",
+          "id": "docker-blocker-2",
+          "check": "docker-blocker-2",
+          "reason": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "structured": false,
+          "action": "Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "envKeys": [
+            "DDD_DOCKER_COMMAND",
+            "DDD_DOCKER_BUILD_STRICT"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "docker",
+          "id": "docker-image-frontend-failed",
+          "check": "docker-image-frontend-failed",
+          "reason": "docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "detail": "docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "structured": false,
+          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "envKeys": [
+            "DDD_DOCKER_COMMAND",
+            "DDD_DOCKER_BUILD_STRICT"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "docker",
+          "id": "docker-image-lumira-server-failed",
+          "check": "docker-image-lumira-server-failed",
+          "reason": "docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "detail": "docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "structured": false,
+          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "envKeys": [
+            "DDD_DOCKER_COMMAND",
+            "DDD_DOCKER_BUILD_STRICT"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "backend base url",
+          "check": "backend base url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set LUMIRA_BASE_URL or DEPLOY_CHECK_BASE_URL for backend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": "release-infra:backend-runtime-base-url"
+        },
+        {
+          "source": "release-config",
+          "id": "backend base url",
+          "check": "backend base url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set LUMIRA_BASE_URL or DEPLOY_CHECK_BASE_URL for backend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": "release-infra:backend-runtime-base-url"
+        },
+        {
+          "source": "release-config",
+          "id": "cors origins",
+          "check": "cors origins",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set CORS_ALLOWED_ORIGIN_PATTERNS or SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS for cors origins in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "CORS_ALLOWED_ORIGIN_PATTERNS",
+            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "database password",
+          "check": "database password",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set DB_PASSWORD or SPRING_DATASOURCE_PASSWORD or MYSQL_PASSWORD for database password in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "DB_PASSWORD",
+            "SPRING_DATASOURCE_PASSWORD",
+            "MYSQL_PASSWORD"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "database password",
+          "check": "database password",
+          "reason": "must be at least 16 characters",
+          "detail": "must be at least 16 characters",
+          "structured": false,
+          "action": "Set DB_PASSWORD or SPRING_DATASOURCE_PASSWORD or MYSQL_PASSWORD for database password in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "DB_PASSWORD",
+            "SPRING_DATASOURCE_PASSWORD",
+            "MYSQL_PASSWORD"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "database url",
+          "check": "database url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set DB_URL or SPRING_DATASOURCE_URL for database url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "DB_URL",
+            "SPRING_DATASOURCE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "database username",
+          "check": "database username",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set DB_USERNAME or SPRING_DATASOURCE_USERNAME or MYSQL_USER for database username in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "DB_USERNAME",
+            "SPRING_DATASOURCE_USERNAME",
+            "MYSQL_USER"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "field secret",
+          "check": "field secret",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set FIELD_SECRET or SAAS_SECURITY_FIELD_SECRET for field secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "FIELD_SECRET",
+            "SAAS_SECURITY_FIELD_SECRET"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "field secret",
+          "check": "field secret",
+          "reason": "must be at least 32 characters",
+          "detail": "must be at least 32 characters",
+          "structured": false,
+          "action": "Set FIELD_SECRET or SAAS_SECURITY_FIELD_SECRET for field secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "FIELD_SECRET",
+            "SAAS_SECURITY_FIELD_SECRET"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "frontend base url",
+          "check": "frontend base url",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set PLAYWRIGHT_BASE_URL or FRONTEND_BASE_URL for frontend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "frontend base url",
+          "check": "frontend base url",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "detail": "must use HTTPS for production-equivalent evidence",
+          "structured": false,
+          "action": "Set PLAYWRIGHT_BASE_URL or FRONTEND_BASE_URL for frontend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "jwt secret",
+          "check": "jwt secret",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set JWT_SECRET or SAAS_SECURITY_JWT_SECRET for jwt secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "JWT_SECRET",
+            "SAAS_SECURITY_JWT_SECRET"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "jwt secret",
+          "check": "jwt secret",
+          "reason": "must be at least 32 characters",
+          "detail": "must be at least 32 characters",
+          "structured": false,
+          "action": "Set JWT_SECRET or SAAS_SECURITY_JWT_SECRET for jwt secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "JWT_SECRET",
+            "SAAS_SECURITY_JWT_SECRET"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-config",
+          "id": "redis host",
+          "check": "redis host",
+          "reason": "placeholder value is not allowed",
+          "detail": "placeholder value is not allowed",
+          "structured": false,
+          "action": "Set REDIS_HOST or SPRING_DATA_REDIS_HOST for redis host in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+          "envKeys": [
+            "REDIS_HOST",
+            "SPRING_DATA_REDIS_HOST"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-env-lint",
+          "id": "release-env-lint-placeholders",
+          "check": "release-env-lint-placeholders",
+          "reason": "unresolvedTemplateKeys=93",
+          "detail": "unresolvedTemplateKeys=93",
+          "structured": false,
+          "action": "Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.",
+          "envKeys": [
+            "AI_SERVICE_BASE_URL",
+            "AUTH_SERVICE_BASE_URL",
+            "BASE_URL",
+            "CORS_ALLOWED_ORIGIN_PATTERNS",
+            "DB_PASSWORD",
+            "DB_URL",
+            "DB_USERNAME",
+            "DDD_AUTH_PASSWORD",
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+            "DDD_AUTH_PERF_ENVIRONMENT",
+            "DDD_AUTH_USERNAME",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+            "DDD_DEPLOYMENT_EVIDENCE",
+            "DDD_EXPLAIN_DATABASE",
+            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+            "DDD_MIGRATION_COMPLETED_AT",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_OPERATOR",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "FIELD_SECRET",
+            "FILE_SERVICE_BASE_URL",
+            "JOB_EXECUTOR_BASE_URL",
+            "JWT_SECRET",
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_BASE_URL",
+            "MESSAGE_SERVICE_BASE_URL",
+            "MYSQL_DATABASE",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "PAYMENT_PUBLIC_BASE_URL",
+            "PAYMENT_SERVICE_BASE_URL",
+            "PLAYWRIGHT_BASE_URL",
+            "PLUGIN_SERVICE_BASE_URL",
+            "REDIS_HOST",
+            "SAAS_EVENT_REDIS_STREAM_KEY",
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "SYSTEM_SERVICE_BASE_URL",
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "release-env-lint",
+          "id": "release-env-lint-status",
+          "check": "release-env-lint-status",
+          "reason": "status=FAIL primaryBlockers=55",
+          "detail": "status=FAIL primaryBlockers=55",
+          "structured": false,
+          "action": "Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`.",
+          "envKeys": [
+            "AI_SERVICE_BASE_URL",
+            "AUTH_SERVICE_BASE_URL",
+            "BASE_URL",
+            "CORS_ALLOWED_ORIGIN_PATTERNS",
+            "DB_PASSWORD",
+            "DB_URL",
+            "DB_USERNAME",
+            "DDD_AUTH_PASSWORD",
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+            "DDD_AUTH_PERF_ENVIRONMENT",
+            "DDD_AUTH_USERNAME",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+            "DDD_DEPLOYMENT_EVIDENCE",
+            "DDD_EXPLAIN_DATABASE",
+            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+            "DDD_MIGRATION_COMPLETED_AT",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_OPERATOR",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "FIELD_SECRET",
+            "FILE_SERVICE_BASE_URL",
+            "JOB_EXECUTOR_BASE_URL",
+            "JWT_SECRET",
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_BASE_URL",
+            "MESSAGE_SERVICE_BASE_URL",
+            "MYSQL_DATABASE",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "PAYMENT_PUBLIC_BASE_URL",
+            "PAYMENT_SERVICE_BASE_URL",
+            "PLAYWRIGHT_BASE_URL",
+            "PLUGIN_SERVICE_BASE_URL",
+            "REDIS_HOST",
+            "SAAS_EVENT_REDIS_STREAM_KEY",
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "SYSTEM_SERVICE_BASE_URL",
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": [
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-preflight-backend-runtime-base-url",
+          "reason": "missing backend runtime base URL",
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL",
+            "BASE_URL"
+          ],
+          "rootCauseKey": "release-infra:backend-runtime-base-url",
+          "coveredBy": {
+            "source": "release-config",
+            "id": "backend base url"
+          }
+        }
+      ]
+    },
+    "release-owner": {
+      "owner": "release-owner",
+      "pendingItems": 1,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_RELEASE_EVIDENCE_STRICT"
+      ],
+      "sources": {
+        "orchestrator": 1
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-run-mode",
+          "check": "orchestrator-run-mode",
+          "reason": "strict release requires run mode report, got plan",
+          "detail": "strict release requires run mode report, got plan",
+          "structured": false,
+          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_EVIDENCE_STRICT"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    }
+  }
+}

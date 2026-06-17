@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-06-17T08:20:03.513Z",
+  "status": "PASS",
+  "sourceDir": "artifacts/ddd/release/release-env-owner-templates",
+  "targetFile": "artifacts/ddd/release/release-env-canonical-fill.template.env",
+  "dryRun": false,
+  "force": false,
+  "targetSecurity": {
+    "checked": true,
+    "mode": 384,
+    "modeOctal": "600",
+    "permissionSafe": true,
+    "requiredMode": "600"
+  },
+  "summary": {
+    "ownerTemplateFiles": 6,
+    "concreteSourceKeys": 5,
+    "updates": 0,
+    "additions": 0,
+    "conflicts": 0,
+    "blockers": 0
+  },
+  "ownerFiles": [
+    {
+      "file": "artifacts/ddd/release/release-env-owner-templates/01-release-infra.env",
+      "modeOctal": "644",
+      "permissionSafe": false,
+      "sourceKeys": 12,
+      "concreteSourceKeys": 1,
+      "sensitiveConcreteKeys": [],
+      "duplicateKeys": [],
+      "invalidLines": []
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-templates/02-ai-owner.env",
+      "modeOctal": "644",
+      "permissionSafe": false,
+      "sourceKeys": 12,
+      "concreteSourceKeys": 4,
+      "sensitiveConcreteKeys": [],
+      "duplicateKeys": [],
+      "invalidLines": []
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-templates/03-payment-owner.env",
+      "modeOctal": "644",
+      "permissionSafe": false,
+      "sourceKeys": 2,
+      "concreteSourceKeys": 0,
+      "sensitiveConcreteKeys": [],
+      "duplicateKeys": [],
+      "invalidLines": []
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-templates/04-platform-events.env",
+      "modeOctal": "644",
+      "permissionSafe": false,
+      "sourceKeys": 10,
+      "concreteSourceKeys": 0,
+      "sensitiveConcreteKeys": [],
+      "duplicateKeys": [],
+      "invalidLines": []
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-templates/05-platform-owners.env",
+      "modeOctal": "644",
+      "permissionSafe": false,
+      "sourceKeys": 9,
+      "concreteSourceKeys": 0,
+      "sensitiveConcreteKeys": [],
+      "duplicateKeys": [],
+      "invalidLines": []
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-templates/09-file-owner.env",
+      "modeOctal": "644",
+      "permissionSafe": false,
+      "sourceKeys": 3,
+      "concreteSourceKeys": 0,
+      "sensitiveConcreteKeys": [],
+      "duplicateKeys": [],
+      "invalidLines": []
+    }
+  ],
+  "updates": [],
+  "additions": [],
+  "conflicts": [],
+  "blockers": []
+}

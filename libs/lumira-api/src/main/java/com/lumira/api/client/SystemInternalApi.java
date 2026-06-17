@@ -5,12 +5,16 @@ import com.lumira.api.system.CaptchaValidationRequestDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.MenuNodeDTO;
+import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.api.system.PasskeyCredentialDTO;
 import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PasskeySettingsDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
+import com.lumira.api.system.SystemRoleSnapshotDTO;
+import com.lumira.api.system.SystemUserContactSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
@@ -19,6 +23,7 @@ import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SystemInternalApi {
 
@@ -27,6 +32,24 @@ public interface SystemInternalApi {
 
     
     SystemUserSnapshotDTO findUserById( Long id);
+
+
+    List<SystemUserSnapshotDTO> usersByIds( Long tenantId, List<Long> userIds);
+
+
+    List<SystemRoleSnapshotDTO> rolesByIds( Long tenantId, List<Long> roleIds);
+
+
+    List<SystemUserContactSnapshotDTO> userContactsByIds( Long tenantId, List<Long> userIds);
+
+
+    List<SystemUserContactSnapshotDTO> userContactsByRole( Long tenantId, Long roleId);
+
+
+    List<SystemUserContactSnapshotDTO> tenantUserContacts( Long tenantId);
+
+
+    List<Long> userIdsByRole( Long tenantId, Long roleId);
 
     
     SystemUserSnapshotDTO resolveWechatLoginUser( WechatLoginUserRequestDTO request);
@@ -37,17 +60,32 @@ public interface SystemInternalApi {
     
     Boolean invalidatePermissionSnapshot( Long tenantId);
 
+
+    Boolean registerPluginPermissions( PluginPermissionRegistrationRequestDTO request);
+
+
+    Boolean bumpReadModelVersion( Long tenantId, String contextName, String scope, String eventKey);
+
+
+    Long readModelVersion( Long tenantId, String contextName, String scope);
+
     
     Boolean validateCaptcha( CaptchaValidationRequestDTO request);
 
     
     Boolean recordLoginAudit( LoginAuditRecordRequestDTO request);
 
+
+    Boolean recordOperationAudit( OperationAuditRecordRequestDTO request);
+
     
     LoginCapabilitiesDTO loginCapabilities( Long tenantId);
 
     
     SecuritySettingsDTO securitySettings( Long tenantId);
+
+
+    Map<String, String> platformConfigValues( Long tenantId, List<String> keys);
 
     
     WechatLoginSettingsDTO wechatLoginSettings( Long tenantId);

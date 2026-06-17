@@ -6,6 +6,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.web.InternalJobTokenValidator;
 import com.lumira.payment.service.PaymentOutboxRelay;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,15 @@ public class InternalJobController {
     public ApiResponse<Integer> relayOutbox(@RequestHeader(name = "X-Job-Token", required = false) String token) {
         ensureAuthorized(token);
         return ApiResponse.success(paymentOutboxRelay.dispatchPendingEvents(), null);
+    }
+
+    @PostMapping("/outbox/{id}/replay")
+    public ApiResponse<Boolean> replayOutbox(
+            @PathVariable("id") Long id,
+            @RequestHeader(name = "X-Job-Token", required = false) String token
+    ) {
+        ensureAuthorized(token);
+        return ApiResponse.success(paymentOutboxRelay.replay(id), null);
     }
 
     private void ensureAuthorized(String token) {

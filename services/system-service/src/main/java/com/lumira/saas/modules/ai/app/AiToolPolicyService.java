@@ -78,17 +78,23 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                 safePageSize,
                 offset
         );
-        Long total = jdbcTemplate.queryForObject(
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(
                 "select count(1) from ai_tool_policy where tenant_id = ? and is_deleted = 0",
                 Long.class,
                 tenantId
-        );
+        ));
         PageResponse<AiVO.ToolPolicyVO> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private long nullToZero(Long value) {
+        return value == null ? 0L : value;
     }
 
     @Override
@@ -115,12 +121,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
-        Long id = jdbcTemplate.queryForObject(
-                "select id from ai_tool_policy where tenant_id = ? and policy_name = ? and is_deleted = 0 order by id desc limit 1",
-                Long.class,
-                tenantId,
-                request.getPolicyName()
-        );
+        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return requirePolicy(tenantId, id);
     }
 

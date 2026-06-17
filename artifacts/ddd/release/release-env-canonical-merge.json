@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-06-17T08:20:03.571Z",
+  "status": "PASS",
+  "sourceFile": "artifacts/ddd/release/release-env-canonical-fill.template.env",
+  "targetFile": "/var/folders/vp/flxvlnmd2l9d006crw0v8qtr0000gn/T/lumira-readiness-summary-hYMj3K/release/.env.bootstrap-test.local",
+  "dryRun": false,
+  "force": false,
+  "sourceSecurity": {
+    "checked": true,
+    "mode": 384,
+    "modeOctal": "600",
+    "permissionSafe": true,
+    "requiredMode": "600"
+  },
+  "targetSecurity": {
+    "checked": true,
+    "mode": 384,
+    "modeOctal": "600",
+    "permissionSafe": true,
+    "requiredMode": "600"
+  },
+  "summary": {
+    "sourceKeys": 48,
+    "concreteSourceKeys": 5,
+    "sensitiveConcreteSourceKeys": 0,
+    "unresolvedSourceKeys": 43,
+    "updates": 0,
+    "additions": 4,
+    "conflicts": 0,
+    "validationIssues": 0,
+    "duplicateSourceKeys": 0,
+    "duplicateTargetKeys": 0
+  },
+  "updates": [],
+  "additions": [
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED"
+    },
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED"
+    },
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED"
+    },
+    {
+      "key": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
+    }
+  ],
+  "conflicts": [],
+  "validationIssues": [],
+  "sensitiveConcreteSourceKeys": [],
+  "unresolvedSourceKeys": [
+    "AI_SERVICE_BASE_URL",
+    "AUTH_SERVICE_BASE_URL",
+    "CORS_ALLOWED_ORIGIN_PATTERNS",
+    "DB_PASSWORD",
+    "DB_URL",
+    "DB_USERNAME",
+    "DDD_PAYMENT_WEBHOOK_SECRET",
+    "FIELD_SECRET",
+    "FILE_SERVICE_BASE_URL",
+    "JOB_EXECUTOR_BASE_URL",
+    "JWT_SECRET",
+    "LOCALIZATION_SERVICE_BASE_URL",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+    "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+    "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+    "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+    "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+    "LUMIRA_BASE_URL",
+    "LUMIRA_FILE_OCR_MODE",
+    "LUMIRA_FILE_SECURITY_SCAN_MODE",
+    "MESSAGE_SERVICE_BASE_URL",
+    "PAYMENT_PUBLIC_BASE_URL",
+    "PAYMENT_SERVICE_BASE_URL",
+    "PLAYWRIGHT_BASE_URL",
+    "PLUGIN_SERVICE_BASE_URL",
+    "REDIS_HOST",
+    "REDIS_PASSWORD",
+    "REDIS_PORT",
+    "SAAS_EVENT_OUTBOX_DISPATCHER",
+    "SAAS_EVENT_REDIS_STREAM_KEY",
+    "SAAS_JOB_BACKEND_BASE_URL",
+    "SAAS_JOB_FILE_SERVICE_BASE_URL",
+    "SAAS_JOB_INTERNAL_TOKEN",
+    "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+    "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+    "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+    "SYSTEM_SERVICE_BASE_URL",
+    "UPLOAD_STORAGE_ROOT",
+    "XXL_JOB_ACCESS_TOKEN",
+    "XXL_JOB_ADMIN_ADDRESSES"
+  ],
+  "blockers": []
+}

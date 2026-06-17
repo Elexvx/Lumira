@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-06-17T08:20:03.706Z",
+  "status": "PASS",
+  "envFile": "/var/folders/vp/flxvlnmd2l9d006crw0v8qtr0000gn/T/lumira-readiness-summary-hYMj3K/release/.env.bootstrap-test.local",
+  "dryRun": false,
+  "force": false,
+  "redacted": true,
+  "envFileSecurity": {
+    "checked": true,
+    "modeOctal": "600",
+    "permissionSafe": true,
+    "requiredMode": "600"
+  },
+  "sourceEnvironmentDefaulted": false,
+  "sourceEnvironmentPolicy": "DDD_EVIDENCE_ENVIRONMENT is never inferred; set a real production-equivalent environment explicitly.",
+  "summary": {
+    "defaults": 2,
+    "updates": 0,
+    "additions": 2,
+    "skipped": 0,
+    "conflicts": 0
+  },
+  "updates": [],
+  "additions": [
+    {
+      "key": "DDD_RELEASE_CANDIDATE",
+      "source": "git rev-parse HEAD"
+    },
+    {
+      "key": "DDD_EVIDENCE_OPERATOR",
+      "source": "os.userInfo"
+    }
+  ],
+  "skipped": [],
+  "conflicts": []
+}

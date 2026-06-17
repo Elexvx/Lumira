@@ -12,6 +12,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -26,6 +28,8 @@ import java.util.UUID;
 @Service
 public class WechatLoginService {
 
+    private static final Logger log = LoggerFactory.getLogger(WechatLoginService.class);
+    private static final long SETTINGS_CACHE_TTL_MS = 15_000L;
     private static final String SCOPE = "snsapi_login";
     private static final String AUTHORIZE_URL = "https://open.weixin.qq.com/connect/qrconnect";
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
@@ -35,6 +39,8 @@ public class WechatLoginService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+    private volatile WechatLoginSettingsDTO cachedSettings;
+    private volatile long cachedSettingsUntilMillis;
 
     public WechatLoginService(
             SystemInternalApi systemInternalApi,
@@ -112,15 +118,57 @@ public class WechatLoginService {
     }
 
     private WechatLoginSettingsDTO requireAvailableSettings() {
-        WechatLoginSettingsDTO settings = systemInternalApi.wechatLoginSettings(PLATFORM_TENANT_ID);
-        if (settings == null
-                || !settings.configured()
-                || !StringUtils.hasText(settings.appId())
-                || !StringUtils.hasText(settings.appSecret())
-                || !StringUtils.hasText(settings.redirectUri())) {
+        WechatLoginSettingsDTO cached = loadSettings();
+        if (cached == null) {
             throw new BizException(ErrorCode.BIZ_ERROR, "微信登录未启用或配置不完整", "微信登录暂不可用");
         }
-        return settings;
+        return cached;
+    }
+
+    private WechatLoginSettingsDTO loadSettings() {
+        long now = System.currentTimeMillis();
+        WechatLoginSettingsDTO cached = cachedSettings;
+        if (cached != null && now < cachedSettingsUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = cachedSettings;
+            if (cached != null && now < cachedSettingsUntilMillis) {
+                return cached;
+            }
+            WechatLoginSettingsDTO loaded = loadSettingsFresh();
+            if (loaded != null) {
+                cachedSettings = loaded;
+                cachedSettingsUntilMillis = now + SETTINGS_CACHE_TTL_MS;
+            }
+            return loaded;
+        }
+    }
+
+    private WechatLoginSettingsDTO loadSettingsFresh() {
+        try {
+            WechatLoginSettingsDTO settings = systemInternalApi.wechatLoginSettings(PLATFORM_TENANT_ID);
+            if (settings != null
+                    && settings.configured()
+                    && StringUtils.hasText(settings.appId())
+                    && StringUtils.hasText(settings.appSecret())
+                    && StringUtils.hasText(settings.redirectUri())) {
+                return settings;
+            }
+            WechatLoginSettingsDTO cached = cachedSettings;
+            if (cached != null && StringUtils.hasText(cached.appId()) && StringUtils.hasText(cached.appSecret()) && StringUtils.hasText(cached.redirectUri())) {
+                log.warn("Failed to refresh Wechat login settings from system-service, using cached snapshot");
+                return cached;
+            }
+        } catch (Exception ex) {
+            WechatLoginSettingsDTO cached = cachedSettings;
+            if (cached != null && StringUtils.hasText(cached.appId()) && StringUtils.hasText(cached.appSecret()) && StringUtils.hasText(cached.redirectUri())) {
+                log.warn("Failed to load Wechat login settings from system-service, using cached snapshot", ex);
+                return cached;
+            }
+        }
+        throw new BizException(ErrorCode.BIZ_ERROR, "微信登录未启用或配置不完整", "微信登录暂不可用");
     }
 
     private Duration stateTtl(WechatLoginSettingsDTO settings) {

@@ -85,6 +85,7 @@ class OnlineSessionManagementAppServiceTest {
         assertEquals(1L, page.getTotal());
         assertEquals(1, page.getRecords().size());
         assertEquals(activeSession.getSessionId(), page.getRecords().getFirst().getSessionId());
+        assertEquals(1, authSessionStore.batchLookupCounts);
         assertTrue(authSessionStore.removedSessions.contains(staleSession));
         assertTrue(authSessionStore.removedSessions.contains(expiredSession));
     }
@@ -134,8 +135,8 @@ class OnlineSessionManagementAppServiceTest {
         assertEquals(2, page.getRecords().size());
         assertEquals(newerSession.getSessionId(), page.getRecords().get(0).getSessionId());
         assertEquals(otherUserSession.getSessionId(), page.getRecords().get(1).getSessionId());
-        assertEquals(1, authSessionStore.latestSessionLookupCounts.get(2001L));
-        assertEquals(1, authSessionStore.latestSessionLookupCounts.get(2002L));
+        assertTrue(authSessionStore.latestSessionLookupCounts.isEmpty());
+        assertEquals(1, authSessionStore.batchLookupCounts);
     }
 
     private static AuthSession buildSession(String sessionId, long tenantId, long userId, Instant lastActivityAt, Instant expireTime) {
@@ -157,6 +158,7 @@ class OnlineSessionManagementAppServiceTest {
         private final Map<Long, Integer> latestSessionLookupCounts = new HashMap<>();
         private final List<String> sessionOrder = new ArrayList<>();
         private final List<AuthSession> removedSessions = new ArrayList<>();
+        private int batchLookupCounts;
 
         private StubAuthSessionStore() {
             super(null, null, null);
@@ -219,6 +221,19 @@ class OnlineSessionManagementAppServiceTest {
         @Override
         public Optional<AuthSession> findBySessionId(String sessionId) {
             return Optional.ofNullable(sessions.get(sessionId));
+        }
+
+        @Override
+        public Map<String, AuthSession> findBySessionIds(List<String> sessionIds) {
+            batchLookupCounts++;
+            Map<String, AuthSession> result = new HashMap<>();
+            for (String sessionId : sessionIds) {
+                AuthSession session = sessions.get(sessionId);
+                if (session != null) {
+                    result.put(sessionId, session);
+                }
+            }
+            return result;
         }
 
         @Override

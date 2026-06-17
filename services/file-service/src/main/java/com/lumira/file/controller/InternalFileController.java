@@ -1,17 +1,21 @@
 package com.lumira.file.controller;
 
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.file.FileContentDTO;
+import com.lumira.api.file.FileProcessingArtifactDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.file.app.FileManagementAppService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -59,5 +63,56 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
     ) {
         CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
         return fileManagementAppService.uploadDocument(currentUser, file, category, tags, remark, bucket);
+    }
+
+    @GetMapping("/content")
+    public FileContentDTO readFileContentForUser(
+            @RequestParam("fileId") Long fileId,
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("username") String username
+    ) {
+        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        return fileManagementAppService.readFileContent(currentUser, fileId, true, false);
+    }
+
+    @GetMapping("/artifacts")
+    public FileProcessingArtifactDTO readProcessingArtifactForUser(
+            @RequestParam("fileId") Long fileId,
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("username") String username,
+            @RequestParam("artifactType") String artifactType
+    ) {
+        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        return fileManagementAppService.readProcessingArtifact(currentUser, fileId, artifactType, true, false);
+    }
+
+    @GetMapping("/metadata")
+    public FileObjectDTO getFileForUser(
+            @RequestParam("fileId") Long fileId,
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("username") String username,
+            @RequestParam(name = "tenantScope", defaultValue = "true") boolean tenantScope,
+            @RequestParam(name = "downloadCenterScope", defaultValue = "false") boolean downloadCenterScope
+    ) {
+        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        return fileManagementAppService.getFile(currentUser, fileId, tenantScope, downloadCenterScope);
+    }
+
+    @GetMapping("/search")
+    public List<FileObjectDTO> searchFilesForUser(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("username") String username,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "contentType", required = false) String contentType,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "tenantScope", defaultValue = "false") boolean tenantScope,
+            @RequestParam(name = "limit", defaultValue = "50") int limit
+    ) {
+        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        return fileManagementAppService.searchFilesForInternalTool(currentUser, keyword, contentType, status, tenantScope, limit);
     }
 }

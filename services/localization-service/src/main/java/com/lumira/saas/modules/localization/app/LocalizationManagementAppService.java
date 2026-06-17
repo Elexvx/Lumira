@@ -5,10 +5,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.vo.PageResponse;
 import com.lumira.saas.modules.localization.dto.LocalizationDTO;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.EntryQuery;
+import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.LanguageStatRow;
+import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.NamespaceStatRow;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.RuntimeMessageRow;
 import com.lumira.saas.modules.localization.entity.LocalizationEntities.EntryEntity;
 import com.lumira.saas.modules.localization.entity.LocalizationEntities.LanguageEntity;
@@ -16,6 +19,7 @@ import com.lumira.saas.modules.localization.entity.LocalizationEntities.Namespac
 import com.lumira.saas.modules.localization.entity.LocalizationEntities.ReleaseEntity;
 import com.lumira.saas.modules.localization.entity.LocalizationEntities.TranslationEntity;
 import com.lumira.saas.modules.localization.entity.LocalizationEntities.UsageRefEntity;
+import com.lumira.saas.modules.localization.domain.model.LocalizationDomainModels.ReleaseAggregate;
 import com.lumira.saas.modules.localization.mapper.LocalizationEntryMapper;
 import com.lumira.saas.modules.localization.mapper.LocalizationLanguageMapper;
 import com.lumira.saas.modules.localization.mapper.LocalizationManagementMapper;
@@ -31,6 +35,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,6 +43,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class LocalizationManagementAppService {
@@ -49,6 +57,12 @@ public class LocalizationManagementAppService {
     private static final String DEFAULT_TRANSLATION_STATUS = "TRANSLATED";
     private static final String PENDING_TRANSLATION_STATUS = "PENDING";
     private static final String DEFAULT_RELEASE_NOTE = "本地化中心发布";
+    private static final String READ_MODEL_CONTEXT_LOCALIZATION = "localization";
+    private static final String READ_MODEL_EVENT_LOCALIZATION_RUNTIME_BUNDLE = "localization.runtime-bundle";
+    private static final long ENTRY_LIST_TOTAL_COUNT_CAP = 1000L;
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MILLIS = 3000L;
+    private static final long RUNTIME_BUNDLE_FAST_CACHE_TTL_MILLIS = 30_000L;
+    private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private static final Map<String, String> LOCALE_DISPLAY_NAMES = Map.of(
             "zh-CN", "简体中文",
@@ -73,6 +87,13 @@ public class LocalizationManagementAppService {
     private final LocalizationReleaseMapper releaseMapper;
     private final LocalizationManagementMapper localizationManagementMapper;
     private final ObjectMapper objectMapper;
+    private final LocalizationRuntimeBundleCache runtimeBundleCache = new LocalizationRuntimeBundleCache();
+    private final SystemInternalApi systemInternalApi;
+    private final Map<String, CachedRuntimeBundle> runtimeBundleFastCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
+    private final LongAdder readModelVersionCacheHits = new LongAdder();
+    private final LongAdder readModelVersionCacheMisses = new LongAdder();
+    private final LongAdder readModelVersionCacheFallbacks = new LongAdder();
 
     public LocalizationManagementAppService(
             LocalizationLanguageMapper languageMapper,
@@ -82,7 +103,8 @@ public class LocalizationManagementAppService {
             LocalizationUsageRefMapper usageRefMapper,
             LocalizationReleaseMapper releaseMapper,
             LocalizationManagementMapper localizationManagementMapper,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            SystemInternalApi systemInternalApi
     ) {
         this.languageMapper = languageMapper;
         this.namespaceMapper = namespaceMapper;
@@ -92,6 +114,7 @@ public class LocalizationManagementAppService {
         this.releaseMapper = releaseMapper;
         this.localizationManagementMapper = localizationManagementMapper;
         this.objectMapper = objectMapper;
+        this.systemInternalApi = systemInternalApi;
     }
 
     public List<LocalizationVO.LanguageVO> listLanguages() {
@@ -102,9 +125,12 @@ public class LocalizationManagementAppService {
                 .stream()
                 .map(this::mapLanguage)
                 .toList();
-        long totalEntries = countEntries();
+        CompletableFuture<Long> totalEntriesFuture = CompletableFuture.supplyAsync(this::countEntries, BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Map<String, LanguageStatRow>> languageStatsFuture = CompletableFuture.supplyAsync(this::loadLanguageStats, BLOCKING_IO_EXECUTOR);
+        long totalEntries = totalEntriesFuture.join();
+        Map<String, LanguageStatRow> languageStats = languageStatsFuture.join();
         for (LocalizationVO.LanguageVO language : languages) {
-            enrichLanguageMetrics(language, totalEntries);
+            enrichLanguageMetrics(language, totalEntries, languageStats.get(language.getLocaleCode()));
         }
         return languages;
     }
@@ -117,13 +143,15 @@ public class LocalizationManagementAppService {
                 .stream()
                 .map(this::mapNamespace)
                 .toList();
+        CompletableFuture<Map<String, NamespaceStatRow>> namespaceStatsFuture = CompletableFuture.supplyAsync(() -> loadNamespaceStats(targetLocale), BLOCKING_IO_EXECUTOR);
+        Map<String, NamespaceStatRow> namespaceStats = namespaceStatsFuture.join();
         for (LocalizationVO.NamespaceVO namespace : namespaces) {
-            enrichNamespaceMetrics(namespace, targetLocale);
+            enrichNamespaceMetrics(namespace, namespaceStats.get(namespace.getNamespaceCode()));
         }
         return namespaces;
     }
 
-    public PageResponse<LocalizationVO.EntryVO> listEntries(
+    public LocalizationVO.EntryPageResponse listEntries(
             String localeCode,
             String namespaceCode,
             String keyword,
@@ -142,7 +170,6 @@ public class LocalizationManagementAppService {
         query.setTargetLocale(targetLocale);
         query.setFallbackLocale(fallbackLocale);
         query.setLimit(safePageSize);
-        query.setOffset((safePage - 1) * safePageSize);
         if (StringUtils.hasText(namespaceCode)) {
             query.setNamespaceCode(namespaceCode.trim());
         }
@@ -166,16 +193,51 @@ public class LocalizationManagementAppService {
         query.setSortColumn(sortColumn);
         query.setSortDirection(sortDirection);
 
+        long offset = (safePage - 1) * safePageSize;
+        query.setOffset(offset);
+        query.setCountLimit(calculateEntryCountLimit(safePageSize, offset));
         List<LocalizationVO.EntryVO> records = localizationManagementMapper.listEntries(query);
         Long total = localizationManagementMapper.countEntries(query);
+        long normalizedTotal = normalizeEntryTotal(total, query);
+        boolean totalCapped = isEntryTotalCapped(total, query);
         Map<Long, Map<String, String>> translationsByEntry = loadTranslationMaps(records.stream().map(LocalizationVO.EntryVO::getId).toList());
         records.forEach(record -> record.setTranslations(translationsByEntry.getOrDefault(record.getId(), Map.of())));
-        PageResponse<LocalizationVO.EntryVO> response = new PageResponse<>();
+        LocalizationVO.EntryPageResponse response = new LocalizationVO.EntryPageResponse();
         response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setTotal(normalizedTotal);
+        response.setHasMore(totalCapped);
+        response.setTotalCapped(totalCapped);
         response.setPageNo(safePage);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private boolean isEntryTotalCapped(Long total, EntryQuery query) {
+        if (query == null) {
+            return false;
+        }
+        long queryLimit = query.getCountLimit();
+        if (queryLimit <= 0L) {
+            return false;
+        }
+        return total != null && total >= queryLimit;
+    }
+
+    private long normalizeEntryTotal(Long total, EntryQuery query) {
+        if (total == null || total <= 0L) {
+            return 0L;
+        }
+        if (query == null || query.getCountLimit() <= 0L) {
+            return total;
+        }
+        return Math.min(total, query.getCountLimit());
+    }
+
+    private long calculateEntryCountLimit(long pageSize, long offset) {
+        long safePageSize = Math.max(1L, pageSize);
+        long safeOffset = Math.max(0L, offset);
+        long dynamicLimit = safeOffset + safePageSize + 1L;
+        return Math.min(dynamicLimit, ENTRY_LIST_TOTAL_COUNT_CAP);
     }
 
     @Transactional
@@ -435,6 +497,15 @@ public class LocalizationManagementAppService {
             release.updatedBy = currentUser.getUserId();
             release.deleted = 0;
             releaseMapper.insert(release);
+            ReleaseAggregate releaseAggregate = new ReleaseAggregate(
+                    release.id == null ? nextVersion : release.id,
+                    currentUser.getCurrentTenantId(),
+                    localeCode,
+                    false
+            );
+            releaseAggregate.publish(bundle.getMessages() == null ? 0L : bundle.getMessages().size());
+            evictRuntimeBundleCache(localeCode);
+            bumpRuntimeBundleReadModelVersion(localeCode, currentUser);
         } catch (JsonProcessingException error) {
             throw new IllegalStateException("本地化发布失败", error);
         }
@@ -461,11 +532,81 @@ public class LocalizationManagementAppService {
                 .set("updated_at", now)
                 .eq("id", request.getReleaseId())
                 .eq("deleted", 0));
+        ReleaseAggregate releaseAggregate = new ReleaseAggregate(
+                request.getReleaseId(),
+                currentUser.getCurrentTenantId(),
+                release.getLocaleCode(),
+                false
+        );
+        releaseAggregate.rollbackTo(release.getReleaseVersion() == null ? 0L : release.getReleaseVersion());
+        evictRuntimeBundleCache(release.getLocaleCode());
+        bumpRuntimeBundleReadModelVersion(release.getLocaleCode(), currentUser);
         return getRelease(request.getReleaseId());
     }
 
     public LocalizationVO.RuntimeBundleVO runtimeBundle(String localeCode) {
-        return buildRuntimeBundle(normalizeLocale(localeCode));
+        String targetLocale = normalizeLocale(localeCode);
+        long now = System.currentTimeMillis();
+        CachedRuntimeBundle cached = runtimeBundleFastCache.get(targetLocale);
+        if (cached != null && cached.expiresAtEpochMillis() > now) {
+            return cached.bundle();
+        }
+        if (cached != null) {
+            runtimeBundleFastCache.remove(targetLocale, cached);
+        }
+        LocalizationVO.RuntimeBundleVO bundle = buildRuntimeBundle(targetLocale);
+        runtimeBundleFastCache.put(targetLocale, new CachedRuntimeBundle(
+                bundle,
+                now + RUNTIME_BUNDLE_FAST_CACHE_TTL_MILLIS
+        ));
+        return bundle;
+    }
+
+    public int runtimeBundleCacheSize() {
+        return runtimeBundleCache.size();
+    }
+
+    public long runtimeBundleCacheHits() {
+        return runtimeBundleCache.hits();
+    }
+
+    public long runtimeBundleCacheMisses() {
+        return runtimeBundleCache.misses();
+    }
+
+    public double runtimeBundleCacheHitRatio() {
+        return runtimeBundleCache.hitRatio();
+    }
+
+    public long readModelVersionCacheHits() {
+        return readModelVersionCacheHits.sum();
+    }
+
+    public long readModelVersionCacheMisses() {
+        return readModelVersionCacheMisses.sum();
+    }
+
+    public long readModelVersionCacheFallbacks() {
+        return readModelVersionCacheFallbacks.sum();
+    }
+
+    public double readModelVersionCacheHitRatio() {
+        long hits = readModelVersionCacheHits.sum();
+        long total = hits + readModelVersionCacheMisses.sum();
+        return total == 0 ? 0.0 : (double) hits / total;
+    }
+
+    public MetricsSnapshot snapshotMetrics() {
+        return new MetricsSnapshot(
+                runtimeBundleCache.size(),
+                runtimeBundleCache.hits(),
+                runtimeBundleCache.misses(),
+                runtimeBundleCache.hitRatio(),
+                readModelVersionCacheHits(),
+                readModelVersionCacheMisses(),
+                readModelVersionCacheFallbacks(),
+                readModelVersionCacheHitRatio()
+        );
     }
 
     private LocalizationVO.EntryVO saveEntryInternal(LocalizationDTO.EntryUpsertRequest request) {
@@ -679,10 +820,16 @@ public class LocalizationManagementAppService {
         LocalizationVO.RuntimeBundleVO bundle = new LocalizationVO.RuntimeBundleVO();
         bundle.setLocaleCode(targetLocale);
         bundle.setFallbackLocale(fallbackLocale);
+        long readModelVersion = readModelVersionForLocale(targetLocale);
 
         LocalizationVO.ReleaseVO release = getActiveRelease(targetLocale);
         if (release != null) {
             bundle.setReleaseVersion(release.getReleaseVersion());
+            runtimeBundleCache.evictStale(targetLocale, release.getReleaseVersion());
+            LocalizationVO.RuntimeBundleVO cached = runtimeBundleCache.get(targetLocale, readModelVersion, release.getReleaseVersion());
+            if (cached != null) {
+                return cached;
+            }
             try {
                 ReleaseEntity releaseEntity = releaseMapper.selectById(release.getId());
                 LocalizationVO.RuntimeBundleVO storedBundle = objectMapper.readValue(
@@ -690,6 +837,7 @@ public class LocalizationManagementAppService {
                         LocalizationVO.RuntimeBundleVO.class
                 );
                 if (storedBundle != null && storedBundle.getMessages() != null && !storedBundle.getMessages().isEmpty()) {
+                    runtimeBundleCache.put(targetLocale, readModelVersion, release.getReleaseVersion(), storedBundle);
                     return storedBundle;
                 }
             } catch (Exception ignored) {
@@ -697,9 +845,80 @@ public class LocalizationManagementAppService {
             }
         }
 
+        LocalizationVO.RuntimeBundleVO cachedFallback = runtimeBundleCache.get(targetLocale, readModelVersion, 0L);
+        if (cachedFallback != null) {
+            return cachedFallback;
+        }
         bundle.setReleaseVersion(0L);
         bundle.setMessages(loadRuntimeMessages(targetLocale, fallbackLocale));
+        runtimeBundleCache.put(targetLocale, readModelVersion, 0L, bundle);
         return bundle;
+    }
+
+    private void evictRuntimeBundleCache(String localeCode) {
+        String targetLocale = normalizeLocale(localeCode);
+        runtimeBundleFastCache.remove(targetLocale);
+        runtimeBundleCache.evictLocale(targetLocale);
+    }
+
+    private long readModelVersionForLocale(String localeCode) {
+        return readModelVersionForTenantAndScope(PlatformConstants.PLATFORM_TENANT_ID, normalizeLocale(localeCode));
+    }
+
+    private long readModelVersionForTenantAndScope(Long tenantId, String scope) {
+        String normalizedScope = normalizeLocale(scope);
+        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        String cacheKey = readModelVersionCacheKey(effectiveTenantId, normalizedScope);
+        CachedReadModelVersion cached = readModelVersionCache.get(cacheKey);
+        long now = System.currentTimeMillis();
+        if (cached != null && cached.expiresAtEpochMillis() > now) {
+            readModelVersionCacheHits.increment();
+            return cached.version();
+        }
+        if (cached != null) {
+            readModelVersionCacheMisses.increment();
+            readModelVersionCache.remove(cacheKey);
+        }
+
+        long version = 0L;
+        if (cached == null) {
+            readModelVersionCacheMisses.increment();
+        }
+        try {
+            Long actualVersion = systemInternalApi.readModelVersion(effectiveTenantId, READ_MODEL_CONTEXT_LOCALIZATION, normalizedScope);
+            if (actualVersion != null) {
+                version = actualVersion;
+            } else {
+                readModelVersionCacheFallbacks.increment();
+            }
+        } catch (Exception ignored) {
+            // Keep runtime bundle read-path resilient when read-model infra is temporarily unavailable.
+            readModelVersionCacheFallbacks.increment();
+        }
+        readModelVersionCache.put(cacheKey, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
+        return version;
+    }
+
+    private void bumpRuntimeBundleReadModelVersion(String localeCode, CurrentUser currentUser) {
+        String normalizedLocale = normalizeLocale(localeCode);
+        Long tenantId = currentUser == null || currentUser.getCurrentTenantId() == null
+                ? PlatformConstants.PLATFORM_TENANT_ID
+                : currentUser.getCurrentTenantId();
+        readModelVersionCache.remove(readModelVersionCacheKey(tenantId, normalizedLocale));
+        try {
+            systemInternalApi.bumpReadModelVersion(
+                    tenantId,
+                    READ_MODEL_CONTEXT_LOCALIZATION,
+                    normalizedLocale,
+                    READ_MODEL_EVENT_LOCALIZATION_RUNTIME_BUNDLE
+            );
+        } catch (Exception ignored) {
+            // Keep write operations stable when read-model infra is temporarily unavailable.
+        }
+    }
+
+    private String readModelVersionCacheKey(Long tenantId, String scope) {
+        return tenantId + ":" + normalizeLocale(scope);
     }
 
     private Map<String, String> loadRuntimeMessages(String localeCode, String fallbackLocale) {
@@ -718,20 +937,20 @@ public class LocalizationManagementAppService {
         return messages;
     }
 
-    private void enrichLanguageMetrics(LocalizationVO.LanguageVO language, long totalEntries) {
-        long translatedCount = countTranslations(language.getLocaleCode());
+    private void enrichLanguageMetrics(LocalizationVO.LanguageVO language, long totalEntries, LanguageStatRow stats) {
+        long translatedCount = stats == null || stats.getTranslatedCount() == null ? 0L : stats.getTranslatedCount();
         language.setEntryCount(totalEntries);
         language.setTranslatedCount(translatedCount);
         language.setCoverageRate(totalEntries == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(translatedCount)
                 .multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(totalEntries), 2, RoundingMode.HALF_UP));
-        language.setPublishedVersion(getActiveReleaseVersion(language.getLocaleCode()).orElse(0L));
-        language.setLastPublishedAt(getLastPublishedAt(language.getLocaleCode()).orElse(null));
+        language.setPublishedVersion(stats == null || stats.getPublishedVersion() == null ? 0L : stats.getPublishedVersion());
+        language.setLastPublishedAt(stats == null ? null : stats.getLastPublishedAt());
     }
 
-    private void enrichNamespaceMetrics(LocalizationVO.NamespaceVO namespace, String localeCode) {
-        long entryCount = countEntriesByNamespace(namespace.getNamespaceCode());
-        long translatedCount = countTranslationsByNamespace(namespace.getNamespaceCode(), localeCode);
+    private void enrichNamespaceMetrics(LocalizationVO.NamespaceVO namespace, NamespaceStatRow stats) {
+        long entryCount = stats == null || stats.getEntryCount() == null ? 0L : stats.getEntryCount();
+        long translatedCount = stats == null || stats.getTranslatedCount() == null ? 0L : stats.getTranslatedCount();
         namespace.setEntryCount(entryCount);
         namespace.setTranslatedCount(translatedCount);
         namespace.setCoverageRate(entryCount == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(translatedCount)
@@ -942,6 +1161,36 @@ public class LocalizationManagementAppService {
         return count == null ? 0L : count;
     }
 
+    private Map<String, LanguageStatRow> loadLanguageStats() {
+        List<LanguageStatRow> rows = localizationManagementMapper.listLanguageStats();
+        if (rows == null || rows.isEmpty()) {
+            return Map.of();
+        }
+        return rows.stream()
+                .filter(row -> row != null && StringUtils.hasText(row.getLocaleCode()))
+                .collect(Collectors.toMap(
+                        row -> row.getLocaleCode(),
+                        row -> row,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private Map<String, NamespaceStatRow> loadNamespaceStats(String localeCode) {
+        List<NamespaceStatRow> rows = localizationManagementMapper.listNamespaceStats(localeCode);
+        if (rows == null || rows.isEmpty()) {
+            return Map.of();
+        }
+        return rows.stream()
+                .filter(row -> row != null && StringUtils.hasText(row.getNamespaceCode()))
+                .collect(Collectors.toMap(
+                        row -> row.getNamespaceCode(),
+                        row -> row,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+    }
+
     private Map<String, String> loadTranslationMap(Long entryId) {
         Map<String, String> translations = new LinkedHashMap<>();
         List<TranslationEntity> entities = translationMapper.selectList(new QueryWrapper<TranslationEntity>()
@@ -1034,6 +1283,18 @@ public class LocalizationManagementAppService {
         private final Map<String, UsageRefEntity> usageRefsByEntryAndSource = new HashMap<>();
     }
 
+    public record MetricsSnapshot(
+            int runtimeBundleCacheSize,
+            long runtimeBundleCacheHits,
+            long runtimeBundleCacheMisses,
+            double runtimeBundleCacheHitRatio,
+            long readModelVersionCacheHits,
+            long readModelVersionCacheMisses,
+            long readModelVersionCacheFallbacks,
+            double readModelVersionCacheHitRatio
+    ) {
+    }
+
     private String resolveFallbackLocale(String localeCode) {
         if (!StringUtils.hasText(localeCode)) {
             return DEFAULT_LOCALE;
@@ -1120,6 +1381,12 @@ public class LocalizationManagementAppService {
 
     private String like(String value) {
         return "%" + value.trim() + "%";
+    }
+
+    private record CachedReadModelVersion(long version, long expiresAtEpochMillis) {
+    }
+
+    private record CachedRuntimeBundle(LocalizationVO.RuntimeBundleVO bundle, long expiresAtEpochMillis) {
     }
 
 }

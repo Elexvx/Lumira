@@ -27,4 +27,8 @@ public class PlatformEventOutboxRelay {
 
         platformEventOutboxService.dispatchPending(platformEventDispatcher, outbox.getBatchSize());
     }
+
+    public boolean replay(Long eventId) {
+        return platformEventOutboxService.replayById(eventId, platformEventDispatcher);
+    }
 }

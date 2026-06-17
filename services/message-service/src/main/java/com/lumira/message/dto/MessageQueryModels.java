@@ -1,6 +1,7 @@
 package com.lumira.message.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public final class MessageQueryModels {
 
@@ -20,8 +21,11 @@ public final class MessageQueryModels {
         private LocalDateTime publishedAtEnd;
         private String sortField;
         private String sortOrder;
+        private String permissionSnapshotVersion;
         private long limit;
         private long offset;
+        private long countLimit;
+        private List<Long> roleIds = List.of();
 
         public Long getTenantId() { return tenantId; }
         public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
@@ -47,10 +51,16 @@ public final class MessageQueryModels {
         public void setSortField(String sortField) { this.sortField = sortField; }
         public String getSortOrder() { return sortOrder; }
         public void setSortOrder(String sortOrder) { this.sortOrder = sortOrder; }
+        public String getPermissionSnapshotVersion() { return permissionSnapshotVersion; }
+        public void setPermissionSnapshotVersion(String permissionSnapshotVersion) { this.permissionSnapshotVersion = permissionSnapshotVersion; }
         public long getLimit() { return limit; }
         public void setLimit(long limit) { this.limit = limit; }
         public long getOffset() { return offset; }
         public void setOffset(long offset) { this.offset = offset; }
+        public long getCountLimit() { return countLimit; }
+        public void setCountLimit(long countLimit) { this.countLimit = countLimit; }
+        public List<Long> getRoleIds() { return roleIds; }
+        public void setRoleIds(List<Long> roleIds) { this.roleIds = roleIds == null ? List.of() : roleIds; }
     }
 
     public static class DeliveryLogQuery {
@@ -63,6 +73,7 @@ public final class MessageQueryModels {
         private LocalDateTime createdAtEnd;
         private long limit;
         private long offset;
+        private long countLimit;
 
         public Long getTenantId() { return tenantId; }
         public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
@@ -82,21 +93,8 @@ public final class MessageQueryModels {
         public void setLimit(long limit) { this.limit = limit; }
         public long getOffset() { return offset; }
         public void setOffset(long offset) { this.offset = offset; }
+        public long getCountLimit() { return countLimit; }
+        public void setCountLimit(long countLimit) { this.countLimit = countLimit; }
     }
 
-    public static class RecipientRow {
-        private Long userId;
-        private String username;
-        private String email;
-        private String wechatOpenid;
-
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-        public String getUsername() { return username; }
-        public void setUsername(String username) { this.username = username; }
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getWechatOpenid() { return wechatOpenid; }
-        public void setWechatOpenid(String wechatOpenid) { this.wechatOpenid = wechatOpenid; }
-    }
 }

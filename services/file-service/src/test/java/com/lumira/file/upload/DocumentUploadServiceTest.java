@@ -2,6 +2,7 @@ package com.lumira.file.upload;
 
 import com.lumira.common.exception.BizException;
 import com.lumira.file.config.UploadProperties;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -20,7 +21,7 @@ class DocumentUploadServiceTest {
     void acceptsOctetStreamWhenExtensionAndContentAreValid() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
-        DocumentUploadService service = new DocumentUploadService(properties);
+        DocumentUploadService service = service(properties);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "notes.txt",
@@ -39,7 +40,7 @@ class DocumentUploadServiceTest {
     void uploadFailureKeepsSpecificUserMessage() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempFile("document-upload-test", ".tmp").toString());
-        DocumentUploadService service = new DocumentUploadService(properties);
+        DocumentUploadService service = service(properties);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "notes.txt",
@@ -56,7 +57,7 @@ class DocumentUploadServiceTest {
     void acceptsOpenXmlWhenClientSendsZipContentType() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
-        DocumentUploadService service = new DocumentUploadService(properties);
+        DocumentUploadService service = service(properties);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "report.docx",
@@ -81,5 +82,9 @@ class DocumentUploadServiceTest {
             zip.closeEntry();
         }
         return output.toByteArray();
+    }
+
+    private DocumentUploadService service(UploadProperties properties) {
+        return new DocumentUploadService(properties, new FileStorageMetrics(new SimpleMeterRegistry()));
     }
 }

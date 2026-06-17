@@ -1,0 +1,9 @@
+{
+  "generatedAt": "2026-06-15T20:41:37.875Z",
+  "status": "PASS",
+  "strict": false,
+  "explainDir": "tmp/ddd-explain",
+  "scannedExplainFileCount": 8,
+  "blockerCount": 0,
+  "issues": []
+}

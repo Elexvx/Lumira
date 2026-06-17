@@ -1,0 +1,2041 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "envFile": ".env.release.local",
+  "ownerCount": 6,
+  "canonicalFillItemCount": 48,
+  "unresolvedAliasCount": 73,
+  "fastPath": {
+    "objective": "Fill canonical release env keys once, sync aliases, then rerun strict env and final go/no-go gates.",
+    "blockedUntil": "All blocking release env placeholders are replaced in a permission-safe release env file.",
+    "commands": [
+      "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+    ]
+  },
+  "owners": [
+    {
+      "owner": "release-infra",
+      "queueOrder": 1,
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "readyBatchIds": [
+        "p0-docker-release-infra",
+        "p0-release-config-release-infra",
+        "p0-release-env-lint-release-infra"
+      ],
+      "blockedBatchIds": [],
+      "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+      "canonicalFillItems": [
+        {
+          "fillOrder": 37,
+          "owner": "release-infra",
+          "owners": [
+            "ai",
+            "file-owner",
+            "job-owner",
+            "payment-owner",
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "backend base url",
+          "canonicalKey": "LUMIRA_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 38,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "cors origins",
+          "canonicalKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
+          "valueClass": "identifier",
+          "fillGuidance": "Use the production value from the owning context.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "CORS_ALLOWED_ORIGIN_PATTERNS",
+            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "CORS_ALLOWED_ORIGIN_PATTERNS",
+            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 39,
+          "owner": "release-infra",
+          "owners": [
+            "database",
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "database password",
+          "canonicalKey": "DB_PASSWORD",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "DB_PASSWORD",
+            "SPRING_DATASOURCE_PASSWORD",
+            "MYSQL_PASSWORD"
+          ],
+          "unresolvedAliasCount": 3,
+          "unresolvedAliases": [
+            "DB_PASSWORD",
+            "SPRING_DATASOURCE_PASSWORD",
+            "MYSQL_PASSWORD"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 16,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": [
+              "root",
+              "password",
+              ""
+            ]
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 40,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "database url",
+          "canonicalKey": "DB_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent endpoint or DSN; localhost and placeholders are rejected when nonLocal=true.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "DB_URL",
+            "SPRING_DATASOURCE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "DB_URL",
+            "SPRING_DATASOURCE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 41,
+          "owner": "release-infra",
+          "owners": [
+            "database",
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "database username",
+          "canonicalKey": "DB_USERNAME",
+          "valueClass": "identifier",
+          "fillGuidance": "Use the production value from the owning context.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "DB_USERNAME",
+            "SPRING_DATASOURCE_USERNAME",
+            "MYSQL_USER"
+          ],
+          "unresolvedAliasCount": 3,
+          "unresolvedAliases": [
+            "DB_USERNAME",
+            "SPRING_DATASOURCE_USERNAME",
+            "MYSQL_USER"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 42,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "field secret",
+          "canonicalKey": "FIELD_SECRET",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "FIELD_SECRET",
+            "SAAS_SECURITY_FIELD_SECRET"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "FIELD_SECRET",
+            "SAAS_SECURITY_FIELD_SECRET"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 43,
+          "owner": "release-infra",
+          "owners": [
+            "frontend",
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "frontend base url",
+          "canonicalKey": "PLAYWRIGHT_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 44,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "jwt secret",
+          "canonicalKey": "JWT_SECRET",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "JWT_SECRET",
+            "SAAS_SECURITY_JWT_SECRET"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "JWT_SECRET",
+            "SAAS_SECURITY_JWT_SECRET"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 45,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "redis host",
+          "canonicalKey": "REDIS_HOST",
+          "valueClass": "identifier",
+          "fillGuidance": "Use the production value from the owning context.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "REDIS_HOST",
+            "SPRING_DATA_REDIS_HOST"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "REDIS_HOST",
+            "SPRING_DATA_REDIS_HOST"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 46,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "redis password",
+          "canonicalKey": "REDIS_PASSWORD",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "REDIS_PASSWORD",
+            "SPRING_DATA_REDIS_PASSWORD"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": false,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 16,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 47,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "redis port",
+          "canonicalKey": "REDIS_PORT",
+          "valueClass": "port",
+          "fillGuidance": "Use the production service TCP port.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "REDIS_PORT",
+            "SPRING_DATA_REDIS_PORT"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": "^\\d{2,5}$",
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 48,
+          "owner": "release-infra",
+          "owners": [
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "trusted proxy mode",
+          "canonicalKey": "TRUST_FORWARDED_HEADERS",
+          "valueClass": "toggle",
+          "fillGuidance": "Use one of: true.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 2,
+          "aliases": [
+            "TRUST_FORWARDED_HEADERS",
+            "SAAS_WEB_TRUST_FORWARDED_HEADERS"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [
+              "true"
+            ],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        }
+      ],
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "canonicalFillItemCount": 12,
+      "unresolvedAliasCount": 20,
+      "secretCanonicalKeyCount": 4,
+      "safeToPreFillCanonicalKeyCount": 1,
+      "canonicalKeys": [
+        "LUMIRA_BASE_URL",
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "FIELD_SECRET",
+        "PLAYWRIGHT_BASE_URL",
+        "JWT_SECRET",
+        "REDIS_HOST",
+        "REDIS_PASSWORD",
+        "REDIS_PORT",
+        "TRUST_FORWARDED_HEADERS"
+      ],
+      "secretCanonicalKeys": [
+        "DB_PASSWORD",
+        "FIELD_SECRET",
+        "JWT_SECRET",
+        "REDIS_PASSWORD"
+      ],
+      "safeToPreFillCanonicalKeys": [
+        "TRUST_FORWARDED_HEADERS"
+      ],
+      "requiredCanonicalKeys": [
+        "LUMIRA_BASE_URL",
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "FIELD_SECRET",
+        "PLAYWRIGHT_BASE_URL",
+        "JWT_SECRET",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "TRUST_FORWARDED_HEADERS"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    },
+    {
+      "owner": "ai-owner",
+      "queueOrder": 2,
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "readyBatchIds": [
+        "p0-release-config-ai-owner"
+      ],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "firstCommand": "node scripts/ddd-release-config-evidence.mjs",
+      "canonicalFillItems": [
+        {
+          "fillOrder": 1,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner"
+          ],
+          "group": "ai",
+          "requirement": "chat model",
+          "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+          "valueClass": "runtime-setting",
+          "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+            "LUMIRA_AI_CHAT_MODEL"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 2,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner"
+          ],
+          "group": "ai",
+          "requirement": "embedding model",
+          "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+          "valueClass": "runtime-setting",
+          "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+            "LUMIRA_AI_EMBEDDING_MODEL"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 3,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner"
+          ],
+          "group": "ai",
+          "requirement": "file owner enabled",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+          "valueClass": "toggle",
+          "fillGuidance": "Use one of: true.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 1,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [
+              "true"
+            ],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 4,
+          "owner": "ai-owner",
+          "owners": [
+            "ai",
+            "ai-owner",
+            "release-infra"
+          ],
+          "group": "ai",
+          "requirement": "file owner url",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_FILE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_FILE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 5,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner"
+          ],
+          "group": "ai",
+          "requirement": "iam owner enabled",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+          "valueClass": "toggle",
+          "fillGuidance": "Use one of: true.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 1,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [
+              "true"
+            ],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 6,
+          "owner": "ai-owner",
+          "owners": [
+            "ai",
+            "ai-owner",
+            "release-infra"
+          ],
+          "group": "ai",
+          "requirement": "iam owner url",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_IAM_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_IAM_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 7,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner",
+            "file-owner",
+            "job-owner",
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "ai",
+          "requirement": "owner internal token",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+            "SAAS_JOB_INTERNAL_TOKEN"
+          ],
+          "unresolvedAliasCount": 3,
+          "unresolvedAliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+            "SAAS_JOB_INTERNAL_TOKEN"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 8,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner"
+          ],
+          "group": "ai",
+          "requirement": "platform owner enabled",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+          "valueClass": "toggle",
+          "fillGuidance": "Use one of: true.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 1,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [
+              "true"
+            ],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 9,
+          "owner": "ai-owner",
+          "owners": [
+            "ai",
+            "ai-owner",
+            "release-infra"
+          ],
+          "group": "ai",
+          "requirement": "platform owner url",
+          "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 10,
+          "owner": "ai-owner",
+          "owners": [
+            "ai",
+            "ai-owner",
+            "release-infra"
+          ],
+          "group": "ai",
+          "requirement": "provider api key",
+          "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_API_KEY"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_API_KEY"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 11,
+          "owner": "ai-owner",
+          "owners": [
+            "ai",
+            "ai-owner",
+            "release-infra"
+          ],
+          "group": "ai",
+          "requirement": "provider base url",
+          "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_AI_PROVIDER_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_AI_PROVIDER_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 12,
+          "owner": "ai-owner",
+          "owners": [
+            "ai-owner"
+          ],
+          "group": "ai",
+          "requirement": "provider enabled",
+          "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+          "valueClass": "toggle",
+          "fillGuidance": "Use one of: true.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 2,
+          "aliases": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+            "LUMIRA_AI_PROVIDER_ENABLED"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [
+              "true"
+            ],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        }
+      ],
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "canonicalFillItemCount": 12,
+      "unresolvedAliasCount": 13,
+      "secretCanonicalKeyCount": 2,
+      "safeToPreFillCanonicalKeyCount": 6,
+      "canonicalKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
+      ],
+      "secretCanonicalKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
+      ],
+      "safeToPreFillCanonicalKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
+      ],
+      "requiredCanonicalKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    },
+    {
+      "owner": "payment-owner",
+      "queueOrder": 3,
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "readyBatchIds": [
+        "p0-release-config-payment-owner"
+      ],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "firstCommand": "node scripts/ddd-release-config-evidence.mjs",
+      "canonicalFillItems": [
+        {
+          "fillOrder": 16,
+          "owner": "payment-owner",
+          "owners": [
+            "payment-owner",
+            "release-infra"
+          ],
+          "group": "payment",
+          "requirement": "payment public url",
+          "canonicalKey": "PAYMENT_PUBLIC_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 1,
+          "aliases": [
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "unresolvedAliasCount": 1,
+          "unresolvedAliases": [
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 17,
+          "owner": "payment-owner",
+          "owners": [
+            "payment-owner"
+          ],
+          "group": "payment",
+          "requirement": "payment webhook secret",
+          "canonicalKey": "DDD_PAYMENT_WEBHOOK_SECRET",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "DDD_PAYMENT_WEBHOOK_SECRET",
+            "PAYMENT_WEBHOOK_SECRET",
+            "LUMIRA_PAYMENT_WEBHOOK_SECRET"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": false,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        }
+      ],
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "canonicalFillItemCount": 2,
+      "unresolvedAliasCount": 1,
+      "secretCanonicalKeyCount": 1,
+      "safeToPreFillCanonicalKeyCount": 0,
+      "canonicalKeys": [
+        "PAYMENT_PUBLIC_BASE_URL",
+        "DDD_PAYMENT_WEBHOOK_SECRET"
+      ],
+      "secretCanonicalKeys": [
+        "DDD_PAYMENT_WEBHOOK_SECRET"
+      ],
+      "safeToPreFillCanonicalKeys": [],
+      "requiredCanonicalKeys": [
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    },
+    {
+      "owner": "platform-events",
+      "queueOrder": 4,
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "readyBatchIds": [
+        "p0-release-config-platform-events"
+      ],
+      "blockedBatchIds": [],
+      "firstCommand": "node scripts/ddd-release-config-evidence.mjs",
+      "canonicalFillItems": [
+        {
+          "fillOrder": 18,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "event stream key",
+          "canonicalKey": "SAAS_EVENT_REDIS_STREAM_KEY",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_EVENT_REDIS_STREAM_KEY",
+            "LUMIRA_EVENT_REDIS_STREAM_KEY"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SAAS_EVENT_REDIS_STREAM_KEY",
+            "LUMIRA_EVENT_REDIS_STREAM_KEY"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 19,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "job backend url",
+          "canonicalKey": "SAAS_JOB_BACKEND_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "LUMIRA_JOB_BACKEND_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "LUMIRA_JOB_BACKEND_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 20,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "job file url",
+          "canonicalKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 21,
+          "owner": "platform-events",
+          "owners": [
+            "ai-owner",
+            "file-owner",
+            "job-owner",
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "job internal token",
+          "canonicalKey": "SAAS_JOB_INTERNAL_TOKEN",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "DDD_JOB_INTERNAL_TOKEN",
+            "LUMIRA_JOB_INTERNAL_TOKEN"
+          ],
+          "unresolvedAliasCount": 3,
+          "unresolvedAliases": [
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "DDD_JOB_INTERNAL_TOKEN",
+            "LUMIRA_JOB_INTERNAL_TOKEN"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 22,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "job message url",
+          "canonicalKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 23,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "job payment url",
+          "canonicalKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 24,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "job plugin url",
+          "canonicalKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 25,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "outbox dispatcher",
+          "canonicalKey": "SAAS_EVENT_OUTBOX_DISPATCHER",
+          "valueClass": "runtime-setting",
+          "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 2,
+          "aliases": [
+            "SAAS_EVENT_OUTBOX_DISPATCHER",
+            "LUMIRA_EVENT_OUTBOX_DISPATCHER"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 26,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "xxl job admin",
+          "canonicalKey": "XXL_JOB_ADMIN_ADDRESSES",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "XXL_JOB_ADMIN_ADDRESSES",
+            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "XXL_JOB_ADMIN_ADDRESSES",
+            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 27,
+          "owner": "platform-events",
+          "owners": [
+            "platform-events",
+            "release-infra"
+          ],
+          "group": "jobs-and-events",
+          "requirement": "xxl job token",
+          "canonicalKey": "XXL_JOB_ACCESS_TOKEN",
+          "valueClass": "secret",
+          "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+          "secret": true,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ACCESS_TOKEN",
+            "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+          ],
+          "unresolvedAliasCount": 3,
+          "unresolvedAliases": [
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ACCESS_TOKEN",
+            "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+          ],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": 32,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        }
+      ],
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "canonicalFillItemCount": 10,
+      "unresolvedAliasCount": 20,
+      "secretCanonicalKeyCount": 3,
+      "safeToPreFillCanonicalKeyCount": 1,
+      "canonicalKeys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "SAAS_EVENT_OUTBOX_DISPATCHER",
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "XXL_JOB_ACCESS_TOKEN"
+      ],
+      "secretCanonicalKeys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "XXL_JOB_ACCESS_TOKEN"
+      ],
+      "safeToPreFillCanonicalKeys": [
+        "SAAS_EVENT_OUTBOX_DISPATCHER"
+      ],
+      "requiredCanonicalKeys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "SAAS_EVENT_OUTBOX_DISPATCHER",
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "XXL_JOB_ACCESS_TOKEN"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    },
+    {
+      "owner": "platform-owners",
+      "queueOrder": 5,
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "readyBatchIds": [
+        "p0-release-config-platform-owners"
+      ],
+      "blockedBatchIds": [],
+      "firstCommand": "node scripts/ddd-release-config-evidence.mjs",
+      "canonicalFillItems": [
+        {
+          "fillOrder": 28,
+          "owner": "platform-owners",
+          "owners": [
+            "ai",
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "ai service",
+          "canonicalKey": "AI_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 3,
+          "aliases": [
+            "AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_BASE_URL"
+          ],
+          "unresolvedAliasCount": 3,
+          "unresolvedAliases": [
+            "AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 29,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "auth service",
+          "canonicalKey": "AUTH_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "AUTH_SERVICE_BASE_URL",
+            "LUMIRA_AUTH_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "AUTH_SERVICE_BASE_URL",
+            "LUMIRA_AUTH_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 30,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "file service",
+          "canonicalKey": "FILE_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "FILE_SERVICE_BASE_URL",
+            "LUMIRA_FILE_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "FILE_SERVICE_BASE_URL",
+            "LUMIRA_FILE_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 31,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "job executor",
+          "canonicalKey": "JOB_EXECUTOR_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "JOB_EXECUTOR_BASE_URL",
+            "LUMIRA_JOB_EXECUTOR_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "JOB_EXECUTOR_BASE_URL",
+            "LUMIRA_JOB_EXECUTOR_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 32,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "localization service",
+          "canonicalKey": "LOCALIZATION_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 33,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "message service",
+          "canonicalKey": "MESSAGE_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 34,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "payment service",
+          "canonicalKey": "PAYMENT_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 35,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "plugin service",
+          "canonicalKey": "PLUGIN_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 36,
+          "owner": "platform-owners",
+          "owners": [
+            "platform-owners",
+            "release-infra"
+          ],
+          "group": "owner-services",
+          "requirement": "system service",
+          "canonicalKey": "SYSTEM_SERVICE_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "SYSTEM_SERVICE_BASE_URL",
+            "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+          ],
+          "unresolvedAliasCount": 2,
+          "unresolvedAliases": [
+            "SYSTEM_SERVICE_BASE_URL",
+            "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+          ],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        }
+      ],
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "canonicalFillItemCount": 9,
+      "unresolvedAliasCount": 19,
+      "secretCanonicalKeyCount": 0,
+      "safeToPreFillCanonicalKeyCount": 0,
+      "canonicalKeys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "FILE_SERVICE_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "SYSTEM_SERVICE_BASE_URL"
+      ],
+      "secretCanonicalKeys": [],
+      "safeToPreFillCanonicalKeys": [],
+      "requiredCanonicalKeys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "FILE_SERVICE_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "SYSTEM_SERVICE_BASE_URL"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    },
+    {
+      "owner": "file-owner",
+      "queueOrder": 9,
+      "queueStatus": "WAITING",
+      "canExecute": false,
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-file-owner",
+        "p1-rollback-file-owner"
+      ],
+      "firstCommand": "node scripts/ddd-file-processing-e2e-smoke.mjs",
+      "canonicalFillItems": [
+        {
+          "fillOrder": 13,
+          "owner": "file-owner",
+          "owners": [
+            "file-owner"
+          ],
+          "group": "file-processing",
+          "requirement": "ocr mode",
+          "canonicalKey": "LUMIRA_FILE_OCR_MODE",
+          "valueClass": "runtime-setting",
+          "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 1,
+          "aliases": [
+            "LUMIRA_FILE_OCR_MODE"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 14,
+          "owner": "file-owner",
+          "owners": [
+            "file-owner"
+          ],
+          "group": "file-processing",
+          "requirement": "security scan mode",
+          "canonicalKey": "LUMIRA_FILE_SECURITY_SCAN_MODE",
+          "valueClass": "runtime-setting",
+          "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 1,
+          "aliases": [
+            "LUMIRA_FILE_SECURITY_SCAN_MODE"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 15,
+          "owner": "file-owner",
+          "owners": [
+            "file-owner"
+          ],
+          "group": "file-processing",
+          "requirement": "upload storage root",
+          "canonicalKey": "UPLOAD_STORAGE_ROOT",
+          "valueClass": "runtime-setting",
+          "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+          "secret": false,
+          "safeToPreFill": true,
+          "aliasCount": 2,
+          "aliases": [
+            "UPLOAD_STORAGE_ROOT",
+            "LUMIRA_UPLOAD_STORAGE_ROOT"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": false,
+            "nonLocal": false,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+        }
+      ],
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "canonicalFillItemCount": 3,
+      "unresolvedAliasCount": 0,
+      "secretCanonicalKeyCount": 0,
+      "safeToPreFillCanonicalKeyCount": 3,
+      "canonicalKeys": [
+        "LUMIRA_FILE_OCR_MODE",
+        "LUMIRA_FILE_SECURITY_SCAN_MODE",
+        "UPLOAD_STORAGE_ROOT"
+      ],
+      "secretCanonicalKeys": [],
+      "safeToPreFillCanonicalKeys": [
+        "LUMIRA_FILE_OCR_MODE",
+        "LUMIRA_FILE_SECURITY_SCAN_MODE",
+        "UPLOAD_STORAGE_ROOT"
+      ],
+      "requiredCanonicalKeys": [
+        "LUMIRA_FILE_OCR_MODE",
+        "LUMIRA_FILE_SECURITY_SCAN_MODE",
+        "UPLOAD_STORAGE_ROOT"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    }
+  ]
+}

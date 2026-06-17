@@ -1,0 +1,1160 @@
+{
+  "generatedAt": "2026-06-16T20:56:46.902Z",
+  "status": "PASS",
+  "runtime": {
+    "freshDatabaseValidated": true,
+    "upgradeDatabaseValidated": true,
+    "evidence": "",
+    "environment": "local-fast-track-validation",
+    "releaseCandidate": "local-ddd-release-audit",
+    "operator": "codex-local-audit",
+    "completedAt": "2026-06-16T06:55:00.000Z",
+    "freshDatabaseEvidence": "artifacts/ddd/migration/fresh-db-drill.json",
+    "upgradeDatabaseEvidence": "artifacts/ddd/migration/upgrade-db-drill.json"
+  },
+  "summary": {
+    "locations": 8,
+    "migrationFiles": 49,
+    "duplicateVersionLocations": 0,
+    "emptyFiles": 0,
+    "runtimeReady": true,
+    "onlineDdlCoverage": {
+      "requiredMigrations": 6,
+      "checkedStatements": 18,
+      "onlineStatements": 18,
+      "blockingStatements": 0,
+      "onlineIndexes": [
+        "idx_msg_notice_visible_recent",
+        "idx_msg_notice_visible_target_role_recent",
+        "idx_msg_notice_visible_target_user_recent"
+      ],
+      "blockingIndexes": []
+    }
+  },
+  "runtimeReady": true,
+  "runtimeProofs": [
+    {
+      "id": "fresh-database",
+      "label": "Fresh database Flyway drill",
+      "validated": true,
+      "evidence": "artifacts/ddd/migration/fresh-db-drill.json",
+      "requiredEnvKeys": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+      ],
+      "requiredEvidence": "Flyway log plus schema-history artifact from an empty production-equivalent database."
+    },
+    {
+      "id": "upgrade-database",
+      "label": "Previous schema upgrade Flyway drill",
+      "validated": true,
+      "evidence": "artifacts/ddd/migration/upgrade-db-drill.json",
+      "requiredEnvKeys": [
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+      ],
+      "requiredEvidence": "Before/after schema-history artifact plus Flyway log from a copy of the previous production schema."
+    }
+  ],
+  "runtimeDiagnostics": [
+    {
+      "id": "fresh-database-drill",
+      "owner": "database",
+      "status": "PASS",
+      "action": "Run Flyway against an empty production-equivalent database and archive schema history plus Flyway logs.",
+      "envKeys": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+      ],
+      "evidence": "artifacts/ddd/migration/fresh-db-drill.json"
+    },
+    {
+      "id": "upgrade-database-drill",
+      "owner": "database",
+      "status": "PASS",
+      "action": "Run Flyway against a copy of the previous production schema and archive before/after schema history plus Flyway logs.",
+      "envKeys": [
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+      ],
+      "evidence": "artifacts/ddd/migration/upgrade-db-drill.json"
+    },
+    {
+      "id": "migration-environment",
+      "owner": "release-infra",
+      "status": "PASS",
+      "action": "Set the production-equivalent migration environment name before generating evidence.",
+      "envKeys": [
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT"
+      ],
+      "evidence": "local-fast-track-validation"
+    },
+    {
+      "id": "migration-release-candidate",
+      "owner": "release-infra",
+      "status": "PASS",
+      "action": "Set the immutable release candidate or commit SHA for the migration drill.",
+      "envKeys": [
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA"
+      ],
+      "evidence": "local-ddd-release-audit"
+    },
+    {
+      "id": "migration-operator",
+      "owner": "release-owner",
+      "status": "PASS",
+      "action": "Record the operator or CI actor who executed the migration drill.",
+      "envKeys": [
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "evidence": "codex-local-audit"
+    },
+    {
+      "id": "migration-completed-at",
+      "owner": "release-owner",
+      "status": "PASS",
+      "action": "Record the ISO timestamp when both migration drills completed.",
+      "envKeys": [
+        "DDD_MIGRATION_COMPLETED_AT"
+      ],
+      "evidence": "2026-06-16T06:55:00.000Z"
+    }
+  ],
+  "requiredLocations": [
+    "services/system-service/src/main/resources/db/migration",
+    "services/auth-service/src/main/resources/db/migration/auth",
+    "services/message-service/src/main/resources/db/migration/message",
+    "services/file-service/src/main/resources/db/migration/file",
+    "services/plugin-service/src/main/resources/db/migration/plugin",
+    "services/localization-service/src/main/resources/db/migration/localization",
+    "services/payment-service/src/main/resources/db/migration/payment",
+    "services/ai-service/src/main/resources/db/migration/ai"
+  ],
+  "locations": [
+    {
+      "location": "services/system-service/src/main/resources/db/migration",
+      "exists": true,
+      "migrationCount": 23,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 3,
+        "checkedStatements": 9,
+        "onlineStatements": 9,
+        "blockingStatements": 0,
+        "onlineIndexes": [
+          "idx_msg_notice_visible_recent",
+          "idx_msg_notice_visible_target_role_recent",
+          "idx_msg_notice_visible_target_user_recent"
+        ],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "1",
+          "description": "baseline",
+          "file": "services/system-service/src/main/resources/db/migration/V1__baseline.sql",
+          "bytes": 288566,
+          "sha256": "8f07a8cb1a33632186bc0ed627fa9456c5774807c529f82d0f5adc57f59d37e6",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "2",
+          "description": "cleanup unused schema",
+          "file": "services/system-service/src/main/resources/db/migration/V2__cleanup_unused_schema.sql",
+          "bytes": 703,
+          "sha256": "71eb232a09378dd1c24c84c11a0d274d91080234df161204107049838564ecfb",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "3",
+          "description": "role default home path",
+          "file": "services/system-service/src/main/resources/db/migration/V3__role_default_home_path.sql",
+          "bytes": 782,
+          "sha256": "246cc0179d95d8686c240e7bb999ec904901eac5858786ac5d9afbd2a65dbefe",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "4",
+          "description": "grant payment view to default admin",
+          "file": "services/system-service/src/main/resources/db/migration/V4__grant_payment_view_to_default_admin.sql",
+          "bytes": 419,
+          "sha256": "917424b3e8cd77ceb487d5f427f66469f5d045f03f9d8c69231c86ad25681408",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "5",
+          "description": "baseline payment domain",
+          "file": "services/system-service/src/main/resources/db/migration/V5__baseline_payment_domain.sql",
+          "bytes": 5849,
+          "sha256": "a3e62d34f055599a0ec62353dc046a28b8e0e63f3ae054458b825394fdf7b2ef",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "6",
+          "description": "grant payment config permissions to default admin",
+          "file": "services/system-service/src/main/resources/db/migration/V6__grant_payment_config_permissions_to_default_admin.sql",
+          "bytes": 620,
+          "sha256": "350e0886fe05c0875455cc3699e37266812cabfa434f04d08d71d9c6c3e0d413",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "7",
+          "description": "expand encrypted secret columns",
+          "file": "services/system-service/src/main/resources/db/migration/V7__expand_encrypted_secret_columns.sql",
+          "bytes": 287,
+          "sha256": "9d997b7048e912ca0039c9c37743a4fa5d8da06835d27a3eaa9ea9a13e1d0cb7",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "8",
+          "description": "seed download center",
+          "file": "services/system-service/src/main/resources/db/migration/V8__seed_download_center.sql",
+          "bytes": 1628,
+          "sha256": "f328cfa2c1d8d41e0e3952fc09a321696cdd405dce334568bba534e7f4755956",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "9",
+          "description": "download center action permissions",
+          "file": "services/system-service/src/main/resources/db/migration/V9__download_center_action_permissions.sql",
+          "bytes": 1062,
+          "sha256": "5d62acc1fa20a60ac115666517d066cf6663429f8e44fecf850f99078b1878fb",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "10",
+          "description": "sensitive words plugin",
+          "file": "services/system-service/src/main/resources/db/migration/V10__sensitive_words_plugin.sql",
+          "bytes": 11544,
+          "sha256": "c1d3c627755723c5b835f47c07edc643b8955a0adb1e5f3f7f317c0115e90ceb",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "11",
+          "description": "seed ai knowledge storage space",
+          "file": "services/system-service/src/main/resources/db/migration/V11__seed_ai_knowledge_storage_space.sql",
+          "bytes": 648,
+          "sha256": "7d738f2980bf9894d1a6dd8cd57cb4a0c9f41baa1c697b18d56212550b925040",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "12",
+          "description": "performance hot path indexes",
+          "file": "services/system-service/src/main/resources/db/migration/V12__performance_hot_path_indexes.sql",
+          "bytes": 1107,
+          "sha256": "0cb4ce8230354965e272309814e73f9538eee0d33726e63e2777fcc3de827cd2",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": true,
+            "checkedStatements": 3,
+            "onlineStatements": 3,
+            "blockingStatements": 0,
+            "onlineIndexes": [
+              "idx_msg_notice_visible_recent",
+              "idx_msg_notice_visible_target_role_recent",
+              "idx_msg_notice_visible_target_user_recent"
+            ],
+            "blockingIndexes": [],
+            "statementDigests": [
+              "db692f2d4eca1b242bd58b56813da8983579406ff5b1f71c23c38d58b80d723e",
+              "dc88547528e20ce274df5c7f164d6a9080545db4f1cd9120f4d28b136ad1f707",
+              "635b39b127af8b0c8f13dbdeaf2afee21f03bf9d7dac19e66ad3bb186fce1e58"
+            ]
+          }
+        },
+        {
+          "version": "13",
+          "description": "ddd read model versions",
+          "file": "services/system-service/src/main/resources/db/migration/V13__ddd_read_model_versions.sql",
+          "bytes": 1083,
+          "sha256": "581e25d372b20527f6d5b3dfafd3a80aee0523e65991507571a79dbcebe255a8",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "14",
+          "description": "plugin event outbox",
+          "file": "services/system-service/src/main/resources/db/migration/V14__plugin_event_outbox.sql",
+          "bytes": 1026,
+          "sha256": "bccc5d8a87f03b38f99af637e7c40f1bee1712b9c4892b2cf335dbd5b903850c",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "15",
+          "description": "ai knowledge index retry governance",
+          "file": "services/system-service/src/main/resources/db/migration/V15__ai_knowledge_index_retry_governance.sql",
+          "bytes": 437,
+          "sha256": "2428021a4f7d7ec634acd8e3e001f3f47aa42c16e1535bb122e067898603c70d",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "16",
+          "description": "ai knowledge chunk vector projection",
+          "file": "services/system-service/src/main/resources/db/migration/V16__ai_knowledge_chunk_vector_projection.sql",
+          "bytes": 516,
+          "sha256": "3ecfe1e505f992c410459d4cc8f95d125e0630cef5e800d953ad635c0972c4e2",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "17",
+          "description": "iam tenant v2 permissions",
+          "file": "services/system-service/src/main/resources/db/migration/V17__iam_tenant_v2_permissions.sql",
+          "bytes": 1187,
+          "sha256": "966d2d51d8de2914cc9f353c671f1ba3b67fd12ae9661e3ae69adec29a8b0f61",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "18",
+          "description": "file processing runtime tables",
+          "file": "services/system-service/src/main/resources/db/migration/V18__file_processing_runtime_tables.sql",
+          "bytes": 2083,
+          "sha256": "00ded068030ff14f527b238d2774e9586f9771a70813ed6c32e5cf229bbb3cb1",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "19",
+          "description": "platform event outbox owner queue index",
+          "file": "services/system-service/src/main/resources/db/migration/V19__platform_event_outbox_owner_queue_index.sql",
+          "bytes": 497,
+          "sha256": "a8dffd6ebb91e9ce61628315b6fe049af5f6ccd0d77302b0e16ee2ac82efb181",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "20",
+          "description": "message visible scope index",
+          "file": "services/system-service/src/main/resources/db/migration/V20__message_visible_scope_index.sql",
+          "bytes": 287,
+          "sha256": "6f55b383b97f77f30e89a79d4433b68d4e619ad4a61ce97266592d635428d987",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": true,
+            "checkedStatements": 2,
+            "onlineStatements": 2,
+            "blockingStatements": 0,
+            "onlineIndexes": [
+              "idx_msg_notice_visible_recent"
+            ],
+            "blockingIndexes": [],
+            "statementDigests": [
+              "3745917f3e37ee5f962c01fff533a6118ab2ed10a2e27d396a1105daba908177",
+              "c1b0c30b15e1807bb407f48130dcad82982ede3aedca3454b53ea626522441aa"
+            ]
+          }
+        },
+        {
+          "version": "21",
+          "description": "message target scope indexes",
+          "file": "services/system-service/src/main/resources/db/migration/V21__message_target_scope_indexes.sql",
+          "bytes": 659,
+          "sha256": "aa2ed048f868e1638bd50089725100ccac97a48c26ce99249ee29c59a4b974cc",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": true,
+            "checkedStatements": 4,
+            "onlineStatements": 4,
+            "blockingStatements": 0,
+            "onlineIndexes": [
+              "idx_msg_notice_visible_target_role_recent",
+              "idx_msg_notice_visible_target_user_recent"
+            ],
+            "blockingIndexes": [],
+            "statementDigests": [
+              "1ffc2f1e559e99d3ff152c06be27f3ad25398dc91f50edf475e3c3cc6bc92b6c",
+              "d4ee0f72a61eaf2de4aecfad72369795fd176b77d68a84eb4a8298da1a892f07",
+              "040b09ba19bdf13ef22b255950488b0fdbf99689a5ff9915cf8d06386737cca1",
+              "38b12f2def5436ba1d6f2b2e8c7494743c0a6819aa0da2f23b5bb9109b61a44c"
+            ]
+          }
+        },
+        {
+          "version": "22",
+          "description": "iam permission hot path indexes",
+          "file": "services/system-service/src/main/resources/db/migration/V22__iam_permission_hot_path_indexes.sql",
+          "bytes": 361,
+          "sha256": "ca1e93f958b73c594af41f17475b3a6ae147cb7f96b84f0f7d25db8534f852c6",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "49",
+          "description": "aggregate file hot path indexes",
+          "file": "services/system-service/src/main/resources/db/migration/V49__aggregate_file_hot_path_indexes.sql",
+          "bytes": 2502,
+          "sha256": "eaada7ab91fb4833054641423348a0530bb5a2f394c868205d082e989af6a5f6",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/auth-service/src/main/resources/db/migration/auth",
+      "exists": true,
+      "migrationCount": 1,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 0,
+        "checkedStatements": 0,
+        "onlineStatements": 0,
+        "blockingStatements": 0,
+        "onlineIndexes": [],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "23",
+          "description": "baseline auth domain",
+          "file": "services/auth-service/src/main/resources/db/migration/auth/V23__baseline_auth_domain.sql",
+          "bytes": 3890,
+          "sha256": "86114eb9d00064de73cd5e2cfc19ab4ce92e99827ccc5bce80d8d546f587360a",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/message-service/src/main/resources/db/migration/message",
+      "exists": true,
+      "migrationCount": 6,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 3,
+        "checkedStatements": 9,
+        "onlineStatements": 9,
+        "blockingStatements": 0,
+        "onlineIndexes": [
+          "idx_msg_notice_visible_recent",
+          "idx_msg_notice_visible_target_role_recent",
+          "idx_msg_notice_visible_target_user_recent"
+        ],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "35",
+          "description": "baseline message domain",
+          "file": "services/message-service/src/main/resources/db/migration/message/V35__baseline_message_domain.sql",
+          "bytes": 4342,
+          "sha256": "9807e6fb9927f166aa0834ee0459226fd2c6b02f28561e92beab3a3c74462c97",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "36",
+          "description": "platform event outbox owner queue index",
+          "file": "services/message-service/src/main/resources/db/migration/message/V36__platform_event_outbox_owner_queue_index.sql",
+          "bytes": 497,
+          "sha256": "a8dffd6ebb91e9ce61628315b6fe049af5f6ccd0d77302b0e16ee2ac82efb181",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "37",
+          "description": "message hot path indexes",
+          "file": "services/message-service/src/main/resources/db/migration/message/V37__message_hot_path_indexes.sql",
+          "bytes": 539,
+          "sha256": "9274a686221d4683df2e35bb20a942aa74b1e5bcbb3c57defa8003b3ccbfbc46",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": true,
+            "checkedStatements": 3,
+            "onlineStatements": 3,
+            "blockingStatements": 0,
+            "onlineIndexes": [
+              "idx_msg_notice_visible_recent",
+              "idx_msg_notice_visible_target_role_recent",
+              "idx_msg_notice_visible_target_user_recent"
+            ],
+            "blockingIndexes": [],
+            "statementDigests": [
+              "db692f2d4eca1b242bd58b56813da8983579406ff5b1f71c23c38d58b80d723e",
+              "dc88547528e20ce274df5c7f164d6a9080545db4f1cd9120f4d28b136ad1f707",
+              "635b39b127af8b0c8f13dbdeaf2afee21f03bf9d7dac19e66ad3bb186fce1e58"
+            ]
+          }
+        },
+        {
+          "version": "38",
+          "description": "message visible scope index",
+          "file": "services/message-service/src/main/resources/db/migration/message/V38__message_visible_scope_index.sql",
+          "bytes": 287,
+          "sha256": "6f55b383b97f77f30e89a79d4433b68d4e619ad4a61ce97266592d635428d987",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": true,
+            "checkedStatements": 2,
+            "onlineStatements": 2,
+            "blockingStatements": 0,
+            "onlineIndexes": [
+              "idx_msg_notice_visible_recent"
+            ],
+            "blockingIndexes": [],
+            "statementDigests": [
+              "3745917f3e37ee5f962c01fff533a6118ab2ed10a2e27d396a1105daba908177",
+              "c1b0c30b15e1807bb407f48130dcad82982ede3aedca3454b53ea626522441aa"
+            ]
+          }
+        },
+        {
+          "version": "39",
+          "description": "message target scope indexes",
+          "file": "services/message-service/src/main/resources/db/migration/message/V39__message_target_scope_indexes.sql",
+          "bytes": 659,
+          "sha256": "aa2ed048f868e1638bd50089725100ccac97a48c26ce99249ee29c59a4b974cc",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": true,
+            "checkedStatements": 4,
+            "onlineStatements": 4,
+            "blockingStatements": 0,
+            "onlineIndexes": [
+              "idx_msg_notice_visible_target_role_recent",
+              "idx_msg_notice_visible_target_user_recent"
+            ],
+            "blockingIndexes": [],
+            "statementDigests": [
+              "1ffc2f1e559e99d3ff152c06be27f3ad25398dc91f50edf475e3c3cc6bc92b6c",
+              "d4ee0f72a61eaf2de4aecfad72369795fd176b77d68a84eb4a8298da1a892f07",
+              "040b09ba19bdf13ef22b255950488b0fdbf99689a5ff9915cf8d06386737cca1",
+              "38b12f2def5436ba1d6f2b2e8c7494743c0a6819aa0da2f23b5bb9109b61a44c"
+            ]
+          }
+        },
+        {
+          "version": "40",
+          "description": "message unread read index",
+          "file": "services/message-service/src/main/resources/db/migration/message/V40__message_unread_read_index.sql",
+          "bytes": 181,
+          "sha256": "237e0bc1c0deb47f21e49a3e442490d58775352101d508fc125c997426c298c1",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/file-service/src/main/resources/db/migration/file",
+      "exists": true,
+      "migrationCount": 8,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 0,
+        "checkedStatements": 0,
+        "onlineStatements": 0,
+        "blockingStatements": 0,
+        "onlineIndexes": [],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "41",
+          "description": "baseline file domain",
+          "file": "services/file-service/src/main/resources/db/migration/file/V41__baseline_file_domain.sql",
+          "bytes": 6973,
+          "sha256": "bc12b6a20696538f6bad4a975373caf18111ed438322de209aaf953fb2afb319",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "42",
+          "description": "expand encrypted secret columns",
+          "file": "services/file-service/src/main/resources/db/migration/file/V42__expand_encrypted_secret_columns.sql",
+          "bytes": 95,
+          "sha256": "1b0d8a440114d2a4e6edcd7fb2f53d746a51b02a60c854a40d034b1e5812c3d8",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "43",
+          "description": "seed ai chat storage space",
+          "file": "services/file-service/src/main/resources/db/migration/file/V43__seed_ai_chat_storage_space.sql",
+          "bytes": 568,
+          "sha256": "bc33ed493d5342282b0c212b9f30431e2ea1b9df21dc939e557ccb8c26bb22d8",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "44",
+          "description": "seed ai knowledge storage space",
+          "file": "services/file-service/src/main/resources/db/migration/file/V44__seed_ai_knowledge_storage_space.sql",
+          "bytes": 586,
+          "sha256": "0f66c3d5ddd531154ff8553b80322a5acaec7af1709bba09636b2f325cdc0049",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "45",
+          "description": "add file processing task",
+          "file": "services/file-service/src/main/resources/db/migration/file/V45__add_file_processing_task.sql",
+          "bytes": 1105,
+          "sha256": "85b3c6b8b831cc0ade1394c98b9a08445d73c6d1135b5f1d76265b3dc69c2f16",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "46",
+          "description": "add file processing artifact",
+          "file": "services/file-service/src/main/resources/db/migration/file/V46__add_file_processing_artifact.sql",
+          "bytes": 977,
+          "sha256": "917bf7e4eeee2eba3d797c021d906fdd163e363df2d515605fa7fc8bfd1483bd",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "47",
+          "description": "platform event outbox owner queue index",
+          "file": "services/file-service/src/main/resources/db/migration/file/V47__platform_event_outbox_owner_queue_index.sql",
+          "bytes": 497,
+          "sha256": "a8dffd6ebb91e9ce61628315b6fe049af5f6ccd0d77302b0e16ee2ac82efb181",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "48",
+          "description": "file hot path indexes",
+          "file": "services/file-service/src/main/resources/db/migration/file/V48__file_hot_path_indexes.sql",
+          "bytes": 2502,
+          "sha256": "eaada7ab91fb4833054641423348a0530bb5a2f394c868205d082e989af6a5f6",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/plugin-service/src/main/resources/db/migration/plugin",
+      "exists": true,
+      "migrationCount": 4,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 0,
+        "checkedStatements": 0,
+        "onlineStatements": 0,
+        "blockingStatements": 0,
+        "onlineIndexes": [],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "31",
+          "description": "baseline plugin domain",
+          "file": "services/plugin-service/src/main/resources/db/migration/plugin/V31__baseline_plugin_domain.sql",
+          "bytes": 6373,
+          "sha256": "03d2b77f20a550ccea0f8367c1615f62147d8170347ff621578f87d8f52e2497",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "32",
+          "description": "plugin event outbox",
+          "file": "services/plugin-service/src/main/resources/db/migration/plugin/V32__plugin_event_outbox.sql",
+          "bytes": 1026,
+          "sha256": "bccc5d8a87f03b38f99af637e7c40f1bee1712b9c4892b2cf335dbd5b903850c",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "33",
+          "description": "plugin hot path indexes",
+          "file": "services/plugin-service/src/main/resources/db/migration/plugin/V33__plugin_hot_path_indexes.sql",
+          "bytes": 1300,
+          "sha256": "de9a5c8fd4c6c1abdb697559798cbeb02c23ee24c1dda4afb110892a1936fc8e",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "34",
+          "description": "plugin event outbox hot path",
+          "file": "services/plugin-service/src/main/resources/db/migration/plugin/V34__plugin_event_outbox_hot_path.sql",
+          "bytes": 201,
+          "sha256": "b275269f4aa71e928b4313b4a974d577358e7aed2dac19f1683f30fa3f89a1fa",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/localization-service/src/main/resources/db/migration/localization",
+      "exists": true,
+      "migrationCount": 2,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 0,
+        "checkedStatements": 0,
+        "onlineStatements": 0,
+        "blockingStatements": 0,
+        "onlineIndexes": [],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "24",
+          "description": "baseline localization domain",
+          "file": "services/localization-service/src/main/resources/db/migration/localization/V24__baseline_localization_domain.sql",
+          "bytes": 7125,
+          "sha256": "b463e80d5af799f30b509c435c46622cd3b08a98d58673ac4859626932304b24",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "25",
+          "description": "localization hot path indexes",
+          "file": "services/localization-service/src/main/resources/db/migration/localization/V25__localization_hot_path_indexes.sql",
+          "bytes": 558,
+          "sha256": "521b1f6b0489905476a4bf09f0c9e5383f3fe84cb42cfac61c6745e1d7ebce65",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/payment-service/src/main/resources/db/migration/payment",
+      "exists": true,
+      "migrationCount": 3,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 0,
+        "checkedStatements": 0,
+        "onlineStatements": 0,
+        "blockingStatements": 0,
+        "onlineIndexes": [],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "28",
+          "description": "baseline payment domain",
+          "file": "services/payment-service/src/main/resources/db/migration/payment/V28__baseline_payment_domain.sql",
+          "bytes": 5849,
+          "sha256": "a3e62d34f055599a0ec62353dc046a28b8e0e63f3ae054458b825394fdf7b2ef",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "29",
+          "description": "payment hot path indexes",
+          "file": "services/payment-service/src/main/resources/db/migration/payment/V29__payment_hot_path_indexes.sql",
+          "bytes": 995,
+          "sha256": "59277066eb5973e1280319ec360138202902954761f559049e11859ffcdd57fe",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "30",
+          "description": "payment outbox owner queue index",
+          "file": "services/payment-service/src/main/resources/db/migration/payment/V30__payment_outbox_owner_queue_index.sql",
+          "bytes": 199,
+          "sha256": "fd26f29d555e7e1e86216f02f7188c8ea3f1ad94e32570fc5f529a8a0ef7b00e",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    },
+    {
+      "location": "services/ai-service/src/main/resources/db/migration/ai",
+      "exists": true,
+      "migrationCount": 2,
+      "duplicateVersions": [],
+      "emptyFiles": [],
+      "onlineDdlCoverage": {
+        "requiredMigrations": 0,
+        "checkedStatements": 0,
+        "onlineStatements": 0,
+        "blockingStatements": 0,
+        "onlineIndexes": [],
+        "blockingIndexes": []
+      },
+      "migrations": [
+        {
+          "version": "26",
+          "description": "baseline ai domain",
+          "file": "services/ai-service/src/main/resources/db/migration/ai/V26__baseline_ai_domain.sql",
+          "bytes": 19707,
+          "sha256": "133eed992a728e51e52963bbe0c7e55e7ac51c1fd2a33337fff246a17a1b66ea",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        },
+        {
+          "version": "27",
+          "description": "ai knowledge index retry governance",
+          "file": "services/ai-service/src/main/resources/db/migration/ai/V27__ai_knowledge_index_retry_governance.sql",
+          "bytes": 437,
+          "sha256": "2428021a4f7d7ec634acd8e3e001f3f47aa42c16e1535bb122e067898603c70d",
+          "empty": false,
+          "onlineDdlCoverage": {
+            "required": false,
+            "checkedStatements": 0,
+            "onlineStatements": 0,
+            "blockingStatements": 0,
+            "onlineIndexes": [],
+            "blockingIndexes": [],
+            "statementDigests": []
+          }
+        }
+      ]
+    }
+  ],
+  "blockers": []
+}

@@ -300,7 +300,7 @@ const SmsDrawerContent = ({
   );
 };
 
-const EmailDrawerContent = ({
+  const EmailDrawerContent = ({
   canManageSettings,
   verificationLoading,
   smtpFormProps,
@@ -315,14 +315,12 @@ const EmailDrawerContent = ({
 }) => {
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
-  const currentRpId = resolveCurrentPasskeyRpId();
-  const currentOrigin = resolveCurrentPasskeyOrigin();
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Card title={t('邮箱与 SMTP', 'Email and SMTP')} loading={verificationLoading}>
         <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
-          <Form {...smtpFormProps}>
+      <Form {...smtpFormProps}>
             <Typography.Title level={5} style={{ marginTop: 0 }}>
               {t('SMTP 基础配置', 'SMTP settings')}
             </Typography.Title>
@@ -452,7 +450,7 @@ const WechatDrawerContent = ({
   );
 };
 
-const PasskeyDrawerContent = ({
+  const PasskeyDrawerContent = ({
   canManageSettings,
   passkeyFormProps,
 }: {

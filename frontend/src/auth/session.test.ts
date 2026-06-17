@@ -91,7 +91,7 @@ describe('tryRefreshToken', () => {
     }) => void) | undefined;
 
     mocks.request.mockImplementation((url: string) => {
-      if (url !== '/v1/auth/refresh-token') {
+      if (url !== '/v2/auth/refresh-token') {
         return Promise.reject(new Error(`Unexpected request: ${url}`));
       }
       return new Promise((resolve) => {
@@ -127,7 +127,7 @@ describe('performLogout', () => {
   it('clears local session and redirects without waiting for server logout', async () => {
     const { performLogout } = await import('@/auth/sessionLifecycle');
     mocks.request.mockImplementation((url: string) => {
-      if (url !== '/v1/auth/logout') {
+      if (url !== '/v2/auth/logout') {
         return Promise.reject(new Error(`Unexpected request: ${url}`));
       }
       return new Promise(() => undefined);
@@ -138,5 +138,52 @@ describe('performLogout', () => {
     expect(mocks.request).toHaveBeenCalledTimes(1);
     expect(mocks.clearTokenState).toHaveBeenCalledTimes(1);
     expect(mocks.historyReplace).toHaveBeenCalledWith('/user/login');
+  });
+
+  it('falls back logout request to legacy endpoint when v2 is unavailable', async () => {
+    const { performLogout } = await import('@/auth/sessionLifecycle');
+    mocks.request
+      .mockRejectedValueOnce(new Error('v2 unavailable') as never)
+      .mockResolvedValueOnce(true as never);
+
+    await performLogout();
+
+    expect(mocks.request).toHaveBeenNthCalledWith(
+      1,
+      '/v2/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+    expect(mocks.request).toHaveBeenNthCalledWith(
+      2,
+      '/v1/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
+  });
+
+  it('falls back refresh token to legacy endpoint when v2 is unavailable', async () => {
+    const { tryRefreshToken } = await import('@/auth/sessionLifecycle');
+    mocks.request.mockImplementation((url: string) => {
+      if (url === '/v2/auth/refresh-token') {
+        return Promise.reject(new Error('v2 unavailable'));
+      }
+      if (url === '/v1/auth/refresh-token') {
+        return Promise.resolve({
+          accessToken: 'access-legacy',
+          refreshToken: 'refresh-legacy',
+          tokenType: 'Bearer',
+          expiresIn: 3600,
+        });
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    const result = await tryRefreshToken();
+
+    expect(result).toBe(true);
+    expect(mocks.request).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,0 +1,164 @@
+{
+  "baseUrl": "http://127.0.0.1:8080",
+  "username": "admin",
+  "checkedAt": "2026-06-13T18:38:43.975Z",
+  "durationMs": 8000,
+  "concurrency": 6,
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/v2/auth/current-user"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/iam/tenants/current"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/iam/permissions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/message/unread-count"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/message/messages?pageNo=1&pageSize=20"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/files?pageNo=1&pageSize=20"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/plugins/current/bootstrap"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/localization/runtime/zh-CN"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/payment/providers"
+    }
+  ],
+  "ok": 611,
+  "failed": 0,
+  "samples": 611,
+  "p50": 75,
+  "p95": 88,
+  "p99": 98,
+  "upload": {
+    "path": "/api/v2/files/upload",
+    "status": 200,
+    "elapsedMs": 85.88,
+    "fileId": 2
+  },
+  "perEndpoint": {
+    "GET /api/v2/message/messages?pageNo=1&pageSize=20": {
+      "samples": 68,
+      "p50": 75,
+      "p95": 88,
+      "p99": 95,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/auth/current-user": {
+      "samples": 68,
+      "p50": 72,
+      "p95": 83,
+      "p99": 98,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/iam/tenants/current": {
+      "samples": 68,
+      "p50": 74,
+      "p95": 84,
+      "p99": 89,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/files?pageNo=1&pageSize=20": {
+      "samples": 68,
+      "p50": 74,
+      "p95": 86,
+      "p99": 102,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/message/unread-count": {
+      "samples": 68,
+      "p50": 74,
+      "p95": 83,
+      "p99": 96,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/iam/permissions": {
+      "samples": 68,
+      "p50": 83,
+      "p95": 101,
+      "p99": 104,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/payment/providers": {
+      "samples": 67,
+      "p50": 75,
+      "p95": 88,
+      "p99": 90,
+      "statusCounts": {
+        "200": 67
+      }
+    },
+    "GET /api/v2/plugins/current/bootstrap": {
+      "samples": 68,
+      "p50": 75,
+      "p95": 86,
+      "p99": 92,
+      "statusCounts": {
+        "200": 68
+      }
+    },
+    "GET /api/v2/localization/runtime/zh-CN": {
+      "samples": 68,
+      "p50": 75,
+      "p95": 86,
+      "p99": 91,
+      "statusCounts": {
+        "200": 68
+      }
+    }
+  },
+  "oneShots": [
+    {
+      "name": "POST /api/v2/auth/session/keepalive",
+      "status": 200,
+      "elapsedMs": 64
+    }
+  ],
+  "sourceEnvironment": "local-evidence-audit",
+  "releaseCandidate": "local-ddd-release-audit",
+  "evidenceOperator": "codex-local-audit",
+  "provenanceBackfilledAt": "2026-06-15T10:57:47.642Z",
+  "provenanceBackfillReason": "operator supplied metadata for existing local evidence artifact; result fields were not changed",
+  "productionEquivalence": {
+    "strict": true,
+    "https": false,
+    "localOnly": true,
+    "deploymentEvidence": null,
+    "issues": [
+      "strict authenticated performance actual requires HTTPS baseUrl evidence",
+      "strict authenticated performance actual requires non-local baseUrl, got http://127.0.0.1:8080"
+    ]
+  },
+  "productionEquivalenceBackfilledAt": "2026-06-14T11:14:55.433Z",
+  "productionEquivalenceBackfillReason": "baseUrl-derived production equivalence metadata; result fields were not changed"
+}

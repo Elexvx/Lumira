@@ -49,6 +49,14 @@ public class MyBatisQueryOperations {
         return rawSqlMapper.selectList(boundSql.sql(), boundSql.params());
     }
 
+    public boolean exists(String sql, Object... args) {
+        if (rawSqlMapper == null) {
+            return !queryForList(sql, args).isEmpty();
+        }
+        BoundSql boundSql = bind(sql, args);
+        return rawSqlMapper.selectScalar(boundSql.sql(), boundSql.params()) != null;
+    }
+
     public <T> List<T> queryForList(String sql, Class<T> requiredType, Object... args) {
         if (rawSqlMapper == null) {
             return invokeLegacy("queryForList", new Class<?>[]{String.class, Class.class, Object[].class}, sql, requiredType, args);
@@ -195,6 +203,9 @@ public class MyBatisQueryOperations {
     }
 
     private Object firstValue(Map<String, Object> row) {
+        if (row == null) {
+            return null;
+        }
         return row.values().stream().findFirst().orElse(null);
     }
 

@@ -8,7 +8,10 @@ import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class SecuritySettingsService {
@@ -31,9 +34,30 @@ public class SecuritySettingsService {
     private static final String PASSWORD_REQUIRE_LOWERCASE_KEY = "security.password-require-lowercase";
     private static final String PASSWORD_REQUIRE_SPECIAL_CHARACTER_KEY = "security.password-require-special-character";
     private static final String PASSWORD_ALLOW_CONSECUTIVE_CHARACTERS_KEY = "security.password-allow-consecutive-characters";
+    private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
+    private static final List<String> SETTINGS_KEYS = List.of(
+            IDLE_TIMEOUT_KEY,
+            ACCESS_TOKEN_EXPIRE_KEY,
+            REFRESH_TOKEN_EXPIRE_KEY,
+            ALLOW_MULTI_DEVICE_LOGIN_KEY,
+            CAPTCHA_ENABLED_KEY,
+            CAPTCHA_TYPE_KEY,
+            LOGIN_DEFENSE_WINDOW_MINUTES_KEY,
+            LOGIN_MAX_VALIDATION_ATTEMPTS_KEY,
+            LOGIN_MAX_FAILURE_COUNT_KEY,
+            VERIFICATION_CODE_EXPIRE_SECONDS_KEY,
+            VERIFICATION_CODE_COOLDOWN_SECONDS_KEY,
+            PASSWORD_MIN_LENGTH_KEY,
+            PASSWORD_REQUIRE_UPPERCASE_KEY,
+            PASSWORD_REQUIRE_LOWERCASE_KEY,
+            PASSWORD_REQUIRE_SPECIAL_CHARACTER_KEY,
+            PASSWORD_ALLOW_CONSECUTIVE_CHARACTERS_KEY
+    );
 
     private final SysConfigMapper sysConfigMapper;
     private final SecurityProperties securityProperties;
+    private volatile SecuritySettingsSnapshot cachedSettings;
+    private volatile long cachedSettingsUntilMillis;
 
     public SecuritySettingsService(SysConfigMapper sysConfigMapper, SecurityProperties securityProperties) {
         this.sysConfigMapper = sysConfigMapper;
@@ -105,23 +129,43 @@ public class SecuritySettingsService {
     }
 
     public SecuritySettingsSnapshot loadSettings() {
+        long now = System.currentTimeMillis();
+        SecuritySettingsSnapshot cached = cachedSettings;
+        if (cached != null && now < cachedSettingsUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = cachedSettings;
+            if (cached != null && now < cachedSettingsUntilMillis) {
+                return cached;
+            }
+            SecuritySettingsSnapshot loaded = loadSettingsFresh();
+            cachedSettings = loaded;
+            cachedSettingsUntilMillis = now + SETTINGS_CACHE_TTL_MS;
+            return loaded;
+        }
+    }
+
+    private SecuritySettingsSnapshot loadSettingsFresh() {
+        Map<String, String> values = loadConfigValues(SETTINGS_KEYS);
         return new SecuritySettingsSnapshot(
-                resolveSeconds(IDLE_TIMEOUT_KEY, securityProperties.getIdleTimeoutSeconds()),
-                resolveSeconds(ACCESS_TOKEN_EXPIRE_KEY, securityProperties.getAccessTokenExpireSeconds()),
-                resolveSeconds(REFRESH_TOKEN_EXPIRE_KEY, securityProperties.getRefreshTokenExpireSeconds()),
-                resolveBoolean(ALLOW_MULTI_DEVICE_LOGIN_KEY, securityProperties.isAllowMultiDeviceLogin()),
-                resolveBoolean(CAPTCHA_ENABLED_KEY, securityProperties.isCaptchaEnabled()),
-                resolveCaptchaType(CAPTCHA_TYPE_KEY, securityProperties.getCaptchaType()),
-                resolvePositiveLong(LOGIN_DEFENSE_WINDOW_MINUTES_KEY, securityProperties.getLoginDefenseWindowMinutes()),
-                resolvePositiveLong(LOGIN_MAX_VALIDATION_ATTEMPTS_KEY, securityProperties.getLoginMaxValidationAttempts()),
-                resolvePositiveLong(LOGIN_MAX_FAILURE_COUNT_KEY, securityProperties.getLoginMaxFailureCount()),
-                resolvePositiveLong(VERIFICATION_CODE_EXPIRE_SECONDS_KEY, securityProperties.getVerificationCodeExpireSeconds()),
-                resolvePositiveLong(VERIFICATION_CODE_COOLDOWN_SECONDS_KEY, securityProperties.getVerificationCodeCooldownSeconds()),
-                resolvePositiveLong(PASSWORD_MIN_LENGTH_KEY, securityProperties.getPasswordMinLength()),
-                resolveBoolean(PASSWORD_REQUIRE_UPPERCASE_KEY, securityProperties.isPasswordRequireUppercase()),
-                resolveBoolean(PASSWORD_REQUIRE_LOWERCASE_KEY, securityProperties.isPasswordRequireLowercase()),
-                resolveBoolean(PASSWORD_REQUIRE_SPECIAL_CHARACTER_KEY, securityProperties.isPasswordRequireSpecialCharacter()),
-                resolveBoolean(PASSWORD_ALLOW_CONSECUTIVE_CHARACTERS_KEY, securityProperties.isPasswordAllowConsecutiveCharacters())
+                resolveSeconds(values, IDLE_TIMEOUT_KEY, securityProperties.getIdleTimeoutSeconds()),
+                resolveSeconds(values, ACCESS_TOKEN_EXPIRE_KEY, securityProperties.getAccessTokenExpireSeconds()),
+                resolveSeconds(values, REFRESH_TOKEN_EXPIRE_KEY, securityProperties.getRefreshTokenExpireSeconds()),
+                resolveBoolean(values, ALLOW_MULTI_DEVICE_LOGIN_KEY, securityProperties.isAllowMultiDeviceLogin()),
+                resolveBoolean(values, CAPTCHA_ENABLED_KEY, securityProperties.isCaptchaEnabled()),
+                resolveCaptchaType(values, CAPTCHA_TYPE_KEY, securityProperties.getCaptchaType()),
+                resolvePositiveLong(values, LOGIN_DEFENSE_WINDOW_MINUTES_KEY, securityProperties.getLoginDefenseWindowMinutes()),
+                resolvePositiveLong(values, LOGIN_MAX_VALIDATION_ATTEMPTS_KEY, securityProperties.getLoginMaxValidationAttempts()),
+                resolvePositiveLong(values, LOGIN_MAX_FAILURE_COUNT_KEY, securityProperties.getLoginMaxFailureCount()),
+                resolvePositiveLong(values, VERIFICATION_CODE_EXPIRE_SECONDS_KEY, securityProperties.getVerificationCodeExpireSeconds()),
+                resolvePositiveLong(values, VERIFICATION_CODE_COOLDOWN_SECONDS_KEY, securityProperties.getVerificationCodeCooldownSeconds()),
+                resolvePositiveLong(values, PASSWORD_MIN_LENGTH_KEY, securityProperties.getPasswordMinLength()),
+                resolveBoolean(values, PASSWORD_REQUIRE_UPPERCASE_KEY, securityProperties.isPasswordRequireUppercase()),
+                resolveBoolean(values, PASSWORD_REQUIRE_LOWERCASE_KEY, securityProperties.isPasswordRequireLowercase()),
+                resolveBoolean(values, PASSWORD_REQUIRE_SPECIAL_CHARACTER_KEY, securityProperties.isPasswordRequireSpecialCharacter()),
+                resolveBoolean(values, PASSWORD_ALLOW_CONSECUTIVE_CHARACTERS_KEY, securityProperties.isPasswordAllowConsecutiveCharacters())
         );
     }
 
@@ -234,11 +278,27 @@ public class SecuritySettingsService {
                 "是否允许密码中出现连续字符"
         );
 
+        clearCache();
         return loadSettings();
     }
 
-    private long resolveSeconds(String configKey, long defaultValue) {
-        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
+    private Map<String, String> loadConfigValues(List<String> keys) {
+        return sysConfigMapper.listEffectiveValues(PLATFORM_TENANT_ID, PLATFORM_SCOPE, keys).stream()
+                .filter(item -> StringUtils.hasText(item.getConfigKey()))
+                .collect(Collectors.toMap(
+                        SysConfigEntity::getConfigKey,
+                        item -> item.getConfigValue() == null ? "" : item.getConfigValue(),
+                        (first, ignored) -> first
+                ));
+    }
+
+    private void clearCache() {
+        cachedSettings = null;
+        cachedSettingsUntilMillis = 0L;
+    }
+
+    private long resolveSeconds(Map<String, String> values, String configKey, long defaultValue) {
+        String configValue = values.get(configKey);
         if (!StringUtils.hasText(configValue)) {
             return defaultValue;
         }
@@ -251,8 +311,8 @@ public class SecuritySettingsService {
         }
     }
 
-    private boolean resolveBoolean(String configKey, boolean defaultValue) {
-        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
+    private boolean resolveBoolean(Map<String, String> values, String configKey, boolean defaultValue) {
+        String configValue = values.get(configKey);
         if (!StringUtils.hasText(configValue)) {
             return defaultValue;
         }
@@ -267,8 +327,8 @@ public class SecuritySettingsService {
         return defaultValue;
     }
 
-    private String resolveCaptchaType(String configKey, String defaultValue) {
-        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
+    private String resolveCaptchaType(Map<String, String> values, String configKey, String defaultValue) {
+        String configValue = values.get(configKey);
         if (!StringUtils.hasText(configValue)) {
             return normalizeCaptchaType(defaultValue);
         }
@@ -276,8 +336,8 @@ public class SecuritySettingsService {
         return normalizeCaptchaType(configValue);
     }
 
-    private long resolvePositiveLong(String configKey, long defaultValue) {
-        String configValue = sysConfigMapper.findValue(PLATFORM_TENANT_ID, configKey, PLATFORM_SCOPE);
+    private long resolvePositiveLong(Map<String, String> values, String configKey, long defaultValue) {
+        String configValue = values.get(configKey);
         if (!StringUtils.hasText(configValue)) {
             return defaultValue;
         }

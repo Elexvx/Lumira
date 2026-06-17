@@ -1,12 +1,14 @@
 package com.lumira.file.app;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.file.FileProcessingArtifactDTO;
 import com.lumira.api.file.StorageSpaceDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.common.security.data.DataPermissionDecision;
@@ -15,14 +17,19 @@ import com.lumira.common.security.data.DataScopeType;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.file.config.UploadProperties;
 import com.lumira.file.dto.FileStorageSpaceRequest;
+import com.lumira.file.domain.model.FileDomainModels.FileObjectAggregate;
 import com.lumira.file.entity.FileObjectEntity;
 import com.lumira.file.entity.FileStorageSpaceEntity;
-import com.lumira.file.event.FilePlatformEventPublisher;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
+import com.lumira.file.processing.FileProcessingTaskService;
+import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
+import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -36,17 +43,22 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class FileManagementAppService {
 
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final long FILE_LIST_TOTAL_COUNT_CAP = 1000L;
+    private static final long STORAGE_SPACE_LIST_TOTAL_COUNT_CAP = 1000L;
+    private static final Duration FILE_LIST_CACHE_TTL = Duration.ofSeconds(30);
     private static final String RESOURCE_FILE_OBJECT = "file:object";
     private static final String DEFAULT_SORT_COLUMN = "created_at";
     public static final String SCOPE_MINE = "mine";
@@ -69,29 +81,39 @@ public class FileManagementAppService {
 
     private final FileObjectMapper fileObjectMapper;
     private final FileStorageSpaceMapper fileStorageSpaceMapper;
+    private final JdbcTemplate jdbcTemplate;
     private final UploadProperties uploadProperties;
     private final DocumentUploadService documentUploadService;
     private final ImageUploadService imageUploadService;
-    private final FilePlatformEventPublisher filePlatformEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
+    private final FileProcessingTaskService fileProcessingTaskService;
     private final FieldCryptoService fieldCryptoService;
+    private final FileStorageMetrics storageMetrics;
+    private final Map<String, CachedFilePage> localFileListCache = new ConcurrentHashMap<>();
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     public FileManagementAppService(
             FileObjectMapper fileObjectMapper,
             FileStorageSpaceMapper fileStorageSpaceMapper,
+            JdbcTemplate jdbcTemplate,
             UploadProperties uploadProperties,
             DocumentUploadService documentUploadService,
             ImageUploadService imageUploadService,
-            FilePlatformEventPublisher filePlatformEventPublisher,
-            FieldCryptoService fieldCryptoService
+            @Qualifier("fileDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            FileProcessingTaskService fileProcessingTaskService,
+            FieldCryptoService fieldCryptoService,
+            FileStorageMetrics storageMetrics
     ) {
         this.fileObjectMapper = fileObjectMapper;
         this.fileStorageSpaceMapper = fileStorageSpaceMapper;
+        this.jdbcTemplate = jdbcTemplate;
         this.uploadProperties = uploadProperties;
         this.documentUploadService = documentUploadService;
         this.imageUploadService = imageUploadService;
-        this.filePlatformEventPublisher = filePlatformEventPublisher;
+        this.domainEventPublisher = domainEventPublisher;
+        this.fileProcessingTaskService = fileProcessingTaskService;
         this.fieldCryptoService = fieldCryptoService;
+        this.storageMetrics = storageMetrics;
     }
 
     public PageResponse<FileObjectDTO> listFiles(
@@ -144,20 +166,82 @@ public class FileManagementAppService {
         boolean ascending = "ascend".equalsIgnoreCase(sortOrder);
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        Long total = fileObjectMapper.selectCount(queryWrapper.clone());
+        boolean localCacheable = isDefaultListCacheable(keyword, category, fileExtension, previewMode, bucket, scope, sortField, sortOrder);
+        String localCacheKey = localCacheable ? buildFileListCacheKey(tenantId, currentUser, safePageNo, safePageSize, sortColumn, ascending) : null;
+        if (localCacheable) {
+            CachedFilePage cached = localFileListCache.get(localCacheKey);
+            Instant now = Instant.now();
+            if (cached != null && cached.expireAt().isAfter(now)) {
+                return cached.page();
+            }
+            if (cached != null) {
+                localFileListCache.remove(localCacheKey);
+            }
+        }
+        long safeOffset = (safePageNo - 1L) * safePageSize;
+        long totalLimit = calculateFileListTotalCountLimit(safePageSize, safeOffset);
+        Long total = countFileObjectCandidates(queryWrapper.clone(), totalLimit);
+        long normalizedTotal = normalizeTotal(total, totalLimit);
+        boolean totalCapped = isTotalCapped(total, totalLimit);
         List<FileObjectDTO> records = fileObjectMapper.selectList(queryWrapper
                         .orderBy(true, ascending, sortColumn)
-                        .last("limit " + safePageSize + " offset " + ((safePageNo - 1L) * safePageSize)))
+                        .last("limit " + safePageSize + " offset " + safeOffset))
                 .stream()
                 .map(this::mapFileObject)
                 .map(this::enrich)
                 .toList();
-        PageResponse<FileObjectDTO> response = new PageResponse<>();
+        FileVO.FileObjectPageResponse response = new FileVO.FileObjectPageResponse();
         response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setTotal(normalizedTotal);
+        response.setHasMore(totalCapped);
+        response.setTotalCapped(totalCapped);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
+        if (localCacheable) {
+            localFileListCache.put(localCacheKey, new CachedFilePage(response, Instant.now().plus(FILE_LIST_CACHE_TTL)));
+        }
         return response;
+    }
+
+    private boolean isDefaultListCacheable(
+            String keyword,
+            String category,
+            String fileExtension,
+            String previewMode,
+            String bucket,
+            String scope,
+            String sortField,
+            String sortOrder
+    ) {
+        return !StringUtils.hasText(keyword)
+                && !StringUtils.hasText(category)
+                && !StringUtils.hasText(fileExtension)
+                && !StringUtils.hasText(previewMode)
+                && !StringUtils.hasText(bucket)
+                && !StringUtils.hasText(scope)
+                && !StringUtils.hasText(sortField)
+                && !StringUtils.hasText(sortOrder);
+    }
+
+    private String buildFileListCacheKey(
+            Long tenantId,
+            CurrentUser currentUser,
+            long pageNo,
+            long pageSize,
+            String sortColumn,
+            boolean ascending
+    ) {
+        Long userId = currentUser == null ? null : currentUser.getUserId();
+        String permissionVersion = currentUser == null ? null : currentUser.getPermissionsVersion();
+        return String.join(":",
+                "file:list",
+                String.valueOf(tenantId),
+                String.valueOf(userId),
+                StringUtils.hasText(permissionVersion) ? permissionVersion : "v0",
+                String.valueOf(pageNo),
+                String.valueOf(pageSize),
+                sortColumn,
+                ascending ? "asc" : "desc");
     }
 
     public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
@@ -179,6 +263,47 @@ public class FileManagementAppService {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前文件不支持在线预览");
         }
         return file;
+    }
+
+    public List<FileObjectDTO> searchFilesForInternalTool(
+            CurrentUser currentUser,
+            String keyword,
+            String contentType,
+            String status,
+            boolean tenantScope,
+            int limit
+    ) {
+        Long tenantId = currentTenantId(currentUser);
+        long safeLimit = Math.max(1L, Math.min(limit, MAX_PAGE_SIZE));
+        QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
+                .eq("tenant_id", tenantId)
+                .eq("deleted", 0);
+        applyFileDataPermission(queryWrapper, currentUser, tenantScope, false);
+        if (StringUtils.hasText(keyword)) {
+            String normalizedKeyword = keyword.trim();
+            queryWrapper.and(wrapper -> wrapper
+                    .like("original_filename", normalizedKeyword)
+                    .or()
+                    .like("category", normalizedKeyword)
+                    .or()
+                    .like("tags", normalizedKeyword));
+        }
+        if (StringUtils.hasText(contentType)) {
+            String normalizedContentType = contentType.trim();
+            queryWrapper.likeRight("content_type", normalizedContentType.endsWith("%")
+                    ? normalizedContentType.substring(0, normalizedContentType.length() - 1)
+                    : normalizedContentType);
+        }
+        if (StringUtils.hasText(status)) {
+            queryWrapper.eq("status", status.trim().toUpperCase(Locale.ROOT));
+        }
+        return fileObjectMapper.selectList(queryWrapper
+                        .orderByDesc("id")
+                        .last("limit " + safeLimit))
+                .stream()
+                .map(this::mapFileObject)
+                .map(this::enrich)
+                .toList();
     }
 
     @Transactional
@@ -279,7 +404,9 @@ public class FileManagementAppService {
                 remark
         );
         FileObjectDTO uploaded = getInsertedFile(tenantId, insertedId);
-        filePlatformEventPublisher.publishUploadedAfterCommit(currentUser, uploaded);
+        localFileListCache.clear();
+        publishFileUploaded(uploaded);
+        fileProcessingTaskService.requestTasksForUpload(uploaded, currentUser.getUserId());
         return uploaded;
     }
 
@@ -328,7 +455,9 @@ public class FileManagementAppService {
                 remark
         );
         FileObjectDTO uploaded = getInsertedFile(tenantId, insertedId);
-        filePlatformEventPublisher.publishUploadedAfterCommit(currentUser, uploaded);
+        localFileListCache.clear();
+        publishFileUploaded(uploaded);
+        fileProcessingTaskService.requestTasksForUpload(uploaded, currentUser.getUserId());
         return uploaded;
     }
 
@@ -353,27 +482,110 @@ public class FileManagementAppService {
                         .eq(FileObjectEntity::getTenantId, currentTenantId(currentUser))
                         .eq(FileObjectEntity::getDeleted, 0)
         );
-        filePlatformEventPublisher.publishDeletedAfterCommit(currentUser, file);
+        localFileListCache.clear();
+        publishFileDeleted(file);
+    }
+
+    private void publishFileUploaded(FileObjectDTO file) {
+        if (file == null) {
+            return;
+        }
+        FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), file.tenantId(), safeFileSize(file.fileSizeBytes()));
+        aggregate.recordUploaded(file.mimeType());
+        domainEventPublisher.publishAll(aggregate.pullDomainEvents());
+    }
+
+    private void publishFileDeleted(FileObjectDTO file) {
+        if (file == null) {
+            return;
+        }
+        FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), file.tenantId(), safeFileSize(file.fileSizeBytes()));
+        aggregate.delete();
+        domainEventPublisher.publishAll(aggregate.pullDomainEvents());
+    }
+
+    private long safeFileSize(Long fileSizeBytes) {
+        return fileSizeBytes == null ? 0L : Math.max(0L, fileSizeBytes);
     }
 
     public PageResponse<StorageSpaceDTO> listStorageSpaces(CurrentUser currentUser, long pageNo, long pageSize) {
         Long tenantId = currentTenantId(currentUser);
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        Long total = fileStorageSpaceMapper.selectCount(new LambdaQueryWrapper<FileStorageSpaceEntity>()
-                .eq(FileStorageSpaceEntity::getTenantId, tenantId)
-                .eq(FileStorageSpaceEntity::getDeleted, 0));
+        long safeOffset = (safePageNo - 1L) * safePageSize;
+        long totalLimit = calculateStorageSpaceListTotalCountLimit(safePageSize, safeOffset);
+        QueryWrapper<FileStorageSpaceEntity> countQueryWrapper = new QueryWrapper<FileStorageSpaceEntity>()
+                .eq("tenant_id", tenantId)
+                .eq("deleted", 0);
+        Long total = countStorageSpaceCandidates(countQueryWrapper.clone(), totalLimit);
+        long normalizedTotal = normalizeTotal(total, totalLimit);
+        boolean totalCapped = isTotalCapped(total, totalLimit);
         List<StorageSpaceDTO> records = fileStorageSpaceMapper
-                .listWithUsage(tenantId, safePageSize, (safePageNo - 1L) * safePageSize)
+                .listWithUsage(tenantId, safePageSize, safeOffset)
                 .stream()
                 .map(this::mapStorageSpace)
                 .toList();
-        PageResponse<StorageSpaceDTO> response = new PageResponse<>();
+        FileVO.StorageSpacePageResponse response = new FileVO.StorageSpacePageResponse();
         response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setTotal(normalizedTotal);
+        response.setHasMore(totalCapped);
+        response.setTotalCapped(totalCapped);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private long calculateFileListTotalCountLimit(long pageSize, long offset) {
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        long safeOffset = Math.max(0L, offset);
+        long dynamicLimit = safeOffset + safePageSize + 1L;
+        return Math.min(dynamicLimit, FILE_LIST_TOTAL_COUNT_CAP);
+    }
+
+    private long calculateStorageSpaceListTotalCountLimit(long pageSize, long offset) {
+        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        long safeOffset = Math.max(0L, offset);
+        long dynamicLimit = safeOffset + safePageSize + 1L;
+        return Math.min(dynamicLimit, STORAGE_SPACE_LIST_TOTAL_COUNT_CAP);
+    }
+
+    private long countFileObjectCandidates(QueryWrapper<FileObjectEntity> queryWrapper, long limit) {
+        if (limit <= 0L) {
+            return 0L;
+        }
+        QueryWrapper<FileObjectEntity> countQuery = queryWrapper.clone()
+                .select("id")
+                .last("limit " + limit);
+        List<FileObjectEntity> candidates = fileObjectMapper.selectList(countQuery);
+        return candidates == null ? 0L : candidates.size();
+    }
+
+    private long countStorageSpaceCandidates(QueryWrapper<FileStorageSpaceEntity> queryWrapper, long limit) {
+        if (limit <= 0L) {
+            return 0L;
+        }
+        QueryWrapper<FileStorageSpaceEntity> countQuery = queryWrapper.clone()
+                .select("id")
+                .last("limit " + limit);
+        List<FileStorageSpaceEntity> candidates = fileStorageSpaceMapper.selectList(countQuery);
+        return candidates == null ? 0L : candidates.size();
+    }
+
+    private long normalizeTotal(Long total, long limit) {
+        if (total == null || total <= 0L) {
+            return 0L;
+        }
+        if (limit <= 0L) {
+            return Math.max(0L, total);
+        }
+        return Math.min(total, limit);
+    }
+
+    private boolean isTotalCapped(Long total, long limit) {
+        if (limit <= 0L || total == null) {
+            return false;
+        }
+        return total >= limit;
     }
 
     public StorageSpaceDTO getStorageSpace(CurrentUser currentUser, String storageKey) {
@@ -470,11 +682,7 @@ public class FileManagementAppService {
     public void deleteStorageSpace(CurrentUser currentUser, Long id) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceDTO existing = queryStorageSpaceById(tenantId, id);
-        Long fileCount = fileObjectMapper.selectCount(new LambdaQueryWrapper<FileObjectEntity>()
-                .eq(FileObjectEntity::getTenantId, tenantId)
-                .eq(FileObjectEntity::getBucket, existing.storageKey())
-                .eq(FileObjectEntity::getDeleted, 0));
-        if (fileCount != null && fileCount > 0) {
+        if (hasFileRecordsInBucket(tenantId, existing.storageKey())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间下仍有文件，不能删除");
         }
         if (Boolean.TRUE.equals(existing.defaultStorage())) {
@@ -492,6 +700,19 @@ public class FileManagementAppService {
         );
     }
 
+    private boolean hasFileRecordsInBucket(Long tenantId, String storageKey) {
+        if (tenantId == null || !StringUtils.hasText(storageKey)) {
+            return false;
+        }
+        QueryWrapper<FileObjectEntity> query = new QueryWrapper<FileObjectEntity>()
+                .select("1")
+                .eq("tenant_id", tenantId)
+                .eq("bucket", storageKey)
+                .eq("deleted", 0)
+                .last("limit 1");
+        return fileObjectMapper.selectOne(query) != null;
+    }
+
     public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean tenantScope) {
         return resolveFilePath(currentUser, fileId, tenantScope, false);
     }
@@ -503,6 +724,72 @@ public class FileManagementAppService {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件路径无效");
         }
         return target;
+    }
+
+    public FileContentDTO readFileContent(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
+        Path target = resolveFilePath(file);
+        if (target == null || !Files.exists(target) || !Files.isRegularFile(target)) {
+            storageMetrics.recordMissing("read", file.storageType(), Duration.ZERO);
+            throw new BizException(ErrorCode.NOT_FOUND, "文件内容不存在");
+        }
+        Instant readStartedAt = Instant.now();
+        try {
+            FileContentDTO content = new FileContentDTO(
+                    file.id(),
+                    file.tenantId(),
+                    file.originalFileName(),
+                    file.mimeType(),
+                    file.fileExtension(),
+                    Files.readAllBytes(target)
+            );
+            storageMetrics.recordSucceeded("read", file.storageType(), Duration.between(readStartedAt, Instant.now()));
+            return content;
+        } catch (IOException exception) {
+            storageMetrics.recordFailed("read", file.storageType(), Duration.between(readStartedAt, Instant.now()));
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "读取文件内容失败");
+        }
+    }
+
+    public FileProcessingArtifactDTO readProcessingArtifact(
+            CurrentUser currentUser,
+            Long fileId,
+            String artifactType,
+            boolean tenantScope,
+            boolean downloadCenterScope
+    ) {
+        if (!StringUtils.hasText(artifactType)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "文件处理产物类型不能为空");
+        }
+        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
+        List<FileProcessingArtifactDTO> artifacts = jdbcTemplate.query(
+                """
+                        select id, tenant_id, file_id, task_type, artifact_type, artifact_path,
+                               content_text, content_length, updated_at
+                        from file_processing_artifact
+                        where tenant_id = ? and file_id = ? and artifact_type = ? and deleted = 0
+                        order by updated_at desc, id desc
+                        limit 1
+                        """,
+                (rs, rowNum) -> new FileProcessingArtifactDTO(
+                        rs.getLong("id"),
+                        rs.getLong("tenant_id"),
+                        rs.getLong("file_id"),
+                        rs.getString("task_type"),
+                        rs.getString("artifact_type"),
+                        rs.getString("artifact_path"),
+                        rs.getString("content_text"),
+                        rs.getInt("content_length"),
+                        rs.getObject("updated_at", LocalDateTime.class)
+                ),
+                file.tenantId(),
+                file.id(),
+                artifactType.trim().toUpperCase(Locale.ROOT)
+        );
+        if (artifacts.isEmpty()) {
+            throw new BizException(ErrorCode.NOT_FOUND, "文件处理产物不存在");
+        }
+        return artifacts.getFirst();
     }
 
     private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
@@ -557,9 +844,12 @@ public class FileManagementAppService {
         if (target == null) {
             return;
         }
+        Instant deleteStartedAt = Instant.now();
         try {
             Files.deleteIfExists(target);
+            storageMetrics.recordSucceeded("delete", file.storageType(), Duration.between(deleteStartedAt, Instant.now()));
         } catch (Exception ignored) {
+            storageMetrics.recordFailed("delete", file.storageType(), Duration.between(deleteStartedAt, Instant.now()));
             // Keep metadata cleanup resilient even when filesystem cleanup fails.
         }
     }
@@ -1131,6 +1421,9 @@ public class FileManagementAppService {
             String publicPath,
             long maxFileSizeBytes
     ) {
+    }
+
+    private record CachedFilePage(PageResponse<FileObjectDTO> page, Instant expireAt) {
     }
 
 }

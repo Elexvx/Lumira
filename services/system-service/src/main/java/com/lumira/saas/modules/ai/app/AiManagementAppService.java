@@ -26,11 +26,20 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 @Service
 public class AiManagementAppService {
 
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final long GOVERNANCE_OVERVIEW_CACHE_TTL_MS = 15_000L;
+    private static final int GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES = 2048;
+    private static final Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private static final String DEFAULT_SYSTEM_PROMPT_TEMPLATE = """
             你是一名企业级 SaaS 平台中的数字员工。
@@ -47,6 +56,8 @@ public class AiManagementAppService {
     private final AiSecretCryptoService aiSecretCryptoService;
     private final AiEmployeeRuntimeService aiEmployeeRuntimeService;
     private final AiChatModelFactory aiChatModelFactory;
+    private final Cache<Long, AiVO.GovernanceOverviewVO> governanceOverviewCache;
+    private final Cache<Long, CompletableFuture<AiVO.GovernanceOverviewVO>> governanceOverviewLoadInFlight;
 
     public AiManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -60,6 +71,14 @@ public class AiManagementAppService {
         this.aiSecretCryptoService = aiSecretCryptoService;
         this.aiEmployeeRuntimeService = aiEmployeeRuntimeService;
         this.aiChatModelFactory = aiChatModelFactory;
+        this.governanceOverviewCache = CacheBuilder.newBuilder()
+                .maximumSize(GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(GOVERNANCE_OVERVIEW_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.governanceOverviewLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(GOVERNANCE_OVERVIEW_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public PageResponse<AiVO.EmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -89,39 +108,57 @@ public class AiManagementAppService {
 
     public AiVO.GovernanceOverviewVO governanceOverview(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
-        AiVO.GovernanceOverviewVO overview = new AiVO.GovernanceOverviewVO();
-        Map<String, Object> employeeStats = querySingleRow("""
+        AiVO.GovernanceOverviewVO cached = governanceOverviewCache.getIfPresent(tenantId);
+        if (cached != null) {
+            return copyGovernanceOverview(cached);
+        }
+        return loadGovernanceOverview(tenantId);
+    }
+
+    private AiVO.GovernanceOverviewVO loadGovernanceOverview(Long tenantId) {
+        try {
+            CompletableFuture<AiVO.GovernanceOverviewVO> future = governanceOverviewLoadInFlight.get(
+                    tenantId,
+                    () -> CompletableFuture.completedFuture(loadGovernanceOverviewFresh(tenantId))
+            );
+            AiVO.GovernanceOverviewVO overview = future.join();
+            governanceOverviewLoadInFlight.invalidate(tenantId);
+            return copyGovernanceOverview(overview);
+        } catch (ExecutionException ex) {
+            governanceOverviewLoadInFlight.invalidate(tenantId);
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to load governance overview", cause);
+        } catch (RuntimeException ex) {
+            governanceOverviewLoadInFlight.invalidate(tenantId);
+            throw ex;
+        }
+    }
+
+    private AiVO.GovernanceOverviewVO loadGovernanceOverviewFresh(Long tenantId) {
+        CompletableFuture<Map<String, Object>> employeeStatsFuture = CompletableFuture.supplyAsync(() -> querySingleRow("""
                 select count(1) as employeeCount,
                        coalesce(sum(case when enabled = 1 then 1 else 0 end), 0) as enabledEmployeeCount
                 from ai_employee
                 where tenant_id = ? and is_deleted = 0
-                """, tenantId);
-        overview.setEmployeeCount(longValue(employeeStats.get("employeeCount")));
-        overview.setEnabledEmployeeCount(longValue(employeeStats.get("enabledEmployeeCount")));
-
-        Map<String, Object> llmServiceStats = querySingleRow("""
+                """, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Map<String, Object>> llmServiceStatsFuture = CompletableFuture.supplyAsync(() -> querySingleRow("""
                 select count(1) as llmServiceCount,
                        coalesce(sum(case when enabled = 1 then 1 else 0 end), 0) as enabledLlmServiceCount,
                        coalesce(sum(case when api_key_encrypted is null or api_key_encrypted = '' then 1 else 0 end), 0) as missingApiKeyServiceCount
                 from ai_llm_service
                 where tenant_id = ? and is_deleted = 0
-                """, tenantId);
-        overview.setLlmServiceCount(longValue(llmServiceStats.get("llmServiceCount")));
-        overview.setEnabledLlmServiceCount(longValue(llmServiceStats.get("enabledLlmServiceCount")));
-        overview.setMissingApiKeyServiceCount(longValue(llmServiceStats.get("missingApiKeyServiceCount")));
-
-        Map<String, Object> skillStats = querySingleRow("""
+                """, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Map<String, Object>> skillStatsFuture = CompletableFuture.supplyAsync(() -> querySingleRow("""
                 select count(1) as skillCount,
                        coalesce(sum(case when risk_level = 'HIGH' then 1 else 0 end), 0) as highRiskSkillCount,
                        coalesce(sum(case when need_confirm = 1 then 1 else 0 end), 0) as confirmationRequiredSkillCount
                 from ai_skill
                 where enabled = 1 and is_deleted = 0
-                """);
-        overview.setSkillCount(longValue(skillStats.get("skillCount")));
-        overview.setHighRiskSkillCount(longValue(skillStats.get("highRiskSkillCount")));
-        overview.setConfirmationRequiredSkillCount(longValue(skillStats.get("confirmationRequiredSkillCount")));
-
-        overview.setHighRiskAllowedBindingCount(count("""
+                """), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Long> highRiskAllowedBindingCountFuture = CompletableFuture.supplyAsync(() -> count("""
                 select count(1)
                 from ai_employee_skill es
                 join ai_skill s on s.skill_code = es.skill_code and s.is_deleted = 0
@@ -129,8 +166,26 @@ public class AiManagementAppService {
                   and es.is_deleted = 0
                   and es.permission_mode = 'allow'
                   and s.risk_level = 'HIGH'
-                """, tenantId));
+                """, tenantId), BLOCKING_IO_EXECUTOR);
+
+        AiVO.GovernanceOverviewVO overview = new AiVO.GovernanceOverviewVO();
+        Map<String, Object> employeeStats = employeeStatsFuture.join();
+        overview.setEmployeeCount(longValue(employeeStats.get("employeeCount")));
+        overview.setEnabledEmployeeCount(longValue(employeeStats.get("enabledEmployeeCount")));
+
+        Map<String, Object> llmServiceStats = llmServiceStatsFuture.join();
+        overview.setLlmServiceCount(longValue(llmServiceStats.get("llmServiceCount")));
+        overview.setEnabledLlmServiceCount(longValue(llmServiceStats.get("enabledLlmServiceCount")));
+        overview.setMissingApiKeyServiceCount(longValue(llmServiceStats.get("missingApiKeyServiceCount")));
+
+        Map<String, Object> skillStats = skillStatsFuture.join();
+        overview.setSkillCount(longValue(skillStats.get("skillCount")));
+        overview.setHighRiskSkillCount(longValue(skillStats.get("highRiskSkillCount")));
+        overview.setConfirmationRequiredSkillCount(longValue(skillStats.get("confirmationRequiredSkillCount")));
+
+        overview.setHighRiskAllowedBindingCount(highRiskAllowedBindingCountFuture.join());
         overview.setSampledAt(LocalDateTime.now());
+        governanceOverviewCache.put(tenantId, copyGovernanceOverview(overview));
         return overview;
     }
 
@@ -168,7 +223,8 @@ public class AiManagementAppService {
                 now,
                 now
         );
-        Long employeeId = queryEmployeeId(tenantId, request.getUsername().trim());
+        Long employeeId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-create", "CREATE", "SUCCESS", "创建数字员工: " + request.getUsername());
         return getEmployee(currentUser, employeeId);
     }
@@ -199,6 +255,7 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-update", "UPDATE", "SUCCESS", "更新数字员工: " + request.getUsername());
         return getEmployee(currentUser, id);
     }
@@ -228,6 +285,7 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-delete", "DELETE", "SUCCESS", "删除数字员工: " + id);
         return true;
     }
@@ -247,6 +305,7 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-enabled", "UPDATE", "SUCCESS", "更新数字员工状态: " + id + " -> " + enabled);
         return true;
     }
@@ -268,6 +327,7 @@ public class AiManagementAppService {
         Long tenantId = currentTenantId(currentUser);
         requireEmployee(tenantId, employeeId);
         replaceEmployeeCapabilities(tenantId, employeeId, request == null ? List.of() : request.getCapabilities());
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
         return true;
     }
@@ -327,7 +387,8 @@ public class AiManagementAppService {
                 now,
                 now
         );
-        Long serviceId = queryLlmServiceId(tenantId, request.getCode().trim());
+        Long serviceId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-create", "CREATE", "SUCCESS", "创建 LLM 服务: " + request.getCode());
         return getLlmService(currentUser, serviceId);
     }
@@ -361,6 +422,7 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-update", "UPDATE", "SUCCESS", "更新 LLM 服务: " + request.getCode());
         return getLlmService(currentUser, id);
     }
@@ -394,6 +456,7 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-delete", "DELETE", "SUCCESS", "删除 LLM 服务: " + service.getCode());
         return true;
     }
@@ -413,6 +476,7 @@ public class AiManagementAppService {
                 tenantId,
                 id
         );
+        invalidateGovernanceOverviewCache(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-enabled", "UPDATE", "SUCCESS", "更新 LLM 服务状态: " + service.getCode() + " -> " + enabled);
         return true;
     }
@@ -547,7 +611,7 @@ public class AiManagementAppService {
     public List<AiVO.MessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
         Long tenantId = currentTenantId(currentUser);
         requireConversation(tenantId, currentUser.getUserId(), conversationId);
-        List<AiVO.MessageVO> messages = jdbcTemplate.query(
+        CompletableFuture<List<AiVO.MessageVO>> messagesFuture = CompletableFuture.supplyAsync(() -> jdbcTemplate.query(
                 """
                         select id, conversation_id as conversationId, role, content, create_time as createTime
                         from ai_message
@@ -559,8 +623,13 @@ public class AiManagementAppService {
                 new BeanPropertyRowMapper<>(AiVO.MessageVO.class),
                 tenantId,
                 conversationId
+        ), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Map<Long, List<AiVO.MessageAttachmentVO>>> attachmentFuture = CompletableFuture.supplyAsync(
+                () -> loadMessageAttachments(tenantId, conversationId),
+                BLOCKING_IO_EXECUTOR
         );
-        Map<Long, List<AiVO.MessageAttachmentVO>> attachmentMap = loadMessageAttachments(tenantId, conversationId);
+        List<AiVO.MessageVO> messages = messagesFuture.join();
+        Map<Long, List<AiVO.MessageAttachmentVO>> attachmentMap = attachmentFuture.join();
         for (AiVO.MessageVO message : messages) {
             message.setAttachments(attachmentMap.getOrDefault(message.getId(), List.of()));
         }
@@ -886,40 +955,6 @@ public class AiManagementAppService {
         return employee;
     }
 
-    private Long queryEmployeeId(Long tenantId, String username) {
-        return jdbcTemplate.queryForObject(
-                """
-                        select id
-                        from ai_employee
-                        where tenant_id = ?
-                          and username = ?
-                          and is_deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                Long.class,
-                tenantId,
-                username
-        );
-    }
-
-    private Long queryLlmServiceId(Long tenantId, String code) {
-        return jdbcTemplate.queryForObject(
-                """
-                        select id
-                        from ai_llm_service
-                        where tenant_id = ?
-                          and code = ?
-                          and is_deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                Long.class,
-                tenantId,
-                code
-        );
-    }
-
     private AiEntitiesHelper.LlmServiceRecord requireLlmService(Long tenantId, Long id) {
         AiEntitiesHelper.LlmServiceRecord service = jdbcTemplate.query(
                 """
@@ -1184,53 +1219,59 @@ public class AiManagementAppService {
         queryParams.add(safePageSize);
         queryParams.add(offset);
         List<T> records = jdbcTemplate.query(selectSql + " limit ? offset ?", new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
         PageResponse<T> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
     }
 
+    private long nullToZero(Long value) {
+        return value == null ? 0L : value;
+    }
+
     private void validateEmployeeUsernameAvailable(Long tenantId, String username, Long excludeId) {
-        Integer count = jdbcTemplate.queryForObject(
+        boolean exists = jdbcTemplate.exists(
                 """
-                        select count(1)
+                        select 1
                         from ai_employee
                         where tenant_id = ?
                           and username = ?
                           and is_deleted = 0
                           and (? is null or id <> ?)
+                        limit 1
                         """,
-                Integer.class,
                 tenantId,
                 username,
                 excludeId,
                 excludeId
         );
-        if (count != null && count > 0) {
+        if (exists) {
             throw new BizException(ErrorCode.BIZ_ERROR, "用户名已存在");
         }
     }
 
     private void validateLlmServiceCodeAvailable(Long tenantId, String code, Long excludeId) {
-        Integer count = jdbcTemplate.queryForObject(
+        boolean exists = jdbcTemplate.exists(
                 """
-                        select count(1)
+                        select 1
                         from ai_llm_service
                         where tenant_id = ?
                           and code = ?
                           and is_deleted = 0
                           and (? is null or id <> ?)
+                        limit 1
                         """,
-                Integer.class,
                 tenantId,
                 code,
                 excludeId,
                 excludeId
         );
-        if (count != null && count > 0) {
+        if (exists) {
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务标识已存在");
         }
     }
@@ -1264,6 +1305,29 @@ public class AiManagementAppService {
 
     private String cleanNullable(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private void invalidateGovernanceOverviewCache(Long tenantId) {
+        governanceOverviewCache.invalidate(tenantId);
+        governanceOverviewLoadInFlight.invalidate(tenantId);
+    }
+
+    private AiVO.GovernanceOverviewVO copyGovernanceOverview(AiVO.GovernanceOverviewVO source) {
+        if (source == null) {
+            return null;
+        }
+        AiVO.GovernanceOverviewVO copy = new AiVO.GovernanceOverviewVO();
+        copy.setEmployeeCount(source.getEmployeeCount());
+        copy.setEnabledEmployeeCount(source.getEnabledEmployeeCount());
+        copy.setLlmServiceCount(source.getLlmServiceCount());
+        copy.setEnabledLlmServiceCount(source.getEnabledLlmServiceCount());
+        copy.setMissingApiKeyServiceCount(source.getMissingApiKeyServiceCount());
+        copy.setSkillCount(source.getSkillCount());
+        copy.setHighRiskSkillCount(source.getHighRiskSkillCount());
+        copy.setConfirmationRequiredSkillCount(source.getConfirmationRequiredSkillCount());
+        copy.setHighRiskAllowedBindingCount(source.getHighRiskAllowedBindingCount());
+        copy.setSampledAt(source.getSampledAt());
+        return copy;
     }
 
     private AiLlmServiceConfig buildTestConfig(Long tenantId, AiDTO.LlmServiceTestRequest request) {

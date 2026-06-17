@@ -15,6 +15,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
@@ -41,9 +43,11 @@ public class ImageUploadService {
     private static final Set<String> UNKNOWN_CONTENT_TYPES = Set.of("", "application/octet-stream", "binary/octet-stream");
 
     private final UploadProperties uploadProperties;
+    private final FileStorageMetrics storageMetrics;
 
-    public ImageUploadService(UploadProperties uploadProperties) {
+    public ImageUploadService(UploadProperties uploadProperties, FileStorageMetrics storageMetrics) {
         this.uploadProperties = uploadProperties;
+        this.storageMetrics = storageMetrics;
     }
 
     public static boolean supports(String originalFilename, String contentType) {
@@ -106,10 +110,13 @@ public class ImageUploadService {
         if (!target.startsWith(normalizedStorageRoot)) {
             throw badRequest("图片存储路径无效");
         }
+        Instant writeStartedAt = Instant.now();
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
+            storageMetrics.recordSucceeded("write", "local", Duration.between(writeStartedAt, Instant.now()));
         } catch (IOException exception) {
+            storageMetrics.recordFailed("write", "local", Duration.between(writeStartedAt, Instant.now()));
             String message = "图片上传失败，请检查存储空间配置或稍后重试";
             throw new BizException(ErrorCode.SYSTEM_ERROR, "图片上传失败: " + exception.getMessage(), message);
         }

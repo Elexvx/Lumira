@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-06-17T08:13:42.965Z",
+  "status": "PASS",
+  "redacted": true,
+  "contract": "ddd-release-env-owner-input-packet-contract",
+  "releaseDir": "artifacts/ddd/release",
+  "requiredOwnerInputs": 34,
+  "ownerCount": 5,
+  "issueCount": 0,
+  "issues": [],
+  "ownerPacketDir": "artifacts/ddd/release/release-env-owner-input-packet",
+  "expectedOwnerFiles": [
+    "01-platform-events.json",
+    "01-platform-events.md",
+    "02-platform-owners.json",
+    "02-platform-owners.md",
+    "03-release-infra.json",
+    "03-release-infra.md",
+    "04-ai-owner.json",
+    "04-ai-owner.md",
+    "05-payment-owner.json",
+    "05-payment-owner.md"
+  ],
+  "actualOwnerFiles": [
+    "01-platform-events.json",
+    "01-platform-events.md",
+    "02-platform-owners.json",
+    "02-platform-owners.md",
+    "03-release-infra.json",
+    "03-release-infra.md",
+    "04-ai-owner.json",
+    "04-ai-owner.md",
+    "05-payment-owner.json",
+    "05-payment-owner.md"
+  ],
+  "checkedArtifacts": [
+    "release-env-readiness-redacted.json",
+    "release-env-owner-input-packet.json",
+    "release-env-owner-input-packet.csv",
+    "release-env-owner-input-packet.md",
+    "release-env-owner-input-packet/*.json",
+    "release-env-owner-input-packet/*.md"
+  ]
+}

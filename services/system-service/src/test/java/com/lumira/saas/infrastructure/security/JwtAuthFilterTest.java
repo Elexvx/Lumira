@@ -10,7 +10,9 @@ import com.lumira.saas.infrastructure.security.service.InitialPasswordChangeGuar
 import com.lumira.saas.infrastructure.security.service.JwtTokenService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
+import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -78,7 +80,7 @@ class JwtAuthFilterTest {
 
         executeFilter(fixture, "access-token");
 
-        assertEquals(0, fixture.authSessionStore.saveCount);
+        assertEquals(1, fixture.authSessionStore.saveCount);
         assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
     }
 
@@ -93,6 +95,50 @@ class JwtAuthFilterTest {
         executeFilter(fixture, "access-token");
 
         assertEquals(1, fixture.authSessionStore.saveCount);
+        assertEquals(1.0, fixture.authSessionActivityRefreshes());
+        assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+    }
+
+    @Test
+    void shouldNotUpdateActivityRefreshMetricWhenWithinThrottleWindow() throws Exception {
+        Fixture fixture = buildFixture();
+        AuthSession session = buildSession("session-5", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
+        session.setPermissionsVersion("v0:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        session.setPrimaryDeptId(9L);
+        session.setDeptIds(java.util.List.of(9L));
+        session.setDescendantDeptIds(java.util.List.of(10L));
+        session.setDataScopes(java.util.List.of());
+        TokenClaims claims = buildClaims(session, "token-5");
+        fixture.jwtTokenService.setTokenClaims(claims);
+        fixture.authSessionStore.put(session);
+
+        executeFilter(fixture, "access-token");
+
+        assertEquals(0, fixture.authSessionStore.saveCount);
+        assertEquals(0.0, fixture.authSessionActivityRefreshes());
+    }
+
+    @Test
+    void shouldAllowV2CurrentUserWhenInitialPasswordChangeRequired() throws Exception {
+        Fixture fixture = buildFixture(true);
+        fixture.request.setMethod("GET");
+        fixture.request.setRequestURI("/api/v2/auth/current-user");
+        AuthSession session = buildSession("session-6", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
+        session.setPermissionsVersion("v0:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        session.setPrimaryDeptId(9L);
+        session.setDeptIds(java.util.List.of(9L));
+        session.setDescendantDeptIds(java.util.List.of(10L));
+        session.setDataScopes(java.util.List.of());
+        TokenClaims claims = buildClaims(session, "token-6");
+        fixture.jwtTokenService.setTokenClaims(claims);
+        fixture.authSessionStore.put(session);
+
+        executeFilter(fixture, "access-token");
+
         assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
     }
 
@@ -102,6 +148,10 @@ class JwtAuthFilterTest {
     }
 
     private Fixture buildFixture() {
+        return buildFixture(false);
+    }
+
+    private Fixture buildFixture(boolean initialPasswordChangeRequired) {
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
         StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
         StubJwtTokenService jwtTokenService = new StubJwtTokenService(securitySettingsService);
@@ -112,25 +162,21 @@ class JwtAuthFilterTest {
                 securitySettingsService
         );
 
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        OwnerRuntimeMetrics ownerRuntimeMetrics = new OwnerRuntimeMetrics(meterRegistry);
         JwtAuthFilter filter = new JwtAuthFilter(
                 sessionAuthenticationService,
                 authSessionStore,
-                new StubInitialPasswordChangeGuard(),
+                new StubInitialPasswordChangeGuard(initialPasswordChangeRequired),
                 new ObjectMapper() {
                     @Override
                     public String writeValueAsString(Object value) {
                         return "{\"code\":\"A0405\",\"message\":\"session expired\"}";
                     }
-                }
+                },
+                ownerRuntimeMetrics
         );
-        return new Fixture(
-                filter,
-                authSessionStore,
-                jwtTokenService,
-                securitySettingsService,
-                new MockHttpServletRequest(),
-                new MockHttpServletResponse()
-        );
+        return new Fixture(filter, authSessionStore, jwtTokenService, securitySettingsService, new MockHttpServletRequest(), new MockHttpServletResponse(), meterRegistry);
     }
 
     private SecurityProperties buildSecurityProperties() {
@@ -179,8 +225,13 @@ class JwtAuthFilterTest {
             StubJwtTokenService jwtTokenService,
             StubSecuritySettingsService securitySettingsService,
             MockHttpServletRequest request,
-            MockHttpServletResponse response
+            MockHttpServletResponse response,
+            SimpleMeterRegistry meterRegistry
     ) {
+        double authSessionActivityRefreshes() {
+            var counter = meterRegistry.find(OwnerRuntimeMetrics.AUTH_SESSION_ACTIVITY_REFRESH).counter();
+            return counter == null ? 0.0 : counter.count();
+        }
     }
 
     private static final class StubAuthSessionStore extends AuthSessionStore {
@@ -225,6 +276,11 @@ class JwtAuthFilterTest {
         public PermissionSnapshot loadSnapshot(Long tenantId, Long userId) {
             return new PermissionSnapshot("test", Set.of());
         }
+
+        @Override
+        public boolean isSessionPermissionSnapshotCurrent(Long tenantId, String sessionPermissionsVersion) {
+            return true;
+        }
     }
 
     private static final class StubSecuritySettingsService extends SecuritySettingsService {
@@ -244,13 +300,16 @@ class JwtAuthFilterTest {
     }
 
     private static final class StubInitialPasswordChangeGuard extends InitialPasswordChangeGuard {
-        private StubInitialPasswordChangeGuard() {
+        private final boolean requiresPasswordChange;
+
+        private StubInitialPasswordChangeGuard(boolean requiresPasswordChange) {
             super(null, null);
+            this.requiresPasswordChange = requiresPasswordChange;
         }
 
         @Override
         public boolean requiresPasswordChange(com.lumira.common.security.CurrentUser currentUser) {
-            return false;
+            return requiresPasswordChange;
         }
     }
 

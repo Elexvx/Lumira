@@ -128,9 +128,4 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     void insertRuntimeLog(@Param("entity") PluginRuntimeLogEntity entity);
 
-    void upsertSystemPermission(@Param("tenantId") Long tenantId, @Param("pluginCode") String pluginCode, @Param("permission") PluginPermissionRelEntity permission);
-
-    List<Long> listAdminRoleIds(@Param("tenantId") Long tenantId);
-
-    void upsertRolePermission(@Param("tenantId") Long tenantId, @Param("roleId") Long roleId, @Param("permissionKey") String permissionKey);
 }

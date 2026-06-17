@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.ai.app;
 
+import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
@@ -29,9 +31,11 @@ public interface AiConversationService {
 class JdbcAiConversationService implements AiConversationService {
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private final FileInternalApi fileInternalApi;
 
-    JdbcAiConversationService(MyBatisQueryOperations jdbcTemplate) {
+    JdbcAiConversationService(MyBatisQueryOperations jdbcTemplate, FileInternalApi fileInternalApi) {
         this.jdbcTemplate = jdbcTemplate;
+        this.fileInternalApi = fileInternalApi;
     }
 
     @Override
@@ -86,12 +90,7 @@ class JdbcAiConversationService implements AiConversationService {
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
-        return jdbcTemplate.queryForObject(
-                "select id from ai_conversation where tenant_id = ? and conversation_code = ? and is_deleted = 0 limit 1",
-                Long.class,
-                tenantId,
-                conversationCode
-        );
+        return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
     }
 
     @Override
@@ -190,42 +189,21 @@ class JdbcAiConversationService implements AiConversationService {
     }
 
     private FileSnapshot queryFileSnapshot(Long tenantId, Long fileId) {
-        FileSnapshot snapshot = jdbcTemplate.query(
-                """
-                        select
-                            id as fileId,
-                            original_filename as originalFileName,
-                            file_extension as fileExtension,
-                            content_type as mimeType,
-                            file_size as fileSizeBytes,
-                            public_url as publicUrl,
-                            public_url as previewUrl,
-                            public_url as downloadUrl,
-                            preview_mode as previewMode
-                        from file_object
-                        where tenant_id = ?
-                          and id = ?
-                          and deleted = 0
-                        limit 1
-                        """,
-                (rs, rowNum) -> new FileSnapshot(
-                        rs.getLong("fileId"),
-                        rs.getString("originalFileName"),
-                        rs.getString("fileExtension"),
-                        rs.getString("mimeType"),
-                        rs.getLong("fileSizeBytes"),
-                        rs.getString("publicUrl"),
-                        rs.getString("previewUrl"),
-                        rs.getString("downloadUrl"),
-                        rs.getString("previewMode")
-                ),
-                tenantId,
-                fileId
-        ).stream().findFirst().orElse(null);
-        if (snapshot == null) {
+        FileObjectDTO file = fileInternalApi.getFileForUser(fileId, tenantId, 0L, "ai-conversation", true, false);
+        if (file == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "附件文件不存在");
         }
-        return snapshot;
+        return new FileSnapshot(
+                file.id(),
+                file.originalFileName(),
+                file.fileExtension(),
+                file.mimeType(),
+                file.fileSizeBytes(),
+                file.publicUrl(),
+                StringUtils.hasText(file.previewUrl()) ? file.previewUrl() : file.publicUrl(),
+                StringUtils.hasText(file.downloadUrl()) ? file.downloadUrl() : file.publicUrl(),
+                file.previewMode()
+        );
     }
 
     private record FileSnapshot(

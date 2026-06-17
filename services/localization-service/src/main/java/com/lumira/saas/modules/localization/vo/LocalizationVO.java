@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.localization.vo;
 
+import com.lumira.common.vo.PageResponse;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -358,6 +360,27 @@ public final class LocalizationVO {
 
         public void setUpdatedAt(LocalDateTime updatedAt) {
             this.updatedAt = updatedAt;
+        }
+    }
+
+    public static class EntryPageResponse extends PageResponse<EntryVO> {
+        private Boolean hasMore;
+        private Boolean totalCapped;
+
+        public Boolean getHasMore() {
+            return hasMore;
+        }
+
+        public void setHasMore(Boolean hasMore) {
+            this.hasMore = hasMore;
+        }
+
+        public Boolean getTotalCapped() {
+            return totalCapped;
+        }
+
+        public void setTotalCapped(Boolean totalCapped) {
+            this.totalCapped = totalCapped;
         }
     }
 

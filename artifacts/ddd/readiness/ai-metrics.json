@@ -1,0 +1,18 @@
+{
+  "httpStatus": 200,
+  "data": {
+    "context": "AI",
+    "ownerModule": "ai-service-module",
+    "status": "METRICS_DECLARED",
+    "observedAt": "2026-06-16T06:22:07.611Z",
+    "healthChecks": [],
+    "metrics": [
+      {
+        "name": "ai.latency.p95",
+        "type": "timer",
+        "unit": "milliseconds",
+        "description": "p95 latency."
+      }
+    ]
+  }
+}

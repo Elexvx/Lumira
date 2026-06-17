@@ -43,6 +43,12 @@ type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floa
 const DEFAULT_IMAGE_UPLOAD_SIZE_MB = 20;
 const FLOATING_WINDOW_SETTINGS_QUERY_KEY = ['floating-window-settings'] as const;
 
+type RuntimeAppearanceSettingsResponse = {
+  brandingSettings?: BrandingSettings;
+  watermarkSettings?: WatermarkSettings;
+  floatingWindowSettings?: FloatingWindowSettings;
+};
+
 const isAllowedImageFile = (target: UploadTarget, file: File) => {
   const lowerName = file.name.toLowerCase();
   const isIcoFile = lowerName.endsWith('.ico') || file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon';
@@ -415,18 +421,26 @@ const PersonalizationSettingsPage = () => {
   const loadSettings = useCallback(async (isActive: () => boolean) => {
       setLoading(true);
     try {
-      const [brandingResult, watermarkResult, floatingResult, agreementResult] = await Promise.all([
-        request<BrandingSettings>('/v1/system/branding-settings', {
+      const [appearanceResult, agreementResult] = await Promise.all([
+        request<RuntimeAppearanceSettingsResponse>('/v1/system/runtime-appearance-settings', {
           method: 'GET',
           ...API_OPTS.SILENT_NO_REDIRECT,
-        }),
-        request<WatermarkSettings>('/v1/system/watermark-settings', {
-          method: 'GET',
-          ...API_OPTS.SILENT_NO_REDIRECT,
-        }),
-        request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
-          method: 'GET',
-          ...API_OPTS.SILENT_NO_REDIRECT,
+        }).catch(async () => {
+          const [brandingSettings, watermarkSettings, floatingWindowSettings] = await Promise.all([
+            request<BrandingSettings>('/v1/system/branding-settings', {
+              method: 'GET',
+              ...API_OPTS.SILENT_NO_REDIRECT,
+            }),
+            request<WatermarkSettings>('/v1/system/watermark-settings', {
+              method: 'GET',
+              ...API_OPTS.SILENT_NO_REDIRECT,
+            }),
+            request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
+              method: 'GET',
+              ...API_OPTS.SILENT_NO_REDIRECT,
+            }),
+          ]);
+          return { brandingSettings, watermarkSettings, floatingWindowSettings };
         }),
         request<AgreementSettings>('/v1/system/agreement-settings', {
           method: 'GET',
@@ -434,13 +448,14 @@ const PersonalizationSettingsPage = () => {
         }),
       ]);
 
-      const normalizedBranding = normalizeBrandingSettings(brandingResult);
+      const normalizedBranding = normalizeBrandingSettings(appearanceResult.brandingSettings || DEFAULT_BRANDING_SETTINGS);
+      const watermarkResult = appearanceResult.watermarkSettings || DEFAULT_WATERMARK_SETTINGS;
       const normalizedWatermark = {
         ...DEFAULT_WATERMARK_SETTINGS,
         ...watermarkResult,
         imageUrl: normalizeUploadUrl(watermarkResult.imageUrl),
       };
-      const normalizedFloating = normalizeFloatingWindowSettings(floatingResult);
+      const normalizedFloating = normalizeFloatingWindowSettings(appearanceResult.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS);
       const normalizedAgreement = normalizeAgreementSettings(agreementResult);
 
       if (!isActive()) {

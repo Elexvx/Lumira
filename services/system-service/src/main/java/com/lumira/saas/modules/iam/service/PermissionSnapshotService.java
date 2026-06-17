@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.iam.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.security.data.DataPermissionRule;
 import com.lumira.common.security.data.DataScopeType;
@@ -8,18 +9,29 @@ import com.lumira.saas.common.constant.CacheKeyConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.redis.CacheTemplate;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
+import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.function.Supplier;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class PermissionSnapshotService {
@@ -31,7 +43,15 @@ public class PermissionSnapshotService {
     private static final String SNAPSHOT_SCHEMA_VERSION = "data-scope-cache-v4";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
+    private static final Duration LOCAL_PERMISSION_SNAPSHOT_TTL = Duration.ofSeconds(30);
+    private static final long LOCAL_PERMISSION_SNAPSHOT_MAX_ENTRIES = 20_000L;
+    private static final long LOCAL_ROLE_PERMISSION_SNAPSHOT_MAX_ENTRIES = 10_000L;
+    private static final Duration ADMIN_ACCOUNT_CACHE_TTL = Duration.ofMinutes(3);
+    private static final long ADMIN_ACCOUNT_CACHE_MAX_ENTRIES = 5_000L;
     private static final String VERSION_SUFFIX = "permission_version";
+    private static final String CONTEXT_IAM = "IAM";
+    private static final String SCOPE_PERMISSION_SNAPSHOT = "permission-snapshot";
+    private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
             "ai:employee:",
             "ai:llm:",
@@ -63,197 +83,433 @@ public class PermissionSnapshotService {
     private final MyBatisQueryOperations jdbcTemplate;
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
+    private final AuthSessionStore authSessionStore;
+    private final ReadModelVersionService readModelVersionService;
+    private final OwnerRuntimeMetrics ownerRuntimeMetrics;
+    private final Cache<String, PermissionSnapshot> localPermissionSnapshotCache;
+    private final Cache<String, PermissionSnapshot> localRolePermissionSnapshotCache;
+    private final Cache<Long, Boolean> protectedAdminUserCache;
+    private final Cache<String, CompletableFuture<PermissionSnapshot>> permissionSnapshotLoadInFlight;
+    private final Cache<String, CompletableFuture<PermissionSnapshot>> rolePermissionSnapshotLoadInFlight;
+    private final Cache<Long, String> permissionSnapshotVersionCache;
+    private final Cache<Long, CompletableFuture<String>> permissionSnapshotVersionLoadInFlight;
 
     public PermissionSnapshotService(MyBatisQueryOperations jdbcTemplate, CacheTemplate cacheTemplate, ObjectMapper objectMapper) {
+        this(jdbcTemplate, cacheTemplate, objectMapper, null, null, null);
+    }
+
+    public PermissionSnapshotService(MyBatisQueryOperations jdbcTemplate, CacheTemplate cacheTemplate, ObjectMapper objectMapper, AuthSessionStore authSessionStore) {
+        this(jdbcTemplate, cacheTemplate, objectMapper, authSessionStore, null, null);
+    }
+
+    @Autowired
+    public PermissionSnapshotService(
+            MyBatisQueryOperations jdbcTemplate,
+            CacheTemplate cacheTemplate,
+            ObjectMapper objectMapper,
+            AuthSessionStore authSessionStore,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.cacheTemplate = cacheTemplate;
         this.objectMapper = objectMapper;
+        this.authSessionStore = authSessionStore;
+        this.readModelVersionService = readModelVersionService;
+        this.ownerRuntimeMetrics = ownerRuntimeMetrics;
+        this.localPermissionSnapshotCache = CacheBuilder.newBuilder()
+                .maximumSize(LOCAL_PERMISSION_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.localRolePermissionSnapshotCache = CacheBuilder.newBuilder()
+                .maximumSize(LOCAL_ROLE_PERMISSION_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.protectedAdminUserCache = CacheBuilder.newBuilder()
+                .maximumSize(ADMIN_ACCOUNT_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(ADMIN_ACCOUNT_CACHE_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.permissionSnapshotLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(LOCAL_PERMISSION_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.rolePermissionSnapshotLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(LOCAL_ROLE_PERMISSION_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.permissionSnapshotVersionCache = CacheBuilder.newBuilder()
+                .maximumSize(LOCAL_PERMISSION_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.permissionSnapshotVersionLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(LOCAL_PERMISSION_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(LOCAL_PERMISSION_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public PermissionSnapshot loadSnapshot(Long tenantId, Long userId) {
-        if (tenantId == null || userId == null) {
-            return PermissionSnapshot.empty();
-        }
-        String version = getOrCreateTenantVersion(tenantId);
-        String cacheKey = CacheKeyConstants.userKey(String.valueOf(tenantId), String.valueOf(userId), "permission_snapshot:" + version);
-        String cached = cacheTemplate.get(cacheKey);
-        if (StringUtils.hasText(cached)) {
-            try {
-                PermissionSnapshot snapshot = deserialize(cached);
-                if (!snapshot.getPermissions().isEmpty()) {
-                    return snapshot;
-                }
-            } catch (BizException exception) {
-                // Allow stale or incompatible cache payloads to self-heal from DB state.
+        long started = System.nanoTime();
+        boolean cacheHit = false;
+        try {
+            if (tenantId == null || userId == null) {
+                return PermissionSnapshot.empty();
             }
+            String version = getOrCreateTenantVersion(tenantId);
+            String cacheKey = CacheKeyConstants.userKey(String.valueOf(tenantId), String.valueOf(userId), "permission_snapshot:" + version);
+            PermissionSnapshot localSnapshot = getLocalPermissionSnapshot(localPermissionSnapshotCache, cacheKey);
+            if (localSnapshot != null) {
+                cacheHit = true;
+                return localSnapshot;
+            }
+            String cached = cacheTemplate.get(cacheKey);
+            if (StringUtils.hasText(cached)) {
+                try {
+                    PermissionSnapshot snapshot = deserialize(cached);
+                    localPermissionSnapshotCache.put(cacheKey, cloneSnapshot(snapshot));
+                    cacheHit = true;
+                    return snapshot;
+                } catch (BizException exception) {
+                    // Allow stale or incompatible cache payloads to self-heal from DB state.
+                }
+            }
+
+            return loadPermissionSnapshotWithSingleFlight(cacheKey, () -> {
+                CompletableFuture<Set<Long>> roleIdsFuture = asyncRoleIds(tenantId, userId);
+                CompletableFuture<DepartmentSnapshot> departmentsFuture = asyncDepartments(tenantId, userId);
+
+                Set<Long> roleIds = roleIdsFuture.join();
+                CompletableFuture<Set<String>> permissionsFuture = asyncPermissions(tenantId, userId, roleIds);
+                CompletableFuture<List<DataPermissionRule>> dataScopesFuture = asyncDataScopes(tenantId, roleIds);
+                CompletableFuture<String> defaultHomePathFuture = asyncDefaultHomePath(tenantId, roleIds);
+
+                DepartmentSnapshot departmentSnapshot = departmentsFuture.join();
+                Set<String> permissions = permissionsFuture.join();
+                List<DataPermissionRule> dataScopes = dataScopesFuture.join();
+                String defaultHomePath = defaultHomePathFuture.join();
+
+                PermissionSnapshot snapshot = new PermissionSnapshot(
+                        version,
+                        permissions,
+                        roleIds,
+                        departmentSnapshot.primaryDeptId(),
+                        departmentSnapshot.deptIds(),
+                        departmentSnapshot.descendantDeptIds(),
+                        dataScopes,
+                        defaultHomePath
+                );
+                localPermissionSnapshotCache.put(cacheKey, cloneSnapshot(snapshot));
+                cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
+                return snapshot;
+            });
+        } finally {
+            recordPermissionSnapshotMetric(cacheHit, started);
         }
-        Set<Long> roleIds = queryRoleIds(tenantId, userId);
-        DepartmentSnapshot departmentSnapshot = queryDepartments(tenantId, userId);
-        Set<String> permissions = queryPermissions(tenantId, userId);
-        List<DataPermissionRule> dataScopes = queryDataScopes(tenantId, roleIds);
-        String defaultHomePath = queryRoleDefaultHomePath(tenantId, roleIds);
-        PermissionSnapshot snapshot = new PermissionSnapshot(
-                version,
-                permissions,
-                roleIds,
-                departmentSnapshot.primaryDeptId(),
-                departmentSnapshot.deptIds(),
-                departmentSnapshot.descendantDeptIds(),
-                dataScopes,
-                defaultHomePath
-        );
-        cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
-        return snapshot;
     }
 
     public PermissionSnapshot loadRoleSnapshot(Long tenantId, Long roleId) {
-        if (tenantId == null || roleId == null) {
-            return PermissionSnapshot.empty();
-        }
-
-        String version = getOrCreateRoleVersion(tenantId, roleId);
-        String cacheKey = CacheKeyConstants.userKey(String.valueOf(tenantId), String.valueOf(roleId), "role_permission_snapshot:" + version);
-        String cached = cacheTemplate.get(cacheKey);
-        if (StringUtils.hasText(cached)) {
-            try {
-                PermissionSnapshot snapshot = deserialize(cached);
-                if (!snapshot.getPermissions().isEmpty()) {
-                    return snapshot;
-                }
-            } catch (BizException exception) {
-                // Allow stale or incompatible cache payloads to self-heal from DB state.
+        long started = System.nanoTime();
+        boolean cacheHit = false;
+        try {
+            if (tenantId == null || roleId == null) {
+                return PermissionSnapshot.empty();
             }
-        }
 
-        Set<String> permissions = queryRolePermissions(tenantId, roleId);
-        List<DataPermissionRule> dataScopes = queryDataScopes(tenantId, Set.of(roleId));
-        PermissionSnapshot snapshot = new PermissionSnapshot(version, permissions, Set.of(roleId), null, Set.of(), Set.of(), dataScopes, queryRoleDefaultHomePath(tenantId, Set.of(roleId)));
-        cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
-        return snapshot;
+            String version = getOrCreateTenantVersion(tenantId);
+            String cacheKey = CacheKeyConstants.userKey(String.valueOf(tenantId), String.valueOf(roleId), "role_permission_snapshot:" + version);
+            PermissionSnapshot localSnapshot = getLocalPermissionSnapshot(localRolePermissionSnapshotCache, cacheKey);
+            if (localSnapshot != null) {
+                cacheHit = true;
+                return localSnapshot;
+            }
+            String cached = cacheTemplate.get(cacheKey);
+            if (StringUtils.hasText(cached)) {
+                try {
+                    PermissionSnapshot snapshot = deserialize(cached);
+                    localRolePermissionSnapshotCache.put(cacheKey, cloneSnapshot(snapshot));
+                    cacheHit = true;
+                    return snapshot;
+                } catch (BizException exception) {
+                    // Allow stale or incompatible cache payloads to self-heal from DB state.
+                }
+            }
+
+            return loadRolePermissionSnapshotWithSingleFlight(cacheKey, () -> {
+                CompletableFuture<Set<String>> permissionsFuture = CompletableFuture.supplyAsync(
+                        () -> queryRolePermissions(tenantId, roleId),
+                        BLOCKING_IO_EXECUTOR
+                );
+                CompletableFuture<List<DataPermissionRule>> dataScopesFuture = asyncDataScopes(tenantId, Set.of(roleId));
+                CompletableFuture<String> defaultHomePathFuture = asyncDefaultHomePath(tenantId, Set.of(roleId));
+
+                Set<String> permissions = permissionsFuture.join();
+                List<DataPermissionRule> dataScopes = dataScopesFuture.join();
+                String defaultHomePath = defaultHomePathFuture.join();
+
+                PermissionSnapshot snapshot = new PermissionSnapshot(
+                        version,
+                        permissions,
+                        Set.of(roleId),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        dataScopes,
+                        defaultHomePath
+                );
+                localRolePermissionSnapshotCache.put(cacheKey, cloneSnapshot(snapshot));
+                cacheTemplate.put(cacheKey, serialize(snapshot), SNAPSHOT_TTL);
+                return snapshot;
+            });
+        } finally {
+            recordPermissionSnapshotMetric(cacheHit, started);
+        }
+    }
+
+    private PermissionSnapshot loadPermissionSnapshotWithSingleFlight(String cacheKey, Supplier<PermissionSnapshot> loader) {
+        try {
+            CompletableFuture<PermissionSnapshot> inFlight = permissionSnapshotLoadInFlight.get(
+                    cacheKey,
+                    () -> CompletableFuture.supplyAsync(() -> loadSnapshotLoader(loader), BLOCKING_IO_EXECUTOR)
+            );
+            return cloneSnapshot(inFlight.join());
+        } catch (CompletionException exception) {
+            permissionSnapshotLoadInFlight.invalidate(cacheKey);
+            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            log.warn("Failed to load permission snapshot for cacheKey={}", cacheKey, cause);
+            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "权限快照构建失败");
+        } catch (ExecutionException exception) {
+            permissionSnapshotLoadInFlight.invalidate(cacheKey);
+            log.warn("Failed to load permission snapshot single-flight for cacheKey={}", cacheKey, exception);
+            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "权限快照构建失败");
+        }
+    }
+
+    private PermissionSnapshot loadRolePermissionSnapshotWithSingleFlight(String cacheKey, Supplier<PermissionSnapshot> loader) {
+        try {
+            CompletableFuture<PermissionSnapshot> inFlight = rolePermissionSnapshotLoadInFlight.get(
+                    cacheKey,
+                    () -> CompletableFuture.supplyAsync(() -> loadSnapshotLoader(loader), BLOCKING_IO_EXECUTOR)
+            );
+            return cloneSnapshot(inFlight.join());
+        } catch (CompletionException exception) {
+            rolePermissionSnapshotLoadInFlight.invalidate(cacheKey);
+            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            log.warn("Failed to load role permission snapshot for cacheKey={}", cacheKey, cause);
+            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "角色权限快照构建失败");
+        } catch (ExecutionException exception) {
+            rolePermissionSnapshotLoadInFlight.invalidate(cacheKey);
+            log.warn("Failed to load role permission snapshot single-flight for cacheKey={}", cacheKey, exception);
+            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "角色权限快照构建失败");
+        }
+    }
+
+    private PermissionSnapshot loadSnapshotLoader(Supplier<PermissionSnapshot> loader) {
+        try {
+            return loader.get();
+        } catch (Throwable throwable) {
+            throw new CompletionException(throwable);
+        }
+    }
+
+    private CompletableFuture<Set<String>> asyncPermissions(Long tenantId, Long userId, Set<Long> roleIds) {
+        return CompletableFuture.supplyAsync(() -> queryPermissionsByRoleIds(tenantId, userId, roleIds), BLOCKING_IO_EXECUTOR);
+    }
+
+    private CompletableFuture<DepartmentSnapshot> asyncDepartments(Long tenantId, Long userId) {
+        return CompletableFuture.supplyAsync(() -> queryDepartments(tenantId, userId), BLOCKING_IO_EXECUTOR);
+    }
+
+    private CompletableFuture<Set<Long>> asyncRoleIds(Long tenantId, Long userId) {
+        return CompletableFuture.supplyAsync(() -> queryRoleIds(tenantId, userId), BLOCKING_IO_EXECUTOR);
+    }
+
+    private CompletableFuture<String> asyncDefaultHomePath(Long tenantId, Set<Long> roleIds) {
+        return CompletableFuture.supplyAsync(() -> queryRoleDefaultHomePath(tenantId, roleIds), BLOCKING_IO_EXECUTOR);
+    }
+
+    private CompletableFuture<List<DataPermissionRule>> asyncDataScopes(Long tenantId, Set<Long> roleIds) {
+        return CompletableFuture.supplyAsync(() -> queryDataScopes(tenantId, roleIds), BLOCKING_IO_EXECUTOR);
+    }
+
+    public String currentPermissionSnapshotVersion(Long tenantId) {
+        return getOrCreateTenantVersion(tenantId, false);
+    }
+
+    private String getOrCreateTenantVersion(Long tenantId) {
+        return getOrCreateTenantVersion(tenantId, false);
+    }
+
+    private String getOrCreateTenantVersion(Long tenantId, boolean suppressWarnings) {
+        if (tenantId == null) {
+            return "v0:" + SNAPSHOT_SCHEMA_VERSION;
+        }
+        String cachedVersion = permissionSnapshotVersionCache.getIfPresent(tenantId);
+        if (cachedVersion != null) {
+            return cachedVersion;
+        }
+        String version = loadPermissionSnapshotVersionWithSingleFlight(tenantId, suppressWarnings);
+        if (version != null) {
+            permissionSnapshotVersionCache.put(tenantId, version);
+        }
+        return version;
+    }
+
+    private void recordPermissionSnapshotMetric(boolean cacheHit, long startedNanos) {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshot(cacheHit, Duration.ofNanos(System.nanoTime() - startedNanos));
+        }
     }
 
     public void invalidateTenant(Long tenantId) {
         if (tenantId == null) {
             return;
         }
+        long started = System.nanoTime();
         try {
+            if (readModelVersionService != null) {
+                readModelVersionService.bump(tenantId, CONTEXT_IAM, SCOPE_PERMISSION_SNAPSHOT, "iam.permission.invalidate:" + tenantId);
+            }
             cacheTemplate.put(CacheKeyConstants.tenantKey(String.valueOf(tenantId), VERSION_SUFFIX), String.valueOf(System.currentTimeMillis()), Duration.ofDays(30));
+            if (authSessionStore != null) {
+                authSessionStore.refreshTenantSessionPayloads(tenantId);
+            }
+            invalidateLocalCachesForTenant(tenantId);
+            clearInFlightForTenant(tenantId);
         } catch (Throwable throwable) {
             log.warn("Failed to invalidate permission snapshot tenantId={}", tenantId, throwable);
+        } finally {
+            if (ownerRuntimeMetrics != null) {
+                ownerRuntimeMetrics.recordIamPermissionSnapshotInvalidation(Duration.ofNanos(System.nanoTime() - started));
+            }
         }
     }
 
-    private String getOrCreateTenantVersion(Long tenantId) {
+    public boolean isSessionPermissionSnapshotCurrent(Long tenantId, String sessionPermissionsVersion) {
+        if (tenantId == null || !StringUtils.hasText(sessionPermissionsVersion)) {
+            return false;
+        }
+
+        try {
+            Long currentVersion = parseVersion(getOrCreateTenantVersion(tenantId, true));
+            Long sessionVersion = parseVersion(sessionPermissionsVersion);
+            return currentVersion != null && currentVersion > 0 && currentVersion.equals(sessionVersion);
+        } catch (Throwable throwable) {
+            log.debug("Failed to compare IAM permission snapshot versions for tenantId={}", tenantId, throwable);
+            return false;
+        }
+    }
+
+    public static Long parseVersion(String version) {
+        if (!StringUtils.hasText(version)) {
+            return null;
+        }
+        String trimmed = version.trim();
+        int start = trimmed.startsWith("v") ? 1 : 0;
+        int colonIndex = trimmed.indexOf(':', start);
+        String numericPart = colonIndex >= start ? trimmed.substring(start, colonIndex == -1 ? trimmed.length() : colonIndex) : trimmed.substring(start);
+        if (!StringUtils.hasText(numericPart)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(numericPart);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private void invalidateLocalCachesForTenant(Long tenantId) {
+        String tenantPrefix = CacheKeyConstants.tenantKey(String.valueOf(tenantId), "");
+        String normalizedPrefix = tenantPrefix.endsWith(":") ? tenantPrefix : tenantPrefix + ":";
+        localPermissionSnapshotCache.asMap().keySet().removeIf(key -> key.startsWith(normalizedPrefix));
+        localRolePermissionSnapshotCache.asMap().keySet().removeIf(key -> key.startsWith(normalizedPrefix));
+    }
+
+    private void clearInFlightForTenant(Long tenantId) {
+        String tenantPrefix = CacheKeyConstants.tenantKey(String.valueOf(tenantId), "");
+        String normalizedPrefix = tenantPrefix.endsWith(":") ? tenantPrefix : tenantPrefix + ":";
+        permissionSnapshotLoadInFlight.asMap().keySet().removeIf(key -> key.startsWith(normalizedPrefix));
+        rolePermissionSnapshotLoadInFlight.asMap().keySet().removeIf(key -> key.startsWith(normalizedPrefix));
+        permissionSnapshotVersionLoadInFlight.invalidate(tenantId);
+        permissionSnapshotVersionCache.invalidate(tenantId);
+    }
+
+    private String currentPermissionSnapshotVersion(Long tenantId, boolean suppressWarnings) {
+        if (readModelVersionService != null) {
+            try {
+                long version = readModelVersionService.getOrInitialize(tenantId, CONTEXT_IAM, SCOPE_PERMISSION_SNAPSHOT);
+                return "v" + version + ":" + SNAPSHOT_SCHEMA_VERSION;
+            } catch (Throwable throwable) {
+                if (!suppressWarnings) {
+                    log.warn("Read model version service unavailable for tenantId={}", tenantId, throwable);
+                }
+            }
+        }
+        if (cacheTemplate == null) {
+            return "v0:" + SNAPSHOT_SCHEMA_VERSION;
+        }
         String key = CacheKeyConstants.tenantKey(String.valueOf(tenantId), VERSION_SUFFIX);
         String version = cacheTemplate.get(key);
         if (StringUtils.hasText(version)) {
-            return version + ":" + queryRolePermissionVersion(tenantId) + ":" + SNAPSHOT_SCHEMA_VERSION;
+            return version + ":" + SNAPSHOT_SCHEMA_VERSION;
         }
         String newVersion = String.valueOf(System.currentTimeMillis());
-        cacheTemplate.put(key, newVersion, Duration.ofDays(30));
-        return newVersion + ":" + queryRolePermissionVersion(tenantId) + ":" + SNAPSHOT_SCHEMA_VERSION;
-    }
-
-    private String queryRolePermissionVersion(Long tenantId) {
         try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select concat(
-                                coalesce(date_format(max(updated_at), '%Y%m%d%H%i%s'), '0'),
-                                ':',
-                                count(*),
-                                ':',
-                                (
-                                    select concat(
-                                        coalesce(date_format(max(rds.updated_at), '%Y%m%d%H%i%s'), '0'),
-                                        ':',
-                                        count(*)
-                                    )
-                                    from sys_role_data_scope rds
-                                    where rds.tenant_id = ?
-                                      and rds.deleted = 0
-                                )
-                            )
-                            from sys_role_permission
-                            where tenant_id = ?
-                              and deleted = 0
-                            """,
-                    String.class,
-                    tenantId,
-                    tenantId
-            );
+            cacheTemplate.put(key, newVersion, Duration.ofDays(30));
         } catch (Throwable throwable) {
-            log.warn("Failed to query role permission version tenantId={}", tenantId, throwable);
-            return "0";
+            if (!suppressWarnings) {
+                log.debug("Failed to persist fallback permission snapshot version for tenantId={}", tenantId, throwable);
+            }
         }
+        return newVersion + ":" + SNAPSHOT_SCHEMA_VERSION;
     }
 
-    private String getOrCreateRoleVersion(Long tenantId, Long roleId) {
-        String key = CacheKeyConstants.tenantKey(String.valueOf(tenantId), "role_permission_version:" + roleId);
-        String version = cacheTemplate.get(key);
-        if (StringUtils.hasText(version)) {
-            return version + ":" + querySingleRolePermissionVersion(tenantId, roleId) + ":" + SNAPSHOT_SCHEMA_VERSION;
-        }
-        String newVersion = String.valueOf(System.currentTimeMillis());
-        cacheTemplate.put(key, newVersion, Duration.ofDays(30));
-        return newVersion + ":" + querySingleRolePermissionVersion(tenantId, roleId) + ":" + SNAPSHOT_SCHEMA_VERSION;
-    }
-
-    private String querySingleRolePermissionVersion(Long tenantId, Long roleId) {
+    private String loadPermissionSnapshotVersionWithSingleFlight(Long tenantId, boolean suppressWarnings) {
         try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select concat(
-                                coalesce(date_format(max(updated_at), '%Y%m%d%H%i%s'), '0'),
-                                ':',
-                                count(*),
-                                ':',
-                                (
-                                    select concat(
-                                        coalesce(date_format(max(rds.updated_at), '%Y%m%d%H%i%s'), '0'),
-                                        ':',
-                                        count(*)
-                                    )
-                                    from sys_role_data_scope rds
-                                    where rds.tenant_id = ?
-                                      and rds.role_id = ?
-                                      and rds.deleted = 0
-                                )
-                            )
-                            from sys_role_permission
-                            where tenant_id = ?
-                              and role_id = ?
-                              and deleted = 0
-                            """,
-                    String.class,
+            CompletableFuture<String> inFlight = permissionSnapshotVersionLoadInFlight.get(
                     tenantId,
-                    roleId,
-                    tenantId,
-                    roleId
+                    () -> CompletableFuture.completedFuture(currentPermissionSnapshotVersion(tenantId, suppressWarnings))
             );
-        } catch (Throwable throwable) {
-            log.warn("Failed to query role permission version tenantId={} roleId={}", tenantId, roleId, throwable);
-            return "0";
+            return inFlight.join();
+        } catch (CompletionException exception) {
+            permissionSnapshotVersionLoadInFlight.invalidate(tenantId);
+            log.debug("Failed to load permission snapshot version for tenantId={}", tenantId, exception);
+            return "v0:" + SNAPSHOT_SCHEMA_VERSION;
+        } catch (ExecutionException exception) {
+            permissionSnapshotVersionLoadInFlight.invalidate(tenantId);
+            log.debug("Failed to load permission snapshot version single-flight for tenantId={}", tenantId, exception);
+            return "v0:" + SNAPSHOT_SCHEMA_VERSION;
         }
     }
 
-    private Set<String> queryPermissions(Long tenantId, Long userId) {
+    private Set<String> queryPermissionsByRoleIds(Long tenantId, Long userId, Set<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return Set.of();
+        }
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotPermissionsQuery();
+        }
+
+        String placeholders = String.join(", ", Collections.nCopies(roleIds.size(), "?"));
+        List<Object> params = new ArrayList<>();
+        params.add(tenantId);
+        params.addAll(roleIds);
+
         List<String> permissions = jdbcTemplate.query(
                 """
                         select distinct rp.permission_key
-                        from sys_user_role ur
-                        join sys_role_permission rp
-                          on rp.tenant_id = ur.tenant_id
-                         and rp.role_id = ur.role_id
-                         and rp.deleted = 0
-                        where ur.tenant_id = ?
-                          and ur.user_id = ?
-                          and ur.deleted = 0
+                        from sys_role_permission rp
+                        where rp.tenant_id = ?
+                          and rp.role_id in (%s)
+                          and rp.deleted = 0
                         order by rp.permission_key
-                        """,
+                        """.formatted(placeholders),
                 (rs, rowNum) -> rs.getString("permission_key"),
-                tenantId,
-                userId
+                params.toArray()
         );
         return isProtectedAdminAccount(userId) ? new LinkedHashSet<>(permissions) : filterRoleAssignablePermissionKeys(permissions);
     }
@@ -261,6 +517,10 @@ public class PermissionSnapshotService {
     private boolean isProtectedAdminAccount(Long userId) {
         if (PROTECTED_ADMIN_ID.equals(userId)) {
             return true;
+        }
+        Boolean cached = protectedAdminUserCache.getIfPresent(userId);
+        if (cached != null) {
+            return cached;
         }
         try {
             String username = jdbcTemplate.queryForObject(
@@ -273,14 +533,40 @@ public class PermissionSnapshotService {
                     String.class,
                     userId
             );
-            return StringUtils.hasText(username) && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(username.trim());
+            boolean isProtectedAdmin = StringUtils.hasText(username) && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(username.trim());
+            protectedAdminUserCache.put(userId, isProtectedAdmin);
+            return isProtectedAdmin;
         } catch (Throwable throwable) {
             log.warn("Failed to resolve protected admin account userId={}", userId, throwable);
             return false;
         }
     }
 
+    private PermissionSnapshot getLocalPermissionSnapshot(Cache<String, PermissionSnapshot> cache, String key) {
+        PermissionSnapshot snapshot = cache.getIfPresent(key);
+        return snapshot == null ? null : cloneSnapshot(snapshot);
+    }
+
+    private PermissionSnapshot cloneSnapshot(PermissionSnapshot source) {
+        if (source == null) {
+            return null;
+        }
+        return new PermissionSnapshot(
+                source.version,
+                Set.copyOf(source.getPermissions()),
+                Set.copyOf(source.getRoleIds()),
+                source.getPrimaryDeptId(),
+                Set.copyOf(source.getDeptIds()),
+                Set.copyOf(source.getDescendantDeptIds()),
+                List.copyOf(source.getDataScopes()),
+                source.getDefaultHomePath()
+        );
+    }
+
     private Set<Long> queryRoleIds(Long tenantId, Long userId) {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotRoleIdsQuery();
+        }
         return new LinkedHashSet<>(jdbcTemplate.query(
                 """
                         select distinct ur.role_id
@@ -299,6 +585,9 @@ public class PermissionSnapshotService {
     private String queryRoleDefaultHomePath(Long tenantId, Set<Long> roleIds) {
         if (tenantId == null || roleIds == null || roleIds.isEmpty()) {
             return DEFAULT_HOME_PATH;
+        }
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotDefaultHomeQuery();
         }
         String placeholders = roleIds.stream().map(id -> "?").collect(java.util.stream.Collectors.joining(", "));
         List<Object> params = new ArrayList<>(roleIds);
@@ -327,6 +616,9 @@ public class PermissionSnapshotService {
     }
 
     private DepartmentSnapshot queryDepartments(Long tenantId, Long userId) {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotDepartmentsQuery();
+        }
         try {
             List<UserDepartmentRow> rows = jdbcTemplate.query(
                     """
@@ -369,6 +661,56 @@ public class PermissionSnapshotService {
     }
 
     private Set<Long> queryDescendantDepartments(Long tenantId, Set<Long> deptIds) {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotDescendantQuery();
+        }
+        Set<Long> descendants = new LinkedHashSet<>();
+        if (deptIds.isEmpty()) {
+            return descendants;
+        }
+        try {
+            String placeholders = String.join(", ", Collections.nCopies(deptIds.size(), "?"));
+            List<Object> params = new ArrayList<>();
+            params.add(tenantId);
+            params.addAll(deptIds);
+            params.add(tenantId);
+
+            List<Long> recursiveDescendants = jdbcTemplate.queryForList(
+                    """
+                            with recursive dept_descendants as (
+                                select id
+                                from sys_department
+                                where tenant_id = ?
+                                  and deleted = 0
+                                  and status = 'ENABLED'
+                                  and id in (%s)
+                                union all
+                                select child.id
+                                from sys_department child
+                                join dept_descendants parent on child.parent_id = parent.id
+                                where child.tenant_id = ?
+                                  and child.deleted = 0
+                                  and child.status = 'ENABLED'
+                            )
+                            select id
+                            from dept_descendants
+                            """.formatted(placeholders),
+                    Long.class,
+                    params.toArray()
+            );
+            descendants.addAll(recursiveDescendants);
+            descendants.removeAll(deptIds);
+            return descendants;
+        } catch (Throwable throwable) {
+            log.warn("Failed recursive CTE descendant query tenantId={} deptIds={}; fallback to iterative traversal", tenantId, deptIds, throwable);
+            return queryDescendantDepartmentsFallback(tenantId, deptIds);
+        }
+    }
+
+    private Set<Long> queryDescendantDepartmentsFallback(Long tenantId, Set<Long> deptIds) {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotDescendantQuery();
+        }
         Set<Long> descendants = new LinkedHashSet<>();
         if (deptIds.isEmpty()) {
             return descendants;
@@ -404,6 +746,9 @@ public class PermissionSnapshotService {
     private List<DataPermissionRule> queryDataScopes(Long tenantId, Set<Long> roleIds) {
         if (roleIds == null || roleIds.isEmpty()) {
             return List.of();
+        }
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotDataScopeQuery();
         }
         try {
             String placeholders = String.join(", ", Collections.nCopies(roleIds.size(), "?"));
@@ -456,6 +801,9 @@ public class PermissionSnapshotService {
     }
 
     private Set<String> queryRolePermissions(Long tenantId, Long roleId) {
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordIamPermissionSnapshotRolePermissionsQuery();
+        }
         List<String> permissions = jdbcTemplate.query(
                 """
                         select distinct rp.permission_key
@@ -570,6 +918,7 @@ public class PermissionSnapshotService {
             this.permissions = permissions;
         }
 
+        @JsonIgnore
         public List<String> getPermissionList() {
             return getPermissions().stream().toList();
         }

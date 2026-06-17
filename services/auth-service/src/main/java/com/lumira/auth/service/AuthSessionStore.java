@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service("authAuthSessionStore")
 public class AuthSessionStore {
@@ -27,6 +28,11 @@ public class AuthSessionStore {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final AtomicLong saves = new AtomicLong();
+    private final AtomicLong removes = new AtomicLong();
+    private final AtomicLong hits = new AtomicLong();
+    private final AtomicLong misses = new AtomicLong();
+    private final AtomicLong corruptPayloads = new AtomicLong();
 
     public AuthSessionStore(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
@@ -43,11 +49,13 @@ public class AuthSessionStore {
         try {
             String payload = objectMapper.writeValueAsString(session);
             redisTemplate.opsForValue().set(CacheKeyConstants.sessionKey(session.getSessionId()), payload, effectiveTtl);
+            redisTemplate.opsForValue().set(CacheKeyConstants.sessionOwnerKey(session.getSessionId()), sessionOwnerValue(session), effectiveTtl);
             redisTemplate.opsForValue().set(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()), "1", effectiveTtl);
             redisTemplate.opsForZSet().add(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId(), score(session));
             if (session.getCurrentTenantId() != null) {
                 redisTemplate.opsForZSet().add(CacheKeyConstants.onlineSessionTenantKey(session.getCurrentTenantId()), session.getSessionId(), score(session));
             }
+            saves.incrementAndGet();
         } catch (JsonProcessingException ex) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "会话序列化失败: " + ex.getMessage());
         }
@@ -56,32 +64,37 @@ public class AuthSessionStore {
     public Optional<AuthSession> findBySessionId(String sessionId) {
         String payload = redisTemplate.opsForValue().get(CacheKeyConstants.sessionKey(sessionId));
         if (!StringUtils.hasText(payload)) {
+            misses.incrementAndGet();
             return Optional.empty();
         }
         try {
+            hits.incrementAndGet();
             return Optional.of(objectMapper.readValue(payload, AuthSession.class));
         } catch (Exception ex) {
+            corruptPayloads.incrementAndGet();
             log.warn(
                     "Session payload is corrupted, removing stale session cache. sessionId={}, reason={}",
                     sessionId,
                     ex.getMessage()
             );
             removeSessionReferences(sessionId);
-            removeSessionFromOnlineIndexes(sessionId);
             return Optional.empty();
         }
     }
 
     public void remove(AuthSession session, boolean publishChange) {
         redisTemplate.delete(CacheKeyConstants.sessionKey(session.getSessionId()));
+        redisTemplate.delete(CacheKeyConstants.sessionOwnerKey(session.getSessionId()));
         redisTemplate.delete(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
         redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
         if (session.getCurrentTenantId() != null) {
             redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionTenantKey(session.getCurrentTenantId()), session.getSessionId());
         }
+        removes.incrementAndGet();
     }
 
     public void revokeUserSessions(Long userId, boolean publishChange) {
+        cleanupExpiredUserIndex(userId);
         for (String sessionId : listActiveUserSessionIds(userId)) {
             findBySessionId(sessionId).ifPresent(session -> remove(session, publishChange));
         }
@@ -91,6 +104,7 @@ public class AuthSessionStore {
         if (userId == null) {
             return List.of();
         }
+        cleanupExpiredUserIndex(userId);
         Set<String> values = redisTemplate.opsForZSet().reverseRange(CacheKeyConstants.onlineSessionUserKey(userId), 0, -1);
         if (CollectionUtils.isEmpty(values)) {
             return List.of();
@@ -110,21 +124,56 @@ public class AuthSessionStore {
     }
 
     public Optional<String> findLatestActiveUserSessionId(Long userId) {
-        List<String> sessionIds = listActiveUserSessionIds(userId);
-        if (sessionIds.isEmpty()) {
+        if (userId == null) {
             return Optional.empty();
         }
-        return Optional.of(sessionIds.get(0));
+        String key = CacheKeyConstants.onlineSessionUserKey(userId);
+        cleanupExpiredUserIndex(userId);
+        while (true) {
+            Set<String> values = redisTemplate.opsForZSet().reverseRange(key, 0, 0);
+            if (CollectionUtils.isEmpty(values)) {
+                return Optional.empty();
+            }
+            String sessionId = values.iterator().next();
+            if (!StringUtils.hasText(sessionId)) {
+                if (sessionId != null) {
+                    redisTemplate.opsForZSet().remove(key, sessionId);
+                }
+                continue;
+            }
+            if (findBySessionId(sessionId).isPresent()) {
+                return Optional.of(sessionId);
+            }
+            redisTemplate.opsForZSet().remove(key, sessionId);
+        }
+    }
+
+    private void cleanupExpiredUserIndex(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        redisTemplate.opsForZSet().removeRangeByScore(
+                CacheKeyConstants.onlineSessionUserKey(userId),
+                Double.NEGATIVE_INFINITY,
+                Instant.now().toEpochMilli()
+        );
     }
 
     public void removeSessionReferences(String sessionId) {
         redisTemplate.delete(CacheKeyConstants.sessionKey(sessionId));
-        Set<String> keys = redisTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*:" + sessionId);
-        if (CollectionUtils.isEmpty(keys)) {
+        String owner = redisTemplate.opsForValue().get(CacheKeyConstants.sessionOwnerKey(sessionId));
+        redisTemplate.delete(CacheKeyConstants.sessionOwnerKey(sessionId));
+        if (!StringUtils.hasText(owner)) {
             return;
         }
-        for (String key : keys) {
-            redisTemplate.delete(key);
+        SessionOwner sessionOwner = parseSessionOwner(owner);
+        if (sessionOwner == null || sessionOwner.userId() == null) {
+            return;
+        }
+        redisTemplate.delete(CacheKeyConstants.userSessionKey(sessionOwner.userId(), sessionId));
+        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(sessionOwner.userId()), sessionId);
+        if (sessionOwner.tenantId() != null) {
+            redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionTenantKey(sessionOwner.tenantId()), sessionId);
         }
     }
 
@@ -135,25 +184,63 @@ public class AuthSessionStore {
         redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionTenantKey(tenantId), sessionId);
     }
 
-    private void removeSessionFromOnlineIndexes(String sessionId) {
-        if (!StringUtils.hasText(sessionId)) {
-            return;
+    private double score(AuthSession session) {
+        return session.getExpireTime() == null ? Instant.now().toEpochMilli() : session.getExpireTime().toEpochMilli();
+    }
+
+    private String sessionOwnerValue(AuthSession session) {
+        Long userId = session.getUserId();
+        Long tenantId = session.getCurrentTenantId();
+        return (userId == null ? "" : userId) + "|" + (tenantId == null ? "" : tenantId);
+    }
+
+    private SessionOwner parseSessionOwner(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
         }
-        Set<String> userIndexKeys = redisTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.ONLINE_SESSION_USER + ":*");
-        if (!CollectionUtils.isEmpty(userIndexKeys)) {
-            for (String key : userIndexKeys) {
-                redisTemplate.opsForZSet().remove(key, sessionId);
-            }
+        String[] parts = value.split("\\|", 2);
+        Long userId = parseLong(parts.length > 0 ? parts[0] : null);
+        Long tenantId = parseLong(parts.length > 1 ? parts[1] : null);
+        return new SessionOwner(userId, tenantId);
+    }
+
+    private Long parseLong(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
         }
-        Set<String> tenantIndexKeys = redisTemplate.keys(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.ONLINE_SESSION_TENANT + ":*");
-        if (!CollectionUtils.isEmpty(tenantIndexKeys)) {
-            for (String key : tenantIndexKeys) {
-                redisTemplate.opsForZSet().remove(key, sessionId);
-            }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
         }
     }
 
-    private double score(AuthSession session) {
-        return session.getExpireTime() == null ? Instant.now().toEpochMilli() : session.getExpireTime().toEpochMilli();
+    private record SessionOwner(Long userId, Long tenantId) {
+    }
+
+    public long saves() {
+        return saves.get();
+    }
+
+    public long removes() {
+        return removes.get();
+    }
+
+    public long hits() {
+        return hits.get();
+    }
+
+    public long misses() {
+        return misses.get();
+    }
+
+    public long corruptPayloads() {
+        return corruptPayloads.get();
+    }
+
+    public double hitRatio() {
+        long hitCount = hits.get();
+        long total = hitCount + misses.get();
+        return total == 0 ? 0.0 : (double) hitCount / total;
     }
 }

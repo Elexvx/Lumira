@@ -57,6 +57,10 @@ const STORAGE_TOKEN_KEY = buildStorageKey(TOKEN_STORAGE_KEY);
 const MOUSE_MOVE_THROTTLE_MS = 1000;
 const KEEPALIVE_THROTTLE_MS = 60_000;
 const TOKEN_REFRESH_SKEW_MS = 60_000;
+const KEEPALIVE_ENDPOINTS = {
+  v2: '/v2/auth/session/keepalive',
+  v1: '/v1/auth/session/keepalive',
+};
 
 const useSessionActivityTimers = ({ securitySettings }: { securitySettings: SecuritySettings }) => {
   const timerRef = useRef<number | null>(null);
@@ -194,12 +198,19 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
     keepaliveInFlightRef.current = true;
     lastKeepaliveRef.current = now;
     try {
-      await request('/v1/auth/current-user', {
-        method: 'GET',
+      await request(KEEPALIVE_ENDPOINTS.v2, {
+        method: 'POST',
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
-      });
+      }).catch(() =>
+        request(KEEPALIVE_ENDPOINTS.v1, {
+          method: 'POST',
+          autoRedirectOnUnauthorized: false,
+          allowUnauthorizedWithoutRedirect: true,
+          silent: true,
+        }),
+      );
     } catch {
       lastKeepaliveRef.current = 0;
     } finally {
@@ -439,6 +450,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
 const GlobalFloatActions = () => {
   const intl = useIntl();
   const { isMobile } = useResponsive();
+  const { initialState } = useInitialStateModel();
   const floatActionZIndex = 980;
   const floatingSettingsQuery = useQuery({
     queryKey: ['floating-window-settings'],
@@ -447,7 +459,8 @@ const GlobalFloatActions = () => {
         method: 'GET',
         ...API_OPTS.SILENT_NO_REDIRECT,
       }),
-    enabled: isLoggedIn(),
+    enabled: isLoggedIn() && !initialState?.floatingWindowSettings,
+    initialData: initialState?.floatingWindowSettings,
     staleTime: 5 * 60 * 1000,
   });
   const floatingSettings = normalizeFloatingWindowSettings(floatingSettingsQuery.data || DEFAULT_FLOATING_WINDOW_SETTINGS);

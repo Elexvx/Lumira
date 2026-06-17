@@ -30,6 +30,10 @@ public final class CacheKeyConstants {
         return PREFIX + ":" + SESSION + ":" + sessionId;
     }
 
+    public static String sessionOwnerKey(String sessionId) {
+        return PREFIX + ":session_owner:" + sessionId;
+    }
+
     public static String userSessionKey(Long userId, String sessionId) {
         return PREFIX + ":" + SESSION_USER + ":" + userId + ":" + sessionId;
     }

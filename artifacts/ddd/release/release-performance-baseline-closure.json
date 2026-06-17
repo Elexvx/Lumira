@@ -1,0 +1,222 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "READY_FOR_STRICT_GATE_RERUN",
+  "recommendation": "NO_GO_STRICT",
+  "noAutoWaivers": true,
+  "readyToPromote": false,
+  "productionEquivalenceRequired": {
+    "https": true,
+    "nonLocal": true,
+    "deploymentEvidence": true,
+    "noProductionEquivalenceIssues": true
+  },
+  "evidenceChecklist": [
+    {
+      "id": "authenticated-runtime-actual-evidence",
+      "description": "Production-equivalent authenticated hot-path runtime artifact captured from the real release candidate backend.",
+      "requiredArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json"
+      ],
+      "requiredFields": [
+        "baseUrl",
+        "checkedAt",
+        "concurrency",
+        "durationMs",
+        "samples",
+        "failed",
+        "p95",
+        "upload.fileId",
+        "upload.elapsedMs",
+        "oneShots[POST /api/v2/auth/session/keepalive]",
+        "perEndpoint[*].samples",
+        "perEndpoint[*].p95",
+        "productionEquivalence.strict",
+        "productionEquivalence.https",
+        "productionEquivalence.localOnly",
+        "productionEquivalence.deploymentEvidence",
+        "productionEquivalence.issues"
+      ],
+      "requiredEnvKeys": [
+        "LUMIRA_BASE_URL",
+        "BASE_URL",
+        "DDD_AUTH_USERNAME",
+        "DDD_AUTH_PASSWORD",
+        "DDD_AUTH_PERF_ENVIRONMENT",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "acceptanceCriteria": [
+        "Base URL is HTTPS and non-local.",
+        "productionEquivalence.strict=true, https=true, localOnly=false, deploymentEvidence is non-placeholder, and issues is empty.",
+        "All required authenticated endpoints have positive sample counts and p95 metrics.",
+        "failed=0 and upload plus keepalive timing evidence succeeded."
+      ]
+    },
+    {
+      "id": "authenticated-runtime-baseline-promotion-evidence",
+      "description": "Accepted runtime actual promoted to the release baseline with operator, environment, release candidate, and checksum provenance.",
+      "requiredArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "requiredFields": [
+        "status",
+        "sourceFile",
+        "sourceSha256",
+        "outputFile",
+        "sourceArtifact",
+        "sourceEnvironment",
+        "releaseCandidate",
+        "acceptedBy",
+        "baseline.baselineType",
+        "baseline.acceptedAt",
+        "baseline.acceptedBy",
+        "baseline.sourceEnvironment",
+        "baseline.sourceArtifact",
+        "baseline.sourceSha256",
+        "baseline.releaseCandidate",
+        "baseline.evidenceOperator"
+      ],
+      "requiredEnvKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_EVIDENCE_OPERATOR"
+      ],
+      "acceptanceCriteria": [
+        "Promotion status is PASS.",
+        "Baseline sourceSha256 matches the accepted actual artifact.",
+        "Strict baseline metadata has no placeholder or missing provenance fields.",
+        "Baseline shape is valid under strict authenticated performance contract."
+      ]
+    },
+    {
+      "id": "baseline-release-gate-acceptance-evidence",
+      "description": "Post-promotion release gates rerun with the accepted baseline and no authenticated performance regression blockers.",
+      "requiredArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-final-go-no-go.json"
+      ],
+      "requiredFields": [
+        "evidence-manifest.performance.authenticated-runtime-baseline",
+        "readiness-summary.diagnostics.authenticatedPerformance.regressionIssues",
+        "release-final-go-no-go.recommendation",
+        "release-final-go-no-go.cutoverAllowed"
+      ],
+      "requiredEnvKeys": [
+        "DDD_RELEASE_MANIFEST_STRICT",
+        "DDD_FINAL_GO_NO_GO_ENFORCE"
+      ],
+      "acceptanceCriteria": [
+        "Evidence manifest includes the authenticated runtime baseline with checksum.",
+        "Regression issue list is empty or only contains reviewed non-blocking context.",
+        "Final go/no-go gate has been rerun after baseline promotion.",
+        "No manual waiver is used for missing production-equivalent performance evidence."
+      ]
+    }
+  ],
+  "nextCommand": "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
+  "fastPath": {
+    "objective": "Capture authenticated hot-path performance from a production-equivalent HTTPS backend, promote it as baseline, then rerun final release gates.",
+    "blockedUntil": "authenticated-runtime-actual.json is generated from HTTPS non-local deployment evidence and baseline promotion succeeds.",
+    "commands": [
+      "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
+      "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+      "node scripts/ddd-promote-performance-baseline.mjs",
+      "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+      "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
+      "node scripts/ddd-release-evidence-gate.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+    ]
+  },
+  "actual": {
+    "present": true,
+    "baseUrl": "http://127.0.0.1:8080",
+    "localOnly": true,
+    "sourceEnvironment": "local-fast-track-validation",
+    "releaseCandidate": "local-ddd-release-audit",
+    "evidenceOperator": "codex-local-audit",
+    "productionEquivalence": {
+      "strict": false,
+      "https": false,
+      "localOnly": true,
+      "deploymentEvidence": null,
+      "issues": []
+    },
+    "failed": 0,
+    "samples": 4409,
+    "p95": 29,
+    "uploadStatus": 200,
+    "uploadElapsedMs": 45.49,
+    "endpointCount": 9,
+    "shapeIssues": []
+  },
+  "baseline": {
+    "present": true,
+    "baseUrl": "http://127.0.0.1:8080",
+    "localOnly": true,
+    "baselineType": null,
+    "acceptedAt": null,
+    "acceptedBy": null,
+    "sourceEnvironment": "local-evidence-audit",
+    "sourceArtifact": null,
+    "releaseCandidate": "local-ddd-release-audit",
+    "evidenceOperator": "codex-local-audit",
+    "p95": 88,
+    "uploadElapsedMs": 85.88,
+    "endpointCount": 9,
+    "shapeIssues": [],
+    "metadataIssues": []
+  },
+  "promotion": {
+    "present": true,
+    "status": null,
+    "sourceFile": null,
+    "sourceSha256": null,
+    "outputFile": null,
+    "sourceArtifact": null,
+    "sourceEnvironment": "local-evidence-audit",
+    "releaseCandidate": "local-ddd-release-audit",
+    "acceptedBy": null,
+    "requiredEnvKeys": [],
+    "sourceActual": null,
+    "baseline": null,
+    "blockers": []
+  },
+  "blockers": [],
+  "requiredEnvKeys": [
+    "BASE_URL",
+    "DDD_AUTH_PASSWORD",
+    "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+    "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+    "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+    "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+    "DDD_AUTH_PERF_ENVIRONMENT",
+    "DDD_AUTH_USERNAME",
+    "DDD_EVIDENCE_OPERATOR",
+    "DDD_RELEASE_CANDIDATE",
+    "DEPLOY_CHECK_BASE_URL",
+    "LUMIRA_BASE_URL"
+  ],
+  "commands": [
+    "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
+    "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+    "node scripts/ddd-promote-performance-baseline.mjs",
+    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
+    "node scripts/ddd-release-evidence-gate.mjs",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+  ],
+  "expectedArtifacts": [
+    "artifacts/ddd/performance/authenticated-runtime-actual.json",
+    "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+    "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+    "artifacts/ddd/release/evidence-manifest.json"
+  ],
+  "waves": []
+}

@@ -71,8 +71,12 @@
     </select>
 
     <select id="countEntries" resultType="java.lang.Long">
-        select count(1)
-        <include refid="entryBaseFrom"/>
+        select count(*)
+        from (
+            select e.id
+            <include refid="entryBaseFrom"/>
+            limit #{query.countLimit}
+        ) entry_candidates
     </select>
 
     <select id="findEntry" resultType="com.lumira.saas.modules.localization.vo.LocalizationVO$EntryVO">
@@ -130,6 +134,37 @@
           and coalesce(t.translated_message, '') &lt;&gt; ''
     </select>
 
+    <select id="listLanguageStats" resultType="com.lumira.saas.modules.localization.dto.LocalizationQueryModels$LanguageStatRow">
+        select
+          l.locale_code as localeCode,
+          coalesce(t.translated_count, 0) as translatedCount,
+          coalesce(r.published_version, 0) as publishedVersion,
+          r.lastPublishedAt as lastPublishedAt
+        from sys_localization_language l
+        left join (
+            select
+              t.locale_code as locale_code,
+              count(1) as translated_count
+            from sys_localization_translation t
+            join sys_localization_entry e on e.id = t.entry_id and e.deleted = 0
+            where t.deleted = 0
+              and coalesce(t.translated_message, '') &lt;&gt; ''
+            group by t.locale_code
+        ) t on t.locale_code = l.locale_code
+        left join (
+            select
+              locale_code,
+              max(release_version) as published_version,
+              max(published_at) as lastPublishedAt
+            from sys_localization_release
+            where deleted = 0
+              and active_flag = 1
+            group by locale_code
+        ) r on r.locale_code = l.locale_code
+        where l.deleted = 0
+        order by l.is_default desc, l.sort_no asc, l.id asc
+    </select>
+
     <select id="countEntriesByNamespace" resultType="java.lang.Long">
         select count(1)
         from sys_localization_entry e
@@ -149,5 +184,21 @@
         where e.deleted = 0
           and n.namespace_code = #{namespaceCode}
           and coalesce(t.translated_message, '') &lt;&gt; ''
+    </select>
+
+    <select id="listNamespaceStats" resultType="com.lumira.saas.modules.localization.dto.LocalizationQueryModels$NamespaceStatRow">
+        select
+          n.namespace_code as namespaceCode,
+          count(1) as entryCount,
+          sum(case when coalesce(t.translated_message, '') &lt;&gt; '' then 1 else 0 end) as translatedCount
+        from sys_localization_entry e
+        join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
+        left join sys_localization_translation t
+          on t.entry_id = e.id
+         and t.locale_code = #{localeCode}
+         and t.deleted = 0
+        where e.deleted = 0
+        group by n.namespace_code
+        order by min(n.sort_no) asc, min(n.id) asc, n.namespace_code asc
     </select>
 </mapper>

@@ -8,6 +8,7 @@ Outbox 用于把本服务内已经提交的业务事实可靠地发布出去。�
 
 - `system-service`：平台级 outbox、relay、logging dispatcher、Redis Stream dispatcher、内部任务触发接口。
 - `message-service`：消息事件 outbox、WebSocket 投递、重放和消息同步。
+- `plugin-service`：插件生命周期 outbox、内部 relay、logging dispatcher、失败退避、死信标记和手动 replay。
 
 本轮补强了 `system-service` 自己的 `platform_event_outbox` migration，并增加了标准事件发布入口 `PlatformEventPublisher` 和事件常量 `PlatformEventTypes`。AI 知识库文档上传、重建索引、删除会发布平台事件。
 
@@ -15,7 +16,7 @@ Outbox 用于把本服务内已经提交的业务事实可靠地发布出去。�
 
 ## 2. 事件表
 
-每个事件生产服务维护自己的 `platform_event_outbox` 表，不跨服务共享同一张物理表。
+聚合部署阶段，`system-service`、`message-service`、`file-service` 暂共享 `platform_event_outbox` 物理表，并通过 `source_type` 划分 owner。所有 owner relay、metrics、manual replay 和污染修复脚本都必须带上自己的 `source_type` 过滤，禁止跨 owner claim、失败标记或重放。物理拆分后，每个 owner 可迁移为独立 outbox 表，但迁移前仍以 `source_type` 作为强边界。
 
 关键字段：
 
@@ -59,6 +60,7 @@ Outbox 用于把本服务内已经提交的业务事实可靠地发布出去。�
 | `FILE` | `FILE_OBJECT_DELETED` | `file.object` | 文件对象删除后 |
 | `MESSAGE` | `MESSAGE_NOTICE_CREATED` | `message.notice` | 站内信发布后，消息服务已有专用事件 |
 | `MESSAGE` | `MESSAGE_NOTICE_RETRACTED` | `message.notice` | 站内信撤回后，消息服务已有专用事件 |
+| `PLUGIN` | `plugin.*` | `plugin.tenant-plugin` | 插件启用、禁用和生命周期变更后 |
 
 ## 5. 生产规则
 
@@ -90,7 +92,7 @@ Outbox 用于把本服务内已经提交的业务事实可靠地发布出去。�
   -> 后续消费：病毒扫描、OCR、缩略图、AI 知识库解析
 ```
 
-`FILE_OBJECT_UPLOADED` 和 `FILE_OBJECT_DELETED` 已在 `file-service` 记录到本服务 outbox。下一步可增加 relay/dispatcher，把它们投递给病毒扫描、OCR、缩略图、知识库解析或审计投影。
+`FILE_OBJECT_UPLOADED` 和 `FILE_OBJECT_DELETED` 已在 `file-service` 记录到本服务 outbox。`file-service` 已提供 owner relay/replay、logging dispatcher 和 `/file/internal/jobs/outbox/relay|replay` 内部任务接口，并由 `job-executor` 的 `fileOutboxRelayJob` 作为纯 adapter 触发。下一步把病毒扫描、OCR、缩略图、知识库解析或审计投影接成真实消费者。
 
 ### 6.3 消息通知
 
@@ -102,6 +104,17 @@ message-service 写入 msg_notice
 ```
 
 消息服务已经有专用 `MessageEventFactory`、`PlatformEventOutboxService` 和 WebSocket delivery。
+
+### 6.4 插件生命周期
+
+```text
+plugin-service 启用/禁用租户插件
+  -> 领域模型发布插件生命周期事件
+  -> 写入 plugin_event_outbox
+  -> pluginOutboxRelayJob 调用 Plugin owner 内部 relay
+  -> 成功标记 DELIVERED，失败指数退避，超过重试上限进入 DEAD_LETTER
+  -> 管理员可通过内部 replay 接口重放指定事件
+```
 
 ## 7. Relay 运行
 
@@ -119,3 +132,13 @@ SAAS_EVENT_OUTBOX_RELAY_ENABLED=true
 SAAS_EVENT_OUTBOX_DISPATCHER=redis-stream
 SAAS_EVENT_REDIS_STREAM_KEY=saas:platform-events
 ```
+
+插件 outbox 使用 owner 内部任务接口：
+
+```text
+POST /plugin/internal/jobs/outbox/relay
+POST /plugin/internal/jobs/outbox/{id}/replay
+Header: X-Job-Token
+```
+
+`job-executor` 中的 `pluginOutboxRelayJob` 只调用 Plugin owner API，不读取或写入插件业务表。

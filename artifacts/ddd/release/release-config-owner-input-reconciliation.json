@@ -1,0 +1,295 @@
+{
+  "generatedAt": "2026-06-17T06:39:49.849Z",
+  "status": "PASS",
+  "redacted": true,
+  "contract": "ddd-release-config-owner-input-reconciliation",
+  "configArtifact": "artifacts/ddd/config/release-config-evidence.json",
+  "ownerInputPacket": "artifacts/ddd/release/release-env-owner-input-packet.json",
+  "summary": {
+    "configPlaceholderBlockers": 63,
+    "uniqueConfigPlaceholderKeys": 34,
+    "ownerInputKeys": 34,
+    "mappedConfigPlaceholderKeys": 34,
+    "unmappedConfigPlaceholderKeys": 0,
+    "duplicateConfigPlaceholderBlockers": 29,
+    "ownerInputsWithoutConfigPlaceholder": 0
+  },
+  "mappedConfigPlaceholderKeys": [
+    {
+      "key": "AI_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "AI_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "AUTH_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "AUTH_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "CORS_ALLOWED_ORIGIN_PATTERNS",
+      "owner": "release-infra",
+      "canonicalKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
+      "ownerInputReason": "owner-production-value",
+      "valueClass": "identifier",
+      "duplicateConfigBlockers": 1
+    },
+    {
+      "key": "DB_PASSWORD",
+      "owner": "release-infra",
+      "canonicalKey": "DB_PASSWORD",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "DB_URL",
+      "owner": "release-infra",
+      "canonicalKey": "DB_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 1
+    },
+    {
+      "key": "DB_USERNAME",
+      "owner": "release-infra",
+      "canonicalKey": "DB_USERNAME",
+      "ownerInputReason": "owner-production-value",
+      "valueClass": "identifier",
+      "duplicateConfigBlockers": 1
+    },
+    {
+      "key": "FIELD_SECRET",
+      "owner": "release-infra",
+      "canonicalKey": "FIELD_SECRET",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "FILE_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "FILE_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "JOB_EXECUTOR_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "JOB_EXECUTOR_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "JWT_SECRET",
+      "owner": "release-infra",
+      "canonicalKey": "JWT_SECRET",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LOCALIZATION_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "LOCALIZATION_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+      "owner": "ai-owner",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+      "owner": "ai-owner",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+      "owner": "ai-owner",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+      "owner": "ai-owner",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+      "owner": "ai-owner",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+      "owner": "ai-owner",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "LUMIRA_BASE_URL",
+      "owner": "release-infra",
+      "canonicalKey": "LUMIRA_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "MESSAGE_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "MESSAGE_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "PAYMENT_PUBLIC_BASE_URL",
+      "owner": "payment-owner",
+      "canonicalKey": "PAYMENT_PUBLIC_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "PAYMENT_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "PAYMENT_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "PLAYWRIGHT_BASE_URL",
+      "owner": "release-infra",
+      "canonicalKey": "PLAYWRIGHT_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "PLUGIN_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "PLUGIN_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "REDIS_HOST",
+      "owner": "release-infra",
+      "canonicalKey": "REDIS_HOST",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "identifier",
+      "duplicateConfigBlockers": 1
+    },
+    {
+      "key": "SAAS_EVENT_REDIS_STREAM_KEY",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_EVENT_REDIS_STREAM_KEY",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 1
+    },
+    {
+      "key": "SAAS_JOB_BACKEND_BASE_URL",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_JOB_BACKEND_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "SAAS_JOB_INTERNAL_TOKEN",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_JOB_INTERNAL_TOKEN",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+      "owner": "platform-events",
+      "canonicalKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "SYSTEM_SERVICE_BASE_URL",
+      "owner": "platform-owners",
+      "canonicalKey": "SYSTEM_SERVICE_BASE_URL",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "XXL_JOB_ACCESS_TOKEN",
+      "owner": "platform-events",
+      "canonicalKey": "XXL_JOB_ACCESS_TOKEN",
+      "ownerInputReason": "secret-manager",
+      "valueClass": "secret",
+      "duplicateConfigBlockers": 2
+    },
+    {
+      "key": "XXL_JOB_ADMIN_ADDRESSES",
+      "owner": "platform-events",
+      "canonicalKey": "XXL_JOB_ADMIN_ADDRESSES",
+      "ownerInputReason": "production-endpoint",
+      "valueClass": "url",
+      "duplicateConfigBlockers": 2
+    }
+  ],
+  "unmappedConfigPlaceholderKeys": [],
+  "ownerInputsWithoutConfigPlaceholder": [],
+  "issueCount": 0,
+  "issues": []
+}

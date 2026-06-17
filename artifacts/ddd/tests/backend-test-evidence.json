@@ -1,0 +1,1675 @@
+{
+  "generatedAt": "2026-06-16T20:52:50.894Z",
+  "sourceEnvironment": "local-fast-track-validation",
+  "releaseCandidate": "local-ddd-release-audit",
+  "evidenceOperator": "codex-local-audit",
+  "status": "PASS",
+  "reportRoot": ".",
+  "summary": {
+    "suites": 179,
+    "tests": 567,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 4,
+    "timeSeconds": 240.227,
+    "required": 38,
+    "requiredPresent": 38,
+    "requiredMissing": 0
+  },
+  "requiredTestClasses": [
+    "com.lumira.saas.architecture.DddArchitectureBoundaryTest",
+    "com.lumira.saas.modules.architecture.interfaces.rest.DddArchitectureCatalogControllerTest",
+    "com.lumira.saas.modules.iam.domain.model.IamDomainModelsTest",
+    "com.lumira.saas.modules.iam.controller.IamV2ControllerTest",
+    "com.lumira.saas.modules.iam.controller.IamReadinessV2ControllerTest",
+    "com.lumira.saas.modules.platform.domain.model.PlatformDomainModelsTest",
+    "com.lumira.saas.modules.platform.controller.PlatformV2ControllerTest",
+    "com.lumira.saas.modules.platform.controller.PlatformReadinessV2ControllerTest",
+    "com.lumira.auth.domain.model.AuthDomainModelsTest",
+    "com.lumira.auth.controller.AuthV2ControllerTest",
+    "com.lumira.auth.controller.AuthReadinessV2ControllerTest",
+    "com.lumira.auth.service.AuthSessionStoreTest",
+    "com.lumira.message.domain.model.MessageDomainModelsTest",
+    "com.lumira.message.controller.MessageV2ControllerTest",
+    "com.lumira.message.controller.MessageReadinessV2ControllerTest",
+    "com.lumira.file.domain.model.FileDomainModelsTest",
+    "com.lumira.file.controller.FileV2ControllerTest",
+    "com.lumira.file.controller.FileReadinessV2ControllerTest",
+    "com.lumira.file.processing.FileProcessingTaskServiceTest",
+    "com.lumira.saas.modules.plugin.domain.model.PluginDomainModelsTest",
+    "com.lumira.saas.modules.plugin.controller.PluginV2ControllerTest",
+    "com.lumira.saas.modules.plugin.controller.PluginReadinessV2ControllerTest",
+    "com.lumira.saas.modules.plugin.PluginArchitectureContractTest",
+    "com.lumira.saas.modules.localization.domain.model.LocalizationDomainModelsTest",
+    "com.lumira.saas.modules.localization.controller.LocalizationV2ControllerTest",
+    "com.lumira.saas.modules.localization.controller.LocalizationReadinessV2ControllerTest",
+    "com.lumira.payment.domain.model.PaymentDomainModelsTest",
+    "com.lumira.payment.controller.PaymentV2ControllerTest",
+    "com.lumira.payment.controller.PaymentReadinessV2ControllerTest",
+    "com.lumira.payment.service.PaymentWebhookServiceTest",
+    "com.lumira.saas.modules.ai.domain.model.AiAssistantDomainModelsTest",
+    "com.lumira.ai.controller.AiV2ControllerTest",
+    "com.lumira.ai.controller.AiReadinessV2ControllerTest",
+    "com.lumira.ai.integration.RemoteAiOwnerToolGatewayTest",
+    "com.lumira.ai.provider.DefaultAiProviderRuntimeTest",
+    "com.lumira.job.domain.model.JobDomainModelsTest",
+    "com.lumira.job.JobReadinessV2ControllerTest",
+    "com.lumira.job.XxlJobExecutorConfigTest"
+  ],
+  "missingRequired": [],
+  "failedSuites": [],
+  "suites": [
+    {
+      "name": "com.lumira.ai.app.AiCommandServiceTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.app.AiCommandServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 3.881
+    },
+    {
+      "name": "com.lumira.ai.app.AiEmployeeQueryServiceTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.app.AiEmployeeQueryServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.588
+    },
+    {
+      "name": "com.lumira.ai.app.AiReadQueryServiceTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.app.AiReadQueryServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.165
+    },
+    {
+      "name": "com.lumira.ai.controller.AiReadinessV2ControllerTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.controller.AiReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.039
+    },
+    {
+      "name": "com.lumira.ai.controller.AiV2ControllerTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.controller.AiV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.783
+    },
+    {
+      "name": "com.lumira.ai.integration.RemoteAiOwnerToolGatewayTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.integration.RemoteAiOwnerToolGatewayTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.025
+    },
+    {
+      "name": "com.lumira.ai.provider.DefaultAiProviderRuntimeTest",
+      "file": "services/ai-service/target/surefire-reports/TEST-com.lumira.ai.provider.DefaultAiProviderRuntimeTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.357
+    },
+    {
+      "name": "com.lumira.auth.controller.AuthReadinessV2ControllerTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.controller.AuthReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 4.269
+    },
+    {
+      "name": "com.lumira.auth.controller.AuthV2ControllerTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.controller.AuthV2ControllerTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.487
+    },
+    {
+      "name": "com.lumira.auth.domain.model.AuthDomainModelsTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.domain.model.AuthDomainModelsTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.028
+    },
+    {
+      "name": "com.lumira.auth.RepeatSubmitControllerCoverageTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.RepeatSubmitControllerCoverageTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.835
+    },
+    {
+      "name": "com.lumira.auth.service.AuthAppServiceTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.service.AuthAppServiceTest.xml",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.768
+    },
+    {
+      "name": "com.lumira.auth.service.AuthAppServiceWechatSecondFactorTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.service.AuthAppServiceWechatSecondFactorTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.539
+    },
+    {
+      "name": "com.lumira.auth.service.AuthSessionStoreTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.service.AuthSessionStoreTest.xml",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.378
+    },
+    {
+      "name": "com.lumira.auth.service.WechatLoginServiceTest",
+      "file": "services/auth-service/target/surefire-reports/TEST-com.lumira.auth.service.WechatLoginServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.574
+    },
+    {
+      "name": "com.lumira.common.security.data.DataPermissionResolverTest",
+      "file": "libs/common-security/target/surefire-reports/TEST-com.lumira.common.security.data.DataPermissionResolverTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.038
+    },
+    {
+      "name": "com.lumira.common.security.FieldCryptoServiceTest",
+      "file": "libs/common-security/target/surefire-reports/TEST-com.lumira.common.security.FieldCryptoServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.594
+    },
+    {
+      "name": "com.lumira.common.security.InternalServiceTokenAuthFilterTest",
+      "file": "libs/common-security/target/surefire-reports/TEST-com.lumira.common.security.InternalServiceTokenAuthFilterTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.085
+    },
+    {
+      "name": "com.lumira.common.security.JwtTokenParserTest",
+      "file": "libs/common-security/target/surefire-reports/TEST-com.lumira.common.security.JwtTokenParserTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.962
+    },
+    {
+      "name": "com.lumira.common.security.ProductionSecurityPropertiesValidatorTest",
+      "file": "libs/common-security/target/surefire-reports/TEST-com.lumira.common.security.ProductionSecurityPropertiesValidatorTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.576
+    },
+    {
+      "name": "com.lumira.common.web.FeignHeaderForwardingConfigTest",
+      "file": "libs/common-web/target/surefire-reports/TEST-com.lumira.common.web.FeignHeaderForwardingConfigTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.779
+    },
+    {
+      "name": "com.lumira.common.web.InternalJobTokenValidatorTest",
+      "file": "libs/common-web/target/surefire-reports/TEST-com.lumira.common.web.InternalJobTokenValidatorTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.03
+    },
+    {
+      "name": "com.lumira.common.web.TraceIdFilterTest",
+      "file": "libs/common-web/target/surefire-reports/TEST-com.lumira.common.web.TraceIdFilterTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.045
+    },
+    {
+      "name": "com.lumira.file.config.UploadResourceSecurityInterceptorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.config.UploadResourceSecurityInterceptorTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 3.797
+    },
+    {
+      "name": "com.lumira.file.controller.FileReadinessV2ControllerTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.controller.FileReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.217
+    },
+    {
+      "name": "com.lumira.file.controller.FileUploadMetricsTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.controller.FileUploadMetricsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.019
+    },
+    {
+      "name": "com.lumira.file.controller.FileV2ControllerTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.controller.FileV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.072
+    },
+    {
+      "name": "com.lumira.file.controller.InternalJobControllerTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.controller.InternalJobControllerTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.129
+    },
+    {
+      "name": "com.lumira.file.domain.model.FileDomainModelsTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.domain.model.FileDomainModelsTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.027
+    },
+    {
+      "name": "com.lumira.file.event.FileOutboxMetricsServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.event.FileOutboxMetricsServiceTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.02
+    },
+    {
+      "name": "com.lumira.file.event.FileOutboxRelayTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.event.FileOutboxRelayTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.116
+    },
+    {
+      "name": "com.lumira.file.event.FilePlatformEventPublisherTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.event.FilePlatformEventPublisherTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.01
+    },
+    {
+      "name": "com.lumira.file.event.FileServiceSqlHotPathTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.event.FileServiceSqlHotPathTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.023
+    },
+    {
+      "name": "com.lumira.file.event.PlatformEventOutboxRelayServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.event.PlatformEventOutboxRelayServiceTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.465
+    },
+    {
+      "name": "com.lumira.file.event.PlatformEventOutboxServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.event.PlatformEventOutboxServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.291
+    },
+    {
+      "name": "com.lumira.file.FileManagementAppServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.FileManagementAppServiceTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.405
+    },
+    {
+      "name": "com.lumira.file.mapper.FileStorageSpaceMapperHotPathSqlTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.mapper.FileStorageSpaceMapperHotPathSqlTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.01
+    },
+    {
+      "name": "com.lumira.file.processing.ClamAvFileSecurityScanEngineTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.ClamAvFileSecurityScanEngineTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.367
+    },
+    {
+      "name": "com.lumira.file.processing.FileAiParseProcessorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileAiParseProcessorTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.027
+    },
+    {
+      "name": "com.lumira.file.processing.FileOcrEngineSelectorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileOcrEngineSelectorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.02
+    },
+    {
+      "name": "com.lumira.file.processing.FileOcrProcessorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileOcrProcessorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.217
+    },
+    {
+      "name": "com.lumira.file.processing.FileProcessingMetricsTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileProcessingMetricsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.012
+    },
+    {
+      "name": "com.lumira.file.processing.FileProcessingTaskServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileProcessingTaskServiceTest.xml",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.113
+    },
+    {
+      "name": "com.lumira.file.processing.FileSecurityScanEngineSelectorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileSecurityScanEngineSelectorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.006
+    },
+    {
+      "name": "com.lumira.file.processing.FileSecurityScanMetricsTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileSecurityScanMetricsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.044
+    },
+    {
+      "name": "com.lumira.file.processing.FileSecurityScanProcessorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileSecurityScanProcessorTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.446
+    },
+    {
+      "name": "com.lumira.file.processing.FileTextExtractionProcessorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileTextExtractionProcessorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 4.019
+    },
+    {
+      "name": "com.lumira.file.processing.FileThumbnailProcessorTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.FileThumbnailProcessorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.249
+    },
+    {
+      "name": "com.lumira.file.processing.InlineFileSecurityScanEngineTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.processing.InlineFileSecurityScanEngineTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.351
+    },
+    {
+      "name": "com.lumira.file.RepeatSubmitControllerCoverageTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.RepeatSubmitControllerCoverageTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.523
+    },
+    {
+      "name": "com.lumira.file.upload.DocumentUploadServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.upload.DocumentUploadServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.072
+    },
+    {
+      "name": "com.lumira.file.upload.FileStorageMetricsTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.upload.FileStorageMetricsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.02
+    },
+    {
+      "name": "com.lumira.file.upload.ImageUploadServiceTest",
+      "file": "services/file-service/target/surefire-reports/TEST-com.lumira.file.upload.ImageUploadServiceTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.215
+    },
+    {
+      "name": "com.lumira.job.domain.model.JobDomainModelsTest",
+      "file": "services/job-executor/target/surefire-reports/TEST-com.lumira.job.domain.model.JobDomainModelsTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.064
+    },
+    {
+      "name": "com.lumira.job.FileOutboxRelayJobHandlerTest",
+      "file": "services/job-executor/target/surefire-reports/TEST-com.lumira.job.FileOutboxRelayJobHandlerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.027
+    },
+    {
+      "name": "com.lumira.job.FileProcessingTaskJobHandlerTest",
+      "file": "services/job-executor/target/surefire-reports/TEST-com.lumira.job.FileProcessingTaskJobHandlerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.518
+    },
+    {
+      "name": "com.lumira.job.JobReadinessV2ControllerTest",
+      "file": "services/job-executor/target/surefire-reports/TEST-com.lumira.job.JobReadinessV2ControllerTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.356
+    },
+    {
+      "name": "com.lumira.job.XxlJobExecutorConfigTest",
+      "file": "services/job-executor/target/surefire-reports/TEST-com.lumira.job.XxlJobExecutorConfigTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.623
+    },
+    {
+      "name": "com.lumira.message.app.MessageAppServiceTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.app.MessageAppServiceTest.xml",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 6.544
+    },
+    {
+      "name": "com.lumira.message.app.MessageServiceSqlHotPathTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.app.MessageServiceSqlHotPathTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.75
+    },
+    {
+      "name": "com.lumira.message.app.PlatformEventOutboxServiceTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.app.PlatformEventOutboxServiceTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.505
+    },
+    {
+      "name": "com.lumira.message.controller.MessageControllerTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.controller.MessageControllerTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.281
+    },
+    {
+      "name": "com.lumira.message.controller.MessageReadinessV2ControllerTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.controller.MessageReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.55
+    },
+    {
+      "name": "com.lumira.message.controller.MessageV2ControllerTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.controller.MessageV2ControllerTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.051
+    },
+    {
+      "name": "com.lumira.message.domain.model.MessageDomainModelsTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.domain.model.MessageDomainModelsTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.026
+    },
+    {
+      "name": "com.lumira.message.mapper.MessageNoticeMapperHotPathSqlTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.mapper.MessageNoticeMapperHotPathSqlTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.054
+    },
+    {
+      "name": "com.lumira.message.mapper.MessageNoticeMapperSqlPerformanceTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.mapper.MessageNoticeMapperSqlPerformanceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.028
+    },
+    {
+      "name": "com.lumira.message.RepeatSubmitControllerCoverageTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.RepeatSubmitControllerCoverageTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.787
+    },
+    {
+      "name": "com.lumira.message.service.MessageEventDeliveryServiceTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.service.MessageEventDeliveryServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.119
+    },
+    {
+      "name": "com.lumira.message.service.MessageEventFactoryTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.service.MessageEventFactoryTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.026
+    },
+    {
+      "name": "com.lumira.message.service.MessageSessionHandshakeInterceptorTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.service.MessageSessionHandshakeInterceptorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.358
+    },
+    {
+      "name": "com.lumira.message.service.MessageWebSocketTicketServiceTest",
+      "file": "services/message-service/target/surefire-reports/TEST-com.lumira.message.service.MessageWebSocketTicketServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.072
+    },
+    {
+      "name": "com.lumira.payment.controller.InternalJobControllerTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.controller.InternalJobControllerTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.175
+    },
+    {
+      "name": "com.lumira.payment.controller.PaymentReadinessV2ControllerTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.controller.PaymentReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 3.239
+    },
+    {
+      "name": "com.lumira.payment.controller.PaymentV2ControllerTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.controller.PaymentV2ControllerTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.002
+    },
+    {
+      "name": "com.lumira.payment.domain.model.PaymentDomainModelsTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.domain.model.PaymentDomainModelsTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.182
+    },
+    {
+      "name": "com.lumira.payment.service.PaymentManagementAppServiceTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.service.PaymentManagementAppServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.865
+    },
+    {
+      "name": "com.lumira.payment.service.PaymentOutboxRelayTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.service.PaymentOutboxRelayTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.126
+    },
+    {
+      "name": "com.lumira.payment.service.PaymentOutboxServiceTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.service.PaymentOutboxServiceTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.282
+    },
+    {
+      "name": "com.lumira.payment.service.PaymentServiceSqlHotPathTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.service.PaymentServiceSqlHotPathTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.148
+    },
+    {
+      "name": "com.lumira.payment.service.PaymentWebhookServiceTest",
+      "file": "services/payment-service/target/surefire-reports/TEST-com.lumira.payment.service.PaymentWebhookServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.416
+    },
+    {
+      "name": "com.lumira.plugin.RepeatSubmitControllerCoverageTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.plugin.RepeatSubmitControllerCoverageTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.823
+    },
+    {
+      "name": "com.lumira.saas.architecture.DddArchitectureBoundaryTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.architecture.DddArchitectureBoundaryTest.xml",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 122.641
+    },
+    {
+      "name": "com.lumira.saas.architecture.SystemFileHotPathMigrationTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.architecture.SystemFileHotPathMigrationTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.005
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.db.DefaultAdminPasswordBaselineTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.db.DefaultAdminPasswordBaselineTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.957
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.event.PlatformEventOutboxRelayTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.event.PlatformEventOutboxRelayTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.168
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.event.PlatformEventOutboxServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.event.PlatformEventOutboxServiceTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.476
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.event.PlatformEventPublisherTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.event.PlatformEventPublisherTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.342
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcherTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcherTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.691
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.event.SystemServiceSqlHotPathTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.event.SystemServiceSqlHotPathTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.116
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapperTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapperTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.263
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperationsTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperationsTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.182
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunnerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunnerTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.344
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.JwtAuthFilterTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.JwtAuthFilterTest.xml",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.476
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.RuntimeSecurityPropertiesValidatorTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.RuntimeSecurityPropertiesValidatorTest.xml",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.205
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.SecurityPermitPathsTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.SecurityPermitPathsTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.021
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.AuthSessionStoreTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.AuthSessionStoreTest.xml",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.906
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.CaptchaServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.CaptchaServiceTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.148
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.InitialPasswordChangeGuardTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.InitialPasswordChangeGuardTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 3.746
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.JwtTokenServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.JwtTokenServiceTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.79
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.LoginProtectionServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.LoginProtectionServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.022
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.PasswordPolicyServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.PasswordPolicyServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.031
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.SecuritySettingsServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.SecuritySettingsServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.173
+    },
+    {
+      "name": "com.lumira.saas.infrastructure.security.service.SessionAuthenticationServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.infrastructure.security.service.SessionAuthenticationServiceTest.xml",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.172
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiEmployeeRuntimeServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiEmployeeRuntimeServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.255
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiIamQueryFacadeTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiIamQueryFacadeTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.016
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiKnowledgeBaseAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiKnowledgeBaseAppServiceTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.434
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractorTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractorTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.007
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiKnowledgeVectorServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiKnowledgeVectorServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.031
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiManagementAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiManagementAppServiceTest.xml",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.237
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiNativeToolRuntimeServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiNativeToolRuntimeServiceTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.122
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiOwnerMetricsServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiOwnerMetricsServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.575
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.app.AiToolPolicyServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.app.AiToolPolicyServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.017
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.controller.AiReadinessV2ControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.controller.AiReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.226
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.controller.AiV2ControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.controller.AiV2ControllerTest.xml",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.734
+    },
+    {
+      "name": "com.lumira.saas.modules.ai.domain.model.AiAssistantDomainModelsTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.ai.domain.model.AiAssistantDomainModelsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.014
+    },
+    {
+      "name": "com.lumira.saas.modules.architecture.application.OwnerReadModelMetricsServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.architecture.application.OwnerReadModelMetricsServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.071
+    },
+    {
+      "name": "com.lumira.saas.modules.architecture.interfaces.rest.DddArchitectureCatalogControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.architecture.interfaces.rest.DddArchitectureCatalogControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.069
+    },
+    {
+      "name": "com.lumira.saas.modules.audit.app.LoginAuditServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.audit.app.LoginAuditServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.237
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.app.IamTenantCommandServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.app.IamTenantCommandServiceTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.226
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.app.IamTenantQueryServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.app.IamTenantQueryServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.014
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.controller.IamReadinessV2ControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.controller.IamReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.053
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.controller.IamV2ControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.controller.IamV2ControllerTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.074
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.domain.model.IamDomainModelsTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.domain.model.IamDomainModelsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.009
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.service.IamUserServiceSyncTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.service.IamUserServiceSyncTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.045
+    },
+    {
+      "name": "com.lumira.saas.modules.iam.service.PermissionSnapshotServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.iam.service.PermissionSnapshotServiceTest.xml",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.357
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.app.LocalizationManagementAppServiceTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.app.LocalizationManagementAppServiceTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 6.135
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.app.LocalizationRuntimeBundleCacheTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.app.LocalizationRuntimeBundleCacheTest.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.043
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.app.LocalizationServiceSqlHotPathTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.app.LocalizationServiceSqlHotPathTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.356
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.controller.LocalizationReadinessV2ControllerTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.controller.LocalizationReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.067
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.controller.LocalizationV2ControllerTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.controller.LocalizationV2ControllerTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.438
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.domain.model.LocalizationDomainModelsTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.domain.model.LocalizationDomainModelsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.048
+    },
+    {
+      "name": "com.lumira.saas.modules.localization.mapper.LocalizationManagementMapperHotPathSqlTest",
+      "file": "services/localization-service/target/surefire-reports/TEST-com.lumira.saas.modules.localization.mapper.LocalizationManagementMapperHotPathSqlTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.014
+    },
+    {
+      "name": "com.lumira.saas.modules.platform.app.PlatformBootstrapServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.platform.app.PlatformBootstrapServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 1.562
+    },
+    {
+      "name": "com.lumira.saas.modules.platform.controller.PlatformReadinessV2ControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.platform.controller.PlatformReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.244
+    },
+    {
+      "name": "com.lumira.saas.modules.platform.controller.PlatformV2ControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.platform.controller.PlatformV2ControllerTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.104
+    },
+    {
+      "name": "com.lumira.saas.modules.platform.domain.model.PlatformDomainModelsTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.platform.domain.model.PlatformDomainModelsTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.034
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.app.PluginManagementAppServiceTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.app.PluginManagementAppServiceTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 6.133
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.controller.PluginReadinessV2ControllerTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.controller.PluginReadinessV2ControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.156
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.controller.PluginV2ControllerTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.controller.PluginV2ControllerTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.382
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.domain.model.PluginDomainModelsTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.domain.model.PluginDomainModelsTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.004
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.event.PluginOutboxServiceTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.event.PluginOutboxServiceTest.xml",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.492
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.event.PluginServiceSqlHotPathTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.event.PluginServiceSqlHotPathTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.023
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.mapper.PluginPersistenceMapperHotPathSqlTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.mapper.PluginPersistenceMapperHotPathSqlTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.044
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.PluginArchitectureContractTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.PluginArchitectureContractTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.016
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicyTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicyTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.031
+    },
+    {
+      "name": "com.lumira.saas.modules.plugin.service.PluginPersistenceServiceTest",
+      "file": "services/plugin-service/target/surefire-reports/TEST-com.lumira.saas.modules.plugin.service.PluginPersistenceServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.31
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.OnlineSessionManagementAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.OnlineSessionManagementAppServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.01
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceAiAuditTenantAuthorizationTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceAiAuditTenantAuthorizationTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.014
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceAuditTenantTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceAuditTenantTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.022
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceConfigMaskingTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceConfigMaskingTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.005
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServicePasswordTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServicePasswordTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.024
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServicePermissionCacheTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServicePermissionCacheTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.01
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceRoleFacadeTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceRoleFacadeTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.009
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceSensitiveConfigTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceSensitiveConfigTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.007
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceSummaryTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceSummaryTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.25
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceUserFacadeTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceUserFacadeTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.005
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceVerificationLogsTenantScopeTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceVerificationLogsTenantScopeTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.008
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceWriteHotPathTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemManagementAppServiceWriteHotPathTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 2.006
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemPlatformSettingsAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemPlatformSettingsAppServiceTest.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.77
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemProfileSettingsAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemProfileSettingsAppServiceTest.xml",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.336
+    },
+    {
+      "name": "com.lumira.saas.modules.system.app.SystemRouteCatalogTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.app.SystemRouteCatalogTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.008
+    },
+    {
+      "name": "com.lumira.saas.modules.system.controller.AgreementSettingsIntegrationTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.controller.AgreementSettingsIntegrationTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "timeSeconds": 0.001
+    },
+    {
+      "name": "com.lumira.saas.modules.system.controller.PublicSystemControllerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.controller.PublicSystemControllerTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.17
+    },
+    {
+      "name": "com.lumira.saas.modules.system.controller.RoleDetailIntegrationTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.controller.RoleDetailIntegrationTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3,
+      "timeSeconds": 0
+    },
+    {
+      "name": "com.lumira.saas.modules.system.controller.SystemControllerRuntimeAppearanceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.controller.SystemControllerRuntimeAppearanceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.886
+    },
+    {
+      "name": "com.lumira.saas.modules.system.department.app.SystemDepartmentAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.department.app.SystemDepartmentAppServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.143
+    },
+    {
+      "name": "com.lumira.saas.modules.system.export.ExcelExportServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.export.ExcelExportServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 3.975
+    },
+    {
+      "name": "com.lumira.saas.modules.system.monitor.app.SystemMonitorAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.monitor.app.SystemMonitorAppServiceTest.xml",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.028
+    },
+    {
+      "name": "com.lumira.saas.modules.system.permission.SystemPermissionTreeAssemblerTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.permission.SystemPermissionTreeAssemblerTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.058
+    },
+    {
+      "name": "com.lumira.saas.modules.system.plugin.SystemPluginViewServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.plugin.SystemPluginViewServiceTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.36
+    },
+    {
+      "name": "com.lumira.saas.modules.system.role.app.SystemRoleManagementAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.role.app.SystemRoleManagementAppServiceTest.xml",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.396
+    },
+    {
+      "name": "com.lumira.saas.modules.system.security.dto.SecuritySettingsRequestTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.security.dto.SecuritySettingsRequestTest.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.012
+    },
+    {
+      "name": "com.lumira.saas.modules.system.sensitive.app.SensitiveWordPluginStateServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.sensitive.app.SensitiveWordPluginStateServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.008
+    },
+    {
+      "name": "com.lumira.saas.modules.system.sensitive.app.SensitiveWordServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.sensitive.app.SensitiveWordServiceTest.xml",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.679
+    },
+    {
+      "name": "com.lumira.saas.modules.system.support.SmtpMailServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.support.SmtpMailServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.014
+    },
+    {
+      "name": "com.lumira.saas.modules.system.user.app.SystemUserManagementAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.user.app.SystemUserManagementAppServiceTest.xml",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.292
+    },
+    {
+      "name": "com.lumira.saas.modules.system.verification.SystemVerificationSettingsAppServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.verification.SystemVerificationSettingsAppServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.196
+    },
+    {
+      "name": "com.lumira.saas.modules.system.verification.WechatLoginSettingsServiceTest",
+      "file": "services/system-service/target/surefire-reports/TEST-com.lumira.saas.modules.system.verification.WechatLoginSettingsServiceTest.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timeSeconds": 0.067
+    }
+  ],
+  "blockers": []
+}

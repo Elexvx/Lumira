@@ -36,7 +36,7 @@ export const persistCurrentUser = (currentUser: CurrentUser): CurrentUser => {
 export const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => {
   const storedCurrentUser = getStoredCurrentUser();
   const storedSessionMeta = getStoredSessionMeta();
-  const sessionId = storedSessionMeta?.sessionId?.trim() || createLocalSessionId();
+  const sessionId = loginResponse.user.sessionId?.trim() || storedSessionMeta?.sessionId?.trim() || createLocalSessionId();
   return {
     userId: loginResponse.user.userId,
     username: loginResponse.user.username,
@@ -54,9 +54,9 @@ export const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentU
     simulatedRoleId: null,
     availableRoles: [],
     sessionId,
-    permissionsVersion: storedSessionMeta?.permissionsVersion,
-    sessionVersion: storedSessionMeta?.sessionVersion,
-    permissions: storedCurrentUser?.permissions || [],
+    permissionsVersion: loginResponse.user.permissionsVersion ?? storedSessionMeta?.permissionsVersion,
+    sessionVersion: loginResponse.user.sessionVersion ?? storedSessionMeta?.sessionVersion,
+    permissions: loginResponse.user.permissions || storedCurrentUser?.permissions || [],
     requiresPasswordChange: loginResponse.requiresPasswordChange ?? null,
     defaultHomePath: storedCurrentUser?.defaultHomePath || '/dashboard/home',
   };

@@ -209,6 +209,16 @@ public class PluginManagementController {
         );
     }
 
+    @GetMapping("/current/bootstrap")
+    public ApiResponse<Map<String, Object>> currentBootstrap() {
+        CurrentUser currentUser = currentUser();
+        List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
+        return ApiResponse.success(
+                pluginManagementAppService.currentBootstrap(currentTenantId(), permissions),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/current/menus")
     public ApiResponse<List<Map<String, Object>>> currentMenus() {
         CurrentUser currentUser = currentUser();

@@ -7,6 +7,7 @@ public class MessageProperties {
 
     private long wsTicketExpiresInSeconds = 30L;
     private int outboxRelayBatchSize = 100;
+    private long unreadCountCacheTtlSeconds = 30L;
 
     public long getWsTicketExpiresInSeconds() {
         return wsTicketExpiresInSeconds;
@@ -22,5 +23,13 @@ public class MessageProperties {
 
     public void setOutboxRelayBatchSize(int outboxRelayBatchSize) {
         this.outboxRelayBatchSize = outboxRelayBatchSize;
+    }
+
+    public long getUnreadCountCacheTtlSeconds() {
+        return unreadCountCacheTtlSeconds;
+    }
+
+    public void setUnreadCountCacheTtlSeconds(long unreadCountCacheTtlSeconds) {
+        this.unreadCountCacheTtlSeconds = unreadCountCacheTtlSeconds;
     }
 }

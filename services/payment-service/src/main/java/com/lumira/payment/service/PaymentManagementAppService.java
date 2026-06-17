@@ -17,24 +17,29 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class PaymentManagementAppService {
 
     private static final String SECRET_PLACEHOLDER = "********";
     private static final Duration TEST_TIMEOUT = Duration.ofSeconds(2);
+    private static final Duration PROVIDER_LIST_CACHE_TTL = Duration.ofSeconds(30);
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final PaymentConfigCryptoService cryptoService;
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
+    private final Map<Long, CachedProviderList> providerListCache = new ConcurrentHashMap<>();
 
     public PaymentManagementAppService(
             JdbcTemplate jdbcTemplate,
@@ -51,11 +56,22 @@ public class PaymentManagementAppService {
     }
 
     public List<PaymentProviderSettingsDTO> listProviderSettings(Long tenantId) {
+        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        CachedProviderList cached = providerListCache.get(effectiveTenantId);
+        Instant now = Instant.now();
+        if (cached != null && cached.expireAt().isAfter(now)) {
+            return cached.settings();
+        }
+        if (cached != null) {
+            providerListCache.remove(effectiveTenantId);
+        }
         List<PaymentProviderSettingsDTO> settings = new ArrayList<>();
         for (PaymentProviderCatalog.PaymentProviderDefinition definition : providerCatalog.definitions()) {
-            settings.add(loadProviderSettings(tenantId, definition.providerCode()));
+            settings.add(loadProviderSettings(effectiveTenantId, definition.providerCode()));
         }
-        return settings;
+        List<PaymentProviderSettingsDTO> immutableSettings = List.copyOf(settings);
+        providerListCache.put(effectiveTenantId, new CachedProviderList(immutableSettings, now.plus(PROVIDER_LIST_CACHE_TTL)));
+        return immutableSettings;
     }
 
     public PaymentProviderSettingsDTO paymentProviderSettings(Long tenantId, String providerCode) {
@@ -77,18 +93,21 @@ public class PaymentManagementAppService {
             merged.setEnabled(false);
         }
 
+        LocalDateTime eventVersion = LocalDateTime.now();
         upsertProviderConfig(tenantId, operatorId, definition, merged, current);
+        providerListCache.remove(tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId);
         outboxService.recordAfterCommit(
                 tenantId,
                 operatorId,
                 "payment",
                 "payment.provider.updated",
-                providerCode,
+                providerCode + ":" + UUID.randomUUID(),
                 Map.of(
                         "providerCode", providerCode,
                         "enabled", merged.isEnabled(),
                         "configured", merged.isConfigured(),
-                        "environment", merged.getEnvironment()
+                        "environment", merged.getEnvironment(),
+                        "eventVersion", eventVersion
                 )
         );
         return loadProviderSettings(tenantId, providerCode);
@@ -133,7 +152,7 @@ public class PaymentManagementAppService {
     }
 
     public PaymentProviderSettingsDTO getRequiredProviderSettings(Long tenantId, String providerCode) {
-        PaymentProviderSettingsDTO settings = loadProviderSettings(tenantId, providerCode);
+        PaymentProviderSettingsDTO settings = loadProviderSettings(tenantId, providerCode, false);
         if (!settings.isConfigured()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "支付配置未完成");
         }
@@ -141,6 +160,10 @@ public class PaymentManagementAppService {
     }
 
     private PaymentProviderSettingsDTO loadProviderSettings(Long tenantId, String providerCode) {
+        return loadProviderSettings(tenantId, providerCode, true);
+    }
+
+    private PaymentProviderSettingsDTO loadProviderSettings(Long tenantId, String providerCode, boolean maskSecrets) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
         PaymentProviderConfigRow row = queryProviderRow(tenantId, definition.providerCode());
         if (row == null) {
@@ -159,7 +182,7 @@ public class PaymentManagementAppService {
         response.setLastTestedAt(row.getLastTestedAt());
         response.setLastTestSuccess(row.getLastTestSuccess() != null ? row.getLastTestSuccess() == 1 : null);
         response.setLastTestMessage(row.getLastTestMessage());
-        copyProviderValues(response, stored, true);
+        copyProviderValues(response, stored, maskSecrets);
         return response;
     }
 
@@ -536,5 +559,8 @@ public class PaymentManagementAppService {
             }
         }
         return true;
+    }
+
+    private record CachedProviderList(List<PaymentProviderSettingsDTO> settings, Instant expireAt) {
     }
 }

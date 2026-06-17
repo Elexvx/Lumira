@@ -1,0 +1,2876 @@
+{
+  "generatedAt": "2026-06-17T06:28:34.918Z",
+  "sourceEnvironment": "production-equivalent",
+  "releaseCandidate": "38e6b38ff8b03db8de2e0ef9d84ac445fed50526",
+  "evidenceOperator": "johntao",
+  "strict": false,
+  "envFile": "/Users/johntao/Documents/GitHub/Lumira/.env.release.local",
+  "envFileExists": true,
+  "inputKind": "release-env-file",
+  "generatedMissingTemplate": false,
+  "status": "FAIL",
+  "summary": {
+    "groups": 6,
+    "checks": 48,
+    "requiredChecks": 46,
+    "runtimePresentRequiredChecks": 46,
+    "envFileCoveredRequiredChecks": 46,
+    "templateCoveredRequiredChecks": 46,
+    "workflowCoveredRequiredChecks": 46,
+    "blockers": 63,
+    "primaryBlockers": 0,
+    "releaseConfigBlockersFromPlaceholders": 63,
+    "releaseConfigBlockersAfterPlaceholders": 0,
+    "warnings": 0
+  },
+  "groups": [
+    {
+      "name": "runtime",
+      "owner": "release-infra",
+      "checks": [
+        {
+          "name": "backend base url",
+          "keys": [
+            "LUMIRA_BASE_URL",
+            "DEPLOY_CHECK_BASE_URL"
+          ],
+          "matchedKey": "LUMIRA_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "frontend base url",
+          "keys": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "matchedKey": "PLAYWRIGHT_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "database url",
+          "keys": [
+            "DB_URL",
+            "SPRING_DATASOURCE_URL"
+          ],
+          "matchedKey": "DB_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "database username",
+          "keys": [
+            "DB_USERNAME",
+            "SPRING_DATASOURCE_USERNAME",
+            "MYSQL_USER"
+          ],
+          "matchedKey": "DB_USERNAME",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "__REQUIRED__"
+        },
+        {
+          "name": "database password",
+          "keys": [
+            "DB_PASSWORD",
+            "SPRING_DATASOURCE_PASSWORD",
+            "MYSQL_PASSWORD"
+          ],
+          "matchedKey": "DB_PASSWORD",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 16,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "redis host",
+          "keys": [
+            "REDIS_HOST",
+            "SPRING_DATA_REDIS_HOST"
+          ],
+          "matchedKey": "REDIS_HOST",
+          "required": true,
+          "nonLocal": true,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "__REQUIRED__"
+        },
+        {
+          "name": "redis port",
+          "keys": [
+            "REDIS_PORT",
+            "SPRING_DATA_REDIS_PORT"
+          ],
+          "matchedKey": "REDIS_PORT",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": "a numeric TCP port",
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "patternMismatch": false,
+          "safeValue": "6379"
+        },
+        {
+          "name": "redis password",
+          "keys": [
+            "REDIS_PASSWORD",
+            "SPRING_DATA_REDIS_PASSWORD"
+          ],
+          "matchedKey": null,
+          "required": false,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 16,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": false,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "patternMismatch": false,
+          "safeValue": null
+        },
+        {
+          "name": "jwt secret",
+          "keys": [
+            "JWT_SECRET",
+            "SAAS_SECURITY_JWT_SECRET"
+          ],
+          "matchedKey": "JWT_SECRET",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "field secret",
+          "keys": [
+            "FIELD_SECRET",
+            "SAAS_SECURITY_FIELD_SECRET"
+          ],
+          "matchedKey": "FIELD_SECRET",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "cors origins",
+          "keys": [
+            "CORS_ALLOWED_ORIGIN_PATTERNS",
+            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+          ],
+          "matchedKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "__REQUIRED__"
+        },
+        {
+          "name": "trusted proxy mode",
+          "keys": [
+            "TRUST_FORWARDED_HEADERS",
+            "SAAS_WEB_TRUST_FORWARDED_HEADERS"
+          ],
+          "matchedKey": "TRUST_FORWARDED_HEADERS",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": [
+            "true"
+          ],
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "true"
+        }
+      ]
+    },
+    {
+      "name": "owner-services",
+      "owner": "platform-owners",
+      "checks": [
+        {
+          "name": "system service",
+          "keys": [
+            "SYSTEM_SERVICE_BASE_URL",
+            "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "SYSTEM_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "auth service",
+          "keys": [
+            "AUTH_SERVICE_BASE_URL",
+            "LUMIRA_AUTH_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "AUTH_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "file service",
+          "keys": [
+            "FILE_SERVICE_BASE_URL",
+            "LUMIRA_FILE_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "FILE_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "message service",
+          "keys": [
+            "MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "MESSAGE_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "plugin service",
+          "keys": [
+            "PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "PLUGIN_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "localization service",
+          "keys": [
+            "LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "LOCALIZATION_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "payment service",
+          "keys": [
+            "PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "PAYMENT_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "ai service",
+          "keys": [
+            "AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_SERVICE_BASE_URL",
+            "LUMIRA_AI_BASE_URL"
+          ],
+          "matchedKey": "AI_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "job executor",
+          "keys": [
+            "JOB_EXECUTOR_BASE_URL",
+            "LUMIRA_JOB_EXECUTOR_BASE_URL"
+          ],
+          "matchedKey": "JOB_EXECUTOR_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "jobs-and-events",
+      "owner": "platform-events",
+      "checks": [
+        {
+          "name": "job internal token",
+          "keys": [
+            "SAAS_JOB_INTERNAL_TOKEN",
+            "DDD_JOB_INTERNAL_TOKEN",
+            "LUMIRA_JOB_INTERNAL_TOKEN"
+          ],
+          "matchedKey": "SAAS_JOB_INTERNAL_TOKEN",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "job backend url",
+          "keys": [
+            "SAAS_JOB_BACKEND_BASE_URL",
+            "LUMIRA_JOB_BACKEND_BASE_URL"
+          ],
+          "matchedKey": "SAAS_JOB_BACKEND_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "job message url",
+          "keys": [
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "job file url",
+          "keys": [
+            "SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "job payment url",
+          "keys": [
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "job plugin url",
+          "keys": [
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+          ],
+          "matchedKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "xxl job admin",
+          "keys": [
+            "XXL_JOB_ADMIN_ADDRESSES",
+            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "matchedKey": "XXL_JOB_ADMIN_ADDRESSES",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "xxl job token",
+          "keys": [
+            "XXL_JOB_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ACCESS_TOKEN",
+            "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+          ],
+          "matchedKey": "XXL_JOB_ACCESS_TOKEN",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "outbox dispatcher",
+          "keys": [
+            "SAAS_EVENT_OUTBOX_DISPATCHER",
+            "LUMIRA_EVENT_OUTBOX_DISPATCHER"
+          ],
+          "matchedKey": "SAAS_EVENT_OUTBOX_DISPATCHER",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "redis-stream"
+        },
+        {
+          "name": "event stream key",
+          "keys": [
+            "SAAS_EVENT_REDIS_STREAM_KEY",
+            "LUMIRA_EVENT_REDIS_STREAM_KEY"
+          ],
+          "matchedKey": "SAAS_EVENT_REDIS_STREAM_KEY",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "file-processing",
+      "owner": "file-owner",
+      "checks": [
+        {
+          "name": "upload storage root",
+          "keys": [
+            "UPLOAD_STORAGE_ROOT",
+            "LUMIRA_UPLOAD_STORAGE_ROOT"
+          ],
+          "matchedKey": "UPLOAD_STORAGE_ROOT",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "/opt/lumira/data/uploads"
+        },
+        {
+          "name": "security scan mode",
+          "keys": [
+            "LUMIRA_FILE_SECURITY_SCAN_MODE"
+          ],
+          "matchedKey": "LUMIRA_FILE_SECURITY_SCAN_MODE",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "CLAMAV"
+        },
+        {
+          "name": "ocr mode",
+          "keys": [
+            "LUMIRA_FILE_OCR_MODE"
+          ],
+          "matchedKey": "LUMIRA_FILE_OCR_MODE",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "TESSERACT"
+        }
+      ]
+    },
+    {
+      "name": "payment",
+      "owner": "payment-owner",
+      "checks": [
+        {
+          "name": "payment public url",
+          "keys": [
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "matchedKey": "PAYMENT_PUBLIC_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "payment webhook secret",
+          "keys": [
+            "DDD_PAYMENT_WEBHOOK_SECRET",
+            "PAYMENT_WEBHOOK_SECRET",
+            "LUMIRA_PAYMENT_WEBHOOK_SECRET"
+          ],
+          "matchedKey": null,
+          "required": false,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": false,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "patternMismatch": false,
+          "safeValue": null
+        }
+      ]
+    },
+    {
+      "name": "ai",
+      "owner": "ai-owner",
+      "checks": [
+        {
+          "name": "provider enabled",
+          "keys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+            "LUMIRA_AI_PROVIDER_ENABLED"
+          ],
+          "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": [
+            "true"
+          ],
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "true"
+        },
+        {
+          "name": "provider base url",
+          "keys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_AI_PROVIDER_BASE_URL"
+          ],
+          "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "provider api key",
+          "keys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_API_KEY"
+          ],
+          "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "chat model",
+          "keys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+            "LUMIRA_AI_CHAT_MODEL"
+          ],
+          "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "gpt-4o-mini"
+        },
+        {
+          "name": "embedding model",
+          "keys": [
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+            "LUMIRA_AI_EMBEDDING_MODEL"
+          ],
+          "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "text-embedding-3-small"
+        },
+        {
+          "name": "owner internal token",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+            "SAAS_JOB_INTERNAL_TOKEN"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": 32,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": true,
+          "requiresHttps": false,
+          "safeValue": {
+            "present": true,
+            "length": 12,
+            "sha256Prefix": "54d86a54f3bc"
+          }
+        },
+        {
+          "name": "iam owner enabled",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": [
+            "true"
+          ],
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "true"
+        },
+        {
+          "name": "iam owner url",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_IAM_BASE_URL"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "platform owner enabled",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": [
+            "true"
+          ],
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "true"
+        },
+        {
+          "name": "platform owner url",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        },
+        {
+          "name": "file owner enabled",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+          "required": true,
+          "nonLocal": false,
+          "https": false,
+          "minLength": null,
+          "expectedValues": [
+            "true"
+          ],
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": false,
+          "safeValue": "true"
+        },
+        {
+          "name": "file owner url",
+          "keys": [
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_FILE_BASE_URL"
+          ],
+          "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+          "required": true,
+          "nonLocal": true,
+          "https": true,
+          "minLength": null,
+          "expectedValues": null,
+          "patternDescription": null,
+          "present": true,
+          "local": false,
+          "tooShort": false,
+          "requiresHttps": true,
+          "safeValue": {
+            "present": true,
+            "rawLength": 12,
+            "local": false
+          }
+        }
+      ]
+    }
+  ],
+  "coverageMatrix": [
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "backend base url",
+      "required": true,
+      "keys": [
+        "LUMIRA_BASE_URL",
+        "DEPLOY_CHECK_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "frontend base url",
+      "required": true,
+      "keys": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "PLAYWRIGHT_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database url",
+      "required": true,
+      "keys": [
+        "DB_URL",
+        "SPRING_DATASOURCE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "DB_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database username",
+      "required": true,
+      "keys": [
+        "DB_USERNAME",
+        "SPRING_DATASOURCE_USERNAME",
+        "MYSQL_USER"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "DB_USERNAME",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database password",
+      "required": true,
+      "keys": [
+        "DB_PASSWORD",
+        "SPRING_DATASOURCE_PASSWORD",
+        "MYSQL_PASSWORD"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "DB_PASSWORD",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "redis host",
+      "required": true,
+      "keys": [
+        "REDIS_HOST",
+        "SPRING_DATA_REDIS_HOST"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "REDIS_HOST",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "redis port",
+      "required": true,
+      "keys": [
+        "REDIS_PORT",
+        "SPRING_DATA_REDIS_PORT"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "REDIS_PORT",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "redis password",
+      "required": false,
+      "keys": [
+        "REDIS_PASSWORD",
+        "SPRING_DATA_REDIS_PASSWORD"
+      ],
+      "runtimePresent": false,
+      "matchedKey": null,
+      "envFileCovered": false,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "jwt secret",
+      "required": true,
+      "keys": [
+        "JWT_SECRET",
+        "SAAS_SECURITY_JWT_SECRET"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "JWT_SECRET",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "field secret",
+      "required": true,
+      "keys": [
+        "FIELD_SECRET",
+        "SAAS_SECURITY_FIELD_SECRET"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "FIELD_SECRET",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "cors origins",
+      "required": true,
+      "keys": [
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "trusted proxy mode",
+      "required": true,
+      "keys": [
+        "TRUST_FORWARDED_HEADERS",
+        "SAAS_WEB_TRUST_FORWARDED_HEADERS"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "TRUST_FORWARDED_HEADERS",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "system service",
+      "required": true,
+      "keys": [
+        "SYSTEM_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SYSTEM_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "auth service",
+      "required": true,
+      "keys": [
+        "AUTH_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "AUTH_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "file service",
+      "required": true,
+      "keys": [
+        "FILE_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "FILE_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "message service",
+      "required": true,
+      "keys": [
+        "MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "MESSAGE_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "plugin service",
+      "required": true,
+      "keys": [
+        "PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "PLUGIN_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "localization service",
+      "required": true,
+      "keys": [
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LOCALIZATION_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "payment service",
+      "required": true,
+      "keys": [
+        "PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "PAYMENT_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "ai service",
+      "required": true,
+      "keys": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "AI_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "job executor",
+      "required": true,
+      "keys": [
+        "JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "JOB_EXECUTOR_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job internal token",
+      "required": true,
+      "keys": [
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "DDD_JOB_INTERNAL_TOKEN",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_JOB_INTERNAL_TOKEN",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job backend url",
+      "required": true,
+      "keys": [
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "LUMIRA_JOB_BACKEND_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_JOB_BACKEND_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job message url",
+      "required": true,
+      "keys": [
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job file url",
+      "required": true,
+      "keys": [
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job payment url",
+      "required": true,
+      "keys": [
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job plugin url",
+      "required": true,
+      "keys": [
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "xxl job admin",
+      "required": true,
+      "keys": [
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "XXL_JOB_ADMIN_ADDRESSES",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "xxl job token",
+      "required": true,
+      "keys": [
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ACCESS_TOKEN",
+        "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "XXL_JOB_ACCESS_TOKEN",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "outbox dispatcher",
+      "required": true,
+      "keys": [
+        "SAAS_EVENT_OUTBOX_DISPATCHER",
+        "LUMIRA_EVENT_OUTBOX_DISPATCHER"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_EVENT_OUTBOX_DISPATCHER",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "event stream key",
+      "required": true,
+      "keys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "LUMIRA_EVENT_REDIS_STREAM_KEY"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "SAAS_EVENT_REDIS_STREAM_KEY",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "file-processing",
+      "owner": "file-owner",
+      "check": "upload storage root",
+      "required": true,
+      "keys": [
+        "UPLOAD_STORAGE_ROOT",
+        "LUMIRA_UPLOAD_STORAGE_ROOT"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "UPLOAD_STORAGE_ROOT",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "file-processing",
+      "owner": "file-owner",
+      "check": "security scan mode",
+      "required": true,
+      "keys": [
+        "LUMIRA_FILE_SECURITY_SCAN_MODE"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_FILE_SECURITY_SCAN_MODE",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "file-processing",
+      "owner": "file-owner",
+      "check": "ocr mode",
+      "required": true,
+      "keys": [
+        "LUMIRA_FILE_OCR_MODE"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_FILE_OCR_MODE",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "payment",
+      "owner": "payment-owner",
+      "check": "payment public url",
+      "required": true,
+      "keys": [
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "PAYMENT_PUBLIC_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "payment",
+      "owner": "payment-owner",
+      "check": "payment webhook secret",
+      "required": false,
+      "keys": [
+        "DDD_PAYMENT_WEBHOOK_SECRET",
+        "PAYMENT_WEBHOOK_SECRET",
+        "LUMIRA_PAYMENT_WEBHOOK_SECRET"
+      ],
+      "runtimePresent": false,
+      "matchedKey": null,
+      "envFileCovered": false,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider enabled",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+        "LUMIRA_AI_PROVIDER_ENABLED"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider base url",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider api key",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_API_KEY"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "chat model",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_CHAT_MODEL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "embedding model",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_EMBEDDING_MODEL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "owner internal token",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+        "SAAS_JOB_INTERNAL_TOKEN"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "iam owner enabled",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "iam owner url",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "platform owner enabled",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "platform owner url",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "file owner enabled",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    },
+    {
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "file owner url",
+      "required": true,
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL"
+      ],
+      "runtimePresent": true,
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+      "envFileCovered": true,
+      "templateCovered": true,
+      "workflowCovered": true
+    }
+  ],
+  "blockers": [
+    "runtime.backend base url: placeholder value is not allowed",
+    "runtime.backend base url: must use HTTPS for production-equivalent evidence",
+    "runtime.frontend base url: placeholder value is not allowed",
+    "runtime.frontend base url: must use HTTPS for production-equivalent evidence",
+    "runtime.database url: placeholder value is not allowed",
+    "runtime.database username: placeholder value is not allowed",
+    "runtime.database password: placeholder value is not allowed",
+    "runtime.database password: must be at least 16 characters",
+    "runtime.redis host: placeholder value is not allowed",
+    "runtime.jwt secret: placeholder value is not allowed",
+    "runtime.jwt secret: must be at least 32 characters",
+    "runtime.field secret: placeholder value is not allowed",
+    "runtime.field secret: must be at least 32 characters",
+    "runtime.cors origins: placeholder value is not allowed",
+    "owner-services.system service: placeholder value is not allowed",
+    "owner-services.system service: must use HTTPS for production-equivalent evidence",
+    "owner-services.auth service: placeholder value is not allowed",
+    "owner-services.auth service: must use HTTPS for production-equivalent evidence",
+    "owner-services.file service: placeholder value is not allowed",
+    "owner-services.file service: must use HTTPS for production-equivalent evidence",
+    "owner-services.message service: placeholder value is not allowed",
+    "owner-services.message service: must use HTTPS for production-equivalent evidence",
+    "owner-services.plugin service: placeholder value is not allowed",
+    "owner-services.plugin service: must use HTTPS for production-equivalent evidence",
+    "owner-services.localization service: placeholder value is not allowed",
+    "owner-services.localization service: must use HTTPS for production-equivalent evidence",
+    "owner-services.payment service: placeholder value is not allowed",
+    "owner-services.payment service: must use HTTPS for production-equivalent evidence",
+    "owner-services.ai service: placeholder value is not allowed",
+    "owner-services.ai service: must use HTTPS for production-equivalent evidence",
+    "owner-services.job executor: placeholder value is not allowed",
+    "owner-services.job executor: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job internal token: placeholder value is not allowed",
+    "jobs-and-events.job internal token: must be at least 32 characters",
+    "jobs-and-events.job backend url: placeholder value is not allowed",
+    "jobs-and-events.job backend url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job message url: placeholder value is not allowed",
+    "jobs-and-events.job message url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job file url: placeholder value is not allowed",
+    "jobs-and-events.job file url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job payment url: placeholder value is not allowed",
+    "jobs-and-events.job payment url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job plugin url: placeholder value is not allowed",
+    "jobs-and-events.job plugin url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.xxl job admin: placeholder value is not allowed",
+    "jobs-and-events.xxl job admin: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.xxl job token: placeholder value is not allowed",
+    "jobs-and-events.xxl job token: must be at least 32 characters",
+    "jobs-and-events.event stream key: placeholder value is not allowed",
+    "payment.payment public url: placeholder value is not allowed",
+    "payment.payment public url: must use HTTPS for production-equivalent evidence",
+    "ai.provider base url: placeholder value is not allowed",
+    "ai.provider base url: must use HTTPS for production-equivalent evidence",
+    "ai.provider api key: placeholder value is not allowed",
+    "ai.provider api key: must be at least 32 characters",
+    "ai.owner internal token: placeholder value is not allowed",
+    "ai.owner internal token: must be at least 32 characters",
+    "ai.iam owner url: placeholder value is not allowed",
+    "ai.iam owner url: must use HTTPS for production-equivalent evidence",
+    "ai.platform owner url: placeholder value is not allowed",
+    "ai.platform owner url: must use HTTPS for production-equivalent evidence",
+    "ai.file owner url: placeholder value is not allowed",
+    "ai.file owner url: must use HTTPS for production-equivalent evidence"
+  ],
+  "primaryBlockers": [],
+  "placeholderDerivedConfigBlockers": [
+    "runtime.backend base url: placeholder value is not allowed",
+    "runtime.backend base url: must use HTTPS for production-equivalent evidence",
+    "runtime.frontend base url: placeholder value is not allowed",
+    "runtime.frontend base url: must use HTTPS for production-equivalent evidence",
+    "runtime.database url: placeholder value is not allowed",
+    "runtime.database username: placeholder value is not allowed",
+    "runtime.database password: placeholder value is not allowed",
+    "runtime.database password: must be at least 16 characters",
+    "runtime.redis host: placeholder value is not allowed",
+    "runtime.jwt secret: placeholder value is not allowed",
+    "runtime.jwt secret: must be at least 32 characters",
+    "runtime.field secret: placeholder value is not allowed",
+    "runtime.field secret: must be at least 32 characters",
+    "runtime.cors origins: placeholder value is not allowed",
+    "owner-services.system service: placeholder value is not allowed",
+    "owner-services.system service: must use HTTPS for production-equivalent evidence",
+    "owner-services.auth service: placeholder value is not allowed",
+    "owner-services.auth service: must use HTTPS for production-equivalent evidence",
+    "owner-services.file service: placeholder value is not allowed",
+    "owner-services.file service: must use HTTPS for production-equivalent evidence",
+    "owner-services.message service: placeholder value is not allowed",
+    "owner-services.message service: must use HTTPS for production-equivalent evidence",
+    "owner-services.plugin service: placeholder value is not allowed",
+    "owner-services.plugin service: must use HTTPS for production-equivalent evidence",
+    "owner-services.localization service: placeholder value is not allowed",
+    "owner-services.localization service: must use HTTPS for production-equivalent evidence",
+    "owner-services.payment service: placeholder value is not allowed",
+    "owner-services.payment service: must use HTTPS for production-equivalent evidence",
+    "owner-services.ai service: placeholder value is not allowed",
+    "owner-services.ai service: must use HTTPS for production-equivalent evidence",
+    "owner-services.job executor: placeholder value is not allowed",
+    "owner-services.job executor: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job internal token: placeholder value is not allowed",
+    "jobs-and-events.job internal token: must be at least 32 characters",
+    "jobs-and-events.job backend url: placeholder value is not allowed",
+    "jobs-and-events.job backend url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job message url: placeholder value is not allowed",
+    "jobs-and-events.job message url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job file url: placeholder value is not allowed",
+    "jobs-and-events.job file url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job payment url: placeholder value is not allowed",
+    "jobs-and-events.job payment url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.job plugin url: placeholder value is not allowed",
+    "jobs-and-events.job plugin url: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.xxl job admin: placeholder value is not allowed",
+    "jobs-and-events.xxl job admin: must use HTTPS for production-equivalent evidence",
+    "jobs-and-events.xxl job token: placeholder value is not allowed",
+    "jobs-and-events.xxl job token: must be at least 32 characters",
+    "jobs-and-events.event stream key: placeholder value is not allowed",
+    "payment.payment public url: placeholder value is not allowed",
+    "payment.payment public url: must use HTTPS for production-equivalent evidence",
+    "ai.provider base url: placeholder value is not allowed",
+    "ai.provider base url: must use HTTPS for production-equivalent evidence",
+    "ai.provider api key: placeholder value is not allowed",
+    "ai.provider api key: must be at least 32 characters",
+    "ai.owner internal token: placeholder value is not allowed",
+    "ai.owner internal token: must be at least 32 characters",
+    "ai.iam owner url: placeholder value is not allowed",
+    "ai.iam owner url: must use HTTPS for production-equivalent evidence",
+    "ai.platform owner url: placeholder value is not allowed",
+    "ai.platform owner url: must use HTTPS for production-equivalent evidence",
+    "ai.file owner url: placeholder value is not allowed",
+    "ai.file owner url: must use HTTPS for production-equivalent evidence"
+  ],
+  "blockerDetails": [
+    {
+      "blocker": "runtime.backend base url: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "backend base url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_BASE_URL",
+        "DEPLOY_CHECK_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.backend base url: must use HTTPS for production-equivalent evidence",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "backend base url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "LUMIRA_BASE_URL",
+        "DEPLOY_CHECK_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.frontend base url: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "frontend base url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "matchedKey": "PLAYWRIGHT_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.frontend base url: must use HTTPS for production-equivalent evidence",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "frontend base url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "matchedKey": "PLAYWRIGHT_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.database url: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "DB_URL",
+        "SPRING_DATASOURCE_URL"
+      ],
+      "matchedKey": "DB_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.database username: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database username",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "DB_USERNAME",
+        "SPRING_DATASOURCE_USERNAME",
+        "MYSQL_USER"
+      ],
+      "matchedKey": "DB_USERNAME",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.database password: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database password",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "DB_PASSWORD",
+        "SPRING_DATASOURCE_PASSWORD",
+        "MYSQL_PASSWORD"
+      ],
+      "matchedKey": "DB_PASSWORD",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.database password: must be at least 16 characters",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "database password",
+      "reason": "must be at least 16 characters",
+      "envKeys": [
+        "DB_PASSWORD",
+        "SPRING_DATASOURCE_PASSWORD",
+        "MYSQL_PASSWORD"
+      ],
+      "matchedKey": "DB_PASSWORD",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.redis host: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "redis host",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "REDIS_HOST",
+        "SPRING_DATA_REDIS_HOST"
+      ],
+      "matchedKey": "REDIS_HOST",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.jwt secret: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "jwt secret",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "JWT_SECRET",
+        "SAAS_SECURITY_JWT_SECRET"
+      ],
+      "matchedKey": "JWT_SECRET",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.jwt secret: must be at least 32 characters",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "jwt secret",
+      "reason": "must be at least 32 characters",
+      "envKeys": [
+        "JWT_SECRET",
+        "SAAS_SECURITY_JWT_SECRET"
+      ],
+      "matchedKey": "JWT_SECRET",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.field secret: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "field secret",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "FIELD_SECRET",
+        "SAAS_SECURITY_FIELD_SECRET"
+      ],
+      "matchedKey": "FIELD_SECRET",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.field secret: must be at least 32 characters",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "field secret",
+      "reason": "must be at least 32 characters",
+      "envKeys": [
+        "FIELD_SECRET",
+        "SAAS_SECURITY_FIELD_SECRET"
+      ],
+      "matchedKey": "FIELD_SECRET",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "runtime.cors origins: placeholder value is not allowed",
+      "group": "runtime",
+      "owner": "release-infra",
+      "check": "cors origins",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+      ],
+      "matchedKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.system service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "system service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SYSTEM_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SYSTEM_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.system service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "system service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "SYSTEM_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SYSTEM_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.auth service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "auth service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "AUTH_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "AUTH_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.auth service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "auth service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "AUTH_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "AUTH_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.file service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "file service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "FILE_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "FILE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.file service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "file service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "FILE_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "FILE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.message service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "message service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "MESSAGE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.message service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "message service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "MESSAGE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.plugin service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "plugin service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "PLUGIN_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.plugin service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "plugin service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "PLUGIN_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.localization service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "localization service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "LOCALIZATION_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.localization service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "localization service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "LOCALIZATION_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.payment service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "payment service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "PAYMENT_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.payment service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "payment service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "PAYMENT_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.ai service: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "ai service",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL"
+      ],
+      "matchedKey": "AI_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.ai service: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "ai service",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL"
+      ],
+      "matchedKey": "AI_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.job executor: placeholder value is not allowed",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "job executor",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL"
+      ],
+      "matchedKey": "JOB_EXECUTOR_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "owner-services.job executor: must use HTTPS for production-equivalent evidence",
+      "group": "owner-services",
+      "owner": "platform-owners",
+      "check": "job executor",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL"
+      ],
+      "matchedKey": "JOB_EXECUTOR_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job internal token: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job internal token",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "DDD_JOB_INTERNAL_TOKEN",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ],
+      "matchedKey": "SAAS_JOB_INTERNAL_TOKEN",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job internal token: must be at least 32 characters",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job internal token",
+      "reason": "must be at least 32 characters",
+      "envKeys": [
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "DDD_JOB_INTERNAL_TOKEN",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ],
+      "matchedKey": "SAAS_JOB_INTERNAL_TOKEN",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job backend url: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job backend url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "LUMIRA_JOB_BACKEND_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_BACKEND_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job backend url: must use HTTPS for production-equivalent evidence",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job backend url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "LUMIRA_JOB_BACKEND_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_BACKEND_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job message url: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job message url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job message url: must use HTTPS for production-equivalent evidence",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job message url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job file url: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job file url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job file url: must use HTTPS for production-equivalent evidence",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job file url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job payment url: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job payment url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job payment url: must use HTTPS for production-equivalent evidence",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job payment url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job plugin url: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job plugin url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.job plugin url: must use HTTPS for production-equivalent evidence",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "job plugin url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "matchedKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.xxl job admin: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "xxl job admin",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "matchedKey": "XXL_JOB_ADMIN_ADDRESSES",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.xxl job admin: must use HTTPS for production-equivalent evidence",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "xxl job admin",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "matchedKey": "XXL_JOB_ADMIN_ADDRESSES",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.xxl job token: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "xxl job token",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ACCESS_TOKEN",
+        "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+      ],
+      "matchedKey": "XXL_JOB_ACCESS_TOKEN",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.xxl job token: must be at least 32 characters",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "xxl job token",
+      "reason": "must be at least 32 characters",
+      "envKeys": [
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ACCESS_TOKEN",
+        "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+      ],
+      "matchedKey": "XXL_JOB_ACCESS_TOKEN",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "jobs-and-events.event stream key: placeholder value is not allowed",
+      "group": "jobs-and-events",
+      "owner": "platform-events",
+      "check": "event stream key",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "LUMIRA_EVENT_REDIS_STREAM_KEY"
+      ],
+      "matchedKey": "SAAS_EVENT_REDIS_STREAM_KEY",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "payment.payment public url: placeholder value is not allowed",
+      "group": "payment",
+      "owner": "payment-owner",
+      "check": "payment public url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "matchedKey": "PAYMENT_PUBLIC_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "payment.payment public url: must use HTTPS for production-equivalent evidence",
+      "group": "payment",
+      "owner": "payment-owner",
+      "check": "payment public url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "matchedKey": "PAYMENT_PUBLIC_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.provider base url: placeholder value is not allowed",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider base url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.provider base url: must use HTTPS for production-equivalent evidence",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider base url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.provider api key: placeholder value is not allowed",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider api key",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_API_KEY"
+      ],
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.provider api key: must be at least 32 characters",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "provider api key",
+      "reason": "must be at least 32 characters",
+      "envKeys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_API_KEY"
+      ],
+      "matchedKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.owner internal token: placeholder value is not allowed",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "owner internal token",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+        "SAAS_JOB_INTERNAL_TOKEN"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.owner internal token: must be at least 32 characters",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "owner internal token",
+      "reason": "must be at least 32 characters",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+        "SAAS_JOB_INTERNAL_TOKEN"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.iam owner url: placeholder value is not allowed",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "iam owner url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.iam owner url: must use HTTPS for production-equivalent evidence",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "iam owner url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.platform owner url: placeholder value is not allowed",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "platform owner url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.platform owner url: must use HTTPS for production-equivalent evidence",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "platform owner url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.file owner url: placeholder value is not allowed",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "file owner url",
+      "reason": "placeholder value is not allowed",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    },
+    {
+      "blocker": "ai.file owner url: must use HTTPS for production-equivalent evidence",
+      "group": "ai",
+      "owner": "ai-owner",
+      "check": "file owner url",
+      "reason": "must use HTTPS for production-equivalent evidence",
+      "envKeys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL"
+      ],
+      "matchedKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+      "blockedByPlaceholderKey": true,
+      "required": true
+    }
+  ],
+  "blockersByGroup": {
+    "ai": 12,
+    "jobs-and-events": 17,
+    "owner-services": 18,
+    "payment": 2,
+    "runtime": 14
+  },
+  "blockersByOwner": {
+    "ai-owner": 12,
+    "payment-owner": 2,
+    "platform-events": 17,
+    "platform-owners": 18,
+    "release-infra": 14
+  },
+  "warnings": []
+}

@@ -2,6 +2,7 @@ package com.lumira.file.upload;
 
 import com.lumira.file.config.UploadProperties;
 import com.lumira.common.exception.BizException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -20,7 +21,7 @@ class ImageUploadServiceTest {
     void rejectsSvgUploads() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
-        ImageUploadService service = new ImageUploadService(properties);
+        ImageUploadService service = service(properties);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -37,7 +38,7 @@ class ImageUploadServiceTest {
     void acceptsRasterImageUploads() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
-        ImageUploadService service = new ImageUploadService(properties);
+        ImageUploadService service = service(properties);
 
         byte[] pngBytes = generatePngBytes();
         MockMultipartFile file = new MockMultipartFile(
@@ -57,7 +58,7 @@ class ImageUploadServiceTest {
     void acceptsRasterImageWhenClientOmitsContentType() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
-        ImageUploadService service = new ImageUploadService(properties);
+        ImageUploadService service = service(properties);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -76,7 +77,7 @@ class ImageUploadServiceTest {
     void acceptsRasterImageWhenClientSendsOctetStream() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
-        ImageUploadService service = new ImageUploadService(properties);
+        ImageUploadService service = service(properties);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -95,5 +96,9 @@ class ImageUploadServiceTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(image, "png", output);
         return output.toByteArray();
+    }
+
+    private ImageUploadService service(UploadProperties properties) {
+        return new ImageUploadService(properties, new FileStorageMetrics(new SimpleMeterRegistry()));
     }
 }

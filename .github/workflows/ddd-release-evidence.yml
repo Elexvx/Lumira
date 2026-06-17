@@ -1,0 +1,527 @@
+name: DDD Release Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Evidence mode: plan lists steps, run executes them"
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - run
+      strict:
+        description: "Run strict release gates"
+        required: true
+        default: true
+        type: boolean
+      github_environment:
+        description: "GitHub environment that stores production-equivalent secrets"
+        required: true
+        default: staging
+        type: string
+      evidence_environment:
+        description: "Runtime evidence environment label"
+        required: true
+        default: staging
+        type: string
+      backend_base_url:
+        description: "Deployed backend base URL"
+        required: true
+        type: string
+      frontend_base_url:
+        description: "Deployed frontend base URL"
+        required: true
+        type: string
+      ai_base_url:
+        description: "AI owner base URL; defaults to backend_base_url when empty"
+        required: false
+        default: ""
+        type: string
+      max_artifact_age_hours:
+        description: "Freshness window for strict release evidence"
+        required: true
+        default: "24"
+        type: string
+      expect_ai_remote:
+        description: "Require remote AI provider and owner gateway evidence"
+        required: true
+        default: true
+        type: boolean
+      expect_frontend_deployed:
+        description: "Require deployed non-local frontend smoke evidence"
+        required: true
+        default: true
+        type: boolean
+      promote_authenticated_baseline:
+        description: "Promote this run's authenticated performance actual into the accepted baseline"
+        required: true
+        default: false
+        type: boolean
+      baseline_accepted_by:
+        description: "Baseline approver; defaults to the workflow actor when empty"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  evidence:
+    name: Collect DDD Release Evidence
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.github_environment }}
+    env:
+      DDD_RELEASE_ENV_FILE: ${{ github.workspace }}/.release-evidence.env
+      DDD_EVIDENCE_ENVIRONMENT: ${{ inputs.evidence_environment }}
+      DDD_RELEASE_CANDIDATE: ${{ github.sha }}
+      DDD_EVIDENCE_OPERATOR: ${{ github.actor }}
+      DDD_RELEASE_MAX_ARTIFACT_AGE_HOURS: ${{ inputs.max_artifact_age_hours }}
+      LUMIRA_BASE_URL: ${{ inputs.backend_base_url }}
+      PLAYWRIGHT_BASE_URL: ${{ inputs.frontend_base_url }}
+      LUMIRA_AI_BASE_URL: ${{ inputs.ai_base_url != '' && inputs.ai_base_url || inputs.backend_base_url }}
+      DDD_AI_EXPECT_PROVIDER_REMOTE: ${{ inputs.expect_ai_remote }}
+      DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE: ${{ inputs.expect_ai_remote }}
+      DDD_FRONTEND_EXPECT_DEPLOYED: ${{ inputs.expect_frontend_deployed }}
+      DDD_AUTH_PERF_BASELINE_PROMOTE: ${{ inputs.promote_authenticated_baseline }}
+      DDD_AUTH_PERF_BASELINE_ACCEPTED_BY: ${{ inputs.baseline_accepted_by != '' && inputs.baseline_accepted_by || github.actor }}
+      DDD_AUTH_PERF_BASELINE_ENVIRONMENT: ${{ inputs.evidence_environment }}
+      DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT: artifacts/ddd/performance/authenticated-runtime-actual.json
+      DDD_RELEASE_EVIDENCE_STRICT: ${{ inputs.strict }}
+      DDD_OUTBOX_SMOKE_STRICT: ${{ inputs.strict }}
+      DB_URL: ${{ secrets.LUMIRA_DB_URL }}
+      DB_USERNAME: ${{ secrets.LUMIRA_DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.LUMIRA_DB_PASSWORD }}
+      REDIS_HOST: ${{ secrets.LUMIRA_REDIS_HOST }}
+      REDIS_PORT: ${{ secrets.LUMIRA_REDIS_PORT }}
+      REDIS_PASSWORD: ${{ secrets.LUMIRA_REDIS_PASSWORD }}
+      JWT_SECRET: ${{ secrets.LUMIRA_JWT_SECRET }}
+      FIELD_SECRET: ${{ secrets.LUMIRA_FIELD_SECRET }}
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${{ inputs.frontend_base_url }}
+      TRUST_FORWARDED_HEADERS: "true"
+      SYSTEM_SERVICE_BASE_URL: ${{ secrets.LUMIRA_SYSTEM_SERVICE_BASE_URL }}
+      AUTH_SERVICE_BASE_URL: ${{ secrets.LUMIRA_AUTH_SERVICE_BASE_URL }}
+      FILE_SERVICE_BASE_URL: ${{ secrets.LUMIRA_FILE_SERVICE_BASE_URL }}
+      MESSAGE_SERVICE_BASE_URL: ${{ secrets.LUMIRA_MESSAGE_SERVICE_BASE_URL }}
+      PLUGIN_SERVICE_BASE_URL: ${{ secrets.LUMIRA_PLUGIN_SERVICE_BASE_URL }}
+      LOCALIZATION_SERVICE_BASE_URL: ${{ secrets.LUMIRA_LOCALIZATION_SERVICE_BASE_URL }}
+      PAYMENT_SERVICE_BASE_URL: ${{ secrets.LUMIRA_PAYMENT_SERVICE_BASE_URL }}
+      AI_SERVICE_BASE_URL: ${{ secrets.LUMIRA_AI_SERVICE_BASE_URL }}
+      JOB_EXECUTOR_BASE_URL: ${{ secrets.LUMIRA_JOB_EXECUTOR_BASE_URL }}
+      SAAS_JOB_INTERNAL_TOKEN: ${{ secrets.LUMIRA_JOB_INTERNAL_TOKEN }}
+      SAAS_JOB_BACKEND_BASE_URL: ${{ secrets.LUMIRA_JOB_BACKEND_BASE_URL }}
+      SAAS_JOB_MESSAGE_SERVICE_BASE_URL: ${{ secrets.LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL }}
+      SAAS_JOB_FILE_SERVICE_BASE_URL: ${{ secrets.LUMIRA_JOB_FILE_SERVICE_BASE_URL }}
+      SAAS_JOB_PAYMENT_SERVICE_BASE_URL: ${{ secrets.LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL }}
+      SAAS_JOB_PLUGIN_SERVICE_BASE_URL: ${{ secrets.LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL }}
+      XXL_JOB_ADMIN_ADDRESSES: ${{ secrets.LUMIRA_XXL_JOB_ADMIN_ADDRESSES }}
+      XXL_JOB_ACCESS_TOKEN: ${{ secrets.LUMIRA_XXL_JOB_ACCESS_TOKEN }}
+      SAAS_EVENT_OUTBOX_DISPATCHER: ${{ secrets.LUMIRA_EVENT_OUTBOX_DISPATCHER }}
+      SAAS_EVENT_REDIS_STREAM_KEY: ${{ secrets.LUMIRA_EVENT_REDIS_STREAM_KEY }}
+      UPLOAD_STORAGE_ROOT: ${{ secrets.LUMIRA_UPLOAD_STORAGE_ROOT }}
+      LUMIRA_FILE_SECURITY_SCAN_MODE: ${{ secrets.LUMIRA_FILE_SECURITY_SCAN_MODE }}
+      LUMIRA_FILE_OCR_MODE: ${{ secrets.LUMIRA_FILE_OCR_MODE }}
+      PAYMENT_PUBLIC_BASE_URL: ${{ inputs.backend_base_url }}
+      PAYMENT_WEBHOOK_SECRET: ${{ secrets.LUMIRA_PAYMENT_WEBHOOK_SECRET }}
+      DDD_PAYMENT_WEBHOOK_SECRET: ${{ secrets.LUMIRA_PAYMENT_WEBHOOK_SECRET }}
+      LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED: ${{ secrets.LUMIRA_AI_PROVIDER_ENABLED }}
+      LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.LUMIRA_AI_PROVIDER_BASE_URL }}
+      LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY: ${{ secrets.LUMIRA_AI_PROVIDER_API_KEY }}
+      LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL: ${{ secrets.LUMIRA_AI_CHAT_MODEL }}
+      LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL: ${{ secrets.LUMIRA_AI_EMBEDDING_MODEL }}
+      LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN: ${{ secrets.LUMIRA_AI_OWNER_INTERNAL_TOKEN }}
+      LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED: "true"
+      LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL: ${{ secrets.LUMIRA_AI_OWNER_IAM_BASE_URL }}
+      LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED: "true"
+      LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL: ${{ secrets.LUMIRA_AI_OWNER_PLATFORM_BASE_URL }}
+      LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED: "true"
+      LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL: ${{ secrets.LUMIRA_AI_OWNER_FILE_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Prepare release evidence environment file
+        shell: bash
+        run: |
+          set -euo pipefail
+          keys=(
+            LUMIRA_BASE_URL PLAYWRIGHT_BASE_URL LUMIRA_AI_BASE_URL
+            DB_URL DB_USERNAME DB_PASSWORD REDIS_HOST REDIS_PORT REDIS_PASSWORD
+            JWT_SECRET FIELD_SECRET CORS_ALLOWED_ORIGIN_PATTERNS TRUST_FORWARDED_HEADERS
+            SYSTEM_SERVICE_BASE_URL AUTH_SERVICE_BASE_URL FILE_SERVICE_BASE_URL MESSAGE_SERVICE_BASE_URL
+            PLUGIN_SERVICE_BASE_URL LOCALIZATION_SERVICE_BASE_URL PAYMENT_SERVICE_BASE_URL AI_SERVICE_BASE_URL JOB_EXECUTOR_BASE_URL
+            SAAS_JOB_INTERNAL_TOKEN SAAS_JOB_BACKEND_BASE_URL SAAS_JOB_MESSAGE_SERVICE_BASE_URL
+            SAAS_JOB_FILE_SERVICE_BASE_URL SAAS_JOB_PAYMENT_SERVICE_BASE_URL SAAS_JOB_PLUGIN_SERVICE_BASE_URL
+            XXL_JOB_ADMIN_ADDRESSES XXL_JOB_ACCESS_TOKEN SAAS_EVENT_OUTBOX_DISPATCHER SAAS_EVENT_REDIS_STREAM_KEY
+            UPLOAD_STORAGE_ROOT LUMIRA_FILE_SECURITY_SCAN_MODE LUMIRA_FILE_OCR_MODE
+            PAYMENT_PUBLIC_BASE_URL PAYMENT_WEBHOOK_SECRET DDD_PAYMENT_WEBHOOK_SECRET
+            LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL
+            LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL
+            LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN
+            LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL
+            LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL
+            LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL
+          )
+          : > "$DDD_RELEASE_ENV_FILE"
+          for key in "${keys[@]}"; do
+            value="${!key-}"
+            printf '%s=%s\n' "$key" "$value" >> "$DDD_RELEASE_ENV_FILE"
+          done
+          chmod 600 "$DDD_RELEASE_ENV_FILE"
+
+      - name: Preflight release configuration evidence
+        if: inputs.mode == 'run' && inputs.strict == true
+        run: DDD_RELEASE_CONFIG_STRICT=true node scripts/ddd-release-config-evidence.mjs
+
+      - name: Install frontend dependencies
+        if: inputs.mode == 'run'
+        run: corepack pnpm --dir frontend install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        if: inputs.mode == 'run'
+        run: corepack pnpm --dir frontend exec playwright install --with-deps chromium
+
+      - uses: docker/setup-buildx-action@v3
+        if: inputs.mode == 'run'
+
+      - name: Run release evidence orchestrator
+        id: orchestrator
+        shell: bash
+        run: |
+          set +e
+          args=()
+          if [[ "${{ inputs.mode }}" == "run" ]]; then
+            args+=(--run)
+          fi
+          if [[ "${{ inputs.strict }}" == "true" ]]; then
+            args+=(--strict)
+          fi
+          node scripts/ddd-release-evidence-orchestrator.mjs "${args[@]}"
+          status=$?
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Refresh final go no-go packet
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [[ "${{ inputs.mode }}" == "run" && "${{ inputs.strict }}" == "true" ]]; then
+            DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-gate.mjs
+          fi
+          node scripts/ddd-release-readiness-summary.mjs
+          exit 0
+
+      - name: Generate release unblock brief
+        if: always()
+        run: node scripts/ddd-release-unblock-brief.mjs
+
+      - name: Validate release unblock brief contract
+        if: always()
+        run: node scripts/ddd-release-unblock-brief-contract.mjs
+
+      - name: Validate final owner queue run report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f artifacts/ddd/release/release-final-owner-queue-run-report.json ]]; then
+            node scripts/ddd-final-owner-queue-run-report-contract.mjs
+          else
+            echo "No final owner queue run report was generated."
+          fi
+
+      - name: Validate release execution run report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f artifacts/ddd/release/release-execution-run-report.json ]]; then
+            node scripts/ddd-release-execution-run-report-contract.mjs
+          else
+            echo "No release execution run report was generated."
+          fi
+
+      - name: Validate release artifact integrity contract
+        if: always()
+        run: node scripts/ddd-release-artifact-integrity-contract.mjs
+
+      - name: Validate release artifact integrity gate contract
+        if: always()
+        run: node scripts/ddd-release-artifact-integrity-gate-contract.mjs
+
+      - name: Validate release artifact path leak contract
+        if: always()
+        run: node scripts/ddd-release-artifact-path-leak-contract.mjs
+
+      - name: Validate release config owner input reconciliation
+        if: always()
+        run: node scripts/ddd-release-config-owner-input-reconciliation.mjs
+
+      - name: Generate release owner input receipt
+        if: always()
+        run: node scripts/ddd-release-owner-input-receipt.mjs
+
+      - name: Validate release owner input receipt contract
+        if: always()
+        run: node scripts/ddd-release-owner-input-receipt-contract.mjs
+
+      - name: Validate release artifact path leak contract after owner receipt
+        if: always()
+        run: node scripts/ddd-release-artifact-path-leak-contract.mjs
+
+      - name: Validate release cutover contract
+        if: always()
+        run: node scripts/ddd-release-cutover-contract.mjs
+
+      - name: Validate release final go no-go gate contract
+        if: always()
+        run: node scripts/ddd-release-final-go-no-go-gate-contract.mjs
+
+      - name: Validate release preflight gate contract
+        if: always()
+        run: node scripts/ddd-release-preflight-gate-contract.mjs
+
+      - name: Validate release final owner queue contract
+        if: always()
+        run: node scripts/ddd-release-final-owner-queue-contract.mjs
+
+      - name: Validate release closure wave receipts contract
+        if: always()
+        run: node scripts/ddd-release-closure-wave-receipts-contract.mjs
+
+      - name: Validate release next action queue contract
+        if: always()
+        run: node scripts/ddd-release-next-action-queue-contract.mjs
+
+      - name: Validate release execution queue contract
+        if: always()
+        run: node scripts/ddd-release-execution-queue-contract.mjs
+
+      - name: Validate release command catalog contract
+        if: always()
+        run: node scripts/ddd-release-command-catalog-contract.mjs
+
+      - name: Validate release owner handoff contract
+        if: always()
+        run: node scripts/ddd-release-owner-handoff-contract.mjs
+
+      - name: Validate release env owner matrix contract
+        if: always()
+        run: node scripts/ddd-release-env-owner-matrix-contract.mjs
+
+      - name: Validate release env fill priority contract
+        if: always()
+        run: node scripts/ddd-release-env-fill-priority-contract.mjs
+
+      - name: Validate release env canonical fill contract
+        if: always()
+        run: node scripts/ddd-release-env-canonical-fill-contract.mjs
+
+      - name: Validate release env readiness redacted contract
+        if: always()
+        run: node scripts/ddd-release-env-readiness-redacted-contract.mjs
+
+      - name: Validate release env owner handoff redacted contract
+        if: always()
+        run: node scripts/ddd-release-env-owner-handoff-redacted-contract.mjs
+
+      - name: Validate release env owner input packet contract
+        if: always()
+        run: node scripts/ddd-release-env-owner-input-packet-contract.mjs
+
+      - name: Validate release env owner templates contract
+        if: always()
+        run: node scripts/ddd-release-env-owner-templates-contract.mjs
+
+      - name: Validate release env owner templates merge contract
+        if: always()
+        run: node scripts/ddd-release-env-owner-templates-merge-contract.mjs
+
+      - name: Validate release env bootstrap contract
+        if: always()
+        run: node scripts/ddd-release-env-bootstrap-contract.mjs
+
+      - name: Validate release env readiness gate contract
+        if: always()
+        run: node scripts/ddd-release-env-readiness-gate-contract.mjs
+
+      - name: Validate release env alias sync contract
+        if: always()
+        run: node scripts/ddd-release-env-alias-sync-contract.mjs
+
+      - name: Validate release env canonical lint contract
+        if: always()
+        run: node scripts/ddd-release-env-canonical-lint-contract.mjs
+
+      - name: Validate release env canonical merge contract
+        if: always()
+        run: node scripts/ddd-release-env-canonical-merge-contract.mjs
+
+      - name: Validate release env file lint contract
+        if: always()
+        run: node scripts/ddd-release-env-file-lint-contract.mjs
+
+      - name: Validate release evidence gate contract
+        if: always()
+        run: node scripts/ddd-release-evidence-gate-contract.mjs
+
+      - name: Validate EXPLAIN gate report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f artifacts/ddd/release/explain-gate-report.json ]]; then
+            node scripts/ddd-explain-gate-report-contract.mjs
+          else
+            echo "No EXPLAIN gate report was generated."
+          fi
+
+      - name: Capture release preflight output
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ddd/release
+          if [[ -f artifacts/ddd/release/release-preflight-gate.sh ]]; then
+            bash artifacts/ddd/release/release-preflight-gate.sh > artifacts/ddd/release/release-preflight-output.txt 2>&1
+            set +e
+            DDD_RELEASE_PREFLIGHT_ENFORCE=1 \
+              DDD_RELEASE_PREFLIGHT_REPORT=artifacts/ddd/release/release-preflight-strict-report.json \
+              bash artifacts/ddd/release/release-preflight-gate.sh > artifacts/ddd/release/release-preflight-strict-output.txt 2>&1
+            strict_status="$?"
+            set -e
+            echo "${strict_status}" > artifacts/ddd/release/release-preflight-strict-status.txt
+          else
+            echo "No release preflight gate was generated." > artifacts/ddd/release/release-preflight-output.txt
+            echo "No release preflight gate was generated." > artifacts/ddd/release/release-preflight-strict-output.txt
+            echo "127" > artifacts/ddd/release/release-preflight-strict-status.txt
+          fi
+          node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt > artifacts/ddd/release/release-preflight-output.redacted.tmp
+          mv artifacts/ddd/release/release-preflight-output.redacted.tmp artifacts/ddd/release/release-preflight-output.txt
+          node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-strict-output.txt > artifacts/ddd/release/release-preflight-strict-output.redacted.tmp
+          mv artifacts/ddd/release/release-preflight-strict-output.redacted.tmp artifacts/ddd/release/release-preflight-strict-output.txt
+
+      - name: Validate release preflight capture
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ddd-release-preflight-capture-contract.mjs
+
+      - name: Refresh release manifest after preflight capture
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          DDD_RELEASE_MANIFEST_CHECK_ENV=true \
+            node scripts/ddd-release-evidence-manifest.mjs
+          DDD_RELEASE_MANIFEST_STRICT="${{ inputs.strict }}" \
+            DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false \
+            node scripts/ddd-release-evidence-manifest.mjs
+          node scripts/ddd-release-readiness-summary.mjs
+          node scripts/ddd-release-unblock-brief.mjs
+          node scripts/ddd-release-unblock-brief-contract.mjs
+          exit 0
+
+      - name: Upload release evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ddd-release-evidence-${{ inputs.evidence_environment }}-${{ github.run_number }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            artifacts/ddd/**
+            tmp/ddd-explain/**
+            frontend/playwright-report/**
+            frontend/test-results/**
+
+      - name: Append release readiness summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f artifacts/ddd/release/readiness-summary.md ]]; then
+            cat artifacts/ddd/release/readiness-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release readiness summary was generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f artifacts/ddd/release/release-final-go-no-go.md ]]; then
+            printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/ddd/release/release-final-go-no-go.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No final go/no-go packet was generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f artifacts/ddd/release/release-unblock-brief.md ]]; then
+            printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/ddd/release/release-unblock-brief.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release unblock brief was generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          printf '\n\n## Release Preflight\n\n' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Command: `bash artifacts/ddd/release/release-preflight-gate.sh`' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Strict command: `DDD_RELEASE_PREFLIGHT_ENFORCE=1 bash artifacts/ddd/release/release-preflight-gate.sh`' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Report: `artifacts/ddd/release/release-preflight-report.json`' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Capture contract: `artifacts/ddd/release/release-preflight-capture-contract.json`' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Strict report: `artifacts/ddd/release/release-preflight-strict-report.json`' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Strict output: `artifacts/ddd/release/release-preflight-strict-output.txt`' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f artifacts/ddd/release/release-preflight-strict-status.txt ]]; then
+            echo "Strict status: \`$(cat artifacts/ddd/release/release-preflight-strict-status.txt)\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Strict status: `missing`' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f artifacts/ddd/release/release-preflight-output.txt ]]; then
+            printf '\n\n### Release Preflight Output\n\n```text\n' >> "$GITHUB_STEP_SUMMARY"
+            node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt >> "$GITHUB_STEP_SUMMARY"
+            printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release preflight output was generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f artifacts/ddd/release/release-artifact-integrity.md ]]; then
+            printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/ddd/release/release-artifact-integrity.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release artifact integrity packet was generated." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-final-owner-queue-run-report-summary.mjs
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-release-execution-run-report-summary.mjs
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-release-next-action-run-report-summary.mjs
+
+      - name: Enforce release evidence result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="${{ steps.orchestrator.outputs.status }}"
+          if [[ -z "$status" ]]; then
+            echo "orchestrator status is missing"
+            exit 1
+          fi
+          if [[ "$status" != "0" ]]; then
+            echo "release evidence orchestrator failed with status ${status}"
+            exit "$status"
+          fi
+          if [[ "${{ inputs.mode }}" == "run" && "${{ inputs.strict }}" == "true" ]]; then
+            DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-gate.mjs
+            node scripts/ddd-release-readiness-summary.mjs
+            DDD_RELEASE_PREFLIGHT_ENFORCE=1 bash artifacts/ddd/release/release-preflight-gate.sh
+          fi

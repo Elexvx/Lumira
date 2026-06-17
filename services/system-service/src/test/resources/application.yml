@@ -73,6 +73,10 @@ saas:
       - /api/v1/auth/login/code/challenge
       - /api/v1/auth/login/code/complete
       - /api/v1/auth/login-encryption-key
+      - /api/v2/auth/login
+      - /api/v2/auth/login/code/challenge
+      - /api/v2/auth/login/code/complete
+      - /api/v2/auth/login-encryption-key
       - /api/v1/auth/wechat/authorize-url
       - /api/v1/auth/wechat/login
       - /api/v1/auth/passkeys/authentication/options
@@ -80,15 +84,23 @@ saas:
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
       - /ws/message
+      - /api/v1/public/bootstrap
       - /api/v1/public/branding-settings
       - /api/v1/public/agreement-settings
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
+      - /api/v2/platform/public/bootstrap
+      - /api/v2/localization/bundles
+      - /api/v2/payment/webhook/**
+      - /api/v2/payment/webhooks/**
       - /api/uploads/**
       - /actuator/health
       - /actuator/info
       - /api/health
+      - /api/v2/*/readiness
+      - /api/v2/*/health
+      - /api/v2/*/metrics
       - /api/version
       - /api/v1/version
       - /api/v1/*/version

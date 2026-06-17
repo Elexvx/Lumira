@@ -43,7 +43,9 @@ class SystemManagementAppServiceVerificationLogsTenantScopeTest {
         service.listVerificationLogs(currentUser, null, null, null, null, null, null, 1, 10);
 
         assertTrue(queryOperations.queried);
-        assertArrayEquals(new Object[]{2001L}, queryOperations.countArgs);
+        assertTrue(queryOperations.querySql.contains("and l.tenant_id = ?"));
+        assertArrayEquals(new Object[]{2001L, 10L, 0L}, queryOperations.queryArgs);
+        assertEquals(null, queryOperations.countArgs);
     }
 
     @Test
@@ -55,7 +57,9 @@ class SystemManagementAppServiceVerificationLogsTenantScopeTest {
         service.listVerificationLogs(currentUser, 3001L, null, null, null, null, null, 1, 10);
 
         assertTrue(queryOperations.queried);
-        assertArrayEquals(new Object[]{3001L}, queryOperations.countArgs);
+        assertTrue(queryOperations.querySql.contains("and l.tenant_id = ?"));
+        assertArrayEquals(new Object[]{3001L, 10L, 0L}, queryOperations.queryArgs);
+        assertEquals(null, queryOperations.countArgs);
     }
 
     private static SystemManagementAppService buildService(MyBatisQueryOperations queryOperations) {
@@ -91,11 +95,15 @@ class SystemManagementAppServiceVerificationLogsTenantScopeTest {
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private boolean queried;
+        private String querySql;
+        private Object[] queryArgs;
         private Object[] countArgs;
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             queried = true;
+            querySql = sql;
+            queryArgs = Arrays.copyOf(args, args.length);
             return List.of();
         }
 

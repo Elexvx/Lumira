@@ -17,16 +17,22 @@ import java.util.Map;
 public class PaymentOutboxService {
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentOutboxService.class);
+    private static final String SOURCE_TYPE_PAYMENT = "payment";
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_ERROR_LENGTH = 512;
     private static final int MAX_DISPATCH_LIMIT = 200;
+    private static final int MAX_RETRY_COUNT = 8;
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_DISPATCHING = "DISPATCHING";
     private static final String STATUS_DELIVERED = "DELIVERED";
     private static final String STATUS_FAILED = "FAILED";
+    private static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
+    private static final long SNAPSHOT_CACHE_TTL_MS = 15_000L;
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private volatile OutboxMetricsSnapshot cachedSnapshot;
+    private volatile long cachedSnapshotUntilMillis;
 
     public PaymentOutboxService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
@@ -35,19 +41,21 @@ public class PaymentOutboxService {
 
     public void recordAfterCommit(Long tenantId, Long userId, String sourceType, String eventType, String eventKey, Object payload) {
         Runnable action = () -> record(tenantId, userId, sourceType, eventType, eventKey, payload);
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
+        if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
+            action.run();
             return;
         }
-        action.run();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 
     public void record(Long tenantId, Long userId, String sourceType, String eventType, String eventKey, Object payload) {
+        ensurePaymentSource(sourceType);
         jdbcTemplate.update(
                 """
                         insert into payment_event_outbox (
@@ -90,13 +98,84 @@ public class PaymentOutboxService {
         return delivered;
     }
 
-    public void replay(Long id, PaymentOutboxDispatcher dispatcher) {
+    public boolean replay(Long id, PaymentOutboxDispatcher dispatcher) {
         PaymentOutboxRow row = findById(id);
         if (row == null || dispatcher == null) {
-            return;
+            return false;
         }
         resetForReplay(row);
-        dispatchPending(dispatcher, 1);
+        return dispatchSingle(row, dispatcher);
+    }
+
+    public long pendingBacklog() {
+        return snapshot().pendingBacklog();
+    }
+
+    public long failedBacklog() {
+        return snapshot().failedBacklog();
+    }
+
+    public long deadLetterCount() {
+        return snapshot().deadLetterCount();
+    }
+
+    public long dispatchableBacklog() {
+        return snapshot().dispatchableBacklog();
+    }
+
+    public OutboxMetricsSnapshot snapshot() {
+        long now = System.currentTimeMillis();
+        OutboxMetricsSnapshot cached = cachedSnapshot;
+        if (cached != null && now < cachedSnapshotUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = cachedSnapshot;
+            if (cached != null && now < cachedSnapshotUntilMillis) {
+                return cached;
+            }
+            OutboxMetricsSnapshot snapshot = loadSnapshot();
+            cachedSnapshot = snapshot;
+            cachedSnapshotUntilMillis = now + SNAPSHOT_CACHE_TTL_MS;
+            return snapshot;
+        }
+    }
+
+    private OutboxMetricsSnapshot loadSnapshot() {
+        Map<String, Object> row = firstRow(
+                """
+                        select coalesce(sum(case when status = 'PENDING' then 1 else 0 end), 0) as pending_backlog,
+                               coalesce(sum(case when status = 'FAILED' then 1 else 0 end), 0) as failed_backlog,
+                               coalesce(sum(case when status = 'DEAD_LETTER' then 1 else 0 end), 0) as dead_letter_count,
+                               coalesce(sum(case when status = 'PENDING'
+                                                 or (status = 'FAILED' and (next_retry_at is null or next_retry_at <= ?))
+                                                 then 1 else 0 end), 0) as dispatchable_backlog
+                        from payment_event_outbox
+                        where deleted = 0 and source_type = ?
+                        """
+        , LocalDateTime.now(), SOURCE_TYPE_PAYMENT);
+        return new OutboxMetricsSnapshot(
+                longValue(row.get("pending_backlog")),
+                longValue(row.get("failed_backlog")),
+                longValue(row.get("dead_letter_count")),
+                longValue(row.get("dispatchable_backlog"))
+        );
+    }
+
+    private Map<String, Object> firstRow(String sql, Object... args) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, args);
+        return rows.isEmpty() ? Map.of() : rows.get(0);
+    }
+
+    private long longValue(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
     }
 
     private List<PaymentOutboxRow> listDispatchable(int limit) {
@@ -109,7 +188,7 @@ public class PaymentOutboxService {
                                next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
                                created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
                         from payment_event_outbox
-                        where deleted = 0
+                        where deleted = 0 and source_type = ?
                           and (
                                 status = ?
                                 or (status = ? and (next_retry_at is null or next_retry_at <= ?))
@@ -118,6 +197,7 @@ public class PaymentOutboxService {
                         limit ?
                         """,
                 new BeanPropertyRowMapper<>(PaymentOutboxRow.class),
+                SOURCE_TYPE_PAYMENT,
                 STATUS_PENDING,
                 STATUS_FAILED,
                 now,
@@ -134,11 +214,12 @@ public class PaymentOutboxService {
                                    next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
                                    created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
                             from payment_event_outbox
-                            where id = ? and deleted = 0
+                            where id = ? and deleted = 0 and source_type = ?
                             limit 1
                             """,
                     new BeanPropertyRowMapper<>(PaymentOutboxRow.class),
-                    id
+                    id,
+                    SOURCE_TYPE_PAYMENT
             );
         } catch (Exception ignored) {
             return null;
@@ -150,12 +231,13 @@ public class PaymentOutboxService {
                 """
                         update payment_event_outbox
                         set status = ?, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and status = ?
+                        where id = ? and deleted = 0 and source_type = ? and status = ?
                         """,
                 STATUS_DISPATCHING,
                 LocalDateTime.now(),
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
                 row.getId(),
+                SOURCE_TYPE_PAYMENT,
                 row.getStatus()
         );
         return updated > 0;
@@ -166,32 +248,35 @@ public class PaymentOutboxService {
                 """
                         update payment_event_outbox
                         set status = ?, next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        where id = ? and deleted = 0 and source_type = ?
                         """,
                 STATUS_DELIVERED,
                 LocalDateTime.now(),
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
-                row.getId()
+                row.getId(),
+                SOURCE_TYPE_PAYMENT
         );
     }
 
     private void markFailed(PaymentOutboxRow row, RuntimeException exception) {
         int retryCount = row.getRetryCount() == null ? 0 : row.getRetryCount();
         int nextRetryCount = retryCount + 1;
+        boolean deadLetter = nextRetryCount >= MAX_RETRY_COUNT;
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         update payment_event_outbox
                         set status = ?, retry_count = ?, next_retry_at = ?, last_error_message = ?, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        where id = ? and deleted = 0 and source_type = ?
                         """,
-                STATUS_FAILED,
+                deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
-                now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)),
+                deadLetter ? null : now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)),
                 truncate(exception == null ? "unknown error" : exception.getMessage()),
                 now,
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
-                row.getId()
+                row.getId(),
+                SOURCE_TYPE_PAYMENT
         );
     }
 
@@ -200,17 +285,37 @@ public class PaymentOutboxService {
                 """
                         update payment_event_outbox
                         set status = ?, retry_count = 0, next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        where id = ? and deleted = 0 and source_type = ?
                         """,
                 STATUS_PENDING,
                 LocalDateTime.now(),
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
-                row.getId()
+                row.getId(),
+                SOURCE_TYPE_PAYMENT
         );
     }
 
+    private boolean dispatchSingle(PaymentOutboxRow row, PaymentOutboxDispatcher dispatcher) {
+        if (row == null || dispatcher == null) {
+            return false;
+        }
+        if (!claimForDispatch(row)) {
+            return false;
+        }
+
+        try {
+            dispatcher.dispatch(row);
+            markDelivered(row);
+            return true;
+        } catch (RuntimeException exception) {
+            logger.warn("支付 outbox 投递失败: id={}, eventType={}, message={}", row.getId(), row.getEventType(), exception.getMessage());
+            markFailed(row, exception);
+            return false;
+        }
+    }
+
     private long calculateRetryDelaySeconds(int retryCount) {
-        int exponent = Math.min(Math.max(retryCount, 1), 8);
+        int exponent = Math.min(Math.max(retryCount, 1), MAX_RETRY_COUNT);
         return Math.min(MAX_RETRY_DELAY_SECONDS, (long) Math.pow(2, exponent));
     }
 
@@ -227,5 +332,19 @@ public class PaymentOutboxService {
         } catch (Exception exception) {
             throw new IllegalStateException("支付 outbox payload 序列化失败", exception);
         }
+    }
+
+    private void ensurePaymentSource(String sourceType) {
+        if (!SOURCE_TYPE_PAYMENT.equals(sourceType)) {
+            throw new IllegalArgumentException("支付 outbox sourceType 必须为 payment");
+        }
+    }
+
+    public record OutboxMetricsSnapshot(
+            long pendingBacklog,
+            long failedBacklog,
+            long deadLetterCount,
+            long dispatchableBacklog
+    ) {
     }
 }

@@ -23,6 +23,10 @@ export interface AuthUser {
   idCardNumber?: string | null;
   extraProfileValues?: Record<string, string> | null;
   locale?: string | null;
+  sessionId?: string | null;
+  permissionsVersion?: string;
+  sessionVersion?: number;
+  permissions?: string[];
 }
 
 export interface SecondFactorLoginOption {
@@ -99,6 +103,11 @@ export interface LoginEncryptionKey {
   algorithm: string;
   keyId: string;
   publicKey: string;
+}
+
+export interface SessionBootstrapPayload {
+  currentUser: CurrentUser;
+  securitySettings: SecuritySettings;
 }
 
 export interface WechatAuthorizeUrl {
@@ -955,6 +964,7 @@ export interface PagedResult<T> {
   pageNo: number;
   pageSize: number;
   hasMore?: boolean;
+  totalCapped?: boolean;
   nextCursorId?: number | null;
   nextCursorCreatedAt?: string | null;
 }

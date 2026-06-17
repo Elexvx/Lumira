@@ -82,6 +82,10 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
   const availableLoginModes = useMemo(() => getAvailableLoginModes(loginCapabilities), [loginCapabilities]);
 
   useEffect(() => {
+    if (initialState?.loginCapabilities) {
+      return;
+    }
+
     let disposed = false;
 
     void request<LoginCapabilities>('/v1/public/login-capabilities', {
@@ -115,7 +119,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
     return () => {
       disposed = true;
     };
-  }, [setInitialState]);
+  }, [initialState?.loginCapabilities, setInitialState]);
 
   const loginPageStyle = useMemo(
     () =>
@@ -154,13 +158,22 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
 
     if (!loginEncryptionLoadPromiseRef.current) {
       setLoginEncryptionLoading(true);
-      loginEncryptionLoadPromiseRef.current = request<LoginEncryptionKey>('/v1/auth/login-encryption-key', {
+      loginEncryptionLoadPromiseRef.current = request<LoginEncryptionKey>('/v2/auth/login-encryption-key', {
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
         skipAuth: true,
         method: 'GET',
       })
+        .catch(() =>
+          request<LoginEncryptionKey>('/v1/auth/login-encryption-key', {
+            autoRedirectOnUnauthorized: false,
+            allowUnauthorizedWithoutRedirect: true,
+            silent: true,
+            skipAuth: true,
+            method: 'GET',
+          }),
+        )
         .then((key) => {
           setLoginEncryptionKey(key);
           return key;

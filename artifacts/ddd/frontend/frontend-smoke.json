@@ -1,0 +1,315 @@
+{
+  "generatedAt": "2026-06-16T20:51:08.151Z",
+  "status": "PASS",
+  "inputFile": "artifacts/ddd/frontend/playwright-smoke-results.json",
+  "baseUrl": "http://127.0.0.1:8000",
+  "sourceEnvironment": "local-fast-track-validation",
+  "releaseCandidate": "local-ddd-release-audit",
+  "evidenceOperator": "codex-local-audit",
+  "productionEquivalence": {
+    "strict": false,
+    "https": false,
+    "localOnly": true,
+    "deploymentEvidence": null,
+    "issues": []
+  },
+  "expectDeployed": false,
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "requiredFlows": 13,
+    "missingRequiredFlows": 0
+  },
+  "requiredFlows": [
+    "dashboard page is reachable",
+    "download center page is reachable",
+    "AI assistant page is reachable",
+    "users page is reachable",
+    "roles page is reachable",
+    "security settings page is reachable",
+    "payment settings page is reachable",
+    "system files page is reachable",
+    "plugins page is reachable",
+    "localization page is reachable",
+    "session survives a browser refresh",
+    "message center can be opened",
+    "user can log out from the top menu"
+  ],
+  "missingRequiredFlows": [],
+  "flowCoverage": [
+    {
+      "flow": "dashboard page is reachable",
+      "status": "passed",
+      "matchedTitle": "dashboard page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "download center page is reachable",
+      "status": "passed",
+      "matchedTitle": "download center page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "AI assistant page is reachable",
+      "status": "passed",
+      "matchedTitle": "AI assistant page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "users page is reachable",
+      "status": "passed",
+      "matchedTitle": "users page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "roles page is reachable",
+      "status": "passed",
+      "matchedTitle": "roles page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "security settings page is reachable",
+      "status": "passed",
+      "matchedTitle": "security settings page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "payment settings page is reachable",
+      "status": "passed",
+      "matchedTitle": "payment settings page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "system files page is reachable",
+      "status": "passed",
+      "matchedTitle": "system files page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "plugins page is reachable",
+      "status": "passed",
+      "matchedTitle": "plugins page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "localization page is reachable",
+      "status": "passed",
+      "matchedTitle": "localization page is reachable",
+      "reason": null
+    },
+    {
+      "flow": "session survives a browser refresh",
+      "status": "passed",
+      "matchedTitle": "session survives a browser refresh",
+      "reason": null
+    },
+    {
+      "flow": "message center can be opened",
+      "status": "passed",
+      "matchedTitle": "message center can be opened",
+      "reason": null
+    },
+    {
+      "flow": "user can log out from the top menu",
+      "status": "passed",
+      "matchedTitle": "user can log out from the top menu",
+      "reason": null
+    }
+  ],
+  "tests": [
+    {
+      "title": "authenticate admin and persist storage state",
+      "projectName": "setup",
+      "status": "passed",
+      "durationMs": 25292,
+      "errors": 0
+    },
+    {
+      "title": "login page renders password form @auth @smoke",
+      "projectName": "chromium-auth",
+      "status": "passed",
+      "durationMs": 9722,
+      "errors": 0
+    },
+    {
+      "title": "protected pages redirect anonymous visitors to login @auth @smoke",
+      "projectName": "chromium-auth",
+      "status": "passed",
+      "durationMs": 8585,
+      "errors": 0
+    },
+    {
+      "title": "dashboard page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 11914,
+      "errors": 0
+    },
+    {
+      "title": "download center page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 10328,
+      "errors": 0
+    },
+    {
+      "title": "AI assistant page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 4874,
+      "errors": 0
+    },
+    {
+      "title": "users page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 3318,
+      "errors": 0
+    },
+    {
+      "title": "roles page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 2810,
+      "errors": 0
+    },
+    {
+      "title": "security settings page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 2369,
+      "errors": 0
+    },
+    {
+      "title": "payment settings page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 3551,
+      "errors": 0
+    },
+    {
+      "title": "system files page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 5306,
+      "errors": 0
+    },
+    {
+      "title": "plugins page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 3303,
+      "errors": 0
+    },
+    {
+      "title": "localization page is reachable @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 2982,
+      "errors": 0
+    },
+    {
+      "title": "session survives a browser refresh @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 5333,
+      "errors": 0
+    },
+    {
+      "title": "message center can be opened @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 3863,
+      "errors": 0
+    },
+    {
+      "title": "user can log out from the top menu @smoke",
+      "projectName": "chromium",
+      "status": "passed",
+      "durationMs": 4595,
+      "errors": 0
+    }
+  ],
+  "blockers": [],
+  "diagnostics": {
+    "playwrightReport": {
+      "present": true,
+      "file": "artifacts/ddd/frontend/playwright-smoke-results.json"
+    },
+    "staticSpecCoverage": {
+      "present": true,
+      "file": "frontend/tests/e2e/app.spec.ts",
+      "covered": 13,
+      "missing": 0,
+      "coverage": [
+        {
+          "flow": "dashboard page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "download center page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "AI assistant page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "users page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "roles page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "security settings page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "payment settings page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "system files page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "plugins page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "localization page is reachable",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "session survives a browser refresh",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "message center can be opened",
+          "status": "covered",
+          "reason": null
+        },
+        {
+          "flow": "user can log out from the top menu",
+          "status": "covered",
+          "reason": null
+        }
+      ]
+    }
+  }
+}

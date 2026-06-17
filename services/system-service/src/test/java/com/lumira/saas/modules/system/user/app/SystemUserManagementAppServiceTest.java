@@ -12,7 +12,9 @@ import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
+import com.lumira.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -30,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SystemUserManagementAppServiceTest {
@@ -43,6 +48,18 @@ class SystemUserManagementAppServiceTest {
 
         assertEquals(List.of(1001L, 1002L), user.getTenantIds());
         assertEquals(List.of("平台租户", "租户 1002"), user.getTenantNames());
+    }
+
+    @Test
+    void getUserShouldReuseCurrentUserPermissionSnapshotWhenVersionPresent() {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+
+        SystemVO.UserDetailVO user = service.getUser(currentUserWithPermissionSnapshot(), 2001L);
+
+        assertEquals(List.of(1001L, 1002L), user.getTenantIds());
+        verify(permissionSnapshotService, never()).loadSnapshot(anyLong(), anyLong());
     }
 
     @Test
@@ -115,6 +132,44 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void updateUserStatusShouldUseExistenceLookupForAccessCheck() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        assertDoesNotThrow(() -> service.updateUserStatus(currentUser(), 2001L, "DISABLED"));
+
+        assertEquals(0, jdbcTemplate.userAccessCountChecks);
+    }
+
+    @Test
+    void createUserShouldUseLastInsertIdAfterInsert() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        SysUserEntity createdUser = new SysUserEntity();
+        createdUser.setId(2001L);
+        createdUser.setUsername("create-user");
+        when(userDomainService.findById(2001L)).thenReturn(Optional.of(createdUser));
+
+        IamUserService iamUserService = mock(IamUserService.class);
+        when(iamUserService.listIdentities(anyLong())).thenReturn(List.of());
+        when(iamUserService.listRecentDevices(anyLong(), anyInt())).thenReturn(List.of());
+        when(iamUserService.findSecuritySetting(anyLong())).thenReturn(Optional.empty());
+
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService, userDomainService, iamUserService);
+        SystemDTO.UserUpsertRequest request = userRequest(List.of());
+        request.setUsername("create-user");
+        request.setPassword("DemoPass1!");
+
+        SystemVO.UserDetailVO detail = service.createUser(currentUser(), request);
+
+        assertEquals(2001L, detail.getId());
+        assertEquals(1, jdbcTemplate.lastInsertIdQueries);
+        verify(iamUserService).createUserWithIdentity(createdUser, "create-user", "ADMIN_CREATE");
+        verify(iamUserService).recordUserRegistered(2001L, "ADMIN_CREATE", null, null);
+    }
+
+    @Test
     void deleteUserShouldRejectInaccessibleUserBeforeMutating() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         jdbcTemplate.userRecordAccessCount = 0L;
@@ -127,19 +182,40 @@ class SystemUserManagementAppServiceTest {
     }
 
     private SystemUserManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate) {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
+
         IamUserService iamUserService = mock(IamUserService.class);
         when(iamUserService.listIdentities(anyLong())).thenReturn(List.of());
         when(iamUserService.listRecentDevices(anyLong(), anyInt())).thenReturn(List.of());
         when(iamUserService.findSecuritySetting(anyLong())).thenReturn(Optional.empty());
 
+        return buildService(jdbcTemplate, mock(PermissionSnapshotService.class), userDomainService, iamUserService);
+    }
+
+    private SystemUserManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate, PermissionSnapshotService permissionSnapshotService) {
         UserDomainService userDomainService = mock(UserDomainService.class);
         when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
 
+        IamUserService iamUserService = mock(IamUserService.class);
+        when(iamUserService.listIdentities(anyLong())).thenReturn(List.of());
+        when(iamUserService.listRecentDevices(anyLong(), anyInt())).thenReturn(List.of());
+        when(iamUserService.findSecuritySetting(anyLong())).thenReturn(Optional.empty());
+
+        return buildService(jdbcTemplate, permissionSnapshotService, userDomainService, iamUserService);
+    }
+
+    private SystemUserManagementAppService buildService(
+            RecordingJdbcTemplate jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            UserDomainService userDomainService,
+            IamUserService iamUserService
+    ) {
         return new SystemUserManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 userDomainService,
                 iamUserService,
-                mock(PermissionSnapshotService.class),
+                permissionSnapshotService,
                 mock(OnlineSessionManagementAppService.class),
                 mock(OperationAuditService.class),
                 mock(PasswordEncoder.class),
@@ -156,6 +232,16 @@ class SystemUserManagementAppServiceTest {
         return currentUser;
     }
 
+    private CurrentUser currentUserWithPermissionSnapshot() {
+        CurrentUser currentUser = currentUser();
+        currentUser.setPermissionsVersion("v-perf-2026-06-16");
+        currentUser.setRoleIds(Set.of(1L));
+        currentUser.setDeptIds(Set.of(10L));
+        currentUser.setDescendantDeptIds(Set.of(10L));
+        currentUser.setDataScopes(List.of());
+        return currentUser;
+    }
+
     private SystemDTO.UserUpsertRequest userRequest(List<Long> roleIds) {
         SystemDTO.UserUpsertRequest request = new SystemDTO.UserUpsertRequest();
         request.setUsername("demo-user");
@@ -168,16 +254,24 @@ class SystemUserManagementAppServiceTest {
         private long existingRoleCount = 1L;
         private long userRecordAccessCount = 1L;
         private int updateCount;
+        private int userAccessExistenceChecks;
+        private int userAccessCountChecks;
         private int roleExistenceChecks;
         private int departmentExistenceChecks;
         private int insertedUserRoles;
         private int insertedUserDepartments;
+        private int lastInsertIdQueries;
         private boolean deletedUserRoles;
         private boolean deletedUserDepartments;
+        private Long lastInsertedId = 2001L;
+        private String lastInsertedUsername = "demo-user";
 
         @Override
         public int update(String sql, Object... args) {
             updateCount += 1;
+            if (sql.contains("insert into sys_user") && args.length > 0 && args[0] != null) {
+                lastInsertedUsername = String.valueOf(args[0]);
+            }
             if (sql.contains("delete from sys_user_role")) {
                 deletedUserRoles = true;
             }
@@ -200,8 +294,22 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            if (sql.contains("select last_insert_id()")) {
+                lastInsertIdQueries += 1;
+                return requiredType.cast(lastInsertedId);
+            }
             if (sql.contains("from sys_user u")) {
-                return requiredType.cast(userRecordAccessCount);
+                if (sql.contains("select 1")) {
+                    userAccessExistenceChecks += 1;
+                    if (userRecordAccessCount <= 0) {
+                        throw new EmptyResultDataAccessException(1);
+                    }
+                    return requiredType.cast(1L);
+                }
+                if (sql.contains("count(1)")) {
+                    userAccessCountChecks += 1;
+                    return requiredType.cast(userRecordAccessCount);
+                }
             }
             if (sql.contains("from sys_role")) {
                 roleExistenceChecks += 1;
@@ -215,7 +323,33 @@ class SystemUserManagementAppServiceTest {
         }
 
         @Override
+        public List<java.util.Map<String, Object>> queryForList(String sql, Object... args) {
+            if (sql.contains("from sys_user u") || sql.contains("from sys_user_tenant")) {
+                if (userRecordAccessCount <= 0) {
+                    return new ArrayList<>();
+                }
+                return List.of(java.util.Map.of("exists", 1));
+            }
+            return new ArrayList<>();
+        }
+
+        @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            if (sql.contains("from sys_user u") && Long.class.equals(elementType)) {
+                if (userRecordAccessCount <= 0) {
+                    return new ArrayList<>();
+                }
+                return castList(List.of(1L));
+            }
+            if (sql.contains("from sys_user_tenant") && sql.contains("status = 'ENABLED'") && Long.class.equals(elementType)) {
+                if (userRecordAccessCount <= 0) {
+                    return new ArrayList<>();
+                }
+                return castList(List.of(1L));
+            }
+            if (sql.contains("from sys_department") && sql.contains("deleted = 0 limit 1") && Long.class.equals(elementType)) {
+                return castList(List.of(1L));
+            }
             if (sql.contains("from sys_user_tenant") && Long.class.equals(elementType)) {
                 return castList(List.of(1001L, 1002L));
             }
@@ -240,8 +374,8 @@ class SystemUserManagementAppServiceTest {
         @SuppressWarnings("unchecked")
         private <T> T rowMapperResult() {
             SystemVO.UserVO user = new SystemVO.UserVO();
-            user.setId(2001L);
-            user.setUsername("demo-user");
+            user.setId(lastInsertedId);
+            user.setUsername(lastInsertedUsername);
             user.setStatus("ENABLED");
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());

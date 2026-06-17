@@ -10,7 +10,10 @@ import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.domain.event.DomainEventPublisher;
+import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -35,19 +39,22 @@ public class PaymentTransactionService {
     private final PaymentManagementAppService paymentManagementAppService;
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
+    private final DomainEventPublisher domainEventPublisher;
 
     public PaymentTransactionService(
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             PaymentManagementAppService paymentManagementAppService,
             PaymentProviderCatalog providerCatalog,
-            PaymentOutboxService outboxService
+            PaymentOutboxService outboxService,
+            @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.paymentManagementAppService = paymentManagementAppService;
         this.providerCatalog = providerCatalog;
         this.outboxService = outboxService;
+        this.domainEventPublisher = domainEventPublisher;
     }
 
     @Transactional
@@ -60,6 +67,12 @@ public class PaymentTransactionService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "支付金额必须大于 0");
         }
         validateCurrency(settings, request.currency());
+        PaymentOrderAggregate orderAggregate = new PaymentOrderAggregate(
+                normalizeIdentifier(request.orderNo()),
+                tenantId,
+                BigDecimal.valueOf(request.amountMinor(), 2),
+                "CREATED"
+        );
 
         PaymentOrderRow existing = findOrderByIdempotencyKey(tenantId, request.idempotencyKey());
         if (existing != null) {
@@ -132,14 +145,8 @@ public class PaymentTransactionService {
                 userId
         );
 
-        outboxService.recordAfterCommit(
-                tenantId,
-                userId,
-                "payment",
-                "payment.order.created",
-                row.getOrderNo(),
-                Map.of("orderNo", row.getOrderNo(), "providerCode", row.getProviderCode(), "amountMinor", row.getAmountMinor())
-        );
+        orderAggregate.recordCreated(row.getProviderCode(), row.getCurrency(), userId);
+        domainEventPublisher.publishAll(orderAggregate.pullDomainEvents());
         return toOrderDto(findOrderByOrderNo(tenantId, row.getOrderNo()));
     }
 

@@ -1,0 +1,763 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "recommendation": "NO_GO_STRICT",
+  "noAutoWaivers": true,
+  "summary": {
+    "waveCount": 7,
+    "mappedActionCount": 40,
+    "uniqueOwnerCount": 5,
+    "candidateBlockerHintCount": 0,
+    "nonArtifactBlockerHintCount": 0,
+    "mappedItemCount": 40
+  },
+  "mappedItemIds": [
+    "ai service",
+    "auth service",
+    "backend base url",
+    "cors origins",
+    "database password",
+    "database url",
+    "database username",
+    "docker-blocker-1",
+    "docker-blocker-2",
+    "docker-image-frontend-failed",
+    "docker-image-lumira-server-failed",
+    "event stream key",
+    "field secret",
+    "file owner url",
+    "file service",
+    "frontend base url",
+    "iam owner url",
+    "job backend url",
+    "job executor",
+    "job file url",
+    "job internal token",
+    "job message url",
+    "job payment url",
+    "job plugin url",
+    "jwt secret",
+    "localization service",
+    "message service",
+    "owner internal token",
+    "payment public url",
+    "payment service",
+    "platform owner url",
+    "plugin service",
+    "provider api key",
+    "provider base url",
+    "redis host",
+    "release-env-lint-placeholders",
+    "release-env-lint-status",
+    "system service",
+    "xxl job admin",
+    "xxl job token"
+  ],
+  "waves": [
+    {
+      "wave": 1,
+      "owner": "release-infra",
+      "batchId": "p0-release-env-lint-release-infra",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 2,
+      "sources": [
+        "release-env-lint"
+      ],
+      "categoryHints": [
+        "release-environment"
+      ],
+      "itemOrders": [
+        1,
+        2
+      ],
+      "itemIds": [
+        "release-env-lint-placeholders",
+        "release-env-lint-status"
+      ],
+      "actionReasons": [
+        {
+          "id": "release-env-lint-placeholders",
+          "source": "release-env-lint",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "unresolvedTemplateKeys=93",
+          "action": "Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence."
+        },
+        {
+          "id": "release-env-lint-status",
+          "source": "release-env-lint",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "status=FAIL primaryBlockers=55",
+          "action": "Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/release/release-env-lint.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
+        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 2,
+      "owner": "ai-owner",
+      "batchId": "p0-release-config-ai-owner",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 6,
+      "sources": [
+        "release-config"
+      ],
+      "categoryHints": [
+        "release-config"
+      ],
+      "itemOrders": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "itemIds": [
+        "file owner url",
+        "iam owner url",
+        "owner internal token",
+        "platform owner url",
+        "provider api key",
+        "provider base url"
+      ],
+      "actionReasons": [
+        {
+          "id": "file owner url",
+          "source": "release-config",
+          "owner": "ai-owner",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "iam owner url",
+          "source": "release-config",
+          "owner": "ai-owner",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL or LUMIRA_AI_OWNER_IAM_BASE_URL for iam owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "owner internal token",
+          "source": "release-config",
+          "owner": "ai-owner",
+          "priority": "P0",
+          "reason": "must be at least 32 characters",
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN or LUMIRA_AI_OWNER_INTERNAL_TOKEN or SAAS_JOB_INTERNAL_TOKEN for owner internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "platform owner url",
+          "source": "release-config",
+          "owner": "ai-owner",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL or LUMIRA_AI_OWNER_PLATFORM_BASE_URL for platform owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "provider api key",
+          "source": "release-config",
+          "owner": "ai-owner",
+          "priority": "P0",
+          "reason": "must be at least 32 characters",
+          "action": "Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY or LUMIRA_AI_PROVIDER_API_KEY for provider api key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "provider base url",
+          "source": "release-config",
+          "owner": "ai-owner",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL or LUMIRA_AI_PROVIDER_BASE_URL for provider base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 3,
+      "owner": "payment-owner",
+      "batchId": "p0-release-config-payment-owner",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 1,
+      "sources": [
+        "release-config"
+      ],
+      "categoryHints": [
+        "release-config"
+      ],
+      "itemOrders": [
+        15,
+        16
+      ],
+      "itemIds": [
+        "payment public url"
+      ],
+      "actionReasons": [
+        {
+          "id": "payment public url",
+          "source": "release-config",
+          "owner": "payment-owner",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 4,
+      "owner": "platform-events",
+      "batchId": "p0-release-config-platform-events",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 9,
+      "sources": [
+        "release-config"
+      ],
+      "categoryHints": [
+        "release-config"
+      ],
+      "itemOrders": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "itemIds": [
+        "event stream key",
+        "job backend url",
+        "job file url",
+        "job internal token",
+        "job message url",
+        "job payment url",
+        "job plugin url",
+        "xxl job admin",
+        "xxl job token"
+      ],
+      "actionReasons": [
+        {
+          "id": "event stream key",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "placeholder value is not allowed",
+          "action": "Set SAAS_EVENT_REDIS_STREAM_KEY or LUMIRA_EVENT_REDIS_STREAM_KEY for event stream key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job backend url",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set SAAS_JOB_BACKEND_BASE_URL or LUMIRA_JOB_BACKEND_BASE_URL for job backend url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job file url",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set SAAS_JOB_FILE_SERVICE_BASE_URL or LUMIRA_JOB_FILE_SERVICE_BASE_URL for job file url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job internal token",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must be at least 32 characters",
+          "action": "Set SAAS_JOB_INTERNAL_TOKEN or DDD_JOB_INTERNAL_TOKEN or LUMIRA_JOB_INTERNAL_TOKEN for job internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job message url",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set SAAS_JOB_MESSAGE_SERVICE_BASE_URL or LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL for job message url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job payment url",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set SAAS_JOB_PAYMENT_SERVICE_BASE_URL or LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL for job payment url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job plugin url",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set SAAS_JOB_PLUGIN_SERVICE_BASE_URL or LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL for job plugin url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "xxl job admin",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set XXL_JOB_ADMIN_ADDRESSES or LUMIRA_XXL_JOB_ADMIN_ADDRESSES for xxl job admin in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "xxl job token",
+          "source": "release-config",
+          "owner": "platform-events",
+          "priority": "P0",
+          "reason": "must be at least 32 characters",
+          "action": "Set XXL_JOB_ACCESS_TOKEN or XXL_JOB_ADMIN_ACCESS_TOKEN or LUMIRA_XXL_JOB_ACCESS_TOKEN for xxl job token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 5,
+      "owner": "platform-owners",
+      "batchId": "p0-release-config-platform-owners",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 9,
+      "sources": [
+        "release-config"
+      ],
+      "categoryHints": [
+        "release-config"
+      ],
+      "itemOrders": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "itemIds": [
+        "ai service",
+        "auth service",
+        "file service",
+        "job executor",
+        "localization service",
+        "message service",
+        "payment service",
+        "plugin service",
+        "system service"
+      ],
+      "actionReasons": [
+        {
+          "id": "ai service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "auth service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set AUTH_SERVICE_BASE_URL or LUMIRA_AUTH_SERVICE_BASE_URL for auth service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "file service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set FILE_SERVICE_BASE_URL or LUMIRA_FILE_SERVICE_BASE_URL for file service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "job executor",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set JOB_EXECUTOR_BASE_URL or LUMIRA_JOB_EXECUTOR_BASE_URL for job executor in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "localization service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set LOCALIZATION_SERVICE_BASE_URL or LUMIRA_LOCALIZATION_SERVICE_BASE_URL for localization service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "message service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set MESSAGE_SERVICE_BASE_URL or LUMIRA_MESSAGE_SERVICE_BASE_URL for message service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "payment service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set PAYMENT_SERVICE_BASE_URL or LUMIRA_PAYMENT_SERVICE_BASE_URL for payment service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "plugin service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set PLUGIN_SERVICE_BASE_URL or LUMIRA_PLUGIN_SERVICE_BASE_URL for plugin service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "system service",
+          "source": "release-config",
+          "owner": "platform-owners",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set SYSTEM_SERVICE_BASE_URL or LUMIRA_SYSTEM_SERVICE_BASE_URL for system service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 6,
+      "owner": "release-infra",
+      "batchId": "p0-release-config-release-infra",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 9,
+      "sources": [
+        "release-config"
+      ],
+      "categoryHints": [
+        "release-config"
+      ],
+      "itemOrders": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "itemIds": [
+        "backend base url",
+        "cors origins",
+        "database password",
+        "database url",
+        "database username",
+        "field secret",
+        "frontend base url",
+        "jwt secret",
+        "redis host"
+      ],
+      "actionReasons": [
+        {
+          "id": "backend base url",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set LUMIRA_BASE_URL or DEPLOY_CHECK_BASE_URL for backend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "cors origins",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "placeholder value is not allowed",
+          "action": "Set CORS_ALLOWED_ORIGIN_PATTERNS or SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS for cors origins in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "database password",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "must be at least 16 characters",
+          "action": "Set DB_PASSWORD or SPRING_DATASOURCE_PASSWORD or MYSQL_PASSWORD for database password in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "database url",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "placeholder value is not allowed",
+          "action": "Set DB_URL or SPRING_DATASOURCE_URL for database url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "database username",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "placeholder value is not allowed",
+          "action": "Set DB_USERNAME or SPRING_DATASOURCE_USERNAME or MYSQL_USER for database username in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "field secret",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "must be at least 32 characters",
+          "action": "Set FIELD_SECRET or SAAS_SECURITY_FIELD_SECRET for field secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "frontend base url",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "must use HTTPS for production-equivalent evidence",
+          "action": "Set PLAYWRIGHT_BASE_URL or FRONTEND_BASE_URL for frontend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "jwt secret",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "must be at least 32 characters",
+          "action": "Set JWT_SECRET or SAAS_SECURITY_JWT_SECRET for jwt secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        },
+        {
+          "id": "redis host",
+          "source": "release-config",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "placeholder value is not allowed",
+          "action": "Set REDIS_HOST or SPRING_DATA_REDIS_HOST for redis host in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 7,
+      "owner": "release-infra",
+      "batchId": "p0-docker-release-infra",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 4,
+      "sources": [
+        "docker"
+      ],
+      "categoryHints": [
+        "docker"
+      ],
+      "itemOrders": [
+        66,
+        67,
+        68,
+        69
+      ],
+      "itemIds": [
+        "docker-blocker-1",
+        "docker-blocker-2",
+        "docker-image-frontend-failed",
+        "docker-image-lumira-server-failed"
+      ],
+      "actionReasons": [
+        {
+          "id": "docker-blocker-1",
+          "source": "docker",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "action": "Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs."
+        },
+        {
+          "id": "docker-blocker-2",
+          "source": "docker",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "action": "Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs."
+        },
+        {
+          "id": "docker-image-frontend-failed",
+          "source": "docker",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs."
+        },
+        {
+          "id": "docker-image-lumira-server-failed",
+          "source": "docker",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+        "node scripts/ddd-docker-build-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Docker CLI and daemon are available in the evidence runner.",
+        "Required lumira-server and frontend images are built, inspected, and not skipped."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    }
+  ]
+}

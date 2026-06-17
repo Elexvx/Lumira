@@ -4,6 +4,8 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
@@ -11,15 +13,23 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class SystemVerificationSettingsAppService {
+
+    private static final Duration CONFIG_SNAPSHOT_TTL = Duration.ofSeconds(30);
+    private static final int CONFIG_SNAPSHOT_MAX_ENTRIES = 2048;
 
     private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
     private static final String PASSWORD_LOGIN_ENABLED_KEY = "verification.password-login.enabled";
@@ -47,6 +57,8 @@ public class SystemVerificationSettingsAppService {
     private final SmtpMailService smtpMailService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
     private final FieldCryptoService fieldCryptoService;
+    private final Cache<String, Map<String, String>> configSnapshotCache;
+    private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
 
     public SystemVerificationSettingsAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -60,6 +72,14 @@ public class SystemVerificationSettingsAppService {
         this.smtpMailService = smtpMailService;
         this.wechatLoginSettingsService = wechatLoginSettingsService;
         this.fieldCryptoService = fieldCryptoService;
+        this.configSnapshotCache = CacheBuilder.newBuilder()
+                .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.configLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
@@ -265,6 +285,7 @@ public class SystemVerificationSettingsAppService {
                     operatorId,
                     operatorId
             );
+            invalidateConfigCaches();
             return;
         }
         jdbcTemplate.update(
@@ -281,6 +302,7 @@ public class SystemVerificationSettingsAppService {
                 LocalDateTime.now(),
                 existingId
         );
+        invalidateConfigCaches();
     }
 
     private Long queryConfigId(String configKey, Long tenantId) {
@@ -329,6 +351,35 @@ public class SystemVerificationSettingsAppService {
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
         Long effectiveTenantId = tenantId == null ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        String cacheKey = configSnapshotCacheKey(effectiveTenantId, keys);
+        Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return new LinkedHashMap<>(cached);
+        }
+        try {
+            CompletableFuture<Map<String, String>> inFlight = configLoadInFlight.get(
+                    cacheKey,
+                    () -> CompletableFuture.completedFuture(loadConfigValuesByKeysFromDatabase(effectiveTenantId, cacheKey, keys))
+            );
+            return new LinkedHashMap<>(inFlight.join());
+        } catch (CompletionException exception) {
+            configLoadInFlight.invalidate(cacheKey);
+            Throwable cause = exception.getCause() == null ? exception : exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to load verification config snapshot", cause);
+        } catch (ExecutionException exception) {
+            configLoadInFlight.invalidate(cacheKey);
+            throw new IllegalStateException("Failed to load verification config snapshot", exception);
+        }
+    }
+
+    private Map<String, String> loadConfigValuesByKeysFromDatabase(Long tenantId, String cacheKey, List<String> keys) {
+        Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return new LinkedHashMap<>(cached);
+        }
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select tenant_id as tenantId, config_key as configKey, config_value as configValue
@@ -340,8 +391,8 @@ public class SystemVerificationSettingsAppService {
                 order by case when tenant_id = ? then 0 when tenant_id is null then 1 else 2 end, id desc
                 """.formatted(placeholders);
         List<Object> params = new ArrayList<>(keys);
-        params.add(effectiveTenantId);
-        params.add(effectiveTenantId);
+        params.add(tenantId);
+        params.add(tenantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -350,7 +401,17 @@ public class SystemVerificationSettingsAppService {
                 valueByKey.put(configKey, normalizeConfigText(decryptConfigValue(configKey, normalizeConfigTextRaw(row.get("configValue")))));
             }
         }
+        configSnapshotCache.put(cacheKey, new LinkedHashMap<>(valueByKey));
         return valueByKey;
+    }
+
+    private String configSnapshotCacheKey(Long tenantId, List<String> keys) {
+        return tenantId + ":" + keys.stream().sorted().collect(Collectors.joining(","));
+    }
+
+    private void invalidateConfigCaches() {
+        configSnapshotCache.invalidateAll();
+        configLoadInFlight.invalidateAll();
     }
 
     private String encryptConfigValue(String configKey, String configValue) {

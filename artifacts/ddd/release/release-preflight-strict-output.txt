@@ -1,0 +1,9 @@
+[ddd-release-preflight] step=artifact-integrity
+[ddd-release-artifact-integrity] ok artifacts=99 totalBytes=3245845
+[ddd-release-preflight] step=manifest-provenance-preflight
+[ddd-release-evidence-manifest][env-missing] manifest provenance sourceEnvironment is required
+[ddd-release-evidence-manifest][env-missing] manifest provenance releaseCandidate is required
+[ddd-release-evidence-manifest][env-missing] manifest provenance evidenceOperator is required
+[ddd-release-evidence-manifest][preflight-report] <repo>/artifacts/ddd/release/evidence-manifest-preflight.json
+[ddd-release-preflight] step=artifact-path-leak
+[ddd-release-artifact-path-leak-contract] ok files=15

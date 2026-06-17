@@ -3,7 +3,6 @@ package com.lumira.message.controller;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.vo.PageResponse;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.common.security.SecurityContextFacade;
@@ -43,7 +42,7 @@ public class MessageController {
     }
 
     @GetMapping("/messages")
-    public ApiResponse<PageResponse<MessageVO.NoticeVO>> listMessages(
+    public ApiResponse<MessageVO.NoticePageResponse> listMessages(
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
@@ -88,7 +87,6 @@ public class MessageController {
     }
 
     @PostMapping("/ws-ticket")
-    @RepeatSubmit
     public ApiResponse<MessageVO.WebSocketTicketVO> issueWebSocketTicket() {
         requireAny("message:message:view", "system:notification:view");
         return ApiResponse.success(webSocketTicketService.issue(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
@@ -101,13 +99,13 @@ public class MessageController {
     }
 
     @GetMapping("/archive")
-    public ApiResponse<PageResponse<MessageVO.NoticeVO>> listArchive(@Valid MessageDTO.MessageArchiveQueryRequest request) {
+    public ApiResponse<MessageVO.NoticeArchivePageResponse> listArchive(@Valid MessageDTO.MessageArchiveQueryRequest request) {
         requireAny("message:message:view", "system:notification:view");
         return ApiResponse.success(messageAppService.listArchive(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
     @GetMapping("/delivery-logs")
-    public ApiResponse<PageResponse<MessageVO.DeliveryLogVO>> listDeliveryLogs(@Valid MessageDTO.MessageArchiveQueryRequest request) {
+    public ApiResponse<MessageVO.DeliveryLogPageResponse> listDeliveryLogs(@Valid MessageDTO.MessageArchiveQueryRequest request) {
         requireAny("message:message:view", "system:notification:view");
         return ApiResponse.success(messageAppService.listDeliveryLogs(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }

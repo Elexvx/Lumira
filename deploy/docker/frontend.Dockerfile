@@ -1,4 +1,7 @@
-FROM node:22-bookworm-slim AS builder
+ARG NODE_IMAGE=node:22-bookworm-slim
+ARG NGINX_IMAGE=nginx:1.29-alpine
+
+FROM ${NODE_IMAGE} AS builder
 
 WORKDIR /workspace/frontend
 
@@ -15,9 +18,11 @@ COPY frontend/ ./
 RUN pnpm build
 RUN node scripts/adapt-cdn-assets.mjs
 
-FROM nginx:1.29-alpine
+FROM ${NGINX_IMAGE}
 
 COPY deploy/nginx/frontend.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /workspace/frontend/dist /usr/share/nginx/html
 
 EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

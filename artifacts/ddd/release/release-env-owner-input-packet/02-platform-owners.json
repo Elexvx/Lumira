@@ -1,0 +1,375 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "redacted": true,
+  "valuePolicy": "No concrete environment values are emitted; this packet lists only owner, key, validation, reason, and redacted collection guidance.",
+  "owner": "platform-owners",
+  "summary": {
+    "totalInputs": 9,
+    "secretInputs": 0,
+    "productionEndpointInputs": 9,
+    "ownerProductionValueInputs": 0,
+    "reasons": [
+      "production-endpoint"
+    ],
+    "keys": [
+      "AI_SERVICE_BASE_URL",
+      "AUTH_SERVICE_BASE_URL",
+      "FILE_SERVICE_BASE_URL",
+      "JOB_EXECUTOR_BASE_URL",
+      "LOCALIZATION_SERVICE_BASE_URL",
+      "MESSAGE_SERVICE_BASE_URL",
+      "PAYMENT_SERVICE_BASE_URL",
+      "PLUGIN_SERVICE_BASE_URL",
+      "SYSTEM_SERVICE_BASE_URL"
+    ]
+  },
+  "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
+  "packetMarkdownPath": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.md",
+  "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
+  "validationCommands": [
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+  ],
+  "postCollectionReceipt": {
+    "redacted": true,
+    "purpose": "Verify that collected owner values removed release env placeholders without exposing concrete values.",
+    "commands": [
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-readiness-summary.mjs",
+      "node scripts/ddd-release-config-owner-input-reconciliation.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+    ],
+    "passCriteria": {
+      "releaseEnvReadinessStatus": "PASS",
+      "releaseEnvReadinessBlockers": 0,
+      "releaseEnvReadinessPlaceholders": 0,
+      "releaseEnvReadinessMissing": 0,
+      "configOwnerInputReconciliationStatus": "PASS",
+      "configOwnerInputReconciliationUnmappedKeys": 0
+    }
+  },
+  "items": [
+    {
+      "inputOrder": 17,
+      "fillOrder": 28,
+      "owner": "platform-owners",
+      "owners": [
+        "ai",
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "ai service",
+      "canonicalKey": "AI_SERVICE_BASE_URL",
+      "aliases": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 18,
+      "fillOrder": 29,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "auth service",
+      "canonicalKey": "AUTH_SERVICE_BASE_URL",
+      "aliases": [
+        "AUTH_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 19,
+      "fillOrder": 30,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "file service",
+      "canonicalKey": "FILE_SERVICE_BASE_URL",
+      "aliases": [
+        "FILE_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 20,
+      "fillOrder": 31,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "job executor",
+      "canonicalKey": "JOB_EXECUTOR_BASE_URL",
+      "aliases": [
+        "JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 21,
+      "fillOrder": 32,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "localization service",
+      "canonicalKey": "LOCALIZATION_SERVICE_BASE_URL",
+      "aliases": [
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 22,
+      "fillOrder": 33,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "message service",
+      "canonicalKey": "MESSAGE_SERVICE_BASE_URL",
+      "aliases": [
+        "MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 23,
+      "fillOrder": 34,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "payment service",
+      "canonicalKey": "PAYMENT_SERVICE_BASE_URL",
+      "aliases": [
+        "PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 24,
+      "fillOrder": 35,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "plugin service",
+      "canonicalKey": "PLUGIN_SERVICE_BASE_URL",
+      "aliases": [
+        "PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    },
+    {
+      "inputOrder": 25,
+      "fillOrder": 36,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "system service",
+      "canonicalKey": "SYSTEM_SERVICE_BASE_URL",
+      "aliases": [
+        "SYSTEM_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+      ],
+      "status": "PLACEHOLDER",
+      "valueClass": "url",
+      "ownerInputReason": "production-endpoint",
+      "secret": false,
+      "safeToPreFill": false,
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "collectionGuidance": "Collect the production-equivalent HTTPS endpoint from the owning runtime or deployment platform."
+    }
+  ]
+}

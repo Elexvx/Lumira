@@ -23,6 +23,7 @@
         <module>services/plugin-service</module>
         <module>services/localization-service</module>
         <module>services/payment-service</module>
+        <module>services/ai-service</module>
         <module>services/job-executor</module>
     </modules>
 

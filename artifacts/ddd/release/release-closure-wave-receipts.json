@@ -1,0 +1,353 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "recommendation": "NO_GO_STRICT",
+  "noAutoWaivers": true,
+  "summary": {
+    "waveCount": 7,
+    "readyForStrictGateRerunCount": 7,
+    "artifactMissingCount": 0,
+    "contentBlockedCount": 0,
+    "expectedArtifactCount": 8,
+    "presentArtifactCount": 8,
+    "missingArtifactCount": 0
+  },
+  "waves": [
+    {
+      "wave": 1,
+      "owner": "release-infra",
+      "batchId": "p0-release-env-lint-release-infra",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        1,
+        2
+      ],
+      "itemIds": [
+        "release-env-lint-placeholders",
+        "release-env-lint-status"
+      ],
+      "expectedArtifactCount": 2,
+      "presentArtifactCount": 2,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/release/release-env-lint.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
+        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 2,
+      "owner": "ai-owner",
+      "batchId": "p0-release-config-ai-owner",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "itemIds": [
+        "file owner url",
+        "iam owner url",
+        "owner internal token",
+        "platform owner url",
+        "provider api key",
+        "provider base url"
+      ],
+      "expectedArtifactCount": 1,
+      "presentArtifactCount": 1,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 3,
+      "owner": "payment-owner",
+      "batchId": "p0-release-config-payment-owner",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        15,
+        16
+      ],
+      "itemIds": [
+        "payment public url"
+      ],
+      "expectedArtifactCount": 1,
+      "presentArtifactCount": 1,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 4,
+      "owner": "platform-events",
+      "batchId": "p0-release-config-platform-events",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "itemIds": [
+        "event stream key",
+        "job backend url",
+        "job file url",
+        "job internal token",
+        "job message url",
+        "job payment url",
+        "job plugin url",
+        "xxl job admin",
+        "xxl job token"
+      ],
+      "expectedArtifactCount": 1,
+      "presentArtifactCount": 1,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 5,
+      "owner": "platform-owners",
+      "batchId": "p0-release-config-platform-owners",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "itemIds": [
+        "ai service",
+        "auth service",
+        "file service",
+        "job executor",
+        "localization service",
+        "message service",
+        "payment service",
+        "plugin service",
+        "system service"
+      ],
+      "expectedArtifactCount": 1,
+      "presentArtifactCount": 1,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 6,
+      "owner": "release-infra",
+      "batchId": "p0-release-config-release-infra",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "itemIds": [
+        "backend base url",
+        "cors origins",
+        "database password",
+        "database url",
+        "database username",
+        "field secret",
+        "frontend base url",
+        "jwt secret",
+        "redis host"
+      ],
+      "expectedArtifactCount": 1,
+      "presentArtifactCount": 1,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-release-config-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "release-config-evidence status is PASS with no contract issues.",
+        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 7,
+      "owner": "release-infra",
+      "batchId": "p0-docker-release-infra",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "itemOrders": [
+        66,
+        67,
+        68,
+        69
+      ],
+      "itemIds": [
+        "docker-blocker-1",
+        "docker-blocker-2",
+        "docker-image-frontend-failed",
+        "docker-image-lumira-server-failed"
+      ],
+      "expectedArtifactCount": 1,
+      "presentArtifactCount": 1,
+      "missingArtifactCount": 0,
+      "presentArtifacts": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+        "node scripts/ddd-docker-build-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Docker CLI and daemon are available in the evidence runner.",
+        "Required lumira-server and frontend images are built, inspected, and not skipped."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-06-17T04:28:34.035Z",
+  "status": "NO_GO",
+  "enforce": true,
+  "advisoryOnly": false,
+  "advisoryFailureCount": 0,
+  "advisoryFailures": [],
+  "cutoverAllowed": false,
+  "releaseEnvFileCutoverSafe": false,
+  "finalRecommendation": "NO_GO_STRICT",
+  "gateBlockers": 0,
+  "stopReasonCount": 13,
+  "cutoverDecisionSource": "artifacts/ddd/release/release-final-go-no-go.json",
+  "advisoryNotice": null,
+  "failedStep": "manifest-provenance-preflight",
+  "reportPath": "artifacts/ddd/release/release-preflight-strict-report.json",
+  "steps": [
+    {
+      "name": "artifact-integrity",
+      "exitCode": 0,
+      "command": "bash artifacts/ddd/release/release-artifact-integrity-gate.sh"
+    },
+    {
+      "name": "manifest-provenance-preflight",
+      "exitCode": 1,
+      "command": "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs"
+    },
+    {
+      "name": "artifact-path-leak",
+      "exitCode": 0,
+      "command": "node scripts/ddd-release-artifact-path-leak-contract.mjs"
+    },
+    {
+      "name": "unblock-brief",
+      "exitCode": -1,
+      "command": "node scripts/ddd-release-unblock-brief.mjs && node scripts/ddd-release-unblock-brief-contract.mjs"
+    },
+    {
+      "name": "env-owner-handoff-redacted",
+      "exitCode": -1,
+      "command": "node scripts/ddd-release-env-owner-handoff-redacted-contract.mjs"
+    },
+    {
+      "name": "env-readiness",
+      "exitCode": -1,
+      "command": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
+    },
+    {
+      "name": "final-go-no-go",
+      "exitCode": -1,
+      "command": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+    }
+  ]
+}

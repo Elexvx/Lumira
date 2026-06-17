@@ -12,7 +12,7 @@ import { normalizeLocale } from '@/i18n/locale';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { MessageNoticeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
-import type { MessageUnreadCount, PagedResult } from '@/types/api';
+import { requestMessageList, requestMessageRead, requestMessageMarkAllRead, requestMessageUnreadCount } from '@/services/message/api';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { notification } from '@/theme/antdFeedbackBridge';
 
@@ -294,7 +294,7 @@ const useMessageCenterRealtime = (enabled: boolean, onEvent: (event: MessageCent
   }, [enabled, onEvent, sessionId]);
 };
 
-const useMessageCenterContentModel = () => {
+const useMessageCenterContentModel = (enabled: boolean) => {
   const { initialState } = useInitialStateModel();
   const intl = useIntl();
   const [filter, setFilter] = useState<MessageCenterFilter>('unread');
@@ -319,7 +319,7 @@ const useMessageCenterContentModel = () => {
     permissions.has('system:notification:view');
 
   const reloadCenter = useCallback(async () => {
-    if (!canOpenMessageCenter) {
+    if (!enabled || !canOpenMessageCenter) {
       setNotices([]);
       setUnreadCount(0);
       setLoadError(null);
@@ -332,17 +332,11 @@ const useMessageCenterContentModel = () => {
       setLoadError(null);
 
       try {
-        const [messageResult, unreadResult] = await Promise.allSettled([
-          request<PagedResult<MessageNoticeRecord>>('/v1/message/messages', {
-            method: 'GET',
-            params: { pageNo: 1, pageSize: 100 },
-            ...requestOptions,
-          }),
-          request<MessageUnreadCount>('/v1/message/unread-count', {
-            method: 'GET',
-            ...requestOptions,
-          }),
-        ]);
+        const messageResult = await requestMessageList({
+          method: 'GET',
+          params: { pageNo: 1, pageSize: 100 },
+          ...requestOptions,
+        });
 
       if (loadRequestIdRef.current !== requestId) {
         return;
@@ -351,15 +345,11 @@ const useMessageCenterContentModel = () => {
       const nextNotices: MessageCenterNotice[] = [];
       let failedParts = 0;
 
-      if (messageResult.status === 'fulfilled') {
-        const messageRecords = Array.isArray(messageResult.value?.records) ? messageResult.value.records : [];
-        if (!Array.isArray(messageResult.value?.records)) {
-          failedParts += 1;
-        }
-        nextNotices.push(...messageRecords.map(normalizeMessageCenterNotice));
-      } else {
+      const messageRecords = Array.isArray(messageResult?.records) ? messageResult.records : [];
+      if (!Array.isArray(messageResult?.records)) {
         failedParts += 1;
       }
+      nextNotices.push(...messageRecords.map(normalizeMessageCenterNotice));
 
       nextNotices.sort((left, right) => {
         const leftTime = new Date(left.effectiveAt).getTime();
@@ -368,7 +358,7 @@ const useMessageCenterContentModel = () => {
       });
 
       setNotices(nextNotices);
-      setUnreadCount(unreadResult.status === 'fulfilled' ? Number(unreadResult.value.unreadCount || 0) : 0);
+      setUnreadCount(nextNotices.filter((item) => !item.readFlag).length);
 
       if (failedParts > 0) {
         setLoadError(
@@ -377,15 +367,21 @@ const useMessageCenterContentModel = () => {
             : intl.formatMessage({ id: 'message.center.loadError', defaultMessage: '消息加载失败，请稍后重试' }),
         );
       }
+    } catch {
+      if (loadRequestIdRef.current === requestId) {
+        setNotices([]);
+        setUnreadCount(0);
+        setLoadError(intl.formatMessage({ id: 'message.center.loadError', defaultMessage: '消息加载失败，请稍后重试' }));
+      }
     } finally {
       if (loadRequestIdRef.current === requestId) {
         setLoading(false);
       }
     }
-  }, [canOpenMessageCenter, intl, requestOptions]);
+  }, [canOpenMessageCenter, enabled, intl, requestOptions]);
 
   useMessageCenterRealtime(
-    canOpenMessageCenter,
+    enabled && canOpenMessageCenter,
     useCallback(
       (event) => {
         if (!event.eventType) {
@@ -413,7 +409,7 @@ const useMessageCenterContentModel = () => {
 
       setActionKey(notice.key);
       try {
-        await request<MessageNoticeRecord>(`/v1/message/messages/${notice.id}/read`, {
+        await requestMessageRead(notice.id, {
           method: 'POST',
           ...requestOptions,
         });
@@ -434,7 +430,7 @@ const useMessageCenterContentModel = () => {
 
       setActionKey('all');
       try {
-        await request<MessageUnreadCount>('/v1/message/read-all', {
+        await requestMessageMarkAllRead({
           method: 'POST',
           ...requestOptions,
         });
@@ -448,8 +444,10 @@ const useMessageCenterContentModel = () => {
   );
 
   useEffect(() => {
-    void reloadCenter();
-  }, [canOpenMessageCenter, reloadCenter]);
+    if (enabled) {
+      void reloadCenter();
+    }
+  }, [enabled, reloadCenter]);
 
   const counts = useMemo(
     () => ({
@@ -641,8 +639,8 @@ const REQUEST_OPTIONS = {
 export const MessageCenterDrawer = () => {
   const intl = useIntl();
   const { initialState } = useInitialStateModel();
-  const contentModel = useMessageCenterContentModel();
   const [open, setOpen] = useState(false);
+  const contentModel = useMessageCenterContentModel(open);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifiedNoticeKeysRef = useRef(new Set<string>());
   const { isMobile } = useResponsive();
@@ -662,7 +660,7 @@ export const MessageCenterDrawer = () => {
     }
 
     try {
-      const result = await request<MessageUnreadCount>('/v1/message/unread-count', {
+      const result = await requestMessageUnreadCount({
         method: 'GET',
         ...REQUEST_OPTIONS,
       });
@@ -727,8 +725,10 @@ export const MessageCenterDrawer = () => {
   useMessageCenterRealtime(canOpenMessageCenter, handleRealtimeEvent);
 
   useEffect(() => {
-    setUnreadCount(contentModel.unreadCount);
-  }, [contentModel.unreadCount]);
+    if (open) {
+      setUnreadCount(contentModel.unreadCount);
+    }
+  }, [contentModel.unreadCount, open]);
 
   if (!canOpenMessageCenter) {
     return null;
@@ -740,6 +740,7 @@ export const MessageCenterDrawer = () => {
         <Button
           type="text"
           icon={<NotificationOutlined />}
+          data-testid="top-message-center-button"
           aria-label={intl.formatMessage({ id: 'message.center.ariaLabel', defaultMessage: '消息中心，当前有 {count} 条未读消息' }, { count: unreadCount })}
           onClick={() => setOpen(true)}
         />

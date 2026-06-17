@@ -68,6 +68,13 @@ const completeForcedPasswordChange = async (page: Page) => {
   await page.waitForURL((url) => !url.pathname.startsWith('/user/login'), { timeout: 20_000 });
 };
 
+const completeForcedPasswordChangeIfPresent = async (page: Page) => {
+  const forcedPasswordInput = page.getByTestId('forced-password-new-input');
+  if (await forcedPasswordInput.isVisible().catch(() => false)) {
+    await completeForcedPasswordChange(page);
+  }
+};
+
 export const authenticateAdmin = async (page: Page) => {
   let outcome = await submitPasswordLogin(page, initialAdminPassword);
 
@@ -82,7 +89,9 @@ export const authenticateAdmin = async (page: Page) => {
   }
 
   await page.goto('/dashboard/home');
+  await completeForcedPasswordChangeIfPresent(page);
   await expect(page).toHaveURL(/\/dashboard\/home/);
+  await expect(page.getByTestId('top-user-menu-button')).toBeVisible();
   mkdirSync(path.dirname(authFile), { recursive: true });
   await page.context().storageState({ path: authFile });
 };

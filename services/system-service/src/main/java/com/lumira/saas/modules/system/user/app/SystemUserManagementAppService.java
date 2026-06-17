@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class SystemUserManagementAppService {
@@ -48,6 +49,7 @@ public class SystemUserManagementAppService {
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
+    private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
@@ -240,18 +242,48 @@ public class SystemUserManagementAppService {
 
     private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId) {
         SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
-        if (!canViewSensitiveUserInfo(currentUser)) {
+        boolean canViewSensitive = canViewSensitiveUserInfo(currentUser);
+        if (!canViewSensitive) {
             maskSensitiveUser(user);
         }
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
         Long tenantId = currentTenantId(currentUser);
-        detail.setRoleIds(listUserRoleIds(userId, tenantId));
-        List<Long> deptIds = listUserDeptIds(userId, tenantId);
+        CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<Long>> tenantIdsFuture = CompletableFuture.supplyAsync(() -> listUserTenantIds(userId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> tenantNamesFuture = CompletableFuture.supplyAsync(() -> listUserTenantNames(userId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<UserDetailVO.UserIdentityVO>> identitiesFuture = CompletableFuture.supplyAsync(
+                () -> iamUserService.listIdentities(userId).stream()
+                        .map(identity -> toUserIdentityVO(identity, canViewSensitive))
+                        .toList(),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<List<UserDetailVO.UserDeviceVO>> devicesFuture = CompletableFuture.supplyAsync(
+                () -> iamUserService.listRecentDevices(userId, 10).stream()
+                        .map(device -> toUserDeviceVO(device, canViewSensitive))
+                        .toList(),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<UserDetailVO.UserSecuritySettingVO> securitySettingFuture = CompletableFuture.supplyAsync(
+                () -> iamUserService.findSecuritySetting(userId)
+                        .map(this::toUserSecuritySettingVO)
+                        .orElse(null),
+                BLOCKING_IO_EXECUTOR
+        );
+        detail.setRoleIds(roleIdsFuture.join());
+        List<Long> deptIds = deptIdsFuture.join();
         detail.setDeptIds(deptIds);
         detail.setPrimaryDeptId(deptIds.isEmpty() ? null : deptIds.get(0));
-        detail.setTenantIds(listUserTenantIds(userId));
-        decorateIamUserDetail(detail, userId, canViewSensitiveUserInfo(currentUser));
+        detail.setTenantIds(tenantIdsFuture.join());
+        detail.setTenantNames(tenantNamesFuture.join());
+        detail.setRoleNames(roleNamesFuture.join());
+        detail.setDeptNames(deptNamesFuture.join());
+        detail.setIdentities(identitiesFuture.join());
+        detail.setRecentDevices(devicesFuture.join());
+        detail.setSecuritySetting(securitySettingFuture.join());
         return detail;
     }
 
@@ -364,12 +396,11 @@ public class SystemUserManagementAppService {
                 userId
         );
 
-        Integer activeTenantCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_user_tenant where user_id = ? and deleted = 0 and status = 'ENABLED'",
-                Integer.class,
+        boolean activeTenantExists = existsByQuery(
+                "select 1 from sys_user_tenant where user_id = ? and deleted = 0 and status = 'ENABLED' limit 1",
                 userId
         );
-        if (activeTenantCount == null || activeTenantCount == 0) {
+        if (!activeTenantExists) {
             jdbcTemplate.update(
                     """
                             update sys_user
@@ -437,9 +468,6 @@ public class SystemUserManagementAppService {
         if (user == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        user.setTenantNames(listUserTenantNames(user.getId()));
-        user.setRoleNames(listUserRoleNames(user.getId(), tenantId));
-        user.setDeptNames(listUserDeptNames(user.getId(), tenantId));
         return user;
     }
 
@@ -485,7 +513,7 @@ public class SystemUserManagementAppService {
             } catch (DuplicateKeyException exception) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
             }
-            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, username);
+            Long createdUserId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
             userDomainService.findById(createdUserId).ifPresent(user -> {
                 iamUserService.createUserWithIdentity(user, username, "ADMIN_CREATE");
                 iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
@@ -1050,13 +1078,19 @@ public class SystemUserManagementAppService {
         queryParams.add(offset);
         String pagedSql = selectSql + " limit ? offset ?";
         List<T> records = jdbcTemplate.query(pagedSql, new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
         PageResponse<T> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private long nullToZero(Long value) {
+        return value == null ? 0 : value;
     }
 
     private <T> PageResponse<T> cursorQuery(String selectSql, Class<T> voClass, long pageSize, List<Object> params) {
@@ -1086,13 +1120,12 @@ public class SystemUserManagementAppService {
     }
 
     private Set<Long> queryDepartmentAndDescendantIds(Long tenantId, Long deptId) {
-        Long rootCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_department where tenant_id = ? and id = ? and deleted = 0",
-                Long.class,
+        boolean rootExists = existsByQuery(
+                "select 1 from sys_department where tenant_id = ? and id = ? and deleted = 0 limit 1",
                 tenantId,
                 deptId
         );
-        if (rootCount == null || rootCount == 0) {
+        if (!rootExists) {
             return Set.of();
         }
 
@@ -1146,9 +1179,9 @@ public class SystemUserManagementAppService {
         params.add(tenantId);
         params.add(userId);
         params.addAll(dataPermissionSql.params());
-        Long count = jdbcTemplate.queryForObject(
+        return existsByQuery(
                 """
-                        select count(1)
+                        select 1
                         from sys_user u
                         join sys_user_tenant ut
                           on ut.user_id = u.id
@@ -1157,18 +1190,13 @@ public class SystemUserManagementAppService {
                          and ut.status = 'ENABLED'
                         where u.deleted = 0
                           and u.id = ?
-                        """ + dataPermissionSql.sql(),
-                Long.class,
+                        """ + dataPermissionSql.sql() + " limit 1",
                 params.toArray()
         );
-        return count != null && count > 0;
     }
 
     private DataPermissionSql userDataPermissionClause(CurrentUser currentUser, String userAlias) {
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
-                currentTenantId(currentUser),
-                currentUser.getUserId()
-        );
+        PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
         if (snapshot == null) {
             snapshot = PermissionSnapshotService.PermissionSnapshot.empty();
         }
@@ -1223,6 +1251,28 @@ public class SystemUserManagementAppService {
         return new DataPermissionSql(" and (" + String.join(" or ", conditions) + ")", params);
     }
 
+    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(CurrentUser currentUser) {
+        if (currentUser == null || currentUser.getSimulatedRoleId() != null) {
+            if (currentUser == null || currentUser.getSimulatedRoleId() == null || currentUser.getCurrentTenantId() == null || currentUser.getUserId() == null) {
+                return PermissionSnapshotService.PermissionSnapshot.empty();
+            }
+            return permissionSnapshotService.loadRoleSnapshot(currentUser.getCurrentTenantId(), currentUser.getSimulatedRoleId());
+        }
+        if (!org.springframework.util.StringUtils.hasText(currentUser.getPermissionsVersion())) {
+            return permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId());
+        }
+        return new PermissionSnapshotService.PermissionSnapshot(
+                currentUser.getPermissionsVersion(),
+                currentUser.getPermissions(),
+                currentUser.getRoleIds(),
+                currentUser.getPrimaryDeptId(),
+                currentUser.getDeptIds(),
+                currentUser.getDescendantDeptIds(),
+                currentUser.getDataScopes(),
+                currentUser.getDefaultHomePath()
+        );
+    }
+
     private <T> T queryOne(String sql, Class<T> voClass, Object... params) {
         try {
             return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(voClass), params);
@@ -1237,6 +1287,10 @@ public class SystemUserManagementAppService {
         } catch (EmptyResultDataAccessException exception) {
             return null;
         }
+    }
+
+    private boolean existsByQuery(String sql, Object... params) {
+        return jdbcTemplate.exists(sql, params);
     }
 
     private void copyUser(SystemVO.UserDetailVO target, SystemVO.UserVO source) {

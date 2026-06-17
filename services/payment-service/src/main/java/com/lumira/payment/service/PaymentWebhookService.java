@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.domain.event.DomainEventPublisher;
+import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -13,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.Signature;
@@ -36,19 +40,22 @@ public class PaymentWebhookService {
     private final PaymentManagementAppService paymentManagementAppService;
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
+    private final DomainEventPublisher domainEventPublisher;
 
     public PaymentWebhookService(
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
             PaymentManagementAppService paymentManagementAppService,
             PaymentProviderCatalog providerCatalog,
-            PaymentOutboxService outboxService
+            PaymentOutboxService outboxService,
+            @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.paymentManagementAppService = paymentManagementAppService;
         this.providerCatalog = providerCatalog;
         this.outboxService = outboxService;
+        this.domainEventPublisher = domainEventPublisher;
     }
 
     @Transactional
@@ -174,7 +181,15 @@ public class PaymentWebhookService {
 
         String orderNo = extractField(payload, "orderNo", "order_no", "merchantOrderNo", "out_trade_no", "id");
         if (StringUtils.hasText(orderNo)) {
-            jdbcTemplate.update(
+            PaymentOrderRow order = findOrderForWebhook(tenantId, orderNo.trim());
+            PaymentOrderAggregate orderAggregate = new PaymentOrderAggregate(
+                    orderNo.trim(),
+                    tenantId,
+                    BigDecimal.valueOf(order == null || order.getAmountMinor() == null ? 1L : order.getAmountMinor(), 2),
+                    order == null ? "PENDING" : order.getStatus()
+            );
+            orderAggregate.markPaid(extractField(payload, "providerTxnId", "transaction_id", "trade_no"));
+            int updated = jdbcTemplate.update(
                     """
                             update payment_order
                             set status = 'PAID', paid_at = ?, updated_at = ?, updated_by = ?, deleted = 0
@@ -187,8 +202,35 @@ public class PaymentWebhookService {
                     tenantId,
                     orderNo.trim()
             );
+            if (updated > 0) {
+                domainEventPublisher.publishAll(orderAggregate.pullDomainEvents());
+            }
         }
         return "支付 webhook 已处理";
+    }
+
+    private PaymentOrderRow findOrderForWebhook(Long tenantId, String orderNo) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select id, tenant_id as tenantId, order_no as orderNo, provider_code as providerCode,
+                                   provider_order_no as providerOrderNo, subject, amount_minor as amountMinor, currency,
+                                   status, payment_url as paymentUrl, client_ip as clientIp, notify_url as notifyUrl,
+                                   return_url as returnUrl, request_json as requestJson, response_json as responseJson,
+                                   idempotency_key as idempotencyKey, failure_code as failureCode, failure_message as failureMessage,
+                                   expires_at as expiresAt, paid_at as paidAt, created_by as createdBy, created_at as createdAt,
+                                   updated_by as updatedBy, updated_at as updatedAt, deleted
+                            from payment_order
+                            where tenant_id = ? and order_no = ? and deleted = 0
+                            limit 1
+                            """,
+                    new BeanPropertyRowMapper<>(PaymentOrderRow.class),
+                    tenantId,
+                    orderNo
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return null;
+        }
     }
 
     private void markProcessed(Long tenantId, String providerCode, String eventId, String processMessage) {
@@ -292,20 +334,20 @@ public class PaymentWebhookService {
             return false;
         }
         try {
-            Integer count = jdbcTemplate.queryForObject(
+            return !jdbcTemplate.queryForList(
                     """
-                            select count(1)
+                            select 1
                             from payment_webhook_event
                             where tenant_id = ? and provider_code = ? and nonce = ? and deleted = 0
                               and received_at >= ?
+                            limit 1
                             """,
-                    Integer.class,
+                    Long.class,
                     tenantId,
                     providerCatalog.normalize(providerCode),
                     nonce.trim(),
                     LocalDateTime.now().minusSeconds(WEBHOOK_REPLAY_WINDOW_SECONDS)
-            );
-            return count != null && count > 0;
+            ).isEmpty();
         } catch (Exception ignored) {
             return false;
         }

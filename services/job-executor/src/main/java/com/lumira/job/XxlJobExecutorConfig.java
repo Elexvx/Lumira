@@ -2,6 +2,7 @@ package com.lumira.job;
 
 import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class XxlJobExecutorConfig {
 
     @Bean
+    @ConditionalOnProperty(name = "xxl.job.executor.enabled", havingValue = "true", matchIfMissing = true)
     public XxlJobSpringExecutor xxlJobSpringExecutor(
             @Value("${xxl.job.admin.addresses}") String adminAddresses,
             @Value("${xxl.job.accessToken:}") String accessToken,

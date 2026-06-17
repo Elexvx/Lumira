@@ -1,0 +1,123 @@
+{
+  "status": "PASS",
+  "baseUrl": "http://127.0.0.1:8080",
+  "username": "admin",
+  "tenantId": 1001,
+  "providerCode": "stripe",
+  "startedAt": "2026-06-13T19:03:18.935Z",
+  "finishedAt": "2026-06-13T19:03:19.658Z",
+  "elapsedMs": 723,
+  "provider": {
+    "elapsedMs": 131.74,
+    "enabled": true,
+    "configured": true,
+    "configuredFields": [
+      "clientId",
+      "secretKey",
+      "webhookSecret",
+      "currency",
+      "sandboxEnabled"
+    ]
+  },
+  "order": {
+    "elapsedMs": 103.5,
+    "orderNo": "DDD-PAY-1781377399313-eb3af4",
+    "status": "PENDING",
+    "amountMinor": 199,
+    "currency": "USD"
+  },
+  "webhooks": {
+    "first": {
+      "elapsedMs": 21.63,
+      "eventId": "evt-valid-1781377399313-eb3af4",
+      "eventType": "payment.succeeded",
+      "signatureValid": true,
+      "processed": true,
+      "processMessage": "支付 webhook 已处理"
+    },
+    "duplicate": {
+      "elapsedMs": 7.05,
+      "eventId": "evt-valid-1781377399313-eb3af4",
+      "eventType": "payment.succeeded",
+      "signatureValid": true,
+      "processed": true,
+      "processMessage": "支付 webhook 已处理"
+    },
+    "nonceReplay": {
+      "elapsedMs": 10.08,
+      "eventId": "evt-replay-1781377399313-eb3af4",
+      "eventType": "payment.succeeded",
+      "signatureValid": false,
+      "processed": false,
+      "processMessage": "请求已被重放"
+    },
+    "badSignature": {
+      "elapsedMs": 13.19,
+      "eventId": "evt-bad-1781377399313-eb3af4",
+      "eventType": "payment.succeeded",
+      "signatureValid": false,
+      "processed": false,
+      "processMessage": "签名校验失败"
+    }
+  },
+  "finalState": {
+    "order": {
+      "paidAt": "2026-06-14T03:03:20",
+      "status": "PAID",
+      "orderNo": "DDD-PAY-1781377399313-eb3af4",
+      "currency": "USD",
+      "updatedAt": "2026-06-14T03:03:20",
+      "amountMinor": 199,
+      "providerCode": "stripe"
+    },
+    "webhookEvents": [
+      {
+        "nonce": "nonce-1781377399313-eb3af4",
+        "eventId": "evt-valid-1781377399313-eb3af4",
+        "eventType": "payment.succeeded",
+        "processed": 1,
+        "receivedAt": "2026-06-14T03:03:20",
+        "processedAt": "2026-06-14T03:03:20",
+        "processMessage": "支付 webhook 已处理",
+        "signatureValid": 1
+      },
+      {
+        "nonce": "nonce-1781377399313-eb3af4",
+        "eventId": "evt-replay-1781377399313-eb3af4",
+        "eventType": "payment.succeeded",
+        "processed": 0,
+        "receivedAt": "2026-06-14T03:03:20",
+        "processedAt": null,
+        "processMessage": "请求已被重放",
+        "signatureValid": 0
+      },
+      {
+        "nonce": "nonce-bad-1781377399313-eb3af4",
+        "eventId": "evt-bad-1781377399313-eb3af4",
+        "eventType": "payment.succeeded",
+        "processed": 0,
+        "receivedAt": "2026-06-14T03:03:20",
+        "processedAt": null,
+        "processMessage": "签名校验失败",
+        "signatureValid": 0
+      }
+    ]
+  },
+  "sourceEnvironment": "local-evidence-audit",
+  "releaseCandidate": "local-ddd-release-audit",
+  "evidenceOperator": "codex-local-audit",
+  "provenanceBackfilledAt": "2026-06-15T10:57:47.642Z",
+  "provenanceBackfillReason": "operator supplied metadata for existing local evidence artifact; result fields were not changed",
+  "productionEquivalence": {
+    "strict": true,
+    "https": false,
+    "localOnly": true,
+    "deploymentEvidence": null,
+    "issues": [
+      "strict payment webhook E2E requires HTTPS baseUrl evidence",
+      "strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080"
+    ]
+  },
+  "productionEquivalenceBackfilledAt": "2026-06-14T11:14:55.433Z",
+  "productionEquivalenceBackfillReason": "baseUrl-derived production equivalence metadata; result fields were not changed"
+}

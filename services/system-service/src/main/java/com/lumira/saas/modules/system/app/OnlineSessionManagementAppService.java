@@ -155,18 +155,20 @@ public class OnlineSessionManagementAppService {
             return List.of();
         }
 
+        Map<String, AuthSession> sessionMap = authSessionStore.findBySessionIds(sessionIds);
         List<AuthSession> collected = new ArrayList<>();
         for (String sessionId : sessionIds) {
-            authSessionStore.findBySessionId(sessionId).ifPresentOrElse(session -> {
+            AuthSession session = sessionMap.get(sessionId);
+            if (session != null) {
                 if (isOnlineSession(session, idleTimeoutSeconds)) {
                     collected.add(session);
                 } else {
                     authSessionStore.remove(session, true);
                 }
-            }, () -> {
+            } else {
                 authSessionStore.removeSessionReferences(sessionId);
                 authSessionStore.removeTenantSessionReference(tenantId, sessionId);
-            });
+            }
         }
         if (securitySettingsService.isAllowMultiDeviceLogin()) {
             return collected;
@@ -188,19 +190,15 @@ public class OnlineSessionManagementAppService {
 
     private Map<Long, String> loadLatestSessionIdsByUser(List<AuthSession> sessions) {
         Set<Long> userIds = new LinkedHashSet<>();
+        Map<Long, String> latestSessionIds = new LinkedHashMap<>();
         for (AuthSession session : sessions) {
             if (session.getUserId() != null) {
                 userIds.add(session.getUserId());
+                latestSessionIds.putIfAbsent(session.getUserId(), session.getSessionId());
             }
         }
         if (userIds.isEmpty()) {
             return Map.of();
-        }
-
-        Map<Long, String> latestSessionIds = new LinkedHashMap<>();
-        for (Long userId : userIds) {
-            authSessionStore.findLatestActiveUserSessionId(userId)
-                    .ifPresent(sessionId -> latestSessionIds.put(userId, sessionId));
         }
         return latestSessionIds;
     }

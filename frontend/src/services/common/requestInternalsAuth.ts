@@ -20,7 +20,12 @@ export const shouldRefreshAndRetryUnauthorized = (
   if (options.allowUnauthorizedWithoutRedirect === true) {
     return false;
   }
-  if (url.includes('/v1/auth/refresh-token') || url.includes('/v1/auth/logout')) {
+  if (
+    url.includes('/v1/auth/refresh-token') ||
+    url.includes('/v1/auth/logout') ||
+    url.includes('/v2/auth/refresh-token') ||
+    url.includes('/v2/auth/logout')
+  ) {
     return false;
   }
   return httpStatus === 401 || apiCode === ErrorCode.UNAUTHORIZED || apiCode === ErrorCode.SESSION_EXPIRED;

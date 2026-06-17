@@ -121,6 +121,40 @@ node scripts/deploy-container.mjs --pull
 node scripts/deploy-container.mjs --rebuild
 ```
 
+默认镜像构建不会下载 OpenTelemetry Java agent，避免默认关闭的观测能力阻塞发布构建。生产环境需要启用 `OTEL_JAVAAGENT_ENABLED=true` 时，先在构建环境设置可信制品地址：
+
+```bash
+OTEL_JAVAAGENT_URL=https://your-artifact-repository/opentelemetry-javaagent.jar \
+node scripts/deploy-container.mjs --rebuild
+```
+
+如果运行时开启了 agent 但镜像内没有非空 agent 文件，`lumira-server` 会启动失败并输出明确错误，避免静默丢失 trace。
+
+如果服务器无法稳定访问 Docker Hub，可在本机 rebuild 时切到可信镜像源：
+
+```bash
+MAVEN_IMAGE=registry.example.com/maven:3.9.11-eclipse-temurin-21 \
+JRE_IMAGE=registry.example.com/eclipse-temurin:21-jre \
+NODE_IMAGE=registry.example.com/node:22-bookworm-slim \
+NGINX_IMAGE=registry.example.com/nginx:1.29-alpine \
+node scripts/deploy-container.mjs --rebuild
+```
+
+如果 CI 已经构建并推送了本次发布候选镜像，发布 runner 也可以先拉取镜像，再生成 inspect-only Docker evidence，避免重复 build 受上游 registry 抖动影响：
+
+```bash
+docker pull registry.example.com/lumira-server:2026.06.14-rc1
+docker pull registry.example.com/frontend:2026.06.14-rc1
+
+DDD_DOCKER_BUILD_STRICT=true \
+DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=gh-run-12345-artifacts/docker-build-provenance.json \
+DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=registry.example.com/lumira-server:2026.06.14-rc1 \
+DDD_DOCKER_EXISTING_FRONTEND_IMAGE=registry.example.com/frontend:2026.06.14-rc1 \
+node scripts/ddd-docker-build-evidence.mjs
+```
+
+这条路径仍会校验当前 Dockerfile 静态合同、镜像端口、运行用户、entrypoint/cmd 和 `docker image inspect` 元数据，并要求 `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE` 指向可信 CI 构建日志、制品清单或镜像 provenance，不能替代真实发布候选镜像。
+
 注意：上面的重建命令会保留现有 MySQL 数据，不会重置 `admin` 密码。全新部署的默认管理员账号来自 Flyway 基线数据：
 
 - 用户名：`admin`
@@ -139,6 +173,30 @@ node scripts/deploy-container.mjs --rebuild
 默认部署按 4C4G 小型服务器收敛资源占用：Java 服务限制堆比例和元空间，Tomcat 线程池、Hikari 连接池、Redis 内存、Docker 日志和 API 入口限流都有默认上限。高流量时优先返回 429 或排队，而不是让 JVM、数据库连接和磁盘日志把服务器打满。
 
 首次运行会自动生成 `deploy/.env`，并为数据库、JWT、插件签名、任务内部调用等配置生成随机密钥。
+
+文件安全扫描默认使用内置轻量规则引擎，不依赖外部进程。生产环境需要接入 ClamAV 时，在 `deploy/.env` 设置：
+
+```bash
+LUMIRA_FILE_SECURITY_SCAN_MODE=CLAMAV
+LUMIRA_FILE_SECURITY_SCAN_CLAMAV_HOST=127.0.0.1
+LUMIRA_FILE_SECURITY_SCAN_CLAMAV_PORT=3310
+LUMIRA_FILE_SECURITY_SCAN_TIMEOUT_MILLIS=3000
+```
+
+扫描仍由 File owner 的异步处理任务执行，上传 HTTP 回包不会等待外部扫描；ClamAV 不可用时任务失败并进入既有重试/死信治理，不会把文件误标为安全。
+
+图片 OCR 默认关闭，但 OCR 任务仍会写入 `OCR_RESULT/SKIPPED` 产物并成功结束，避免异步队列反复失败。生产环境需要 OCR 时，在镜像或宿主机侧准备 Tesseract，并设置：
+
+```bash
+LUMIRA_FILE_OCR_MODE=TESSERACT
+LUMIRA_FILE_OCR_TESSERACT_COMMAND=tesseract
+LUMIRA_FILE_OCR_LANGUAGES=eng+chi_sim
+LUMIRA_FILE_OCR_TIMEOUT_MILLIS=5000
+```
+
+OCR 同样由 File owner 的异步处理任务执行；抽取到文本时会写入 `TEXT_CONTENT` artifact，供 AI owner 通过 `FileInternalApi` 的只读契约消费。
+
+图片缩略图同样走 File owner 异步处理任务。本地存储会生成 `.thumb.jpg` 并写入 `THUMBNAIL_RESULT/GENERATED`；远程对象存储在未接入具体 provider 原生缩略图前会写入 `THUMBNAIL_RESULT/DEFERRED_REMOTE_STORAGE`，任务成功结束，避免队列反复重试。
 
 部署完成后脚本会自动检查：
 
@@ -187,6 +245,18 @@ LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
 node scripts/load-smoke.mjs
+```
+
+如果需要验证登录后的首屏接口，准备一个不需要二次验证和强制改密的测试账号后运行：
+
+```bash
+AUTH_LOAD_BASE_URL=https://saas.elexvx.com \
+AUTH_LOAD_USERNAME=admin \
+AUTH_LOAD_PASSWORD='replace-with-test-password' \
+AUTH_LOAD_DURATION_MS=30000 \
+AUTH_LOAD_CONCURRENCY=16 \
+AUTH_LOAD_RPS=32 \
+node scripts/auth-load-smoke.mjs
 ```
 
 公网域名检查：
@@ -311,9 +381,11 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --r
 - `deploy/.env` 不要提交到 Git。
 - 对外只暴露 `https://saas.elexvx.com`，容器内部服务端口只在内网访问。
 - `DB_PASSWORD`、`JWT_SECRET`、`FIELD_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_JOB_INTERNAL_TOKEN` 必须使用强随机值。
+- 独立部署插件服务时配置 `SAAS_JOB_PLUGIN_SERVICE_BASE_URL`，聚合部署可沿用默认的 lumira-server 地址。
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
 - `DEFAULT_ADMIN_INIT_ENABLED` 在正式演示环境建议保持 `false`。
 - HTTPS/CDN/WAF 放在容器前面，API proxy 只承担容器内反向代理。
+- `XXL_JOB_EXECUTOR_ENABLED=false` 可用于 runtime smoke、准生产 owner 演练或临时禁用外部调度注册；正式需要 XXL-JOB 调度时保持默认 `true` 并配置 `XXL_JOB_ADMIN_ADDRESSES`、`XXL_JOB_ACCESS_TOKEN`。
 - `XXL_JOB_EXECUTOR_LOG_HOST_PATH` 默认使用 `/opt/lumira/data/xxl-job/logs`，部署前会授权给容器内 `app` 用户写入。
 
 ## 入口约定

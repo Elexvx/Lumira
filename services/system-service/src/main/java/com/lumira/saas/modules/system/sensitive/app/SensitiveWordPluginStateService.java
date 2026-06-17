@@ -13,6 +13,7 @@ public class SensitiveWordPluginStateService {
     private static final String PLUGIN_CODE = "sensitive-words";
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private volatile Boolean sensitiveWordTableExists;
 
     public SensitiveWordPluginStateService(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -29,20 +30,20 @@ public class SensitiveWordPluginStateService {
         if (tenantId == null) {
             return false;
         }
-        Long count = jdbcTemplate.queryForObject(
+        boolean enabled = jdbcTemplate.exists(
                 """
-                        select count(1)
+                        select 1
                         from sys_plugin_tenant
                         where tenant_id = ?
                           and plugin_code = ?
                           and enabled = 1
                           and deleted = 0
+                        limit 1
                         """,
-                Long.class,
                 tenantId,
                 PLUGIN_CODE
         );
-        return count != null && count > 0 && hasSensitiveWordTable();
+        return enabled && hasSensitiveWordTable();
     }
 
     public void ensureEnabled(CurrentUser currentUser) {
@@ -52,16 +53,26 @@ public class SensitiveWordPluginStateService {
     }
 
     public boolean hasSensitiveWordTable() {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from information_schema.tables
-                        where table_schema = database()
-                          and table_name = 'sys_sensitive_word'
-                        """,
-                Long.class
-        );
-        return count != null && count > 0;
+        Boolean cached = sensitiveWordTableExists;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (this) {
+            Boolean refreshed = sensitiveWordTableExists;
+            if (refreshed == null) {
+                refreshed = jdbcTemplate.exists(
+                        """
+                                select 1
+                                from information_schema.tables
+                                where table_schema = database()
+                                  and table_name = 'sys_sensitive_word'
+                                limit 1
+                                """
+                );
+                sensitiveWordTableExists = refreshed;
+            }
+            return refreshed;
+        }
     }
 
     private Long resolveTenantId(CurrentUser currentUser) {

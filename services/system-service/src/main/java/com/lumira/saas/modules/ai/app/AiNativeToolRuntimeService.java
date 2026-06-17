@@ -2,6 +2,8 @@ package com.lumira.saas.modules.ai.app;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -47,6 +49,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
     private final ObjectMapper objectMapper;
     private final SystemManagementAppService systemManagementAppService;
+    private final AiPlatformQueryFacade platformQueryFacade;
+    private final AiIamQueryFacade iamQueryFacade;
+    private final FileInternalApi fileInternalApi;
     private final Map<String, NativeTool> tools;
 
     @Autowired
@@ -54,23 +59,20 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             MyBatisQueryOperations jdbcTemplate,
             PermissionGuard permissionGuard,
             AiSkillPermissionChecker aiSkillPermissionChecker,
-            ObjectMapper objectMapper
-    ) {
-        this(jdbcTemplate, permissionGuard, aiSkillPermissionChecker, objectMapper, null);
-    }
-
-    DefaultAiNativeToolRuntimeService(
-            MyBatisQueryOperations jdbcTemplate,
-            PermissionGuard permissionGuard,
-            AiSkillPermissionChecker aiSkillPermissionChecker,
             ObjectMapper objectMapper,
-            SystemManagementAppService systemManagementAppService
+            AiPlatformQueryFacade platformQueryFacade,
+            AiIamQueryFacade iamQueryFacade,
+            SystemManagementAppService systemManagementAppService,
+            FileInternalApi fileInternalApi
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionGuard = permissionGuard;
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
         this.objectMapper = objectMapper;
+        this.platformQueryFacade = platformQueryFacade == null ? new DefaultAiPlatformQueryFacade(jdbcTemplate) : platformQueryFacade;
+        this.iamQueryFacade = iamQueryFacade == null ? new DefaultAiIamQueryFacade(jdbcTemplate) : iamQueryFacade;
         this.systemManagementAppService = systemManagementAppService;
+        this.fileInternalApi = fileInternalApi;
         this.tools = new LinkedHashMap<>(Map.of(
                 "system.permission.snapshot", new NativeTool(
                         "system.permission.snapshot",
@@ -379,23 +381,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Map<String, Object> listMenus(ToolExecutionContext context) {
         String status = stringArg(context.arguments(), "status", "ENABLED");
         int limit = limitArg(context.arguments());
-        List<Map<String, Object>> menus = jdbcTemplate.queryForList(
-                """
-                        select id, parent_id as parentId, menu_code as menuCode, menu_name as menuName,
-                               menu_type as menuType, path, component, permission_key as permissionKey,
-                               status, sort_no as sortNo
-                        from sys_menu
-                        where tenant_id = ?
-                          and deleted = 0
-                          and (? is null or status = ?)
-                        order by sort_no asc, id asc
-                        limit ?
-                        """,
-                context.tenantId(),
-                StringUtils.hasText(status) ? status : null,
-                StringUtils.hasText(status) ? status : null,
-                limit
-        );
+        List<Map<String, Object>> menus = platformQueryFacade.listMenus(context.tenantId(), status, limit);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", menus);
         data.put("limit", limit);
@@ -411,19 +397,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (looksSensitive(configKey)) {
             throw new BizException(ErrorCode.FORBIDDEN, "敏感配置不允许通过 AI 工具读取: " + configKey);
         }
-        Map<String, Object> config = jdbcTemplate.queryForList(
-                """
-                        select config_key as configKey, config_name as configName, config_value as configValue,
-                               config_scope as configScope, is_system as system
-                        from sys_config
-                        where tenant_id = ?
-                          and config_key = ?
-                          and deleted = 0
-                        limit 1
-                        """,
-                context.tenantId(),
-                configKey.trim()
-        ).stream().findFirst().orElse(null);
+        Map<String, Object> config = platformQueryFacade.readConfig(context.tenantId(), configKey.trim());
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "配置不存在: " + configKey);
         }
@@ -436,59 +410,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         String keyword = stringArg(context.arguments(), "keyword", null);
         String status = stringArg(context.arguments(), "status", null);
         int limit = limitArg(context.arguments());
-        List<Object> args = new java.util.ArrayList<>();
-        args.add(context.tenantId());
-        StringBuilder filterSql = new StringBuilder("""
-                from sys_user u
-                join sys_user_tenant ut
-                  on ut.user_id = u.id
-                 and ut.tenant_id = ?
-                 and ut.deleted = 0
-                where u.deleted = 0
-                """);
-        appendUserSearchFilters(filterSql, args, keyword, status);
-        Long total = jdbcTemplate.queryForObject("select count(1) " + filterSql, Long.class, args.toArray());
-
-        List<Object> queryArgs = new java.util.ArrayList<>(args);
-        StringBuilder sql = new StringBuilder("""
-                select u.id, u.username, u.nickname, u.real_name as realName, u.mobile, u.email,
-                       u.status, u.created_at as createdAt, u.updated_at as updatedAt
-                """);
-        sql.append(filterSql);
-        sql.append(" order by u.id desc limit ?");
-        queryArgs.add(limit);
-        List<Map<String, Object>> users = jdbcTemplate.queryForList(sql.toString(), queryArgs.toArray());
-        for (Map<String, Object> user : users) {
-            user.put("mobile", maskMobile(user.get("mobile")));
-            user.put("email", maskEmail(user.get("email")));
-        }
+        AiIamQueryFacade.UserSearchResult searchResult = iamQueryFacade.searchUsers(context.tenantId(), keyword, status, limit);
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("items", users);
+        data.put("items", searchResult.items());
         data.put("limit", limit);
-        data.put("count", users.size());
-        data.put("total", total == null ? users.size() : total);
+        data.put("count", searchResult.items().size());
+        data.put("total", searchResult.total());
         return data;
-    }
-
-    private void appendUserSearchFilters(StringBuilder sql, List<Object> args, String keyword, String status) {
-        if (StringUtils.hasText(keyword)) {
-            sql.append("""
-                     and (
-                       u.username like ? or u.nickname like ? or u.real_name like ?
-                       or u.mobile like ? or u.email like ?
-                     )
-                    """);
-            String pattern = like(keyword);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-        }
-        if (StringUtils.hasText(status)) {
-            sql.append(" and u.status = ?");
-            args.add(status.trim().toUpperCase(Locale.ROOT));
-        }
     }
 
     private Map<String, Object> createUser(ToolExecutionContext context) {
@@ -556,26 +484,22 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (fileId == null) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "avatarUrl 或 fileId 不能为空");
         }
-        List<Object> args = new java.util.ArrayList<>();
-        args.add(context.tenantId());
-        args.add(fileId);
-        StringBuilder sql = new StringBuilder("""
-                select public_url as publicUrl
-                from file_object
-                where tenant_id = ?
-                  and id = ?
-                  and deleted = 0
-                """);
-        if (!hasPermission(context.currentUser(), "system:file:manage")) {
-            sql.append(" and uploaded_by = ?");
-            args.add(context.currentUser().getUserId());
+        if (fileInternalApi == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "文件服务不可用");
         }
-        sql.append(" limit 1");
-        String publicUrl = jdbcTemplate.queryForObject(sql.toString(), String.class, args.toArray());
-        if (!StringUtils.hasText(publicUrl)) {
+        CurrentUser currentUser = context.currentUser();
+        FileObjectDTO file = fileInternalApi.getFileForUser(
+                fileId,
+                context.tenantId(),
+                currentUser == null ? null : currentUser.getUserId(),
+                currentUser == null ? null : currentUser.getUsername(),
+                hasPermission(context.currentUser(), "system:file:manage"),
+                false
+        );
+        if (file == null || !StringUtils.hasText(file.publicUrl())) {
             throw new BizException(ErrorCode.NOT_FOUND, "头像文件不存在或无权使用");
         }
-        return publicUrl;
+        return file.publicUrl();
     }
 
     private SystemDTO.UserUpsertRequest mergeUserRequest(SystemVO.UserDetailVO existing, Map<String, Object> arguments) {
@@ -794,44 +718,46 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         String contentType = stringArg(context.arguments(), "contentType", null);
         String status = stringArg(context.arguments(), "status", "ENABLED");
         int limit = limitArg(context.arguments());
-        List<Object> args = new java.util.ArrayList<>();
-        args.add(context.tenantId());
-        StringBuilder sql = new StringBuilder("""
-                select id, original_filename as originalFileName, file_extension as fileExtension,
-                       content_type as contentType, file_size as fileSizeBytes, uploaded_by as uploadedBy,
-                       uploaded_by_name as uploadedByName, category, tags, status, preview_mode as previewMode,
-                       created_at as createdAt, updated_at as updatedAt
-                from file_object
-                where tenant_id = ?
-                  and deleted = 0
-                """);
-        if (!hasPermission(context.currentUser(), "system:file:manage")) {
-            sql.append(" and uploaded_by = ?");
-            args.add(context.currentUser() == null ? null : context.currentUser().getUserId());
+        if (fileInternalApi == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "文件服务不可用");
         }
-        if (StringUtils.hasText(keyword)) {
-            sql.append(" and (original_filename like ? or category like ? or tags like ?)");
-            String pattern = like(keyword);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-        }
-        if (StringUtils.hasText(contentType)) {
-            sql.append(" and content_type like ?");
-            args.add(contentType.trim().endsWith("%") ? contentType.trim() : contentType.trim() + "%");
-        }
-        if (StringUtils.hasText(status)) {
-            sql.append(" and status = ?");
-            args.add(status.trim().toUpperCase(Locale.ROOT));
-        }
-        sql.append(" order by id desc limit ?");
-        args.add(limit);
-        List<Map<String, Object>> files = jdbcTemplate.queryForList(sql.toString(), args.toArray());
+        CurrentUser currentUser = context.currentUser();
+        List<Map<String, Object>> files = fileInternalApi.searchFilesForUser(
+                        context.tenantId(),
+                        currentUser == null ? null : currentUser.getUserId(),
+                        currentUser == null ? null : currentUser.getUsername(),
+                        keyword,
+                        contentType,
+                        status,
+                        hasPermission(context.currentUser(), "system:file:manage"),
+                        limit
+                )
+                .stream()
+                .map(this::toFileToolItem)
+                .toList();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", files);
         data.put("limit", limit);
         data.put("count", files.size());
         return data;
+    }
+
+    private Map<String, Object> toFileToolItem(FileObjectDTO file) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", file.id());
+        item.put("originalFileName", file.originalFileName());
+        item.put("fileExtension", file.fileExtension());
+        item.put("contentType", file.mimeType());
+        item.put("fileSizeBytes", file.fileSizeBytes());
+        item.put("uploadedBy", file.uploadedBy());
+        item.put("uploadedByName", file.uploadedByName());
+        item.put("category", file.category());
+        item.put("tags", file.tags());
+        item.put("status", file.status());
+        item.put("previewMode", file.previewMode());
+        item.put("createdAt", file.createdAt());
+        item.put("updatedAt", file.updatedAt());
+        return item;
     }
 
     private Map<String, Object> searchAiCallAuditLogs(ToolExecutionContext context) {
@@ -877,13 +803,12 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (employeeId == null || employeeId <= 0) {
             return;
         }
-        Long count = jdbcTemplate.queryForObject(
-                "select count(1) from ai_employee where tenant_id = ? and id = ? and is_deleted = 0 and enabled = 1",
-                Long.class,
+        boolean exists = jdbcTemplate.exists(
+                "select 1 from ai_employee where tenant_id = ? and id = ? and is_deleted = 0 and enabled = 1 limit 1",
                 tenantId,
                 employeeId
         );
-        if (count == null || count == 0) {
+        if (!exists) {
             throw new BizException(ErrorCode.NOT_FOUND, "数字员工不存在或已禁用");
         }
     }

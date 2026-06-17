@@ -22,7 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RepeatSubmitControllerCoverageTest {
 
-    private static final Set<String> INFRASTRUCTURE_WRITE_ENDPOINTS = Set.of("AuthController#refreshToken");
+    private static final Set<String> INFRASTRUCTURE_WRITE_ENDPOINTS = Set.of(
+            "AuthController#refreshToken",
+            "AuthController#keepalive",
+            "AuthV2Controller#keepalive"
+    );
 
     @Test
     void userFacingWriteEndpointsShouldUseRepeatSubmit() throws Exception {

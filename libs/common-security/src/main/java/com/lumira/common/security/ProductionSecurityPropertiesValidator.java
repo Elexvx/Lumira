@@ -13,6 +13,7 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
 
     private static final Set<String> PROD_PROFILES = Set.of("prod", "production");
     private static final Set<String> UNSAFE_DB_PASSWORDS = Set.of("123456", "root", "password");
+    private static final Set<String> UNSAFE_REDIS_PASSWORDS = Set.of("123456", "redis", "password");
     private static final Set<String> UNSAFE_JWT_SECRETS = Set.of(
             "replace_me",
             "saas_foundation_jwt_secret_for_dev_env_please_change_me_2026"
@@ -38,6 +39,7 @@ public class ProductionSecurityPropertiesValidator implements InitializingBean {
         }
 
         requireSecret("spring.datasource.password", "DB_PASSWORD", UNSAFE_DB_PASSWORDS, 8);
+        requireSecret("spring.data.redis.password", "REDIS_PASSWORD", UNSAFE_REDIS_PASSWORDS, 8);
         requireSecret("saas.security.jwt-secret", "JWT_SECRET", UNSAFE_JWT_SECRETS, 32);
         requireSecret("saas.security.field-secret", "FIELD_SECRET", UNSAFE_FIELD_SECRETS, 32);
         requireSecret("saas.job.internal-token", "SAAS_JOB_INTERNAL_TOKEN", UNSAFE_JOB_TOKENS, 24);

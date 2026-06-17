@@ -1,0 +1,1696 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "redacted": true,
+  "valuePolicy": "No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.",
+  "envFile": ".env.release.local",
+  "summary": {
+    "totalCanonicalKeys": 48,
+    "filledRedacted": 12,
+    "placeholders": 34,
+    "missing": 0,
+    "optionalEmpty": 2,
+    "blockers": 34,
+    "secretKeys": 10,
+    "ownerCount": 6,
+    "blockingSafeDefaultAvailable": 0,
+    "blockingRequiresOwnerInput": 34,
+    "safeDefaultsExhausted": true,
+    "ownerInputReasonCounts": {
+      "production-endpoint": 24,
+      "secret-manager": 8,
+      "owner-production-value": 2
+    }
+  },
+  "byOwner": [
+    {
+      "owner": "platform-events",
+      "total": 10,
+      "filled": 1,
+      "placeholder": 9,
+      "missing": 0,
+      "optionalEmpty": 0,
+      "blockers": 9,
+      "secretKeys": 3,
+      "safeDefaultAvailable": 0,
+      "requiresOwnerInput": 9
+    },
+    {
+      "owner": "platform-owners",
+      "total": 9,
+      "filled": 0,
+      "placeholder": 9,
+      "missing": 0,
+      "optionalEmpty": 0,
+      "blockers": 9,
+      "secretKeys": 0,
+      "safeDefaultAvailable": 0,
+      "requiresOwnerInput": 9
+    },
+    {
+      "owner": "release-infra",
+      "total": 12,
+      "filled": 2,
+      "placeholder": 9,
+      "missing": 0,
+      "optionalEmpty": 1,
+      "blockers": 9,
+      "secretKeys": 4,
+      "safeDefaultAvailable": 0,
+      "requiresOwnerInput": 9
+    },
+    {
+      "owner": "ai-owner",
+      "total": 12,
+      "filled": 6,
+      "placeholder": 6,
+      "missing": 0,
+      "optionalEmpty": 0,
+      "blockers": 6,
+      "secretKeys": 2,
+      "safeDefaultAvailable": 0,
+      "requiresOwnerInput": 6
+    },
+    {
+      "owner": "payment-owner",
+      "total": 2,
+      "filled": 0,
+      "placeholder": 1,
+      "missing": 0,
+      "optionalEmpty": 1,
+      "blockers": 1,
+      "secretKeys": 1,
+      "safeDefaultAvailable": 0,
+      "requiresOwnerInput": 1
+    },
+    {
+      "owner": "file-owner",
+      "total": 3,
+      "filled": 3,
+      "placeholder": 0,
+      "missing": 0,
+      "optionalEmpty": 0,
+      "blockers": 0,
+      "secretKeys": 0,
+      "safeDefaultAvailable": 0,
+      "requiresOwnerInput": 0
+    }
+  ],
+  "items": [
+    {
+      "fillOrder": 1,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner"
+      ],
+      "group": "ai",
+      "requirement": "chat model",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "runtime-setting",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_CHAT_MODEL"
+      ],
+      "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 2,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner"
+      ],
+      "group": "ai",
+      "requirement": "embedding model",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "runtime-setting",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_EMBEDDING_MODEL"
+      ],
+      "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 3,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner"
+      ],
+      "group": "ai",
+      "requirement": "file owner enabled",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "toggle",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [
+          "true"
+        ],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED"
+      ],
+      "fillGuidance": "Use one of: true.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 4,
+      "owner": "ai-owner",
+      "owners": [
+        "ai",
+        "ai-owner",
+        "release-infra"
+      ],
+      "group": "ai",
+      "requirement": "file owner url",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 5,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner"
+      ],
+      "group": "ai",
+      "requirement": "iam owner enabled",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "toggle",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [
+          "true"
+        ],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED"
+      ],
+      "fillGuidance": "Use one of: true.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 6,
+      "owner": "ai-owner",
+      "owners": [
+        "ai",
+        "ai-owner",
+        "release-infra"
+      ],
+      "group": "ai",
+      "requirement": "iam owner url",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 7,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner",
+        "file-owner",
+        "job-owner",
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "ai",
+      "requirement": "owner internal token",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+        "SAAS_JOB_INTERNAL_TOKEN"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 8,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner"
+      ],
+      "group": "ai",
+      "requirement": "platform owner enabled",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "toggle",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [
+          "true"
+        ],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED"
+      ],
+      "fillGuidance": "Use one of: true.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 9,
+      "owner": "ai-owner",
+      "owners": [
+        "ai",
+        "ai-owner",
+        "release-infra"
+      ],
+      "group": "ai",
+      "requirement": "platform owner url",
+      "canonicalKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 10,
+      "owner": "ai-owner",
+      "owners": [
+        "ai",
+        "ai-owner",
+        "release-infra"
+      ],
+      "group": "ai",
+      "requirement": "provider api key",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_API_KEY"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 11,
+      "owner": "ai-owner",
+      "owners": [
+        "ai",
+        "ai-owner",
+        "release-infra"
+      ],
+      "group": "ai",
+      "requirement": "provider base url",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 12,
+      "owner": "ai-owner",
+      "owners": [
+        "ai-owner"
+      ],
+      "group": "ai",
+      "requirement": "provider enabled",
+      "canonicalKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "toggle",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [
+          "true"
+        ],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+        "LUMIRA_AI_PROVIDER_ENABLED"
+      ],
+      "fillGuidance": "Use one of: true.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 13,
+      "owner": "file-owner",
+      "owners": [
+        "file-owner"
+      ],
+      "group": "file-processing",
+      "requirement": "ocr mode",
+      "canonicalKey": "LUMIRA_FILE_OCR_MODE",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "runtime-setting",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_FILE_OCR_MODE"
+      ],
+      "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 14,
+      "owner": "file-owner",
+      "owners": [
+        "file-owner"
+      ],
+      "group": "file-processing",
+      "requirement": "security scan mode",
+      "canonicalKey": "LUMIRA_FILE_SECURITY_SCAN_MODE",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "runtime-setting",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_FILE_SECURITY_SCAN_MODE"
+      ],
+      "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 15,
+      "owner": "file-owner",
+      "owners": [
+        "file-owner"
+      ],
+      "group": "file-processing",
+      "requirement": "upload storage root",
+      "canonicalKey": "UPLOAD_STORAGE_ROOT",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "runtime-setting",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "UPLOAD_STORAGE_ROOT",
+        "LUMIRA_UPLOAD_STORAGE_ROOT"
+      ],
+      "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 16,
+      "owner": "payment-owner",
+      "owners": [
+        "payment-owner",
+        "release-infra"
+      ],
+      "group": "payment",
+      "requirement": "payment public url",
+      "canonicalKey": "PAYMENT_PUBLIC_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 17,
+      "owner": "payment-owner",
+      "owners": [
+        "payment-owner"
+      ],
+      "group": "payment",
+      "requirement": "payment webhook secret",
+      "canonicalKey": "DDD_PAYMENT_WEBHOOK_SECRET",
+      "status": "OPTIONAL_EMPTY",
+      "required": false,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "DDD_PAYMENT_WEBHOOK_SECRET",
+        "PAYMENT_WEBHOOK_SECRET",
+        "LUMIRA_PAYMENT_WEBHOOK_SECRET"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 18,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "event stream key",
+      "canonicalKey": "SAAS_EVENT_REDIS_STREAM_KEY",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "LUMIRA_EVENT_REDIS_STREAM_KEY"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 19,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "job backend url",
+      "canonicalKey": "SAAS_JOB_BACKEND_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "LUMIRA_JOB_BACKEND_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 20,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "job file url",
+      "canonicalKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 21,
+      "owner": "platform-events",
+      "owners": [
+        "ai-owner",
+        "file-owner",
+        "job-owner",
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "job internal token",
+      "canonicalKey": "SAAS_JOB_INTERNAL_TOKEN",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "DDD_JOB_INTERNAL_TOKEN",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 22,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "job message url",
+      "canonicalKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 23,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "job payment url",
+      "canonicalKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 24,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "job plugin url",
+      "canonicalKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 25,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "outbox dispatcher",
+      "canonicalKey": "SAAS_EVENT_OUTBOX_DISPATCHER",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "runtime-setting",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SAAS_EVENT_OUTBOX_DISPATCHER",
+        "LUMIRA_EVENT_OUTBOX_DISPATCHER"
+      ],
+      "fillGuidance": "Use the production runtime setting agreed by the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 26,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "xxl job admin",
+      "canonicalKey": "XXL_JOB_ADMIN_ADDRESSES",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 27,
+      "owner": "platform-events",
+      "owners": [
+        "platform-events",
+        "release-infra"
+      ],
+      "group": "jobs-and-events",
+      "requirement": "xxl job token",
+      "canonicalKey": "XXL_JOB_ACCESS_TOKEN",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ACCESS_TOKEN",
+        "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 28,
+      "owner": "platform-owners",
+      "owners": [
+        "ai",
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "ai service",
+      "canonicalKey": "AI_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 29,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "auth service",
+      "canonicalKey": "AUTH_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "AUTH_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 30,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "file service",
+      "canonicalKey": "FILE_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "FILE_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 31,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "job executor",
+      "canonicalKey": "JOB_EXECUTOR_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 32,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "localization service",
+      "canonicalKey": "LOCALIZATION_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 33,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "message service",
+      "canonicalKey": "MESSAGE_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 34,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "payment service",
+      "canonicalKey": "PAYMENT_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 35,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "plugin service",
+      "canonicalKey": "PLUGIN_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 36,
+      "owner": "platform-owners",
+      "owners": [
+        "platform-owners",
+        "release-infra"
+      ],
+      "group": "owner-services",
+      "requirement": "system service",
+      "canonicalKey": "SYSTEM_SERVICE_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "SYSTEM_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 37,
+      "owner": "release-infra",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "payment-owner",
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "backend base url",
+      "canonicalKey": "LUMIRA_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "LUMIRA_BASE_URL",
+        "DEPLOY_CHECK_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 38,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "cors origins",
+      "canonicalKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "identifier",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+      ],
+      "fillGuidance": "Use the production value from the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "owner-production-value"
+    },
+    {
+      "fillOrder": 39,
+      "owner": "release-infra",
+      "owners": [
+        "database",
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "database password",
+      "canonicalKey": "DB_PASSWORD",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 16,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": [
+          "root",
+          "password",
+          ""
+        ]
+      },
+      "aliases": [
+        "DB_PASSWORD",
+        "SPRING_DATASOURCE_PASSWORD",
+        "MYSQL_PASSWORD"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 40,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "database url",
+      "canonicalKey": "DB_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "DB_URL",
+        "SPRING_DATASOURCE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent endpoint or DSN; localhost and placeholders are rejected when nonLocal=true.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 41,
+      "owner": "release-infra",
+      "owners": [
+        "database",
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "database username",
+      "canonicalKey": "DB_USERNAME",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "identifier",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "DB_USERNAME",
+        "SPRING_DATASOURCE_USERNAME",
+        "MYSQL_USER"
+      ],
+      "fillGuidance": "Use the production value from the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "owner-production-value"
+    },
+    {
+      "fillOrder": 42,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "field secret",
+      "canonicalKey": "FIELD_SECRET",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "FIELD_SECRET",
+        "SAAS_SECURITY_FIELD_SECRET"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 43,
+      "owner": "release-infra",
+      "owners": [
+        "frontend",
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "frontend base url",
+      "canonicalKey": "PLAYWRIGHT_BASE_URL",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 44,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "jwt secret",
+      "canonicalKey": "JWT_SECRET",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 32,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "JWT_SECRET",
+        "SAAS_SECURITY_JWT_SECRET"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "secret-manager"
+    },
+    {
+      "fillOrder": 45,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "redis host",
+      "canonicalKey": "REDIS_HOST",
+      "status": "PLACEHOLDER",
+      "required": true,
+      "secret": false,
+      "valueClass": "identifier",
+      "safeToPreFill": false,
+      "blocker": true,
+      "validation": {
+        "https": false,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "REDIS_HOST",
+        "SPRING_DATA_REDIS_HOST"
+      ],
+      "fillGuidance": "Use the production value from the owning context.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": true,
+      "ownerInputReason": "production-endpoint"
+    },
+    {
+      "fillOrder": 46,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "redis password",
+      "canonicalKey": "REDIS_PASSWORD",
+      "status": "OPTIONAL_EMPTY",
+      "required": false,
+      "secret": true,
+      "valueClass": "secret",
+      "safeToPreFill": false,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": 16,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "REDIS_PASSWORD",
+        "SPRING_DATA_REDIS_PASSWORD"
+      ],
+      "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 47,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "redis port",
+      "canonicalKey": "REDIS_PORT",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "port",
+      "safeToPreFill": false,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": "^\\d{2,5}$",
+        "disallowValues": []
+      },
+      "aliases": [
+        "REDIS_PORT",
+        "SPRING_DATA_REDIS_PORT"
+      ],
+      "fillGuidance": "Use the production service TCP port.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 48,
+      "owner": "release-infra",
+      "owners": [
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "trusted proxy mode",
+      "canonicalKey": "TRUST_FORWARDED_HEADERS",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "toggle",
+      "safeToPreFill": true,
+      "blocker": false,
+      "validation": {
+        "https": false,
+        "nonLocal": false,
+        "minLength": null,
+        "expectedValues": [
+          "true"
+        ],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "TRUST_FORWARDED_HEADERS",
+        "SAAS_WEB_TRUST_FORWARDED_HEADERS"
+      ],
+      "fillGuidance": "Use one of: true.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    }
+  ]
+}

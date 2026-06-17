@@ -2,15 +2,19 @@ package com.lumira.saas.modules.system.role.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.role.dto.RoleDataScopeRequest;
 import com.lumira.saas.modules.system.role.vo.RoleDataScopeVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
@@ -26,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,6 +41,7 @@ public class SystemRoleManagementAppService {
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
             "ai:employee:",
             "ai:llm:",
@@ -66,15 +72,28 @@ public class SystemRoleManagementAppService {
     private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
+    private final DomainEventPublisher domainEventPublisher;
 
+    @Autowired
     public SystemRoleManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
+        this(jdbcTemplate, permissionSnapshotService, operationAuditService, event -> {
+        });
+    }
+
+    public SystemRoleManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.operationAuditService = operationAuditService;
+        this.domainEventPublisher = domainEventPublisher;
     }
 
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
@@ -103,8 +122,16 @@ public class SystemRoleManagementAppService {
                 """ + baseSql + " order by r.id desc";
         PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
         String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode(tenantId);
-        Map<Long, Integer> permissionCounts = countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId);
-        Map<Long, Integer> userCounts = countRoleUsers(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId);
+        CompletableFuture<Map<Long, Integer>> permissionCountsFuture = CompletableFuture.supplyAsync(
+                () -> countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<Map<Long, Integer>> userCountsFuture = CompletableFuture.supplyAsync(
+                () -> countRoleUsers(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId),
+                BLOCKING_IO_EXECUTOR
+        );
+        Map<Long, Integer> permissionCounts = permissionCountsFuture.join();
+        Map<Long, Integer> userCounts = userCountsFuture.join();
         page.setRecords(page.getRecords().stream().map(role -> {
             role.setPermissionCount(permissionCounts.getOrDefault(role.getId(), 0));
             role.setUserCount(userCounts.getOrDefault(role.getId(), 0));
@@ -132,8 +159,10 @@ public class SystemRoleManagementAppService {
         }
         SystemVO.RoleDetailVO detail = new SystemVO.RoleDetailVO();
         copyRole(detail, role);
-        detail.setPermissionCount(countRolePermissions(roleId, tenantId));
-        detail.setUserCount(countRoleUsers(roleId, tenantId));
+        CompletableFuture<Integer> permissionCountFuture = CompletableFuture.supplyAsync(() -> countRolePermissions(roleId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> userCountFuture = CompletableFuture.supplyAsync(() -> countRoleUsers(roleId, tenantId), BLOCKING_IO_EXECUTOR);
+        detail.setPermissionCount(permissionCountFuture.join());
+        detail.setUserCount(userCountFuture.join());
         detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode(tenantId)));
         detail.setPermissionKeys(listRolePermissionKeys(roleId, tenantId));
         detail.setDataScopes(listRoleDataScopes(roleId, tenantId));
@@ -210,7 +239,7 @@ public class SystemRoleManagementAppService {
     public SystemVO.RoleDetailVO createRole(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
         Long roleId = upsertRole(null, tenantId, request, currentUser.getUserId());
-        replaceRolePermissions(tenantId, roleId, request.getPermissionKeys(), currentUser.getUserId());
+        replaceRolePermissionsWithDomainEvent(tenantId, roleId, Set.of(), request.getPermissionKeys(), currentUser.getUserId());
         replaceRoleDataScopes(tenantId, roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), true);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
@@ -220,8 +249,9 @@ public class SystemRoleManagementAppService {
     @Transactional
     public SystemVO.RoleDetailVO updateRole(CurrentUser currentUser, Long roleId, SystemDTO.RoleUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
+        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId, tenantId));
         upsertRole(roleId, tenantId, request, currentUser.getUserId());
-        replaceRolePermissions(tenantId, roleId, request.getPermissionKeys(), currentUser.getUserId());
+        replaceRolePermissionsWithDomainEvent(tenantId, roleId, existingPermissions, request.getPermissionKeys(), currentUser.getUserId());
         replaceRoleDataScopes(tenantId, roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), false);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
@@ -231,7 +261,8 @@ public class SystemRoleManagementAppService {
     @Transactional
     public boolean updateRolePermissions(CurrentUser currentUser, Long roleId, List<String> permissionKeys) {
         Long tenantId = currentTenantId(currentUser);
-        replaceRolePermissions(tenantId, roleId, permissionKeys, currentUser.getUserId());
+        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId, tenantId));
+        replaceRolePermissionsWithDomainEvent(tenantId, roleId, existingPermissions, permissionKeys, currentUser.getUserId());
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
         return true;
@@ -244,10 +275,13 @@ public class SystemRoleManagementAppService {
         if (Boolean.TRUE.equals(role.getDefaultRegistrationRole())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "默认注册角色不允许删除");
         }
-        int userCount = countRoleUsers(roleId, tenantId);
+        int userCount = role.getUserCount();
         if (userCount > 0) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "角色已被用户占用，请先移除用户角色关系");
         }
+        RoleAggregate roleAggregate = new RoleAggregate(roleId, tenantId, new LinkedHashSet<>(role.getPermissionKeys()));
+        roleAggregate.replacePermissions(Set.of());
+        domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
         jdbcTemplate.update("delete from sys_role_permission where tenant_id = ? and role_id = ?", tenantId, roleId);
         jdbcTemplate.update("delete from sys_role_data_scope where tenant_id = ? and role_id = ?", tenantId, roleId);
         jdbcTemplate.update(
@@ -271,8 +305,10 @@ public class SystemRoleManagementAppService {
     private SystemVO.DefaultRegistrationRoleVO toDefaultRegistrationRole(Long tenantId, SystemVO.RoleVO role) {
         SystemVO.DefaultRegistrationRoleVO result = new SystemVO.DefaultRegistrationRoleVO();
         copyRole(result, role);
-        result.setPermissionCount(countRolePermissions(role.getId(), tenantId));
-        result.setUserCount(countRoleUsers(role.getId(), tenantId));
+        CompletableFuture<Integer> permissionCountFuture = CompletableFuture.supplyAsync(() -> countRolePermissions(role.getId(), tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> userCountFuture = CompletableFuture.supplyAsync(() -> countRoleUsers(role.getId(), tenantId), BLOCKING_IO_EXECUTOR);
+        result.setPermissionCount(permissionCountFuture.join());
+        result.setUserCount(userCountFuture.join());
         result.setDefaultRegistrationRole(Boolean.TRUE);
         return result;
     }
@@ -292,12 +328,7 @@ public class SystemRoleManagementAppService {
                     operatorId,
                     operatorId
             );
-            return jdbcTemplate.queryForObject(
-                    "select id from sys_role where tenant_id = ? and role_code = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    tenantId,
-                    request.getRoleCode()
-            );
+            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
         jdbcTemplate.update(
                 """
@@ -328,7 +359,21 @@ public class SystemRoleManagementAppService {
         return normalized;
     }
 
-    private void replaceRolePermissions(Long tenantId, Long roleId, List<String> permissionKeys, Long operatorId) {
+    private void replaceRolePermissionsWithDomainEvent(
+            Long tenantId,
+            Long roleId,
+            Set<String> existingPermissionKeys,
+            List<String> permissionKeys,
+            Long operatorId
+    ) {
+        LinkedHashSet<String> effectivePermissionKeys = filterRoleAssignablePermissionKeys(permissionKeys);
+        RoleAggregate roleAggregate = new RoleAggregate(roleId, tenantId, existingPermissionKeys);
+        roleAggregate.replacePermissions(effectivePermissionKeys);
+        domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
+        replaceRolePermissions(tenantId, roleId, effectivePermissionKeys, operatorId);
+    }
+
+    private void replaceRolePermissions(Long tenantId, Long roleId, Set<String> permissionKeys, Long operatorId) {
         jdbcTemplate.update(
                 "delete from sys_role_permission where tenant_id = ? and role_id = ?",
                 tenantId,
@@ -337,7 +382,7 @@ public class SystemRoleManagementAppService {
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
         }
-        for (String permissionKey : filterRoleAssignablePermissionKeys(permissionKeys)) {
+        for (String permissionKey : permissionKeys) {
             jdbcTemplate.update(
                     """
                             insert into sys_role_permission (tenant_id, role_id, permission_key, created_by, updated_by, deleted)
@@ -692,13 +737,19 @@ public class SystemRoleManagementAppService {
         queryParams.add(offset);
         String pagedSql = selectSql + " limit ? offset ?";
         List<T> records = jdbcTemplate.query(pagedSql, new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
         PageResponse<T> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private long nullToZero(Long value) {
+        return value == null ? 0 : value;
     }
 
     private <T> T queryOne(String sql, Class<T> voClass, Object... params) {

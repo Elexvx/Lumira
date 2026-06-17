@@ -26,10 +26,12 @@ import { initializeAfterLogin } from '@/auth/sessionBootstrap';
 import { persistBrandingSettings, DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { persistWatermarkSettings } from '@/watermark/settingsStorage';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
+import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
+import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { restoreSession } from '@/auth/sessionBootstrap';
 import { request, type RequestOptions } from '@/services/common/request';
 import type { MenuNode, PasskeyOptions, TenantPlugin } from '@/types/api';
-import type { BrandingSettings, WatermarkSettings } from '@/types/api';
+import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 
 export type LoginInputKind = 'account' | 'mobile' | 'email' | 'verificationCode';
@@ -117,8 +119,79 @@ type CodeLoginMode = 'sms' | 'email';
 const POST_LOGIN_MENU_TIMEOUT_MS = 2500;
 const POST_LOGIN_OPTIONAL_TIMEOUT_MS = 1200;
 
+type PluginBootstrapResponse = {
+  menuTree?: MenuNode[];
+  availablePlugins?: TenantPlugin[];
+};
+
+type RuntimeAppearanceSettingsResponse = {
+  brandingSettings?: BrandingSettings;
+  watermarkSettings?: WatermarkSettings;
+  floatingWindowSettings?: FloatingWindowSettings;
+};
+
 const TEXT_ENCODER = new TextEncoder();
 const KEY_CACHE = new Map<string, Promise<CryptoKey>>();
+
+const loadRuntimeAppearanceSettings = async (): Promise<RuntimeAppearanceSettingsResponse> => {
+  const response = await request<RuntimeAppearanceSettingsResponse>('/v2/platform/runtime-appearance-settings', {
+    method: 'GET',
+    autoRedirectOnUnauthorized: false,
+    allowUnauthorizedWithoutRedirect: true,
+    silent: true,
+    timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+  }).catch(() =>
+    request<RuntimeAppearanceSettingsResponse>('/v1/system/runtime-appearance-settings', {
+      method: 'GET',
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+      silent: true,
+      timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+    }),
+  );
+
+  return response;
+};
+
+const loadPluginBootstrap = async (timeoutMs = POST_LOGIN_MENU_TIMEOUT_MS): Promise<PluginBootstrapResponse> => {
+  const pluginRequestOptions: RequestOptions = {
+    method: 'GET',
+    autoRedirectOnUnauthorized: false,
+    allowUnauthorizedWithoutRedirect: true,
+    silent: true,
+    timeoutMs,
+  };
+
+  try {
+    const bootstrap = await request<PluginBootstrapResponse>('/v2/plugins/current/bootstrap', pluginRequestOptions);
+    return bootstrap;
+  } catch {
+    // Fall through to legacy bootstrap and menu split endpoints.
+  }
+
+  try {
+    const bootstrap = await request<PluginBootstrapResponse>('/v1/plugins/current/bootstrap', {
+      ...pluginRequestOptions,
+    });
+    return bootstrap;
+  } catch {
+    // Fall through to legacy split endpoints during migration.
+  }
+
+  try {
+    const [menuTree, availablePlugins] = await Promise.all([
+      request<MenuNode[]>('/v1/plugins/current/menus', {
+        ...pluginRequestOptions,
+      }),
+      request<TenantPlugin[]>('/v1/plugins/current/available', {
+        ...pluginRequestOptions,
+      }),
+    ]);
+    return { menuTree, availablePlugins };
+  } catch {
+    return {};
+  }
+};
 
 const base64ToArrayBuffer = (base64: string) => {
   const binary = window.atob(base64.replace(/\s+/g, ''));
@@ -212,16 +285,13 @@ const useLoginFlowInteractions = ({
   const completeSuccessfulLogin = useCallback(
     async (loginResponse: LoginResponse) => {
       const sessionResult = await initializeAfterLogin(loginResponse);
-      const menuTree = await request<MenuNode[]>('/v1/plugins/current/menus', {
-        method: 'GET',
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-        silent: true,
-        timeoutMs: POST_LOGIN_MENU_TIMEOUT_MS,
-      }).catch(() => initialState?.menuTree || []);
-      const resources = {
-        menuTree,
+      const pluginBootstrap = await loadPluginBootstrap().catch(() => ({
+        menuTree: initialState?.menuTree || [],
         availablePlugins: initialState?.availablePlugins || [],
+      }));
+      const resources = {
+        menuTree: pluginBootstrap.menuTree || [],
+        availablePlugins: pluginBootstrap.availablePlugins || [],
         brandingSettings: normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
         watermarkSettings: initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS,
       };
@@ -246,52 +316,79 @@ const useLoginFlowInteractions = ({
       message.success(formatMessage({ id: 'page.login.success.loggedIn', defaultMessage: '登录成功，正在进入系统' }));
       history.replace(redirectTarget);
 
-      void Promise.allSettled([
-        request<TenantPlugin[]>('/v1/plugins/current/available', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-          timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-        }),
-        request<BrandingSettings>('/v1/system/branding-settings', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-          timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-        }),
-        request<WatermarkSettings>('/v1/system/watermark-settings', {
-          method: 'GET',
-          autoRedirectOnUnauthorized: false,
-          allowUnauthorizedWithoutRedirect: true,
-          silent: true,
-          timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-        }),
-      ]).then(([pluginResult, brandingResult, watermarkResult]) => {
-        const nextBrandingSettings = normalizeBrandingSettings(
-          brandingResult.status === 'fulfilled' ? brandingResult.value : resources.brandingSettings,
-        );
-        const nextWatermarkSettings = watermarkResult.status === 'fulfilled' ? watermarkResult.value : resources.watermarkSettings;
-        persistBrandingSettings(nextBrandingSettings);
-        persistWatermarkSettings(nextWatermarkSettings);
-        setInitialState((prev: AppInitialState | undefined) =>
-          prev
-            ? {
-                ...prev,
-                availablePlugins: pluginResult.status === 'fulfilled' ? pluginResult.value : prev.availablePlugins,
-                brandingSettings: nextBrandingSettings,
-                watermarkSettings: nextWatermarkSettings,
-              }
-            : prev,
-        );
-      });
+      void loadRuntimeAppearanceSettings()
+        .then((appearanceSettings) => ({
+          brandingSettings: normalizeBrandingSettings(appearanceSettings.brandingSettings || resources.brandingSettings),
+          watermarkSettings: normalizeWatermarkSettings(appearanceSettings.watermarkSettings || resources.watermarkSettings),
+          floatingWindowSettings: normalizeFloatingWindowSettings(appearanceSettings.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS),
+        }))
+        .catch(async () => {
+          const [brandingResult, watermarkResult, floatingWindowResult] = await Promise.allSettled([
+            request<BrandingSettings>('/v2/platform/branding-settings', {
+              method: 'GET',
+              autoRedirectOnUnauthorized: false,
+              allowUnauthorizedWithoutRedirect: true,
+              silent: true,
+              timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+            }).catch(() =>
+              request<BrandingSettings>('/v1/system/branding-settings', {
+                method: 'GET',
+                autoRedirectOnUnauthorized: false,
+                allowUnauthorizedWithoutRedirect: true,
+                silent: true,
+                timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+              }),
+            ),
+            request<WatermarkSettings>('/v1/system/watermark-settings', {
+              method: 'GET',
+              autoRedirectOnUnauthorized: false,
+              allowUnauthorizedWithoutRedirect: true,
+              silent: true,
+              timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+            }),
+            request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
+              method: 'GET',
+              autoRedirectOnUnauthorized: false,
+              allowUnauthorizedWithoutRedirect: true,
+              silent: true,
+              timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+            }),
+          ]);
+          return {
+            brandingSettings: normalizeBrandingSettings(
+              brandingResult.status === 'fulfilled' ? brandingResult.value : resources.brandingSettings,
+            ),
+            watermarkSettings: normalizeWatermarkSettings(
+              watermarkResult.status === 'fulfilled' ? watermarkResult.value : resources.watermarkSettings,
+            ),
+            floatingWindowSettings: normalizeFloatingWindowSettings(
+              floatingWindowResult.status === 'fulfilled'
+                ? floatingWindowResult.value
+                : initialState?.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS,
+            ),
+          };
+        })
+        .then(({ brandingSettings: nextBrandingSettings, watermarkSettings: nextWatermarkSettings, floatingWindowSettings }) => {
+          persistBrandingSettings(nextBrandingSettings);
+          persistWatermarkSettings(nextWatermarkSettings);
+          setInitialState((prev: AppInitialState | undefined) =>
+            prev
+              ? {
+                  ...prev,
+                  brandingSettings: nextBrandingSettings,
+                  watermarkSettings: nextWatermarkSettings,
+                  floatingWindowSettings,
+                }
+              : prev,
+          );
+        });
     },
     [
       bootstrapFlow.agreementSettings,
       bootstrapFlow.loginCapabilities,
       initialState?.availablePlugins,
       initialState?.brandingSettings,
+      initialState?.floatingWindowSettings,
       initialState?.menuTree,
       initialState?.watermarkSettings,
       locationSearch,
@@ -752,20 +849,36 @@ export const useLoginFlowAuthInteractions = ({
       if (!encryptionKey) {
         return null;
       }
+      const encryptedPassword = await encryptLoginPassword(values.passwordPassword || '', encryptionKey);
 
-      return request<LoginResponse>('/v1/auth/login', {
+      return request<LoginResponse>('/v2/auth/login', {
         method: 'POST',
         data: {
           account: values.passwordAccount,
           username: values.passwordAccount,
-          password: await encryptLoginPassword(values.passwordPassword || '', encryptionKey),
+          password: encryptedPassword,
           captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
           captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
           captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
         },
         skipAuth: true,
         silent: true,
-      });
+      })
+        .catch(() =>
+          request<LoginResponse>('/v1/auth/login', {
+            method: 'POST',
+            data: {
+              account: values.passwordAccount,
+              username: values.passwordAccount,
+              password: encryptedPassword,
+              captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
+              captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
+              captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
+            },
+            skipAuth: true,
+            silent: true,
+          }),
+        );
     },
     [bootstrapFlow, captchaChallenge?.captchaId, securitySettings.captchaEnabled, securitySettings.captchaType],
   );
@@ -1190,6 +1303,7 @@ export const useLoginFlowRuntime = ({
     flowState.forcedPasswordChangeForm,
     flowState.setPendingPasswordChangeCurrentPassword,
     flowState.setRestoredPasswordChangeRequired,
+    flowState,
     initialState?.currentUser?.requiresPasswordChange,
   ]);
   useEffect(() => {

@@ -1,12 +1,98 @@
-ALTER TABLE `sys_plugin_definition`
-  ADD COLUMN `schema_mode` varchar(32) NOT NULL DEFAULT 'ISOLATED',
-  ADD COLUMN `supports_hot_disable` tinyint NOT NULL DEFAULT '1',
-  ADD COLUMN `supports_data_purge` tinyint NOT NULL DEFAULT '0',
-  ADD COLUMN `runtime_contributions_json` json DEFAULT NULL;
+SET @schema_mode_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'sys_plugin_definition'
+    AND column_name = 'schema_mode'
+);
+SET @add_schema_mode_sql := IF(
+  @schema_mode_exists = 0,
+  'ALTER TABLE `sys_plugin_definition` ADD COLUMN `schema_mode` varchar(32) NOT NULL DEFAULT ''ISOLATED''',
+  'SELECT 1'
+);
+PREPARE add_schema_mode_stmt FROM @add_schema_mode_sql;
+EXECUTE add_schema_mode_stmt;
+DEALLOCATE PREPARE add_schema_mode_stmt;
 
-ALTER TABLE `sys_plugin_version`
-  ADD COLUMN `lifecycle_status` varchar(32) NOT NULL DEFAULT 'INSTALLED',
-  ADD COLUMN `schema_status` varchar(32) NOT NULL DEFAULT 'PENDING';
+SET @supports_hot_disable_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'sys_plugin_definition'
+    AND column_name = 'supports_hot_disable'
+);
+SET @add_supports_hot_disable_sql := IF(
+  @supports_hot_disable_exists = 0,
+  'ALTER TABLE `sys_plugin_definition` ADD COLUMN `supports_hot_disable` tinyint NOT NULL DEFAULT ''1''',
+  'SELECT 1'
+);
+PREPARE add_supports_hot_disable_stmt FROM @add_supports_hot_disable_sql;
+EXECUTE add_supports_hot_disable_stmt;
+DEALLOCATE PREPARE add_supports_hot_disable_stmt;
+
+SET @supports_data_purge_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'sys_plugin_definition'
+    AND column_name = 'supports_data_purge'
+);
+SET @add_supports_data_purge_sql := IF(
+  @supports_data_purge_exists = 0,
+  'ALTER TABLE `sys_plugin_definition` ADD COLUMN `supports_data_purge` tinyint NOT NULL DEFAULT ''0''',
+  'SELECT 1'
+);
+PREPARE add_supports_data_purge_stmt FROM @add_supports_data_purge_sql;
+EXECUTE add_supports_data_purge_stmt;
+DEALLOCATE PREPARE add_supports_data_purge_stmt;
+
+SET @runtime_contributions_json_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'sys_plugin_definition'
+    AND column_name = 'runtime_contributions_json'
+);
+SET @add_runtime_contributions_json_sql := IF(
+  @runtime_contributions_json_exists = 0,
+  'ALTER TABLE `sys_plugin_definition` ADD COLUMN `runtime_contributions_json` json DEFAULT NULL',
+  'SELECT 1'
+);
+PREPARE add_runtime_contributions_json_stmt FROM @add_runtime_contributions_json_sql;
+EXECUTE add_runtime_contributions_json_stmt;
+DEALLOCATE PREPARE add_runtime_contributions_json_stmt;
+
+SET @lifecycle_status_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'sys_plugin_version'
+    AND column_name = 'lifecycle_status'
+);
+SET @add_lifecycle_status_sql := IF(
+  @lifecycle_status_exists = 0,
+  'ALTER TABLE `sys_plugin_version` ADD COLUMN `lifecycle_status` varchar(32) NOT NULL DEFAULT ''INSTALLED''',
+  'SELECT 1'
+);
+PREPARE add_lifecycle_status_stmt FROM @add_lifecycle_status_sql;
+EXECUTE add_lifecycle_status_stmt;
+DEALLOCATE PREPARE add_lifecycle_status_stmt;
+
+SET @schema_status_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'sys_plugin_version'
+    AND column_name = 'schema_status'
+);
+SET @add_schema_status_sql := IF(
+  @schema_status_exists = 0,
+  'ALTER TABLE `sys_plugin_version` ADD COLUMN `schema_status` varchar(32) NOT NULL DEFAULT ''PENDING''',
+  'SELECT 1'
+);
+PREPARE add_schema_status_stmt FROM @add_schema_status_sql;
+EXECUTE add_schema_status_stmt;
+DEALLOCATE PREPARE add_schema_status_stmt;
 
 CREATE TABLE IF NOT EXISTS `sys_plugin_schema_history` (
   `id` bigint NOT NULL AUTO_INCREMENT,

@@ -12,10 +12,13 @@ public class CurrentUser {
     private Long simulatedRoleId;
     private String sessionId;
     private Integer sessionVersion;
+    private String permissionsVersion;
+    private Boolean requiresPasswordChange;
     private boolean authenticated;
     private Set<String> permissions;
     private Set<Long> roleIds;
     private Long primaryDeptId;
+    private String defaultHomePath;
     private Set<Long> deptIds;
     private Set<Long> descendantDeptIds;
     private List<DataPermissionRule> dataScopes;
@@ -103,6 +106,22 @@ public class CurrentUser {
         this.sessionVersion = sessionVersion;
     }
 
+    public String getPermissionsVersion() {
+        return permissionsVersion;
+    }
+
+    public void setPermissionsVersion(String permissionsVersion) {
+        this.permissionsVersion = permissionsVersion;
+    }
+
+    public Boolean getRequiresPasswordChange() {
+        return requiresPasswordChange;
+    }
+
+    public void setRequiresPasswordChange(Boolean requiresPasswordChange) {
+        this.requiresPasswordChange = requiresPasswordChange;
+    }
+
     public boolean isAuthenticated() {
         return authenticated;
     }
@@ -133,6 +152,14 @@ public class CurrentUser {
 
     public void setPrimaryDeptId(Long primaryDeptId) {
         this.primaryDeptId = primaryDeptId;
+    }
+
+    public String getDefaultHomePath() {
+        return defaultHomePath;
+    }
+
+    public void setDefaultHomePath(String defaultHomePath) {
+        this.defaultHomePath = defaultHomePath;
     }
 
     public Set<Long> getDeptIds() {

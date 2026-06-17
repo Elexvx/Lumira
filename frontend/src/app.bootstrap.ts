@@ -15,8 +15,9 @@ import { request } from '@/services/common/request';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
 import { persistWatermarkSettings } from '@/watermark/settingsStorage';
+import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import type { AppInitialState } from '@/app.types';
-import type { AgreementSettings, BrandingSettings, CurrentUser, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin, WatermarkSettings } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, CurrentUser, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 
 const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
@@ -53,6 +54,24 @@ interface BootstrapSnapshot {
   errorMessage?: string;
   ready: boolean;
   updatedAt: number;
+}
+
+interface PluginBootstrapResponse {
+  menuTree?: MenuNode[];
+  availablePlugins?: TenantPlugin[];
+}
+
+interface PublicBootstrapResponse {
+  brandingSettings?: BrandingSettings;
+  securitySettings?: SecuritySettings;
+  agreementSettings?: AgreementSettings;
+  loginCapabilities?: LoginCapabilities;
+}
+
+interface RuntimeAppearanceSettingsResponse {
+  brandingSettings?: BrandingSettings;
+  watermarkSettings?: WatermarkSettings;
+  floatingWindowSettings?: FloatingWindowSettings;
 }
 
 const buildInitialBootstrapSnapshot = (): BootstrapSnapshot => ({
@@ -105,12 +124,18 @@ const getHealthRetryDelay = (attempt: number) => {
 const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSettings> => {
   const settings = normalizeBrandingSettings(
     authenticated
-      ? await request<BrandingSettings>('/v1/system/branding-settings', {
+      ? await request<BrandingSettings>('/v2/platform/branding-settings', {
           method: 'GET',
           autoRedirectOnUnauthorized: false,
           allowUnauthorizedWithoutRedirect: true,
           silent: true,
-        }).catch(() => DEFAULT_BRANDING_SETTINGS)
+        })
+          .catch(() => request<BrandingSettings>('/v1/system/branding-settings', {
+            method: 'GET',
+            autoRedirectOnUnauthorized: false,
+            allowUnauthorizedWithoutRedirect: true,
+            silent: true,
+          }).catch(() => DEFAULT_BRANDING_SETTINGS))
       : await request<BrandingSettings>('/v1/public/branding-settings', {
           method: 'GET',
           skipAuth: true,
@@ -124,6 +149,31 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
 };
 
 const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
+  try {
+    const bootstrap = await request<PluginBootstrapResponse>('/v2/plugins/current/bootstrap', {
+      method: 'GET',
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+      silent: true,
+    });
+
+    return [bootstrap.menuTree || [], bootstrap.availablePlugins || []];
+  } catch {
+    // Fall through to the older split endpoints for compatibility during rolling deploys.
+  }
+
+  try {
+    const bootstrap = await request<PluginBootstrapResponse>('/v1/plugins/current/bootstrap', {
+      method: 'GET',
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+      silent: true,
+    });
+    return [bootstrap.menuTree || [], bootstrap.availablePlugins || []];
+  } catch {
+    // Fall through to the older split endpoints for compatibility during rolling deploys.
+  }
+
   try {
     const [menuTree, availablePlugins] = await Promise.all([
       request<MenuNode[]>('/v1/plugins/current/menus', {
@@ -184,6 +234,118 @@ const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
     passkeyPasswordlessAvailable: false,
   }));
 
+const fallbackLoginCapabilities = (): LoginCapabilities => ({
+  passwordLoginAvailable: true,
+  smsLoginAvailable: false,
+  emailLoginAvailable: false,
+  wechatLoginAvailable: false,
+  passkeyLoginAvailable: false,
+  passkeyPasswordlessAvailable: false,
+});
+
+const loadPublicBootstrap = async (): Promise<{
+  brandingSettings: BrandingSettings;
+  securitySettings: SecuritySettings;
+  agreementSettings: AgreementSettings;
+  loginCapabilities: LoginCapabilities;
+}> => {
+  try {
+    const bootstrap = await request<PublicBootstrapResponse>('/v2/platform/public/bootstrap', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      ...API_OPTS.SILENT_NO_REDIRECT,
+    });
+    const brandingSettings = normalizeBrandingSettings(bootstrap.brandingSettings || DEFAULT_BRANDING_SETTINGS);
+    const securitySettings = normalizeSecuritySettings(bootstrap.securitySettings || DEFAULT_SECURITY_SETTINGS);
+    persistBrandingSettings(brandingSettings);
+    applyFavicon(brandingSettings.websiteFaviconUrl);
+    persistSecuritySettings(securitySettings);
+    return {
+      brandingSettings,
+      securitySettings,
+      agreementSettings: normalizeAgreementSettings(bootstrap.agreementSettings || DEFAULT_AGREEMENT_SETTINGS),
+      loginCapabilities: bootstrap.loginCapabilities || fallbackLoginCapabilities(),
+    };
+  } catch {
+    try {
+      const bootstrap = await request<PublicBootstrapResponse>('/v1/public/bootstrap', {
+        method: 'GET',
+        skipAuth: true,
+        silent: true,
+        ...API_OPTS.SILENT_NO_REDIRECT,
+      });
+      const brandingSettings = normalizeBrandingSettings(bootstrap.brandingSettings || DEFAULT_BRANDING_SETTINGS);
+      const securitySettings = normalizeSecuritySettings(bootstrap.securitySettings || DEFAULT_SECURITY_SETTINGS);
+      persistBrandingSettings(brandingSettings);
+      applyFavicon(brandingSettings.websiteFaviconUrl);
+      persistSecuritySettings(securitySettings);
+      return {
+        brandingSettings,
+        securitySettings,
+        agreementSettings: normalizeAgreementSettings(bootstrap.agreementSettings || DEFAULT_AGREEMENT_SETTINGS),
+        loginCapabilities: bootstrap.loginCapabilities || fallbackLoginCapabilities(),
+      };
+    } catch {
+      const [brandingSettings, securitySettings, agreementSettings, loginCapabilities] = await Promise.all([
+        loadBrandingSettings(false),
+        loadPublicSecuritySettings(),
+        loadPublicAgreementSettings(),
+        loadPublicLoginCapabilities(),
+      ]);
+      return { brandingSettings, securitySettings, agreementSettings, loginCapabilities };
+    }
+  }
+};
+
+const loadRuntimeAppearanceSettings = async (): Promise<{
+  brandingSettings: BrandingSettings;
+  watermarkSettings: WatermarkSettings;
+  floatingWindowSettings: FloatingWindowSettings;
+}> => {
+  try {
+    const settings = await request<RuntimeAppearanceSettingsResponse>('/v2/platform/runtime-appearance-settings', {
+      method: 'GET',
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+      silent: true,
+    }).catch(() =>
+      request<RuntimeAppearanceSettingsResponse>('/v1/system/runtime-appearance-settings', {
+        method: 'GET',
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      }),
+    );
+    return {
+      brandingSettings: normalizeBrandingSettings(settings.brandingSettings || DEFAULT_BRANDING_SETTINGS),
+      watermarkSettings: normalizeWatermarkSettings(settings.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
+      floatingWindowSettings: normalizeFloatingWindowSettings(settings.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS),
+    };
+  } catch {
+    const [brandingSettings, watermarkSettings, floatingWindowSettings] = await Promise.all([
+      loadBrandingSettings(true),
+      request<WatermarkSettings>('/v1/system/watermark-settings', {
+        method: 'GET',
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      })
+        .then(normalizeWatermarkSettings)
+        .catch(() => DEFAULT_WATERMARK_SETTINGS),
+      request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
+        method: 'GET',
+        autoRedirectOnUnauthorized: false,
+        allowUnauthorizedWithoutRedirect: true,
+        silent: true,
+      })
+        .then(normalizeFloatingWindowSettings)
+        .catch(() => DEFAULT_FLOATING_WINDOW_SETTINGS),
+    ]);
+    return { brandingSettings, watermarkSettings, floatingWindowSettings };
+  }
+};
+
 const buildAuthenticatedInitialState = async (
   currentUser: CurrentUser,
   securitySettings: SecuritySettings,
@@ -197,20 +359,17 @@ const buildAuthenticatedInitialState = async (
     brandName: storedBrandingSettings.websiteName,
   });
 
-  const [[menuTree, availablePlugins], loadedBrandingSettings, watermarkSettings] = await Promise.all([
+  const [
+    [menuTree, availablePlugins],
+    runtimeAppearanceSettings,
+    _guestLocaleBundle,
+  ] = await Promise.all([
     loadPluginBootstrap(),
-    loadBrandingSettings(true),
-    request<WatermarkSettings>('/v1/system/watermark-settings', {
-      method: 'GET',
-      autoRedirectOnUnauthorized: false,
-      allowUnauthorizedWithoutRedirect: true,
-      silent: true,
-    })
-      .then(normalizeWatermarkSettings)
-      .catch(() => DEFAULT_WATERMARK_SETTINGS),
+    loadRuntimeAppearanceSettings(),
+    // Keep localization warm while resource bootstrap is doing I/O.
+    loadRuntimeLocalizationBundle(currentUser.locale || getLocale()),
   ]);
-
-  await loadRuntimeLocalizationBundle(currentUser.locale || getLocale());
+  const { brandingSettings: loadedBrandingSettings, watermarkSettings, floatingWindowSettings } = runtimeAppearanceSettings;
 
   setBootstrapSnapshot({
     phase: 'ready',
@@ -223,6 +382,8 @@ const buildAuthenticatedInitialState = async (
     brandName: loadedBrandingSettings.websiteName,
   });
 
+  persistBrandingSettings(loadedBrandingSettings);
+  applyFavicon(loadedBrandingSettings.websiteFaviconUrl);
   persistWatermarkSettings(watermarkSettings);
 
   return {
@@ -233,6 +394,7 @@ const buildAuthenticatedInitialState = async (
     securitySettings,
     brandingSettings: loadedBrandingSettings,
     watermarkSettings,
+    floatingWindowSettings,
   };
 };
 
@@ -247,13 +409,11 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     errorMessage: undefined,
   });
 
-  const [brandingSettings, securitySettings, agreementSettings, loginCapabilities] = await Promise.all([
-    loadBrandingSettings(false),
-    loadPublicSecuritySettings(),
-    loadPublicAgreementSettings(),
-    loadPublicLoginCapabilities(),
+  const [publicBootstrap] = await Promise.all([
+    loadPublicBootstrap(),
+    loadRuntimeLocalizationBundle(getLocale()),
   ]);
-  await loadRuntimeLocalizationBundle(getLocale());
+  const { brandingSettings, securitySettings, agreementSettings, loginCapabilities } = publicBootstrap;
   persistWatermarkSettings(DEFAULT_WATERMARK_SETTINGS);
 
   setBootstrapSnapshot({

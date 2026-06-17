@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.localization.mapper;
 
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.EntryQuery;
+import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.LanguageStatRow;
+import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.NamespaceStatRow;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.RuntimeMessageRow;
 import com.lumira.saas.modules.localization.vo.LocalizationVO;
 import org.apache.ibatis.annotations.Mapper;
@@ -28,7 +30,11 @@ public interface LocalizationManagementMapper {
 
     Long countTranslatedEntries(@Param("localeCode") String localeCode);
 
+    List<LanguageStatRow> listLanguageStats();
+
     Long countEntriesByNamespace(@Param("namespaceCode") String namespaceCode);
+
+    List<NamespaceStatRow> listNamespaceStats(@Param("localeCode") String localeCode);
 
     Long countTranslatedEntriesByNamespace(
             @Param("namespaceCode") String namespaceCode,

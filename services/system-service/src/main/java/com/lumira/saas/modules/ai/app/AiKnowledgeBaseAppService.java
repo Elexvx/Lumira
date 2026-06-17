@@ -1,9 +1,12 @@
 package com.lumira.saas.modules.ai.app;
 
 import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.file.FileProcessingArtifactDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.event.PlatformEventPublisher;
 import com.lumira.saas.infrastructure.event.PlatformEventTypes;
@@ -11,15 +14,20 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.ai.dto.AiDTO;
+import com.lumira.saas.modules.ai.domain.model.AiAssistantDomainModels.KnowledgeBaseAggregate;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,25 +50,35 @@ public class AiKnowledgeBaseAppService {
     private static final String SCOPE_PERSONAL = "PERSONAL";
     private static final String SCOPE_TENANT = "TENANT";
     private static final String KNOWLEDGE_STORAGE_BUCKET = "ai_knowledge";
+    private static final String FILE_TEXT_CONTENT_ARTIFACT = "TEXT_CONTENT";
+    private static final int MAX_INDEX_BATCH_SIZE = 50;
+    private static final int MAX_INDEX_RETRY_COUNT = 5;
+    private static final int MAX_INDEX_RETRY_DELAY_SECONDS = 300;
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final FileInternalApi fileInternalApi;
     private final AiKnowledgeTextExtractor textExtractor;
     private final OperationAuditService operationAuditService;
     private final PlatformEventPublisher platformEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
+    private final AiKnowledgeVectorService vectorService;
 
     public AiKnowledgeBaseAppService(
             MyBatisQueryOperations jdbcTemplate,
             FileInternalApi fileInternalApi,
             AiKnowledgeTextExtractor textExtractor,
             OperationAuditService operationAuditService,
-            PlatformEventPublisher platformEventPublisher
+            PlatformEventPublisher platformEventPublisher,
+            @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            AiKnowledgeVectorService vectorService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.fileInternalApi = fileInternalApi;
         this.textExtractor = textExtractor;
         this.operationAuditService = operationAuditService;
         this.platformEventPublisher = platformEventPublisher;
+        this.domainEventPublisher = domainEventPublisher;
+        this.vectorService = vectorService;
     }
 
     private enum KnowledgeAccess {
@@ -88,9 +106,9 @@ public class AiKnowledgeBaseAppService {
             args.add(status.trim().toUpperCase(Locale.ROOT));
         }
 
-        Long total = jdbcTemplate.queryForObject("select count(1) from ai_knowledge_base kb" + where, Long.class, args.toArray());
-        args.add(safePageSize);
-        args.add((safePageNo - 1L) * safePageSize);
+        List<Object> queryArgs = new ArrayList<>(args);
+        queryArgs.add(safePageSize);
+        queryArgs.add((safePageNo - 1L) * safePageSize);
         List<AiVO.KnowledgeBaseVO> records = jdbcTemplate.query(
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
@@ -109,11 +127,14 @@ public class AiKnowledgeBaseAppService {
                         limit ? offset ?
                         """,
                 this::mapKnowledgeBase,
-                args.toArray()
+                queryArgs.toArray()
         );
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject("select count(1) from ai_knowledge_base kb" + where, Long.class, args.toArray()));
         PageResponse<AiVO.KnowledgeBaseVO> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
@@ -150,12 +171,7 @@ public class AiKnowledgeBaseAppService {
                 now,
                 now
         );
-        Long id = jdbcTemplate.queryForObject(
-                "select id from ai_knowledge_base where tenant_id = ? and kb_code = ? and is_deleted = 0 limit 1",
-                Long.class,
-                tenantId,
-                code
-        );
+        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-create", "CREATE", "SUCCESS", "创建知识库: " + request.getName());
         return requireKnowledgeBase(currentUser, id, KnowledgeAccess.VIEW);
     }
@@ -204,12 +220,6 @@ public class AiKnowledgeBaseAppService {
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.VIEW);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(MAX_PAGE_SIZE, pageSize));
-        Long total = jdbcTemplate.queryForObject(
-                "select count(1) from ai_knowledge_document where tenant_id = ? and knowledge_base_id = ? and is_deleted = 0",
-                Long.class,
-                tenantId,
-                knowledgeBaseId
-        );
         List<AiVO.KnowledgeDocumentVO> records = jdbcTemplate.query(
                 """
                         select id, tenant_id, knowledge_base_id, file_id, title, original_file_name, file_extension,
@@ -226,9 +236,17 @@ public class AiKnowledgeBaseAppService {
                 safePageSize,
                 (safePageNo - 1L) * safePageSize
         );
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(
+                "select count(1) from ai_knowledge_document where tenant_id = ? and knowledge_base_id = ? and is_deleted = 0",
+                Long.class,
+                tenantId,
+                knowledgeBaseId
+        ));
         PageResponse<AiVO.KnowledgeDocumentVO> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
@@ -238,7 +256,6 @@ public class AiKnowledgeBaseAppService {
     public AiVO.KnowledgeDocumentVO uploadDocument(CurrentUser currentUser, Long knowledgeBaseId, MultipartFile file) {
         Long tenantId = currentTenantId(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.MANAGE);
-        AiKnowledgeTextExtractor.ExtractedText extracted = textExtractor.extract(file);
         FileObjectDTO uploaded = uploadKnowledgeDocumentFile(file);
         LocalDateTime now = LocalDateTime.now();
         String title = cleanTitle(file.getOriginalFilename());
@@ -247,19 +264,18 @@ public class AiKnowledgeBaseAppService {
                         insert into ai_knowledge_document (
                             tenant_id, knowledge_base_id, file_id, title, original_file_name, file_extension,
                             mime_type, file_size_bytes, status, extracted_text, extracted_char_count,
-                            chunk_count, created_by, updated_by, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 'INDEXING', ?, ?, 0, ?, ?, 0, ?, ?)
+                            chunk_count, index_retry_count, index_next_retry_at, index_last_error,
+                            created_by, updated_by, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 'INDEXING', null, 0, 0, 0, null, null, ?, ?, 0, ?, ?)
                         """,
                 tenantId,
                 knowledgeBaseId,
                 uploaded.id(),
                 title,
                 uploaded.originalFileName(),
-                normalizeExtension(uploaded.fileExtension(), extracted.extension()),
+                normalizeExtension(uploaded.fileExtension(), null),
                 uploaded.mimeType(),
                 uploaded.fileSizeBytes(),
-                extracted.text(),
-                extracted.text().length(),
                 currentUser.getUserId(),
                 currentUser.getUserId(),
                 now,
@@ -272,18 +288,10 @@ public class AiKnowledgeBaseAppService {
                 knowledgeBaseId,
                 uploaded.id()
         );
-        int chunkCount = rebuildChunks(tenantId, knowledgeBaseId, documentId, extracted.text());
-        publishKnowledgeDocumentEvent(
-                PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
-                currentUser,
-                tenantId,
-                knowledgeBaseId,
-                documentId,
-                title,
-                "READY",
-                chunkCount
-        );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-upload", "CREATE", "SUCCESS", "上传知识库文档: " + title);
+        KnowledgeBaseAggregate knowledgeBase = new KnowledgeBaseAggregate(knowledgeBaseId, tenantId);
+        knowledgeBase.requestIndex(documentId, uploaded.id());
+        domainEventPublisher.publishAll(knowledgeBase.pullDomainEvents());
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-upload", "CREATE", "SUCCESS", "上传知识库文档并提交索引任务: " + title);
         return requireDocument(tenantId, knowledgeBaseId, documentId);
     }
 
@@ -317,21 +325,89 @@ public class AiKnowledgeBaseAppService {
                 documentId
         );
         if (!StringUtils.hasText(extractedText)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "文档没有可重建索引的文本内容");
+            FileContentDTO content = fileInternalApi.readFileContentForUser(
+                    document.getFileId(),
+                    tenantId,
+                    currentUserId(currentUser),
+                    currentUser == null ? "system" : currentUser.getUsername()
+            );
+            extractedText = textExtractor.extract(toMultipartFile(content)).text();
         }
-        int chunkCount = rebuildChunks(tenantId, knowledgeBaseId, documentId, extractedText);
-        publishKnowledgeDocumentEvent(
-                PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
-                currentUser,
+        markDocumentIndexing(tenantId, knowledgeBaseId, documentId, currentUser.getUserId());
+        KnowledgeBaseAggregate knowledgeBase = new KnowledgeBaseAggregate(knowledgeBaseId, tenantId);
+        knowledgeBase.requestIndex(documentId, document.getFileId());
+        domainEventPublisher.publishAll(knowledgeBase.pullDomainEvents());
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-reindex", "UPDATE", "SUCCESS", "提交知识库文档重建索引任务: " + document.getTitle());
+        return requireDocument(tenantId, knowledgeBaseId, documentId);
+    }
+
+    @Transactional
+    public int processPendingIndexTasks(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, MAX_INDEX_BATCH_SIZE));
+        List<PendingIndexTask> tasks = jdbcTemplate.query(
+                """
+                        select id, tenant_id, knowledge_base_id, file_id, title, created_by,
+                               coalesce(index_retry_count, 0) as index_retry_count
+                        from ai_knowledge_document
+                        where is_deleted = 0
+                          and file_id is not null
+                          and (
+                                status = 'INDEXING'
+                                or (status = 'FAILED'
+                                    and coalesce(index_retry_count, 0) < ?
+                                    and (index_next_retry_at is null or index_next_retry_at <= ?))
+                          )
+                        order by update_time asc, id asc
+                        limit ?
+                        """,
+                (row, rowNum) -> new PendingIndexTask(
+                        row.getLong("id"),
+                        row.getLong("tenant_id"),
+                        row.getLong("knowledge_base_id"),
+                        row.getObject("file_id", Long.class),
+                        row.getString("title"),
+                        row.getObject("created_by", Long.class),
+                        row.getObject("index_retry_count", Integer.class)
+                ),
+                MAX_INDEX_RETRY_COUNT,
+                LocalDateTime.now(),
+                safeLimit
+        );
+        int processed = 0;
+        for (PendingIndexTask task : tasks) {
+            processKnowledgeDocumentIndex(task);
+            processed++;
+        }
+        return processed;
+    }
+
+    @Transactional
+    public void processKnowledgeDocumentIndex(Long tenantId, Long knowledgeBaseId, Long documentId) {
+        PendingIndexTask task = jdbcTemplate.queryForObject(
+                """
+                        select id, tenant_id, knowledge_base_id, file_id, title, created_by,
+                               coalesce(index_retry_count, 0) as index_retry_count
+                        from ai_knowledge_document
+                        where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0
+                          and status in ('INDEXING', 'FAILED')
+                        limit 1
+                        """,
+                (row, rowNum) -> new PendingIndexTask(
+                        row.getLong("id"),
+                        row.getLong("tenant_id"),
+                        row.getLong("knowledge_base_id"),
+                        row.getObject("file_id", Long.class),
+                        row.getString("title"),
+                        row.getObject("created_by", Long.class),
+                        row.getObject("index_retry_count", Integer.class)
+                ),
                 tenantId,
                 knowledgeBaseId,
-                documentId,
-                document.getTitle(),
-                "READY",
-                chunkCount
+                documentId
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "knowledge-document-reindex", "UPDATE", "SUCCESS", "重建知识库文档索引: " + document.getTitle());
-        return requireDocument(tenantId, knowledgeBaseId, documentId);
+        if (task != null) {
+            processKnowledgeDocumentIndex(task);
+        }
     }
 
     @Transactional
@@ -397,17 +473,14 @@ public class AiKnowledgeBaseAppService {
             args.addAll(safeKbIds);
         }
 
-        String like = "%" + query.trim() + "%";
-        where.append(" and (lower(c.search_text) like lower(?) or lower(d.title) like lower(?) or lower(kb.name) like lower(?))");
-        args.add(like);
-        args.add(like);
-        args.add(like);
-        args.add(safeLimit);
-        return jdbcTemplate.query(
+        int candidateLimit = Math.min(120, Math.max(safeLimit * 8, safeLimit));
+        args.add(candidateLimit);
+        AiEmbeddingVector queryVector = vectorService.embedQuery(query);
+        List<VectorSearchCandidate> candidates = jdbcTemplate.query(
                 """
                         select c.id as chunk_id, c.knowledge_base_id, kb.name as knowledge_base_name,
                                c.document_id, d.title as document_title, d.file_id, d.original_file_name,
-                               c.chunk_index, c.content
+                               c.chunk_index, c.content, c.embedding_vector_json
                         from ai_knowledge_chunk c
                         join ai_knowledge_document d on d.tenant_id = c.tenant_id and d.id = c.document_id
                         join ai_knowledge_base kb on kb.tenant_id = c.tenant_id and kb.id = c.knowledge_base_id
@@ -415,9 +488,12 @@ public class AiKnowledgeBaseAppService {
                         order by c.update_time desc, c.id desc
                         limit ?
                         """,
-                this::mapKnowledgeReference,
+                (row, rowNum) -> mapVectorSearchCandidate(row, query, queryVector),
                 args.toArray()
         );
+        return vectorService.top(candidates, safeLimit).stream()
+                .map(VectorSearchCandidate::reference)
+                .toList();
     }
 
     public List<AiVO.KnowledgeBaseVO> listEmployeeKnowledgeBases(CurrentUser currentUser, Long employeeId) {
@@ -450,13 +526,12 @@ public class AiKnowledgeBaseAppService {
     @Transactional
     public boolean updateEmployeeKnowledgeBases(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeKnowledgeBasesUpdateRequest request) {
         Long tenantId = currentTenantId(currentUser);
-        Integer employeeExists = jdbcTemplate.queryForObject(
-                "select count(1) from ai_employee where tenant_id = ? and id = ? and is_deleted = 0",
-                Integer.class,
+        boolean employeeExists = jdbcTemplate.exists(
+                "select 1 from ai_employee where tenant_id = ? and id = ? and is_deleted = 0 limit 1",
                 tenantId,
                 employeeId
         );
-        if (employeeExists == null || employeeExists == 0) {
+        if (!employeeExists) {
             throw new BizException(ErrorCode.NOT_FOUND, "数字员工不存在");
         }
         LocalDateTime now = LocalDateTime.now();
@@ -505,12 +580,14 @@ public class AiKnowledgeBaseAppService {
         List<String> chunks = splitChunks(text);
         int index = 0;
         for (String chunk : chunks) {
+            AiKnowledgeVectorService.VectorProjection projection = vectorService.project(chunk);
             jdbcTemplate.update(
                     """
                             insert into ai_knowledge_chunk (
                                 tenant_id, knowledge_base_id, document_id, chunk_index, content, search_text,
-                                token_count, is_deleted, create_time, update_time
-                            ) values (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                                token_count, embedding_model, embedding_dim, embedding_vector_json, vector_indexed_at,
+                                is_deleted, create_time, update_time
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                             """,
                     tenantId,
                     knowledgeBaseId,
@@ -519,13 +596,22 @@ public class AiKnowledgeBaseAppService {
                     chunk,
                     chunk.toLowerCase(Locale.ROOT),
                     Math.max(1, chunk.length() / 2),
+                    projection.model(),
+                    projection.dimensions(),
+                    projection.vectorJson(),
+                    now,
                     now,
                     now
             );
             index++;
         }
         jdbcTemplate.update(
-                "update ai_knowledge_document set status = 'READY', parse_error = null, chunk_count = ?, update_time = ? where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0",
+                """
+                        update ai_knowledge_document
+                        set status = 'READY', parse_error = null, chunk_count = ?, index_retry_count = 0,
+                            index_next_retry_at = null, index_last_error = null, update_time = ?
+                        where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0
+                        """,
                 chunks.size(),
                 now,
                 tenantId,
@@ -533,6 +619,147 @@ public class AiKnowledgeBaseAppService {
                 documentId
         );
         return chunks.size();
+    }
+
+    private void processKnowledgeDocumentIndex(PendingIndexTask task) {
+        CurrentUser jobUser = new CurrentUser(
+                task.createdBy() == null ? 0L : task.createdBy(),
+                "ai-indexer",
+                task.tenantId(),
+                null,
+                0,
+                true,
+                Set.of("*")
+        );
+        try {
+            AiKnowledgeTextExtractor.ExtractedText extracted = resolveExtractedText(task, jobUser);
+            jdbcTemplate.update(
+                    """
+                            update ai_knowledge_document
+                            set extracted_text = ?, extracted_char_count = ?, file_extension = ?, parse_error = null,
+                                updated_by = ?, update_time = ?
+                            where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0
+                            """,
+                    extracted.text(),
+                    extracted.text().length(),
+                    normalizeExtension(extracted.extension(), "txt"),
+                    jobUser.getUserId(),
+                    LocalDateTime.now(),
+                    task.tenantId(),
+                    task.knowledgeBaseId(),
+                    task.documentId()
+            );
+            int chunkCount = rebuildChunks(task.tenantId(), task.knowledgeBaseId(), task.documentId(), extracted.text());
+            publishKnowledgeDocumentEvent(
+                    PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
+                    jobUser,
+                    task.tenantId(),
+                    task.knowledgeBaseId(),
+                    task.documentId(),
+                    task.title(),
+                    "READY",
+                    chunkCount
+            );
+        } catch (RuntimeException exception) {
+            markDocumentIndexFailed(task, exception);
+        }
+    }
+
+    private AiKnowledgeTextExtractor.ExtractedText resolveExtractedText(PendingIndexTask task, CurrentUser jobUser) {
+        FileProcessingArtifactDTO artifact = readTextArtifact(task, jobUser);
+        if (artifact != null && StringUtils.hasText(artifact.contentText())) {
+            return new AiKnowledgeTextExtractor.ExtractedText(
+                    normalizeExtension(extensionFromFilename(task.title()), "txt"),
+                    artifact.contentText()
+            );
+        }
+        FileContentDTO content = fileInternalApi.readFileContentForUser(
+                task.fileId(),
+                task.tenantId(),
+                jobUser.getUserId(),
+                jobUser.getUsername()
+        );
+        return textExtractor.extract(toMultipartFile(content));
+    }
+
+    private FileProcessingArtifactDTO readTextArtifact(PendingIndexTask task, CurrentUser jobUser) {
+        try {
+            return fileInternalApi.readProcessingArtifactForUser(
+                    task.fileId(),
+                    task.tenantId(),
+                    jobUser.getUserId(),
+                    jobUser.getUsername(),
+                    FILE_TEXT_CONTENT_ARTIFACT
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private void markDocumentIndexing(Long tenantId, Long knowledgeBaseId, Long documentId, Long userId) {
+        jdbcTemplate.update(
+                """
+                        update ai_knowledge_document
+                        set status = 'INDEXING', parse_error = null, index_retry_count = 0,
+                            index_next_retry_at = null, index_last_error = null, updated_by = ?, update_time = ?
+                        where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0
+                        """,
+                userId == null ? 0L : userId,
+                LocalDateTime.now(),
+                tenantId,
+                knowledgeBaseId,
+                documentId
+        );
+    }
+
+    private void markDocumentIndexFailed(PendingIndexTask task, RuntimeException exception) {
+        int retryCount = task.retryCount() == null ? 0 : task.retryCount();
+        int nextRetryCount = retryCount + 1;
+        boolean deadLetter = nextRetryCount >= MAX_INDEX_RETRY_COUNT;
+        LocalDateTime now = LocalDateTime.now();
+        String error = truncateError(exception == null ? "unknown error" : exception.getMessage());
+        jdbcTemplate.update(
+                """
+                        update ai_knowledge_document
+                        set status = ?, parse_error = ?, index_retry_count = ?, index_next_retry_at = ?,
+                            index_last_error = ?, updated_by = ?, update_time = ?
+                        where tenant_id = ? and knowledge_base_id = ? and id = ? and is_deleted = 0
+                        """,
+                deadLetter ? "DEAD_LETTER" : "FAILED",
+                error,
+                nextRetryCount,
+                deadLetter ? null : now.plusSeconds(calculateIndexRetryDelaySeconds(nextRetryCount)),
+                error,
+                task.createdBy() == null ? 0L : task.createdBy(),
+                now,
+                task.tenantId(),
+                task.knowledgeBaseId(),
+                task.documentId()
+        );
+    }
+
+    private long calculateIndexRetryDelaySeconds(int retryCount) {
+        int exponent = Math.min(Math.max(retryCount, 1), MAX_INDEX_RETRY_COUNT);
+        return Math.min(MAX_INDEX_RETRY_DELAY_SECONDS, (long) Math.pow(2, exponent));
+    }
+
+    private String truncateError(String message) {
+        if (message == null) {
+            return null;
+        }
+        return message.length() <= 512 ? message : message.substring(0, 512);
+    }
+
+    private MultipartFile toMultipartFile(FileContentDTO content) {
+        if (content == null || content.content() == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识库文件内容不存在");
+        }
+        return new InMemoryMultipartFile(
+                "file",
+                content.originalFileName(),
+                content.mimeType(),
+                content.content()
+        );
     }
 
     private void publishKnowledgeDocumentEvent(
@@ -584,6 +811,65 @@ public class AiKnowledgeBaseAppService {
             start = Math.max(end - CHUNK_OVERLAP, start + 1);
         }
         return result;
+    }
+
+    private record PendingIndexTask(
+            Long documentId,
+            Long tenantId,
+            Long knowledgeBaseId,
+            Long fileId,
+            String title,
+            Long createdBy,
+            Integer retryCount
+    ) {
+    }
+
+    private record InMemoryMultipartFile(
+            String name,
+            String originalFilename,
+            String contentType,
+            byte[] bytes
+    ) implements MultipartFile {
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            return originalFilename;
+        }
+
+        @Override
+        public String getContentType() {
+            return contentType;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return bytes == null || bytes.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return bytes == null ? 0L : bytes.length;
+        }
+
+        @Override
+        public byte[] getBytes() {
+            return bytes == null ? new byte[0] : bytes.clone();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return new ByteArrayInputStream(bytes == null ? new byte[0] : bytes);
+        }
+
+        @Override
+        public void transferTo(java.io.File dest) throws IOException {
+            java.nio.file.Files.write(dest.toPath(), getBytes());
+        }
     }
 
     private AiVO.KnowledgeBaseVO requireKnowledgeBase(CurrentUser currentUser, Long id, KnowledgeAccess access) {
@@ -690,24 +976,43 @@ public class AiKnowledgeBaseAppService {
         return vo;
     }
 
+    private VectorSearchCandidate mapVectorSearchCandidate(SqlRow row, String query, AiEmbeddingVector queryVector) {
+        AiVO.KnowledgeReferenceVO reference = mapKnowledgeReference(row, 0);
+        double score = vectorService.score(
+                queryVector,
+                row.getString("embedding_vector_json"),
+                query,
+                row.getString("content"),
+                row.getString("document_title"),
+                row.getString("knowledge_base_name")
+        );
+        return new VectorSearchCandidate(reference, score);
+    }
+
+    private record VectorSearchCandidate(
+            AiVO.KnowledgeReferenceVO reference,
+            double score
+    ) implements AiKnowledgeVectorService.ScoredCandidate {
+    }
+
     private void validateKnowledgeName(Long tenantId, Long ownerUserId, String name, Long excludeId) {
         if (!StringUtils.hasText(name)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "知识库名称不能为空", "知识库名称不能为空");
         }
-        Integer count = jdbcTemplate.queryForObject(
+        boolean exists = jdbcTemplate.exists(
                 """
-                        select count(1)
+                        select 1
                         from ai_knowledge_base
                         where tenant_id = ? and owner_user_id = ? and name = ? and is_deleted = 0 and (? is null or id <> ?)
+                        limit 1
                         """,
-                Integer.class,
                 tenantId,
                 ownerUserId,
                 name.trim(),
                 excludeId,
                 excludeId
         );
-        if (count != null && count > 0) {
+        if (exists) {
             throw new BizException(ErrorCode.BIZ_ERROR, "知识库名称已存在", "知识库名称已存在");
         }
     }
@@ -861,6 +1166,10 @@ public class AiKnowledgeBaseAppService {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
+    private long nullToZero(Long value) {
+        return value == null ? 0L : value;
+    }
+
     private String cleanNullable(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
@@ -886,6 +1195,17 @@ public class AiKnowledgeBaseAppService {
     private String normalizeExtension(String value, String fallback) {
         String extension = StringUtils.hasText(value) ? value : fallback;
         return extension == null ? null : extension.toLowerCase(Locale.ROOT).replaceFirst("^\\.", "");
+    }
+
+    private String extensionFromFilename(String filename) {
+        if (!StringUtils.hasText(filename)) {
+            return null;
+        }
+        int dot = filename.lastIndexOf('.');
+        if (dot < 0 || dot == filename.length() - 1) {
+            return null;
+        }
+        return filename.substring(dot + 1);
     }
 
     private String cleanTitle(String filename) {

@@ -1,0 +1,342 @@
+{
+  "generatedAt": "2026-06-16T21:34:10.597Z",
+  "strict": false,
+  "artifactRoot": "artifacts/ddd",
+  "summary": {
+    "checks": 38,
+    "blockers": 0,
+    "warnings": 16
+  },
+  "checks": [
+    {
+      "name": "runtime-readiness-summary",
+      "status": "present",
+      "detail": "readiness/summary.json",
+      "file": "artifacts/ddd/readiness/summary.json"
+    },
+    {
+      "name": "runtime-readiness-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance",
+      "status": "present",
+      "detail": "performance/authenticated-runtime-actual.json",
+      "file": "artifacts/ddd/performance/authenticated-runtime-actual.json"
+    },
+    {
+      "name": "authenticated-performance-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline",
+      "status": "present",
+      "detail": "performance/authenticated-runtime-baseline.json",
+      "file": "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+    },
+    {
+      "name": "file-processing-e2e",
+      "status": "present",
+      "detail": "file/file-processing-e2e.json",
+      "file": "artifacts/ddd/file/file-processing-e2e.json"
+    },
+    {
+      "name": "file-processing-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-e2e",
+      "status": "present",
+      "detail": "payment/payment-webhook-e2e.json",
+      "file": "artifacts/ddd/payment/payment-webhook-e2e.json"
+    },
+    {
+      "name": "payment-webhook-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "outbox-replay-dead-letter",
+      "status": "present",
+      "detail": "outbox/outbox-replay-dead-letter-test-evidence.json",
+      "file": "artifacts/ddd/outbox/outbox-replay-dead-letter-test-evidence.json"
+    },
+    {
+      "name": "job-e2e-smoke",
+      "status": "present",
+      "detail": "jobs/job-e2e-smoke.json",
+      "file": "artifacts/ddd/jobs/job-e2e-smoke.json"
+    },
+    {
+      "name": "job-e2e-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-drill",
+      "status": "present",
+      "detail": "ai/ai-runtime-drill.json",
+      "file": "artifacts/ddd/ai/ai-runtime-drill.json"
+    },
+    {
+      "name": "ai-runtime-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "physical-split-readiness",
+      "status": "present",
+      "detail": "split/physical-split-readiness.json",
+      "file": "artifacts/ddd/split/physical-split-readiness.json"
+    },
+    {
+      "name": "backend-test-evidence",
+      "status": "present",
+      "detail": "tests/backend-test-evidence.json",
+      "file": "artifacts/ddd/tests/backend-test-evidence.json"
+    },
+    {
+      "name": "backend-build-evidence",
+      "status": "present",
+      "detail": "build/backend-build-evidence.json",
+      "file": "artifacts/ddd/build/backend-build-evidence.json"
+    },
+    {
+      "name": "docker-build-evidence",
+      "status": "present",
+      "detail": "build/docker-image-evidence.json",
+      "file": "artifacts/ddd/build/docker-image-evidence.json"
+    },
+    {
+      "name": "docker-build-evidence",
+      "status": "warning",
+      "detail": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+      "file": null
+    },
+    {
+      "name": "docker-build-evidence",
+      "status": "warning",
+      "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+      "file": null
+    },
+    {
+      "name": "migration-evidence",
+      "status": "present",
+      "detail": "migration/migration-evidence.json",
+      "file": "artifacts/ddd/migration/migration-evidence.json"
+    },
+    {
+      "name": "release-env-lint",
+      "status": "present",
+      "detail": "release/release-env-lint.json",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "name": "release-env-lint",
+      "status": "warning",
+      "detail": "status=FAIL, blockers=179",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "name": "release-env-lint-placeholders",
+      "status": "warning",
+      "detail": "unresolvedTemplateKeys=108",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "name": "release-env-lint-config",
+      "status": "warning",
+      "detail": "releaseConfigBlockers=71",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "name": "release-config-evidence",
+      "status": "present",
+      "detail": "config/release-config-evidence.json",
+      "file": "artifacts/ddd/config/release-config-evidence.json"
+    },
+    {
+      "name": "release-evidence-orchestrator",
+      "status": "present",
+      "detail": "release/orchestrator-report.json",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-orchestrator-preflight-backend-runtime-base-url",
+      "status": "warning",
+      "detail": "missing backend runtime base URL",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-orchestrator-preflight-ai-runtime-base-url",
+      "status": "warning",
+      "detail": "missing AI runtime base URL",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-orchestrator-preflight-frontend-runtime-base-url",
+      "status": "warning",
+      "detail": "missing deployed frontend base URL",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-orchestrator-preflight-migration-runtime-evidence",
+      "status": "warning",
+      "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-manifest",
+      "status": "present",
+      "detail": "release/evidence-manifest.json",
+      "file": "artifacts/ddd/release/evidence-manifest.json"
+    },
+    {
+      "name": "frontend-build-evidence",
+      "status": "present",
+      "detail": "frontend/frontend-build-evidence.json",
+      "file": "artifacts/ddd/frontend/frontend-build-evidence.json"
+    },
+    {
+      "name": "frontend-static-evidence",
+      "status": "present",
+      "detail": "frontend/frontend-static-evidence.json",
+      "file": "artifacts/ddd/frontend/frontend-static-evidence.json"
+    },
+    {
+      "name": "frontend-smoke",
+      "status": "present",
+      "detail": "frontend/frontend-smoke.json",
+      "file": "artifacts/ddd/frontend/frontend-smoke.json"
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "warning",
+      "detail": "artifact is local-only: http://127.0.0.1:8000",
+      "file": null
+    },
+    {
+      "name": "rollback-drill",
+      "status": "present",
+      "detail": "rollback/rollback-drill.json",
+      "file": "artifacts/ddd/rollback/rollback-drill.json"
+    },
+    {
+      "name": "explain-evidence",
+      "status": "present",
+      "detail": "8 EXPLAIN file(s)",
+      "file": "tmp/ddd-explain"
+    }
+  ],
+  "blockers": [],
+  "blockerDetails": [],
+  "warnings": [
+    "runtime-readiness-environment: artifact is local-only: http://127.0.0.1:8080",
+    "authenticated-performance-environment: artifact is local-only: http://127.0.0.1:8080",
+    "file-processing-environment: artifact is local-only: http://127.0.0.1:8080",
+    "payment-webhook-environment: artifact is local-only: http://127.0.0.1:8080",
+    "job-e2e-environment: artifact is local-only: http://127.0.0.1:8080",
+    "ai-runtime-environment: artifact is local-only: http://127.0.0.1:8080",
+    "docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+    "docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+    "release-env-lint: status=FAIL, blockers=179",
+    "release-env-lint-placeholders: unresolvedTemplateKeys=108",
+    "release-env-lint-config: releaseConfigBlockers=71",
+    "release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL",
+    "release-evidence-orchestrator-preflight-ai-runtime-base-url: missing AI runtime base URL",
+    "release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL",
+    "release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+    "frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000"
+  ],
+  "warningDetails": [
+    {
+      "check": "runtime-readiness-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "file-processing-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "job-e2e-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "docker-build-evidence",
+      "detail": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+      "file": null
+    },
+    {
+      "check": "docker-build-evidence",
+      "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+      "file": null
+    },
+    {
+      "check": "release-env-lint",
+      "detail": "status=FAIL, blockers=179",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "check": "release-env-lint-placeholders",
+      "detail": "unresolvedTemplateKeys=108",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "check": "release-env-lint-config",
+      "detail": "releaseConfigBlockers=71",
+      "file": "artifacts/ddd/release/release-env-lint.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-backend-runtime-base-url",
+      "detail": "missing backend runtime base URL",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-ai-runtime-base-url",
+      "detail": "missing AI runtime base URL",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-frontend-runtime-base-url",
+      "detail": "missing deployed frontend base URL",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-migration-runtime-evidence",
+      "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+      "file": "artifacts/ddd/release/orchestrator-report.json"
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8000",
+      "file": null
+    }
+  ]
+}

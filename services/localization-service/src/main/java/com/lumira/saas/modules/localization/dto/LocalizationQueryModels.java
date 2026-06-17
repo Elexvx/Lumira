@@ -16,6 +16,7 @@ public final class LocalizationQueryModels {
         private String sortDirection;
         private long limit;
         private long offset;
+        private long countLimit;
 
         public String getTargetLocale() {
             return targetLocale;
@@ -96,6 +97,14 @@ public final class LocalizationQueryModels {
         public void setOffset(long offset) {
             this.offset = offset;
         }
+
+        public long getCountLimit() {
+            return countLimit;
+        }
+
+        public void setCountLimit(long countLimit) {
+            this.countLimit = countLimit;
+        }
     }
 
     public static class RuntimeMessageRow {
@@ -134,6 +143,75 @@ public final class LocalizationQueryModels {
 
         public void setFallbackMessage(String fallbackMessage) {
             this.fallbackMessage = fallbackMessage;
+        }
+    }
+
+    public static class LanguageStatRow {
+        private String localeCode;
+        private Long translatedCount;
+        private Long publishedVersion;
+        private java.time.LocalDateTime lastPublishedAt;
+
+        public String getLocaleCode() {
+            return localeCode;
+        }
+
+        public void setLocaleCode(String localeCode) {
+            this.localeCode = localeCode;
+        }
+
+        public Long getTranslatedCount() {
+            return translatedCount;
+        }
+
+        public void setTranslatedCount(Long translatedCount) {
+            this.translatedCount = translatedCount;
+        }
+
+        public Long getPublishedVersion() {
+            return publishedVersion;
+        }
+
+        public void setPublishedVersion(Long publishedVersion) {
+            this.publishedVersion = publishedVersion;
+        }
+
+        public java.time.LocalDateTime getLastPublishedAt() {
+            return lastPublishedAt;
+        }
+
+        public void setLastPublishedAt(java.time.LocalDateTime lastPublishedAt) {
+            this.lastPublishedAt = lastPublishedAt;
+        }
+    }
+
+    public static class NamespaceStatRow {
+        private String namespaceCode;
+        private Long entryCount;
+        private Long translatedCount;
+
+        public String getNamespaceCode() {
+            return namespaceCode;
+        }
+
+        public void setNamespaceCode(String namespaceCode) {
+            this.namespaceCode = namespaceCode;
+        }
+
+        public Long getEntryCount() {
+            return entryCount;
+        }
+
+        public void setEntryCount(Long entryCount) {
+            this.entryCount = entryCount;
+        }
+
+        public Long getTranslatedCount() {
+            return translatedCount;
+        }
+
+        public void setTranslatedCount(Long translatedCount) {
+            this.translatedCount = translatedCount;
         }
     }
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useStandardFormProps } from '@/features/form/config';
 import { request } from '@/services/common/request';
 import { showErrorMessage } from '@/utils/errorMessage';
+import { requestMessageCreate, requestMessageRetract } from '@/services/message/api';
 import type { MessageChannel, MessageNoticeRecord, PagedResult, RoleRecord, SmtpSettings, SmtpTestPayload, UserRecord, WechatOfficialAccountSettings } from '@/types/api';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
@@ -596,7 +597,7 @@ export const useNotificationCenter = ({
     setPublishing(true);
     try {
       const values = await form.validateFields();
-      await request<MessageNoticeRecord>('/v1/message/messages', {
+      await requestMessageCreate({
         method: 'POST',
         data: {
           title: values.title,
@@ -718,7 +719,7 @@ export const useNotificationCenter = ({
         return;
       }
       try {
-        await request<MessageNoticeRecord>(`/v1/message/messages/${record.id}/retract`, {
+        await requestMessageRetract(record.id, {
           method: 'POST',
           ...requestOptions,
         });

@@ -1,0 +1,149 @@
+{
+  "status": "PASS",
+  "mode": "apply",
+  "startedAt": "2026-06-13T19:15:36.316Z",
+  "finishedAt": "2026-06-13T19:15:36.453Z",
+  "elapsedMs": 137,
+  "rule": "Reset non-MESSAGE platform_event_outbox rows failed by Message payload deserialization back to RECORDED for their owner relay.",
+  "before": {
+    "rows": [
+      {
+        "id": 1,
+        "eventKey": "FILE_OBJECT_UPLOADED:1001:file.object:1",
+        "tenantId": 1001,
+        "eventType": "FILE_OBJECT_UPLOADED",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 2,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:1:SECURITY_SCAN",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 3,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:1:TEXT_EXTRACT",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 4,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:1:AI_PARSE",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 5,
+        "eventKey": "FILE_OBJECT_UPLOADED:1001:file.object:2",
+        "tenantId": 1001,
+        "eventType": "FILE_OBJECT_UPLOADED",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 6,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:2:SECURITY_SCAN",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 7,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:2:TEXT_EXTRACT",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 8,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:2:AI_PARSE",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 9,
+        "eventKey": "FILE_OBJECT_UPLOADED:1001:file.object:3",
+        "tenantId": 1001,
+        "eventType": "FILE_OBJECT_UPLOADED",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 10,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:3:SECURITY_SCAN",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 11,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:3:TEXT_EXTRACT",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      },
+      {
+        "id": 12,
+        "eventKey": "FileProcessingTaskRequested:1001:file.processing_task:3:AI_PARSE",
+        "tenantId": 1001,
+        "eventType": "FileProcessingTaskRequested",
+        "lastError": "平台事件 payload 反序列化失败",
+        "retryCount": 1,
+        "sourceType": "FILE",
+        "dispatchStatus": "FAILED"
+      }
+    ],
+    "bySource": [
+      {
+        "rows": 12,
+        "maxId": 12,
+        "minId": 1,
+        "sourceType": "FILE"
+      }
+    ]
+  },
+  "repairResult": {
+    "rowsMatched": null,
+    "rowsChanged": null,
+    "raw": ""
+  },
+  "after": {
+    "rows": [],
+    "bySource": []
+  }
+}

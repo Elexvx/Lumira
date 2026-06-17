@@ -12,9 +12,12 @@ import org.springframework.stereotype.Service;
 public class SecuritySettingsService {
 
     private static final Logger log = LoggerFactory.getLogger(SecuritySettingsService.class);
+    private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
 
     private final AuthSecurityProperties securityProperties;
     private final SystemInternalApi systemInternalApi;
+    private volatile SecuritySettingsDTO cachedSettings;
+    private volatile long cachedSettingsUntilMillis;
 
     public SecuritySettingsService(AuthSecurityProperties securityProperties, SystemInternalApi systemInternalApi) {
         this.securityProperties = securityProperties;
@@ -66,7 +69,30 @@ public class SecuritySettingsService {
         return longValue(loadSettings().verificationCodeCooldownSeconds(), 60);
     }
 
+    public com.lumira.api.system.SecuritySettingsDTO snapshot() {
+        return loadSettings();
+    }
+
     private SecuritySettingsDTO loadSettings() {
+        long now = System.currentTimeMillis();
+        SecuritySettingsDTO cached = cachedSettings;
+        if (cached != null && now < cachedSettingsUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = cachedSettings;
+            if (cached != null && now < cachedSettingsUntilMillis) {
+                return cached;
+            }
+            SecuritySettingsDTO loaded = loadSettingsFresh();
+            cachedSettings = loaded;
+            cachedSettingsUntilMillis = now + SETTINGS_CACHE_TTL_MS;
+            return loaded;
+        }
+    }
+
+    private SecuritySettingsDTO loadSettingsFresh() {
         try {
             SecuritySettingsDTO settings = systemInternalApi.securitySettings(PlatformConstants.PLATFORM_TENANT_ID);
             if (settings != null) {
