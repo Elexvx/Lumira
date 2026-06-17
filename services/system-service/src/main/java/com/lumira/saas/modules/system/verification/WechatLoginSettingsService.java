@@ -6,16 +6,22 @@ import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class WechatLoginSettingsService {
 
+    private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
     private static final String ENABLED_KEY = "verification.wechat-login.enabled";
     private static final String APP_ID_KEY = "verification.wechat-login.app-id";
     private static final String APP_SECRET_KEY = "verification.wechat-login.app-secret";
@@ -25,14 +31,59 @@ public class WechatLoginSettingsService {
     private final SysConfigMapper sysConfigMapper;
     private final WechatLoginProperties properties;
     private final FieldCryptoService fieldCryptoService;
+    private final Cache<String, WechatLoginSettingsRecord> settingsCache;
+    private final Cache<String, CompletableFuture<WechatLoginSettingsRecord>> settingsLoadInFlight;
 
     public WechatLoginSettingsService(SysConfigMapper sysConfigMapper, WechatLoginProperties properties, FieldCryptoService fieldCryptoService) {
         this.sysConfigMapper = sysConfigMapper;
         this.properties = properties;
         this.fieldCryptoService = fieldCryptoService;
+        this.settingsCache = CacheBuilder.newBuilder()
+                .maximumSize(2048)
+                .expireAfterWrite(SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.settingsLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(2048)
+                .expireAfterWrite(SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public WechatLoginSettingsRecord loadSettings(Long tenantId) {
+        String cacheKey = cacheKey(tenantId);
+        WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        return loadSettingsWithSingleFlight(tenantId, cacheKey);
+    }
+
+    private WechatLoginSettingsRecord loadSettingsWithSingleFlight(Long tenantId, String cacheKey) {
+        try {
+            CompletableFuture<WechatLoginSettingsRecord> future = settingsLoadInFlight.get(
+                    cacheKey,
+                    () -> CompletableFuture.completedFuture(loadSettingsFresh(tenantId, cacheKey))
+            );
+            WechatLoginSettingsRecord loaded = future.join();
+            settingsLoadInFlight.invalidate(cacheKey);
+            return loaded;
+        } catch (ExecutionException ex) {
+            settingsLoadInFlight.invalidate(cacheKey);
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to load Wechat login settings", cause);
+        } catch (RuntimeException ex) {
+            settingsLoadInFlight.invalidate(cacheKey);
+            throw ex;
+        }
+    }
+
+    private WechatLoginSettingsRecord loadSettingsFresh(Long tenantId, String cacheKey) {
+        WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         Map<String, String> values = loadConfigValuesByKeys(tenantId, keys());
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(ENABLED_KEY), String.valueOf(properties.isEnabled())));
         String appId = defaultIfBlank(values.get(APP_ID_KEY), properties.getAppId());
@@ -43,7 +94,9 @@ public class WechatLoginSettingsService {
         boolean configured = StringUtils.hasText(appId)
                 && StringUtils.hasText(appSecret)
                 && StringUtils.hasText(redirectUri);
-        return new WechatLoginSettingsRecord(enabled, appId, appSecret, redirectUri, stateExpireMinutes, configured);
+        WechatLoginSettingsRecord record = new WechatLoginSettingsRecord(enabled, appId, appSecret, redirectUri, stateExpireMinutes, configured);
+        settingsCache.put(cacheKey, record);
+        return record;
     }
 
     public boolean isAvailable(Long tenantId) {
@@ -92,6 +145,7 @@ public class WechatLoginSettingsService {
         upsertConfigValue(tenantId, APP_SECRET_KEY, "微信 AppSecret", appSecret, "微信开放平台网站应用 AppSecret", operatorId);
         upsertConfigValue(tenantId, REDIRECT_URI_KEY, "微信登录回调地址", redirectUri, "微信开放平台授权回调地址", operatorId);
         upsertConfigValue(tenantId, STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(stateExpireMinutes), "微信登录 state 缓存有效期，单位分钟", operatorId);
+        invalidateTenantCache(tenantId);
         return getSettings(tenantId);
     }
 
@@ -101,6 +155,7 @@ public class WechatLoginSettingsService {
         upsertConfigValue(tenantId, APP_SECRET_KEY, "微信 AppSecret", "", "微信开放平台网站应用 AppSecret", operatorId);
         upsertConfigValue(tenantId, REDIRECT_URI_KEY, "微信登录回调地址", "", "微信开放平台授权回调地址", operatorId);
         upsertConfigValue(tenantId, STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(Math.max(1, properties.getStateExpireMinutes())), "微信登录 state 缓存有效期，单位分钟", operatorId);
+        invalidateTenantCache(tenantId);
         return getSettings(tenantId);
     }
 
@@ -128,6 +183,16 @@ public class WechatLoginSettingsService {
             }
         }
         return valueByKey;
+    }
+
+    private void invalidateTenantCache(Long tenantId) {
+        String cacheKey = cacheKey(tenantId);
+        settingsCache.invalidate(cacheKey);
+        settingsLoadInFlight.invalidate(cacheKey);
+    }
+
+    private String cacheKey(Long tenantId) {
+        return effectiveTenantId(tenantId) + ":" + String.join(",", keys());
     }
 
     private String encryptConfigValue(String configKey, String configValue) {

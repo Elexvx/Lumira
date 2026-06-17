@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.plugin.service;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDefinitionEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDependencyEntity;
@@ -25,9 +27,11 @@ import java.util.Optional;
 public class PluginPersistenceService {
 
     private final PluginPersistenceMapper pluginPersistenceMapper;
+    private final SystemInternalApi systemInternalApi;
 
-    public PluginPersistenceService(PluginPersistenceMapper pluginPersistenceMapper) {
+    public PluginPersistenceService(PluginPersistenceMapper pluginPersistenceMapper, SystemInternalApi systemInternalApi) {
         this.pluginPersistenceMapper = pluginPersistenceMapper;
+        this.systemInternalApi = systemInternalApi;
     }
 
     @Transactional
@@ -272,6 +276,10 @@ public class PluginPersistenceService {
         return pluginPersistenceMapper.listTenantIdsForPlugin(pluginCode);
     }
 
+    public void bumpBootstrapVersion(Long tenantId, String eventKey) {
+        systemInternalApi.bumpReadModelVersion(tenantId, "plugin", "bootstrap", eventKey);
+    }
+
     public List<PluginVersionEntity> listInstalledVersions(String pluginCode) {
         return pluginPersistenceMapper.listInstalledVersions(pluginCode);
     }
@@ -329,15 +337,17 @@ public class PluginPersistenceService {
         if (permissions.isEmpty()) {
             return;
         }
-        for (PluginPermissionRelEntity permission : permissions) {
-            pluginPersistenceMapper.upsertSystemPermission(tenantId, pluginCode, permission);
-        }
-        List<Long> adminRoleIds = pluginPersistenceMapper.listAdminRoleIds(tenantId);
-        for (Long roleId : adminRoleIds) {
-            for (PluginPermissionRelEntity permission : permissions) {
-                pluginPersistenceMapper.upsertRolePermission(tenantId, roleId, permission.getPermissionKey());
-            }
-        }
+        systemInternalApi.registerPluginPermissions(new PluginPermissionRegistrationRequestDTO(
+                tenantId,
+                pluginCode,
+                permissions.stream()
+                        .map(permission -> new PluginPermissionRegistrationRequestDTO.Permission(
+                                permission.getPermissionKey(),
+                                permission.getPermissionName(),
+                                permission.getPermissionGroup()
+                        ))
+                        .toList()
+        ));
     }
 
     private void upsertDefinition(PluginDTO.PluginPackageMetadata metadata, Long operatorId) {

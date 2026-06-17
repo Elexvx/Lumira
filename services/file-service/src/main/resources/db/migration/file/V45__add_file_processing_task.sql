@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS `file_processing_task` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `file_id` bigint NOT NULL,
+  `task_type` varchar(64) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `priority` int NOT NULL DEFAULT '0',
+  `retry_count` int NOT NULL DEFAULT '0',
+  `next_retry_at` datetime DEFAULT NULL,
+  `claimed_at` datetime DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `last_error` varchar(1024) DEFAULT NULL,
+  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_file_processing_task_file_type` (`tenant_id`,`file_id`,`task_type`),
+  KEY `idx_file_processing_task_status_retry` (`status`,`next_retry_at`,`priority`,`created_at`),
+  KEY `idx_file_processing_task_file` (`tenant_id`,`file_id`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

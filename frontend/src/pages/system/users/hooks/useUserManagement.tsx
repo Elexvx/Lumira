@@ -75,7 +75,7 @@ const downloadBase64File = (contentBase64: string, contentType: string, fileName
 };
 
 const exportableQueryParams = (params: Record<string, unknown>, deptId: number | null) => {
-  const { pageNo, pageSize, current, cursorId, cursorCreatedAt, ...rest } = params;
+  const { pageNo: _pageNo, pageSize: _pageSize, current: _current, cursorId: _cursorId, cursorCreatedAt: _cursorCreatedAt, ...rest } = params;
   return {
     ...rest,
     deptId: deptId || undefined,

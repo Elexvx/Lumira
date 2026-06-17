@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "environment": "staging",
+  "releaseVersion": "replace-with-release-version",
+  "operator": "replace-with-operator",
+  "summary": {
+    "requiredContexts": 10,
+    "contexts": 10,
+    "passContexts": 10,
+    "deferredContexts": 0,
+    "readyContexts": 10,
+    "missingContexts": 0,
+    "todoContexts": 0,
+    "invalidStatusContexts": 0,
+    "missingRequiredContexts": [],
+    "unknownContexts": 0,
+    "duplicateContexts": 0,
+    "diagnostics": 0,
+    "readyDiagnostics": 0,
+    "missingEvidenceDiagnostics": 0,
+    "appliedDeferrals": 0,
+    "blockers": 0,
+    "warnings": 0
+  },
+  "contexts": [
+    {
+      "context": "IAM",
+      "status": "PASS",
+      "rollbackAction": "Gateway/API switched IAM traffic back to the monolith adapter and permission snapshots were rebuilt from owner tables.",
+      "drillEvidence": "Link or path to readiness JSON, audit log, cache invalidation log and operator transcript.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Auth",
+      "status": "PASS",
+      "rollbackAction": "Auth v2 adapter was switched back while Redis/session TTL compatibility was verified.",
+      "drillEvidence": "Link or path to session metrics, login transcript and rollback command output.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Platform",
+      "status": "PASS",
+      "rollbackAction": "Platform adapter was switched back and runtime appearance/config cache was cleared.",
+      "drillEvidence": "Link or path to config version, bootstrap metrics and audit write evidence.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Message",
+      "status": "PASS",
+      "rollbackAction": "Message relay was paused, monolith-compatible delivery path was restored and outbox replay remained idempotent.",
+      "drillEvidence": "Link or path to relay pause log, message metrics, replay response and message state snapshot.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "File",
+      "status": "PASS",
+      "rollbackAction": "File processing job was paused, object keys stayed stable and a processing task was rerun by id.",
+      "drillEvidence": "Link or path to upload artifact, processing task rows, storage key sample and rerun response.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Plugin",
+      "status": "PASS",
+      "rollbackAction": "Tenant plugin was disabled or rolled back to the previous version and bootstrap projection was rebuilt.",
+      "drillEvidence": "Link or path to plugin audit log, bootstrap version, projection rebuild output and tenant state.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Localization",
+      "status": "PASS",
+      "rollbackAction": "Active localization release was rolled back and runtime bundle cache was cleared.",
+      "drillEvidence": "Link or path to release id, bundle cache metrics and rollback audit.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Payment",
+      "status": "PASS",
+      "rollbackAction": "Webhook traffic was switched back to the monolith-compatible endpoint and event replay by eventKey stayed idempotent.",
+      "drillEvidence": "Link or path to provider routing change, webhook metrics, replay response and order state trace.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "AI",
+      "status": "PASS",
+      "rollbackAction": "AI knowledge index job was paused, external provider was disabled and document index rebuild still worked.",
+      "drillEvidence": "Link or path to AI metrics, provider config, documentId rebuild response and degraded chat/tool transcript.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "context": "Job",
+      "status": "PASS",
+      "rollbackAction": "Selected XXL-JOB handler was disabled and owner internal endpoint could still be called manually.",
+      "drillEvidence": "Link or path to XXL-JOB dashboard evidence, internal token check and manual owner relay response.",
+      "validatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

@@ -12,6 +12,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.Set;
 
@@ -36,7 +39,7 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!request.getRequestURI().startsWith("/internal/")) {
+        if (!isInternalServicePath(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -47,7 +50,7 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
         }
 
         String requestToken = request.getHeader(INTERNAL_TOKEN_HEADER);
-        if (!StringUtils.hasText(requestToken) || !internalToken.equals(requestToken)) {
+        if (!isAuthorized(requestToken, internalToken)) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid internal service token");
             return;
         }
@@ -69,6 +72,25 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             SecurityContextHolder.clearContext();
+        }
+    }
+
+    static boolean isInternalServicePath(String requestUri) {
+        return requestUri != null && (requestUri.startsWith("/internal/") || requestUri.contains("/internal/"));
+    }
+
+    static boolean isAuthorized(String requestToken, String internalToken) {
+        if (!StringUtils.hasText(requestToken) || !StringUtils.hasText(internalToken)) {
+            return false;
+        }
+        return MessageDigest.isEqual(sha256(requestToken), sha256(internalToken));
+    }
+
+    private static byte[] sha256(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 digest is unavailable", exception);
         }
     }
 }

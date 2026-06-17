@@ -1,0 +1,24 @@
+{
+  "httpStatus": 200,
+  "data": {
+    "context": "Message",
+    "ownerModule": "message-service-module",
+    "status": "UP",
+    "observedAt": "2026-06-16T06:22:07.611Z",
+    "healthChecks": [
+      {
+        "name": "message.db.owner-tables",
+        "status": "CONFIGURED",
+        "description": "Owner tables are guarded."
+      }
+    ],
+    "metrics": [
+      {
+        "name": "message.latency.p95",
+        "type": "timer",
+        "unit": "milliseconds",
+        "description": "p95 latency."
+      }
+    ]
+  }
+}

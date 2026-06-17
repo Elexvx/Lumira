@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { parseEnvFile, setEnvValue, randomSecret, randomBase64Secret, defaultCapacityProfiles } from './lib/env-utils.mjs';
-import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
+import { run as execRun, output as execOutput, commandExists, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
 const log = createLogger('install');
 const repoRoot = resolveRepoRoot(import.meta.url);
@@ -66,7 +66,7 @@ function run(command, commandArgs, options = {}) {
   }
 }
 function output(command, commandArgs, options = {}) {
-  return execRun(command, commandArgs, { cwd: repoRoot, check: false, encoding: "utf8", stdio: "pipe", ...options });
+  return execOutput(command, commandArgs, { cwd: repoRoot, check: false, ...options });
 }
 
 

@@ -7,7 +7,9 @@ public class JobExecutorProperties {
 
     private String backendBaseUrl;
     private String messageServiceBaseUrl;
+    private String fileServiceBaseUrl;
     private String paymentServiceBaseUrl;
+    private String pluginServiceBaseUrl;
     private String internalToken;
 
     public String getBackendBaseUrl() {
@@ -26,12 +28,28 @@ public class JobExecutorProperties {
         this.messageServiceBaseUrl = messageServiceBaseUrl;
     }
 
+    public String getFileServiceBaseUrl() {
+        return fileServiceBaseUrl;
+    }
+
+    public void setFileServiceBaseUrl(String fileServiceBaseUrl) {
+        this.fileServiceBaseUrl = fileServiceBaseUrl;
+    }
+
     public String getPaymentServiceBaseUrl() {
         return paymentServiceBaseUrl;
     }
 
     public void setPaymentServiceBaseUrl(String paymentServiceBaseUrl) {
         this.paymentServiceBaseUrl = paymentServiceBaseUrl;
+    }
+
+    public String getPluginServiceBaseUrl() {
+        return pluginServiceBaseUrl;
+    }
+
+    public void setPluginServiceBaseUrl(String pluginServiceBaseUrl) {
+        this.pluginServiceBaseUrl = pluginServiceBaseUrl;
     }
 
     public String getInternalToken() {

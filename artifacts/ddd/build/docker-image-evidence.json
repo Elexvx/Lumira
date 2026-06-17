@@ -1,0 +1,320 @@
+{
+  "generatedAt": "2026-06-16T21:45:55.209Z",
+  "sourceEnvironment": "local-fast-track-validation",
+  "releaseCandidate": "local-ddd-release-audit",
+  "evidenceOperator": "codex-local-audit",
+  "dockerCommand": "docker",
+  "noCache": false,
+  "preflight": {
+    "version": {
+      "command": "docker",
+      "args": [
+        "--version"
+      ],
+      "status": 0,
+      "signal": null,
+      "elapsedMs": 22,
+      "stdoutTail": "Docker version 29.4.1, build 055a478",
+      "stderrTail": "",
+      "error": null
+    },
+    "info": {
+      "command": "docker",
+      "args": [
+        "info",
+        "--format",
+        "{{json .ServerVersion}}"
+      ],
+      "status": 0,
+      "signal": null,
+      "elapsedMs": 958,
+      "stdoutTail": "\"29.4.1\"",
+      "stderrTail": "",
+      "error": null
+    }
+  },
+  "status": "FAIL",
+  "summary": {
+    "images": 2,
+    "passed": 0,
+    "failed": 2,
+    "skipped": 0,
+    "blockers": 2
+  },
+  "images": [
+    {
+      "name": "lumira-server",
+      "dockerfile": "deploy/docker/service.Dockerfile",
+      "dockerfileSha256": "42f80e8a1460738aafc392fb1c38544b6551ba5cba2cd2d0e8cba5af0e407258",
+      "tag": "lumira/lumira-server:ddd-evidence-1781646165231",
+      "buildArgs": {
+        "SERVICE_DIR": "services/lumira-server",
+        "SERVICE_MODULE": "services/lumira-server"
+      },
+      "expectedExposedPort": "8080/tcp",
+      "requireNonRootUser": true,
+      "staticDockerfile": {
+        "status": "PASS",
+        "exists": true,
+        "dockerfileSha256": "42f80e8a1460738aafc392fb1c38544b6551ba5cba2cd2d0e8cba5af0e407258",
+        "issues": [],
+        "checks": {
+          "exposesExpectedPort": true,
+          "definesEntrypointOrCmd": true,
+          "nonRootUser": true,
+          "createsApplicationUser": true,
+          "serviceModuleBuildArgs": true,
+          "optionalOtelJavaagentDownload": true,
+          "otelJavaagentRuntimeGuard": true,
+          "frontendProductionBuild": true
+        }
+      },
+      "status": "FAIL",
+      "build": {
+        "command": "docker",
+        "args": [
+          "build",
+          "-f",
+          "deploy/docker/service.Dockerfile",
+          "-t",
+          "lumira/lumira-server:ddd-evidence-1781646165231",
+          "--build-arg",
+          "SERVICE_DIR=services/lumira-server",
+          "--build-arg",
+          "SERVICE_MODULE=services/lumira-server",
+          "."
+        ],
+        "status": 1,
+        "signal": null,
+        "elapsedMs": 30399,
+        "stdoutTail": "",
+        "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from service.Dockerfile\n#1 transferring dockerfile: 3.04kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 ERROR: failed to authorize: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > resolve image config for docker-image://docker.io/docker/dockerfile:1.7:\n------\nservice.Dockerfile:1\n--------------------\n   1 | >>> # syntax=docker/dockerfile:1.7\n   2 |     \n   3 |     ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21\n--------------------\nERROR: failed to build: failed to solve: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/50kg8nq80mtc8licci67223xl",
+        "error": null,
+        "attempts": [
+          {
+            "attempt": 1,
+            "command": "docker",
+            "args": [
+              "build",
+              "-f",
+              "deploy/docker/service.Dockerfile",
+              "-t",
+              "lumira/lumira-server:ddd-evidence-1781646165231",
+              "--build-arg",
+              "SERVICE_DIR=services/lumira-server",
+              "--build-arg",
+              "SERVICE_MODULE=services/lumira-server",
+              "."
+            ],
+            "status": 1,
+            "signal": null,
+            "elapsedMs": 30760,
+            "stdoutTail": "",
+            "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from service.Dockerfile\n#1 transferring dockerfile: 3.04kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 ERROR: failed to authorize: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 104.23.125.189:443: i/o timeout\n------\n > resolve image config for docker-image://docker.io/docker/dockerfile:1.7:\n------\nservice.Dockerfile:1\n--------------------\n   1 | >>> # syntax=docker/dockerfile:1.7\n   2 |     \n   3 |     ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21\n--------------------\nERROR: failed to build: failed to solve: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 104.23.125.189:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/zf8n6b5mog71wwz0j784t29cp",
+            "error": null
+          },
+          {
+            "attempt": 2,
+            "command": "docker",
+            "args": [
+              "build",
+              "-f",
+              "deploy/docker/service.Dockerfile",
+              "-t",
+              "lumira/lumira-server:ddd-evidence-1781646165231",
+              "--build-arg",
+              "SERVICE_DIR=services/lumira-server",
+              "--build-arg",
+              "SERVICE_MODULE=services/lumira-server",
+              "."
+            ],
+            "status": 1,
+            "signal": null,
+            "elapsedMs": 30577,
+            "stdoutTail": "",
+            "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from service.Dockerfile\n#1 transferring dockerfile: 3.04kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 ERROR: failed to authorize: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > resolve image config for docker-image://docker.io/docker/dockerfile:1.7:\n------\nservice.Dockerfile:1\n--------------------\n   1 | >>> # syntax=docker/dockerfile:1.7\n   2 |     \n   3 |     ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21\n--------------------\nERROR: failed to build: failed to solve: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/kun7ea0vl4jsvpfge1t6sdnc0",
+            "error": null
+          },
+          {
+            "attempt": 3,
+            "command": "docker",
+            "args": [
+              "build",
+              "-f",
+              "deploy/docker/service.Dockerfile",
+              "-t",
+              "lumira/lumira-server:ddd-evidence-1781646165231",
+              "--build-arg",
+              "SERVICE_DIR=services/lumira-server",
+              "--build-arg",
+              "SERVICE_MODULE=services/lumira-server",
+              "."
+            ],
+            "status": 1,
+            "signal": null,
+            "elapsedMs": 30399,
+            "stdoutTail": "",
+            "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from service.Dockerfile\n#1 transferring dockerfile: 3.04kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 ERROR: failed to authorize: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > resolve image config for docker-image://docker.io/docker/dockerfile:1.7:\n------\nservice.Dockerfile:1\n--------------------\n   1 | >>> # syntax=docker/dockerfile:1.7\n   2 |     \n   3 |     ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21\n--------------------\nERROR: failed to build: failed to solve: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Adocker%2Fdockerfile%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/50kg8nq80mtc8licci67223xl",
+            "error": null
+          }
+        ],
+        "attemptCount": 3,
+        "retryCount": 2,
+        "transientFailure": true
+      },
+      "inspect": {
+        "command": null,
+        "image": null
+      },
+      "blockers": [
+        "docker build failed after 3 attempt(s) with transient registry/network error status 1"
+      ]
+    },
+    {
+      "name": "frontend",
+      "dockerfile": "deploy/docker/frontend.Dockerfile",
+      "dockerfileSha256": "d496bb904425c77402b04078c552d961e3491e3aba933804c7006dbf0fdd8ccc",
+      "tag": "lumira/frontend:ddd-evidence-1781646165231",
+      "buildArgs": {},
+      "expectedExposedPort": "80/tcp",
+      "requireNonRootUser": false,
+      "staticDockerfile": {
+        "status": "PASS",
+        "exists": true,
+        "dockerfileSha256": "d496bb904425c77402b04078c552d961e3491e3aba933804c7006dbf0fdd8ccc",
+        "issues": [],
+        "checks": {
+          "exposesExpectedPort": true,
+          "definesEntrypointOrCmd": true,
+          "nonRootUser": true,
+          "createsApplicationUser": true,
+          "serviceModuleBuildArgs": true,
+          "optionalOtelJavaagentDownload": true,
+          "otelJavaagentRuntimeGuard": true,
+          "frontendProductionBuild": true
+        }
+      },
+      "status": "FAIL",
+      "build": {
+        "command": "docker",
+        "args": [
+          "build",
+          "-f",
+          "deploy/docker/frontend.Dockerfile",
+          "-t",
+          "lumira/frontend:ddd-evidence-1781646165231",
+          "."
+        ],
+        "status": 1,
+        "signal": null,
+        "elapsedMs": 30417,
+        "stdoutTail": "",
+        "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from frontend.Dockerfile\n#1 transferring dockerfile: 654B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/nginx:1.29-alpine\n#2 DONE 0.0s\n\n#3 [internal] load metadata for docker.io/library/node:22-bookworm-slim\n#3 ERROR: failed to authorize: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > [internal] load metadata for docker.io/library/node:22-bookworm-slim:\n------\nfrontend.Dockerfile:4\n--------------------\n   2 |     ARG NGINX_IMAGE=nginx:1.29-alpine\n   3 |     \n   4 | >>> FROM ${NODE_IMAGE} AS builder\n   5 |     \n   6 |     WORKDIR /workspace/frontend\n--------------------\nERROR: failed to build: failed to solve: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/qb79je8acn1aujpwz00xnlad5",
+        "error": null,
+        "attempts": [
+          {
+            "attempt": 1,
+            "command": "docker",
+            "args": [
+              "build",
+              "-f",
+              "deploy/docker/frontend.Dockerfile",
+              "-t",
+              "lumira/frontend:ddd-evidence-1781646165231",
+              "."
+            ],
+            "status": 1,
+            "signal": null,
+            "elapsedMs": 30403,
+            "stdoutTail": "",
+            "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from frontend.Dockerfile\n#1 transferring dockerfile: 654B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/nginx:1.29-alpine\n#2 DONE 0.0s\n\n#3 [internal] load metadata for docker.io/library/node:22-bookworm-slim\n#3 ERROR: failed to authorize: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > [internal] load metadata for docker.io/library/node:22-bookworm-slim:\n------\nfrontend.Dockerfile:4\n--------------------\n   2 |     ARG NGINX_IMAGE=nginx:1.29-alpine\n   3 |     \n   4 | >>> FROM ${NODE_IMAGE} AS builder\n   5 |     \n   6 |     WORKDIR /workspace/frontend\n--------------------\nERROR: failed to build: failed to solve: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/yvbzzpkzqqc6gh4g8r49v12o5",
+            "error": null
+          },
+          {
+            "attempt": 2,
+            "command": "docker",
+            "args": [
+              "build",
+              "-f",
+              "deploy/docker/frontend.Dockerfile",
+              "-t",
+              "lumira/frontend:ddd-evidence-1781646165231",
+              "."
+            ],
+            "status": 1,
+            "signal": null,
+            "elapsedMs": 30415,
+            "stdoutTail": "",
+            "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from frontend.Dockerfile\n#1 transferring dockerfile: 654B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/nginx:1.29-alpine\n#2 DONE 0.0s\n\n#3 [internal] load metadata for docker.io/library/node:22-bookworm-slim\n#3 ERROR: failed to authorize: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > [internal] load metadata for docker.io/library/node:22-bookworm-slim:\n------\nfrontend.Dockerfile:4\n--------------------\n   2 |     ARG NGINX_IMAGE=nginx:1.29-alpine\n   3 |     \n   4 | >>> FROM ${NODE_IMAGE} AS builder\n   5 |     \n   6 |     WORKDIR /workspace/frontend\n--------------------\nERROR: failed to build: failed to solve: DeadlineExceeded: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/jm8vzcju4ga868vwfv6269iz6",
+            "error": null
+          },
+          {
+            "attempt": 3,
+            "command": "docker",
+            "args": [
+              "build",
+              "-f",
+              "deploy/docker/frontend.Dockerfile",
+              "-t",
+              "lumira/frontend:ddd-evidence-1781646165231",
+              "."
+            ],
+            "status": 1,
+            "signal": null,
+            "elapsedMs": 30417,
+            "stdoutTail": "",
+            "stderrTail": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from frontend.Dockerfile\n#1 transferring dockerfile: 654B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/nginx:1.29-alpine\n#2 DONE 0.0s\n\n#3 [internal] load metadata for docker.io/library/node:22-bookworm-slim\n#3 ERROR: failed to authorize: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n------\n > [internal] load metadata for docker.io/library/node:22-bookworm-slim:\n------\nfrontend.Dockerfile:4\n--------------------\n   2 |     ARG NGINX_IMAGE=nginx:1.29-alpine\n   3 |     \n   4 | >>> FROM ${NODE_IMAGE} AS builder\n   5 |     \n   6 |     WORKDIR /workspace/frontend\n--------------------\nERROR: failed to build: failed to solve: failed to fetch anonymous token: Get \"https://auth.docker.io/token?scope=repository%3Alibrary%2Fnode%3Apull&service=registry.docker.io\": dial tcp 157.240.8.50:443: i/o timeout\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/qb79je8acn1aujpwz00xnlad5",
+            "error": null
+          }
+        ],
+        "attemptCount": 3,
+        "retryCount": 2,
+        "transientFailure": true
+      },
+      "inspect": {
+        "command": null,
+        "image": null
+      },
+      "blockers": [
+        "docker build failed after 3 attempt(s) with transient registry/network error status 1"
+      ]
+    }
+  ],
+  "blockers": [
+    "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+    "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1"
+  ],
+  "remediation": {
+    "transientRegistryFailure": true,
+    "dockerUnavailable": false,
+    "transientImages": [
+      {
+        "name": "lumira-server",
+        "attempts": 3,
+        "retries": 2,
+        "dockerfile": "deploy/docker/service.Dockerfile"
+      },
+      {
+        "name": "frontend",
+        "attempts": 3,
+        "retries": 2,
+        "dockerfile": "deploy/docker/frontend.Dockerfile"
+      }
+    ],
+    "nextActions": [
+      {
+        "id": "docker-registry-mirror-retry",
+        "owner": "release-infra",
+        "action": "Rerun Docker evidence with registry-local mirror images and a higher retry budget.",
+        "envKeys": [
+          "DDD_DOCKER_BUILD_RETRIES",
+          "DDD_DOCKER_MAVEN_IMAGE",
+          "DDD_DOCKER_JRE_IMAGE",
+          "DDD_DOCKER_NODE_IMAGE",
+          "DDD_DOCKER_NGINX_IMAGE"
+        ],
+        "exampleCommand": "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs"
+      }
+    ]
+  }
+}

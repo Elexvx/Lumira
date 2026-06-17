@@ -9,6 +9,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,11 +25,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false", matchIfMissing = true)
 public class PaymentJwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final List<String> PUBLIC_PREFIXES = List.of(
             "/api/v1/payment/webhooks/**",
+            "/api/v2/payment/webhooks/**",
             "/api/version",
             "/api/v1/version",
             "/api/v1/*/version",

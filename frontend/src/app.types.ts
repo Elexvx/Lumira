@@ -2,6 +2,7 @@ import type {
   AgreementSettings,
   BrandingSettings,
   CurrentUser,
+  FloatingWindowSettings,
   LoginCapabilities,
   MenuNode,
   SecuritySettings,
@@ -18,6 +19,7 @@ export interface AppInitialState {
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;
   watermarkSettings?: WatermarkSettings;
+  floatingWindowSettings?: FloatingWindowSettings;
   agreementSettings?: AgreementSettings;
   loginCapabilities?: LoginCapabilities;
 }

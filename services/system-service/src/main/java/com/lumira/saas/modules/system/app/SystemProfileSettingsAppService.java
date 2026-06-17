@@ -14,6 +14,8 @@ import com.lumira.saas.modules.system.profile.vo.ProfileCompletionGroupVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionItemVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionSummaryVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
@@ -27,12 +29,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class SystemProfileSettingsAppService {
 
     private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    private static final long PROFILE_SETTINGS_CACHE_TTL_MS = 30_000L;
+    private static final int PROFILE_SETTINGS_CACHE_MAX_ENTRIES = 2048;
     private static final Integer PROFILE_SCORE_MAX = 100;
     private static final String PROFILE_FIELD_GROUP_BASIC_KEY = "basic";
     private static final String PROFILE_FIELD_GROUP_CONTACT_KEY = "contact";
@@ -61,10 +68,20 @@ public class SystemProfileSettingsAppService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
+    private final Cache<Long, List<ProfileFieldSettingVO>> profileFieldSettingsCache;
+    private final Cache<Long, CompletableFuture<List<ProfileFieldSettingVO>>> profileFieldSettingsLoadInFlight;
 
     public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
+        this.profileFieldSettingsCache = CacheBuilder.newBuilder()
+                .maximumSize(PROFILE_SETTINGS_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(PROFILE_SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.profileFieldSettingsLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(PROFILE_SETTINGS_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(PROFILE_SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
@@ -102,14 +119,49 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
+        invalidateProfileFieldSettingsCache(tenantId);
         return loadProfileFieldSettings(tenantId);
     }
 
     private List<ProfileFieldSettingVO> loadProfileFieldSettings(Long tenantId) {
+        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(tenantId);
+        if (cached != null) {
+            return new ArrayList<>(cached);
+        }
+        return loadProfileFieldSettingsWithSingleFlight(tenantId);
+    }
+
+    private List<ProfileFieldSettingVO> loadProfileFieldSettingsWithSingleFlight(Long tenantId) {
+        try {
+            CompletableFuture<List<ProfileFieldSettingVO>> future = profileFieldSettingsLoadInFlight.get(
+                    tenantId,
+                    () -> CompletableFuture.completedFuture(loadProfileFieldSettingsFresh(tenantId))
+            );
+            List<ProfileFieldSettingVO> settings = future.join();
+            profileFieldSettingsLoadInFlight.invalidate(tenantId);
+            return settings;
+        } catch (ExecutionException ex) {
+            profileFieldSettingsLoadInFlight.invalidate(tenantId);
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to load profile field settings", cause);
+        } catch (RuntimeException ex) {
+            profileFieldSettingsLoadInFlight.invalidate(tenantId);
+            throw ex;
+        }
+    }
+
+    private List<ProfileFieldSettingVO> loadProfileFieldSettingsFresh(Long tenantId) {
+        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(tenantId);
+        if (cached != null) {
+            return new ArrayList<>(cached);
+        }
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, PROFILE_FIELD_CONFIG_KEYS);
         List<ProfileFieldDefinition> definitions = new ArrayList<>(PROFILE_FIELD_DEFINITIONS);
         definitions.addAll(parseCustomDefinitions(valueByKey.get(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY)));
-        return definitions.stream()
+        List<ProfileFieldSettingVO> settings = definitions.stream()
                 .sorted(Comparator.comparing(ProfileFieldDefinition::sortNo).thenComparing(ProfileFieldDefinition::fieldKey))
                 .map(definition -> {
             ProfileFieldSettingVO item = new ProfileFieldSettingVO();
@@ -131,6 +183,13 @@ public class SystemProfileSettingsAppService {
             item.setCustom(definition.custom());
             return item;
         }).toList();
+        profileFieldSettingsCache.put(tenantId, new ArrayList<>(settings));
+        return settings;
+    }
+
+    private void invalidateProfileFieldSettingsCache(Long tenantId) {
+        profileFieldSettingsCache.invalidate(tenantId);
+        profileFieldSettingsLoadInFlight.invalidate(tenantId);
     }
 
     public ProfileCompletionSummaryVO buildProfileCompletionSummary(

@@ -1,0 +1,997 @@
+{
+  "generatedAt": "2026-06-15T12:22:17.885Z",
+  "status": "MISSING",
+  "redacted": true,
+  "valuePolicy": "No concrete rollback artifact contents, credentials, request payloads, or provider tokens are emitted; only context names, owner names, env key names, status, and commands are included.",
+  "fastPath": {
+    "objective": "Close rollback-safety blockers without replacing real PASS drills or approved DEFERRED records.",
+    "blockedUntil": "Every bounded context has PASS rollback drill evidence or an approved unexpired DEFERRED risk acceptance.",
+    "commands": [
+      "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+      "node scripts/ddd-rollback-deferral-template.mjs",
+      "DDD_ROLLBACK_DRILL_STRICT=true node scripts/ddd-rollback-drill-evidence.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+    ]
+  },
+  "summary": {
+    "contexts": 10,
+    "ready": 0,
+    "missing": 10,
+    "owners": 10
+  },
+  "ownerSummary": [
+    {
+      "owner": "ai-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "auth-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "file-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "iam-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "job-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "localization-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "message-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "payment-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "platform-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    },
+    {
+      "owner": "plugin-owner",
+      "contexts": 1,
+      "ready": 0,
+      "missing": 1
+    }
+  ],
+  "ownerRunbook": [
+    {
+      "owner": "ai-owner",
+      "status": "MISSING",
+      "contexts": [
+        "AI"
+      ],
+      "missingContexts": [
+        "AI"
+      ],
+      "requiredEnvKeys": [
+        "AI_ROLLBACK_DEFERRAL_EVIDENCE",
+        "AI_ROLLBACK_EVIDENCE",
+        "AI_ROLLBACK_OWNER",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "auth-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Auth"
+      ],
+      "missingContexts": [
+        "Auth"
+      ],
+      "requiredEnvKeys": [
+        "AUTH_ROLLBACK_DEFERRAL_EVIDENCE",
+        "AUTH_ROLLBACK_EVIDENCE",
+        "AUTH_ROLLBACK_OWNER",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "file-owner",
+      "status": "MISSING",
+      "contexts": [
+        "File"
+      ],
+      "missingContexts": [
+        "File"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "FILE_ROLLBACK_DEFERRAL_EVIDENCE",
+        "FILE_ROLLBACK_EVIDENCE",
+        "FILE_ROLLBACK_OWNER",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "iam-owner",
+      "status": "MISSING",
+      "contexts": [
+        "IAM"
+      ],
+      "missingContexts": [
+        "IAM"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "IAM_ROLLBACK_DEFERRAL_EVIDENCE",
+        "IAM_ROLLBACK_EVIDENCE",
+        "IAM_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "job-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Job"
+      ],
+      "missingContexts": [
+        "Job"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "JOB_ROLLBACK_DEFERRAL_EVIDENCE",
+        "JOB_ROLLBACK_EVIDENCE",
+        "JOB_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "localization-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Localization"
+      ],
+      "missingContexts": [
+        "Localization"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "LOCALIZATION_ROLLBACK_DEFERRAL_EVIDENCE",
+        "LOCALIZATION_ROLLBACK_EVIDENCE",
+        "LOCALIZATION_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "message-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Message"
+      ],
+      "missingContexts": [
+        "Message"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "MESSAGE_ROLLBACK_DEFERRAL_EVIDENCE",
+        "MESSAGE_ROLLBACK_EVIDENCE",
+        "MESSAGE_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "payment-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Payment"
+      ],
+      "missingContexts": [
+        "Payment"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "PAYMENT_ROLLBACK_DEFERRAL_EVIDENCE",
+        "PAYMENT_ROLLBACK_EVIDENCE",
+        "PAYMENT_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "platform-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Platform"
+      ],
+      "missingContexts": [
+        "Platform"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "PLATFORM_ROLLBACK_DEFERRAL_EVIDENCE",
+        "PLATFORM_ROLLBACK_EVIDENCE",
+        "PLATFORM_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    },
+    {
+      "owner": "plugin-owner",
+      "status": "MISSING",
+      "contexts": [
+        "Plugin"
+      ],
+      "missingContexts": [
+        "Plugin"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "GITHUB_ACTOR",
+        "GITHUB_SHA",
+        "PLUGIN_ROLLBACK_DEFERRAL_EVIDENCE",
+        "PLUGIN_ROLLBACK_EVIDENCE",
+        "PLUGIN_ROLLBACK_OWNER"
+      ],
+      "nextCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
+    }
+  ],
+  "evidenceChecklist": [
+    {
+      "id": "pass-rollback-drill-evidence",
+      "status": "PASS",
+      "requiredFields": [
+        "rollbackAction",
+        "drillEvidence",
+        "validatedAt"
+      ],
+      "requiredArtifacts": [
+        "Rollback command, job output, or operator log for the bounded context.",
+        "Post-rollback readiness, health, metrics, or smoke evidence.",
+        "Audit entry, ticket, or artifact path proving the rollback action was reviewed."
+      ],
+      "acceptanceCriteria": [
+        "Context status is PASS only after rollback behavior is exercised.",
+        "drillEvidence references a concrete evidence link, artifact path, log path, object URI, or ticket id.",
+        "validatedAt is an ISO timestamp from the completed drill."
+      ]
+    },
+    {
+      "id": "deferred-risk-acceptance-evidence",
+      "status": "DEFERRED",
+      "requiredFields": [
+        "notExercisableReason",
+        "riskAcceptedBy",
+        "deferralEvidence",
+        "expiresAt"
+      ],
+      "requiredArtifacts": [
+        "Approved risk acceptance record for the bounded context.",
+        "Reason the rollback drill cannot be exercised before release.",
+        "Expiry timestamp for the deferral window."
+      ],
+      "acceptanceCriteria": [
+        "Context status is DEFERRED only with explicit risk acceptance.",
+        "deferralEvidence references a concrete change ticket, approval artifact, or evidence link.",
+        "expiresAt is in the future for strict release evaluation."
+      ]
+    }
+  ],
+  "validationCommands": [
+    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+    "node scripts/ddd-rollback-deferral-template.mjs",
+    "DDD_ROLLBACK_DRILL_STRICT=true node scripts/ddd-rollback-drill-evidence.mjs",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+  ],
+  "contexts": [
+    {
+      "context": "IAM",
+      "owner": "iam-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "IAM_ROLLBACK_EVIDENCE",
+          "IAM_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "IAM_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence.",
+      "evidenceRequirements": [
+        "permission snapshot version before and after rollback",
+        "cache invalidation or version bump evidence",
+        "IAM v2 readiness/health response after rollback",
+        "audit entry or command log for the rollback action"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "IAM_ROLLBACK_EVIDENCE",
+          "IAM_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "IAM_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Auth",
+      "owner": "auth-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "AUTH_ROLLBACK_EVIDENCE",
+          "AUTH_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "AUTH_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence.",
+      "evidenceRequirements": [
+        "login smoke result after adapter rollback",
+        "session TTL compatibility evidence",
+        "forced logout or keepalive behavior evidence",
+        "auth readiness/health response after rollback"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "AUTH_ROLLBACK_EVIDENCE",
+          "AUTH_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "AUTH_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Platform",
+      "owner": "platform-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "PLATFORM_ROLLBACK_EVIDENCE",
+          "PLATFORM_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "PLATFORM_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence.",
+      "evidenceRequirements": [
+        "runtime appearance/config version before and after rollback",
+        "cache clear or version invalidation evidence",
+        "bootstrap response using the rolled-back config",
+        "platform audit entry for the rollback action"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "PLATFORM_ROLLBACK_EVIDENCE",
+          "PLATFORM_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "PLATFORM_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Message",
+      "owner": "message-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "MESSAGE_ROLLBACK_EVIDENCE",
+          "MESSAGE_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "MESSAGE_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence.",
+      "evidenceRequirements": [
+        "message relay pause/resume command or job output",
+        "delivery fallback evidence for at least one notice",
+        "idempotent replay result with duplicate-safe state",
+        "message readiness/metrics response after rollback"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "MESSAGE_ROLLBACK_EVIDENCE",
+          "MESSAGE_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "MESSAGE_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "File",
+      "owner": "file-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "FILE_ROLLBACK_EVIDENCE",
+          "FILE_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "FILE_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise file processing pause, stable object-key access, and task rerun by id; attach upload, processing row, and storage evidence.",
+      "evidenceRequirements": [
+        "file processing pause/resume command or job output",
+        "stable object-key read evidence after rollback",
+        "processing task rerun by id with final state",
+        "storage artifact or upload row proving access continuity"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "FILE_ROLLBACK_EVIDENCE",
+          "FILE_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "FILE_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Plugin",
+      "owner": "plugin-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "PLUGIN_ROLLBACK_EVIDENCE",
+          "PLUGIN_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "PLUGIN_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence.",
+      "evidenceRequirements": [
+        "tenant plugin disable or version rollback command output",
+        "bootstrap projection rebuild evidence",
+        "tenant plugin projection row before and after rollback",
+        "plugin audit entry for the rollback action"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "PLUGIN_ROLLBACK_EVIDENCE",
+          "PLUGIN_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "PLUGIN_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Localization",
+      "owner": "localization-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "LOCALIZATION_ROLLBACK_EVIDENCE",
+          "LOCALIZATION_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "LOCALIZATION_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence.",
+      "evidenceRequirements": [
+        "localization release id before and after rollback",
+        "runtime bundle cache clear evidence",
+        "bundle request or metrics proving rolled-back release is served",
+        "localization audit entry for the rollback action"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "LOCALIZATION_ROLLBACK_EVIDENCE",
+          "LOCALIZATION_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "LOCALIZATION_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Payment",
+      "owner": "payment-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "PAYMENT_ROLLBACK_EVIDENCE",
+          "PAYMENT_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "PAYMENT_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence.",
+      "evidenceRequirements": [
+        "payment provider route fallback configuration evidence",
+        "webhook idempotent replay result",
+        "order status trace before and after replay",
+        "webhook metrics or audit entry for the rollback action"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "PAYMENT_ROLLBACK_EVIDENCE",
+          "PAYMENT_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "PAYMENT_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "AI",
+      "owner": "ai-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "AI_ROLLBACK_EVIDENCE",
+          "AI_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "AI_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence.",
+      "evidenceRequirements": [
+        "AI provider disablement or fallback configuration evidence",
+        "knowledge index job pause/resume command or job output",
+        "document index rebuild or retry evidence",
+        "degraded chat/search transcript after rollback"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "AI_ROLLBACK_EVIDENCE",
+          "AI_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "AI_ROLLBACK_OWNER"
+        ]
+      ]
+    },
+    {
+      "context": "Job",
+      "owner": "job-owner",
+      "status": "MISSING",
+      "currentStatus": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "JOB_ROLLBACK_EVIDENCE",
+          "JOB_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "JOB_ROLLBACK_OWNER"
+        ]
+      ],
+      "action": "Exercise XXL-JOB handler disablement and manual owner internal endpoint fallback; attach dashboard, token, and endpoint evidence.",
+      "evidenceRequirements": [
+        "XXL-JOB handler disablement or dashboard evidence",
+        "manual owner internal endpoint fallback result",
+        "internal job token provenance or redacted request evidence",
+        "job readiness/metrics response after rollback"
+      ],
+      "missingGroups": [
+        [
+          "DDD_ROLLBACK_DRILL_FILE"
+        ],
+        [
+          "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "JOB_ROLLBACK_EVIDENCE",
+          "JOB_ROLLBACK_DEFERRAL_EVIDENCE"
+        ],
+        [
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ],
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ],
+        [
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR",
+          "JOB_ROLLBACK_OWNER"
+        ]
+      ]
+    }
+  ]
+}

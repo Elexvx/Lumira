@@ -1,0 +1,31 @@
+{
+  "httpStatus": 200,
+  "data": {
+    "context": "AI",
+    "ownerModule": "ai-service-module",
+    "status": "READY_WITH_BLOCKERS",
+    "readinessLevel": "contract-and-observability",
+    "ownerTablePatterns": [
+      "ai_*"
+    ],
+    "apiContracts": [
+      "/api/v2/ai"
+    ],
+    "eventContracts": [
+      "AI.Changed"
+    ],
+    "healthChecks": [
+      "ai.db.owner-tables"
+    ],
+    "metrics": [
+      "ai.latency.p95"
+    ],
+    "dependencies": [
+      "ai-cache"
+    ],
+    "rollbackSteps": [
+      "route ai back to v1 adapter"
+    ],
+    "blockers": []
+  }
+}

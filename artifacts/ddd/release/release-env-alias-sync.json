@@ -1,0 +1,465 @@
+{
+  "generatedAt": "2026-06-17T08:20:03.770Z",
+  "status": "PASS",
+  "envFile": "/var/folders/vp/flxvlnmd2l9d006crw0v8qtr0000gn/T/lumira-readiness-summary-hYMj3K/release/.env.bootstrap-test.local",
+  "dryRun": false,
+  "force": false,
+  "envFileSecurity": {
+    "checked": true,
+    "mode": 384,
+    "modeOctal": "600",
+    "permissionSafe": true,
+    "requiredMode": "600"
+  },
+  "summary": {
+    "aliasGroups": 42,
+    "updates": 0,
+    "additions": 7,
+    "conflicts": 0,
+    "skipped": 35,
+    "duplicateKeys": 0,
+    "changed": 7
+  },
+  "updates": [],
+  "additions": [
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "redis port",
+      "keys": [
+        "REDIS_PORT",
+        "SPRING_DATA_REDIS_PORT"
+      ],
+      "key": "SPRING_DATA_REDIS_PORT",
+      "sourceKey": "REDIS_PORT"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "trusted proxy mode",
+      "keys": [
+        "TRUST_FORWARDED_HEADERS",
+        "SAAS_WEB_TRUST_FORWARDED_HEADERS"
+      ],
+      "key": "SAAS_WEB_TRUST_FORWARDED_HEADERS",
+      "sourceKey": "TRUST_FORWARDED_HEADERS"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "outbox dispatcher",
+      "keys": [
+        "SAAS_EVENT_OUTBOX_DISPATCHER",
+        "LUMIRA_EVENT_OUTBOX_DISPATCHER"
+      ],
+      "key": "LUMIRA_EVENT_OUTBOX_DISPATCHER",
+      "sourceKey": "SAAS_EVENT_OUTBOX_DISPATCHER"
+    },
+    {
+      "owner": "file-owner",
+      "group": "file-processing",
+      "requirement": "upload storage root",
+      "keys": [
+        "UPLOAD_STORAGE_ROOT",
+        "LUMIRA_UPLOAD_STORAGE_ROOT"
+      ],
+      "key": "LUMIRA_UPLOAD_STORAGE_ROOT",
+      "sourceKey": "UPLOAD_STORAGE_ROOT"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "provider enabled",
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED",
+        "LUMIRA_AI_PROVIDER_ENABLED"
+      ],
+      "key": "LUMIRA_AI_PROVIDER_ENABLED",
+      "sourceKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "chat model",
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_CHAT_MODEL"
+      ],
+      "key": "LUMIRA_AI_CHAT_MODEL",
+      "sourceKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "embedding model",
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_EMBEDDING_MODEL"
+      ],
+      "key": "LUMIRA_AI_EMBEDDING_MODEL",
+      "sourceKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL"
+    }
+  ],
+  "conflicts": [],
+  "skipped": [
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "backend base url",
+      "keys": [
+        "LUMIRA_BASE_URL",
+        "DEPLOY_CHECK_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "frontend base url",
+      "keys": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "database url",
+      "keys": [
+        "DB_URL",
+        "SPRING_DATASOURCE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "database username",
+      "keys": [
+        "DB_USERNAME",
+        "SPRING_DATASOURCE_USERNAME",
+        "MYSQL_USER"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "database password",
+      "keys": [
+        "DB_PASSWORD",
+        "SPRING_DATASOURCE_PASSWORD",
+        "MYSQL_PASSWORD"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "redis host",
+      "keys": [
+        "REDIS_HOST",
+        "SPRING_DATA_REDIS_HOST"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "redis password",
+      "keys": [
+        "REDIS_PASSWORD",
+        "SPRING_DATA_REDIS_PASSWORD"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "jwt secret",
+      "keys": [
+        "JWT_SECRET",
+        "SAAS_SECURITY_JWT_SECRET"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "field secret",
+      "keys": [
+        "FIELD_SECRET",
+        "SAAS_SECURITY_FIELD_SECRET"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "release-infra",
+      "group": "runtime",
+      "requirement": "cors origins",
+      "keys": [
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "system service",
+      "keys": [
+        "SYSTEM_SERVICE_BASE_URL",
+        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "auth service",
+      "keys": [
+        "AUTH_SERVICE_BASE_URL",
+        "LUMIRA_AUTH_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "file service",
+      "keys": [
+        "FILE_SERVICE_BASE_URL",
+        "LUMIRA_FILE_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "message service",
+      "keys": [
+        "MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "plugin service",
+      "keys": [
+        "PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "localization service",
+      "keys": [
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "payment service",
+      "keys": [
+        "PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "ai service",
+      "keys": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-owners",
+      "group": "owner-services",
+      "requirement": "job executor",
+      "keys": [
+        "JOB_EXECUTOR_BASE_URL",
+        "LUMIRA_JOB_EXECUTOR_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "job internal token",
+      "keys": [
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "DDD_JOB_INTERNAL_TOKEN",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "job backend url",
+      "keys": [
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "LUMIRA_JOB_BACKEND_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "job message url",
+      "keys": [
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "job file url",
+      "keys": [
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "job payment url",
+      "keys": [
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "job plugin url",
+      "keys": [
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "xxl job admin",
+      "keys": [
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "xxl job token",
+      "keys": [
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ACCESS_TOKEN",
+        "LUMIRA_XXL_JOB_ACCESS_TOKEN"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "platform-events",
+      "group": "jobs-and-events",
+      "requirement": "event stream key",
+      "keys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "LUMIRA_EVENT_REDIS_STREAM_KEY"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "payment-owner",
+      "group": "payment",
+      "requirement": "payment webhook secret",
+      "keys": [
+        "DDD_PAYMENT_WEBHOOK_SECRET",
+        "PAYMENT_WEBHOOK_SECRET",
+        "LUMIRA_PAYMENT_WEBHOOK_SECRET"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "provider base url",
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "provider api key",
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_API_KEY"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "owner internal token",
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
+        "SAAS_JOB_INTERNAL_TOKEN"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "iam owner url",
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "platform owner url",
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    },
+    {
+      "owner": "ai-owner",
+      "group": "ai",
+      "requirement": "file owner url",
+      "keys": [
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL"
+      ],
+      "reason": "no concrete source value"
+    }
+  ],
+  "duplicateKeys": [],
+  "blockers": []
+}

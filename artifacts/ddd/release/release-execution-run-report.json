@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-06-17T08:20:11.764Z",
+  "reportStatus": "FAIL",
+  "exitCode": 1,
+  "batchFilter": null,
+  "ownerFilter": "not-a-real-owner",
+  "priorityFilter": null,
+  "summary": {
+    "totalEntries": 0,
+    "succeededEntries": 0,
+    "failedEntries": 0
+  },
+  "entries": []
+}

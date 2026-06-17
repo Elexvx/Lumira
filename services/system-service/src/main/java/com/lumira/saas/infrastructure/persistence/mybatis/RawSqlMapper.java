@@ -14,6 +14,9 @@ public interface RawSqlMapper {
     @SelectProvider(type = RawSqlProvider.class, method = "sql")
     List<Map<String, Object>> selectList(@Param("sql") String sql, @Param("params") List<Object> params);
 
+    @SelectProvider(type = RawSqlProvider.class, method = "sql")
+    Long selectScalar(@Param("sql") String sql, @Param("params") List<Object> params);
+
     @UpdateProvider(type = RawSqlProvider.class, method = "sql")
     int update(@Param("sql") String sql, @Param("params") List<Object> params);
 }

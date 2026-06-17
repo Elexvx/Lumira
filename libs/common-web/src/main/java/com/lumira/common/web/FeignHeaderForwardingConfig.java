@@ -22,22 +22,18 @@ public class FeignHeaderForwardingConfig {
     public RequestInterceptor requestInterceptor() {
         return template -> {
             boolean internalRequest = isInternalRequest(template);
-            if (internalRequest && StringUtils.hasText(internalToken)) {
-                template.header("X-Job-Token", internalToken);
-            }
-
             HttpServletRequest request = RequestContextUtils.currentRequest();
-            if (request == null) {
-                return;
-            }
-            copyHeader(request, template, HeaderConstants.REQUEST_ID);
-            copyHeader(request, template, HeaderConstants.TRACE_ID);
-            if (internalRequest) {
-                template.removeHeader(HeaderConstants.AUTHORIZATION);
-            } else {
-                copyHeader(request, template, HeaderConstants.AUTHORIZATION);
+            if (request != null) {
+                copyHeader(request, template, HeaderConstants.REQUEST_ID);
+                copyHeader(request, template, HeaderConstants.TRACE_ID);
+                if (internalRequest) {
+                    template.removeHeader(HeaderConstants.AUTHORIZATION);
+                } else {
+                    copyHeader(request, template, HeaderConstants.AUTHORIZATION);
+                }
             }
             if (internalRequest && StringUtils.hasText(internalToken)) {
+                template.removeHeader("X-Job-Token");
                 template.header("X-Job-Token", internalToken);
             }
         };

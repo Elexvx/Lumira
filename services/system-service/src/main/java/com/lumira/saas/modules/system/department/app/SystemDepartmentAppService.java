@@ -156,22 +156,20 @@ public class SystemDepartmentAppService {
     public boolean deleteDepartment(CurrentUser currentUser, Long id) {
         Long tenantId = currentTenantId(currentUser);
         DepartmentVO existing = getDepartment(currentUser, id);
-        Long childCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_department where tenant_id = ? and parent_id = ? and deleted = 0",
-                Long.class,
+        boolean hasChildDepartment = jdbcTemplate.exists(
+                "select 1 from sys_department where tenant_id = ? and parent_id = ? and deleted = 0 limit 1",
                 tenantId,
                 id
         );
-        if (childCount != null && childCount > 0) {
+        if (hasChildDepartment) {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "存在下级部门，不能删除");
         }
-        Long userCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_user_department where tenant_id = ? and dept_id = ? and deleted = 0",
-                Long.class,
+        boolean hasAssignedUsers = jdbcTemplate.exists(
+                "select 1 from sys_user_department where tenant_id = ? and dept_id = ? and deleted = 0 limit 1",
                 tenantId,
                 id
         );
-        if (userCount != null && userCount > 0) {
+        if (hasAssignedUsers) {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "部门下仍有用户，不能删除");
         }
         jdbcTemplate.update(
@@ -250,21 +248,21 @@ public class SystemDepartmentAppService {
         if (!StringUtils.hasText(deptCode)) {
             return;
         }
-        Long count = jdbcTemplate.queryForObject(
+        boolean exists = jdbcTemplate.exists(
                 """
-                        select count(1)
+                        select 1
                         from sys_department
                         where tenant_id = ?
                           and dept_code = ?
                           and (? is null or id <> ?)
+                        limit 1
                         """,
-                Long.class,
                 tenantId,
                 deptCode.trim(),
                 currentId,
                 currentId
         );
-        if (count != null && count > 0) {
+        if (exists) {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
     }

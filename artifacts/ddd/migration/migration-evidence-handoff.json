@@ -1,0 +1,264 @@
+{
+  "generatedAt": "2026-06-16T21:36:59.658Z",
+  "status": "MISSING",
+  "redacted": true,
+  "valuePolicy": "No concrete database credentials, DSNs, or migration artifact contents are emitted; only env key names, owners, status, and commands are included.",
+  "fastPath": {
+    "objective": "Close the migration release blocker without bypassing fresh-database and previous-schema upgrade evidence.",
+    "blockedUntil": "Both fresh DB and previous-schema upgrade Flyway drills have concrete evidence, operator, environment, release candidate, and completion timestamp.",
+    "commands": [
+      "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+      "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+    ]
+  },
+  "summary": {
+    "checks": 6,
+    "ready": 0,
+    "missing": 6,
+    "owners": 3
+  },
+  "ownerSummary": [
+    {
+      "owner": "database",
+      "total": 2,
+      "ready": 0,
+      "missing": 2
+    },
+    {
+      "owner": "release-infra",
+      "total": 2,
+      "ready": 0,
+      "missing": 2
+    },
+    {
+      "owner": "release-owner",
+      "total": 2,
+      "ready": 0,
+      "missing": 2
+    }
+  ],
+  "ownerRunbook": [
+    {
+      "owner": "database",
+      "status": "MISSING",
+      "ready": 0,
+      "missing": 2,
+      "missingChecks": [
+        "fresh-database-drill",
+        "upgrade-database-drill"
+      ],
+      "requiredEnvKeys": [
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+      ],
+      "nextCommand": "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs"
+    },
+    {
+      "owner": "release-infra",
+      "status": "MISSING",
+      "ready": 0,
+      "missing": 2,
+      "missingChecks": [
+        "migration-environment",
+        "migration-release-candidate"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_ENVIRONMENT",
+        "GITHUB_SHA"
+      ],
+      "nextCommand": "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs"
+    },
+    {
+      "owner": "release-owner",
+      "status": "MISSING",
+      "ready": 0,
+      "missing": 2,
+      "missingChecks": [
+        "migration-operator",
+        "migration-completed-at"
+      ],
+      "requiredEnvKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_MIGRATION_COMPLETED_AT",
+        "DDD_MIGRATION_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "nextCommand": "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs"
+    }
+  ],
+  "evidenceChecklist": [
+    {
+      "id": "fresh-database-evidence-package",
+      "owner": "database",
+      "drill": "fresh-database",
+      "requiredEnvKeys": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+      ],
+      "requiredArtifacts": [
+        "Flyway migrate log from an empty production-equivalent database.",
+        "Schema history export after the fresh migration completes.",
+        "Database product/version and migration command provenance."
+      ],
+      "acceptanceCriteria": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED=true is set only after the drill succeeds.",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE points to the fresh database evidence package.",
+        "Fresh database evidence is separate from previous-schema upgrade evidence."
+      ]
+    },
+    {
+      "id": "previous-schema-upgrade-evidence-package",
+      "owner": "database",
+      "drill": "previous-schema-upgrade",
+      "requiredEnvKeys": [
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+      ],
+      "requiredArtifacts": [
+        "Before/after schema history export from a copy of the previous production schema.",
+        "Flyway migrate log for the upgrade drill.",
+        "Rollback or restore point reference for the copied previous-schema database."
+      ],
+      "acceptanceCriteria": [
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED=true is set only after the upgrade drill succeeds.",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE points to the previous-schema upgrade evidence package.",
+        "Upgrade evidence references a previous-schema source, not a fresh empty database."
+      ]
+    }
+  ],
+  "validationCommands": [
+    "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+    "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+    "node scripts/ddd-collect-explain.mjs",
+    "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+  ],
+  "checks": [
+    {
+      "id": "fresh-database-drill",
+      "owner": "database",
+      "status": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_MIGRATION_FRESH_DB_VALIDATED"
+        ],
+        [
+          "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+        ]
+      ],
+      "action": "Set DDD_MIGRATION_FRESH_DB_VALIDATED=true and point DDD_MIGRATION_FRESH_DB_EVIDENCE at the fresh-database Flyway log/schema-history artifact.",
+      "missingGroups": [
+        [
+          "DDD_MIGRATION_FRESH_DB_VALIDATED"
+        ],
+        [
+          "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+        ]
+      ]
+    },
+    {
+      "id": "upgrade-database-drill",
+      "owner": "database",
+      "status": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+        ],
+        [
+          "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+        ]
+      ],
+      "action": "Set DDD_MIGRATION_UPGRADE_DB_VALIDATED=true and point DDD_MIGRATION_UPGRADE_DB_EVIDENCE at the previous-schema upgrade Flyway log/schema-history artifact.",
+      "missingGroups": [
+        [
+          "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+        ],
+        [
+          "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+        ]
+      ]
+    },
+    {
+      "id": "migration-environment",
+      "owner": "release-infra",
+      "status": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_MIGRATION_ENVIRONMENT",
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ]
+      ],
+      "action": "Set the production-equivalent migration environment name.",
+      "missingGroups": [
+        [
+          "DDD_MIGRATION_ENVIRONMENT",
+          "DDD_EVIDENCE_ENVIRONMENT",
+          "DDD_RELEASE_ENVIRONMENT"
+        ]
+      ]
+    },
+    {
+      "id": "migration-release-candidate",
+      "owner": "release-infra",
+      "status": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ]
+      ],
+      "action": "Set the immutable release candidate or commit SHA.",
+      "missingGroups": [
+        [
+          "DDD_RELEASE_CANDIDATE",
+          "GITHUB_SHA"
+        ]
+      ]
+    },
+    {
+      "id": "migration-operator",
+      "owner": "release-owner",
+      "status": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_MIGRATION_OPERATOR",
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR"
+        ]
+      ],
+      "action": "Set the operator or CI actor who executed the migration drill.",
+      "missingGroups": [
+        [
+          "DDD_MIGRATION_OPERATOR",
+          "DDD_EVIDENCE_OPERATOR",
+          "GITHUB_ACTOR"
+        ]
+      ]
+    },
+    {
+      "id": "migration-completed-at",
+      "owner": "release-owner",
+      "status": "MISSING",
+      "requiredGroups": [
+        [
+          "DDD_MIGRATION_COMPLETED_AT"
+        ]
+      ],
+      "action": "Set the ISO timestamp when both migration drills completed.",
+      "missingGroups": [
+        [
+          "DDD_MIGRATION_COMPLETED_AT"
+        ]
+      ]
+    }
+  ]
+}

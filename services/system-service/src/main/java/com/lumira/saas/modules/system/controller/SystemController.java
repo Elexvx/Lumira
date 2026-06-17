@@ -455,6 +455,14 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.getSecuritySettings(), TraceContext.getRequestId());
     }
 
+    @GetMapping("/runtime-appearance-settings")
+    public ApiResponse<SystemVO.RuntimeAppearanceSettingsVO> runtimeAppearanceSettings() {
+        return ApiResponse.success(
+                systemManagementAppService.getRuntimeAppearanceSettings(securityContextFacade.getCurrentUser()),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PutMapping("/security-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.SecuritySettingsVO> updateSecuritySettings(@Valid @RequestBody SystemDTO.SecuritySettingsRequest request) {

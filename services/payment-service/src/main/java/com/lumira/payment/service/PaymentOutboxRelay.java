@@ -29,4 +29,8 @@ public class PaymentOutboxRelay {
         }
         return paymentOutboxService.dispatchPending(paymentOutboxDispatcher, batchSize);
     }
+
+    public boolean replay(Long id) {
+        return paymentOutboxService.replay(id, paymentOutboxDispatcher);
+    }
 }

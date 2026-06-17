@@ -1,0 +1,360 @@
+{
+  "generatedAt": "2026-06-17T08:09:47.213Z",
+  "status": "PASS",
+  "redacted": true,
+  "scannedFiles": 21,
+  "releaseEnvDisplayScannedFiles": 46,
+  "leakCount": 0,
+  "scanned": [
+    {
+      "file": "artifacts/ddd/release/release-evidence-gate.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/readiness-summary.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/readiness-summary.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-final-go-no-go.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-final-go-no-go.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-config-owner-input-reconciliation.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-unblock-brief.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-unblock-brief.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/evidence-manifest.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/evidence-manifest-preflight.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/orchestrator-report.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-performance-baseline-closure.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-performance-baseline-closure.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/frontend/frontend-smoke.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/build/docker-image-evidence.json",
+      "present": true,
+      "leaks": 0
+    }
+  ],
+  "releaseEnvDisplayScanned": [
+    {
+      "file": "artifacts/ddd/release/owner-action-rollup.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/owner-action-rollup.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/owner-action-rollup.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/source-action-rollup.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/source-action-rollup.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/source-action-rollup.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-priority.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-priority.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-priority.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-batches.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-batches.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-batches.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-dependency-graph.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-action-dependency-graph.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-blocker-map.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-blocker-map.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-blocker-map.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-cutover-owner-matrix.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-cutover-owner-matrix.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-cutover-owner-matrix.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-final-go-no-go.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-final-go-no-go.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-final-go-no-go.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items.csv",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items/01-platform-events.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items/02-platform-owners.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items/03-release-infra.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items/04-ai-owner.md",
+      "present": true,
+      "leaks": 0
+    },
+    {
+      "file": "artifacts/ddd/release/release-owner-input-receipt-items/05-payment-owner.md",
+      "present": true,
+      "leaks": 0
+    }
+  ],
+  "leaks": [],
+  "policy": {
+    "forbiddenPatterns": [
+      "repoRoot",
+      "homeDir"
+    ],
+    "forbiddenReleaseEnvDisplayPatterns": [
+      "concrete DDD_RELEASE_ENV_FILE",
+      "concrete .env.release* token"
+    ],
+    "replacementGuidance": "Use repo-relative paths, <repo>, or ~ for user-home scoped paths.",
+    "releaseEnvReplacementGuidance": "Use <release-env-file> in human-facing release reports; keep concrete env files only in executable local scripts."
+  }
+}

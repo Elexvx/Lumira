@@ -34,9 +34,16 @@
     </sql>
 
     <select id="countDeliveryLogs" resultType="long">
+        <!-- DELIVERY_LOG count query is bounded. query.countLimit is the read-model window cap (offset + pageSize + 1, capped by DELIVERY_LOG_TOTAL_COUNT_CAP)
+             so we only need to know whether another page exists without doing unbounded table scans. -->
         select count(*)
-        from msg_delivery_log l
-        where <include refid="deliveryFilters"/>
+        from (
+            select l.id
+            from msg_delivery_log l
+            where <include refid="deliveryFilters"/>
+            order by l.created_at desc, l.id desc
+            limit #{query.countLimit}
+        ) delivery_log_candidates
     </select>
 
     <select id="listDeliveryLogs" resultType="com.lumira.message.vo.MessageVO$DeliveryLogVO">

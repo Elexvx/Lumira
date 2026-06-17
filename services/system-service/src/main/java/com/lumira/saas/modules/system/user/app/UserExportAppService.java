@@ -40,7 +40,7 @@ public class UserExportAppService {
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final ExcelExportService excelExportService;
     private final ExportTaskService exportTaskService;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
+    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,

@@ -1,0 +1,726 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "recommendation": "NO_GO_STRICT",
+  "noAutoWaivers": true,
+  "finalDecision": {
+    "recommendation": "NO_GO_STRICT",
+    "finalRecommendation": "NO_GO_STRICT",
+    "cutoverAllowed": false,
+    "releaseEnvFileCutoverSafe": false,
+    "gateBlockers": 0,
+    "blockedCutoverItems": 6,
+    "stopReasonCount": 7,
+    "stopReasonCoverage": "catalog-snapshot",
+    "stopReasons": [
+      "cutover checklist blocked: database-performance",
+      "cutover checklist blocked: deployable-images",
+      "cutover checklist blocked: evidence-integrity",
+      "cutover checklist blocked: release-environment",
+      "cutover checklist blocked: rollback-safety",
+      "cutover checklist blocked: runtime-business-acceptance",
+      "strict release gate blockers=0"
+    ],
+    "source": "artifacts/ddd/release/release-final-go-no-go.json",
+    "enforceCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+    "cutoverAuthority": "final-go-no-go-gate",
+    "requiresFinalGate": true
+  },
+  "safetySignals": {
+    "releaseEnvFile": {
+      "ready": false,
+      "status": "FAIL",
+      "inputKind": "release-env-file",
+      "envFile": "<release-env-file>",
+      "envFilePresent": true,
+      "generatedMissingTemplate": false,
+      "securityChecked": true,
+      "permissionSafe": true,
+      "permissionCheckSkipped": false,
+      "modeOctal": "600",
+      "reason": "env-file",
+      "requiredMode": "600",
+      "pendingActionIds": [
+        "release-env-lint-status",
+        "release-env-lint-placeholders"
+      ],
+      "blockingSafeDefaultAvailable": 0,
+      "blockingRequiresOwnerInput": 34,
+      "safeDefaultsExhausted": true,
+      "ownerInputReasonCounts": {
+        "production-endpoint": 24,
+        "secret-manager": 8,
+        "owner-production-value": 2
+      },
+      "ownerInputOwners": [
+        {
+          "owner": "platform-events",
+          "requiresOwnerInput": 9,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "platform-owners",
+          "requiresOwnerInput": 9,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "release-infra",
+          "requiresOwnerInput": 9,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "ai-owner",
+          "requiresOwnerInput": 6,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "payment-owner",
+          "requiresOwnerInput": 1,
+          "safeDefaultAvailable": 0
+        }
+      ]
+    }
+  },
+  "releaseEnvFileCutoverSafe": false,
+  "summary": {
+    "itemCount": 17,
+    "runNowCount": 5,
+    "waitingCount": 12,
+    "artifactMissingCount": 1,
+    "contentBlockedCount": 16,
+    "readyForStrictGateRerunCount": 0,
+    "strictGateBlockerOwnerCount": 0,
+    "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
+    "ownerInputReceiptCutoverReady": false,
+    "ownerInputReceiptRequiredOwnerInputs": 34,
+    "ownerInputReceiptPendingOwnerCount": 5,
+    "ownerInputReceiptMissingCriteriaCount": 3
+  },
+  "ownerInputReceipt": {
+    "artifact": "artifacts/ddd/release/release-owner-input-receipt.json",
+    "csv": "artifacts/ddd/release/release-owner-input-receipt.csv",
+    "itemsCsv": "artifacts/ddd/release/release-owner-input-receipt-items.csv",
+    "itemsMarkdown": "artifacts/ddd/release/release-owner-input-receipt-items.md",
+    "markdown": "artifacts/ddd/release/release-owner-input-receipt.md",
+    "status": "PENDING_OWNER_INPUT",
+    "cutoverReady": false,
+    "requiredOwnerInputs": 34,
+    "ownerCount": 5,
+    "readyOwnerCount": 0,
+    "pendingOwnerCount": 5,
+    "missingCriteria": [
+      "releaseEnvReadinessBlockers",
+      "releaseEnvReadinessPlaceholders",
+      "releaseEnvReadinessStatus"
+    ],
+    "pendingOwners": [
+      {
+        "owner": "platform-events",
+        "requiredOwnerInputs": 9,
+        "remainingPlaceholders": 9,
+        "remainingMissing": 0,
+        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json",
+        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md",
+        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/01-platform-events.md"
+      },
+      {
+        "owner": "platform-owners",
+        "requiredOwnerInputs": 9,
+        "remainingPlaceholders": 9,
+        "remainingMissing": 0,
+        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
+        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
+        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/02-platform-owners.md"
+      },
+      {
+        "owner": "release-infra",
+        "requiredOwnerInputs": 9,
+        "remainingPlaceholders": 9,
+        "remainingMissing": 0,
+        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json",
+        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md",
+        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/03-release-infra.md"
+      },
+      {
+        "owner": "ai-owner",
+        "requiredOwnerInputs": 6,
+        "remainingPlaceholders": 6,
+        "remainingMissing": 0,
+        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json",
+        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md",
+        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/04-ai-owner.md"
+      },
+      {
+        "owner": "payment-owner",
+        "requiredOwnerInputs": 1,
+        "remainingPlaceholders": 1,
+        "remainingMissing": 0,
+        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json",
+        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md",
+        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/05-payment-owner.md"
+      }
+    ]
+  },
+  "items": [
+    {
+      "order": 1,
+      "owner": "release-infra",
+      "queueStatus": "RUN_NOW",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-docker-release-infra",
+        "p0-release-config-release-infra",
+        "p0-release-env-lint-release-infra"
+      ],
+      "blockedBatchIds": [],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 20,
+      "collapsedActionCount": 1,
+      "nextAction": "Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.",
+      "reason": "release-env-lint:release-env-lint-placeholders unresolvedTemplateKeys=93",
+      "commandHint": "Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.",
+      "executableCommands": [
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ],
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "BASE_URL",
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "DDD_AUTH_PASSWORD",
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_ENVIRONMENT",
+        "DDD_AUTH_USERNAME",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_MIGRATION_COMPLETED_AT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "FIELD_SECRET",
+        "FILE_SERVICE_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "JWT_SECRET",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT",
+        "PAYMENT_PUBLIC_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "REDIS_HOST",
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "SYSTEM_SERVICE_BASE_URL",
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ADDRESSES"
+      ]
+    },
+    {
+      "order": 2,
+      "owner": "platform-owners",
+      "queueStatus": "RUN_NOW",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-release-config-platform-owners"
+      ],
+      "blockedBatchIds": [],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 18,
+      "collapsedActionCount": 0,
+      "nextAction": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "reason": "release-config:ai service placeholder value is not allowed",
+      "commandHint": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ],
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "LUMIRA_AI_BASE_URL",
+        "LUMIRA_AI_SERVICE_BASE_URL"
+      ]
+    },
+    {
+      "order": 3,
+      "owner": "platform-events",
+      "queueStatus": "RUN_NOW",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-release-config-platform-events"
+      ],
+      "blockedBatchIds": [],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 17,
+      "collapsedActionCount": 0,
+      "nextAction": "Set SAAS_EVENT_REDIS_STREAM_KEY or LUMIRA_EVENT_REDIS_STREAM_KEY for event stream key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "reason": "release-config:event stream key placeholder value is not allowed",
+      "commandHint": "Set SAAS_EVENT_REDIS_STREAM_KEY or LUMIRA_EVENT_REDIS_STREAM_KEY for event stream key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ],
+      "envKeys": [
+        "LUMIRA_EVENT_REDIS_STREAM_KEY",
+        "SAAS_EVENT_REDIS_STREAM_KEY"
+      ]
+    },
+    {
+      "order": 4,
+      "owner": "ai-owner",
+      "queueStatus": "RUN_NOW",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-release-config-ai-owner"
+      ],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 13,
+      "collapsedActionCount": 0,
+      "nextAction": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "reason": "release-config:file owner url placeholder value is not allowed",
+      "commandHint": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ],
+      "envKeys": [
+        "LUMIRA_AI_OWNER_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
+      ]
+    },
+    {
+      "order": 5,
+      "owner": "payment-owner",
+      "queueStatus": "RUN_NOW",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-release-config-payment-owner"
+      ],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 4,
+      "collapsedActionCount": 0,
+      "nextAction": "Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "reason": "release-config:payment public url placeholder value is not allowed",
+      "commandHint": "Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ],
+      "envKeys": [
+        "PAYMENT_PUBLIC_BASE_URL"
+      ]
+    },
+    {
+      "order": 6,
+      "owner": "database",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "ARTIFACT_MISSING",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [
+        "tmp/ddd-explain/*.json"
+      ],
+      "pendingActionCount": 7,
+      "collapsedActionCount": 0,
+      "nextAction": "Produce missing artifact: tmp/ddd-explain/*.json",
+      "reason": "missingArtifact=tmp/ddd-explain/*.json",
+      "commandHint": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs"
+      ],
+      "envKeys": [
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+      ]
+    },
+    {
+      "order": 7,
+      "owner": "ai",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-ai-runtime-ai"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 3,
+      "collapsedActionCount": 1,
+      "nextAction": "Configure and verify remote AI owner gateways for IAM/File/Platform integrations.",
+      "reason": "ai-runtime:ai-owner-gateway ownerGateway status=CONFIGURED configuredOwners=0",
+      "commandHint": "Configure and verify remote AI owner gateways for IAM/File/Platform integrations.",
+      "executableCommands": [],
+      "envKeys": [
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+        "LUMIRA_AI_OWNER_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
+      ]
+    },
+    {
+      "order": 8,
+      "owner": "file-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-file-owner",
+        "p1-rollback-file-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 2,
+      "collapsedActionCount": 0,
+      "nextAction": "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.",
+      "reason": "business-e2e:file-processing-production-equivalence strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+      "commandHint": "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-file-processing-e2e-smoke.mjs"
+      ],
+      "envKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "LUMIRA_JOB_INTERNAL_TOKEN",
+        "LUMIRA_UPLOAD_STORAGE_ROOT"
+      ]
+    },
+    {
+      "order": 9,
+      "owner": "frontend",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-frontend-smoke-frontend",
+        "p3-orchestrator-frontend"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 2,
+      "collapsedActionCount": 0,
+      "nextAction": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+      "reason": "orchestrator:orchestrator-preflight-frontend-runtime-base-url missing deployed frontend base URL",
+      "commandHint": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs"
+      ],
+      "envKeys": [
+        "FRONTEND_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
+      ]
+    },
+    {
+      "order": 10,
+      "owner": "job-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-job-owner",
+        "p1-rollback-job-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 2,
+      "collapsedActionCount": 0,
+      "nextAction": "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node scripts/ddd-job-e2e-smoke.mjs`.",
+      "reason": "business-e2e:job-e2e-production-equivalence strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080",
+      "commandHint": "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node scripts/ddd-job-e2e-smoke.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-job-e2e-smoke.mjs"
+      ],
+      "envKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "LUMIRA_JOB_INTERNAL_TOKEN"
+      ]
+    },
+    {
+      "order": 11,
+      "owner": "auth-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-auth-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:Auth Auth rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 12,
+      "owner": "iam-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-iam-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:IAM IAM rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 13,
+      "owner": "localization-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-localization-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:Localization Localization rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 14,
+      "owner": "message-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-message-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:Message Message rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 15,
+      "owner": "platform-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-platform-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:Platform Platform rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 16,
+      "owner": "plugin-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-plugin-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:Plugin Plugin rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 17,
+      "owner": "release-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+      "reason": "orchestrator:orchestrator-run-mode strict release requires run mode report, got plan",
+      "commandHint": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs"
+      ],
+      "envKeys": [
+        "DDD_RELEASE_EVIDENCE_STRICT"
+      ]
+    }
+  ]
+}

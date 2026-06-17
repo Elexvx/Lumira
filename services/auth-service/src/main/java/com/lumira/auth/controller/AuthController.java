@@ -120,6 +120,11 @@ public class AuthController {
         return ApiResponse.success(authAppService.currentUser(), TraceContext.getRequestId());
     }
 
+    @PostMapping("/session/keepalive")
+    public ApiResponse<Boolean> keepalive() {
+        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+    }
+
     @GetMapping("/verification/providers")
     public ApiResponse<java.util.List<LoginResponseDTO.SecondFactorOptionDTO>> verificationProviders() {
         return ApiResponse.success(authAppService.verificationProviders(), TraceContext.getRequestId());

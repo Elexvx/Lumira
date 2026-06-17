@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-06-17T07:22:18.481Z",
+  "status": "PASS",
+  "redacted": true,
+  "sourceEnvironment": "production-equivalent",
+  "releaseCandidate": "38e6b38ff8b03db8de2e0ef9d84ac445fed50526",
+  "evidenceOperator": "johntao",
+  "artifactRoot": "artifacts/ddd",
+  "explainDirectory": "tmp/ddd-explain",
+  "requiredEnv": [
+    {
+      "field": "sourceEnvironment",
+      "envKeys": [
+        "DDD_RELEASE_MANIFEST_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT"
+      ],
+      "value": "production-equivalent",
+      "present": true,
+      "valid": true,
+      "issue": null
+    },
+    {
+      "field": "releaseCandidate",
+      "envKeys": [
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA"
+      ],
+      "value": "38e6b38ff8b03db8de2e0ef9d84ac445fed50526",
+      "present": true,
+      "valid": true,
+      "issue": null
+    },
+    {
+      "field": "evidenceOperator",
+      "envKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "value": "johntao",
+      "present": true,
+      "valid": true,
+      "issue": null
+    }
+  ],
+  "summary": {
+    "requiredArtifacts": 19,
+    "presentArtifacts": 19,
+    "missingArtifacts": 0,
+    "invalidJsonArtifacts": 0,
+    "explainFiles": 8,
+    "blockers": 0
+  },
+  "blockers": [],
+  "nextActions": [
+    {
+      "owner": "release-owner",
+      "reason": "Manifest provenance, required artifacts, and EXPLAIN inputs are present; generate the checksum manifest.",
+      "command": "DDD_RELEASE_MANIFEST_STRICT=true node scripts/ddd-release-evidence-manifest.mjs"
+    }
+  ]
+}

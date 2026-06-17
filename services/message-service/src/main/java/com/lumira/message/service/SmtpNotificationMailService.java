@@ -1,17 +1,14 @@
 package com.lumira.message.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.message.entity.SysConfigEntity;
-import com.lumira.message.mapper.MessageSysConfigMapper;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -19,7 +16,6 @@ import java.util.Properties;
 @Service
 public class SmtpNotificationMailService {
 
-    private static final String PLATFORM_SCOPE = "PLATFORM";
     private static final String SMTP_HOST_KEY = "smtp.host";
     private static final String SMTP_PORT_KEY = "smtp.port";
     private static final String SMTP_USERNAME_KEY = "smtp.username";
@@ -39,10 +35,10 @@ public class SmtpNotificationMailService {
             SMTP_SSL_ENABLED_KEY
     );
 
-    private final MessageSysConfigMapper sysConfigMapper;
+    private final SystemInternalApi systemInternalApi;
 
-    public SmtpNotificationMailService(MessageSysConfigMapper sysConfigMapper) {
-        this.sysConfigMapper = sysConfigMapper;
+    public SmtpNotificationMailService(SystemInternalApi systemInternalApi) {
+        this.systemInternalApi = systemInternalApi;
     }
 
     public boolean isConfigured(Long tenantId) {
@@ -75,20 +71,8 @@ public class SmtpNotificationMailService {
 
     private Map<String, String> loadValues(Long tenantId) {
         Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        Map<String, String> values = new HashMap<>();
-        List<SysConfigEntity> rows = sysConfigMapper.selectList(new QueryWrapper<SysConfigEntity>()
-                .select("config_key", "config_value")
-                .eq("tenant_id", effectiveTenantId)
-                .eq("config_scope", PLATFORM_SCOPE)
-                .eq("deleted", 0)
-                .in("config_key", SMTP_CONFIG_KEYS)
-                .orderByDesc("id"));
-        for (SysConfigEntity row : rows) {
-            if (row.getConfigKey() != null && row.getConfigValue() != null && !values.containsKey(row.getConfigKey())) {
-                values.put(row.getConfigKey(), row.getConfigValue());
-            }
-        }
-        return values;
+        Map<String, String> values = systemInternalApi.platformConfigValues(effectiveTenantId, SMTP_CONFIG_KEYS);
+        return values == null ? Map.of() : values;
     }
 
     private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {

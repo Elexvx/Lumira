@@ -872,7 +872,7 @@ export const useAuthenticatorManagement = ({
 
   const {
     drawerState,
-    saveState,
+    saveState: _saveState,
     drawerFooter,
     drawerContent,
   } = useAuthenticatorConfigDrawer({

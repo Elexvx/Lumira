@@ -3,6 +3,8 @@ package com.lumira.saas.modules.system.role.app;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.domain.event.DomainEvent;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -38,6 +40,7 @@ class SystemRoleManagementAppServiceTest {
         assertEquals(3, page.getRecords().get(0).getPermissionCount());
         assertEquals(7, page.getRecords().get(0).getUserCount());
         assertTrue(page.getRecords().get(0).getDefaultRegistrationRole());
+        assertEquals(0, jdbcTemplate.roleListCountQueries);
     }
 
     @Test
@@ -75,6 +78,7 @@ class SystemRoleManagementAppServiceTest {
         SystemVO.RoleDetailVO role = service.createRole(currentUser(), request);
 
         assertTrue(jdbcTemplate.insertedRole);
+        assertEquals(1, jdbcTemplate.lastInsertIdQueries);
         assertTrue(jdbcTemplate.deletedRolePermissions);
         assertTrue(jdbcTemplate.insertedPermissionKeys.isEmpty());
         verify(permissionSnapshotService).invalidateTenant(1001L);
@@ -95,11 +99,34 @@ class SystemRoleManagementAppServiceTest {
         verify(permissionSnapshotService).invalidateTenant(1001L);
     }
 
+    @Test
+    void updateRolePermissionsShouldPublishDomainEventWhenPermissionSetChanges() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        RecordingDomainEventPublisher domainEventPublisher = new RecordingDomainEventPublisher();
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService, domainEventPublisher);
+
+        service.updateRolePermissions(currentUser(), 2001L, List.of("system:user:view"));
+
+        assertEquals(1, domainEventPublisher.events.size());
+        assertEquals("IAM_ROLE_PERMISSIONS_CHANGED", domainEventPublisher.events.getFirst().eventType());
+    }
+
     private SystemRoleManagementAppService buildService(RecordingJdbcTemplate jdbcTemplate, PermissionSnapshotService permissionSnapshotService) {
+        return buildService(jdbcTemplate, permissionSnapshotService, event -> {
+        });
+    }
+
+    private SystemRoleManagementAppService buildService(
+            RecordingJdbcTemplate jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            DomainEventPublisher domainEventPublisher
+    ) {
         return new SystemRoleManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 permissionSnapshotService,
-                new RecordingOperationAuditService(jdbcTemplate)
+                new RecordingOperationAuditService(jdbcTemplate),
+                domainEventPublisher
         );
     }
 
@@ -136,6 +163,8 @@ class SystemRoleManagementAppServiceTest {
         private boolean insertedRole;
         private boolean deletedRolePermissions;
         private boolean auditLogged;
+        private int lastInsertIdQueries;
+        private int roleListCountQueries;
         private String upsertedDefaultRoleCode;
         private final List<String> insertedPermissionKeys = new ArrayList<>();
 
@@ -193,7 +222,12 @@ class SystemRoleManagementAppServiceTest {
             if (sql.contains("select id from sys_role")) {
                 return requiredType.cast(2001L);
             }
+            if (sql.contains("select last_insert_id()")) {
+                lastInsertIdQueries += 1;
+                return requiredType.cast(2001L);
+            }
             if (sql.contains("select count(1) from sys_role")) {
+                roleListCountQueries += 1;
                 return requiredType.cast(2L);
             }
             if (sql.contains("from sys_role_permission")) {
@@ -243,6 +277,15 @@ class SystemRoleManagementAppServiceTest {
         @Override
         public void log(Long tenantId, Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
             jdbcTemplate.auditLogged = true;
+        }
+    }
+
+    private static final class RecordingDomainEventPublisher implements DomainEventPublisher {
+        private final List<DomainEvent> events = new ArrayList<>();
+
+        @Override
+        public void publish(DomainEvent event) {
+            events.add(event);
         }
     }
 }

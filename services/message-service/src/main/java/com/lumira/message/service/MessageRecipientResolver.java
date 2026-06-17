@@ -1,9 +1,7 @@
 package com.lumira.message.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.message.MessageNoticeDTO;
-import com.lumira.message.entity.SysUserRoleEntity;
-import com.lumira.message.mapper.SysUserRoleMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -15,10 +13,10 @@ import java.util.Set;
 @Component
 public class MessageRecipientResolver {
 
-    private final SysUserRoleMapper sysUserRoleMapper;
+    private final SystemInternalApi systemInternalApi;
 
-    public MessageRecipientResolver(SysUserRoleMapper sysUserRoleMapper) {
-        this.sysUserRoleMapper = sysUserRoleMapper;
+    public MessageRecipientResolver(SystemInternalApi systemInternalApi) {
+        this.systemInternalApi = systemInternalApi;
     }
 
     public List<Long> resolveRecipientUserIds(MessageNoticeDTO notice) {
@@ -33,16 +31,7 @@ public class MessageRecipientResolver {
             return notice.getTargetUserId() == null ? List.of() : List.of(notice.getTargetUserId());
         }
         if ("ROLE".equalsIgnoreCase(targetScope) && notice.getTargetRoleId() != null) {
-            List<Long> userIds = sysUserRoleMapper.selectList(new QueryWrapper<SysUserRoleEntity>()
-                            .select("user_id")
-                            .eq("tenant_id", notice.getTenantId())
-                            .eq("role_id", notice.getTargetRoleId())
-                            .eq("deleted", 0)
-                            .groupBy("user_id"))
-                    .stream()
-                    .map(SysUserRoleEntity::getUserId)
-                    .toList();
-            return deduplicate(userIds);
+            return deduplicate(systemInternalApi.userIdsByRole(notice.getTenantId(), notice.getTargetRoleId()));
         }
         return List.of();
     }

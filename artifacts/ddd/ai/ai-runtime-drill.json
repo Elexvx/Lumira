@@ -1,0 +1,378 @@
+{
+  "baseUrl": "http://127.0.0.1:8080",
+  "checkedAt": "2026-06-16T20:51:41.726Z",
+  "status": "PASS",
+  "sourceEnvironment": "local-fast-track-validation",
+  "releaseCandidate": "local-ddd-release-audit",
+  "evidenceOperator": "codex-local-audit",
+  "productionEquivalence": {
+    "strict": false,
+    "https": false,
+    "localOnly": true,
+    "deploymentEvidence": null,
+    "issues": []
+  },
+  "expectations": {
+    "providerRemote": false,
+    "ownerGatewayRemote": false
+  },
+  "endpoints": {
+    "readiness": {
+      "status": 200,
+      "elapsedMs": 81.85,
+      "data": {
+        "context": "AI",
+        "ownerModule": "system-service",
+        "status": "READY_WITH_BLOCKERS",
+        "readinessLevel": "contract-and-observability",
+        "ownerTablePatterns": [
+          "ai_employee",
+          "ai_skill",
+          "ai_llm_service",
+          "ai_knowledge_base",
+          "ai_knowledge_document",
+          "ai_knowledge_chunk",
+          "ai_conversation",
+          "ai_message",
+          "ai_tool_*"
+        ],
+        "apiContracts": [
+          "/api/v2/ai/readiness",
+          "/api/v2/ai/health",
+          "/api/v2/ai/metrics",
+          "/api/v2/ai/employees",
+          "/api/v2/ai/assistant",
+          "/api/v2/ai/conversations",
+          "/api/v2/ai/conversations/{id}/messages",
+          "/api/v2/ai/chat",
+          "/api/v2/ai/knowledge-bases",
+          "/api/v2/ai/knowledge-bases/{id}",
+          "/api/v2/ai/knowledge-bases/{id}/documents",
+          "/api/v2/ai/knowledge-bases/{id}/documents/upload",
+          "/api/v2/ai/knowledge-bases/{id}/documents/{documentId}/reindex",
+          "/api/v2/ai/knowledge-bases/search",
+          "/api/v2/ai/tools",
+          "/api/v2/ai/tools/execute",
+          "/api/v2/ai/tools/propose",
+          "/api/v2/ai/tools/confirm"
+        ],
+        "eventContracts": [
+          "AI_KNOWLEDGE_INDEX_REQUESTED",
+          "KnowledgeDocumentIndexed",
+          "KnowledgeDocumentIndexFailed",
+          "KnowledgeDocumentIndexDeadLetter",
+          "AiToolExecutionAudited"
+        ],
+        "healthChecks": [
+          "ai.db.owner-tables",
+          "ai.llm-provider.config",
+          "ai.provider-runtime",
+          "ai.remote-owner-gateway",
+          "ai.embedding.local-hashing-v1",
+          "ai.knowledge-index.retry-governance",
+          "ai.file-artifact-contract",
+          "ai.iam-permission-snapshot",
+          "ai.platform-config-snapshot"
+        ],
+        "metrics": [
+          "ai.chat.p95",
+          "ai.llm.error_rate",
+          "ai.tool.execution.p95",
+          "ai.knowledge.retrieve.p95",
+          "ai.knowledge_index.pending_backlog",
+          "ai.knowledge_index.retryable_backlog",
+          "ai.knowledge_index.failed_backlog",
+          "ai.knowledge_index.dead_letter",
+          "ai.knowledge_chunk.vector_indexed",
+          "ai.knowledge_chunk.local_hashing",
+          "ai.owner_gateway.configured",
+          "ai.provider.remote_configured"
+        ],
+        "dependencies": [
+          "FileInternalApi processing artifact snapshots",
+          "IAM permission snapshot",
+          "Platform configuration snapshot",
+          "LLM provider adapters",
+          "local-hashing-v1 embedding adapter",
+          "job-executor aiKnowledgeIndexJob"
+        ],
+        "rollbackSteps": [
+          "route /api/v2/ai/* back to system-service monolith adapter",
+          "pause aiKnowledgeIndexJob before rollback when vector projection is unstable",
+          "rebuild knowledge document index by documentId after provider/vector rollback",
+          "keep local-hashing-v1 projection readable while external vector DB is disabled"
+        ],
+        "blockers": [
+          "AI remains inside system-service; physical split still needs standalone service startup and external LLM/embedding/vector DB dependency isolation",
+          "system-service adapter declares AI provider and remote owner gateway runtime contracts so release drills can validate the same observability shape before the AI owner is physically split",
+          "provider-specific chat/tool latency and error dashboards need real runtime data before split"
+        ]
+      }
+    },
+    "health": {
+      "status": 200,
+      "elapsedMs": 23.14,
+      "data": {
+        "context": "AI",
+        "ownerModule": "system-service",
+        "status": "UP",
+        "observedAt": "2026-06-17T04:51:41.702011+08:00",
+        "healthChecks": [
+          {
+            "name": "ai.db.owner-tables",
+            "status": "CONFIGURED",
+            "description": "AI owner tables and knowledge projections are available in system-service."
+          },
+          {
+            "name": "ai.llm-provider.config",
+            "status": "CONFIGURED",
+            "description": "LLM provider settings are owned by AI and resolved through application services."
+          },
+          {
+            "name": "ai.provider-runtime",
+            "status": "CONFIGURED",
+            "description": "provider=lumira-local, chatModel=local-hashing-v1, embeddingModel=local-hashing-v1, remoteConfigured=false, localFallback=true"
+          },
+          {
+            "name": "ai.remote-owner-gateway",
+            "status": "CONFIGURED",
+            "description": "Configured owners=[]; degraded owners=[iam, platform, file]; system-service adapter uses in-process facades until standalone AI owner gateway is configured, localFallback=true."
+          },
+          {
+            "name": "ai.embedding.local-hashing-v1",
+            "status": "UP",
+            "description": "Local hashing embedding adapter is available without external credentials."
+          },
+          {
+            "name": "ai.knowledge-index.retry-governance",
+            "status": "CONFIGURED",
+            "description": "Knowledge document indexing supports retry, backoff and dead-letter status."
+          },
+          {
+            "name": "ai.file-artifact-contract",
+            "status": "CONFIGURED",
+            "description": "AI consumes File owner processing artifacts through FileInternalApi."
+          },
+          {
+            "name": "ai.iam-permission-snapshot",
+            "status": "CONFIGURED",
+            "description": "AI reads IAM visibility through snapshot/facade contracts."
+          },
+          {
+            "name": "ai.platform-config-snapshot",
+            "status": "CONFIGURED",
+            "description": "AI runtime tools read Platform data through facade contracts."
+          }
+        ],
+        "metrics": [
+          {
+            "name": "ai.chat.p95",
+            "type": "timer",
+            "unit": "milliseconds",
+            "description": "Chat completion p95 latency tagged by provider/model/result.",
+            "value": null
+          },
+          {
+            "name": "ai.llm.error_rate",
+            "type": "gauge",
+            "unit": "ratio",
+            "description": "LLM provider error rate tagged by provider/model.",
+            "value": null
+          },
+          {
+            "name": "ai.tool.execution.p95",
+            "type": "timer",
+            "unit": "milliseconds",
+            "description": "Native tool execution p95 latency tagged by tool/result.",
+            "value": null
+          },
+          {
+            "name": "ai.knowledge.retrieve.p95",
+            "type": "timer",
+            "unit": "milliseconds",
+            "description": "Knowledge retrieval p95 latency.",
+            "value": null
+          },
+          {
+            "name": "ai.knowledge_index.pending_backlog",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Knowledge documents currently waiting for indexing.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_index.retryable_backlog",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Failed knowledge documents eligible for retry.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_index.failed_backlog",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Knowledge documents in failed index status.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_index.dead_letter",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Knowledge documents in dead-letter index status.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_chunk.vector_indexed",
+            "type": "gauge",
+            "unit": "chunks",
+            "description": "Knowledge chunks with vector projection.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_chunk.local_hashing",
+            "type": "gauge",
+            "unit": "chunks",
+            "description": "Knowledge chunks indexed with local-hashing-v1.",
+            "value": 0
+          },
+          {
+            "name": "ai.owner_gateway.configured",
+            "type": "gauge",
+            "unit": "owners",
+            "description": "Configured remote IAM/Platform/File owner gateway count; system-service adapter remains 0 until physical split runtime is enabled.",
+            "value": 0
+          },
+          {
+            "name": "ai.provider.remote_configured",
+            "type": "gauge",
+            "unit": "providers",
+            "description": "Whether a remote OpenAI-compatible chat/embedding provider is configured for the active AI owner runtime.",
+            "value": 0
+          }
+        ]
+      }
+    },
+    "metrics": {
+      "status": 200,
+      "elapsedMs": 4.71,
+      "data": {
+        "context": "AI",
+        "ownerModule": "system-service",
+        "status": "METRICS_DECLARED",
+        "observedAt": "2026-06-17T04:51:41.722517+08:00",
+        "healthChecks": [],
+        "metrics": [
+          {
+            "name": "ai.chat.p95",
+            "type": "timer",
+            "unit": "milliseconds",
+            "description": "Chat completion p95 latency tagged by provider/model/result.",
+            "value": null
+          },
+          {
+            "name": "ai.llm.error_rate",
+            "type": "gauge",
+            "unit": "ratio",
+            "description": "LLM provider error rate tagged by provider/model.",
+            "value": null
+          },
+          {
+            "name": "ai.tool.execution.p95",
+            "type": "timer",
+            "unit": "milliseconds",
+            "description": "Native tool execution p95 latency tagged by tool/result.",
+            "value": null
+          },
+          {
+            "name": "ai.knowledge.retrieve.p95",
+            "type": "timer",
+            "unit": "milliseconds",
+            "description": "Knowledge retrieval p95 latency.",
+            "value": null
+          },
+          {
+            "name": "ai.knowledge_index.pending_backlog",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Knowledge documents currently waiting for indexing.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_index.retryable_backlog",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Failed knowledge documents eligible for retry.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_index.failed_backlog",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Knowledge documents in failed index status.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_index.dead_letter",
+            "type": "gauge",
+            "unit": "documents",
+            "description": "Knowledge documents in dead-letter index status.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_chunk.vector_indexed",
+            "type": "gauge",
+            "unit": "chunks",
+            "description": "Knowledge chunks with vector projection.",
+            "value": 0
+          },
+          {
+            "name": "ai.knowledge_chunk.local_hashing",
+            "type": "gauge",
+            "unit": "chunks",
+            "description": "Knowledge chunks indexed with local-hashing-v1.",
+            "value": 0
+          },
+          {
+            "name": "ai.owner_gateway.configured",
+            "type": "gauge",
+            "unit": "owners",
+            "description": "Configured remote IAM/Platform/File owner gateway count; system-service adapter remains 0 until physical split runtime is enabled.",
+            "value": 0
+          },
+          {
+            "name": "ai.provider.remote_configured",
+            "type": "gauge",
+            "unit": "providers",
+            "description": "Whether a remote OpenAI-compatible chat/embedding provider is configured for the active AI owner runtime.",
+            "value": 0
+          }
+        ]
+      }
+    }
+  },
+  "summary": {
+    "failed": 0,
+    "failureCategories": {},
+    "providerRuntimeStatus": "CONFIGURED",
+    "providerRuntimeDescription": "provider=lumira-local, chatModel=local-hashing-v1, embeddingModel=local-hashing-v1, remoteConfigured=false, localFallback=true",
+    "ownerGatewayStatus": "CONFIGURED",
+    "ownerGatewayDescription": "Configured owners=[]; degraded owners=[iam, platform, file]; system-service adapter uses in-process facades until standalone AI owner gateway is configured, localFallback=true."
+  },
+  "remoteEvidence": {
+    "provider": {
+      "status": "CONFIGURED",
+      "provider": "lumira-local",
+      "chatModel": "local-hashing-v1",
+      "embeddingModel": "local-hashing-v1",
+      "remoteConfigured": false,
+      "localFallbackProvider": true
+    },
+    "ownerGateway": {
+      "status": "CONFIGURED",
+      "configuredOwners": [],
+      "configuredOwnerCount": 0
+    }
+  },
+  "failures": [],
+  "failureDetails": []
+}

@@ -3,8 +3,11 @@ package com.lumira.saas.modules.system.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
@@ -20,7 +23,9 @@ import com.lumira.saas.modules.system.permission.SystemPermissionTreeAssembler;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.ProfileDTO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.audit.vo.AuditLogVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
+import com.lumira.saas.modules.plugin.vo.PluginVO;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
@@ -60,6 +65,9 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class SystemManagementAppService {
@@ -81,7 +89,14 @@ public class SystemManagementAppService {
     private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
     private static final String EXTRA_PROFILE_VALUES_KEY = "customProfileValues";
     private static final int CUSTOM_PROFILE_VALUE_MAX_LENGTH = 1000;
+    private static final int MENU_COUNT_CACHE_MAX_ENTRIES = 1024;
+    private static final long MENU_COUNT_CACHE_TTL_MS = 30_000L;
+    private static final int PERMISSION_CATALOG_CACHE_MAX_ENTRIES = 1024;
+    private static final long PERMISSION_CATALOG_CACHE_TTL_MS = 30_000L;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final DomainEventPublisher NOOP_DOMAIN_EVENT_PUBLISHER = event -> {
+    };
+    private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
     private static final List<String> BRANDING_CONFIG_KEYS = List.of(
             BRANDING_WEBSITE_NAME_KEY,
             BRANDING_WEBSITE_FAVICON_URL_KEY,
@@ -185,6 +200,8 @@ public class SystemManagementAppService {
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
     private final FieldCryptoService fieldCryptoService;
+    private final Cache<Long, Integer> menuCountCache;
+    private final Cache<Long, List<SystemVO.PermissionVO>> permissionCatalogCache;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     @Autowired
@@ -226,6 +243,14 @@ public class SystemManagementAppService {
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.systemRoleManagementAppService = systemRoleManagementAppService;
         this.fieldCryptoService = fieldCryptoService;
+        this.menuCountCache = CacheBuilder.newBuilder()
+                .maximumSize(MENU_COUNT_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(MENU_COUNT_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.permissionCatalogCache = CacheBuilder.newBuilder()
+                .maximumSize(PERMISSION_CATALOG_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(PERMISSION_CATALOG_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public SystemManagementAppService(
@@ -378,39 +403,82 @@ public class SystemManagementAppService {
         return new SystemRoleManagementAppService(
                 jdbcTemplate,
                 permissionSnapshotService,
-                operationAuditService
+                operationAuditService,
+                NOOP_DOMAIN_EVENT_PUBLISHER
         );
     }
 
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
+        PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
+        Long tenantId = currentTenantId(currentUser);
+        CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<PluginVO.TenantPluginVO>> tenantPluginsFuture = CompletableFuture.supplyAsync(
+                () -> systemPluginViewService.availablePlugins(tenantId),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<Integer> menuCountFuture = CompletableFuture.supplyAsync(() -> countMenus(tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<AuditLogVO>> recentLoginLogsFuture = CompletableFuture.supplyAsync(
+                () -> new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, 5)),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<List<AuditLogVO>> recentOperationLogsFuture = CompletableFuture.supplyAsync(
+                () -> new ArrayList<>(listRecentOperationLogs(currentUser, currentUser.getUsername(), tenantId, 5)),
+                BLOCKING_IO_EXECUTOR
+        );
+
         SystemVO.DashboardSummaryVO summary = new SystemVO.DashboardSummaryVO();
-        summary.setCurrentUser(buildCurrentUser(currentUser));
-        summary.setTenantPlugins(systemPluginViewService.availablePlugins(currentTenantId(currentUser)));
-        summary.setMenuCount(countMenus(currentTenantId(currentUser)));
-        summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, 5)));
-        summary.setRecentOperationLogs(new ArrayList<>(listOperationLogs(currentUser, currentUser.getUsername(), currentTenantId(currentUser), null, null, 1, 5).getRecords()));
+        summary.setCurrentUser(currentUserFuture.join());
+        summary.setTenantPlugins(tenantPluginsFuture.join());
+        summary.setMenuCount(menuCountFuture.join());
+        summary.setPermissionCount(snapshot.getPermissionList().size());
+        summary.setRecentLoginLogs(recentLoginLogsFuture.join());
+        summary.setRecentOperationLogs(recentOperationLogsFuture.join());
         summary.setShortcuts(new ArrayList<>(DASHBOARD_SHORTCUTS));
         return summary;
     }
 
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {
-        SystemVO.ProfileSummaryVO summary = new SystemVO.ProfileSummaryVO();
-        summary.setCurrentUser(buildCurrentUser(currentUser));
-        summary.setRoleNames(listCurrentTenantRoleNames(currentUser.getUserId(), currentTenantId(currentUser)));
-        summary.setPermissionCount(permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId()).getPermissionList().size());
-        summary.setRecentLoginLogs(new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, RECENT_LOGIN_LOG_LIMIT)));
-        summary.setProfileFieldSettings(new ArrayList<>(systemProfileSettingsAppService.getProfileFieldSettings(currentUser)));
+        PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
         Long tenantId = currentTenantId(currentUser);
-        boolean mobileBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "mobile");
-        boolean emailBindAvailable = systemVerificationAppService.isContactBindAvailable(tenantId, "email");
+        CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(
+                () -> listCurrentTenantRoleNames(currentUser.getUserId(), tenantId),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<List<AuditLogVO>> recentLoginLogsFuture = CompletableFuture.supplyAsync(
+                () -> new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, RECENT_LOGIN_LOG_LIMIT)),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<List<ProfileFieldSettingVO>> profileFieldSettingsFuture = CompletableFuture.supplyAsync(
+                () -> new ArrayList<>(systemProfileSettingsAppService.getProfileFieldSettings(currentUser)),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<Boolean> mobileBindAvailableFuture = CompletableFuture.supplyAsync(
+                () -> systemVerificationAppService.isContactBindAvailable(tenantId, "mobile"),
+                BLOCKING_IO_EXECUTOR
+        );
+        CompletableFuture<Boolean> emailBindAvailableFuture = CompletableFuture.supplyAsync(
+                () -> systemVerificationAppService.isContactBindAvailable(tenantId, "email"),
+                BLOCKING_IO_EXECUTOR
+        );
+
+        List<ProfileFieldSettingVO> profileFieldSettings = profileFieldSettingsFuture.join();
+        boolean mobileBindAvailable = Boolean.TRUE.equals(mobileBindAvailableFuture.join());
+        boolean emailBindAvailable = Boolean.TRUE.equals(emailBindAvailableFuture.join());
+
+        SystemVO.ProfileSummaryVO summary = new SystemVO.ProfileSummaryVO();
+        summary.setCurrentUser(currentUserFuture.join());
+        summary.setRoleNames(roleNamesFuture.join());
+        summary.setPermissionCount(snapshot.getPermissionList().size());
+        summary.setRecentLoginLogs(recentLoginLogsFuture.join());
+        summary.setProfileFieldSettings(profileFieldSettings);
         summary.setMobileBindAvailable(mobileBindAvailable);
         summary.setEmailBindAvailable(emailBindAvailable);
         summary.setMobileBindVerificationRequired(mobileBindAvailable);
         summary.setEmailBindVerificationRequired(emailBindAvailable);
         summary.setProfileCompletion(systemProfileSettingsAppService.buildProfileCompletionSummary(
                 summary.getCurrentUser(),
-                summary.getProfileFieldSettings(),
+                profileFieldSettings,
                 mobileBindAvailable,
                 emailBindAvailable
         ));
@@ -774,7 +842,19 @@ public class SystemManagementAppService {
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
-        List<SystemVO.PermissionVO> permissions = jdbcTemplate.query(
+        try {
+            return permissionCatalogCache.get(tenantId, () -> loadPermissionCatalog(tenantId));
+        } catch (ExecutionException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to load permission catalog", cause);
+        }
+    }
+
+    private List<SystemVO.PermissionVO> loadPermissionCatalog(Long tenantId) {
+        List<SystemVO.PermissionVO> permissions = new ArrayList<>(jdbcTemplate.query(
                 """
                         select permission_key as permissionKey, permission_name as permissionName,
                                permission_group as permissionGroup, source_type as sourceType, plugin_code as pluginCode
@@ -784,11 +864,11 @@ public class SystemManagementAppService {
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class),
                 tenantId
-        );
+        ));
         permissions.addAll(buildPaymentPermissions());
         permissions.sort(Comparator.comparing(SystemVO.PermissionVO::getPermissionGroup, Comparator.nullsLast(String::compareTo))
                 .thenComparing(SystemVO.PermissionVO::getPermissionKey, Comparator.nullsLast(String::compareTo)));
-        return permissions;
+        return List.copyOf(permissions);
     }
 
     public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
@@ -893,6 +973,7 @@ public class SystemManagementAppService {
                 "SUCCESS",
                 "调整菜单顺序"
         );
+        invalidateMenuCountCache(tenantId);
         return true;
     }
 
@@ -924,6 +1005,7 @@ public class SystemManagementAppService {
         ensureEditableParentMenu(request.getParentId(), tenantId);
         Long menuId = insertMenu(null, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
+        invalidateMenuCountCache(tenantId);
         return getMenu(currentUser, menuId);
     }
 
@@ -934,21 +1016,24 @@ public class SystemManagementAppService {
         ensureEditableParentMenu(request.getParentId(), tenantId);
         insertMenu(menuId, tenantId, request, currentUser.getUserId());
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
+        invalidateMenuCountCache(tenantId);
         return getMenu(currentUser, menuId);
     }
 
     @Transactional
     public boolean updateMenuStatus(CurrentUser currentUser, Long menuId, String status) {
-        ensureEditableMenu(menuId, currentTenantId(currentUser));
+        Long tenantId = currentTenantId(currentUser);
+        ensureEditableMenu(menuId, tenantId);
         jdbcTemplate.update(
                 "update sys_menu set status = ?, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
                 status,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
                 menuId,
-                currentTenantId(currentUser)
+                tenantId
         );
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
+        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
+        invalidateMenuCountCache(tenantId);
         return true;
     }
 
@@ -956,24 +1041,22 @@ public class SystemManagementAppService {
     public boolean deleteMenu(CurrentUser currentUser, Long menuId) {
         Long tenantId = currentTenantId(currentUser);
         ensureEditableMenu(menuId, tenantId);
-        Long childCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_menu where tenant_id = ? and parent_id = ? and deleted = 0",
-                Long.class,
+        boolean hasChildMenu = jdbcTemplate.exists(
+                "select 1 from sys_menu where tenant_id = ? and parent_id = ? and deleted = 0 limit 1",
                 tenantId,
                 menuId
         );
-        if (childCount != null && childCount > 0) {
+        if (hasChildMenu) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请先删除子菜单后再删除当前菜单");
         }
         SystemVO.MenuVO menu = getMenu(currentUser, menuId);
         if (StringUtils.hasText(menu.getPermissionKey())) {
-            Long permissionRefCount = jdbcTemplate.queryForObject(
-                    "select count(1) from sys_role_permission where tenant_id = ? and permission_key = ? and deleted = 0",
-                    Long.class,
+            boolean permissionReferenced = jdbcTemplate.exists(
+                    "select 1 from sys_role_permission where tenant_id = ? and permission_key = ? and deleted = 0 limit 1",
                     tenantId,
                     menu.getPermissionKey()
             );
-            if (permissionRefCount != null && permissionRefCount > 0) {
+            if (permissionReferenced) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "菜单权限仍被角色引用，请先调整角色权限");
             }
         }
@@ -986,6 +1069,7 @@ public class SystemManagementAppService {
         );
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
         permissionSnapshotService.invalidateTenant(tenantId);
+        invalidateMenuCountCache(tenantId);
         return true;
     }
 
@@ -1379,6 +1463,14 @@ public class SystemManagementAppService {
         return systemPlatformSettingsAppService.getBrandingSettings(currentUser);
     }
 
+    public SystemVO.RuntimeAppearanceSettingsVO getRuntimeAppearanceSettings(CurrentUser currentUser) {
+        SystemVO.RuntimeAppearanceSettingsVO settings = new SystemVO.RuntimeAppearanceSettingsVO();
+        settings.setBrandingSettings(getBrandingSettings(currentUser));
+        settings.setWatermarkSettings(getWatermarkSettings(currentUser));
+        settings.setFloatingWindowSettings(getFloatingWindowSettings(currentUser));
+        return settings;
+    }
+
     public SystemVO.BrandingSettingsVO getPublicBrandingSettings(Long preferredTenantId) {
         return systemPlatformSettingsAppService.getPublicBrandingSettings(preferredTenantId);
     }
@@ -1503,7 +1595,7 @@ public class SystemManagementAppService {
         throw new BizException(ErrorCode.FORBIDDEN, "只能查看当前租户的审计日志");
     }
 
-    private List<SystemVO.AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
+    private List<AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
         String selectSql = """
                 select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.login_type as logType,
                        l.login_result as logResult, l.fail_reason as failReason, l.login_ip as loginIp,
@@ -1513,23 +1605,40 @@ public class SystemManagementAppService {
                   and l.tenant_id = ?
                   and l.login_result = 'SUCCESS'
                   and l.login_type <> 'LOGOUT'
-                order by l.id desc
+                order by l.created_at desc, l.id desc
                 """;
-        return pageQuery(
-                selectSql,
-                """
-                        select count(1)
-                        from audit_login_log l
-                        where l.user_id = ?
-                          and l.tenant_id = ?
-                          and l.login_result = 'SUCCESS'
-                          and l.login_type <> 'LOGOUT'
-                        """,
-                SystemVO.AuditLogVO.class,
-                1,
-                pageSize,
-                List.of(currentUser.getUserId(), currentTenantId(currentUser))
-        ).getRecords();
+        return jdbcTemplate.query(
+                selectSql + " limit ?",
+                new BeanPropertyRowMapper<>(AuditLogVO.class),
+                currentUser.getUserId(),
+                currentTenantId(currentUser),
+                Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE))
+        );
+    }
+
+    private List<AuditLogVO> listRecentOperationLogs(CurrentUser currentUser, String username, Long tenantId, long pageSize) {
+        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
+        String baseSql = """
+                from audit_operation_log l
+                where 1 = 1
+                """;
+        List<Object> params = new ArrayList<>();
+        if (StringUtils.hasText(username)) {
+            baseSql += " and l.username like ?";
+            params.add(like(username));
+        }
+        if (effectiveTenantId != null) {
+            baseSql += " and l.tenant_id = ?";
+            params.add(effectiveTenantId);
+        }
+        String selectSql = """
+                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.module_name as moduleName,
+                       l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
+                       l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
+                       l.created_at as createdAt
+                """ + baseSql + " order by l.created_at desc, l.id desc limit ?";
+        params.add(Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE)));
+        return jdbcTemplate.query(selectSql, new BeanPropertyRowMapper<>(AuditLogVO.class), params.toArray());
     }
 
     public PageResponse<SystemVO.AuditLogVO> listOperationLogs(CurrentUser currentUser, String username, Long tenantId, long pageNo, long pageSize) {
@@ -1698,12 +1807,24 @@ public class SystemManagementAppService {
     }
 
     public Integer countMenus(Long tenantId) {
+        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+        Integer cached = menuCountCache.getIfPresent(effectiveTenantId);
+        if (cached != null) {
+            return cached;
+        }
         Long count = jdbcTemplate.queryForObject(
                 "select count(1) from sys_menu where tenant_id = ? and deleted = 0 and status = 'ENABLED'",
                 Long.class,
-                tenantId
+                effectiveTenantId
         );
-        return count == null ? 0 : count.intValue();
+        Integer result = count == null ? 0 : count.intValue();
+        menuCountCache.put(effectiveTenantId, result);
+        return result;
+    }
+
+    private void invalidateMenuCountCache(Long tenantId) {
+        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+        menuCountCache.invalidate(effectiveTenantId);
     }
 
     private SystemVO.BrandingSettingsVO loadBrandingSettings(Long tenantId) {
@@ -2208,6 +2329,10 @@ public class SystemManagementAppService {
     }
 
     private CurrentUserVO buildCurrentUser(CurrentUser currentUser) {
+        return buildCurrentUser(currentUser, resolvePermissionSnapshot(currentUser));
+    }
+
+    private CurrentUserVO buildCurrentUser(CurrentUser currentUser, PermissionSnapshotService.PermissionSnapshot snapshot) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(
                         ErrorCode.SESSION_EXPIRED,
@@ -2215,12 +2340,12 @@ public class SystemManagementAppService {
                         ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                 ));
         Long tenantId = currentTenantId(currentUser);
-        PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(
-                tenantId,
-                currentUser.getUserId(),
-                currentUser.getSimulatedRoleId()
+        CompletableFuture<Map<String, String>> extraProfileValuesFuture = CompletableFuture.supplyAsync(() -> loadExtraProfileValues(user.getId()), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<String> localeFuture = CompletableFuture.supplyAsync(() -> resolveLocale(tenantId, user.getId()), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<CurrentUserVO.RoleOptionVO>> availableRolesFuture = CompletableFuture.supplyAsync(
+                () -> listAvailableRoles(currentUser.getUserId(), tenantId),
+                BLOCKING_IO_EXECUTOR
         );
-
         CurrentUserVO response = new CurrentUserVO();
         response.setUserId(user.getId());
         response.setUsername(user.getUsername());
@@ -2234,10 +2359,10 @@ public class SystemManagementAppService {
         response.setRegion(user.getRegion());
         response.setAvailableTime(user.getAvailableTime());
         response.setIdCardNumber(user.getIdCardNumber());
-        response.setExtraProfileValues(loadExtraProfileValues(user.getId()));
-        response.setLocale(resolveLocale(tenantId, user.getId()));
+        response.setExtraProfileValues(extraProfileValuesFuture.join());
+        response.setLocale(localeFuture.join());
         response.setSimulatedRoleId(currentUser.getSimulatedRoleId());
-        response.setAvailableRoles(listAvailableRoles(currentUser.getUserId(), tenantId));
+        response.setAvailableRoles(availableRolesFuture.join());
         response.setSessionId(currentUser.getSessionId());
         response.setPermissionsVersion(snapshot.getVersion());
         response.setSessionVersion(currentUser.getSessionVersion());
@@ -2325,14 +2450,41 @@ public class SystemManagementAppService {
         }
     }
 
-    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long tenantId, Long userId, Long simulatedRoleId) {
+    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(CurrentUser currentUser) {
+        if (currentUser == null) {
+            return PermissionSnapshotService.PermissionSnapshot.empty();
+        }
+        return resolvePermissionSnapshot(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getSimulatedRoleId(), currentUser);
+    }
+
+    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long tenantId, Long userId, Long simulatedRoleId, CurrentUser currentUser) {
         if (tenantId == null || userId == null) {
             return PermissionSnapshotService.PermissionSnapshot.empty();
         }
         if (simulatedRoleId != null) {
             return permissionSnapshotService.loadRoleSnapshot(tenantId, simulatedRoleId);
         }
+        PermissionSnapshotService.PermissionSnapshot snapshotFromCurrentUser = snapshotFromCurrentUser(currentUser);
+        if (snapshotFromCurrentUser != null) {
+            return snapshotFromCurrentUser;
+        }
         return permissionSnapshotService.loadSnapshot(tenantId, userId);
+    }
+
+    private PermissionSnapshotService.PermissionSnapshot snapshotFromCurrentUser(CurrentUser currentUser) {
+        if (currentUser == null || !StringUtils.hasText(currentUser.getPermissionsVersion())) {
+            return null;
+        }
+        return new PermissionSnapshotService.PermissionSnapshot(
+                currentUser.getPermissionsVersion(),
+                currentUser.getPermissions(),
+                currentUser.getRoleIds(),
+                currentUser.getPrimaryDeptId(),
+                currentUser.getDeptIds(),
+                currentUser.getDescendantDeptIds(),
+                currentUser.getDataScopes(),
+                currentUser.getDefaultHomePath()
+        );
     }
 
     private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId, Long tenantId) {
@@ -2577,7 +2729,7 @@ public class SystemManagementAppService {
                     operatorId,
                     operatorId
             );
-            Long createdUserId = jdbcTemplate.queryForObject("select id from sys_user where username = ? and deleted = 0 order by id desc limit 1", Long.class, request.getUsername());
+            Long createdUserId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
             userDomainService.findById(createdUserId).ifPresent(user -> {
                 iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
                 iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
@@ -2719,12 +2871,7 @@ public class SystemManagementAppService {
                     operatorId,
                     operatorId
             );
-            return jdbcTemplate.queryForObject(
-                    "select id from sys_menu where tenant_id = ? and menu_code = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    tenantId,
-                    request.getMenuCode()
-            );
+            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
         jdbcTemplate.update(
                 """
@@ -2813,12 +2960,7 @@ public class SystemManagementAppService {
                     operatorId,
                     operatorId
             );
-            return jdbcTemplate.queryForObject(
-                    "select id from sys_dict_type where tenant_id = ? and dict_code = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    tenantId,
-                    request.getDictCode()
-            );
+            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
         jdbcTemplate.update(
                 """
@@ -2854,13 +2996,7 @@ public class SystemManagementAppService {
                     operatorId,
                     operatorId
             );
-            return jdbcTemplate.queryForObject(
-                    "select id from sys_dict_item where tenant_id = ? and dict_type_id = ? and item_value = ? and deleted = 0 order by id desc limit 1",
-                    Long.class,
-                    tenantId,
-                    dictTypeId,
-                    request.getItemValue()
-            );
+            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
         jdbcTemplate.update(
                 """
@@ -2895,13 +3031,19 @@ public class SystemManagementAppService {
         queryParams.add(offset);
         String pagedSql = selectSql + " limit ? offset ?";
         List<T> records = jdbcTemplate.query(pagedSql, new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
         PageResponse<T> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private long nullToZero(Long value) {
+        return value == null ? 0 : value;
     }
 
     private <T> PageResponse<T> cursorQuery(String selectSql, Class<T> voClass, long pageSize, List<Object> params) {

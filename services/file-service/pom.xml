@@ -59,8 +59,23 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.lumira</groupId>
             <artifactId>common-core</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>common-domain</artifactId>
             <version>0.1.0</version>
         </dependency>
         <dependency>

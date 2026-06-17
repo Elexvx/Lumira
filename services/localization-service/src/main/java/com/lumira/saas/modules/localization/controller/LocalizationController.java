@@ -2,7 +2,6 @@ package com.lumira.saas.modules.localization.controller;
 
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
-import com.lumira.common.vo.PageResponse;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
@@ -104,7 +103,7 @@ public class LocalizationController {
     }
 
     @GetMapping("/entries")
-    public ApiResponse<PageResponse<LocalizationVO.EntryVO>> listEntries(
+    public ApiResponse<LocalizationVO.EntryPageResponse> listEntries(
             @RequestParam(name = "localeCode", required = false) String localeCode,
             @RequestParam(name = "namespaceCode", required = false) String namespaceCode,
             @RequestParam(name = "keyword", required = false) String keyword,

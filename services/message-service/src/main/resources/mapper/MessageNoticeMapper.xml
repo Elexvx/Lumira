@@ -11,8 +11,8 @@
         n.target_scope as targetScope,
         n.target_user_id as targetUserId,
         n.target_role_id as targetRoleId,
-        u.username as targetUserName,
-        role.role_name as targetRoleName,
+        null as targetUserName,
+        null as targetRoleName,
         n.title,
         n.content,
         n.source_type as sourceType,
@@ -32,51 +32,43 @@
          and r.notice_id = n.id
          and r.user_id = #{userId}
          and r.deleted = 0
-        left join sys_user_tenant ut
-          on ut.tenant_id = n.tenant_id
-         and ut.user_id = n.target_user_id
-         and ut.deleted = 0
-        left join sys_user u
-          on u.id = ut.user_id
-         and u.deleted = 0
-        left join sys_role role
-          on role.tenant_id = n.tenant_id
-         and role.id = n.target_role_id
-         and role.deleted = 0
     </sql>
 
-    <sql id="visiblePredicate">
-        (n.target_scope = 'TENANT'
-         or (n.target_scope = 'USER' and n.target_user_id = #{userId})
-         or (n.target_scope = 'ROLE' and exists (
-                select 1
-                from sys_user_role ur
-                where ur.tenant_id = n.tenant_id
-                  and ur.user_id = #{userId}
-                  and ur.role_id = n.target_role_id
-                  and ur.deleted = 0
-         )))
-    </sql>
+	    <sql id="visiblePredicate">
+	        (n.target_scope = 'TENANT'
+	         or (n.target_scope = 'USER' and n.target_user_id = #{userId})
+	         <if test="roleIds != null and roleIds.size() > 0">
+	             or (n.target_scope = 'ROLE' and n.target_role_id in
+	                 <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+	                     #{roleId}
+	                 </foreach>
+	             )
+	         </if>
+	        )
+	    </sql>
+
+	    <sql id="archiveVisiblePredicate">
+	        (n.target_scope = 'TENANT'
+	         or (n.target_scope = 'USER' and n.target_user_id = #{query.userId})
+	         <if test="query.roleIds != null and query.roleIds.size() > 0">
+	             or (n.target_scope = 'ROLE' and n.target_role_id in
+	                 <foreach collection="query.roleIds" item="roleId" open="(" separator="," close=")">
+	                     #{roleId}
+	                 </foreach>
+	             )
+	         </if>
+	        )
+	    </sql>
 
     <sql id="archiveFilters">
         n.tenant_id = #{query.tenantId}
         and n.deleted = 0
-        <if test="!query.manageArchive">
-            and (
-                n.created_by = #{query.userId}
-                or (n.target_scope = 'TENANT'
-                    or (n.target_scope = 'USER' and n.target_user_id = #{query.userId})
-                    or (n.target_scope = 'ROLE' and exists (
-                        select 1
-                        from sys_user_role ur
-                        where ur.tenant_id = n.tenant_id
-                          and ur.user_id = #{query.userId}
-                          and ur.role_id = n.target_role_id
-                          and ur.deleted = 0
-                    ))
-                )
-            )
-        </if>
+	        <if test="!query.manageArchive">
+	            and (
+	                n.created_by = #{query.userId}
+	                or <include refid="archiveVisiblePredicate"/>
+	            )
+	        </if>
         <if test="query.keyword != null and query.keyword != ''">
             and (n.title like concat('%', #{query.keyword}, '%') or n.content like concat('%', #{query.keyword}, '%'))
         </if>
@@ -100,18 +92,9 @@
         </if>
     </sql>
 
-    <select id="countVisiblePublished" resultType="long">
-        select count(*)
-        from msg_notice n
-        where n.tenant_id = #{tenantId}
-          and n.deleted = 0
-          and n.publish_status = 'PUBLISHED'
-          and <include refid="visiblePredicate"/>
-    </select>
-
     <select id="listVisiblePublished" resultType="com.lumira.message.vo.MessageVO$NoticeVO">
         select <include refid="noticeColumns"/>
-        from msg_notice n
+        from msg_notice n force index (idx_msg_notice_visible_recent)
         <include refid="noticeJoins"/>
         where n.tenant_id = #{tenantId}
           and n.deleted = 0
@@ -123,19 +106,23 @@
 
     <select id="countUnread" resultType="long">
         select count(*)
-        from msg_notice n
-        where n.tenant_id = #{tenantId}
-          and n.deleted = 0
-          and n.publish_status = 'PUBLISHED'
-          and <include refid="visiblePredicate"/>
-          and not exists (
-                select 1
-                from msg_notice_read r
-                where r.notice_id = n.id
-                  and r.tenant_id = n.tenant_id
-                  and r.user_id = #{userId}
-                  and r.deleted = 0
-          )
+        from (
+            select n.id
+            from msg_notice n force index (idx_msg_notice_visible_recent)
+            where n.tenant_id = #{tenantId}
+              and n.deleted = 0
+              and n.publish_status = 'PUBLISHED'
+              and <include refid="visiblePredicate"/>
+              and not exists (
+                    select 1
+                    from msg_notice_read r
+                    where r.notice_id = n.id
+                      and r.tenant_id = n.tenant_id
+                      and r.user_id = #{userId}
+                      and r.deleted = 0
+              )
+            limit #{limit}
+        ) unread_candidates
     </select>
 
     <insert id="markAllRead">
@@ -149,7 +136,7 @@
                #{userId},
                #{userId},
                0
-        from msg_notice n
+        from msg_notice n force index (idx_msg_notice_visible_recent)
         where n.tenant_id = #{tenantId}
           and n.deleted = 0
           and n.publish_status = 'PUBLISHED'
@@ -165,14 +152,21 @@
     </insert>
 
     <select id="countArchive" resultType="long">
+        <!-- ARCHIVE count query is bounded. query.countLimit is the read-model window cap (offset + pageSize + 1, capped by ARCHIVE_TOTAL_COUNT_CAP)
+             so we only need to know whether another page exists without doing unbounded table counts. -->
         select count(*)
-        from msg_notice n
-        where <include refid="archiveFilters"/>
+        from (
+            select n.id
+            from msg_notice n force index (idx_msg_notice_visible_recent)
+            where <include refid="archiveFilters"/>
+            limit #{query.countLimit}
+        ) archive_candidates
     </select>
 
     <select id="listArchive" resultType="com.lumira.message.vo.MessageVO$NoticeVO">
         select <include refid="noticeColumns"/>
         from msg_notice n
+        force index (idx_msg_notice_visible_recent)
         <include refid="noticeJoins"/>
         where <include refid="archiveFilters"/>
         <choose>
@@ -216,50 +210,4 @@
         on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
     </insert>
 
-    <select id="listUserRecipient" resultType="com.lumira.message.dto.MessageQueryModels$RecipientRow">
-        select u.id as userId, u.username, u.email, wb.openid as wechatOpenid
-        from sys_user u
-        join sys_user_tenant ut
-          on ut.user_id = u.id
-         and ut.tenant_id = #{tenantId}
-         and ut.deleted = 0
-        left join sys_user_wechat_binding wb
-          on wb.user_id = u.id
-         and wb.deleted = 0
-        where u.id = #{userId}
-          and u.deleted = 0
-          and u.status = 'ENABLED'
-        limit 1
-    </select>
-
-    <select id="listRoleRecipients" resultType="com.lumira.message.dto.MessageQueryModels$RecipientRow">
-        select distinct u.id as userId, u.username, u.email, wb.openid as wechatOpenid
-        from sys_user u
-        join sys_user_role ur
-          on ur.user_id = u.id
-         and ur.tenant_id = #{tenantId}
-         and ur.role_id = #{roleId}
-         and ur.deleted = 0
-        left join sys_user_wechat_binding wb
-          on wb.user_id = u.id
-         and wb.deleted = 0
-        where u.deleted = 0
-          and u.status = 'ENABLED'
-        order by u.id asc
-    </select>
-
-    <select id="listTenantRecipients" resultType="com.lumira.message.dto.MessageQueryModels$RecipientRow">
-        select distinct u.id as userId, u.username, u.email, wb.openid as wechatOpenid
-        from sys_user u
-        join sys_user_tenant ut
-          on ut.user_id = u.id
-         and ut.tenant_id = #{tenantId}
-         and ut.deleted = 0
-        left join sys_user_wechat_binding wb
-          on wb.user_id = u.id
-         and wb.deleted = 0
-        where u.deleted = 0
-          and u.status = 'ENABLED'
-        order by u.id asc
-    </select>
 </mapper>

@@ -1,14 +1,12 @@
 package com.lumira.message.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.message.entity.SysConfigEntity;
 import com.lumira.message.infrastructure.redis.CacheTemplate;
-import com.lumira.message.mapper.MessageSysConfigMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -20,7 +18,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +25,6 @@ import java.util.Map;
 @Service
 public class WechatOfficialAccountNotificationService {
 
-    private static final String PLATFORM_SCOPE = "PLATFORM";
     private static final String ENABLED_KEY = "notification.wechat-official.enabled";
     private static final String APP_ID_KEY = "notification.wechat-official.app-id";
     private static final String APP_SECRET_KEY = "notification.wechat-official.app-secret";
@@ -44,17 +40,17 @@ public class WechatOfficialAccountNotificationService {
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token";
     private static final String TEMPLATE_SEND_URL = "https://api.weixin.qq.com/cgi-bin/message/template/send";
 
-    private final MessageSysConfigMapper sysConfigMapper;
+    private final SystemInternalApi systemInternalApi;
     private final CacheTemplate cacheTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public WechatOfficialAccountNotificationService(
-            MessageSysConfigMapper sysConfigMapper,
+            SystemInternalApi systemInternalApi,
             CacheTemplate cacheTemplate,
             ObjectMapper objectMapper
     ) {
-        this.sysConfigMapper = sysConfigMapper;
+        this.systemInternalApi = systemInternalApi;
         this.cacheTemplate = cacheTemplate;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -136,18 +132,10 @@ public class WechatOfficialAccountNotificationService {
 
     private Map<String, String> loadValues(Long tenantId) {
         Long effectiveTenantId = effectiveTenantId(tenantId);
-        Map<String, String> values = new HashMap<>();
-        List<SysConfigEntity> rows = sysConfigMapper.selectList(new QueryWrapper<SysConfigEntity>()
-                .select("config_key", "config_value")
-                .eq("tenant_id", effectiveTenantId)
-                .eq("config_scope", PLATFORM_SCOPE)
-                .eq("deleted", 0)
-                .in("config_key", CONFIG_KEYS)
-                .orderByDesc("id"));
-        for (SysConfigEntity row : rows) {
-            if (row.getConfigKey() != null && row.getConfigValue() != null && !values.containsKey(row.getConfigKey())) {
-                values.put(row.getConfigKey(), row.getConfigValue().trim());
-            }
+        Map<String, String> rawValues = systemInternalApi.platformConfigValues(effectiveTenantId, CONFIG_KEYS);
+        Map<String, String> values = new LinkedHashMap<>();
+        if (rawValues != null) {
+            rawValues.forEach((key, value) -> values.put(key, value == null ? null : value.trim()));
         }
         return values;
     }

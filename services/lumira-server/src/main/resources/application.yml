@@ -2,13 +2,15 @@ spring:
   application:
     name: lumira-server
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   servlet:
     multipart:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE:50MB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:50MB}
   main:
     allow-bean-definition-overriding: true
+  cache:
+    type: caffeine
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -24,6 +26,17 @@ spring:
 # Monolith mode flag - disables sub-module security configs that would conflict.
 lumira:
   monolith: ${LUMIRA_MONOLITH:${LEGENDARY_MONOLITH:true}}
+  file:
+    security-scan:
+      mode: ${LUMIRA_FILE_SECURITY_SCAN_MODE:INLINE}
+      clamav-host: ${LUMIRA_FILE_SECURITY_SCAN_CLAMAV_HOST:127.0.0.1}
+      clamav-port: ${LUMIRA_FILE_SECURITY_SCAN_CLAMAV_PORT:3310}
+      timeout-millis: ${LUMIRA_FILE_SECURITY_SCAN_TIMEOUT_MILLIS:3000}
+    ocr:
+      mode: ${LUMIRA_FILE_OCR_MODE:DISABLED}
+      tesseract-command: ${LUMIRA_FILE_OCR_TESSERACT_COMMAND:tesseract}
+      languages: ${LUMIRA_FILE_OCR_LANGUAGES:eng+chi_sim}
+      timeout-millis: ${LUMIRA_FILE_OCR_TIMEOUT_MILLIS:5000}
 
 server:
   port: 8080
@@ -79,12 +92,14 @@ management:
 # Security settings - forward environment variables to saas.security config
 saas:
   security:
-    jwt-secret: ${JWT_SECRET:}
-    field-secret: ${FIELD_SECRET:}
+    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
+    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
     issuer: saas-foundation
     idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
     access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
+    auth-bootstrap-cache-ttl-seconds: ${AUTH_BOOTSTRAP_CACHE_TTL_SECONDS:5}
+    login-capabilities-cache-ttl-seconds: ${LOGIN_CAPABILITIES_CACHE_TTL_SECONDS:5}
     captcha-enabled: ${CAPTCHA_ENABLED:false}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     allow-unsafe-default-admin-login: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:false}
@@ -95,6 +110,10 @@ saas:
       - /api/v1/auth/login/code/challenge
       - /api/v1/auth/login/code/complete
       - /api/v1/auth/login-encryption-key
+      - /api/v2/auth/login
+      - /api/v2/auth/login/code/challenge
+      - /api/v2/auth/login/code/complete
+      - /api/v2/auth/login-encryption-key
       - /api/v1/auth/wechat/authorize-url
       - /api/v1/auth/wechat/login
       - /api/v1/auth/passkeys/authentication/options
@@ -102,12 +121,17 @@ saas:
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
       - /ws/message
+      - /api/v1/public/bootstrap
       - /api/v1/public/branding-settings
       - /api/v1/public/agreement-settings
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
+      - /api/v2/platform/public/bootstrap
+      - /api/v2/localization/bundles
       - /api/v1/payment/webhooks/**
+      - /api/v2/payment/webhook/**
+      - /api/v2/payment/webhooks/**
       - /api/uploads/**
       - /api/version
       - /api/v1/version
@@ -116,6 +140,9 @@ saas:
       - /actuator/info
       - /actuator/prometheus
       - /api/health
+      - /api/v2/*/readiness
+      - /api/v2/*/health
+      - /api/v2/*/metrics
   web:
     cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
@@ -139,7 +166,9 @@ saas:
   job:
     backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}
     message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:http://localhost:${server.port}}
+    file-service-base-url: ${SAAS_JOB_FILE_SERVICE_BASE_URL:http://localhost:${server.port}}
     payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:http://localhost:${server.port}}
+    plugin-service-base-url: ${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:http://localhost:${server.port}}
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
   event:
     outbox:
@@ -195,12 +224,29 @@ xxl:
 spring:
   config:
     activate:
+      on-profile: default
+xxl:
+  job:
+    executor:
+      enabled: ${XXL_JOB_EXECUTOR_ENABLED:false}
+---
+spring:
+  config:
+    activate:
       on-profile: dev
   flyway:
     out-of-order: true
     placeholders:
       defaultAdminInitEnabled: true
       defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
+  security:
+    user:
+      name: ${SPRING_SECURITY_USER_NAME:dev-only}
+      password: ${SPRING_SECURITY_USER_PASSWORD:dev-only-password}
+xxl:
+  job:
+    executor:
+      enabled: ${XXL_JOB_EXECUTOR_ENABLED:false}
 
 saas:
   web:

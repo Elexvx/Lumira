@@ -436,38 +436,4 @@
         )
     </insert>
 
-    <insert id="upsertSystemPermission">
-        insert into sys_permission (
-            tenant_id, permission_key, permission_name, permission_group, source_type,
-            plugin_code, created_by, updated_by, deleted
-        ) values (
-            #{tenantId}, #{permission.permissionKey}, #{permission.permissionName},
-            #{permission.permissionGroup}, 'PLUGIN', #{pluginCode}, 0, 0, 0
-        )
-        on duplicate key update
-            permission_name = values(permission_name),
-            permission_group = values(permission_group),
-            plugin_code = values(plugin_code),
-            updated_at = current_timestamp,
-            deleted = 0
-    </insert>
-
-    <select id="listAdminRoleIds" resultType="java.lang.Long">
-        select id
-        from sys_role
-        where tenant_id = #{tenantId}
-          and role_code = 'ADMIN'
-          and deleted = 0
-    </select>
-
-    <insert id="upsertRolePermission">
-        insert into sys_role_permission (
-            tenant_id, role_id, permission_key, created_by, updated_by, deleted
-        ) values (
-            #{tenantId}, #{roleId}, #{permissionKey}, 0, 0, 0
-        )
-        on duplicate key update
-            updated_at = current_timestamp,
-            deleted = 0
-    </insert>
 </mapper>

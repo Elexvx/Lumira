@@ -4,9 +4,15 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
+import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
+import com.lumira.saas.modules.system.support.SmtpMailService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.mail.MailException;
@@ -16,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -23,12 +30,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class SystemPlatformSettingsAppService {
 
     private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    private static final String CONTEXT_PLATFORM = "platform";
+    private static final String SCOPE_RUNTIME_APPEARANCE = "runtime-appearance";
+    private static final Duration CONFIG_SNAPSHOT_TTL = Duration.ofSeconds(30);
+    private static final int CONFIG_SNAPSHOT_MAX_ENTRIES = 4096;
+    private static final int CONFIG_SINGLE_FLIGHT_MAX_ENTRIES = 2048;
+    private static final Duration RUNTIME_APPEARANCE_VERSION_TTL = Duration.ofSeconds(10);
+    private static final int RUNTIME_APPEARANCE_VERSION_MAX_ENTRIES = 1024;
 
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
@@ -143,11 +161,45 @@ public class SystemPlatformSettingsAppService {
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
     private final FieldCryptoService fieldCryptoService;
+    private final ReadModelVersionService readModelVersionService;
+    private final OwnerRuntimeMetrics ownerRuntimeMetrics;
+    private final SmtpMailService smtpMailService;
+    private final Cache<String, Map<String, String>> configSnapshotCache;
+    private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
+    private final Cache<Long, Long> runtimeAppearanceVersionCache;
+    private final Cache<Long, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight;
 
-    public SystemPlatformSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService, FieldCryptoService fieldCryptoService) {
+    @Autowired
+    public SystemPlatformSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            SmtpMailService smtpMailService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
         this.fieldCryptoService = fieldCryptoService;
+        this.readModelVersionService = readModelVersionService;
+        this.ownerRuntimeMetrics = ownerRuntimeMetrics;
+        this.smtpMailService = smtpMailService;
+        this.configSnapshotCache = CacheBuilder.newBuilder()
+                .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
+                .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.configLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(CONFIG_SINGLE_FLIGHT_MAX_ENTRIES)
+                .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.runtimeAppearanceVersionCache = CacheBuilder.newBuilder()
+                .maximumSize(RUNTIME_APPEARANCE_VERSION_MAX_ENTRIES)
+                .expireAfterWrite(RUNTIME_APPEARANCE_VERSION_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        this.runtimeAppearanceVersionLoadInFlight = CacheBuilder.newBuilder()
+                .maximumSize(RUNTIME_APPEARANCE_VERSION_MAX_ENTRIES)
+                .expireAfterWrite(RUNTIME_APPEARANCE_VERSION_TTL.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
     }
 
     public SystemVO.BrandingSettingsVO getBrandingSettings(CurrentUser currentUser) {
@@ -281,7 +333,7 @@ public class SystemPlatformSettingsAppService {
         Long tenantId = currentTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
         Map<String, String> currentValues = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
-        SystemVO.SmtpSettingsVO current = loadSmtpSettings(tenantId);
+        SystemVO.SmtpSettingsVO current = buildSmtpSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? !Boolean.FALSE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
         String host = sanitizeText(request.getHost(), current.getHost());
         Integer port = request.getPort() == null ? current.getPort() : request.getPort();
@@ -302,8 +354,18 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(tenantId, SMTP_AUTH_ENABLED_KEY, "SMTP 认证", String.valueOf(authEnabled), "是否启用 SMTP AUTH", operatorId);
         upsertPlatformConfig(tenantId, SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "是否启用 STARTTLS", operatorId);
         upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "是否启用 SSL", operatorId);
+        smtpMailService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
-        return loadSmtpSettings(tenantId);
+        currentValues.put(SMTP_ENABLED_KEY, String.valueOf(enabled));
+        currentValues.put(SMTP_HOST_KEY, host);
+        currentValues.put(SMTP_PORT_KEY, String.valueOf(port == null ? 25 : port));
+        currentValues.put(SMTP_USERNAME_KEY, username);
+        currentValues.put(SMTP_PASSWORD_KEY, password);
+        currentValues.put(SMTP_FROM_KEY, from);
+        currentValues.put(SMTP_AUTH_ENABLED_KEY, String.valueOf(authEnabled));
+        currentValues.put(SMTP_STARTTLS_ENABLED_KEY, String.valueOf(startTlsEnabled));
+        currentValues.put(SMTP_SSL_ENABLED_KEY, String.valueOf(sslEnabled));
+        return buildSmtpSettings(currentValues);
     }
 
     @Transactional
@@ -319,8 +381,19 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(tenantId, SMTP_AUTH_ENABLED_KEY, "SMTP 认证", "true", "是否启用 SMTP AUTH", operatorId);
         upsertPlatformConfig(tenantId, SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", "true", "是否启用 STARTTLS", operatorId);
         upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "是否启用 SSL", operatorId);
+        smtpMailService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "重置 SMTP 配置");
-        return loadSmtpSettings(tenantId);
+        return buildSmtpSettings(Map.of(
+                SMTP_ENABLED_KEY, "false",
+                SMTP_HOST_KEY, "",
+                SMTP_PORT_KEY, "25",
+                SMTP_USERNAME_KEY, "",
+                SMTP_PASSWORD_KEY, "",
+                SMTP_FROM_KEY, "",
+                SMTP_AUTH_ENABLED_KEY, "true",
+                SMTP_STARTTLS_ENABLED_KEY, "true",
+                SMTP_SSL_ENABLED_KEY, "false"
+        ));
     }
 
     @Transactional
@@ -328,7 +401,7 @@ public class SystemPlatformSettingsAppService {
         Long tenantId = currentTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
         Map<String, String> currentValues = loadConfigValuesByKeys(tenantId, WECHAT_OFFICIAL_CONFIG_KEYS);
-        SystemVO.WechatOfficialAccountSettingsVO current = loadWechatOfficialAccountSettings(tenantId);
+        SystemVO.WechatOfficialAccountSettingsVO current = buildWechatOfficialAccountSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
         String appId = sanitizeText(request.getAppId(), current.getAppId());
         String existingSecret = defaultIfBlank(currentValues.get(WECHAT_OFFICIAL_APP_SECRET_KEY), "");
@@ -342,7 +415,12 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_TEMPLATE_ID_KEY, "微信公众号模板 ID", templateId, "用于系统通知的公众号模板消息 ID", operatorId);
         upsertPlatformConfig(tenantId, WECHAT_OFFICIAL_DETAIL_URL_KEY, "微信公众号通知详情链接", detailUrl, "模板消息点击后打开的系统链接，可留空", operatorId);
         operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "更新微信公众号通知配置");
-        return loadWechatOfficialAccountSettings(tenantId);
+        currentValues.put(WECHAT_OFFICIAL_ENABLED_KEY, String.valueOf(enabled));
+        currentValues.put(WECHAT_OFFICIAL_APP_ID_KEY, appId);
+        currentValues.put(WECHAT_OFFICIAL_APP_SECRET_KEY, appSecret);
+        currentValues.put(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, templateId);
+        currentValues.put(WECHAT_OFFICIAL_DETAIL_URL_KEY, detailUrl);
+        return buildWechatOfficialAccountSettings(currentValues);
     }
 
     @Transactional
@@ -433,6 +511,10 @@ public class SystemPlatformSettingsAppService {
 
     private SystemVO.SmtpSettingsVO loadSmtpSettings(Long tenantId) {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
+        return buildSmtpSettings(valueByKey);
+    }
+
+    private SystemVO.SmtpSettingsVO buildSmtpSettings(Map<String, String> valueByKey) {
         SystemVO.SmtpSettingsVO settings = new SystemVO.SmtpSettingsVO();
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_ENABLED_KEY), "true")));
         settings.setHost(defaultIfBlank(valueByKey.get(SMTP_HOST_KEY), ""));
@@ -456,6 +538,10 @@ public class SystemPlatformSettingsAppService {
 
     private SystemVO.WechatOfficialAccountSettingsVO loadWechatOfficialAccountSettings(Long tenantId) {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, WECHAT_OFFICIAL_CONFIG_KEYS);
+        return buildWechatOfficialAccountSettings(valueByKey);
+    }
+
+    private SystemVO.WechatOfficialAccountSettingsVO buildWechatOfficialAccountSettings(Map<String, String> valueByKey) {
         SystemVO.WechatOfficialAccountSettingsVO settings = new SystemVO.WechatOfficialAccountSettingsVO();
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_ENABLED_KEY), "false")));
         settings.setAppId(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_APP_ID_KEY), ""));
@@ -478,6 +564,66 @@ public class SystemPlatformSettingsAppService {
 
     private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys, boolean trimValues) {
         Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+        long version = loadRuntimeAppearanceVersion(effectiveTenantId);
+        String cacheKey = configSnapshotCacheKey(effectiveTenantId, keys, trimValues, version);
+        Map<String, String> cached = getCachedConfigSnapshot(cacheKey);
+        if (cached != null) {
+            if (ownerRuntimeMetrics != null) {
+                ownerRuntimeMetrics.recordPlatformConfigCacheHit();
+            }
+            return new LinkedHashMap<>(cached);
+        }
+        if (ownerRuntimeMetrics != null) {
+            ownerRuntimeMetrics.recordPlatformConfigCacheMiss();
+        }
+        return loadConfigValuesByKeysWithSingleFlight(effectiveTenantId, cacheKey, keys, trimValues);
+    }
+
+    private Map<String, String> getCachedConfigSnapshot(String cacheKey) {
+        Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
+        return cached == null ? null : new LinkedHashMap<>(cached);
+    }
+
+    private void cacheConfigSnapshot(String cacheKey, Map<String, String> valueByKey) {
+        configSnapshotCache.put(cacheKey, new LinkedHashMap<>(valueByKey));
+    }
+
+    private Map<String, String> loadConfigValuesByKeysWithSingleFlight(
+            Long tenantId,
+            String cacheKey,
+            List<String> keys,
+            boolean trimValues
+    ) {
+        try {
+            CompletableFuture<Map<String, String>> inFlight = configLoadInFlight.get(
+                    cacheKey,
+                    () -> CompletableFuture.completedFuture(loadConfigValuesByKeysFromDatabase(tenantId, cacheKey, keys, trimValues))
+            );
+            return inFlight.join();
+        } catch (CompletionException exception) {
+            configLoadInFlight.invalidate(cacheKey);
+            Throwable cause = exception.getCause() == null ? exception : exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Failed to load platform config snapshot", cause);
+        } catch (ExecutionException exception) {
+            configLoadInFlight.invalidate(cacheKey);
+            throw new IllegalStateException("Failed to load platform config snapshot", exception);
+        }
+    }
+
+    private Map<String, String> loadConfigValuesByKeysFromDatabase(
+            Long tenantId,
+            String cacheKey,
+            List<String> keys,
+            boolean trimValues
+    ) {
+        Map<String, String> cached = getCachedConfigSnapshot(cacheKey);
+        if (cached != null) {
+            return new LinkedHashMap<>(cached);
+        }
+
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select tenant_id as tenantId, config_key as configKey, config_value as configValue
@@ -489,8 +635,8 @@ public class SystemPlatformSettingsAppService {
                 order by case when tenant_id = ? then 0 else 1 end, id desc
                 """.formatted(placeholders);
         List<Object> params = new ArrayList<>(keys);
-        params.add(effectiveTenantId);
-        params.add(effectiveTenantId);
+        params.add(tenantId);
+        params.add(tenantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -501,7 +647,48 @@ public class SystemPlatformSettingsAppService {
                 valueByKey.put(configKey, trimValues ? normalizeConfigText(decryptedValue) : decryptedValue);
             }
         }
+        cacheConfigSnapshot(cacheKey, valueByKey);
         return valueByKey;
+    }
+
+    private String configSnapshotCacheKey(Long tenantId, List<String> keys, boolean trimValues, long version) {
+        String joinedKeys = keys.stream().sorted().collect(Collectors.joining(","));
+        return tenantId + ":" + version + ":" + trimValues + ":" + joinedKeys;
+    }
+
+    private long loadRuntimeAppearanceVersion(Long tenantId) {
+        Long cachedVersion = runtimeAppearanceVersionCache.getIfPresent(tenantId);
+        if (cachedVersion != null) {
+            return cachedVersion;
+        }
+        if (readModelVersionService == null) {
+            return 0L;
+        }
+        try {
+            CompletableFuture<Long> inFlight = runtimeAppearanceVersionLoadInFlight.get(
+                    tenantId,
+                    () -> CompletableFuture.completedFuture(
+                            readModelVersionService.getOrInitialize(tenantId, CONTEXT_PLATFORM, SCOPE_RUNTIME_APPEARANCE)
+                    )
+            );
+            long version = inFlight.join();
+            runtimeAppearanceVersionCache.put(tenantId, version);
+            return version;
+        } catch (CompletionException exception) {
+            runtimeAppearanceVersionLoadInFlight.invalidate(tenantId);
+            Long fallback = runtimeAppearanceVersionCache.getIfPresent(tenantId);
+            if (fallback != null) {
+                return fallback;
+            }
+            return 0L;
+        } catch (ExecutionException exception) {
+            runtimeAppearanceVersionLoadInFlight.invalidate(tenantId);
+            Long fallback = runtimeAppearanceVersionCache.getIfPresent(tenantId);
+            if (fallback != null) {
+                return fallback;
+            }
+            return 0L;
+        }
     }
 
     private void upsertBrandingConfig(

@@ -231,14 +231,14 @@ public class SensitiveWordService {
                 result.setDuplicated(result.getDuplicated() + 1);
                 continue;
             }
-            Long count = jdbcTemplate.queryForObject("""
-                    select count(1)
+            if (jdbcTemplate.exists("""
+                    select 1
                     from sys_sensitive_word
                     where tenant_id = ?
                       and normalized_word = ?
                       and deleted = 0
-                    """, Long.class, tenantId(currentUser), normalized);
-            if (count != null && count > 0) {
+                    limit 1
+                    """, tenantId(currentUser), normalized)) {
                 result.setDuplicated(result.getDuplicated() + 1);
                 continue;
             }
@@ -468,7 +468,7 @@ public class SensitiveWordService {
 
     private void ensureUniqueWord(Long tenantId, String normalizedWord, Long excludeId) {
         String sql = """
-                select count(1)
+                select 1
                 from sys_sensitive_word
                 where tenant_id = ?
                   and normalized_word = ?
@@ -479,8 +479,7 @@ public class SensitiveWordService {
             sql += " and id <> ?";
             params.add(excludeId);
         }
-        Long count = jdbcTemplate.queryForObject(sql, Long.class, params.toArray());
-        if (count != null && count > 0) {
+        if (jdbcTemplate.exists(sql + " limit 1", params.toArray())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "敏感词已存在");
         }
     }
@@ -529,13 +528,19 @@ public class SensitiveWordService {
                     .map(SensitiveWordVO.WordRecord.class::cast)
                     .forEach(this::formatDateFields);
         }
-        Long total = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
+        long total = safePageNo == 1 && records.size() < safePageSize
+                ? records.size()
+                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
         PageResponse<T> response = new PageResponse<>();
         response.setRecords(records);
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(total);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    private long nullToZero(Long value) {
+        return value == null ? 0L : value;
     }
 
     private void formatDateFields(SensitiveWordVO.WordRecord record) {

@@ -240,6 +240,45 @@ public final class SystemVO {
     public static class LoginCapabilitiesVO extends com.lumira.saas.modules.system.verification.vo.LoginCapabilitiesVO {
     }
 
+    public static class PublicBootstrapVO {
+        private BrandingSettingsVO brandingSettings;
+        private SecuritySettingsVO securitySettings;
+        private AgreementSettingsVO agreementSettings;
+        private LoginCapabilitiesVO loginCapabilities;
+
+        public BrandingSettingsVO getBrandingSettings() {
+            return brandingSettings;
+        }
+
+        public void setBrandingSettings(BrandingSettingsVO brandingSettings) {
+            this.brandingSettings = brandingSettings;
+        }
+
+        public SecuritySettingsVO getSecuritySettings() {
+            return securitySettings;
+        }
+
+        public void setSecuritySettings(SecuritySettingsVO securitySettings) {
+            this.securitySettings = securitySettings;
+        }
+
+        public AgreementSettingsVO getAgreementSettings() {
+            return agreementSettings;
+        }
+
+        public void setAgreementSettings(AgreementSettingsVO agreementSettings) {
+            this.agreementSettings = agreementSettings;
+        }
+
+        public LoginCapabilitiesVO getLoginCapabilities() {
+            return loginCapabilities;
+        }
+
+        public void setLoginCapabilities(LoginCapabilitiesVO loginCapabilities) {
+            this.loginCapabilities = loginCapabilities;
+        }
+    }
+
     public static class WechatLoginSettingsVO extends com.lumira.saas.modules.system.verification.vo.WechatLoginSettingsVO {
     }
 
@@ -273,6 +312,36 @@ public final class SystemVO {
     }
 
     public static class FloatingWindowSettingsVO extends com.lumira.saas.modules.system.floating.vo.FloatingWindowSettingsVO {
+    }
+
+    public static class RuntimeAppearanceSettingsVO {
+        private BrandingSettingsVO brandingSettings;
+        private WatermarkSettingsVO watermarkSettings;
+        private FloatingWindowSettingsVO floatingWindowSettings;
+
+        public BrandingSettingsVO getBrandingSettings() {
+            return brandingSettings;
+        }
+
+        public void setBrandingSettings(BrandingSettingsVO brandingSettings) {
+            this.brandingSettings = brandingSettings;
+        }
+
+        public WatermarkSettingsVO getWatermarkSettings() {
+            return watermarkSettings;
+        }
+
+        public void setWatermarkSettings(WatermarkSettingsVO watermarkSettings) {
+            this.watermarkSettings = watermarkSettings;
+        }
+
+        public FloatingWindowSettingsVO getFloatingWindowSettings() {
+            return floatingWindowSettings;
+        }
+
+        public void setFloatingWindowSettings(FloatingWindowSettingsVO floatingWindowSettings) {
+            this.floatingWindowSettings = floatingWindowSettings;
+        }
     }
 
 }

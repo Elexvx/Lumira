@@ -1,0 +1,285 @@
+{
+  "generatedAt": "2026-06-17T08:13:17.325Z",
+  "status": "ADVISORY",
+  "recommendation": "NO_GO_STRICT",
+  "noAutoWaivers": true,
+  "finalDecision": {
+    "recommendation": "NO_GO_STRICT",
+    "finalRecommendation": "NO_GO_STRICT",
+    "cutoverAllowed": false,
+    "releaseEnvFileCutoverSafe": false,
+    "gateBlockers": 0,
+    "blockedCutoverItems": 6,
+    "stopReasonCount": 7,
+    "stopReasonCoverage": "catalog-snapshot",
+    "stopReasons": [
+      "cutover checklist blocked: database-performance",
+      "cutover checklist blocked: deployable-images",
+      "cutover checklist blocked: evidence-integrity",
+      "cutover checklist blocked: release-environment",
+      "cutover checklist blocked: rollback-safety",
+      "cutover checklist blocked: runtime-business-acceptance",
+      "strict release gate blockers=0"
+    ],
+    "source": "artifacts/ddd/release/release-final-go-no-go.json",
+    "enforceCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+    "cutoverAuthority": "final-go-no-go-gate",
+    "requiresFinalGate": true
+  },
+  "safetySignals": {
+    "releaseEnvFile": {
+      "ready": false,
+      "status": "FAIL",
+      "inputKind": "release-env-file",
+      "envFile": "<release-env-file>",
+      "envFilePresent": true,
+      "generatedMissingTemplate": false,
+      "securityChecked": true,
+      "permissionSafe": true,
+      "permissionCheckSkipped": false,
+      "modeOctal": "600",
+      "reason": "env-file",
+      "requiredMode": "600",
+      "pendingActionIds": [
+        "release-env-lint-status",
+        "release-env-lint-placeholders"
+      ],
+      "blockingSafeDefaultAvailable": 0,
+      "blockingRequiresOwnerInput": 34,
+      "safeDefaultsExhausted": true,
+      "ownerInputReasonCounts": {
+        "production-endpoint": 24,
+        "secret-manager": 8,
+        "owner-production-value": 2
+      },
+      "ownerInputOwners": [
+        {
+          "owner": "platform-events",
+          "requiresOwnerInput": 9,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "platform-owners",
+          "requiresOwnerInput": 9,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "release-infra",
+          "requiresOwnerInput": 9,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "ai-owner",
+          "requiresOwnerInput": 6,
+          "safeDefaultAvailable": 0
+        },
+        {
+          "owner": "payment-owner",
+          "requiresOwnerInput": 1,
+          "safeDefaultAvailable": 0
+        }
+      ]
+    }
+  },
+  "releaseEnvFileCutoverSafe": false,
+  "scriptPath": "artifacts/ddd/release/release-execution-commands.sh",
+  "summary": {
+    "ownerCommandCount": 5,
+    "batchCommandCount": 7,
+    "nextPriority": "P0",
+    "readyBatchCount": 7
+  },
+  "nextPriorityCommands": {
+    "list": "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "envCheck": "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "dryRun": "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "execute": "DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+  },
+  "ownerCommands": [
+    {
+      "owner": "ai-owner",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-release-config-ai-owner"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "owner": "payment-owner",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-release-config-payment-owner"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "owner": "platform-events",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-release-config-platform-events"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "owner": "platform-owners",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-release-config-platform-owners"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "owner": "release-infra",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-docker-release-infra",
+        "p0-release-config-release-infra",
+        "p0-release-env-lint-release-infra"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/build/docker-image-evidence.json",
+        "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/release/release-env-lint.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    }
+  ],
+  "batchCommands": [
+    {
+      "batchId": "p0-release-config-ai-owner",
+      "owner": "ai-owner",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-release-config-ai-owner DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-release-config-ai-owner DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-release-config-ai-owner DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-release-config-ai-owner bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-release-config-payment-owner",
+      "owner": "payment-owner",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-release-config-payment-owner DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-release-config-payment-owner DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-release-config-payment-owner DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-release-config-payment-owner bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-release-config-platform-events",
+      "owner": "platform-events",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-release-config-platform-events DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-release-config-platform-events DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-release-config-platform-events DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-release-config-platform-events bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-release-config-platform-owners",
+      "owner": "platform-owners",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-release-config-platform-owners DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-release-config-platform-owners DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-release-config-platform-owners DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-release-config-platform-owners bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-docker-release-infra",
+      "owner": "release-infra",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-docker-release-infra DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-docker-release-infra DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-docker-release-infra DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-docker-release-infra bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-release-config-release-infra",
+      "owner": "release-infra",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-release-config-release-infra DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-release-config-release-infra DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-release-config-release-infra DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-release-config-release-infra bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-release-env-lint-release-infra",
+      "owner": "release-infra",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/release/release-env-lint.json",
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    }
+  ]
+}

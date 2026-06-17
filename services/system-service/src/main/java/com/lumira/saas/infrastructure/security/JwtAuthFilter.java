@@ -10,11 +10,13 @@ import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.InitialPasswordChangeGuard;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.lumira.common.api.ApiResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -35,17 +37,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final AuthSessionStore authSessionStore;
     private final InitialPasswordChangeGuard initialPasswordChangeGuard;
     private final ObjectMapper objectMapper;
+    private final OwnerRuntimeMetrics ownerRuntimeMetrics;
 
+    @Autowired
     public JwtAuthFilter(
             SessionAuthenticationService sessionAuthenticationService,
             AuthSessionStore authSessionStore,
             InitialPasswordChangeGuard initialPasswordChangeGuard,
             ObjectMapper objectMapper
     ) {
+        this(sessionAuthenticationService, authSessionStore, initialPasswordChangeGuard, objectMapper, null);
+    }
+
+    public JwtAuthFilter(
+            SessionAuthenticationService sessionAuthenticationService,
+            AuthSessionStore authSessionStore,
+            InitialPasswordChangeGuard initialPasswordChangeGuard,
+            ObjectMapper objectMapper,
+            OwnerRuntimeMetrics ownerRuntimeMetrics
+    ) {
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.authSessionStore = authSessionStore;
         this.initialPasswordChangeGuard = initialPasswordChangeGuard;
         this.objectMapper = objectMapper;
+        this.ownerRuntimeMetrics = ownerRuntimeMetrics;
     }
 
     @Override
@@ -72,6 +87,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             SessionAuthenticationService.AuthenticatedAccess authenticatedAccess = sessionAuthenticationService.authenticateAccessToken(token);
             AuthSession session = authenticatedAccess.session();
+            boolean sessionStateUpdated = authenticatedAccess.sessionStateUpdated();
             Instant now = Instant.now();
             CurrentUser currentUser = authenticatedAccess.currentUser();
             setAuthentication(currentUser);
@@ -81,7 +97,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             if (sessionAuthenticationService.shouldPersistActivity(session, now)) {
                 session.setLastActivityAt(now);
+                sessionStateUpdated = true;
+            }
+            if (sessionStateUpdated) {
                 authSessionStore.save(session);
+                if (ownerRuntimeMetrics != null) {
+                    ownerRuntimeMetrics.recordAuthSessionActivityRefresh();
+                }
             }
         } catch (BizException ex) {
             SecurityContextHolder.clearContext();
@@ -104,10 +126,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private boolean isPasswordChangeAllowedRequest(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
-        return ("GET".equalsIgnoreCase(method) && ("/api/v1/auth/current-user".equals(path) || "/api/auth/current-user".equals(path)))
-                || ("PUT".equalsIgnoreCase(method) && "/api/v1/profile/password".equals(path))
-                || ("POST".equalsIgnoreCase(method) && ("/api/v1/auth/logout".equals(path) || "/api/auth/logout".equals(path)))
-                || ("POST".equalsIgnoreCase(method) && ("/api/v1/auth/refresh-token".equals(path) || "/api/auth/refresh-token".equals(path)))
+        return ("GET".equalsIgnoreCase(method) && (
+                "/api/v2/auth/current-user".equals(path)
+                        || "/api/v1/auth/current-user".equals(path)
+                        || "/api/auth/current-user".equals(path)))
+                || ("POST".equalsIgnoreCase(method) && (
+                "/api/v2/auth/session/keepalive".equals(path)
+                        || "/api/v1/auth/session/keepalive".equals(path)
+                        || "/api/auth/session/keepalive".equals(path)))
+                || ("PUT".equalsIgnoreCase(method) && (
+                "/api/v2/profile/password".equals(path)
+                        || "/api/v1/profile/password".equals(path)))
+                || ("POST".equalsIgnoreCase(method) && (
+                "/api/v2/auth/logout".equals(path)
+                        || "/api/v1/auth/logout".equals(path)
+                        || "/api/auth/logout".equals(path)))
+                || ("POST".equalsIgnoreCase(method) && (
+                "/api/v2/auth/refresh-token".equals(path)
+                        || "/api/v1/auth/refresh-token".equals(path)
+                        || "/api/auth/refresh-token".equals(path)))
                 || path.startsWith("/api/health")
                 || path.startsWith("/api/version")
                 || path.startsWith("/actuator/");

@@ -8,12 +8,16 @@ import com.lumira.api.system.CaptchaValidationRequestDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.MenuNodeDTO;
+import com.lumira.api.system.OperationAuditRecordRequestDTO;
 import com.lumira.api.system.PasskeyCredentialDTO;
 import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PasskeySettingsDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
+import com.lumira.api.system.SystemRoleSnapshotDTO;
+import com.lumira.api.system.SystemUserContactSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
@@ -22,11 +26,13 @@ import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.system.app.SystemRouteCatalog;
 import com.lumira.saas.infrastructure.security.service.CaptchaService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
+import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
@@ -35,6 +41,9 @@ import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import jakarta.validation.Valid;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -48,11 +57,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/internal/system")
 public class InternalSystemController implements com.lumira.api.client.SystemInternalApi {
+
+    private static final Logger log = LoggerFactory.getLogger(InternalSystemController.class);
 
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
@@ -69,7 +82,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     private final MyBatisQueryOperations jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
+    private final OperationAuditService operationAuditService;
     private final SecuritySettingsService securitySettingsService;
+    private final ReadModelVersionService readModelVersionService;
 
     public InternalSystemController(
             UserDomainService userDomainService,
@@ -82,7 +97,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
             MyBatisQueryOperations jdbcTemplate,
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService,
-            SecuritySettingsService securitySettingsService
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            ReadModelVersionService readModelVersionService
     ) {
         this.userDomainService = userDomainService;
         this.iamUserService = iamUserService;
@@ -94,7 +111,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoder = passwordEncoder;
         this.loginAuditService = loginAuditService;
+        this.operationAuditService = operationAuditService;
         this.securitySettingsService = securitySettingsService;
+        this.readModelVersionService = readModelVersionService;
     }
 
     @GetMapping("/users/login/{account}")
@@ -105,6 +124,232 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     @GetMapping("/users/{id}")
     public SystemUserSnapshotDTO findUserById(@PathVariable("id") Long id) {
         return userDomainService.findById(id).map(this::toSnapshot).orElse(null);
+    }
+
+    @GetMapping("/users")
+    public List<SystemUserSnapshotDTO> usersByIds(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("ids") List<Long> userIds
+    ) {
+        if (tenantId == null || userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> normalizedIds = userIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .limit(200)
+                .toList();
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(tenantId);
+        params.addAll(normalizedIds);
+        return jdbcTemplate.query(
+                """
+                        select u.id,
+                               u.username,
+                               u.password_hash,
+                               u.status,
+                               u.mobile,
+                               u.email,
+                               u.nickname,
+                               u.real_name,
+                               u.avatar_url,
+                               u.birth_month,
+                               u.gender,
+                               u.region,
+                               u.available_time,
+                               u.id_card_number
+                        from sys_user u
+                        join sys_user_tenant ut
+                          on ut.user_id = u.id
+                         and ut.tenant_id = ?
+                         and ut.deleted = 0
+                        where u.deleted = 0
+                          and u.id in (
+                        """ + placeholders + """
+                          )
+                        order by u.id asc
+                        """,
+                (rs, rowNum) -> new SystemUserSnapshotDTO(
+                        rs.getLong("id"),
+                        rs.getString("username"),
+                        rs.getString("password_hash"),
+                        rs.getString("status"),
+                        rs.getString("mobile"),
+                        rs.getString("email"),
+                        rs.getString("nickname"),
+                        rs.getString("real_name"),
+                        rs.getString("avatar_url"),
+                        rs.getString("birth_month"),
+                        rs.getString("gender"),
+                        rs.getString("region"),
+                        rs.getString("available_time"),
+                        rs.getString("id_card_number"),
+                        null
+                ),
+                params.toArray()
+        );
+    }
+
+    @GetMapping("/roles")
+    public List<SystemRoleSnapshotDTO> rolesByIds(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("ids") List<Long> roleIds
+    ) {
+        if (tenantId == null || roleIds == null || roleIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> normalizedIds = roleIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .limit(200)
+                .toList();
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(tenantId);
+        params.addAll(normalizedIds);
+        return jdbcTemplate.query(
+                """
+                        select id, role_code, role_name
+                        from sys_role
+                        where tenant_id = ?
+                          and deleted = 0
+                          and id in (
+                        """ + placeholders + """
+                          )
+                        order by id asc
+                        """,
+                (rs, rowNum) -> new SystemRoleSnapshotDTO(
+                        rs.getLong("id"),
+                        rs.getString("role_code"),
+                        rs.getString("role_name")
+                ),
+                params.toArray()
+        );
+    }
+
+    @GetMapping("/roles/{roleId}/users")
+    public List<Long> userIdsByRole(@RequestParam("tenantId") Long tenantId, @PathVariable("roleId") Long roleId) {
+        if (tenantId == null || roleId == null) {
+            return List.of();
+        }
+        return jdbcTemplate.queryForList(
+                """
+                        select distinct user_id
+                        from sys_user_role
+                        where tenant_id = ?
+                          and role_id = ?
+                          and deleted = 0
+                        order by user_id asc
+                        """,
+                Long.class,
+                tenantId,
+                roleId
+        );
+    }
+
+    @GetMapping("/users/contacts")
+    public List<SystemUserContactSnapshotDTO> userContactsByIds(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("ids") List<Long> userIds
+    ) {
+        if (tenantId == null || userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> normalizedIds = userIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .limit(200)
+                .toList();
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(tenantId);
+        params.addAll(normalizedIds);
+        return jdbcTemplate.query(
+                """
+                        select u.id as user_id, u.username, u.email, wb.openid as wechat_openid
+                        from sys_user u
+                        join sys_user_tenant ut
+                          on ut.user_id = u.id
+                         and ut.tenant_id = ?
+                         and ut.deleted = 0
+                        left join sys_user_wechat_binding wb
+                          on wb.user_id = u.id
+                         and wb.deleted = 0
+                        where u.deleted = 0
+                          and u.status = 'ENABLED'
+                          and u.id in (
+                        """ + placeholders + """
+                          )
+                        order by u.id asc
+                        """,
+                this::toContactSnapshot,
+                params.toArray()
+        );
+    }
+
+    @GetMapping("/roles/{roleId}/user-contacts")
+    public List<SystemUserContactSnapshotDTO> userContactsByRole(
+            @RequestParam("tenantId") Long tenantId,
+            @PathVariable("roleId") Long roleId
+    ) {
+        if (tenantId == null || roleId == null) {
+            return List.of();
+        }
+        return jdbcTemplate.query(
+                """
+                        select distinct u.id as user_id, u.username, u.email, wb.openid as wechat_openid
+                        from sys_user u
+                        join sys_user_role ur
+                          on ur.user_id = u.id
+                         and ur.tenant_id = ?
+                         and ur.role_id = ?
+                         and ur.deleted = 0
+                        left join sys_user_wechat_binding wb
+                          on wb.user_id = u.id
+                         and wb.deleted = 0
+                        where u.deleted = 0
+                          and u.status = 'ENABLED'
+                        order by u.id asc
+                        """,
+                this::toContactSnapshot,
+                tenantId,
+                roleId
+        );
+    }
+
+    @GetMapping("/tenants/{tenantId}/user-contacts")
+    public List<SystemUserContactSnapshotDTO> tenantUserContacts(@PathVariable("tenantId") Long tenantId) {
+        if (tenantId == null) {
+            return List.of();
+        }
+        return jdbcTemplate.query(
+                """
+                        select distinct u.id as user_id, u.username, u.email, wb.openid as wechat_openid
+                        from sys_user u
+                        join sys_user_tenant ut
+                          on ut.user_id = u.id
+                         and ut.tenant_id = ?
+                         and ut.deleted = 0
+                        left join sys_user_wechat_binding wb
+                          on wb.user_id = u.id
+                         and wb.deleted = 0
+                        where u.deleted = 0
+                          and u.status = 'ENABLED'
+                        order by u.id asc
+                        """,
+                this::toContactSnapshot,
+                tenantId
+        );
     }
 
     @PostMapping("/users/wechat-login")
@@ -138,6 +383,99 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         return Boolean.TRUE;
     }
 
+    @PostMapping("/permissions/plugin")
+    @Transactional
+    public Boolean registerPluginPermissions(@Valid @RequestBody PluginPermissionRegistrationRequestDTO request) {
+        if (request == null || request.tenantId() == null || !StringUtils.hasText(request.pluginCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "插件权限注册参数不完整");
+        }
+        if (request.permissions() == null || request.permissions().isEmpty()) {
+            return Boolean.TRUE;
+        }
+        for (PluginPermissionRegistrationRequestDTO.Permission permission : request.permissions()) {
+            if (permission == null || !StringUtils.hasText(permission.permissionKey())) {
+                continue;
+            }
+            jdbcTemplate.update(
+                    """
+                            insert into sys_permission (
+                                tenant_id, permission_key, permission_name, permission_group, source_type,
+                                plugin_code, created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, 'PLUGIN', ?, 0, 0, 0)
+                            on duplicate key update
+                                permission_name = values(permission_name),
+                                permission_group = values(permission_group),
+                                plugin_code = values(plugin_code),
+                                updated_at = current_timestamp,
+                                deleted = 0
+                            """,
+                    request.tenantId(),
+                    permission.permissionKey(),
+                    StringUtils.hasText(permission.permissionName()) ? permission.permissionName() : permission.permissionKey(),
+                    StringUtils.hasText(permission.permissionGroup()) ? permission.permissionGroup() : request.pluginCode(),
+                    request.pluginCode()
+            );
+        }
+        List<Long> adminRoleIds = jdbcTemplate.queryForList(
+                """
+                        select id
+                        from sys_role
+                        where tenant_id = ?
+                          and role_code = 'ADMIN'
+                          and deleted = 0
+                        """,
+                Long.class,
+                request.tenantId()
+        );
+        for (Long roleId : adminRoleIds) {
+            for (PluginPermissionRegistrationRequestDTO.Permission permission : request.permissions()) {
+                if (permission == null || !StringUtils.hasText(permission.permissionKey())) {
+                    continue;
+                }
+                jdbcTemplate.update(
+                        """
+                                insert into sys_role_permission (
+                                    tenant_id, role_id, permission_key, created_by, updated_by, deleted
+                                ) values (?, ?, ?, 0, 0, 0)
+                                on duplicate key update
+                                    updated_at = current_timestamp,
+                                    deleted = 0
+                                """,
+                        request.tenantId(),
+                        roleId,
+                        permission.permissionKey()
+                );
+            }
+        }
+        permissionSnapshotService.invalidateTenant(request.tenantId());
+        return Boolean.TRUE;
+    }
+
+    @PostMapping("/read-model-version/bump")
+    public Boolean bumpReadModelVersion(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("contextName") String contextName,
+            @RequestParam("scope") String scope,
+            @RequestParam(value = "eventKey", required = false) String eventKey
+    ) {
+        readModelVersionService.bump(tenantId, contextName, scope, eventKey);
+        return Boolean.TRUE;
+    }
+
+    @GetMapping("/read-model-version")
+    public Long readModelVersion(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("contextName") String contextName,
+            @RequestParam("scope") String scope
+    ) {
+        try {
+            return readModelVersionService.getOrInitialize(tenantId, contextName, scope);
+        } catch (Exception exception) {
+            log.warn("Failed to read current read-model version for tenantId={} context={} scope={}", tenantId, contextName, scope, exception);
+            return 0L;
+        }
+    }
+
     @PostMapping("/captcha/validate")
     public Boolean validateCaptcha(@Valid @RequestBody CaptchaValidationRequestDTO request) {
         captchaService.validateCaptcha(request.captchaId(), request.captchaCode(), request.captchaProof());
@@ -155,6 +493,21 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 request.failReason(),
                 request.loginIp(),
                 request.userAgent()
+        );
+        return Boolean.TRUE;
+    }
+
+    @PostMapping("/audit/operation")
+    public Boolean recordOperationAudit(@RequestBody OperationAuditRecordRequestDTO request) {
+        operationAuditService.log(
+                request.tenantId(),
+                request.userId(),
+                request.username(),
+                request.moduleName(),
+                request.actionName(),
+                request.operationType(),
+                request.resultStatus(),
+                request.detailMessage()
         );
         return Boolean.TRUE;
     }
@@ -189,6 +542,44 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 settings.getVerificationCodeExpireSeconds(),
                 settings.getVerificationCodeCooldownSeconds()
         );
+    }
+
+    @GetMapping("/config/platform-values")
+    public Map<String, String> platformConfigValues(
+            @RequestParam("tenantId") Long tenantId,
+            @RequestParam("keys") List<String> keys
+    ) {
+        if (keys == null || keys.isEmpty()) {
+            return Map.of();
+        }
+        Long effectiveTenantId = tenantId == null ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        String placeholders = String.join(",", keys.stream().map(ignored -> "?").toList());
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(effectiveTenantId);
+        params.addAll(keys);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                """
+                        select config_key, config_value
+                        from sys_config
+                        where tenant_id = ?
+                          and config_scope = 'PLATFORM'
+                          and deleted = 0
+                          and config_key in (
+                        """ + placeholders + """
+                          )
+                        order by id desc
+                        """,
+                params.toArray()
+        );
+        Map<String, String> values = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String key = row.get("config_key") == null ? null : String.valueOf(row.get("config_key"));
+            String value = row.get("config_value") == null ? null : String.valueOf(row.get("config_value"));
+            if (StringUtils.hasText(key) && value != null && !values.containsKey(key)) {
+                values.put(key, value);
+            }
+        }
+        return values;
     }
 
     @GetMapping("/verification/wechat-settings")
@@ -365,6 +756,15 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 user.getAvailableTime(),
                 user.getIdCardNumber(),
                 null
+        );
+    }
+
+    private SystemUserContactSnapshotDTO toContactSnapshot(SqlRow row, int rowNum) {
+        return new SystemUserContactSnapshotDTO(
+                row.getLong("user_id"),
+                row.getString("username"),
+                row.getString("email"),
+                row.getString("wechat_openid")
         );
     }
 

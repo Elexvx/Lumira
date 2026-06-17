@@ -11,6 +11,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false", matchIfMissing = true)
 public class PluginJwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();

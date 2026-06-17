@@ -7,17 +7,21 @@ import com.lumira.saas.modules.plugin.vo.PluginVO;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class SystemPluginViewService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final Map<String, CachedManifest> manifestCache = new ConcurrentHashMap<>();
 
     public SystemPluginViewService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
@@ -57,11 +61,9 @@ public class SystemPluginViewService {
                 },
                 tenantId
         );
-        for (PluginVO.TenantPluginVO plugin : plugins) {
-            plugin.setMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
-            loadFrontendManifest(plugin);
-        }
-        return plugins;
+        return plugins.parallelStream()
+                .map(this::enrichPlugin)
+                .toList();
     }
 
     public List<Map<String, Object>> tenantPluginMenus(Long tenantId, List<String> permissions) {
@@ -85,16 +87,43 @@ public class SystemPluginViewService {
             return;
         }
         try {
-            PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(
-                    Path.of(plugin.getManifestPath()).toFile(),
-                    PluginDTO.FrontendPluginManifest.class
-            );
-            plugin.setSharedDeps(manifest.getSharedDeps());
-            plugin.setRoutes(manifest.getRoutes());
+            CachedManifest manifest = loadCachedManifest(Path.of(plugin.getManifestPath()));
+            plugin.setSharedDeps(manifest.sharedDeps());
+            plugin.setRoutes(manifest.routes());
         } catch (Exception exception) {
             plugin.setSharedDeps(List.of());
             plugin.setRoutes(List.of());
         }
+    }
+
+    private PluginVO.TenantPluginVO enrichPlugin(PluginVO.TenantPluginVO plugin) {
+        plugin.setMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
+        loadFrontendManifest(plugin);
+        return plugin;
+    }
+
+    private CachedManifest loadCachedManifest(Path manifestPath) throws java.io.IOException {
+        String cacheKey = manifestPath.toAbsolutePath().normalize().toString();
+        long modifiedAt = Files.getLastModifiedTime(manifestPath).toMillis();
+        CachedManifest cached = manifestCache.get(cacheKey);
+        if (cached != null && cached.modifiedAt() == modifiedAt) {
+            return cached;
+        }
+        PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(manifestPath.toFile(), PluginDTO.FrontendPluginManifest.class);
+        CachedManifest next = new CachedManifest(
+                modifiedAt,
+                immutableList(manifest.getSharedDeps()),
+                immutableList(manifest.getRoutes())
+        );
+        manifestCache.put(cacheKey, next);
+        return next;
+    }
+
+    private static List<String> immutableList(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return Collections.unmodifiableList(new ArrayList<>(values));
     }
 
     private List<Map<String, Object>> buildPluginMenus(String pluginCode, String version) {
@@ -125,5 +154,8 @@ public class SystemPluginViewService {
                 pluginCode,
                 version
         );
+    }
+
+    private record CachedManifest(long modifiedAt, List<String> sharedDeps, List<String> routes) {
     }
 }

@@ -157,6 +157,9 @@ services:
     build:
       context: ..
       dockerfile: deploy/docker/frontend.Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.29-alpine}
     image: ${LUMIRA_FRONTEND_IMAGE:-lumira/frontend:0.1.0}
     container_name: lumira-frontend
     restart: unless-stopped
@@ -286,6 +289,9 @@ services:
       context: ..
       dockerfile: deploy/docker/service.Dockerfile
       args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
         SERVICE_DIR: services/lumira-server
         SERVICE_MODULE: services/lumira-server
     image: ${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}

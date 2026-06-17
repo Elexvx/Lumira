@@ -20,6 +20,10 @@ public class AuthSecurityProperties {
     private long loginMaxValidationAttempts = 100;
     private long loginMaxFailureCount = 10;
     private boolean allowUnsafeDefaultAdminLogin = false;
+    private long permissionSnapshotVersionCacheTtlSeconds = 30;
+    private long permissionSnapshotVersionCacheMaxEntries = 100_000;
+    private long authBootstrapCacheTtlSeconds = 5;
+    private long loginCapabilitiesCacheTtlSeconds = 5;
     private List<String> permitPaths = new ArrayList<>();
 
     public String getJwtSecret() {
@@ -116,6 +120,38 @@ public class AuthSecurityProperties {
 
     public void setAllowUnsafeDefaultAdminLogin(boolean allowUnsafeDefaultAdminLogin) {
         this.allowUnsafeDefaultAdminLogin = allowUnsafeDefaultAdminLogin;
+    }
+
+    public long getPermissionSnapshotVersionCacheTtlSeconds() {
+        return permissionSnapshotVersionCacheTtlSeconds;
+    }
+
+    public void setPermissionSnapshotVersionCacheTtlSeconds(long permissionSnapshotVersionCacheTtlSeconds) {
+        this.permissionSnapshotVersionCacheTtlSeconds = permissionSnapshotVersionCacheTtlSeconds;
+    }
+
+    public long getPermissionSnapshotVersionCacheMaxEntries() {
+        return permissionSnapshotVersionCacheMaxEntries;
+    }
+
+    public void setPermissionSnapshotVersionCacheMaxEntries(long permissionSnapshotVersionCacheMaxEntries) {
+        this.permissionSnapshotVersionCacheMaxEntries = permissionSnapshotVersionCacheMaxEntries;
+    }
+
+    public long getAuthBootstrapCacheTtlSeconds() {
+        return authBootstrapCacheTtlSeconds;
+    }
+
+    public void setAuthBootstrapCacheTtlSeconds(long authBootstrapCacheTtlSeconds) {
+        this.authBootstrapCacheTtlSeconds = authBootstrapCacheTtlSeconds;
+    }
+
+    public long getLoginCapabilitiesCacheTtlSeconds() {
+        return loginCapabilitiesCacheTtlSeconds;
+    }
+
+    public void setLoginCapabilitiesCacheTtlSeconds(long loginCapabilitiesCacheTtlSeconds) {
+        this.loginCapabilitiesCacheTtlSeconds = loginCapabilitiesCacheTtlSeconds;
     }
 
     public List<String> getPermitPaths() {

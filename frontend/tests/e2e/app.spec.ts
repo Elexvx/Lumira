@@ -8,9 +8,11 @@ const protectedPages = [
   { path: '/user-center/users', label: 'users', tag: '@smoke' },
   { path: '/user-center/roles', label: 'roles', tag: '@smoke' },
   { path: '/settings/security', label: 'security settings', tag: '@smoke' },
-  { path: '/settings/payment', label: 'payment settings' },
+  { path: '/settings/payment', label: 'payment settings', tag: '@smoke' },
   { path: '/settings/notifications', label: 'notification settings' },
-  { path: '/settings/files/all', label: 'system files' },
+  { path: '/settings/files/all', label: 'system files', tag: '@smoke' },
+  { path: '/settings/plugins', label: 'plugins', tag: '@smoke' },
+  { path: '/settings/localization', label: 'localization', tag: '@smoke' },
 ];
 
 test.describe('authenticated application', () => {
@@ -31,6 +33,18 @@ test.describe('authenticated application', () => {
     await page.reload();
     await expect(page).toHaveURL(/\/dashboard\/home/);
     await expect(page.getByTestId('top-user-menu-button')).toBeVisible();
+  });
+
+  test('message center can be opened @smoke', async ({ page }) => {
+    await page.goto('/dashboard/home');
+    await expect(page).toHaveURL(/\/dashboard\/home/);
+
+    const messageCenterButton = page.getByTestId('top-message-center-button');
+    await expect(messageCenterButton).toBeVisible();
+    await messageCenterButton.click();
+
+    await expect(page.getByRole('dialog', { name: /消息中心|Message center/i })).toBeVisible();
+    await expect(page.locator('body')).not.toContainText(/500|系统异常|System error/i);
   });
 
   test('user can log out from the top menu @smoke', async ({ page }) => {

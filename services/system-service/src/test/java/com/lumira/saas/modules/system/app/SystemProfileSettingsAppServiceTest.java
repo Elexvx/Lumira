@@ -27,6 +27,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SystemProfileSettingsAppServiceTest {
 
     @Test
+    void getProfileFieldSettingsShouldReuseCachedSnapshot() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
+                "profile.field.mobile.visible", "true",
+                "profile.field.mobile.weight", "22",
+                "profile.field.email.visible", "false"
+        ));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        List<ProfileFieldSettingVO> first = service.getProfileFieldSettings(buildCurrentUser());
+        List<ProfileFieldSettingVO> second = service.getProfileFieldSettings(buildCurrentUser());
+
+        assertEquals("联系方式", findSetting(first, "mobile").getGroupLabel());
+        assertEquals("联系方式", findSetting(second, "mobile").getGroupLabel());
+        assertEquals(1, jdbcTemplate.queryForListCount());
+    }
+
+    @Test
     void getProfileFieldSettingsUsesConfiguredWeightsAndDefaults() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.mobile.visible", "true",
@@ -69,6 +86,33 @@ class SystemProfileSettingsAppServiceTest {
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.weight"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.avatar.weight", "12"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.visible", "false"));
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldInvalidateCachedSnapshot() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
+                "profile.field.mobile.visible", "true",
+                "profile.field.mobile.weight", "22",
+                "profile.field.email.visible", "false"
+        ));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        List<ProfileFieldSettingVO> before = service.getProfileFieldSettings(buildCurrentUser());
+        assertTrue(findSetting(before, "mobile").getVisible());
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        List<ProfileFieldSettingItem> items = new ArrayList<>();
+        items.add(profileFieldSetting("avatarUrl", true, 12));
+        items.add(profileFieldSetting("mobile", false, 20));
+        request.setItems(items);
+
+        service.updateProfileFieldSettings(buildCurrentUser(), request);
+
+        List<ProfileFieldSettingVO> after = service.getProfileFieldSettings(buildCurrentUser());
+        ProfileFieldSettingVO mobile = findSetting(after, "mobile");
+        assertFalse(mobile.getVisible());
+        assertEquals(20, mobile.getWeight());
+        assertEquals(2, jdbcTemplate.queryForListCount());
     }
 
     @Test
@@ -203,6 +247,7 @@ class SystemProfileSettingsAppServiceTest {
         private final Map<String, String> configValues;
         private final List<Object[]> insertedRows = new ArrayList<>();
         private final List<String> insertSqls = new ArrayList<>();
+        private int queryForListCount;
 
         private RecordingJdbcTemplate(Map<String, String> configValues) {
             this.configValues = new LinkedHashMap<>(configValues);
@@ -225,6 +270,7 @@ class SystemProfileSettingsAppServiceTest {
 
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            queryForListCount++;
             List<Map<String, Object>> rows = new ArrayList<>();
             int keyCount = Math.max(0, args.length - 2);
             for (int index = 0; index < keyCount; index++) {
@@ -238,6 +284,10 @@ class SystemProfileSettingsAppServiceTest {
                 rows.add(row);
             }
             return rows;
+        }
+
+        private int queryForListCount() {
+            return queryForListCount;
         }
 
         private List<String> insertedConfigKeys() {

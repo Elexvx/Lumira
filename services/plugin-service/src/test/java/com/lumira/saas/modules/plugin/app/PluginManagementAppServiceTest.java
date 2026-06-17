@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
@@ -42,8 +43,11 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,6 +75,9 @@ class PluginManagementAppServiceTest {
     @Mock
     private PlatformTransactionManager transactionManager;
 
+    @Mock
+    private DomainEventPublisher domainEventPublisher;
+
     @TempDir
     Path tempDir;
 
@@ -87,7 +94,8 @@ class PluginManagementAppServiceTest {
                 new PluginSemver(),
                 systemInternalApi,
                 transactionManager,
-                new ObjectMapper()
+                new ObjectMapper(),
+                domainEventPublisher
         );
     }
 
@@ -121,7 +129,7 @@ class PluginManagementAppServiceTest {
 
         verify(pluginPersistenceService).enablePluginForTenant(1001L, "sms", "1.0.0", "{\"level\":\"basic\"}", 100L);
         verify(pluginPersistenceService).registerTenantPermissions(1001L, "sms", "1.0.0");
-        verify(systemInternalApi).invalidatePermissionSnapshot(1001L);
+        verify(pluginPersistenceService).bumpBootstrapVersion(1001L, "plugin.enabled");
         verify(pluginMigrationService).executeUpMigrations("sms", "1.0.0", null, 100L);
     }
 
@@ -143,8 +151,10 @@ class PluginManagementAppServiceTest {
         pluginManagementAppService.disable(request, currentUser());
 
         verify(pluginPersistenceService).disablePluginForTenant(1001L, "sms", 100L);
+        verify(pluginPersistenceService).bumpBootstrapVersion(1001L, "plugin.disabled");
         verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L);
         verify(systemInternalApi).invalidatePermissionSnapshot(1001L);
+        verify(domainEventPublisher).publishAll(any());
     }
 
     @Test
@@ -215,6 +225,88 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    void currentBootstrap_shouldCacheByPermissionSignatureAndReuseAvailablePlugins() throws Exception {
+        String tenantPluginCode = "sms";
+        PluginVO.TenantPluginVO tenantPlugin = createValidTenantPlugin(tenantPluginCode, tempDir);
+        PluginVersionEntity versionEntity = createValidVersionEntity(tenantPluginCode, tempDir);
+        PluginMenuRelEntity menuRelation = createMenuRelation(tenantPluginCode, "1.0.0", "plugin.sms");
+
+        when(systemInternalApi.readModelVersion(1001L, "plugin", "bootstrap")).thenReturn(10L);
+        when(pluginPersistenceService.listTenantPlugins(1001L)).thenReturn(List.of(tenantPlugin));
+        when(pluginPersistenceService.pluginStatus(anyLong(), eq(tenantPluginCode))).thenReturn(java.util.Optional.empty());
+        when(pluginPersistenceService.findVersion(tenantPluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
+        when(pluginPersistenceService.listMenuRelations(tenantPluginCode, "1.0.0")).thenReturn(List.of(menuRelation));
+
+        MenuNodeDTO builtinMenu = new MenuNodeDTO();
+        builtinMenu.setMenuCode("system.dashboard");
+        builtinMenu.setName("系统首页");
+        builtinMenu.setPath("/dashboard");
+        builtinMenu.setSortNo(1);
+        builtinMenu.setChildren(List.of());
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(builtinMenu));
+
+        Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(1001L, List.of("plugin:sms:view"));
+        Map<String, Object> bootstrapSecond = pluginManagementAppService.currentBootstrap(1001L, List.of("plugin:sms:view"));
+
+        assertThat(bootstrap).containsKeys("menuTree", "availablePlugins");
+        assertThat(bootstrapSecond).isEqualTo(bootstrap);
+
+        verify(systemInternalApi, times(1)).readModelVersion(1001L, "plugin", "bootstrap");
+        verify(pluginPersistenceService, times(1)).listTenantPlugins(1001L);
+        verify(pluginPersistenceService, times(2)).listMenuRelations(tenantPluginCode, "1.0.0");
+    }
+
+    @Test
+    void currentBootstrap_shouldRebuildMenusForDifferentPermissionSignature() throws Exception {
+        String tenantPluginCode = "sms";
+        PluginVO.TenantPluginVO tenantPlugin = createValidTenantPlugin(tenantPluginCode, tempDir);
+        PluginVersionEntity versionEntity = createValidVersionEntity(tenantPluginCode, tempDir);
+        PluginMenuRelEntity menuRelation = createMenuRelation(tenantPluginCode, "1.0.0", "plugin.sms");
+
+        when(systemInternalApi.readModelVersion(1001L, "plugin", "bootstrap")).thenReturn(10L);
+        when(pluginPersistenceService.listTenantPlugins(1001L)).thenReturn(List.of(tenantPlugin));
+        when(pluginPersistenceService.pluginStatus(anyLong(), eq(tenantPluginCode))).thenReturn(java.util.Optional.empty());
+        when(pluginPersistenceService.findVersion(tenantPluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
+        when(pluginPersistenceService.listMenuRelations(tenantPluginCode, "1.0.0")).thenReturn(List.of(menuRelation));
+
+        MenuNodeDTO builtinMenu = new MenuNodeDTO();
+        builtinMenu.setMenuCode("system.dashboard");
+        builtinMenu.setName("系统首页");
+        builtinMenu.setPath("/dashboard");
+        builtinMenu.setSortNo(1);
+        builtinMenu.setChildren(List.of());
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(builtinMenu));
+
+        pluginManagementAppService.currentBootstrap(1001L, List.of("plugin:sms:view"));
+        pluginManagementAppService.currentBootstrap(1001L, List.of("*"));
+
+        verify(systemInternalApi, times(1)).readModelVersion(1001L, "plugin", "bootstrap");
+        verify(pluginPersistenceService, times(1)).listTenantPlugins(1001L);
+        verify(pluginPersistenceService, times(3)).listMenuRelations(tenantPluginCode, "1.0.0");
+    }
+
+    @Test
+    void availablePlugins_shouldRefreshWhenReadModelVersionChanges() throws Exception {
+        String tenantPluginCode = "sms";
+        PluginVO.TenantPluginVO tenantPlugin = createValidTenantPlugin(tenantPluginCode, tempDir);
+        PluginVersionEntity versionEntity = createValidVersionEntity(tenantPluginCode, tempDir);
+
+        when(systemInternalApi.readModelVersion(1001L, "plugin", "bootstrap"))
+                .thenReturn(1L, 2L);
+        when(pluginPersistenceService.listTenantPlugins(1001L)).thenReturn(List.of(tenantPlugin));
+        when(pluginPersistenceService.pluginStatus(anyLong(), eq(tenantPluginCode))).thenReturn(java.util.Optional.empty());
+        when(pluginPersistenceService.findVersion(tenantPluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
+        when(pluginPersistenceService.listMenuRelations(tenantPluginCode, "1.0.0")).thenReturn(List.of());
+
+        pluginManagementAppService.availablePlugins(1001L);
+        expireReadModelVersionCache(1001L);
+        pluginManagementAppService.availablePlugins(1001L);
+
+        verify(systemInternalApi, atLeast(2)).readModelVersion(1001L, "plugin", "bootstrap");
+        verify(pluginPersistenceService, times(2)).listTenantPlugins(1001L);
+    }
+
+    @Test
     void availablePlugins_shouldSkipRuntimeEntriesWithMissingAssets() throws Exception {
         Path versionHome = tempDir.resolve("sms").resolve("1.0.0");
         Files.createDirectories(versionHome.resolve("frontend"));
@@ -270,5 +362,64 @@ class PluginManagementAppServiceTest {
 
     private CurrentUser currentUser() {
         return new CurrentUser(100L, "alice", 1001L, "session-1", 3, true, Set.of("plugin:management:enable"));
+    }
+
+    private PluginVO.TenantPluginVO createValidTenantPlugin(String pluginCode, Path baseDir) throws Exception {
+        Path versionHome = baseDir.resolve(pluginCode).resolve("1.0.0");
+        Files.createDirectories(versionHome.resolve("frontend"));
+        Path manifest = versionHome.resolve("frontend/manifest.json");
+        Files.writeString(manifest, """
+                {
+                  "pluginCode": "%s",
+                  "version": "1.0.0",
+                  "entry": "index.js",
+                  "assets": ["index.js"],
+                  "routes": ["/plugins/%s"],
+                  "sharedDeps": ["react"]
+                }
+                """.formatted(pluginCode, pluginCode));
+        Files.writeString(versionHome.resolve("frontend/index.js"), "console.log('ok');");
+
+        PluginVO.TenantPluginVO tenantPlugin = new PluginVO.TenantPluginVO();
+        tenantPlugin.setPluginCode(pluginCode);
+        tenantPlugin.setPluginName("短信插件");
+        tenantPlugin.setVersion("1.0.0");
+        tenantPlugin.setManifestPath(manifest.toString());
+        tenantPlugin.setSharedDeps(new ArrayList<>());
+        tenantPlugin.setRoutes(new ArrayList<>());
+        tenantPlugin.setMenus(new ArrayList<>());
+        return tenantPlugin;
+    }
+
+    private PluginVersionEntity createValidVersionEntity(String pluginCode, Path baseDir) throws Exception {
+        Path versionHome = baseDir.resolve(pluginCode).resolve("1.0.0");
+        PluginVersionEntity versionEntity = new PluginVersionEntity();
+        versionEntity.setPluginCode(pluginCode);
+        versionEntity.setVersion("1.0.0");
+        versionEntity.setArtifactPath(versionHome.toString());
+        versionEntity.setFrontendManifestPath(versionHome.resolve("frontend/manifest.json").toString());
+        return versionEntity;
+    }
+
+    private PluginMenuRelEntity createMenuRelation(String pluginCode, String version, String menuCode) {
+        PluginMenuRelEntity menuRelation = new PluginMenuRelEntity();
+        menuRelation.setPluginCode(pluginCode);
+        menuRelation.setPluginVersion(version);
+        menuRelation.setMenuCode(menuCode);
+        menuRelation.setMenuName("短信插件");
+        menuRelation.setRoutePath("/plugins/" + pluginCode);
+        menuRelation.setIcon("MessageOutlined");
+        menuRelation.setPermissionKey("plugin:sms:view");
+        menuRelation.setParentMenuCode(null);
+        menuRelation.setSortNo(10);
+        return menuRelation;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void expireReadModelVersionCache(Long tenantId) throws Exception {
+        java.lang.reflect.Field field = PluginManagementAppService.class.getDeclaredField("readModelVersionCache");
+        field.setAccessible(true);
+        var cache = (java.util.Map<Long, Object>) field.get(pluginManagementAppService);
+        cache.remove(tenantId);
     }
 }

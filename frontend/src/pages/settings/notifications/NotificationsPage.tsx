@@ -11,7 +11,7 @@ import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
-import { request } from '@/services/common/request';
+import { requestMessageArchive, requestMessageDeliveryLogs } from '@/services/message/api';
 import { useNotificationCenter } from './hooks/useNotificationCenter';
 import type { MessageDeliveryLogRecord, MessageNoticeRecord } from '@/types/api';
 import type { SmtpSettings, SmtpTestPayload, WechatOfficialAccountSettings } from '@/types/api';
@@ -131,15 +131,36 @@ type MessageArchiveQuery = Record<string, unknown> & {
 };
 
 const archiveMessages = (params: MessageArchiveQuery = {}) =>
-  request<{ records: MessageNoticeRecord[]; total: number }>('/v1/message/archive', {
+  requestMessageArchive({
     method: 'GET',
     params,
     autoRedirectOnUnauthorized: false,
     silent: true,
   });
 
+const adaptArchiveResult = async (params: MessageArchiveQuery) => {
+  const result = await archiveMessages(params);
+  const currentPage = Number(params.pageNo || 1);
+  const pageSize = Number(params.pageSize || 10);
+  const hasMore = result.hasMore === true;
+  const boundedTotal = result.total ?? 0;
+  const estimatedTotal = hasMore ? Math.max(boundedTotal, currentPage * pageSize + result.records.length + 1) : boundedTotal;
+  return { ...result, total: estimatedTotal };
+};
+
+const adaptDeliveryLogResult = async (params: MessageArchiveQuery, sorter?: Record<string, unknown>) => {
+  const mergedParams = { ...params, ...(sorter ? resolveSortParams(sorter) : {}) } as MessageArchiveQuery;
+  const result = await deliveryLogs(mergedParams);
+  const currentPage = Number(params.pageNo || 1);
+  const pageSize = Number(params.pageSize || 10);
+  const hasMore = result.hasMore === true;
+  const boundedTotal = result.total ?? 0;
+  const estimatedTotal = hasMore ? Math.max(boundedTotal, currentPage * pageSize + result.records.length + 1) : boundedTotal;
+  return { ...result, total: estimatedTotal };
+};
+
 const deliveryLogs = (params: MessageArchiveQuery = {}) =>
-  request<{ records: MessageDeliveryLogRecord[]; total: number }>('/v1/message/delivery-logs', {
+  requestMessageDeliveryLogs({
     method: 'GET',
     params,
     autoRedirectOnUnauthorized: false,
@@ -683,7 +704,7 @@ const NotificationsPage = () => {
           isMobile={responsive.isMobile}
           pagination={{ showSizeChanger: true, pageSize: 10 }}
           search={searchConfig}
-          request={buildTableRequest((params) => deliveryLogs(params))}
+          request={buildTableRequest((params, sorter) => adaptDeliveryLogResult(params as MessageArchiveQuery, sorter))}
           toolBarRender={false}
         />
       </ManagementDrawer>
@@ -697,7 +718,7 @@ const NotificationsPage = () => {
           pagination={{ showSizeChanger: true, pageSize: 10 }}
           search={searchConfig}
           request={buildTableRequest((params, sorter) =>
-            archiveMessages({ ...params, ...resolveSortParams(sorter) }),
+            adaptArchiveResult({ ...params, ...resolveSortParams(sorter) } as MessageArchiveQuery),
           )}
           toolBarRender={false}
         />

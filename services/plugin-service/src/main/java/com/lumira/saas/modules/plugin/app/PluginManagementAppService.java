@@ -4,11 +4,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
+import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.domain.event.DomainEvent;
+import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
+import com.lumira.saas.modules.plugin.domain.model.PluginDomainModels.TenantPluginAggregate;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
@@ -23,6 +27,7 @@ import com.lumira.saas.modules.plugin.service.PluginSemver;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,6 +43,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 
 @Service
 public class PluginManagementAppService {
@@ -55,6 +66,20 @@ public class PluginManagementAppService {
     private final SystemInternalApi systemInternalApi;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
+    private final DomainEventPublisher domainEventPublisher;
+    private static final long AVAILABLE_PLUGINS_CACHE_TTL_MILLIS = Duration.ofSeconds(8).toMillis();
+    private static final long CURRENT_BOOTSTRAP_CACHE_TTL_MILLIS = Duration.ofSeconds(3).toMillis();
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MILLIS = Duration.ofSeconds(2).toMillis();
+    private final ConcurrentMap<Long, CachedAvailablePlugins> availablePluginsCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<BootstrapCacheKey, CachedCurrentBootstrap> currentBootstrapCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
+    private final LongAdder availablePluginsCacheHits = new LongAdder();
+    private final LongAdder availablePluginsCacheMisses = new LongAdder();
+    private final LongAdder currentBootstrapCacheHits = new LongAdder();
+    private final LongAdder currentBootstrapCacheMisses = new LongAdder();
+    private final LongAdder readModelVersionCacheHits = new LongAdder();
+    private final LongAdder readModelVersionCacheMisses = new LongAdder();
+    private volatile List<Map<String, Object>> builtinMenuTemplate;
 
     public PluginManagementAppService(
             PluginArtifactLoader pluginArtifactLoader,
@@ -65,7 +90,8 @@ public class PluginManagementAppService {
             PluginSemver pluginSemver,
             SystemInternalApi systemInternalApi,
             PlatformTransactionManager transactionManager,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            @Qualifier("pluginDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
         this.pluginArtifactLoader = pluginArtifactLoader;
         this.pluginPersistenceService = pluginPersistenceService;
@@ -76,6 +102,7 @@ public class PluginManagementAppService {
         this.systemInternalApi = systemInternalApi;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper;
+        this.domainEventPublisher = domainEventPublisher;
     }
 
     @Transactional
@@ -142,6 +169,7 @@ public class PluginManagementAppService {
         if (pluginPersistenceService.listInstalledVersions(pluginCode).stream().noneMatch(item -> item.getIsActive() != null && item.getIsActive() == 1)) {
             pluginRegistry.activate(pluginCode, version);
             pluginPersistenceService.activateVersion(pluginCode, version);
+            bumpBootstrapVersions(pluginCode, "plugin.version.auto-activated");
         }
         log(null, pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "插件后端运行时已加载", null, currentUser.getUserId());
         return pluginPersistenceService.listVersions(pluginCode).stream()
@@ -155,6 +183,7 @@ public class PluginManagementAppService {
         ensureLoaded(pluginCode, version);
         pluginRegistry.activate(pluginCode, version);
         pluginPersistenceService.activateVersion(pluginCode, version);
+        bumpBootstrapVersions(pluginCode, "plugin.version.upgraded");
         log(null, pluginCode, version, "UPGRADE", "ENABLED", "SUCCESS", "插件激活版本已切换", null, currentUser.getUserId());
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
@@ -167,6 +196,7 @@ public class PluginManagementAppService {
         ensureLoaded(pluginCode, targetVersion);
         pluginRegistry.activate(pluginCode, targetVersion);
         pluginPersistenceService.activateVersion(pluginCode, targetVersion);
+        bumpBootstrapVersions(pluginCode, "plugin.version.rolled-back");
         log(null, pluginCode, targetVersion, "ROLLBACK", "ROLLED_BACK", "SUCCESS", "插件已回滚到目标版本", null, currentUser.getUserId());
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> targetVersion.equals(item.getVersion()))
@@ -189,6 +219,8 @@ public class PluginManagementAppService {
             pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), currentUser.getUserId());
             enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
             transactionTemplate.executeWithoutResult(status -> {
+                TenantPluginAggregate tenantPlugin = new TenantPluginAggregate(request.getPluginCode(), request.getTenantId(), false);
+                tenantPlugin.enable(version);
                 pluginPersistenceService.enablePluginForTenant(
                         request.getTenantId(),
                         request.getPluginCode(),
@@ -198,8 +230,10 @@ public class PluginManagementAppService {
                 );
                 pluginPersistenceService.registerTenantPermissions(request.getTenantId(), request.getPluginCode(), version);
                 pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY");
+                pluginPersistenceService.bumpBootstrapVersion(request.getTenantId(), "plugin.enabled");
+                invalidateTenantBootstrapCaches(request.getTenantId());
+                logTenantPluginDomainEvents(tenantPlugin.pullDomainEvents(), version, currentUser.getUserId());
             });
-            systemInternalApi.invalidatePermissionSnapshot(request.getTenantId());
             safeLog(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "平台插件已启用", null, currentUser.getUserId());
         } catch (BizException exception) {
             throw exception;
@@ -212,7 +246,11 @@ public class PluginManagementAppService {
     public void disable(PluginDTO.DisableRequest request, CurrentUser currentUser) {
         PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(request.getTenantId(), request.getPluginCode())
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前尚未启用该插件"));
+        TenantPluginAggregate tenantPlugin = new TenantPluginAggregate(request.getPluginCode(), request.getTenantId(), true);
+        tenantPlugin.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable");
         pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());
+        pluginPersistenceService.bumpBootstrapVersion(request.getTenantId(), "plugin.disabled");
+        invalidateTenantBootstrapCaches(request.getTenantId());
         boolean purgeData = Boolean.TRUE.equals(request.getPurgeData());
         if (purgeData) {
             pluginMigrationService.executeDownMigrations(
@@ -231,6 +269,7 @@ public class PluginManagementAppService {
                 "DISABLED",
                 purgeData ? "REMOVED" : "READY"
         );
+        logTenantPluginDomainEvents(tenantPlugin.pullDomainEvents(), tenantEntity.getPluginVersion(), currentUser.getUserId());
         systemInternalApi.invalidatePermissionSnapshot(request.getTenantId());
         safeLog(
                 request.getTenantId(),
@@ -266,22 +305,43 @@ public class PluginManagementAppService {
     }
 
     public List<PluginVO.TenantPluginVO> availablePlugins(Long tenantId) {
-        List<PluginVO.TenantPluginVO> result = pluginPersistenceService.listTenantPlugins(tenantId);
-        if (result == null || result.isEmpty()) {
+        long bootstrapVersion = readModelVersionForTenant(tenantId);
+        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        CachedAvailablePlugins cached = availablePluginsCache.get(effectiveTenantId);
+        long now = System.currentTimeMillis();
+        if (cached != null && cached.version() == bootstrapVersion && cached.expiresAtEpochMillis() > now) {
+            availablePluginsCacheHits.increment();
+            return new ArrayList<>(cached.availablePlugins());
+        }
+        availablePluginsCacheMisses.increment();
+        List<PluginVO.TenantPluginVO> fromPersistence = pluginPersistenceService.listTenantPlugins(effectiveTenantId);
+        if (fromPersistence == null || fromPersistence.isEmpty()) {
+            CachedAvailablePlugins emptySnapshot = new CachedAvailablePlugins(
+                    bootstrapVersion,
+                    now + AVAILABLE_PLUGINS_CACHE_TTL_MILLIS,
+                    List.of()
+            );
+            availablePluginsCache.put(effectiveTenantId, emptySnapshot);
             return List.of();
         }
-        List<PluginVO.TenantPluginVO> normalized = new ArrayList<>(result.size());
-        for (PluginVO.TenantPluginVO plugin : result) {
+        List<PluginVO.TenantPluginVO> result = new ArrayList<>(fromPersistence.size());
+        for (PluginVO.TenantPluginVO plugin : fromPersistence) {
             try {
                 populateRuntimeMetadata(plugin);
-                normalized.add(plugin);
+                result.add(plugin);
             } catch (BizException exception) {
                 log.warn("Skipping plugin {} {} for tenant {} because runtime files are invalid: {}", plugin.getPluginCode(), plugin.getVersion(), tenantId, exception.getMessage());
             } catch (Exception exception) {
                 log.warn("Skipping plugin {} {} for tenant {} because runtime metadata failed to load", plugin.getPluginCode(), plugin.getVersion(), tenantId, exception);
             }
         }
-        return normalized;
+        CachedAvailablePlugins snapshot = new CachedAvailablePlugins(
+                bootstrapVersion,
+                System.currentTimeMillis() + AVAILABLE_PLUGINS_CACHE_TTL_MILLIS,
+                result
+        );
+        availablePluginsCache.put(effectiveTenantId, snapshot);
+        return new ArrayList<>(result);
     }
 
     public PluginVO.PluginStatusVO status(Long tenantId, String pluginCode) {
@@ -318,6 +378,8 @@ public class PluginManagementAppService {
         }
         for (Long tenantId : tenantIds) {
             systemInternalApi.invalidatePermissionSnapshot(tenantId);
+            pluginPersistenceService.bumpBootstrapVersion(tenantId, "plugin.uninstalled");
+            invalidateTenantBootstrapCaches(tenantId);
         }
         safeLog(
                 null,
@@ -398,12 +460,51 @@ public class PluginManagementAppService {
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时不存在"));
     }
 
-    public List<Map<String, Object>> tenantPluginMenus(Long tenantId, List<String> permissions) {
+    public List<Map<String, Object>> tenantPluginMenus(Long tenantId, Set<String> permissions) {
+        return tenantPluginMenus(availablePlugins(tenantId), permissions);
+    }
+
+    public Map<String, Object> currentBootstrap(Long tenantId, List<String> permissions) {
+        Set<String> permissionSet = normalizePermissionSet(permissions);
+        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        long bootstrapVersion = readModelVersionForTenant(tenantId);
+        String permissionSignature = permissionSignature(permissionSet);
+        BootstrapCacheKey cacheKey = new BootstrapCacheKey(effectiveTenantId, bootstrapVersion, permissionSignature);
+        long now = System.currentTimeMillis();
+        CachedCurrentBootstrap cached = currentBootstrapCache.get(cacheKey);
+        if (cached != null && cached.expiresAtEpochMillis() > now) {
+            currentBootstrapCacheHits.increment();
+            return cached.bootstrapPayload();
+        }
+        currentBootstrapCacheMisses.increment();
+        List<PluginVO.TenantPluginVO> availablePlugins = availablePlugins(tenantId);
+        Map<String, Object> payload = Map.of(
+                "menuTree", currentMenus(availablePlugins, permissionSet),
+                "availablePlugins", availablePlugins
+        );
+        currentBootstrapCache.put(cacheKey, new CachedCurrentBootstrap(
+                tenantId,
+                bootstrapVersion,
+                permissionSignature,
+                now + CURRENT_BOOTSTRAP_CACHE_TTL_MILLIS,
+                payload
+        ));
+        return payload;
+    }
+
+    private void bumpBootstrapVersions(String pluginCode, String eventKey) {
+        for (Long tenantId : pluginPersistenceService.listTenantIdsForPlugin(pluginCode)) {
+            pluginPersistenceService.bumpBootstrapVersion(tenantId, eventKey);
+            invalidateTenantBootstrapCaches(tenantId);
+        }
+    }
+
+    private List<Map<String, Object>> tenantPluginMenus(List<PluginVO.TenantPluginVO> availablePlugins, Set<String> permissions) {
         List<Map<String, Object>> menus = new ArrayList<>();
-        for (PluginVO.TenantPluginVO plugin : availablePlugins(tenantId)) {
+        for (PluginVO.TenantPluginVO plugin : availablePlugins) {
             for (Map<String, Object> menu : buildPluginMenus(plugin.getPluginCode(), plugin.getVersion())) {
                 String permissionKey = (String) menu.get("permissionKey");
-                if (permissionKey == null || permissions.contains(permissionKey)) {
+                if (permissionKey == null || permissions.contains("*") || permissions.contains(permissionKey)) {
                     menus.add(menu);
                 }
             }
@@ -412,9 +513,16 @@ public class PluginManagementAppService {
     }
 
     public List<Map<String, Object>> currentMenus(Long tenantId, List<String> permissions) {
-        List<Map<String, Object>> baseMenus = systemInternalApi.builtinMenus().stream().map(this::toMenuMap).toList();
-        List<Map<String, Object>> mergedMenus = mergeMenus(baseMenus, tenantPluginMenus(tenantId, permissions));
-        return pruneMenuTree(mergedMenus, permissions);
+        Map<String, Object> bootstrap = currentBootstrap(tenantId, permissions);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> menuTree = (List<Map<String, Object>>) bootstrap.get("menuTree");
+        return menuTree == null ? List.of() : menuTree;
+    }
+
+    private List<Map<String, Object>> currentMenus(List<PluginVO.TenantPluginVO> availablePlugins, Set<String> permissionSet) {
+        List<Map<String, Object>> baseMenus = builtinMenus();
+        List<Map<String, Object>> mergedMenus = mergeMenus(baseMenus, tenantPluginMenus(availablePlugins, permissionSet));
+        return pruneMenuTree(mergedMenus, permissionSet);
     }
 
     public Path resolveManifestPath(String pluginCode, String version) {
@@ -587,6 +695,43 @@ public class PluginManagementAppService {
         return item;
     }
 
+    private List<Map<String, Object>> builtinMenus() {
+        List<Map<String, Object>> template = builtinMenuTemplate;
+        if (template == null) {
+            synchronized (this) {
+                template = builtinMenuTemplate;
+                if (template == null) {
+                    template = systemInternalApi.builtinMenus().stream().map(this::toMenuMap).toList();
+                    builtinMenuTemplate = template;
+                }
+            }
+        }
+        return copyMenus(template);
+    }
+
+    private Set<String> normalizePermissionSet(List<String> permissions) {
+        if (permissions == null || permissions.isEmpty()) {
+            return Set.of();
+        }
+        return permissions.stream()
+                .filter(StringUtils::hasText)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> copyMenus(List<Map<String, Object>> menus) {
+        List<Map<String, Object>> copied = new ArrayList<>(menus.size());
+        for (Map<String, Object> menu : menus) {
+            Map<String, Object> item = new LinkedHashMap<>(menu);
+            Object children = menu.get("children");
+            item.put("children", children instanceof List<?> childList
+                    ? copyMenus((List<Map<String, Object>>) childList)
+                    : new ArrayList<Map<String, Object>>());
+            copied.add(item);
+        }
+        return copied;
+    }
+
     private List<Map<String, Object>> mergeMenus(List<Map<String, Object>> baseMenus, List<Map<String, Object>> pluginMenus) {
         List<Map<String, Object>> merged = new ArrayList<>();
         Map<String, Map<String, Object>> byMenuCode = new LinkedHashMap<>();
@@ -643,11 +788,10 @@ public class PluginManagementAppService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> pruneMenuTree(List<Map<String, Object>> menus, List<String> permissions) {
+    private List<Map<String, Object>> pruneMenuTree(List<Map<String, Object>> menus, Set<String> permissions) {
         List<Map<String, Object>> result = new ArrayList<>();
-        java.util.Set<String> permissionSet = new java.util.HashSet<>(permissions == null ? List.of() : permissions);
         for (Map<String, Object> menu : menus) {
-            Map<String, Object> visible = pruneVisibleMenu(menu, permissionSet);
+            Map<String, Object> visible = pruneVisibleMenu(menu, permissions);
             if (visible != null) {
                 result.add(visible);
             }
@@ -680,6 +824,48 @@ public class PluginManagementAppService {
 
     private boolean isBuiltinCorePlugin(String pluginCode) {
         return BUILTIN_SENSITIVE_WORDS_PLUGIN.equals(pluginCode);
+    }
+
+    private void invalidateTenantBootstrapCaches(Long tenantId) {
+        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        availablePluginsCache.remove(effectiveTenantId);
+        readModelVersionCache.remove(effectiveTenantId);
+        currentBootstrapCache.keySet().removeIf(key -> effectiveTenantId.equals(key.tenantId()));
+    }
+
+    private String permissionSignature(Set<String> permissions) {
+        if (permissions == null || permissions.isEmpty()) {
+            return "NONE";
+        }
+        return permissions.stream()
+                .sorted()
+                .collect(Collectors.joining("|"));
+    }
+
+    private long readModelVersionForTenant(Long tenantId) {
+        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        CachedReadModelVersion cached = readModelVersionCache.get(effectiveTenantId);
+        long now = System.currentTimeMillis();
+        if (cached != null && cached.expiresAtEpochMillis() > now) {
+            readModelVersionCacheHits.increment();
+            return cached.version();
+        }
+        readModelVersionCacheMisses.increment();
+        long version = 0L;
+        try {
+            Long actualVersion = systemInternalApi.readModelVersion(effectiveTenantId, "plugin", "bootstrap");
+            if (actualVersion != null) {
+                version = actualVersion;
+            }
+        } catch (Exception exception) {
+            log.warn("Failed to read plugin bootstrap read-model version for tenantId={}", effectiveTenantId, exception);
+            CachedAvailablePlugins cachedAvailablePlugins = availablePluginsCache.get(effectiveTenantId);
+            if (cachedAvailablePlugins != null) {
+                version = cachedAvailablePlugins.version();
+            }
+        }
+        readModelVersionCache.put(effectiveTenantId, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
+        return version;
     }
 
     private Path resolveVersionHome(String pluginCode, String version) {
@@ -762,6 +948,26 @@ public class PluginManagementAppService {
         }
     }
 
+    private void logTenantPluginDomainEvents(List<DomainEvent> events, String version, Long operatorId) {
+        if (events == null || events.isEmpty()) {
+            return;
+        }
+        domainEventPublisher.publishAll(events);
+        for (DomainEvent event : events) {
+            safeLog(
+                    event.tenantId(),
+                    event.aggregateId(),
+                    version,
+                    event.eventType(),
+                    "DOMAIN_EVENT",
+                    "SUCCESS",
+                    event.attributes() == null ? "{}" : event.attributes().toString(),
+                    null,
+                    operatorId
+            );
+        }
+    }
+
     private String rootCauseMessage(Throwable throwable) {
         Throwable cursor = throwable;
         while (cursor.getCause() != null && cursor.getCause() != cursor) {
@@ -776,5 +982,74 @@ public class PluginManagementAppService {
             return message;
         }
         return throwable.getClass().getSimpleName();
+    }
+
+    private static final class CachedAvailablePlugins {
+        private final long version;
+        private final long expiresAtEpochMillis;
+        private final List<PluginVO.TenantPluginVO> availablePlugins;
+
+        private CachedAvailablePlugins(long version, long expiresAtEpochMillis, List<PluginVO.TenantPluginVO> availablePlugins) {
+            this.version = version;
+            this.expiresAtEpochMillis = expiresAtEpochMillis;
+            this.availablePlugins = availablePlugins == null ? List.of() : List.copyOf(availablePlugins);
+        }
+
+        private long version() {
+            return version;
+        }
+
+        private long expiresAtEpochMillis() {
+            return expiresAtEpochMillis;
+        }
+
+        private List<PluginVO.TenantPluginVO> availablePlugins() {
+            return availablePlugins;
+        }
+    }
+
+    private static final class CachedCurrentBootstrap {
+        private final Long tenantId;
+        private final long version;
+        private final String permissionSignature;
+        private final long expiresAtEpochMillis;
+        private final Map<String, Object> bootstrapPayload;
+
+        private CachedCurrentBootstrap(Long tenantId, long version, String permissionSignature, long expiresAtEpochMillis, Map<String, Object> bootstrapPayload) {
+            this.tenantId = tenantId;
+            this.version = version;
+            this.permissionSignature = permissionSignature;
+            this.expiresAtEpochMillis = expiresAtEpochMillis;
+            this.bootstrapPayload = bootstrapPayload;
+        }
+
+        private long expiresAtEpochMillis() {
+            return expiresAtEpochMillis;
+        }
+
+        private Map<String, Object> bootstrapPayload() {
+            return bootstrapPayload;
+        }
+    }
+
+    private static final class CachedReadModelVersion {
+        private final long version;
+        private final long expiresAtEpochMillis;
+
+        private CachedReadModelVersion(long version, long expiresAtEpochMillis) {
+            this.version = version;
+            this.expiresAtEpochMillis = expiresAtEpochMillis;
+        }
+
+        private long version() {
+            return version;
+        }
+
+        private long expiresAtEpochMillis() {
+            return expiresAtEpochMillis;
+        }
+    }
+
+    private static final record BootstrapCacheKey(Long tenantId, long version, String permissionSignature) {
     }
 }

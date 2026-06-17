@@ -11,6 +11,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -40,9 +42,11 @@ public class DocumentUploadService {
     private static final Set<String> OPEN_XML_EXTENSIONS = Set.of("docx", "xlsx", "pptx");
 
     private final UploadProperties uploadProperties;
+    private final FileStorageMetrics storageMetrics;
 
-    public DocumentUploadService(UploadProperties uploadProperties) {
+    public DocumentUploadService(UploadProperties uploadProperties, FileStorageMetrics storageMetrics) {
         this.uploadProperties = uploadProperties;
+        this.storageMetrics = storageMetrics;
     }
 
     public static boolean supports(String originalFilename, String contentType) {
@@ -102,10 +106,13 @@ public class DocumentUploadService {
         if (!target.startsWith(normalizedStorageRoot)) {
             throw badRequest("文件存储路径无效");
         }
+        Instant writeStartedAt = Instant.now();
         try {
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
+            storageMetrics.recordSucceeded("write", "local", Duration.between(writeStartedAt, Instant.now()));
         } catch (IOException exception) {
+            storageMetrics.recordFailed("write", "local", Duration.between(writeStartedAt, Instant.now()));
             String message = "文件上传失败，请检查存储空间配置或稍后重试";
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传失败: " + exception.getMessage(), message);
         }

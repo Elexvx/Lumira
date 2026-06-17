@@ -1,7 +1,12 @@
 package com.lumira.saas.infrastructure.security.model;
 
-import java.time.Instant;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.lumira.common.security.data.DataPermissionRule;
 
+import java.time.Instant;
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AuthSession {
 
     private String sessionId;
@@ -17,6 +22,15 @@ public class AuthSession {
     private String loginIp;
     private String userAgent;
     private String refreshTokenId;
+    private Boolean requiresPasswordChange;
+    private String permissionsVersion;
+    private List<String> permissions;
+    private List<Long> roleIds;
+    private Long primaryDeptId;
+    private List<Long> deptIds;
+    private List<Long> descendantDeptIds;
+    private List<DataPermissionRule> dataScopes;
+    private String defaultHomePath;
 
     public String getSessionId() {
         return sessionId;
@@ -120,5 +134,77 @@ public class AuthSession {
 
     public void setRefreshTokenId(String refreshTokenId) {
         this.refreshTokenId = refreshTokenId;
+    }
+
+    public Boolean getRequiresPasswordChange() {
+        return requiresPasswordChange;
+    }
+
+    public void setRequiresPasswordChange(Boolean requiresPasswordChange) {
+        this.requiresPasswordChange = requiresPasswordChange;
+    }
+
+    public String getPermissionsVersion() {
+        return permissionsVersion;
+    }
+
+    public void setPermissionsVersion(String permissionsVersion) {
+        this.permissionsVersion = permissionsVersion;
+    }
+
+    public List<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(List<String> permissions) {
+        this.permissions = permissions;
+    }
+
+    public List<Long> getRoleIds() {
+        return roleIds;
+    }
+
+    public void setRoleIds(List<Long> roleIds) {
+        this.roleIds = roleIds;
+    }
+
+    public Long getPrimaryDeptId() {
+        return primaryDeptId;
+    }
+
+    public void setPrimaryDeptId(Long primaryDeptId) {
+        this.primaryDeptId = primaryDeptId;
+    }
+
+    public List<Long> getDeptIds() {
+        return deptIds;
+    }
+
+    public void setDeptIds(List<Long> deptIds) {
+        this.deptIds = deptIds;
+    }
+
+    public List<Long> getDescendantDeptIds() {
+        return descendantDeptIds;
+    }
+
+    public void setDescendantDeptIds(List<Long> descendantDeptIds) {
+        this.descendantDeptIds = descendantDeptIds;
+    }
+
+    public List<DataPermissionRule> getDataScopes() {
+        return dataScopes;
+    }
+
+    public void setDataScopes(List<DataPermissionRule> dataScopes) {
+        this.dataScopes = dataScopes;
+    }
+
+    public String getDefaultHomePath() {
+        return defaultHomePath;
+    }
+
+    public void setDefaultHomePath(String defaultHomePath) {
+        this.defaultHomePath = defaultHomePath;
     }
 }

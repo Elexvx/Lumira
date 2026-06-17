@@ -1,13 +1,20 @@
 # syntax=docker/dockerfile:1.7
 
-FROM maven:3.9.11-eclipse-temurin-21 AS builder
+ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21
+ARG JRE_IMAGE=eclipse-temurin:21-jre
+
+FROM ${MAVEN_IMAGE} AS builder
 
 WORKDIR /workspace
 
-ARG OTEL_JAVAAGENT_URL=https://repo.maven.apache.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/2.28.1/opentelemetry-javaagent-2.28.1.jar
+ARG OTEL_JAVAAGENT_URL=
 RUN set -eux; \
-    curl --fail --show-error --location --retry 3 --retry-all-errors --connect-timeout 10 --max-time 180 "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
-    jar tf /workspace/opentelemetry-javaagent.jar >/dev/null
+    if [ -n "$OTEL_JAVAAGENT_URL" ]; then \
+      curl --fail --show-error --location --retry 3 --retry-all-errors --connect-timeout 10 --max-time 180 "$OTEL_JAVAAGENT_URL" -o /workspace/opentelemetry-javaagent.jar; \
+      jar tf /workspace/opentelemetry-javaagent.jar >/dev/null; \
+    else \
+      : > /workspace/opentelemetry-javaagent.jar; \
+    fi
 
 COPY pom.xml ./
 COPY services/system-service/pom.xml services/system-service/pom.xml
@@ -42,7 +49,7 @@ RUN set -eux; \
     test -n "$JAR_FILE"; \
     cp "$JAR_FILE" /workspace/app.jar
 
-FROM eclipse-temurin:21-jre
+FROM ${JRE_IMAGE}
 
 ENV JAVA_OPTS="" \
     SERVER_PORT=8080 \
@@ -63,4 +70,4 @@ USER app
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"true\" ]; then AGENT_OPTS=\"-javaagent:$OTEL_JAVAAGENT_PATH\"; fi; exec java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $AGENT_OPTS $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"true\" ]; then if [ ! -s \"$OTEL_JAVAAGENT_PATH\" ]; then echo \"OTEL_JAVAAGENT_ENABLED=true but $OTEL_JAVAAGENT_PATH is missing or empty; rebuild with OTEL_JAVAAGENT_URL\" >&2; exit 64; fi; AGENT_OPTS=\"-javaagent:$OTEL_JAVAAGENT_PATH\"; fi; exec java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $AGENT_OPTS $JAVA_OPTS -jar /app/app.jar"]

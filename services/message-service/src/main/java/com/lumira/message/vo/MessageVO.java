@@ -181,6 +181,69 @@ public final class MessageVO {
         }
     }
 
+    public static class NoticePageResponse extends com.lumira.common.vo.PageResponse<MessageVO.NoticeVO> {
+        private Boolean hasMore;
+        private Boolean totalCapped;
+
+        public Boolean getHasMore() {
+            return hasMore;
+        }
+
+        public void setHasMore(Boolean hasMore) {
+            this.hasMore = hasMore;
+        }
+
+        public Boolean getTotalCapped() {
+            return totalCapped;
+        }
+
+        public void setTotalCapped(Boolean totalCapped) {
+            this.totalCapped = totalCapped;
+        }
+    }
+
+    public static class NoticeArchivePageResponse extends com.lumira.common.vo.PageResponse<MessageVO.NoticeVO> {
+        private Boolean hasMore;
+        private Boolean totalCapped;
+
+        public Boolean getHasMore() {
+            return hasMore;
+        }
+
+        public void setHasMore(Boolean hasMore) {
+            this.hasMore = hasMore;
+        }
+
+        public Boolean getTotalCapped() {
+            return totalCapped;
+        }
+
+        public void setTotalCapped(Boolean totalCapped) {
+            this.totalCapped = totalCapped;
+        }
+    }
+
+    public static class DeliveryLogPageResponse extends com.lumira.common.vo.PageResponse<MessageVO.DeliveryLogVO> {
+        private Boolean hasMore;
+        private Boolean totalCapped;
+
+        public Boolean getHasMore() {
+            return hasMore;
+        }
+
+        public void setHasMore(Boolean hasMore) {
+            this.hasMore = hasMore;
+        }
+
+        public Boolean getTotalCapped() {
+            return totalCapped;
+        }
+
+        public void setTotalCapped(Boolean totalCapped) {
+            this.totalCapped = totalCapped;
+        }
+    }
+
     public static class MessageEventVO {
         private String eventType;
         private Long tenantId;

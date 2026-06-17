@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.audit.app;
 
+import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.web.TraceContext;
 import com.lumira.saas.modules.audit.entity.AuditLoginLogEntity;
 import com.lumira.saas.modules.audit.mapper.AuditLoginLogMapper;
@@ -28,7 +29,7 @@ public class LoginAuditService {
     ) {
         AuditLoginLogEntity entity = new AuditLoginLogEntity();
         entity.setUserId(userId);
-        entity.setTenantId(tenantId);
+        entity.setTenantId(tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId);
         entity.setUsername(username);
         entity.setLoginType(loginType);
         entity.setLoginResult(loginResult);

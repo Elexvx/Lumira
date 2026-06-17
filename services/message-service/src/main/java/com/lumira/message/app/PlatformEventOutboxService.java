@@ -29,9 +29,12 @@ public class PlatformEventOutboxService {
     public static final String STATUS_DISPATCHING = "DISPATCHING";
     public static final String STATUS_DELIVERED = "DELIVERED";
     public static final String STATUS_FAILED = "FAILED";
+    public static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
     private static final int MAX_ERROR_LENGTH = 1024;
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_DISPATCH_LIMIT = 200;
+    private static final int MAX_RETRY_COUNT = 8;
+    private static final long DISPATCHABLE_COUNT_CACHE_TTL_MS = 15_000L;
 
     private final MessagePlatformEventOutboxMapper outboxMapper;
     private final ObjectMapper objectMapper;
@@ -39,6 +42,8 @@ public class PlatformEventOutboxService {
     private final Counter deliveredCounter;
     private final Counter failedCounter;
     private final Counter replayCounter;
+    private volatile Long cachedDispatchableCount;
+    private volatile long cachedDispatchableCountUntilMillis;
 
     public PlatformEventOutboxService(MessagePlatformEventOutboxMapper outboxMapper, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
         this.outboxMapper = outboxMapper;
@@ -72,10 +77,11 @@ public class PlatformEventOutboxService {
         if (event == null) {
             throw new IllegalArgumentException("event不能为空");
         }
+        ensureMessageSource(event.getSourceType());
         PlatformEventOutboxEntity entity = new PlatformEventOutboxEntity();
         entity.setTenantId(event.getTenantId());
         entity.setUserId(event.getUserId());
-        entity.setSourceType(resolveSourceType(event));
+        entity.setSourceType(MessageEventFactory.SOURCE_MESSAGE);
         entity.setEventType(resolveEventType(event));
         entity.setEventKey(resolveEventKey(event));
         entity.setPayloadJson(serialize(event));
@@ -91,21 +97,20 @@ public class PlatformEventOutboxService {
 
         outboxMapper.insert(entity);
         recordedCounter.increment();
+        invalidateDispatchableCountCache();
         return entity;
     }
 
     public List<PlatformEventOutboxEntity> listDispatchable(int limit) {
         int normalizedLimit = Math.max(1, Math.min(limit, MAX_DISPATCH_LIMIT));
         LocalDateTime now = LocalDateTime.now();
-        return outboxMapper.selectList(new QueryWrapper<PlatformEventOutboxEntity>()
-                .eq("deleted", 0)
-                .and(wrapper -> wrapper
-                        .eq("dispatch_status", STATUS_RECORDED)
-                        .or(failed -> failed
-                                .eq("dispatch_status", STATUS_FAILED)
-                                .and(retry -> retry.isNull("next_retry_at").or().le("next_retry_at", now))))
-                .orderByAsc("created_at")
-                .last("limit " + normalizedLimit));
+        return outboxMapper.listDispatchable(
+                MessageEventFactory.SOURCE_MESSAGE,
+                STATUS_RECORDED,
+                STATUS_FAILED,
+                now,
+                normalizedLimit
+        );
     }
 
     public PlatformEventOutboxEntity findById(Long id) {
@@ -115,13 +120,34 @@ public class PlatformEventOutboxService {
         return outboxMapper.selectOne(new QueryWrapper<PlatformEventOutboxEntity>()
                 .eq("id", id)
                 .eq("deleted", 0)
+                .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .last("limit 1"));
     }
 
     public long countDispatchable() {
+        long nowMillis = System.currentTimeMillis();
+        Long cached = cachedDispatchableCount;
+        if (cached != null && nowMillis < cachedDispatchableCountUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            nowMillis = System.currentTimeMillis();
+            cached = cachedDispatchableCount;
+            if (cached != null && nowMillis < cachedDispatchableCountUntilMillis) {
+                return cached;
+            }
+            long count = loadDispatchableCount();
+            cachedDispatchableCount = count;
+            cachedDispatchableCountUntilMillis = nowMillis + DISPATCHABLE_COUNT_CACHE_TTL_MS;
+            return count;
+        }
+    }
+
+    private long loadDispatchableCount() {
         LocalDateTime now = LocalDateTime.now();
         Long count = outboxMapper.selectCount(new QueryWrapper<PlatformEventOutboxEntity>()
                 .eq("deleted", 0)
+                .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .and(wrapper -> wrapper
                         .eq("dispatch_status", STATUS_RECORDED)
                         .or(failed -> failed
@@ -154,6 +180,7 @@ public class PlatformEventOutboxService {
                 .set("updated_at", LocalDateTime.now())
                 .set("updated_by", event.getUpdatedBy() == null ? 0L : event.getUpdatedBy())
                 .eq("id", event.getId())
+                .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0)
                 .eq("dispatch_status", event.getDispatchStatus()));
         return updated > 0;
@@ -173,8 +200,10 @@ public class PlatformEventOutboxService {
                 .set("updated_at", now)
                 .set("updated_by", event.getUpdatedBy() == null ? 0L : event.getUpdatedBy())
                 .eq("id", event.getId())
+                .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0));
         deliveredCounter.increment();
+        invalidateDispatchableCountCache();
     }
 
     public void markFailed(PlatformEventOutboxEntity event, RuntimeException exception) {
@@ -184,17 +213,20 @@ public class PlatformEventOutboxService {
 
         int retryCount = event.getRetryCount() == null ? 0 : event.getRetryCount();
         int nextRetryCount = retryCount + 1;
+        String nextStatus = nextRetryCount >= MAX_RETRY_COUNT ? STATUS_DEAD_LETTER : STATUS_FAILED;
         LocalDateTime now = LocalDateTime.now();
         outboxMapper.update(null, new UpdateWrapper<PlatformEventOutboxEntity>()
-                .set("dispatch_status", STATUS_FAILED)
+                .set("dispatch_status", nextStatus)
                 .set("retry_count", nextRetryCount)
-                .set("next_retry_at", now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)))
+                .set("next_retry_at", STATUS_DEAD_LETTER.equals(nextStatus) ? null : now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)))
                 .set("last_error", truncateError(exception == null ? "unknown error" : exception.getMessage()))
                 .set("updated_at", now)
                 .set("updated_by", event.getUpdatedBy() == null ? 0L : event.getUpdatedBy())
                 .eq("id", event.getId())
+                .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0));
         failedCounter.increment();
+        invalidateDispatchableCountCache();
     }
 
     public int dispatchPending(MessageEventDeliveryService deliveryService, int limit) {
@@ -258,7 +290,14 @@ public class PlatformEventOutboxService {
                 .set("updated_at", event.getUpdatedAt())
                 .set("updated_by", event.getUpdatedBy())
                 .eq("id", event.getId())
+                .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0));
+        invalidateDispatchableCountCache();
+    }
+
+    private void invalidateDispatchableCountCache() {
+        cachedDispatchableCount = null;
+        cachedDispatchableCountUntilMillis = 0L;
     }
 
     private MessageEventDTO deserialize(String payloadJson) {
@@ -280,8 +319,10 @@ public class PlatformEventOutboxService {
         }
     }
 
-    private String resolveSourceType(MessageEventDTO event) {
-        return StringUtils.hasText(event.getSourceType()) ? event.getSourceType() : MessageEventFactory.SOURCE_MESSAGE;
+    private void ensureMessageSource(String sourceType) {
+        if (StringUtils.hasText(sourceType) && !MessageEventFactory.SOURCE_MESSAGE.equals(sourceType)) {
+            throw new IllegalArgumentException("消息 outbox sourceType 必须为 MESSAGE");
+        }
     }
 
     private String resolveEventType(MessageEventDTO event) {

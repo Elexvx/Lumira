@@ -13,6 +13,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SystemManagementAppServiceAuditTenantTest {
 
@@ -57,8 +58,9 @@ class SystemManagementAppServiceAuditTenantTest {
 
         service.listOperationLogs(currentUser, null, null, 1, 10);
 
+        assertTrue(queryOperations.lastQuerySql.contains("and l.tenant_id = ?"));
         assertArrayEquals(new Object[]{1001L, 10L, 0L}, queryOperations.lastQueryArgs);
-        assertArrayEquals(new Object[]{1001L}, queryOperations.lastCountArgs);
+        assertEquals(null, queryOperations.lastCountArgs);
     }
 
     @Test
@@ -67,8 +69,9 @@ class SystemManagementAppServiceAuditTenantTest {
 
         service.listAiCallLogs(currentUser, 2002L, null, null, null, null, null, 1, 10);
 
+        assertTrue(queryOperations.lastQuerySql.contains("and l.tenant_id = ?"));
         assertArrayEquals(new Object[]{2002L, 10L, 0L}, queryOperations.lastQueryArgs);
-        assertArrayEquals(new Object[]{2002L}, queryOperations.lastCountArgs);
+        assertEquals(null, queryOperations.lastCountArgs);
     }
 
     private static CurrentUser currentUser(Long tenantId, Set<String> permissions) {
